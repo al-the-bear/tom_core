@@ -1,0 +1,43 @@
+/// Runner for all JSON examples.
+///
+/// Execute this file to run all JSON module examples:
+/// ```
+/// dart run example/samples/tombase/json/00_run_all_examples.dart
+/// ```
+///
+/// Or run all samples together:
+/// ```bash
+/// dart run example/run_all_samples.dart
+/// ```
+library;
+
+import '../../run_all_samples.reflection.dart';
+
+import '01_json_serialization_example.dart' as json_serialization;
+import '02_json_navigation_example.dart' as json_navigation;
+
+/// Standalone entry point for running JSON examples.
+void main() {
+  initializeReflection();
+  run();
+}
+
+/// Run all JSON examples.
+/// Called from run_all_samples.dart or can be run standalone via main().
+void run() {
+  print('Running JSON Examples...\n');
+  print('=' * 60);
+
+  print('\n01: JSON Serialization Example');
+  print('-' * 40);
+  json_serialization.run();
+  print('✓ JSON serialization examples passed\n');
+
+  print('02: JSON Navigation Example');
+  print('-' * 40);
+  json_navigation.run();
+  print('✓ JSON navigation examples passed\n');
+
+  print('=' * 60);
+  print('All JSON examples completed successfully!');
+}

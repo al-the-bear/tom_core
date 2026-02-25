@@ -1,0 +1,37 @@
+/// Runner for all settings examples.
+///
+/// Execute this file to run all settings module examples:
+/// ```
+/// dart run example/samples/tombase/settings/00_run_all_examples.dart
+/// ```
+///
+/// Or run all samples together:
+/// ```bash
+/// dart run example/run_all_samples.dart
+/// ```
+library;
+
+import '../../run_all_samples.reflection.dart';
+
+import '01_client_authorization_example.dart' as client_authorization;
+
+/// Standalone entry point for running settings examples.
+void main() {
+  initializeReflection();
+  run();
+}
+
+/// Run all settings examples.
+/// Called from run_all_samples.dart or can be run standalone via main().
+void run() {
+  print('Running Settings Examples...\n');
+  print('=' * 60);
+
+  print('\n01: Client Authorization Example');
+  print('-' * 40);
+  client_authorization.run();
+  print('✓ Client authorization examples passed\n');
+
+  print('=' * 60);
+  print('All settings examples completed successfully!');
+}

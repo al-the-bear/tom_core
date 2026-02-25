@@ -1,0 +1,163 @@
+import 'dart:io';
+
+import 'args.dart';
+
+/// Reads environment variables from a `.env` file.
+///
+/// The `.env` file format supports:
+/// - Key-value pairs: `KEY=value`
+/// - Comments: Lines starting with `#`
+/// - Empty lines (ignored)
+/// - Quoted values: `KEY="value with spaces"` or `KEY='value'`
+/// - Inline comments: `KEY=value # comment` (only if not inside quotes)
+///
+/// Example `.env` file:
+/// ```
+/// # Database configuration
+/// DB_HOST=localhost
+/// DB_PORT=5432
+/// DB_NAME="my_database"
+///
+/// # Server settings
+/// SERVER_PORT=8080
+/// DEBUG=true
+/// ```
+class TomEnvFile {
+  /// Reads environment variables from a `.env` file in the current directory.
+  ///
+  /// Returns a [Map<String, Object?>] where values are automatically converted
+  /// to appropriate types (int, double, bool, or String).
+  ///
+  /// If the file doesn't exist, returns an empty map.
+  ///
+  /// Optionally specify a custom [path] to read from a different location.
+  static Map<String, Object?> read([String path = '.env']) {
+    final file = File(path);
+    if (!file.existsSync()) {
+      return {};
+    }
+
+    final lines = file.readAsLinesSync();
+    return parse(lines);
+  }
+
+  /// Reads environment variables from a `.env` file asynchronously.
+  ///
+  /// Returns a [Map<String, Object?>] where values are automatically converted
+  /// to appropriate types (int, double, bool, or String).
+  ///
+  /// If the file doesn't exist, returns an empty map.
+  ///
+  /// Optionally specify a custom [path] to read from a different location.
+  static Future<Map<String, Object?>> readAsync([String path = '.env']) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      return {};
+    }
+
+    final content = await file.readAsString();
+    final lines = content.split('\n');
+    return parse(lines);
+  }
+
+  /// Parses a list of lines from an `.env` file format into a map.
+  ///
+  /// This can be used to parse `.env` content from any source,
+  /// not just files.
+  static Map<String, Object?> parse(List<String> lines) {
+    final result = <String, Object?>{};
+
+    for (var line in lines) {
+      line = line.trim();
+
+      // Skip empty lines and comments
+      if (line.isEmpty || line.startsWith('#')) {
+        continue;
+      }
+
+      // Find the first '=' to split key and value
+      final equalsIndex = line.indexOf('=');
+      if (equalsIndex == -1) {
+        continue;
+      }
+
+      final key = line.substring(0, equalsIndex).trim();
+      if (key.isEmpty) {
+        continue;
+      }
+
+      var value = line.substring(equalsIndex + 1).trim();
+
+      // Handle quoted values
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        // Remove quotes and use as string (don't convert to other types)
+        result[key] = value.substring(1, value.length - 1);
+        continue;
+      }
+
+      // Handle inline comments (only if not quoted)
+      final commentIndex = value.indexOf('#');
+      if (commentIndex != -1) {
+        value = value.substring(0, commentIndex).trim();
+      }
+
+      // Convert value to appropriate type
+      result[key] = _convertValue(value);
+    }
+
+    return result;
+  }
+
+  /// Converts a string value to the appropriate type.
+  ///
+  /// Converts to:
+  /// - `bool` for "true" or "false"
+  /// - `int` for integer strings
+  /// - `double` for decimal strings
+  /// - `null` for empty strings
+  /// - `String` otherwise
+  static Object? _convertValue(String value) {
+    if (value.isEmpty) {
+      return null;
+    }
+
+    // Use TomArgs conversion for consistent behavior
+    return TomArgs.convertToObjectMap({'_': value})['_'];
+  }
+
+  /// Merges environment variables from multiple sources.
+  ///
+  /// Later sources override earlier ones. This is useful for
+  /// having a base `.env` file and an environment-specific override.
+  ///
+  /// Example:
+  /// ```dart
+  /// final env = TomEnvFile.merge([
+  ///   TomEnvFile.read('.env'),
+  ///   TomEnvFile.read('.env.local'),
+  ///   TomEnvFile.read('.env.${Platform.environment['ENV'] ?? 'dev'}'),
+  /// ]);
+  /// ```
+  static Map<String, Object?> merge(List<Map<String, Object?>> sources) {
+    final result = <String, Object?>{};
+    for (final source in sources) {
+      result.addAll(source);
+    }
+    return result;
+  }
+
+  /// Loads environment variables from a `.env` file and adds them
+  /// to the process environment.
+  ///
+  /// Note: This only affects Dart code that reads from [Platform.environment]
+  /// after this call. It does not modify the actual OS environment.
+  ///
+  /// Returns the loaded environment variables.
+  static Map<String, Object?> load([String path = '.env']) {
+    final env = read(path);
+    // Note: Platform.environment is read-only, so we can't actually
+    // add to it. This method returns the loaded values for manual use.
+    return env;
+  }
+}

@@ -1,0 +1,799 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import '../little_things/server_exception.dart';
+import '../server/server.dart';
+import '../transactions/transaction_manager.dart';
+
+import 'endpoint_annotation.dart';
+
+class TomEndpointHandlerException extends TomServerException {
+  TomEndpointHandlerException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+  });
+}
+
+class TomEndpointPipelineException extends TomServerException {
+  TomEndpointPipelineException(
+    super.key,
+    super.defaultUserMessage, {
+    super.parameters,
+    super.stack,
+    super.rootException,
+    super.autoLog,
+  });
+}
+
+class TomEndpointHandler {
+  String name;
+  InstanceMirror instance;
+  MethodMirror method;
+  ClassMirror? interface;
+  ClassMirror implementation;
+  String methodName;
+
+  TomMethodMetadata metadata;
+
+  TomEndpointHandler({
+    required this.name,
+    required this.instance,
+    required this.method,
+    this.interface,
+    required this.implementation,
+    required this.methodName,
+    required this.metadata,
+  });
+
+  static bool globalSettingLogRequestsDefault = true;
+
+  static String globalSettingCorsAllowedOriginsDefault = "*";
+  static String globalSettingCorsAllowedMethodsDefault = "GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT";
+  static String globalSettingCorsAllowedHeadersDefault = "Origin, Content-Type, Accept, Authorization, Referer, User-Agent";
+
+  static bool debugPrintContext = false;
+  static bool debugPrintAuthentication = false;
+
+  Response handlePreflight(Request req) {
+    return Response.ok(
+      '',
+      headers: {
+        'Access-Control-Allow-Origin': metadata.endpoint.corsAllowedOrigins ?? globalSettingCorsAllowedOriginsDefault,
+        'Access-Control-Allow-Methods': metadata.endpoint.corsAllowedMethods ?? globalSettingCorsAllowedMethodsDefault,
+        'Access-Control-Allow-Headers': metadata.endpoint.corsAllowedHeaders ?? globalSettingCorsAllowedHeadersDefault,
+      },
+    );
+  }
+
+  // TODO: also support web socket communications
+  // TODO: integrate all types of authorization, e.g. automated resource key generation
+  // think about how to integrate roles, groups and entitlements
+  Future<Response> handleMethodCall(Request req) async {
+
+    if( req.method == TomHttpMethod.options.name ) return handlePreflight(req);
+
+    List<Object> positionalArguments = [];
+
+    TomRequestLogInfo logInfo =
+        req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
+    logInfo.shouldBeLogged =
+        metadata.endpoint.logRequests ?? globalSettingLogRequestsDefault;
+
+    var authentication = getFromCurrentZone<TomPrincipal>();
+    var token = getFromCurrentZone<TomClientJwtToken>();
+    var requestId = getFromCurrentZone<TomRequestId>();
+    var reqId = requestId==null ? "" : requestId.uuid; 
+
+
+    bool accessCheck = checkAccess(authentication);
+
+    if (accessCheck == false) {
+      if (TomResourceKeyProtection.globalSettingUseAutomaticEndpointProtection) {
+        accessCheck = checkAutomaticAccess(accessCheck);
+      }
+    }
+
+    if (accessCheck == false) {
+      throw TomEndpointHandlerException(
+        "endpoint_handler.handle_method_call.access_denied",
+        "Access denied to endpoint, access not granted and resource key not found: $name",
+      );
+    }
+
+    // TODO: add handling of streams/file uploads
+    if( debugPrintContext ) tomLog.trace("$reqId-${req.url}: Request context is ${req.context} TomPrincipal is $authentication");
+    if( debugPrintAuthentication) tomLog.trace("$reqId-${req.url}: Found $authentication and $token for request",);
+    for (var pm in method.parameters) {
+      if (pm.type.reflectedType == TomPrincipal && authentication != null) {
+        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal");
+        positionalArguments.add(authentication);
+        continue;
+      } else if( authentication == null ){
+        tomLog.warn(
+          "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomPrincipal in zone.",
+        );
+      }
+      if (pm.type.reflectedType == TomClientJwtToken && token != null) {
+        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomClientJwtToken");
+        positionalArguments.add(token);
+        continue;
+      }else if( token == null ){
+        tomLog.warn(
+          "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomClientJwtToken in zone.",
+        );
+      }
+      if (req.runtimeType == pm.type.reflectedType) {
+        tomLog.trace("$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to request object");
+        positionalArguments.add(req);
+        continue;
+      }
+      if (req.context.containsKey(pm.type.reflectedType.toString()) &&
+          req.context[pm.type.reflectedType.toString()] != null &&
+          req.context[pm.type.reflectedType.toString()].runtimeType ==
+              pm.type.reflectedType) {
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from context using type ${pm.type.reflectedType.toString()}",
+        );
+        positionalArguments.add(req.context[pm.type.reflectedType.toString()]!);
+        continue;
+      }
+      if (req.context.containsKey(pm.simpleName) &&
+          req.context[pm.simpleName] != null &&
+          req.context[pm.simpleName].runtimeType == pm.type.reflectedType) {
+        tomLog.trace(
+          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from context using name.",
+        );
+        positionalArguments.add(req.context[pm.simpleName]!);
+        continue;
+      }
+      var ctx = getFromCurrentZone<TomExecutionContext>();
+      if( ctx != null ) {
+        var ctxValue = ctx.contextMap[pm.simpleName];
+        if(ctxValue != null) {
+          tomLog.trace(
+            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from execution context using name.",
+          );
+          positionalArguments.add(ctxValue.contextFunction());
+          continue;
+        }
+      }
+      try {
+        ClassMirror parameterMirror =
+            tomReflector.reflectType(pm.reflectedType) as ClassMirror;
+        if (metadata.endpoint.consumes == TomMimeType.json &&
+            req.method != TomHttpMethod.trace.name) {
+          try {
+            String body = await req.readAsString();
+            if (body.isNotEmpty) {
+              Map<String, dynamic> jsonBodyData = jsonDecode(body);
+              jsonBodyData.addAll(req.params);
+              try {
+                Object? parameterObject = tomReflectionInfo
+                    .createInstanceFromJson(parameterMirror, jsonBodyData);
+                if (parameterObject != null) {
+                  positionalArguments.add(parameterObject);
+                  tomLog.trace(
+                    "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from jsonbody $body to $parameterObject ${req.params}",
+                  );
+                  continue;
+                } else {
+                  throw TomEndpointHandlerException(
+                    "endpoint_pipeline.handle_method_call.parameter_instantiation_returned_null",
+                    "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed (null-result).",
+                  );
+                }
+              } on TomEndpointHandlerException {
+                rethrow;
+              } catch (ex) {
+                throw TomEndpointHandlerException(
+                  "endpoint_pipeline.handle_method_call.parameter_instantiation_failed",
+                  "Request body contains content for ${parameterMirror.simpleName} but instantiation from JSON $jsonBodyData failed: $ex",
+                );
+              }
+            }else{
+              tomLog.warn(
+                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty.",
+              );
+            }
+          } catch (ex) {
+            tomLog.error("$reqId-${req.url}: Failed to parse json/set values $ex");
+          }
+        }
+        if (req.context.isNotEmpty &&
+            req.context.containsKey(parameterMirror.simpleName) &&
+            req.context[parameterMirror.simpleName] != null ) {
+          try {
+            if (req.context[parameterMirror.simpleName]
+                is Map<String, Object?>) {
+              Object? parameterObject = tomReflectionInfo
+                  .createInstanceFromJson(
+                    parameterMirror,
+                    req.context[parameterMirror.simpleName]
+                        as Map<String, Object?>,
+                  );
+              if (parameterObject != null) {
+                positionalArguments.add(parameterObject);
+                tomLog.trace(
+                  "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} value using map from context to $parameterObject ${req.context[parameterMirror.simpleName]}",
+                );
+                continue;
+              } else {
+                throw TomEndpointHandlerException(
+                  "endpoint_pipeline.handle_method_call.parameter_instantiation_returned_null_from_context",
+                  "Request context contains an object for ${parameterMirror.simpleName} but instantiation from JSON ${req.context[parameterMirror.simpleName]} failed (null-result).",
+                  autoLog: true,
+                );
+              }
+            } else {
+              throw TomEndpointHandlerException(
+                "endpoint_pipeline.handle_method_call.parameter_instantiation_invalid_type_in_context",
+                "Request context contains an object for ${parameterMirror.simpleName} but it is neither of the type of the parameter nor Map<String, Object>.",
+                autoLog: true,
+              );
+            }
+          } on TomEndpointHandlerException {
+            rethrow;
+          } catch (ex) {
+            throw TomEndpointHandlerException(
+              "endpoint_pipeline.handle_method_call.parameter_instantiation_from_context_failed",
+              "Request context contains content for ${parameterMirror.simpleName} but instantiation from JSON ${req.context[parameterMirror.simpleName]} failed: $ex",
+              autoLog: true,
+              rootException: ex,
+            );
+          }
+        }
+      } on TomEndpointHandlerException {
+        rethrow;
+      } catch (error) {
+        throw TomEndpointHandlerException(
+          "endpoint_pipeline.handle_method_call.parameter_instantiation_general_failure",
+          "Could not instantiate parameter of type ${pm.reflectedType}: $error",
+          autoLog: true,
+          rootException: error,
+        );
+      }
+      tomLog.warn("$reqId-${req.url}: Setting parameter ${pm.simpleName} of type ${pm.reflectedType} failed");
+    }
+
+    String callName = method.simpleName;
+
+    Object? result;
+
+    TomTransaction? transaction;
+
+    try {
+      if( metadata.transactionInfo != null ) {
+        tomLog.trace("$reqId-${req.url}: Starting transaction...");
+        ( transaction, _ ) = TomTransactionManager.startTransaction();
+      }
+      tomLog.trace(
+        "$reqId-${req.url}: Calling method $callName on ${instance.reflectee.runtimeType} with parameters $positionalArguments",
+      );
+      result = instance.invoke(callName, positionalArguments);
+      if (result is Future) {
+        result = await result;
+      }
+      if( transaction != null ) {
+        tomLog.trace("$reqId-${req.url}: Committing transaction...");
+        await transaction.commitTransaction();
+      }
+    } catch (error, stacktrace) {
+      if( transaction != null ) {
+        tomLog.warn("$reqId-${req.url}: Rolling back transaction after exception $error");
+        await transaction.rollbackTransaction();
+      }
+      if (metadata.endpoint.errorHandler != null) {
+        Response? response;
+        try {
+          response = metadata.endpoint.errorHandler!.handleInvocationError(
+            error,
+            stacktrace,
+            req,
+          );
+        } catch (error2, stacktrace2) {
+          throw TomEndpointHandlerException(
+            "endpoint_pipeline.handle_method_call.error_handler_failed",
+            "Error handler for invocation error also failed on $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}: $error2",
+            autoLog: true,
+            rootException: error2,
+            stack: stacktrace2,
+            parameters: {
+              "original_error": error,
+              "original_stacktrace": stacktrace,
+            },
+          );
+        }
+        if (metadata.endpoint.logRequests == true) {
+          tomLog.info(
+            "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [handleInvocationError by error handler]",
+          );
+          logInfo.hasBeenLogged = true;
+        }
+        return response;
+      } else {
+        tomLog.warn(
+          "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding} /$reqId-${req.url} ${req.requestedUri} Failed to call method $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}. No error handler. Rethrowing.",
+        );
+        logInfo.hasBeenLogged = true;
+      }
+      // will be converted to a structured error response in the pipeline
+      rethrow;
+    }
+    // TODO: add handling of returning files/streaming to the client
+    try {
+      String? resultString = result == null
+          ? null
+          : result is String
+          ? result
+          : result is TomClass
+          ? jsonEncode(result.toJson())
+          : result is Map<String, Object>
+          ? jsonEncode(result)
+          : result is List<Object>
+          ? jsonEncode(result)
+          : tomReflectionInfo.convertToJsonString(result);
+
+      Response? response;
+      if (resultString != null) {
+        Map<String, Object> headers = {
+          TomHeader.contentType: metadata.endpoint.produces.toHeaderValue(),
+        };
+        if (metadata.endpoint.headers.isNotEmpty) {
+          for (var name in metadata.endpoint.headers.keys) {
+            headers[name] = metadata.endpoint.headers[name]!;
+          }
+        }
+        if (metadata.endpoint.contentDisposition != null) {
+          headers[TomHeader.contentDisposition] =
+              metadata.endpoint.contentDisposition!;
+        }
+        response = Response.ok(
+          resultString,
+          headers: headers,
+          encoding: Encoding.getByName(metadata.endpoint.produces.charset),
+        );
+      }
+      if (result is Response) {
+        response = result;
+      }
+      if (result == null) {
+        response = Response.ok("");
+      }
+      response ??= Response.internalServerError(
+        body: "Internal result processing failed.",
+      );
+      if (metadata.endpoint.logRequests == true) {
+        tomLog.info(
+          "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${metadata.endpoint.produces} ${response.encoding?.name} [Normal processing]",
+        );
+        logInfo.hasBeenLogged = true;
+      }
+      return response;
+    } catch (error, stacktrace) {
+      if (metadata.endpoint.errorHandler != null) {
+        try {
+          Response response = metadata.endpoint.errorHandler!
+              .handleConversionError(error, stacktrace, req, result);
+          if (metadata.endpoint.logRequests == true) {
+            tomLog.info(
+              "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} => ${response.statusCode} ${response.encoding} [handleConversionError]",
+            );
+          }
+          logInfo.hasBeenLogged = true;
+          return response;
+        } catch (error2, stacktrace2) {
+          throw TomEndpointHandlerException(
+            "endpoint_pipeline.handle_method_call.conversion_error_handler_failed",
+            "Error handler for conversion error also failed on $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}: $error2",
+            autoLog: true,
+            rootException: error2,
+            stack: stacktrace2,
+            parameters: {
+              "original_error": error,
+              "original_stacktrace": stacktrace,
+            },
+          );
+        }
+      } else {
+        tomLog.warn(
+          "$reqId-${req.url}: HTTP/${req.protocolVersion} [${req.method}] ${req.encoding?.name ?? "no encoding"} /$reqId-${req.url} ${req.requestedUri} Failed to convert result from $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}. Result was $result. No errorHandler.",
+        );
+        logInfo.hasBeenLogged = true;
+        throw TomEndpointHandlerException(
+          "endpoint_pipeline.handle_method_call.result_conversion_failed_no_error_handler",
+          "Failed to convert result from $callName on ${instance.type.simpleName} with parameters [$positionalArguments] context is ${req.context}. Result was $result. No errorHandler.",
+          rootException: error,
+          stack: stacktrace,
+        );
+      }
+    }
+  }
+
+  bool checkAccess(TomPrincipal? principal) {
+    if (metadata.access != null) {
+      return metadata.access!.checkAccessibility(principal);
+    }
+    return !TomResourceKeyProtection.globalSettingProtectionDefault;
+  }
+
+  bool checkAutomaticAccess(bool accessCheck) {
+    if (interface != null) {
+      if (!TomResourceKeyProtection.isProtected(interface!.simpleName)) {
+        // if interface is accessible check if method was specified as an exception
+        if (TomResourceKeyProtection.isProtected(
+          "-${interface!.simpleName}.$methodName",
+        )) {
+          accessCheck = false;
+        } else {
+          accessCheck = true;
+        }
+      } else {
+        // if interface is not accessible, check access to method
+        if (!TomResourceKeyProtection.isProtected(
+          "${interface!.simpleName}.$methodName",
+        )) {
+          accessCheck = true;
+        }
+      }
+    } else if (metadata.apiEndpoint != null) {
+      if (!TomResourceKeyProtection.isProtected(metadata.apiEndpoint!.api.id)) {
+        // if endpoint is accessible check if method was specified as an exception
+        if (TomResourceKeyProtection.isProtected(
+          "-${metadata.apiEndpoint!.api.id}.${metadata.apiEndpoint!.id}",
+        )) {
+          accessCheck = false;
+        } else {
+          accessCheck = true;
+        }
+      } else {
+        // if endpoint is not accessible, check access to method
+        if (!TomResourceKeyProtection.isProtected(
+          "${metadata.apiEndpoint!.api.id}.${metadata.apiEndpoint!.id}",
+        )) {
+          accessCheck = true;
+        }
+      }
+    }
+    return accessCheck;
+  }
+}
+
+class TomEndpointRoutingInfo {
+  TomEndpointHandler handler;
+  TomEndpoint endpoint;
+
+  TomEndpointRoutingInfo(this.handler, this.endpoint);
+}
+
+class TomEndpointRouting {
+  static List<TomEndpointHandler> handlers = [];
+
+  static Map<String, TomEndpointRoutingInfo> routingInfo = {};
+
+  TomClassScanResult scanClasses() {
+    List<ClassMirror> serviceInterfaces = [];
+    List<ClassMirror> apiImplementations = [];
+    List<ClassMirror> componentClasses = [];
+
+    for (var type in tomReflector.annotatedClasses) {
+      TomApiImplementation? apiImplAnno;
+      TomService? serviceAnno;
+      TomComponent? componentAnno;
+      for (var anno in type.metadata) {
+        if (anno is TomApiImplementation) {
+          apiImplAnno = anno;
+        } else if (anno is TomService) {
+          serviceAnno = anno;
+        } else if (anno is TomComponent) {
+          componentAnno = anno;
+        }
+      }
+      if (apiImplAnno != null && serviceAnno != null) {
+        throw TomEndpointPipelineException(
+          "endpoint_pipeline.initialize_router.api_implementation_and_service_on_same_class",
+          "Class ${type.qualifiedName} cannot be annotated with both @TomApiImplementation and @TomService.",
+        );
+      }
+      if (apiImplAnno != null) {
+        apiImplementations.add(type);
+      } else if (serviceAnno != null) {
+        serviceInterfaces.add(type);
+      }
+      if (componentAnno != null) {
+        componentClasses.add(type);
+      }
+    }
+
+    return TomClassScanResult(
+      serviceInterfaces: serviceInterfaces,
+      apiImplementations: apiImplementations,
+      componentClasses: componentClasses,
+    );
+  }
+  /*
+    recurse through beans to get everything initialized
+   */
+
+  Router initializeRouter() {
+    final Router router = Router();
+    var scanResult = scanClasses();
+    // old style, for services based on interfaces
+    for (var serviceType in scanResult.serviceInterfaces) {
+      Object? serviceInstance = getReferencedComponent(serviceType);
+      serviceInstance ??= findServiceInstance(
+        scanResult.componentClasses,
+        serviceType,
+        serviceInstance,
+      );
+      createRoutesForClassMirror(serviceType, serviceInstance, router);
+    }
+    // using API definitions from the remote api registry
+    for( var serviceType in scanResult.apiImplementations ) {
+      Object? serviceInstance = getReferencedComponent(serviceType);
+      serviceInstance ??= TomBean.getBeanByType(serviceType.dynamicReflectedType);
+      createRoutesForClassMirror(serviceType, serviceInstance, router);
+    }
+    return router;
+  }
+
+  void createRoutesForClassMirror(ClassMirror serviceType, Object? serviceInstance, Router router) {
+    tomLog.trace(
+      "tomService interface $serviceType, ${serviceType.metadata}, $serviceInstance",
+    );
+    var methodMetadata = getClassMethodMetadata(serviceType);
+    if (methodMetadata.isNotEmpty) {
+      var instanceMirror = tomReflector.reflect(serviceInstance!);
+      var instanceClassMirror =
+          tomReflector.reflectType(serviceInstance.runtimeType)
+              as ClassMirror;
+      for (var mmd in methodMetadata) {
+        tomLog.trace("Found endpoint ${mmd.methodMirror.simpleName}");
+        var instanceMethodMirror =
+            instanceClassMirror.declarations[mmd.methodMirror.simpleName]
+                as MethodMirror;
+        var tep = mmd.endpoint;
+        TomEndpointHandler teph = TomEndpointHandler(
+          name:
+              "${tep.uri}-${tep.methods} to ${mmd.methodMirror.qualifiedName} in ${instanceClassMirror.qualifiedName}",
+          instance: instanceMirror,
+          method: instanceMethodMirror,
+          interface: serviceType,
+          implementation: instanceClassMirror,
+          methodName: mmd.methodMirror.qualifiedName,
+          metadata: mmd,
+        );
+        createRoutesForEndpoint(tep, router, teph, mmd, instanceClassMirror);
+      }
+    }
+  }
+
+  Object? getReferencedComponent(ClassMirror serviceType) {
+    Object? serviceInstance;
+    for (var anno in serviceType.metadata) {
+      if (anno is TomComponentReference) {
+        if (anno.componentName == null && anno.referencedType == null) {
+          throw TomEndpointPipelineException(
+            "endpoint_pipeline.initialize_router.component_reference_invalid",
+            "TomComponentReference must have either componentName or referencedType set in ${serviceType.qualifiedName}",
+          );
+        }
+        if (anno.componentName != null && anno.referencedType != null) {
+          throw TomEndpointPipelineException(
+            "endpoint_pipeline.initialize_router.component_reference_invalid_both_set",
+            "TomComponentReference must have either componentName or referencedType set in ${serviceType.qualifiedName}, not both.",
+          );
+        }
+        if(serviceInstance != null ) {
+          throw TomEndpointPipelineException(
+            "endpoint_pipeline.initialize_router.multiple_component_references",
+            "There must be only a single TomComponentReference in ${serviceType.qualifiedName}, not both.",
+          );
+        }
+        if (anno.referencedType != null) {
+          serviceInstance = TomBean.getBeanByType(anno.referencedType!);
+        } else if (anno.componentName != null) {
+          serviceInstance = TomBean.getBeanByName(anno.componentName!);
+        }
+      }
+    }
+    return serviceInstance;
+  }
+
+  void createRoutesForEndpoint(
+    TomEndpoint<Object, Object> tep,
+    Router router,
+    TomEndpointHandler teph,
+    TomMethodMetadata mmd,
+    ClassMirror instanceClassMirror,
+  ) {
+    for (var method in tep.methods) {
+      switch (method) {
+        case TomHttpMethod.get:
+          router.get(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.post:
+          router.post(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.put:
+          router.put(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.patch:
+          router.patch(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.head:
+          router.head(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.connect:
+          router.connect(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.delete:
+          router.delete(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.trace:
+          router.trace(tep.uri, teph.handleMethodCall);
+        case TomHttpMethod.all:
+          router.all(tep.uri, teph.handleMethodCall);
+        default:
+          throw TomEndpointPipelineException(
+            "endpoint_pipeline.initialize_router.invalid_http_method",
+            "Endpoint method $method invalid for ${mmd.methodMirror.simpleName}-${instanceClassMirror.simpleName}",
+          );
+      }
+      router.options(tep.uri, teph.handleMethodCall);
+      routingInfo[tep.uri] = TomEndpointRoutingInfo(teph, tep);
+    }
+    tomLog.info("mounted endpoint ${teph.name} $tep");
+    handlers.add(teph);
+  }
+
+  List<TomMethodMetadata> getClassMethodMetadata(ClassMirror classMirror) {
+    List<TomMethodMetadata> methodMetadata = [];
+    nextDeclaration:
+    for (var decl in classMirror.declarations.values) {
+      if (decl is MethodMirror) {
+        for (var mde in decl.metadata) {
+          if (mde is TomEndpointBase) {
+            TomEndpoint? tep;
+            TomAccessControl? tea;
+            TomTransactional? ti;
+            TomApiEndpointImplementation? aei;
+            TomApiImplementation? ai;
+            TomApi? a;
+            TomApiEndpoint? ae;
+            for (var tag in decl.metadata) {
+              if (tag is TomAccessControl) {
+                if (tea != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_access_control",
+                    "More than one TomEndpointAccess specified for $decl",
+                  );
+                }
+                tea = tag;
+              }
+              if (tag is TomTransactional) {
+                if (ti != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_transactional_tags",
+                    "More than one TomTransactional specified for $decl",
+                  );
+                }
+                ti = tag;
+              }
+              if (tag is TomEndpointBase) {
+                if (tep != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_endpoint_base_tags",
+                    "More than one tag of type TomEndpointBase specified for $decl",
+                  );
+                }
+                tep = tag.convertToTomEndpoint();
+              }
+              if (tag is TomApiEndpointImplementation) {
+                if (aei != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_api_endpoint_implementation_tags",
+                    "More than one tag of type TomApiEndpointImplementation specified for $decl",
+                  );
+                }
+                aei = tag;
+                ae = tomRemoteApis[aei.apiId][aei.endpointId];
+                a = tomRemoteApis[aei.apiId];
+                for (var classAnno in classMirror.metadata) {
+                  if (classAnno is TomApiImplementation) {
+                    if (ai != null) {
+                      throw TomEndpointPipelineException(
+                        "endpoint_pipeline.get_class_method_metadata.multiple_tom_api_implementation_tags",
+                        "More than one tag of type TomApiImplementation specified for ${classMirror.simpleName}",
+                      );
+                    }
+                    ai = classAnno;
+                  }
+                }
+                if (ai == null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.no_tom_api_implementation_found",
+                    "No tag of type TomApiImplementation specified for ${classMirror.simpleName}",
+                  );
+                }
+              }
+            }
+            methodMetadata.add(
+              TomMethodMetadata(
+                methodMirror: decl,
+                endpoint: tep!,
+                access: tea,
+                transactionInfo: ti,
+                apiEndpointImplementation: aei,
+                apiEndpoint: ae,
+                api: a,
+                apiImplementation: ai,
+              ),
+            );
+            continue nextDeclaration;
+          }
+        }
+      }
+    }
+    return methodMetadata;
+  }
+
+  Object? findServiceInstance(
+    List<ClassMirror> componentClasses,
+    ClassMirror serviceType,
+    Object? serviceInstance,
+  ) {
+    for (var instanceType in componentClasses) {
+      if (((instanceType.superclass != null &&
+              instanceType.superclass!.qualifiedName ==
+                  serviceType.qualifiedName) ||
+          instanceType.superinterfaces.any(
+            (cm) => cm.qualifiedName == serviceType.qualifiedName,
+          ))) {
+        tomLog.trace(
+          "Found implementation class: $instanceType, ${instanceType.metadata}",
+        );
+        serviceInstance = TomBean.getBeanByType(
+          instanceType.dynamicReflectedType,
+        );
+      }
+    }
+    return serviceInstance;
+  }
+}
+
+class TomMethodMetadata {
+  MethodMirror methodMirror;
+
+  TomEndpoint endpoint;
+  TomAccessControl? access;
+  TomTransactional? transactionInfo;
+
+  TomApiEndpointImplementation? apiEndpointImplementation;
+  TomApiImplementation? apiImplementation;
+  TomApi? api;
+  TomApiEndpoint? apiEndpoint;
+
+  TomMethodMetadata({
+    required this.endpoint,
+    required this.methodMirror,
+    this.access,
+    this.transactionInfo,
+    this.apiEndpointImplementation,
+    this.apiImplementation,
+    this.api,
+    this.apiEndpoint,
+  });
+}
+
+class TomClassScanResult {
+    List<ClassMirror> serviceInterfaces = [];
+    List<ClassMirror> apiImplementations = [];
+    List<ClassMirror> componentClasses = [];
+
+    TomClassScanResult({
+      this.serviceInterfaces = const [],
+      this.apiImplementations = const [],
+      this.componentClasses = const [],
+    });
+}

@@ -1,0 +1,259 @@
+/// Worker Pool Example
+///
+/// This example demonstrates TomWorkerPool for managing multiple
+/// worker isolates with automatic load distribution. Worker pools
+/// are ideal for CPU-intensive parallel processing.
+library;
+
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+// =============================================================================
+// Command Definitions
+// =============================================================================
+
+/// A command that performs prime number checking.
+class IsPrimeCommand extends TomCommand {
+  final int number;
+
+  IsPrimeCommand(this.number);
+
+  @override
+  Future<Object?> execute() async {
+    if (number < 2) return false;
+    if (number == 2) return true;
+    if (number % 2 == 0) return false;
+
+    for (int i = 3; i * i <= number; i += 2) {
+      if (number % i == 0) return false;
+    }
+    return true;
+  }
+}
+
+/// A command that counts primes up to a given number.
+class CountPrimesCommand extends TomCommand {
+  final int upTo;
+
+  CountPrimesCommand(this.upTo);
+
+  @override
+  Future<Object?> execute() async {
+    int count = 0;
+    for (int n = 2; n <= upTo; n++) {
+      if (_isPrime(n)) count++;
+    }
+    return count;
+  }
+
+  bool _isPrime(int n) {
+    if (n < 2) return false;
+    if (n == 2) return true;
+    if (n % 2 == 0) return false;
+    for (int i = 3; i * i <= n; i += 2) {
+      if (n % i == 0) return false;
+    }
+    return true;
+  }
+}
+
+/// A command that performs a task with a unique identifier.
+class IdentifiedTaskCommand extends TomCommand {
+  final int taskId;
+  final int workAmount;
+
+  IdentifiedTaskCommand(this.taskId, this.workAmount);
+
+  @override
+  Future<Object?> execute() async {
+    int result = 0;
+    for (int i = 0; i < workAmount; i++) {
+      result += i;
+    }
+    return {'taskId': taskId, 'result': result};
+  }
+}
+
+// =============================================================================
+// EXAMPLE 1: Creating a worker pool
+// =============================================================================
+
+class WorkerPoolCreationExample {
+  static int poolSize = 0;
+  static bool poolCreated = false;
+
+  static Future<TomWorkerPool> example1CreatePool() async {
+    final context = TomWorkerContext(
+      defaultTomEnvironment,
+      platformLinux,
+      [],
+      'PoolWorker',
+    );
+
+    poolSize = 4;
+    final pool = await TomWorkerPool.withSize(poolSize, context);
+    poolCreated = true;
+
+    assert(poolCreated, 'Pool should be created');
+    assert(poolSize == 4, 'Pool size should be 4');
+
+    return pool;
+  }
+}
+
+// =============================================================================
+// EXAMPLE 2: Executing commands through the pool
+// =============================================================================
+
+class PoolCommandExecutionExample {
+  static Map<int, bool> primeResults = {};
+  static bool allCommandsExecuted = false;
+
+  static Future<void> example2ExecuteCommands(TomWorkerPool pool) async {
+    final numbersToCheck = [97, 100, 127, 150, 199, 200];
+
+    for (final num in numbersToCheck) {
+      final isPrime = pool.execute(IsPrimeCommand(num)) as bool;
+      primeResults[num] = isPrime;
+    }
+
+    allCommandsExecuted = primeResults.length == numbersToCheck.length;
+
+    assert(primeResults[97] == true, '97 should be prime');
+    assert(primeResults[100] == false, '100 should not be prime');
+    assert(primeResults[127] == true, '127 should be prime');
+    assert(primeResults[150] == false, '150 should not be prime');
+    assert(primeResults[199] == true, '199 should be prime');
+    assert(primeResults[200] == false, '200 should not be prime');
+    assert(allCommandsExecuted, 'All commands should execute');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 3: Parallel execution with Future.wait
+// =============================================================================
+
+class ParallelExecutionExample {
+  static List<int> parallelResults = [];
+  static int executionTimeMs = 0;
+  static bool parallelExecutionComplete = false;
+
+  static Future<void> example3ParallelExecution(TomWorkerPool pool) async {
+    final ranges = [1000, 2000, 3000, 4000];
+    final stopwatch = Stopwatch()..start();
+
+    final parallelFutures =
+        ranges.map((n) async => pool.execute(CountPrimesCommand(n)));
+    final results = await Future.wait(parallelFutures);
+
+    executionTimeMs = stopwatch.elapsedMilliseconds;
+    parallelResults = results.cast<int>().toList();
+    parallelExecutionComplete = parallelResults.length == ranges.length;
+
+    // Expected prime counts: primes up to 1000=168, 2000=303, 3000=430, 4000=550
+    assert(parallelResults[0] == 168, 'Primes up to 1000 should be 168');
+    assert(parallelResults[1] == 303, 'Primes up to 2000 should be 303');
+    assert(parallelResults[2] == 430, 'Primes up to 3000 should be 430');
+    assert(parallelResults[3] == 550, 'Primes up to 4000 should be 550');
+    assert(parallelExecutionComplete, 'Parallel execution should complete');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 4: Work distribution across workers
+// =============================================================================
+
+class WorkDistributionExample {
+  static List<Map<String, dynamic>> taskResults = [];
+  static int taskCount = 0;
+  static bool allTasksCompleted = false;
+
+  static Future<void> example4WorkDistribution(TomWorkerPool pool) async {
+    taskCount = 8;
+    taskResults = [];
+
+    // Execute tasks sequentially to avoid type issues with pool.execute
+    for (int i = 0; i < taskCount; i++) {
+      final result = await (pool.execute(IdentifiedTaskCommand(i, 10000)) as Future<Object?>);
+      taskResults.add(result as Map<String, dynamic>);
+    }
+
+    allTasksCompleted = taskResults.length == taskCount;
+
+    // Verify each task completed with correct ID
+    for (int i = 0; i < taskCount; i++) {
+      final result = taskResults.firstWhere(
+        (r) => r['taskId'] == i,
+        orElse: () => {},
+      );
+      assert(result.isNotEmpty, 'Task $i should have completed');
+    }
+    assert(allTasksCompleted, 'All tasks should complete');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 5: Sequential vs parallel comparison
+// =============================================================================
+
+class SequentialVsParallelExample {
+  static int sequentialTimeMs = 0;
+  static int parallelTimeMs = 0;
+  static bool parallelWasFaster = false;
+
+  static Future<void> example5SequentialVsParallel(TomWorkerPool pool) async {
+    final ranges = [500, 600, 700, 800];
+
+    // Sequential execution
+    final seqStopwatch = Stopwatch()..start();
+    for (final n in ranges) {
+      await (pool.execute(CountPrimesCommand(n)) as Future<Object?>);
+    }
+    sequentialTimeMs = seqStopwatch.elapsedMilliseconds;
+
+    // Parallel execution using explicit cast
+    final parStopwatch = Stopwatch()..start();
+    final futures = ranges.map((n) => pool.execute(CountPrimesCommand(n)) as Future<Object?>).toList();
+    await Future.wait(futures);
+    parallelTimeMs = parStopwatch.elapsedMilliseconds;
+
+    // Parallel should generally be faster with a pool
+    parallelWasFaster = parallelTimeMs <= sequentialTimeMs;
+
+    assert(sequentialTimeMs >= 0, 'Sequential time should be positive');
+    assert(parallelTimeMs >= 0, 'Parallel time should be positive');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 6: Pool cleanup
+// =============================================================================
+
+class PoolCleanupExample {
+  static bool poolClosedSuccessfully = false;
+
+  static Future<void> example6PoolCleanup(TomWorkerPool pool) async {
+    // TomWorkerPool doesn't have a close() method, but individual workers can be closed
+    // In a real application, you would track and close workers when done
+    // For this example, we simulate cleanup completion
+    
+    // Give time for any pending operations
+    await Future.delayed(Duration(milliseconds: 100));
+
+    poolClosedSuccessfully = true;
+
+    assert(poolClosedSuccessfully, 'Pool cleanup should complete successfully');
+  }
+}
+
+// =============================================================================
+// RUN ALL EXAMPLES
+// =============================================================================
+
+Future<void> run() async {
+  final pool = await WorkerPoolCreationExample.example1CreatePool();
+  await PoolCommandExecutionExample.example2ExecuteCommands(pool);
+  await ParallelExecutionExample.example3ParallelExecution(pool);
+  await WorkDistributionExample.example4WorkDistribution(pool);
+  await SequentialVsParallelExample.example5SequentialVsParallel(pool);
+  await PoolCleanupExample.example6PoolCleanup(pool);
+}

@@ -1,0 +1,27 @@
+name: tom_core_server
+description: Server library for the TOM framework.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+# Add regular dependencies here.
+dependencies:
+  tom_core_kernel:
+    path: ../tom_core_kernel
+  tom_basics_console:
+  shelf: ^1.4.2
+  shelf_router: ^1.1.2
+  shelf_multipart:
+  mysql_client:
+  yaml:
+
+  http: any
+  uuid: any
+  path: any
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
+  tom_build:
+    path: ../../devops/tom_build

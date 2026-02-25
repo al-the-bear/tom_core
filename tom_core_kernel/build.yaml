@@ -1,0 +1,43 @@
+# Build configuration for tom_core_kernel
+#
+# D4rt bridge configuration for DartScript integration.
+# Reflection generator configuration for runtime reflection.
+
+targets:
+  $default:
+    builders:
+      # Reflection generator for test files
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - test/crypto_test.dart
+          - test/http_connection_test.dart
+          - test/little_things_test.dart
+          - test/observable_test.dart
+          - test/reflection_test.dart
+          - test/resources_test.dart
+          - test/security_test.dart
+          - test/settings_test.dart
+          - test/shutdown_cleanup_test.dart
+          # Example entry points
+          - example/reflection/00_run_all_examples.dart
+          - example/run_all_samples.dart
+          - example/observable/00_run_all_examples.dart
+        options:
+          formatted: true
+
+      # tom_analyzer configuration for barrel analysis.
+      tom_analyzer:tom_analyzer:
+        options:
+          barrels:
+            - lib/tom_core_kernel.dart
+          workspace_root: .
+          output_format: json
+          output_file: doc/analyzer_analysis.json
+          followReExports:
+            - tom_core_kernel
+            - tom_basics
+            - tom_crypto
+            - tom_reflection
+          skipReExports:
+            - tom_crypto
+            - tom_reflection

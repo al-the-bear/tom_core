@@ -1,0 +1,254 @@
+/// Worker Basics Example
+///
+/// This example demonstrates the fundamental concepts of TomWorker:
+/// spawning worker isolates, executing commands, using the TomCommand
+/// pattern, and managing worker lifecycle.
+library;
+
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+// =============================================================================
+// Command Definitions
+// =============================================================================
+
+/// A simple command that computes the factorial of a number.
+class FactorialCommand extends TomCommand {
+  final int number;
+
+  FactorialCommand(this.number);
+
+  @override
+  Future<Object?> execute() async {
+    int result = 1;
+    for (int i = 2; i <= number; i++) {
+      result *= i;
+    }
+    return result;
+  }
+}
+
+/// A command that performs a CPU-intensive Fibonacci computation.
+class FibonacciCommand extends TomCommand {
+  final int n;
+
+  FibonacciCommand(this.n);
+
+  @override
+  Future<Object?> execute() async {
+    return _fibonacci(n);
+  }
+
+  int _fibonacci(int n) {
+    if (n <= 1) return n;
+    return _fibonacci(n - 1) + _fibonacci(n - 2);
+  }
+}
+
+/// A command that returns multiple values as a Map.
+class ProcessDataCommand extends TomCommand {
+  final List<int> numbers;
+
+  ProcessDataCommand(this.numbers);
+
+  @override
+  Future<Object?> execute() async {
+    final sum = numbers.fold<int>(0, (a, b) => a + b);
+    final avg = numbers.isEmpty ? 0.0 : sum / numbers.length;
+    final max = numbers.isEmpty ? 0 : numbers.reduce((a, b) => a > b ? a : b);
+    final min = numbers.isEmpty ? 0 : numbers.reduce((a, b) => a < b ? a : b);
+
+    return {
+      'sum': sum,
+      'average': avg,
+      'max': max,
+      'min': min,
+      'count': numbers.length,
+    };
+  }
+}
+
+/// An executor that handles string manipulation commands.
+class StringExecutor extends TomExecutor {
+  @override
+  Object execute(Object command) {
+    if (command is Map && command['type'] == 'reverse') {
+      final input = command['value'] as String;
+      return input.split('').reversed.join('');
+    }
+    if (command is Map && command['type'] == 'uppercase') {
+      final input = command['value'] as String;
+      return input.toUpperCase();
+    }
+    return TomExecutor.noResult;
+  }
+}
+
+// =============================================================================
+// EXAMPLE 1: Creating a worker context and spawning a worker
+// =============================================================================
+
+class WorkerSpawningExample {
+  static bool workerIsReady = false;
+  static bool workerIsClosed = false;
+  static bool workerSpawnedSuccessfully = false;
+
+  static Future<TomWorker> example1SpawningWorker() async {
+    final context = TomWorkerContext(
+      defaultTomEnvironment,
+      platformLinux,
+      [],
+      'BasicWorker',
+    );
+
+    final worker = await TomWorker.spawn(
+      TomWorker.startRemoteIsolate,
+      context,
+    );
+
+    workerIsReady = worker.isReady;
+    workerIsClosed = worker.isClosed;
+    workerSpawnedSuccessfully = workerIsReady && !workerIsClosed;
+
+    assert(workerIsReady, 'Worker should be ready');
+    assert(!workerIsClosed, 'Worker should not be closed');
+    assert(workerSpawnedSuccessfully, 'Worker should spawn successfully');
+
+    return worker;
+  }
+}
+
+// =============================================================================
+// EXAMPLE 2: Executing a simple TomCommand
+// =============================================================================
+
+class SimpleCommandExample {
+  static int? factorialResult;
+  static bool commandExecuted = false;
+
+  static Future<void> example2ExecutingCommand(TomWorker worker) async {
+    factorialResult = await worker.executeCommand(FactorialCommand(5)) as int?;
+    commandExecuted = factorialResult != null;
+
+    assert(factorialResult == 120, 'Factorial of 5 should be 120');
+    assert(commandExecuted, 'Command should execute');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 3: Executing a CPU-intensive command
+// =============================================================================
+
+class CpuIntensiveCommandExample {
+  static int? fibResult;
+  static bool computationComplete = false;
+
+  static Future<void> example3CpuIntensiveCommand(TomWorker worker) async {
+    fibResult = await worker.executeCommand(FibonacciCommand(20)) as int?;
+    computationComplete = fibResult != null;
+
+    assert(fibResult == 6765, 'Fibonacci(20) should be 6765');
+    assert(computationComplete, 'Computation should complete');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 4: Commands returning complex data
+// =============================================================================
+
+class ComplexDataCommandExample {
+  static int? dataSum;
+  static double? dataAvg;
+  static int? dataMax;
+  static int? dataMin;
+  static int? dataCount;
+
+  static Future<void> example4ComplexDataCommand(TomWorker worker) async {
+    final dataResult = await worker.executeCommand(
+      ProcessDataCommand([10, 20, 30, 40, 50]),
+    ) as Map;
+
+    dataSum = dataResult['sum'] as int?;
+    dataAvg = dataResult['average'] as double?;
+    dataMax = dataResult['max'] as int?;
+    dataMin = dataResult['min'] as int?;
+    dataCount = dataResult['count'] as int?;
+
+    assert(dataSum == 150, 'Sum should be 150');
+    assert(dataAvg == 30.0, 'Average should be 30.0');
+    assert(dataMax == 50, 'Max should be 50');
+    assert(dataMin == 10, 'Min should be 10');
+    assert(dataCount == 5, 'Count should be 5');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 5: Using TomExecutor for command handling
+// =============================================================================
+
+class ExecutorExample {
+  static String? reverseResult;
+  static String? uppercaseResult;
+  static bool executorWorks = false;
+
+  static Future<void> example5UsingExecutor(TomWorker worker) async {
+    // Send the executor to the worker isolate
+    worker.sendExecutorToIsolate(StringExecutor());
+
+    // Give the executor time to be registered
+    await Future.delayed(Duration(milliseconds: 50));
+
+    reverseResult = await worker.executeCommand({
+      'type': 'reverse',
+      'value': 'Hello World',
+    }) as String?;
+
+    uppercaseResult = await worker.executeCommand({
+      'type': 'uppercase',
+      'value': 'hello world',
+    }) as String?;
+
+    executorWorks =
+        reverseResult == 'dlroW olleH' && uppercaseResult == 'HELLO WORLD';
+
+    assert(reverseResult == 'dlroW olleH', 'Reverse should work');
+    assert(uppercaseResult == 'HELLO WORLD', 'Uppercase should work');
+    assert(executorWorks, 'Executor should work');
+  }
+}
+
+// =============================================================================
+// EXAMPLE 6: Worker lifecycle management
+// =============================================================================
+
+class WorkerLifecycleExample {
+  static bool wasReadyBeforeClose = false;
+  static bool isClosedAfterClose = false;
+
+  static Future<void> example6WorkerLifecycle(TomWorker worker) async {
+    wasReadyBeforeClose = worker.isReady;
+
+    // Close the worker
+    worker.close();
+
+    // Give time for close to complete
+    await Future.delayed(Duration(milliseconds: 50));
+
+    isClosedAfterClose = worker.isClosed;
+
+    assert(wasReadyBeforeClose, 'Worker should be ready before close');
+    assert(isClosedAfterClose, 'Worker should be closed after close');
+  }
+}
+
+// =============================================================================
+// RUN ALL EXAMPLES
+// =============================================================================
+
+Future<void> run() async {
+  final worker = await WorkerSpawningExample.example1SpawningWorker();
+  await SimpleCommandExample.example2ExecutingCommand(worker);
+  await CpuIntensiveCommandExample.example3CpuIntensiveCommand(worker);
+  await ComplexDataCommandExample.example4ComplexDataCommand(worker);
+  await ExecutorExample.example5UsingExecutor(worker);
+  await WorkerLifecycleExample.example6WorkerLifecycle(worker);
+}

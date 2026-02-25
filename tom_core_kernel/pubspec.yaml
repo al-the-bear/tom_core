@@ -1,0 +1,31 @@
+name: tom_core_kernel
+description: Core kernel library for the TOM framework containing base modules.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+# Add regular dependencies here.
+dependencies:
+  tom_reflection: ^1.0.0
+  tom_basics: ^1.0.0
+  tom_crypto: ^1.0.0
+  stack_trace:
+  http:
+  typed_data:
+  yaml:
+  timezone:
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
+  build_runner: ^2.10.4
+  build: ^4.0.3
+  tom_build:
+    path: ../../devops/tom_build
+  tom_reflection_generator: ^1.0.0
+  tom_core_server:
+    path: ../tom_core_server
+  mysql_client: any
+  shelf: any

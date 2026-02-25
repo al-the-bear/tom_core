@@ -1,0 +1,413 @@
+/// Shutdown cleanup module for graceful process termination.
+///
+/// This module provides a comprehensive system for managing cleanup operations
+/// when a process receives termination signals (SIGHUP, SIGINT, etc.). It ensures
+/// that resources are properly released and cleanup handlers are executed in an
+/// orderly fashion before the process exits.
+///
+/// The module supports three types of cleanup mechanisms:
+/// - [TomDisposable]: Objects that implement a `dispose()` method
+/// - [TomClosable]: Objects that implement a `close()` method
+/// - [TomSignalHandler]: Custom signal handlers for specialized cleanup logic
+///
+/// ## Quick Start
+///
+/// ```dart
+/// // Use the default global instance
+/// tomShutdownCleanup.addClosable(myDatabaseConnection);
+/// tomShutdownCleanup.addDisposable(myStreamController);
+/// tomShutdownCleanup.start();
+/// ```
+///
+/// See also:
+/// - [TomShutdownCleanup] for the main cleanup coordinator
+/// - [TomCloseAdaptor] for adapting objects without explicit interfaces
+library;
+
+// =============================================================================
+// Imports
+// =============================================================================
+
+import 'dart:io';
+
+import 'package:tom_basics/tom_basics.dart';
+import 'package:tom_reflection/mirrors.dart';
+
+import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart';
+
+// =============================================================================
+// Type Definitions
+// =============================================================================
+
+/// Handler function type for processing system signals.
+///
+/// Called when a registered signal is received by the process.
+/// The [onData] parameter contains the specific signal that was received.
+typedef TomSignalHandler = void Function(ProcessSignal onData);
+
+/// Error handler function type for signal processing errors.
+typedef TomSignalErrorHandler = Function;
+
+/// Handler function type called when signal stream completes.
+typedef TomSignalOnDoneHandler = void Function();
+
+// =============================================================================
+// Interfaces
+// =============================================================================
+
+/// Interface for objects that can be disposed during shutdown.
+///
+/// Implement this interface for objects that need cleanup logic executed
+/// when the process terminates. The [dispose] method will be called
+/// automatically by [TomShutdownCleanup] when a termination signal is received.
+///
+/// ## Example
+///
+/// ```dart
+/// class MyResource implements TomDisposable {
+///   final StreamController _controller = StreamController();
+///
+///   @override
+///   void dispose() {
+///     _controller.close();
+///     print('MyResource disposed');
+///   }
+/// }
+///
+/// // Register with shutdown cleanup
+/// final resource = MyResource();
+/// tomShutdownCleanup.addDisposable(resource);
+/// ```
+abstract class TomDisposable {
+  /// Disposes of resources held by this object.
+  ///
+  /// This method is called automatically during shutdown cleanup.
+  /// Implementations should release all resources and perform
+  /// any necessary cleanup operations.
+  void dispose();
+}
+
+/// Interface for objects that can be closed during shutdown.
+///
+/// Implement this interface for objects that need to be closed
+/// when the process terminates. The [close] method will be called
+/// automatically by [TomShutdownCleanup] when a termination signal is received.
+///
+/// ## Example
+///
+/// ```dart
+/// class MyConnection implements TomClosable {
+///   Socket? _socket;
+///
+///   @override
+///   void close() {
+///     _socket?.close();
+///     print('Connection closed');
+///   }
+/// }
+///
+/// // Register with shutdown cleanup
+/// final connection = MyConnection();
+/// tomShutdownCleanup.addClosable(connection);
+/// ```
+abstract class TomClosable {
+  /// Closes resources held by this object.
+  ///
+  /// This method is called automatically during shutdown cleanup.
+  /// Implementations should close all connections, streams, or
+  /// other resources that require explicit closing.
+  void close();
+}
+
+// =============================================================================
+// Adaptor Classes
+// =============================================================================
+
+/// Adaptor that wraps objects with close/dispose methods to implement [TomClosable].
+///
+/// This class uses reflection to find and invoke close or dispose methods
+/// on objects that don't explicitly implement [TomClosable] or [TomDisposable].
+/// Useful for integrating third-party objects into the shutdown cleanup system.
+///
+/// ## Example
+///
+/// ```dart
+/// // Wrap a third-party object that has a close() method
+/// final httpClient = HttpClient();
+/// final adaptor = TomCloseAdaptor(httpClient);
+/// tomShutdownCleanup.addClosable(adaptor);
+///
+/// // Specify a custom method name
+/// final customObject = MyObject();
+/// final customAdaptor = TomCloseAdaptor(customObject, 'shutdown');
+/// tomShutdownCleanup.addClosable(customAdaptor);
+/// ```
+///
+/// ## Limitations
+///
+/// - The target method must have no required parameters
+/// - The object's class must be registered with the Tom reflector
+///
+/// Throws an [Exception] if:
+/// - No close/dispose method is found on the object
+/// - The method requires parameters
+class TomCloseAdaptor implements TomClosable {
+  /// The object being adapted for closure.
+  Object closableObject;
+
+  late MethodMirror _mm;
+  late InstanceMirror _im;
+
+  /// Creates a new adaptor for the given object.
+  ///
+  /// [closableObject] - The object to wrap. Must have a close() or dispose() method.
+  /// [methodName] - Optional custom method name to invoke. If not provided,
+  ///                looks for 'close' first, then 'dispose'.
+  TomCloseAdaptor(this.closableObject, [String? methodName]) {
+    var classMirror =
+        tomReflector.reflectType(closableObject.runtimeType) as ClassMirror;
+    var declarations = classMirror.declarations;
+    MethodMirror? mm =
+        (methodName != null
+                ? declarations[methodName]
+                : (declarations['close'] ?? declarations['dispose']))
+            as MethodMirror?;
+    if (mm == null) {
+      throw Exception(
+        "TomCloseAdaptor: didn't find a close method in the object you provided.",
+      );
+    }
+    if (mm.parameters.isNotEmpty) {
+      throw Exception(
+        "TomCloseAdaptor: the method ${mm.simpleName} needs parameter. You need to implement a custom solution for this.",
+      );
+    }
+    _mm = mm;
+    _im = tomReflector.reflect(closableObject);
+  }
+
+  /// Invokes the close/dispose method on the wrapped object.
+  @override
+  void close() {
+    _im.invoke(_mm.simpleName, []);
+  }
+}
+
+// =============================================================================
+// Main Shutdown Cleanup Class
+// =============================================================================
+
+/// Central coordinator for graceful shutdown cleanup operations.
+///
+/// [TomShutdownCleanup] manages the orderly cleanup of resources when the
+/// process receives termination signals. It automatically listens for
+/// SIGHUP and SIGINT signals by default, and supports adding additional
+/// signals as needed.
+///
+/// The cleanup process executes in the following order:
+/// 1. Signal handlers (custom cleanup logic)
+/// 2. Closables (objects implementing [TomClosable])
+/// 3. Disposables (objects implementing [TomDisposable])
+///
+/// Each cleanup operation is wrapped in a try-catch to ensure that a
+/// failing cleanup doesn't prevent other cleanups from executing.
+///
+/// ## Basic Usage
+///
+/// ```dart
+/// // Use the global instance
+/// tomShutdownCleanup.addClosable(databaseConnection);
+/// tomShutdownCleanup.addDisposable(streamController);
+/// tomShutdownCleanup.start();
+/// ```
+///
+/// ## Custom Signal Handlers
+///
+/// ```dart
+/// tomShutdownCleanup.addSignalHandler((signal) {
+///   print('Received signal: $signal');
+///   // Perform custom cleanup
+/// });
+/// ```
+///
+/// ## Adding Additional Signals
+///
+/// ```dart
+/// // Listen for SIGTERM in addition to default signals
+/// tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
+/// ```
+///
+/// ## Creating Custom Instances
+///
+/// ```dart
+/// // Create a separate cleanup handler for specific signals
+/// final customCleanup = TomShutdownCleanup();
+/// customCleanup.addSignal(ProcessSignal.sigusr1);
+/// customCleanup.addSignalHandler((signal) {
+///   // Handle USR1 signal specifically
+/// });
+/// ```
+class TomShutdownCleanup {
+  late TomSignalHandler _signalHandler;
+  bool _executed = false;
+  
+  /// When true, signal handling is paused and signals are ignored.
+  /// Use this in interactive REPLs that have their own CTRL-C handling.
+  bool paused = false;
+  
+  /// When true, suppresses output messages during shutdown.
+  bool silent = false;
+
+  /// Creates a new shutdown cleanup coordinator.
+  ///
+  /// Automatically registers listeners for SIGHUP and SIGINT signals.
+  /// The cleanup will only execute once, even if multiple signals are received.
+  ///
+  /// Use [tomShutdownCleanup] for the default global instance, or create
+  /// custom instances for specialized signal handling.
+  TomShutdownCleanup() {
+    _signalHandler = (signal) {
+      // Skip if paused (e.g., in interactive REPL mode)
+      if (paused) return;
+      
+      if (!silent) print("Received $signal");
+      if (!_executed) {
+        for (var signalHandler in _signalHandlers) {
+          try {
+            signalHandler(signal);
+          } catch (exception) {
+            if (!silent) print("Failed to call signalHandler $signalHandler");
+          }
+        }
+        for (var closable in _closables) {
+          try {
+            closable.close();
+          } catch (exception) {
+            if (!silent) print("Failed to call closable $closable");
+          }
+        }
+        for (var disposable in _disposables) {
+          try {
+            disposable.dispose();
+          } catch (exception) {
+            if (!silent) print("Failed to call disposable $disposable");
+          }
+        }
+        _executed = true;
+        if (!silent) print("Shutdown performed");
+      } else {
+        if (!silent) print("Shutdown has already been performed");
+      }
+    };
+    ProcessSignal.sighup.watch().listen(_signalHandler);
+    ProcessSignal.sigint.watch().listen(_signalHandler);
+  }
+  
+  /// Manually trigger shutdown cleanup.
+  /// 
+  /// This allows external code to trigger the cleanup logic without a signal.
+  /// Useful when the calling code handles signals itself but still wants
+  /// to run the registered cleanup handlers.
+  void performShutdown() {
+    if (!_executed) {
+      for (var signalHandler in _signalHandlers) {
+        try {
+          signalHandler(ProcessSignal.sigint);
+        } catch (exception) {
+          if (!silent) print("Failed to call signalHandler $signalHandler");
+        }
+      }
+      for (var closable in _closables) {
+        try {
+          closable.close();
+        } catch (exception) {
+          if (!silent) print("Failed to call closable $closable");
+        }
+      }
+      for (var disposable in _disposables) {
+        try {
+          disposable.dispose();
+        } catch (exception) {
+          if (!silent) print("Failed to call disposable $disposable");
+        }
+      }
+      _executed = true;
+    }
+  }
+
+  final List<TomSignalHandler> _signalHandlers = [];
+  final List<TomClosable> _closables = [];
+  final List<TomDisposable> _disposables = [];
+
+  /// Adds a custom signal handler to be executed during shutdown.
+  ///
+  /// Signal handlers are executed first, before closables and disposables.
+  /// Use this for custom cleanup logic that doesn't fit the closable/disposable
+  /// pattern.
+  ///
+  /// [handler] - The function to call when a signal is received.
+  void addSignalHandler(TomSignalHandler handler) {
+    _signalHandlers.add(handler);
+  }
+
+  /// Adds a closable object to be closed during shutdown.
+  ///
+  /// Closables are closed after signal handlers but before disposables.
+  ///
+  /// [closable] - An object implementing [TomClosable].
+  void addClosable(TomClosable closable) {
+    _closables.add(closable);
+  }
+
+  /// Adds a disposable object to be disposed during shutdown.
+  ///
+  /// Disposables are disposed last, after signal handlers and closables.
+  ///
+  /// [disposable] - An object implementing [TomDisposable].
+  void addDisposable(TomDisposable disposable) {
+    _disposables.add(disposable);
+  }
+
+  /// Adds an additional system signal to listen for.
+  ///
+  /// By default, SIGHUP and SIGINT are already registered.
+  /// Use this method to add additional signals like SIGTERM.
+  ///
+  /// [processSignal] - The signal to start listening for.
+  ///
+  /// ## Example
+  ///
+  /// ```dart
+  /// tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
+  /// ```
+  void addSignal(ProcessSignal processSignal) {
+    processSignal.watch().listen(_signalHandler);
+  }
+
+  /// Initializes the cleanup listener and logs its status.
+  ///
+  /// Call this method after registering all cleanup handlers to confirm
+  /// the cleanup system is ready. This is optional but recommended for
+  /// debugging purposes.
+  void start() {
+    tomLog.info("Cleanup listener initialized");
+  }
+}
+
+// =============================================================================
+// Global Instance
+// =============================================================================
+
+/// Global default instance of [TomShutdownCleanup].
+///
+/// Use this instance for most shutdown cleanup needs. It automatically
+/// listens for SIGHUP and SIGINT signals.
+///
+/// ## Example
+///
+/// ```dart
+/// tomShutdownCleanup.addClosable(myDatabase);
+/// tomShutdownCleanup.addDisposable(myController);
+/// tomShutdownCleanup.start();
+/// ```
+TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();

@@ -1,0 +1,1461 @@
+// ignore_for_file: type_literal_in_constant_pattern
+
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+import '../datasources/types_operator.dart';
+import '../datasources/queries.dart';
+import 'operators_expressions.dart';
+import 'persistence_annotations.dart';
+import 'query_builder.dart';
+
+class TomQuerySentenceCompiler extends TomTypedPersistenceBase
+    with TomQueryBuilder {
+  TomQuerySentenceCompiler(super.types);
+
+  TomQuery compileQuerySentence(String qs) {
+    var parts = _splitQuerySentence(qs);
+    var queryOptions = parts.sublist(0, _index(parts, "BY"));
+    var whereClause = parts.sublist(_index(parts, "BY") + 1);
+
+    int topIndex = _index(queryOptions, "TOP");
+    int firstIndex = _index(queryOptions, "FIRST");
+    if (topIndex > -1 && firstIndex > -1) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.conflicting_top_first",
+        "The QuerySentence $qs cannot be compiled. You may specify First or Top, but not both.",
+      );
+    }
+    if (topIndex == -1) {
+      topIndex = firstIndex;
+    }
+    int topCount = -1;
+    if (topIndex > -1) {
+      try {
+        topCount = int.parse(queryOptions[topIndex + 1]);
+      } catch (error) {
+        topCount = 1;
+      }
+    }
+    var distinct = _find(queryOptions, "DISTINCT");
+    var top = topCount;
+    var ascending =
+        !_find(whereClause, "DESC") && !_find(whereClause, "DESCENDING");
+    var orderBy = _analyseOrderByClause(whereClause, qs);
+    var query = _buildQuery(whereClause, qs).$1;
+
+    if (parts[0].toUpperCase() == "FIND") {
+      return TomSelect(
+        types,
+        distinct: distinct,
+        top: top,
+        ascending: ascending,
+        orderBy: orderBy,
+        query: query,
+      );
+      // TODO: use same fields for all types of queries
+    } else if (parts[0].toUpperCase() == "COUNT") {
+      return TomCount(
+        types,
+        distinct: distinct,
+        top: top,
+        ascending: ascending,
+        orderBy: orderBy,
+        query: query,
+      );
+    } else if (parts[0].toUpperCase() == "DELETE") {
+      return TomDelete(
+        types,
+        distinct: distinct,
+        top: top,
+        ascending: ascending,
+        orderBy: orderBy,
+        query: query,
+      );
+    } else {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.compile.invalid_query_sentence_start",
+        "The QuerySentence $qs cannot be compiled. It must start with find...By, delete...By or count...By",
+      );
+    }
+  }
+
+  List<String> _analyseOrderByClause(List<String> wc, String qs) {
+    List<String> fields = [];
+    int orderIndex = _index(wc, "ORDER");
+    if (orderIndex == -1) return [];
+    if (wc.length < orderIndex + 2) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
+        "The QuerySentence $qs cannot be compiled. If you specify Order you must include the fields for ordering.",
+      );
+    }
+    int partIndex = orderIndex + 1;
+    try {
+      if (wc[partIndex].toUpperCase() == "BY") {
+        partIndex++;
+      }
+      if (wc.length < partIndex + 1) {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.analyse_order_by.order_clause_missing_fields",
+          "The QuerySentence $qs cannot be compiled. If you specify Order-By you must include the fields for ordering.",
+        );
+      }
+      for (; partIndex < wc.length; partIndex++) {
+        var part = wc[partIndex].toUpperCase();
+        if (part == "ASC" ||
+            part == "ASCENDING" ||
+            part == "DESC" ||
+            part == "DESCENDING") {
+          if (wc.length > partIndex + 1) {
+            throw TomQuerySyntaxException(
+              "query_sentence_compiler.analyse_order_by.invalid_order_direction_position",
+              "The QuerySentence $qs cannot be compiled. Ascending/Descending must be the last part of a sentence.",
+            );
+          }
+          break;
+        }
+        fields.add(wc[partIndex]);
+      }
+      wc.removeRange(orderIndex, wc.length);
+    } on TomQuerySyntaxException {
+      rethrow;
+    } catch (error, s) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.analyse_order_by.failed",
+        "The QuerySentence $qs cannot be compiled. Failed to analyse order-by clause. $error",
+        rootException: error,
+        stack: s,
+      );
+    }
+    return fields;
+  }
+
+  bool _find(List<String> list, String key, [int startAt = 0]) {
+    for (int i = startAt; i < list.length; i++) {
+      if (list[i].toUpperCase() == key.toUpperCase()) return true;
+    }
+    return false;
+  }
+
+  int _index(List<String> list, String key, [int startAt = 0]) {
+    for (int i = startAt; i < list.length; i++) {
+      if (list[i].toUpperCase() == key.toUpperCase()) return i;
+    }
+    return -1;
+  }
+
+  bool _lookAhead(List<String> list, int start, int ahead, String forWhat) {
+    if (list.length < start + ahead) return false;
+    return list[start + ahead].toUpperCase() == forWhat.toUpperCase();
+  }
+
+  (TomOperator<TomDbBool>, int) _createEq(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          eq<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          eq<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildQuery(
+          qp,
+          qs,
+          i,
+          column,
+          current as TomOperator<TomDbBool>,
+        );
+        return (eq<TomDbBool>(current, nextOperation), index);
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          eq<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          eq<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_eq.failed",
+      "Attempt to _create = operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createNeq(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          neq<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          neq<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildQuery(
+          qp,
+          qs,
+          i,
+          column,
+          current as TomOperator<TomDbBool>,
+        );
+        return (neq<TomDbBool>(current, nextOperation), index);
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          neq<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          neq<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_neq.failed",
+      "Attempt to _create <> operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createLt(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lt<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lt<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lt<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
+          index,
+        );
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lt<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lt<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_lt.failed",
+      "Attempt to _create < operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createLte(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lte<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lte<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lte<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
+          index,
+        );
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lte<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          lte<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_lte.failed",
+      "Attempt to _create <= operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createGt(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gt<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gt<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gt<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
+          index,
+        );
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gt<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gt<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_gt.failed",
+      "Attempt to _create > operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createGte(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    int index;
+    switch (current.returnType) {
+      case TomDbString:
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gte<TomDbString>(current as TomOperator<TomDbString>, nextOperation),
+          index,
+        );
+      case TomDbInt:
+        TomOperator<TomDbInt>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbInt>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gte<TomDbInt>(current as TomOperator<TomDbInt>, nextOperation),
+          index,
+        );
+      case TomDbBool:
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gte<TomDbBool>(current as TomOperator<TomDbBool>, nextOperation),
+          index,
+        );
+      case TomDbDateTime:
+        TomOperator<TomDbDateTime>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDateTime>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gte<TomDbDateTime>(
+            current as TomOperator<TomDbDateTime>,
+            nextOperation,
+          ),
+          index,
+        );
+      case TomDbDate:
+        TomOperator<TomDbDate>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbDate>(
+          qp,
+          qs,
+          i,
+          column,
+          current,
+        );
+        return (
+          gte<TomDbDate>(current as TomOperator<TomDbDate>, nextOperation),
+          index,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_gte.failed",
+      "Attempt to _create >= operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _createIsIn(
+    List<String> qp,
+    String qs,
+    int i,
+    TomColumnInformation? column,
+    TomOperator current,
+  ) {
+    switch (current.returnType) {
+      case TomDbString:
+        var (List<TomOperator<TomDbString>> options, index) = _getInOptions(
+          i + 1,
+          qp,
+          qs,
+          column,
+          current,
+        );
+        return (
+          isIn<TomDbString>(current as TomOperator<TomDbString>, options),
+          index + 1,
+        );
+      case TomDbInt:
+        var (List<TomOperator<TomDbInt>> options, index) = _getInOptions(
+          i + 1,
+          qp,
+          qs,
+          column,
+          current,
+        );
+        return (
+          isIn<TomDbInt>(current as TomOperator<TomDbInt>, options),
+          index + 1,
+        );
+      case TomDbBool:
+        var (List<TomOperator<TomDbBool>> options, index) = _getInOptions(
+          i + 1,
+          qp,
+          qs,
+          column,
+          current,
+        );
+        return (
+          isIn<TomDbBool>(current as TomOperator<TomDbBool>, options),
+          index + 1,
+        );
+      case TomDbDateTime:
+        var (List<TomOperator<TomDbDateTime>> options, index) = _getInOptions(
+          i + 1,
+          qp,
+          qs,
+          column,
+          current,
+        );
+        return (
+          isIn<TomDbDateTime>(current as TomOperator<TomDbDateTime>, options),
+          index + 1,
+        );
+      case TomDbDate:
+        var (List<TomOperator<TomDbDate>> options, index) = _getInOptions(
+          i + 1,
+          qp,
+          qs,
+          column,
+          current,
+        );
+        return (
+          isIn<TomDbDate>(current as TomOperator<TomDbDate>, options),
+          index + 1,
+        );
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_is_in.failed",
+      "Attempt to _create >= operation for unknown type ${current.returnType}",
+    );
+  }
+
+  TomOperator<TomDbBool> _createIsNull(TomOperator current) {
+    switch (current.returnType) {
+      case TomDbString:
+        return isNull<TomDbString>(current as TomOperator<TomDbString>);
+      case TomDbInt:
+        return isNull<TomDbInt>(current as TomOperator<TomDbInt>);
+      case TomDbBool:
+        return isNull<TomDbBool>(current as TomOperator<TomDbBool>);
+      case TomDbDateTime:
+        return isNull<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
+      case TomDbDate:
+        return isNull<TomDbDate>(current as TomOperator<TomDbDate>);
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_is_null.failed",
+      "Attempt to _create IS NULL operation for unknown type ${current.returnType}",
+    );
+  }
+
+  TomOperator<TomDbBool> _createIsNotNull(TomOperator current) {
+    switch (current.returnType) {
+      case TomDbString:
+        return isNotNull<TomDbString>(current as TomOperator<TomDbString>);
+      case TomDbInt:
+        return isNotNull<TomDbInt>(current as TomOperator<TomDbInt>);
+      case TomDbBool:
+        return isNotNull<TomDbBool>(current as TomOperator<TomDbBool>);
+      case TomDbDateTime:
+        return isNotNull<TomDbDateTime>(current as TomOperator<TomDbDateTime>);
+      case TomDbDate:
+        return isNotNull<TomDbDate>(current as TomOperator<TomDbDate>);
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_is_not_null.failed",
+      "Attempt to _create IS NOT NULL operation for unknown type ${current.returnType}",
+    );
+  }
+
+  (TomOperator<TomDbBool>, int) _buildQuery(
+    List<String> qp,
+    String qs, [
+    int startAt = 0,
+    TomColumnInformation? column,
+    TomOperator<TomDbBool>? current,
+    bool negate = false,
+  ]) {
+    TomOperator<TomDbBool>? currentOperation;
+    bool inNegationMode = negate;
+    int index = 0;
+    for (int i = startAt; i < qp.length; i++) {
+      if (qp[i] == "(") {
+        TomOperator<TomDbBool>? nextOperation;
+        (nextOperation, index) = _buildQuery(qp, qs, i + 1, column, current);
+        currentOperation = nextOperation;
+        currentOperation = group<TomDbBool>(currentOperation);
+        i = index; // jump over the closing bracket
+      } else if (qp[i] == ")") {
+        if (currentOperation == null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_query.unenclosing_closing_bracket",
+            "Closing bracket without a valid operation to enclose.",
+          );
+        }
+        if (inNegationMode) {
+          currentOperation = not(currentOperation);
+          inNegationMode = false;
+        }
+        return (currentOperation, i);
+      } else if (qp[i].toUpperCase() == "AND") {
+        if (currentOperation == null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_query.and_without_current_operation",
+            "AND without a current operation/previous expression",
+          );
+        }
+        TomOperator<TomDbBool> nextOperation;
+        (nextOperation, index) = _buildQuery(
+          qp,
+          qs,
+          i + 1,
+          column,
+          currentOperation,
+        );
+        currentOperation = and([currentOperation, nextOperation]);
+        i = index;
+        return (currentOperation, i);
+      } else if (qp[i].toUpperCase() == "OR") {
+        if (currentOperation == null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_query.or_without_current_operation",
+            "OR without a current operation/previous expression",
+          );
+        }
+        TomOperator<TomDbBool> nextOperation;
+        (nextOperation, index) = _buildQuery(
+          qp,
+          qs,
+          i + 1,
+          column,
+          currentOperation,
+        );
+        currentOperation = or([currentOperation, nextOperation]);
+        i = index;
+        return (currentOperation, i);
+      } else if (qp[i].toUpperCase() == "NOT" &&
+          !_lookAhead(qp, i, 1, "NULL") &&
+          !_lookAhead(qp, i, 1, "LIKE")) {
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_query.double_not_usage",
+            "NOT must not be used twice.",
+          );
+        }
+        inNegationMode = true;
+        index = i;
+        continue;
+      } else {
+        var (nextOperation, indx) = _buildExpression<TomDbBool>(
+          qp,
+          qs,
+          i,
+          column,
+          currentOperation,
+        );
+        currentOperation = nextOperation;
+        i = indx;
+        index = i;
+      }
+      if (inNegationMode) {
+        currentOperation = not(currentOperation);
+        inNegationMode = false;
+      }
+      index = i;
+    }
+    if (currentOperation == null) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.build_query.empty_invalid_query_nothing_built",
+        "Empty/Invalid query. No expression was built to return.",
+      );
+    }
+    return (currentOperation, index);
+  }
+
+  (TomOperator<QT>, int) _buildExpression<QT>(
+    List<String> qp,
+    String qs, [
+    int startAt = 0,
+    TomColumnInformation? column,
+    TomOperator? current,
+    bool negate = false,
+  ]) {
+    TomOperator<QT>? currentOperation;
+    bool inNegationMode = negate;
+    int index = 0;
+    for (int i = startAt; i < qp.length; i++) {
+      if (qp[i].startsWith(r"$") ||
+          qp[i].startsWith(r":") ||
+          qp[i].startsWith(r"@")) {
+        if (column == null) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.parameter_without_column",
+            "Reached parameter before a column had been determined.",
+          );
+        }
+        currentOperation = _createParameter<QT>(column, qp[i].substring(1));
+        //i++;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "IS" &&
+          _lookAhead(qp, i, 1, "NOT") &&
+          _lookAhead(qp, i, 2, "NULL")) {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_not_null_test_without_column",
+            "IS NOT NULL test without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_not_null_invalid_type_expected",
+            "IS NOT NULL is always of type bool, but the required type is $QT",
+          );
+        }
+        currentOperation = _createIsNotNull(current) as TomOperator<QT>;
+        i += 2;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "IS" && _lookAhead(qp, i, 1, "NULL")) {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_null_test_without_column",
+            "IS NULL test without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_null_invalid_type_expected",
+            "IS NULL is always of type bool, but the required type is $QT",
+          );
+        }
+        currentOperation = _createIsNull(current) as TomOperator<QT>;
+        i++;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "IS" &&
+          _lookAhead(qp, i, 1, "NOT") &&
+          _lookAhead(qp, i, 2, "IN") &&
+          _lookAhead(qp, i, 3, "(")) {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_not_in_test_without_column",
+            "IS NOT IN test without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_not_in_invalid_type_expected",
+            "IS NOT IN is always of type bool, but the required type is $QT",
+          );
+        }
+        var (operator, indx) = _createIsIn(qp, qs, i + 3, column, current);
+        currentOperation = not(operator) as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "IS" &&
+          _lookAhead(qp, i, 1, "IN") &&
+          _lookAhead(qp, i, 2, "(")) {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_in_test_without_column",
+            "IS IN test without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.is_in_invalid_type_expected",
+            "IS IN is always of type bool, but the required type is $QT",
+          );
+        }
+        var (operator, indx) = _createIsIn(qp, qs, i + 2, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "NOT" && _lookAhead(qp, i, 1, "LIKE")) {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.not_like_test_without_column",
+            "NOT LIKE test without a column",
+          );
+        }
+        if (current is! StringCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.not_like_invalid_column_type",
+            "NOT LIKE is always for type String, but the column is of type $currentOperation",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.not_like_invalid_type_expected",
+            "NOT LIKE is always for type bool, but the required type is $QT",
+          );
+        }
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i + 2,
+          column,
+          current,
+        );
+        currentOperation =
+            notLike(current as TomOperator<TomDbString>, nextOperation)
+                as TomOperator<QT>;
+        i = index;
+        break;
+      } else if (qp[i].toUpperCase() == "NOT" &&
+          !_lookAhead(qp, i, 1, "NULL") &&
+          !_lookAhead(qp, i, 1, "NULL")) {
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.not_invalid_type_expected",
+            "NOT is always for type bool, but the required type is $QT",
+          );
+        }
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.double_not_usage",
+            "NOT must not be used twice.",
+          );
+        }
+        inNegationMode = true;
+        index = i;
+        continue;
+      } else if (qp[i].toUpperCase() == "LIKE") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.like_test_without_column",
+            "LIKE test without a column",
+          );
+        }
+        if (current is! StringCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.like_invalid_column_type",
+            "LIKE is always for type String, but the column is of type $currentOperation",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.like_invalid_type_expected",
+            "LIKE is always for type bool, but the required type is $QT",
+          );
+        }
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i + 1,
+          column,
+          current,
+        );
+        currentOperation =
+            like(current as TomOperator<TomDbString>, nextOperation)
+                as TomOperator<QT>;
+        i = index;
+        break;
+      } else if (qp[i].toUpperCase() == "REGEXP") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.regexp_test_without_column",
+            "REGEXP test without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.regexp_invalid_type_expected",
+            "REGEXP is always for type bool, but the required type is $QT",
+          );
+        }
+        if (current is! StringCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.regexp_invalid_column_type",
+            "REGEXP is always for type String, but the column is of type $currentOperation",
+          );
+        }
+        TomOperator<TomDbString>? nextOperation;
+        (nextOperation, index) = _buildExpression<TomDbString>(
+          qp,
+          qs,
+          i + 1,
+          column,
+          current,
+        );
+        currentOperation =
+            regexp(current as TomOperator<TomDbString>, nextOperation)
+                as TomOperator<QT>;
+        i = index;
+        break;
+      } else if (qp[i].toUpperCase() == "=") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.eq_without_column",
+            "= without a column",
+          );
+        }
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.eq_invalid_type_expected",
+            "= is always for type bool, but the required type is $QT",
+          );
+        }
+        var (operator, indx) = _createEq(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "<>") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.neq_without_column",
+            "<> without a column",
+          );
+        }
+        var (operator, indx) = _createNeq(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "<=") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.lte_without_column",
+            "<= without a column",
+          );
+        }
+        var (operator, indx) = _createLte(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == "<") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.lt_without_column",
+            "< without a column",
+          );
+        }
+        var (operator, indx) = _createLt(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == ">=") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.gte_without_column",
+            ">= without a column",
+          );
+        }
+        var (operator, indx) = _createGte(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].toUpperCase() == ">") {
+        if (current == null || current is! DbCol) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.gt_without_column",
+            "> without a column",
+          );
+        }
+        var (operator, indx) = _createGt(qp, qs, i + 1, column, current);
+        currentOperation = operator as TomOperator<QT>;
+        i = indx;
+        index = i;
+        break;
+      } else if (qp[i].startsWith("'") && qp[i].endsWith("'")) {
+        if (qp[i].length < 2) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.invalid_string_literal",
+            "Not a valid string [${qp[i]}]",
+          );
+        }
+        if (QT != TomDbString) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.string_literal_invalid_type_expected",
+            "A String literal is always for type String, but the required type is $QT",
+          );
+        }
+        String value = qp[i].substring(1, qp[i].length - 1);
+        currentOperation = text(value) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (qp[i] == "TRUE") {
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_true",
+            "A bool literal is always for type bool, but the required type is $QT",
+          );
+        }
+        currentOperation = boolOp(true) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (qp[i] == "FALSE") {
+        if (QT != TomDbBool) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.bool_literal_invalid_type_expected_false",
+            "A bool literal is always for type bool, but the required type is $QT",
+          );
+        }
+        currentOperation = boolOp(false) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (RegExp(r"[0-9]+").hasMatch(qp[i])) {
+        if (QT != TomDbInt) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.int_literal_invalid_type_expected",
+            "A integer literal is always for type integer, but the required type is $QT",
+          );
+        }
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.int_literal_negation_attempt",
+            "You can't negate an integer literal: ${qp[i]}",
+          );
+        }
+        currentOperation = intOp(int.parse(qp[i])) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (RegExp(r"[0-9]+[.,][0-9]*").hasMatch(qp[i])) {
+        if (QT != TomDbDouble) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.double_literal_invalid_type_expected",
+            "A double literal is always for type double, but the required type is $QT",
+          );
+        }
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.double_literal_negation_attempt",
+            "You can't negate an double literal: ${qp[i]}",
+          );
+        }
+        currentOperation = doubleOp(double.parse(qp[i])) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (RegExp(r"[0-9]{4}-[0-9]{2}-[0-9]{2}").hasMatch(qp[i])) {
+        if (QT != TomDbDate) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.date_literal_invalid_type_expected",
+            "A date literal is always for type date, but the required type is $QT",
+          );
+        }
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.date_literal_negation_attempt",
+            "You can't negate an date literal: ${qp[i]}",
+          );
+        }
+        currentOperation = dateOp(DateTime.parse(qp[i])) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else if (RegExp(
+        r"[0-9]{4}-?[0-9]{2}-?[0-9]{2}[T ][0-9]{2}:[0-9]{2}:[0-9]{2}(Z|([+\-][0-9]{2}:[0-9]{2}))",
+      ).hasMatch(qp[i])) {
+        if (QT != TomDbDateTime) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.datetime_literal_invalid_type_expected",
+            "A datetime literal is always for type datetime, but the required type is $QT",
+          );
+        }
+        if (inNegationMode) {
+          throw TomQuerySyntaxException(
+            "query_sentence_compiler.build_expression.datetime_literal_negation_attempt",
+            "You can't negate an datetime literal: ${qp[i]}",
+          );
+        }
+        currentOperation = dateTimeOp(DateTime.parse(qp[i])) as TomOperator<QT>;
+        // i++;
+        index = i;
+        break;
+      } else {
+        if (column == null) {
+          column = determineColumn(qp[i]);
+          var (operator, indx) = _buildExpression<TomDbBool>(
+            qp,
+            qs,
+            i + 1,
+            column,
+            _createColumn(column, qp[i]),
+            inNegationMode,
+          );
+          try {
+            currentOperation = operator as TomOperator<QT>;
+            if (inNegationMode) {
+              currentOperation =
+                  not(currentOperation as TomOperator<TomDbBool>)
+                      as TomOperator<QT>;
+            }
+            return (currentOperation, indx);
+          } catch (e, s) {
+            throw TomQuerySyntaxException(
+              "query_sentence_compiler.build_expression.column-type-mismatch_after_creation_new_column",
+              "Casting $operator to $QT failed after creation of column operation for token ${qp[i]}. Type should be TomDbBool",
+              rootException: e,
+              stack: s,
+            );
+          }
+        } else {
+          var argColumn = determineColumn(qp[i]);
+          var newColumn = _createColumn(argColumn, qp[i]);
+
+          try {
+            currentOperation = newColumn as TomOperator<QT>;
+          } catch (e, s) {
+            throw TomQuerySyntaxException(
+              "query_sentence_compiler.build_expression.column-type-mismatch_after_creation_second_column",
+              "Casting $newColumn to $QT failed. Current column $column. Was creating column operation for token ${qp[i]}",
+              rootException: e,
+              stack: s,
+            );
+          }
+          index = i;
+          break;
+        }
+      }
+    }
+    if (inNegationMode) {
+      if (QT == TomDbBool) {
+        currentOperation =
+            not(currentOperation as TomOperator<TomDbBool>) as TomOperator<QT>;
+        inNegationMode = false;
+      } else {
+        throw TomQuerySyntaxException(
+          "query_sentence_compiler.build_expression.negation_of_non_bool",
+          "Attempt to negate a non-bool expression $currentOperation",
+        );
+      }
+    }
+    return (currentOperation!, index);
+  }
+
+  (List<TomOperator<OT>>, int) _getInOptions<OT>(
+    int i,
+    List<String> qp,
+    String qs,
+    TomColumnInformation? column,
+    TomOperator? currentOperation,
+  ) {
+    if (OT == TomDbBool) {
+      throw TomQuerySyntaxException(
+        "query_sentence_compiler.get_in_options.boolean_column_in_not_allowed",
+        "Attempt to do IS IN/IS NOT IN with a boolean column.",
+      );
+    }
+    List<TomOperator<OT>> options = [];
+    var scanAt = i; // after the bracket
+    while (qp[scanAt] != ")") {
+      // stop at closing bracket
+      if (qp[scanAt] == ",") {
+        // jump over commas
+        scanAt++;
+        continue;
+      }
+      var (nextExpression, index) = _buildExpression<OT>(
+        qp,
+        qs,
+        scanAt,
+        column,
+        currentOperation,
+      );
+      options.add(nextExpression);
+      scanAt = index + 1;
+    }
+    return (options, scanAt);
+  }
+
+  Parameter<QT> _createParameter<QT>(
+    TomColumnInformation column,
+    String field,
+  ) {
+    // Complete for all types
+    switch (column.declaredType) {
+      case TomString:
+      case String:
+      case TomNString:
+        return Parameter<TomDbString>(field) as Parameter<QT>;
+      case int:
+      case TomInt:
+      case TomNInt:
+        return Parameter<TomDbInt>(field) as Parameter<QT>;
+      case bool:
+      case TomBool:
+      case TomNBool:
+        return Parameter<TomDbBool>(field) as Parameter<QT>;
+      case DateTime:
+      case TomZonedDateTime:
+      case TomNDateTime:
+        return Parameter<TomDbDateTime>(field) as Parameter<QT>;
+      case TomZonedDate:
+        // TODO: complete TomTypes with a Date variant?
+        return Parameter<TomDbDate>(field) as Parameter<QT>;
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_parameter.failed",
+      "Could not determine type for parameter $field for column $column",
+    );
+  }
+
+  DbCol _createColumn(TomColumnInformation column, String field) {
+    // Complete for all types
+    if (column.column?.columnType != null) {
+      switch (column.column!.columnType) {
+        case String:
+        case TomDbString:
+        case TomString:
+        case TomNString:
+          return StringCol(column.tableType, field, column);
+        case int:
+        case TomDbInt:
+        case TomInt:
+        case TomNInt:
+          return IntCol(column.tableType, field, column);
+        case bool:
+        case TomDbBool:
+        case TomBool:
+        case TomNBool:
+          return BoolCol(column.tableType, field, column);
+        case DateTime:
+        case TomDbDateTime:
+        case TomZonedDateTime:
+        case TomNDateTime:
+          return DateTimeCol(column.tableType, field, column);
+        case TomZonedDate:
+        case TomDbDate:
+          return DateCol(column.tableType, field, column);
+      }
+    }
+    switch (column.declaredType) {
+      case String:
+      case TomString:
+      case TomNString:
+        return StringCol(column.tableType, field, column);
+      case int:
+      case TomInt:
+      case TomNInt:
+        return IntCol(column.tableType, field, column);
+      case bool:
+      case TomBool:
+      case TomNBool:
+        return BoolCol(column.tableType, field, column);
+      case DateTime:
+      case TomZonedDateTime:
+      case TomNDateTime:
+        DateTimeCol(column.tableType, field, column);
+      case TomZonedDate:
+        return DateCol(column.tableType, field, column);
+    }
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.create_column.failed",
+      "Could not determine type for column $field @ $column",
+    );
+  }
+
+  List<String> _splitQuerySentence(String qs) {
+    qs = qs.replaceAllMapped(RegExp("[,()=<>][=>]?"), (m) => " ${m.group(0)} ");
+    qs = qs.replaceAll(RegExp(" +"), " ");
+    qs = qs.trim();
+    var parts = qs.split(" ");
+    return parts;
+  }
+}

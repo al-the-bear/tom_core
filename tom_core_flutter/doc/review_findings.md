@@ -1,0 +1,60 @@
+# Tom Flutter - Review Findings
+
+Date: 10 January 2026
+
+## Critical Issues
+
+| Priority | File | Issue |
+|----------|------|-------|
+| 🔴 High | `test/tom_core_flutter_test.dart` | References undefined class `Awesome` - test will fail |
+| 🔴 High | `example/tom_core_flutter_example.dart` | References undefined class `Awesome` - example is broken |
+| 🟡 Medium | `pubspec.yaml` | Missing `publish_to: none` - causes warning about path dependencies |
+
+## Code Quality Issues
+
+| Priority | File | Issue |
+|----------|------|-------|
+| 🟡 Medium | `lib/src/tomclient/forms/tom_fields.dart` | Unused private declaration `_onChange` (line 151) |
+| 🟡 Medium | `lib/src/tomclient/security/authentication.dart` | Not exported in `tom_core_flutter.dart` barrel file |
+
+## Documentation Issues
+
+| Priority | File | Issue |
+|----------|------|-------|
+| 🟡 Medium | `README.md` | Template content - not customized for the package |
+| 🟡 Medium | `README.md` | Missing first-line heading (markdown lint) |
+| 🟡 Medium | `README.md` | Trailing spaces on lines 29, 37, 38 |
+| 🟢 Low | `pubspec.yaml` | Generic description - should describe Flutter extensions |
+
+## Structure Issues
+
+| Priority | Location | Issue |
+|----------|----------|-------|
+| 🟡 Medium | `lib/src/tomclient/iding/` | Empty directory - no files |
+| 🟢 Low | `lib/src/tomclient/camera/` | Only contains `readme.md` - placeholder module |
+| 🟢 Low | `lib/src/tomclient/localstorage/` | Only contains `readme.md` - placeholder module |
+| 🟢 Low | `lib/src/tomclient/preferences/` | Only contains `readme.md` - placeholder module |
+| 🟢 Low | `lib/src/tomclient/qrcode/` | Only contains `readme.md` - placeholder module |
+
+## Potential Improvements
+
+1. **Fix broken test and example**: Replace `Awesome` references with actual tom_core_flutter classes
+2. **Add `publish_to: none`**: Clarify this is a private package
+3. **Update README.md**: Write actual documentation for the package
+4. **Export missing files**: Add `authentication.dart` to barrel exports
+5. **Clean up dead code**: Remove unused `_onChange` in `tom_fields.dart`
+6. **Clean up empty directories**: Remove `iding/` or add placeholder readme
+7. **Consider removing placeholder modules**: Camera, localstorage, preferences, qrcode are empty
+8. **Add local _copilot_guidelines**: If this package has specific patterns
+
+## Dependency Review
+
+Current dependencies appear appropriate:
+- `flutter` - Required for Flutter widgets
+- `tom_core` - Core framework (path dependency is correct for monorepo)
+- `cupertino_icons` - May not be needed if not using Cupertino widgets
+- `fetch_client` - HTTP client for web platform
+- `timezone_to_country` - Timezone utilities
+- `web` - Web platform APIs
+
+**Potential cleanup**: Verify `cupertino_icons` is actually used in any widget code.
