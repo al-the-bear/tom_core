@@ -1,4 +1,4 @@
-name: tom_d4rt_tool
+name: tom_core_d4rt
 description: D4rt tool with full Tom Framework bridge support.
 version: 1.0.0
 publish_to: none

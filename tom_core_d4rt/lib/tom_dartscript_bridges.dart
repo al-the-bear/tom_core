@@ -7,7 +7,7 @@
 /// ## Usage
 ///
 /// ```dart
-/// import 'package:tom_d4rt_tool/tom_dartscript_bridges.dart';
+/// import 'package:tom_core_d4rt/tom_dartscript_bridges.dart';
 ///
 /// void main() {
 ///   final interpreter = D4rt();

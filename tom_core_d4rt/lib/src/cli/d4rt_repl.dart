@@ -4,7 +4,7 @@
 /// This is the extended version of the base REPL from tom_d4rt_dcli.
 library;
 
-import 'package:tom_d4rt_tool/tom_dartscript_bridges.dart';
+import 'package:tom_core_d4rt/tom_dartscript_bridges.dart';
 
 import 'version.versioner.dart';
 
