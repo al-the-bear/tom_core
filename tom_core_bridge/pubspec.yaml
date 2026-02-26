@@ -1,0 +1,23 @@
+name: tom_core_bridge
+description: >-
+  Extended VS Code bridge server with full Tom Framework D4rt bridges.
+  Combines tom_vscode_bridge (base bridge server) with tom_core_d4rt
+  (Tom Framework bridges) into a single executable for VS Code extension
+  integration.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  # Base bridge server
+  tom_vscode_bridge:
+    path: ../../vscode/tom_vscode_bridge
+
+  # Tom Framework D4rt bridges
+  tom_core_d4rt:
+    path: ../tom_core_d4rt
+
+dev_dependencies:
+  lints: ^6.0.0
