@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Test runner for tom_dartscript_bridges
-// Generated: 2026-02-26T12:34:24.992572
+// Generated: 2026-02-26T12:53:41.314750
 //
 // Usage:
 //   dart run bin/d4rtrun.b.dart <script.dart|.d4rt>  Run a D4rt script file
@@ -25,6 +25,8 @@ import 'package:tom_dartscript_bridges/src/tom_core_server/tom_core_server_bridg
 import 'package:tom_dartscript_bridges/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
 import 'package:tom_dartscript_bridges/src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
 import 'package:tom_dartscript_bridges/src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
+import 'package:tom_dartscript_bridges/src/tom_md2latex/tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
+import 'package:tom_dartscript_bridges/src/tom_md2pdf/tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
 
 /// Init script source that imports all bridged modules.
 const String _initSource = '''
@@ -37,6 +39,8 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:tom_dist_ledger/tom_dist_ledger.dart';
 import 'package:tom_doc_scanner/tom_doc_scanner.dart';
 import 'package:tom_doc_specs/tom_doc_specs.dart';
+import 'package:tom_md2latex/tom_md2latex.dart';
+import 'package:tom_md2pdf/tom_md2pdf.dart';
 
 void main() {}
 ''';
@@ -79,6 +83,14 @@ void _registerBridges(D4rt d4rt) {
   tom_doc_specs_bridges.TomDocSpecsBridge.registerBridges(
     d4rt,
     'package:tom_doc_specs/tom_doc_specs.dart',
+  );
+  tom_md2latex_bridges.TomMd2latexBridge.registerBridges(
+    d4rt,
+    'package:tom_md2latex/tom_md2latex.dart',
+  );
+  tom_md2pdf_bridges.TomMd2pdfBridge.registerBridges(
+    d4rt,
+    'package:tom_md2pdf/tom_md2pdf.dart',
   );
 }
 

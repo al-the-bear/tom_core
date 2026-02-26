@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for tom_dartscript_bridges
-// Generated: 2026-02-26T12:34:24.990316
+// Generated: 2026-02-26T12:53:41.311883
 
 /// D4rt Bridge Registration for tom_dartscript_bridges
 library;
@@ -16,6 +16,8 @@ import 'src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_b
 import 'src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
 import 'src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
 import 'src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
+import 'src/tom_md2latex/tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
+import 'src/tom_md2pdf/tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
 
 /// Combined bridge registration for tom_dartscript_bridges.
 class TomDartscriptBridges {
@@ -99,6 +101,22 @@ class TomDartscriptBridges {
     for (final barrel in tom_doc_specs_bridges.TomDocSpecsBridge.subPackageBarrels()) {
       tom_doc_specs_bridges.TomDocSpecsBridge.registerBridges(d4rt, barrel);
     }
+    tom_md2latex_bridges.TomMd2latexBridge.registerBridges(
+      d4rt,
+      'package:tom_md2latex/tom_md2latex.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in tom_md2latex_bridges.TomMd2latexBridge.subPackageBarrels()) {
+      tom_md2latex_bridges.TomMd2latexBridge.registerBridges(d4rt, barrel);
+    }
+    tom_md2pdf_bridges.TomMd2pdfBridge.registerBridges(
+      d4rt,
+      'package:tom_md2pdf/tom_md2pdf.dart',
+    );
+    // Register under sub-package barrels for direct imports
+    for (final barrel in tom_md2pdf_bridges.TomMd2pdfBridge.subPackageBarrels()) {
+      tom_md2pdf_bridges.TomMd2pdfBridge.registerBridges(d4rt, barrel);
+    }
   }
 
   /// Get import block for all modules.
@@ -114,6 +132,8 @@ class TomDartscriptBridges {
     buffer.writeln(tom_dist_ledger_bridges.TomDistLedgerBridge.getImportBlock());
     buffer.writeln(tom_doc_scanner_bridges.TomDocScannerBridge.getImportBlock());
     buffer.writeln(tom_doc_specs_bridges.TomDocSpecsBridge.getImportBlock());
+    buffer.writeln(tom_md2latex_bridges.TomMd2latexBridge.getImportBlock());
+    buffer.writeln(tom_md2pdf_bridges.TomMd2pdfBridge.getImportBlock());
     return buffer.toString();
   }
 }

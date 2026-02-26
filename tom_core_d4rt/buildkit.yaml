@@ -63,6 +63,16 @@ d4rtgen:
       outputPath: lib/src/tom_doc_specs/tom_doc_specs_bridges.b.dart
       skipReExports:
         - package:tom_doc_scanner/tom_doc_scanner.dart
+    - name: tom_md2latex
+      barrelImport: package:tom_md2latex/tom_md2latex.dart
+      outputPath: lib/src/tom_md2latex/tom_md2latex_bridges.b.dart
+      skipReExports:
+        - package:tom_doc_scanner/tom_doc_scanner.dart
+    - name: tom_md2pdf
+      barrelImport: package:tom_md2pdf/tom_md2pdf.dart
+      outputPath: lib/src/tom_md2pdf/tom_md2pdf_bridges.b.dart
+      skipReExports:
+        - package:tom_md2latex/tom_md2latex.dart
 
 compiler:
   compiles:
