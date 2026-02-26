@@ -1,12 +1,4 @@
 dependency_overrides:
-  tom_d4rt:
-    path: ../../d4rt/tom_d4rt
-  tom_d4rt_dcli:
-    path: ../../d4rt/tom_d4rt_dcli
-  tom_d4rt_generator:
-    path: ../../d4rt/tom_d4rt_generator
-  tom_basics_network:
-    path: ../../basics/tom_basics_network
   runtime_native_semaphores:
     git:
       url: https://github.com/al-the-bear/native_semaphores.git
