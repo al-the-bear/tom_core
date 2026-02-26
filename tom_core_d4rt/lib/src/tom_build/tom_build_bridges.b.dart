@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 17 files
-// Generated: 2026-02-26T12:53:19.862516
+// Generated: 2026-02-27T00:31:26.987613
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
 
@@ -415,14 +415,8 @@ BridgedClass _createWorkspaceAnalyzerBridge() {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WorkspaceAnalyzer');
         final workspaceRoot = D4.getRequiredArg<String>(positional, 0, 'workspaceRoot', 'WorkspaceAnalyzer');
-        if (!named.containsKey('options')) {
-          return $tom_build_1.WorkspaceAnalyzer(workspaceRoot);
-        }
-        if (named.containsKey('options')) {
-          final options = D4.getRequiredNamedArg<$tom_build_1.AnalyzerOptions>(named, 'options', 'WorkspaceAnalyzer');
-          return $tom_build_1.WorkspaceAnalyzer(workspaceRoot, options: options);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final options = D4.getNamedArgWithDefault<$tom_build_1.AnalyzerOptions>(named, 'options', const $tom_build_1.AnalyzerOptions());
+        return $tom_build_1.WorkspaceAnalyzer(workspaceRoot, options: options);
       },
     },
     getters: {

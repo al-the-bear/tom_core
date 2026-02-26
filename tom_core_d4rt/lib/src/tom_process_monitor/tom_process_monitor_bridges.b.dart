@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 31 files
-// Generated: 2026-02-26T12:53:12.445341
+// Generated: 2026-02-27T00:31:24.575132
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
 
@@ -1914,14 +1914,8 @@ BridgedClass _createAlivenessServerHelperBridge() {
     constructors: {
       '': (visitor, positional, named) {
         final port = D4.getRequiredNamedArg<int>(named, 'port', 'AlivenessServerHelper');
-        if (!named.containsKey('callback')) {
-          return $tom_process_monitor_24.AlivenessServerHelper(port: port);
-        }
-        if (named.containsKey('callback')) {
-          final callback = D4.getRequiredNamedArg<$tom_process_monitor_24.AlivenessCallback>(named, 'callback', 'AlivenessServerHelper');
-          return $tom_process_monitor_24.AlivenessServerHelper(port: port, callback: callback);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final callback = D4.getNamedArgWithDefault<$tom_process_monitor_24.AlivenessCallback>(named, 'callback', const $tom_process_monitor_24.AlivenessCallback());
+        return $tom_process_monitor_24.AlivenessServerHelper(port: port, callback: callback);
       },
     },
     getters: {
@@ -2299,34 +2293,16 @@ BridgedClass _createServerDiscoveryBridge() {
     },
     staticMethods: {
       'discover': (visitor, positional, named, typeArgs) {
-        if (positional.length == 1) {
-          final options = D4.getRequiredArg<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', 'discover');
-          return $tom_basics_network_2.ServerDiscovery.discover(options);
-        }
-        if (positional.isEmpty) {
-          return $tom_basics_network_2.ServerDiscovery.discover();
-        }
-        throw ArgumentError('Invalid argument count for discover');
+        final options = D4.getOptionalArgWithDefault<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', const $tom_basics_network_2.DiscoveryOptions());
+        return $tom_basics_network_2.ServerDiscovery.discover(options);
       },
       'discoverOrThrow': (visitor, positional, named, typeArgs) {
-        if (positional.length == 1) {
-          final options = D4.getRequiredArg<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', 'discoverOrThrow');
-          return $tom_basics_network_2.ServerDiscovery.discoverOrThrow(options);
-        }
-        if (positional.isEmpty) {
-          return $tom_basics_network_2.ServerDiscovery.discoverOrThrow();
-        }
-        throw ArgumentError('Invalid argument count for discoverOrThrow');
+        final options = D4.getOptionalArgWithDefault<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', const $tom_basics_network_2.DiscoveryOptions());
+        return $tom_basics_network_2.ServerDiscovery.discoverOrThrow(options);
       },
       'discoverAll': (visitor, positional, named, typeArgs) {
-        if (positional.length == 1) {
-          final options = D4.getRequiredArg<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', 'discoverAll');
-          return $tom_basics_network_2.ServerDiscovery.discoverAll(options);
-        }
-        if (positional.isEmpty) {
-          return $tom_basics_network_2.ServerDiscovery.discoverAll();
-        }
-        throw ArgumentError('Invalid argument count for discoverAll');
+        final options = D4.getOptionalArgWithDefault<$tom_basics_network_2.DiscoveryOptions>(positional, 0, 'options', const $tom_basics_network_2.DiscoveryOptions());
+        return $tom_basics_network_2.ServerDiscovery.discoverAll(options);
       },
       'getLocalIpAddresses': (visitor, positional, named, typeArgs) {
         return $tom_basics_network_2.ServerDiscovery.getLocalIpAddresses();

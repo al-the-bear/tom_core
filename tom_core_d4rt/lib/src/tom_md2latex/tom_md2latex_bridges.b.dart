@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-02-26T12:53:36.442597
+// Generated: 2026-02-27T00:31:33.409879
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
 
@@ -230,14 +230,8 @@ BridgedClass _createMd2LatexBridge() {
       'parse': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parse');
         final markdown = D4.getRequiredArg<String>(positional, 0, 'markdown', 'parse');
-        if (!named.containsKey('options')) {
-          return $tom_md2latex_3.Md2Latex.parse(markdown);
-        }
-        if (named.containsKey('options')) {
-          final options = D4.getRequiredNamedArg<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', 'parse');
-          return $tom_md2latex_3.Md2Latex.parse(markdown, options: options);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final options = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_3.Md2Latex.parse(markdown, options: options);
       },
     },
     staticMethodSignatures: {
@@ -449,14 +443,8 @@ BridgedClass _createMarkdownParserBridge() {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MarkdownParser');
         final content = D4.getRequiredArg<String>(positional, 0, 'content', 'MarkdownParser');
-        if (!named.containsKey('options')) {
-          return $tom_md2latex_2.MarkdownParser(content);
-        }
-        if (named.containsKey('options')) {
-          final options = D4.getRequiredNamedArg<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', 'MarkdownParser');
-          return $tom_md2latex_2.MarkdownParser(content, options: options);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final options = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_2.MarkdownParser(content, options: options);
       },
     },
     getters: {
@@ -962,14 +950,8 @@ BridgedClass _createMdLatexConverterOptionsBridge() {
         final author = D4.getOptionalNamedArg<String?>(named, 'author');
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', true);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        if (!named.containsKey('parserOptions')) {
-          return $tom_md2latex_4.MdLatexConverterOptions(excludePatterns: excludePatterns, generatePreamble: generatePreamble, documentClass: documentClass, author: author, generateToc: generateToc, tocDepth: tocDepth);
-        }
-        if (named.containsKey('parserOptions')) {
-          final parserOptions = D4.getRequiredNamedArg<$tom_md2latex_2.MarkdownParserOptions>(named, 'parserOptions', 'MdLatexConverterOptions');
-          return $tom_md2latex_4.MdLatexConverterOptions(excludePatterns: excludePatterns, generatePreamble: generatePreamble, documentClass: documentClass, author: author, generateToc: generateToc, tocDepth: tocDepth, parserOptions: parserOptions);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final parserOptions = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'parserOptions', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_4.MdLatexConverterOptions(excludePatterns: excludePatterns, generatePreamble: generatePreamble, documentClass: documentClass, author: author, generateToc: generateToc, tocDepth: tocDepth, parserOptions: parserOptions);
       },
     },
     getters: {

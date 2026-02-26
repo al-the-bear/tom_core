@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 3 files
-// Generated: 2026-02-26T12:53:41.299510
+// Generated: 2026-02-27T00:31:35.223966
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
 
@@ -179,14 +179,8 @@ BridgedClass _createMd2PdfBridge() {
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_1.Md2Pdf.convertString(markdown: markdown, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'convertString');
-          return $tom_md2pdf_1.Md2Pdf.convertString(markdown: markdown, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
+        return $tom_md2pdf_1.Md2Pdf.convertString(markdown: markdown, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
       },
       'convertFile': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFile');
@@ -196,14 +190,8 @@ BridgedClass _createMd2PdfBridge() {
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_1.Md2Pdf.convertFile(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'convertFile');
-          return $tom_md2pdf_1.Md2Pdf.convertFile(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
+        return $tom_md2pdf_1.Md2Pdf.convertFile(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
       },
       'convertFileToBytes': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFileToBytes');
@@ -212,14 +200,8 @@ BridgedClass _createMd2PdfBridge() {
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_1.Md2Pdf.convertFileToBytes(inputPath: inputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'convertFileToBytes');
-          return $tom_md2pdf_1.Md2Pdf.convertFileToBytes(inputPath: inputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
+        return $tom_md2pdf_1.Md2Pdf.convertFileToBytes(inputPath: inputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
       },
       'convertDirectory': (visitor, positional, named, typeArgs) {
         final inputDir = D4.getRequiredNamedArg<String>(named, 'inputDir', 'convertDirectory');
@@ -229,17 +211,11 @@ BridgedClass _createMd2PdfBridge() {
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
         final excludePatterns = named.containsKey('excludePatterns') && named['excludePatterns'] != null
             ? D4.coerceList<String>(named['excludePatterns'], 'excludePatterns')
             : const ['node_modules', '.git', 'build'];
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_1.Md2Pdf.convertDirectory(inputDir: inputDir, outputDir: outputDir, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'convertDirectory');
-          return $tom_md2pdf_1.Md2Pdf.convertDirectory(inputDir: inputDir, outputDir: outputDir, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        return $tom_md2pdf_1.Md2Pdf.convertDirectory(inputDir: inputDir, outputDir: outputDir, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins, excludePatterns: excludePatterns);
       },
       'convertFileAndSave': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFileAndSave');
@@ -249,14 +225,8 @@ BridgedClass _createMd2PdfBridge() {
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_1.Md2Pdf.convertFileAndSave(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'convertFileAndSave');
-          return $tom_md2pdf_1.Md2Pdf.convertFileAndSave(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
+        return $tom_md2pdf_1.Md2Pdf.convertFileAndSave(inputPath: inputPath, outputPath: outputPath, title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, margins: margins);
       },
     },
     staticMethodSignatures: {
@@ -345,26 +315,18 @@ BridgedClass _createMdPdfConverterOptionsBridge() {
         final pageFormat = D4.getNamedArgWithDefault<$pdf_1.PdfPageFormat>(named, 'pageFormat', $pdf_1.PdfPageFormat.a4);
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
+        final tagStyle = D4.getNamedArgWithDefault<$htmltopdfwidgets_1.HtmlTagStyle>(named, 'tagStyle', const $htmltopdfwidgets_1.HtmlTagStyle());
         final excludePatterns = named.containsKey('excludePatterns') && named['excludePatterns'] != null
             ? D4.coerceList<String>(named['excludePatterns'], 'excludePatterns')
             : const ['node_modules', '.git', 'build'];
         final headerBuilderRaw = named['headerBuilder'];
         final footerBuilderRaw = named['footerBuilder'];
-        if (!named.containsKey('margin') && !named.containsKey('tagStyle')) {
-          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; });
+        if (!named.containsKey('margin')) {
+          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, tagStyle: tagStyle, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; });
         }
-        if (named.containsKey('margin') && !named.containsKey('tagStyle')) {
+        if (named.containsKey('margin')) {
           final margin = D4.getRequiredNamedArg<$pdf_2.EdgeInsets>(named, 'margin', 'MdPdfConverterOptions');
-          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; }, margin: margin);
-        }
-        if (!named.containsKey('margin') && named.containsKey('tagStyle')) {
-          final tagStyle = D4.getRequiredNamedArg<$htmltopdfwidgets_1.HtmlTagStyle>(named, 'tagStyle', 'MdPdfConverterOptions');
-          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; }, tagStyle: tagStyle);
-        }
-        if (named.containsKey('margin') && named.containsKey('tagStyle')) {
-          final margin = D4.getRequiredNamedArg<$pdf_2.EdgeInsets>(named, 'margin', 'MdPdfConverterOptions');
-          final tagStyle = D4.getRequiredNamedArg<$htmltopdfwidgets_1.HtmlTagStyle>(named, 'tagStyle', 'MdPdfConverterOptions');
-          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; }, margin: margin, tagStyle: tagStyle);
+          return $tom_md2pdf_2.MdPdfConverterOptions(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, tagStyle: tagStyle, excludePatterns: excludePatterns, headerBuilder: headerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, headerBuilderRaw, [p0]) as $pdf_3.Widget; }, footerBuilder: footerBuilderRaw == null ? null : ($pdf_3.Context p0) { return D4.callInterpreterCallback(visitor, footerBuilderRaw, [p0]) as $pdf_3.Widget; }, margin: margin);
         }
         throw StateError('Unreachable: all named parameter combinations should be covered');
       },
@@ -567,19 +529,13 @@ BridgedClass _createPdfConverterOptionsWrapperBridge() {
         final title = D4.getOptionalNamedArg<String?>(named, 'title');
         final author = D4.getOptionalNamedArg<String?>(named, 'author');
         final pageFormat = D4.getNamedArgWithDefault<String>(named, 'pageFormat', 'a4');
+        final margins = D4.getNamedArgWithDefault<$tom_md2pdf_3.PageMargins>(named, 'margins', const $tom_md2pdf_3.PageMargins.all(72));
         final fontSize = D4.getNamedArgWithDefault<double>(named, 'fontSize', 12.0);
         final fontFamily = D4.getNamedArgWithDefault<String>(named, 'fontFamily', 'Roboto');
         final excludePatterns = named.containsKey('excludePatterns') && named['excludePatterns'] != null
             ? D4.coerceList<String>(named['excludePatterns'], 'excludePatterns')
             : const ['node_modules', '.git', 'build'];
-        if (!named.containsKey('margins')) {
-          return $tom_md2pdf_3.PdfConverterOptionsWrapper(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns);
-        }
-        if (named.containsKey('margins')) {
-          final margins = D4.getRequiredNamedArg<$tom_md2pdf_3.PageMargins>(named, 'margins', 'PdfConverterOptionsWrapper');
-          return $tom_md2pdf_3.PdfConverterOptionsWrapper(title: title, author: author, pageFormat: pageFormat, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns, margins: margins);
-        }
-        throw StateError('Unreachable: all named parameter combinations should be covered');
+        return $tom_md2pdf_3.PdfConverterOptionsWrapper(title: title, author: author, pageFormat: pageFormat, margins: margins, fontSize: fontSize, fontFamily: fontFamily, excludePatterns: excludePatterns);
       },
     },
     getters: {
