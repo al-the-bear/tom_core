@@ -55,6 +55,14 @@ d4rtgen:
     - name: tom_dist_ledger
       barrelImport: package:tom_dist_ledger/tom_dist_ledger.dart
       outputPath: lib/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart
+    - name: tom_doc_scanner
+      barrelImport: package:tom_doc_scanner/tom_doc_scanner.dart
+      outputPath: lib/src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart
+    - name: tom_doc_specs
+      barrelImport: package:tom_doc_specs/tom_doc_specs.dart
+      outputPath: lib/src/tom_doc_specs/tom_doc_specs_bridges.b.dart
+      skipReExports:
+        - package:tom_doc_scanner/tom_doc_scanner.dart
 
 compiler:
   compiles:

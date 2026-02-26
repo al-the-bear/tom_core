@@ -24,6 +24,10 @@ dependencies:
     path: ../../distributed/tom_dist_ledger
   tom_process_monitor:
     path: ../../distributed/tom_process_monitor
+  tom_doc_scanner:
+    path: ../../ai_build/tom_doc_scanner
+  tom_doc_specs:
+    path: ../../ai_build/tom_doc_specs
   tom_basics_network:
   
   # External packages
