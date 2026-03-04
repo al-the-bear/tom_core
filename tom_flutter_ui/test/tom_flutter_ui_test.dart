@@ -149,34 +149,42 @@ void main() {
     testWidgets('applies reference alignment and same-size constraints', (
       tester,
     ) async {
-      final leftAnchorKey = GlobalKey(debugLabel: 'left-anchor-test');
-      final rightAnchorKey = GlobalKey(debugLabel: 'right-anchor-test');
-      final buttonAnchorKey = GlobalKey(debugLabel: 'button-anchor-test');
+      const leftAnchorKey = ValueKey('left-anchor-test');
+      const rightAnchorKey = ValueKey('right-anchor-test');
+      const buttonAnchorKey = ValueKey('button-anchor-test');
 
       final alignedFieldAKey = GlobalKey(debugLabel: 'aligned-field-a');
       final alignedFieldBKey = GlobalKey(debugLabel: 'aligned-field-b');
       final linkedButtonKey = GlobalKey(debugLabel: 'linked-button');
 
+      final anchorLabel = const SizedBox(
+        key: leftAnchorKey,
+        width: 140,
+        child: Text('Anchor Label'),
+      );
+      final anchorField = const SizedBox(
+        key: rightAnchorKey,
+        width: 280,
+        child: TextField(
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+      );
+      final anchorButton = ElevatedButton(
+        key: buttonAnchorKey,
+        onPressed: () {},
+        child: const Text('Anchor Action'),
+      );
+
       final acl = AclBuilder()
-          .append(const SizedBox(width: 140, child: Text('Anchor Label')))
-          .setKey(leftAnchorKey)
-          .append(
-            const SizedBox(
-              width: 280,
-              child: TextField(
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-              ),
-            ),
-            dist: 12,
-          )
-          .setKey(rightAnchorKey)
+          .append(anchorLabel)
+          .append(anchorField, dist: 12)
           .newRow(dist: 10)
           .append(const SizedBox(child: Text('Linked Label A')))
-          .sameWidthAs(leftAnchorKey)
-          .alignLeftToComp(leftAnchorKey)
+          .sameWidthAs(anchorLabel)
+          .alignLeftToLeft(anchorLabel)
           .append(
             SizedBox(
               key: alignedFieldAKey,
@@ -189,12 +197,13 @@ void main() {
             ),
             dist: 12,
           )
-          .sameSizeAs(rightAnchorKey)
-          .alignRightToComp(rightAnchorKey)
+          .sameWidthAs(anchorField)
+          .sameHeightAs(anchorField)
+          .alignRightToRight(anchorField)
           .newRow(dist: 10)
           .append(const SizedBox(child: Text('Linked Label B')))
-          .sameWidthAs(leftAnchorKey)
-          .alignLeftToComp(leftAnchorKey)
+          .sameWidthAs(anchorLabel)
+          .alignLeftToLeft(anchorLabel)
           .append(
             SizedBox(
               key: alignedFieldBKey,
@@ -207,16 +216,11 @@ void main() {
             ),
             dist: 12,
           )
-          .sameSizeAs(rightAnchorKey)
-          .alignRightToComp(rightAnchorKey, gap: 16)
+          .sameWidthAs(anchorField)
+          .sameHeightAs(anchorField)
+          .alignRightToRight(anchorField, gap: 16)
           .newRow(dist: 14)
-          .append(
-            ElevatedButton(
-              onPressed: () {},
-              child: const Text('Anchor Action'),
-            ),
-          )
-          .setKey(buttonAnchorKey)
+          .append(anchorButton)
           .append(
             OutlinedButton(
               key: linkedButtonKey,
@@ -225,12 +229,16 @@ void main() {
             ),
             dist: 16,
           )
-          .sameSizeAs(buttonAnchorKey)
+          .sameWidthAs(anchorButton)
+          .sameHeightAs(anchorButton)
           .build();
 
       expect(acl.rows[1].components[1].useOtherDimX, isTrue);
       expect(acl.rows[1].components[1].useOtherDimY, isTrue);
-      expect(acl.rows[1].components[1].referenceKey, same(rightAnchorKey));
+      expect(
+        acl.rows[1].components[1].referenceKey,
+        same(acl.rows[0].components[1].componentKey),
+      );
 
       final widget = MaterialApp(
         home: Scaffold(body: SizedBox(width: 900, child: acl)),

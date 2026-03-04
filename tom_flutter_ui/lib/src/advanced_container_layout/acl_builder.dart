@@ -135,30 +135,11 @@ class AclBuilder {
     return this;
   }
 
-  AclBuilder setKey(Key key) {
-    if (_currentComponent != null) {
-      _currentComponent!.componentKey = key;
-      _referenceKeyByObject[_currentComponent!.child] = key;
-    }
-    return this;
-  }
-
-  AclBuilder sameSizeAs(Object reference) =>
-      setComp(reference, AclFlags.otherDim);
-
   AclBuilder sameWidthAs(Object reference) =>
       setComp(reference, AclFlags.otherDimX);
 
   AclBuilder sameHeightAs(Object reference) =>
       setComp(reference, AclFlags.otherDimY);
-
-  AclBuilder alignLeftToComp(Object reference, {double gap = 0}) {
-    return alignLeftToLeft(reference, gap: gap);
-  }
-
-  AclBuilder alignRightToComp(Object reference, {double gap = 0}) {
-    return alignRightToRight(reference, gap: gap);
-  }
 
   AclBuilder alignTopInRow() {
     if (_currentComponent != null) {
