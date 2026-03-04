@@ -10,7 +10,11 @@ class _ComponentData {
   double gapBefore;
   Size? preferredSize;
   Size? minimumSize;
+  Size? maximumSize;
   Key? referenceKey;
+  Key? alignLeftToKey;
+  Key? alignRightToKey;
+  double alignmentGap = 0;
   Key? componentKey;
 
   _ComponentData({required this.child, this.flags = 0, this.gapBefore = 0});
@@ -22,7 +26,11 @@ class _ComponentData {
       gapBefore: gapBefore,
       preferredSize: preferredSize,
       minimumSize: minimumSize,
+      maximumSize: maximumSize,
       referenceKey: referenceKey,
+      alignLeftToKey: alignLeftToKey,
+      alignRightToKey: alignRightToKey,
+      alignmentGap: alignmentGap,
       componentKey: componentKey,
     );
   }
@@ -102,9 +110,43 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setXSize(double width, double height) {
+    if (_currentComponent != null) {
+      _currentComponent!.maximumSize = Size(width, height);
+    }
+    return this;
+  }
+
   AclBuilder setKey(Key key) {
     if (_currentComponent != null) {
       _currentComponent!.componentKey = key;
+    }
+    return this;
+  }
+
+  AclBuilder sameSizeAs(Key referenceKey) =>
+      setComp(referenceKey, AclFlags.otherDim);
+
+  AclBuilder sameWidthAs(Key referenceKey) =>
+      setComp(referenceKey, AclFlags.otherDimX);
+
+  AclBuilder sameHeightAs(Key referenceKey) =>
+      setComp(referenceKey, AclFlags.otherDimY);
+
+  AclBuilder alignLeftToComp(Key referenceKey, {double gap = 0}) {
+    if (_currentComponent != null) {
+      _currentComponent!.alignLeftToKey = referenceKey;
+      _currentComponent!.alignRightToKey = null;
+      _currentComponent!.alignmentGap = gap;
+    }
+    return this;
+  }
+
+  AclBuilder alignRightToComp(Key referenceKey, {double gap = 0}) {
+    if (_currentComponent != null) {
+      _currentComponent!.alignRightToKey = referenceKey;
+      _currentComponent!.alignLeftToKey = null;
+      _currentComponent!.alignmentGap = gap;
     }
     return this;
   }

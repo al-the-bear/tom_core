@@ -78,6 +78,16 @@ class _AclTab extends StatelessWidget {
           screen: SpacingDemo(),
         ),
         _DemoTile(
+          title: 'Size Constraints',
+          description: 'Minimum, preferred and maximum size behavior',
+          screen: SizeConstraintsDemo(),
+        ),
+        _DemoTile(
+          title: 'Reference Constraints',
+          description: 'same-size and left/right edge alignment to references',
+          screen: ReferenceConstraintsDemo(),
+        ),
+        _DemoTile(
           title: 'Border Styles',
           description: 'Various border styles and border inset examples',
           screen: BorderStylesDemo(),
@@ -455,6 +465,119 @@ AclBuilder()
     .append(Widget_Row2)
     .build()
 '''),
+      ],
+    );
+  }
+}
+
+class SizeConstraintsDemo extends StatelessWidget {
+  const SizeConstraintsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Resize window: components keep minimum size, target preferred, and cap at maximum when possible.',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: 180,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(
+                const _DemoBox('Min 80 / Pref 160 / Max 220', Colors.teal),
+              )
+              .setMSize(80, 40)
+              .setPSize(160, 40)
+              .setXSize(220, 40)
+              .setAttr(AclFlags.expandX)
+              .append(
+                const _DemoBox('Min 60 / Pref 120 / Max 180', Colors.indigo),
+                dist: 8,
+              )
+              .setMSize(60, 40)
+              .setPSize(120, 40)
+              .setXSize(180, 40)
+              .setAttr(AclFlags.expandX)
+              .newRow(dist: 10)
+              .append(const _DemoBox('Fixed sample', Colors.orange))
+              .setMSize(90, 36)
+              .setPSize(90, 36)
+              .setXSize(90, 36)
+              .build(),
+        ),
+      ],
+    );
+  }
+}
+
+class ReferenceConstraintsDemo extends StatefulWidget {
+  const ReferenceConstraintsDemo({super.key});
+
+  @override
+  State<ReferenceConstraintsDemo> createState() =>
+      _ReferenceConstraintsDemoState();
+}
+
+class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
+  final GlobalKey _refLabelKey = GlobalKey(debugLabel: 'ref-label');
+  final GlobalKey _refFieldKey = GlobalKey(debugLabel: 'ref-field');
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Second row aligns left/right to first row references and can copy size from referenced components.',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(
+                const SizedBox(width: 120, child: Text('Reference Label')),
+              )
+              .setKey(_refLabelKey)
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: TextField(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                dist: 12,
+              )
+              .setKey(_refFieldKey)
+              .newRow(dist: 10)
+              .append(const SizedBox(width: 100, child: Text('Aligned L/R')))
+              .sameWidthAs(_refLabelKey)
+              .alignLeftToComp(_refLabelKey)
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: TextField(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                dist: 12,
+              )
+              .sameSizeAs(_refFieldKey)
+              .alignRightToComp(_refFieldKey)
+              .build(),
+        ),
       ],
     );
   }

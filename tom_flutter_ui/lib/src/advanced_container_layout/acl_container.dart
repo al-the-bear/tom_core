@@ -80,7 +80,11 @@ class AclComponent {
   final double gapBefore;
   final Size? preferredSize;
   final Size? minimumSize;
+  final Size? maximumSize;
   final Key? referenceKey;
+  final Key? alignLeftToKey;
+  final Key? alignRightToKey;
+  final double alignmentGap;
   final Key? componentKey;
 
   const AclComponent({
@@ -89,7 +93,11 @@ class AclComponent {
     this.gapBefore = 0,
     this.preferredSize,
     this.minimumSize,
+    this.maximumSize,
     this.referenceKey,
+    this.alignLeftToKey,
+    this.alignRightToKey,
+    this.alignmentGap = 0,
     this.componentKey,
   });
 
@@ -216,15 +224,6 @@ class _AclContainerState extends State<AclContainer> {
         color: widget.backgroundColor,
         border: border,
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: style.withShadow
-            ? [
-                BoxShadow(
-                  color: shadowColor.withValues(alpha: 0.35),
-                  offset: const Offset(0, 2),
-                  blurRadius: 6,
-                ),
-              ]
-            : null,
       ),
       child: contentWithInsets,
     );
@@ -238,15 +237,6 @@ class _AclContainerState extends State<AclContainer> {
           color: widget.backgroundColor,
           border: Border.all(color: baseColor, width: style.lineWidth),
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: style.withShadow
-              ? [
-                  BoxShadow(
-                    color: shadowColor.withValues(alpha: 0.35),
-                    offset: const Offset(0, 2),
-                    blurRadius: 6,
-                  ),
-                ]
-              : null,
         ),
         child: Padding(
           padding: EdgeInsets.all(style.lineWidth + 2),
@@ -259,6 +249,59 @@ class _AclContainerState extends State<AclContainer> {
             child: contentWithInsets,
           ),
         ),
+      );
+    }
+
+    if (style.withShadow) {
+      final blurExtent = (style.lineWidth * 4).clamp(3.0, 10.0);
+      final shadowStart = shadowColor.withValues(alpha: 0.28);
+      final shadowEnd = shadowColor.withValues(alpha: 0.0);
+
+      decorated = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          decorated,
+          Positioned(
+            top: style.lineWidth,
+            bottom: style.lineWidth,
+            right: -blurExtent,
+            width: blurExtent,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [shadowStart, shadowEnd],
+                  ),
+                  borderRadius: BorderRadius.horizontal(
+                    right: Radius.circular(radius > 0 ? radius : 2),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: style.lineWidth,
+            right: style.lineWidth,
+            bottom: -blurExtent,
+            height: blurExtent,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [shadowStart, shadowEnd],
+                  ),
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(radius > 0 ? radius : 2),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       );
     }
 
@@ -326,23 +369,59 @@ class _AclContainerState extends State<AclContainer> {
     final hasExpandY = row.components.any((component) => component.expandY);
 
     final children = <Widget>[];
+    double plannedX = 0;
     for (final component in row.components) {
-      if (component.gapBefore > 0) {
-        children.add(SizedBox(width: component.gapBefore));
+      final alignmentGap = _computeAlignmentGap(
+        component: component,
+        plannedX: plannedX,
+      );
+      final totalGapBefore = component.gapBefore + alignmentGap;
+
+      if (totalGapBefore > 0) {
+        children.add(SizedBox(width: totalGapBefore));
+        plannedX += totalGapBefore;
       }
 
       Widget child = component.child;
 
-      if (component.minimumSize != null || component.preferredSize != null) {
+      final referencedSize = _resolveReferencedSize(component.referenceKey);
+      final linkedWidth = component.useOtherDimX ? referencedSize?.width : null;
+      final linkedHeight = component.useOtherDimY
+          ? referencedSize?.height
+          : null;
+
+      final minWidth = linkedWidth ?? component.minimumSize?.width;
+      final minHeight = linkedHeight ?? component.minimumSize?.height;
+      final maxWidth = linkedWidth ?? component.maximumSize?.width;
+      final maxHeight = linkedHeight ?? component.maximumSize?.height;
+
+      if (minWidth != null ||
+          minHeight != null ||
+          maxWidth != null ||
+          maxHeight != null) {
         child = ConstrainedBox(
           constraints: BoxConstraints(
-            minWidth: component.minimumSize?.width ?? 0,
-            minHeight: component.minimumSize?.height ?? 0,
-            maxWidth: component.preferredSize?.width ?? double.infinity,
-            maxHeight: component.preferredSize?.height ?? double.infinity,
+            minWidth: minWidth ?? 0,
+            minHeight: minHeight ?? 0,
+            maxWidth: maxWidth ?? double.infinity,
+            maxHeight: maxHeight ?? double.infinity,
           ),
           child: child,
         );
+      }
+
+      if (!component.expandX || !canExpandHorizontally) {
+        final preferredWidth = component.preferredSize?.width;
+        if (preferredWidth != null) {
+          child = SizedBox(width: preferredWidth, child: child);
+        }
+      }
+
+      if (!component.expandY || !canExpandVertically) {
+        final preferredHeight = component.preferredSize?.height;
+        if (preferredHeight != null) {
+          child = SizedBox(height: preferredHeight, child: child);
+        }
       }
 
       if (component.componentKey != null) {
@@ -352,11 +431,23 @@ class _AclContainerState extends State<AclContainer> {
       if (component.expandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
-          child = Flexible(fit: FlexFit.tight, child: child);
+          final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
+            0,
+            double.infinity,
+          );
+          final prefW = (component.preferredSize?.width ?? minW).clamp(
+            minW,
+            double.infinity,
+          );
+          final flexWeight = ((prefW - minW).round()).clamp(1, 10000);
+
+          child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
         }
       }
 
       children.add(child);
+
+      plannedX += _estimateComponentWidth(component, linkedWidth);
     }
 
     Widget rowWidget;
@@ -394,10 +485,101 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     if (hasExpandY && canExpandVertically) {
-      return Flexible(fit: FlexFit.tight, child: rowWidget);
+      int rowFlex = 1;
+      for (final component in row.components) {
+        if (!component.expandY) {
+          continue;
+        }
+        final linkedHeight = component.useOtherDimY
+            ? _resolveReferencedSize(component.referenceKey)?.height
+            : null;
+        final minH = (component.minimumSize?.height ?? linkedHeight ?? 0).clamp(
+          0,
+          double.infinity,
+        );
+        final prefH = (component.preferredSize?.height ?? minH).clamp(
+          minH,
+          double.infinity,
+        );
+        rowFlex = (rowFlex + (prefH - minH).round()).clamp(1, 10000);
+      }
+
+      return Flexible(flex: rowFlex, fit: FlexFit.tight, child: rowWidget);
     }
 
     return rowWidget;
+  }
+
+  Size? _resolveReferencedSize(Key? key) {
+    if (key is! GlobalKey) {
+      return null;
+    }
+    final context = key.currentContext;
+    if (context == null) {
+      return null;
+    }
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return null;
+    }
+    return renderObject.size;
+  }
+
+  Rect? _resolveReferencedRect(Key? key) {
+    if (key is! GlobalKey) {
+      return null;
+    }
+    final ownRenderObject = context.findRenderObject();
+    final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
+    final refContext = key.currentContext;
+    if (ownBox == null || refContext == null) {
+      return null;
+    }
+    final refRenderObject = refContext.findRenderObject();
+    if (refRenderObject is! RenderBox ||
+        !refRenderObject.hasSize ||
+        !ownBox.hasSize) {
+      return null;
+    }
+    final topLeft = ownBox.globalToLocal(
+      refRenderObject.localToGlobal(Offset.zero),
+    );
+    return topLeft & refRenderObject.size;
+  }
+
+  double _estimateComponentWidth(AclComponent component, double? linkedWidth) {
+    return (linkedWidth ??
+            component.preferredSize?.width ??
+            component.minimumSize?.width ??
+            0)
+        .clamp(0, double.infinity)
+        .toDouble();
+  }
+
+  double _computeAlignmentGap({
+    required AclComponent component,
+    required double plannedX,
+  }) {
+    final leftRefRect = _resolveReferencedRect(component.alignLeftToKey);
+    if (leftRefRect != null) {
+      final targetLeft = leftRefRect.left + component.alignmentGap;
+      return (targetLeft - plannedX).clamp(0.0, double.infinity);
+    }
+
+    final rightRefRect = _resolveReferencedRect(component.alignRightToKey);
+    if (rightRefRect != null) {
+      final widthEstimate = _estimateComponentWidth(
+        component,
+        component.useOtherDimX
+            ? _resolveReferencedSize(component.referenceKey)?.width
+            : null,
+      );
+      final targetLeft =
+          rightRefRect.right - widthEstimate - component.alignmentGap;
+      return (targetLeft - plannedX).clamp(0.0, double.infinity);
+    }
+
+    return 0;
   }
 }
 
@@ -492,24 +674,19 @@ class AclGroup extends StatelessWidget {
 
     return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: AclContainer(
-            rows: [
-              AclRow(
-                components: [
-                  AclComponent(child: child, flags: AclFlags.expandX),
-                ],
-              ),
-            ],
-            borderStyle: borderStyle,
-            focusedBorderStyle: focusedBorderStyle,
-            padding: padding.add(const EdgeInsets.only(top: 8)),
-            backgroundColor: backgroundColor,
-          ),
+        AclContainer(
+          rows: [
+            AclRow(
+              components: [AclComponent(child: child, flags: AclFlags.expandX)],
+            ),
+          ],
+          borderStyle: borderStyle,
+          focusedBorderStyle: focusedBorderStyle,
+          padding: padding.add(const EdgeInsets.only(top: 8)),
+          backgroundColor: backgroundColor,
         ),
         Positioned(
-          top: 0,
+          top: -1,
           left: _left(),
           right: _right(),
           child: Align(
