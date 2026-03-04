@@ -145,6 +145,8 @@ class _AclContainerState extends State<AclContainer> {
   bool _hasFocusWithin = false;
   bool _hasUnresolvedReference = false;
   bool _referenceRelayoutScheduled = false;
+  final Map<GlobalKey, Size> _referenceSizeCache = {};
+  final Map<GlobalKey, Rect> _referenceRectCache = {};
 
   @override
   void dispose() {
@@ -386,37 +388,42 @@ class _AclContainerState extends State<AclContainer> {
       RowAlignment.right => MainAxisAlignment.end,
     };
 
-    final hasExpandX = row.components.any(
-      (component) =>
-        component.expandX ||
-        (component.useOtherDimX &&
-          _resolveReferencedSize(component.referenceKey)?.width == null),
-    );
+    final hasExpandX = row.components.any((component) => component.expandX);
     final hasExpandY = row.components.any((component) => component.expandY);
 
     final children = <Widget>[];
     double plannedX = 0;
     for (final component in row.components) {
-      final alignmentGap = _computeAlignmentGap(
+      if (component.gapBefore > 0) {
+        children.add(SizedBox(width: component.gapBefore));
+        plannedX += component.gapBefore;
+      }
+
+      final alignmentDelta = _computeAlignmentDelta(
         component: component,
         plannedX: plannedX,
       );
-      final totalGapBefore = component.gapBefore + alignmentGap;
 
-      if (totalGapBefore > 0) {
-        children.add(SizedBox(width: totalGapBefore));
-        plannedX += totalGapBefore;
+      final explicitRightOffset = component.alignRightToKey != null
+          ? component.alignmentGap
+          : 0.0;
+      final effectiveAlignmentDelta = alignmentDelta - explicitRightOffset;
+
+      if (effectiveAlignmentDelta > 0) {
+        children.add(SizedBox(width: effectiveAlignmentDelta));
+        plannedX += effectiveAlignmentDelta;
+      } else if (effectiveAlignmentDelta < 0) {
+        plannedX += effectiveAlignmentDelta;
       }
 
       Widget child = component.child;
 
-      final referencedSize = _resolveReferencedSize(component.referenceKey);
-      final linkedWidth = component.useOtherDimX ? referencedSize?.width : null;
-      final linkedHeight = component.useOtherDimY
-          ? referencedSize?.height
+      final linkedWidth = component.useOtherDimX
+          ? _resolveReferenceWidth(component.referenceKey)
           : null;
-        final unresolvedReferenceWidth =
-          component.useOtherDimX && linkedWidth == null;
+      final linkedHeight = component.useOtherDimY
+          ? _resolveReferenceHeight(component.referenceKey)
+          : null;
 
       final minWidth = linkedWidth ?? component.minimumSize?.width;
       final minHeight = linkedHeight ?? component.minimumSize?.height;
@@ -438,8 +445,7 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!(component.expandX || unresolvedReferenceWidth) ||
-          !canExpandHorizontally) {
+      if (!component.expandX || !canExpandHorizontally) {
         final preferredWidth = component.preferredSize?.width;
         if (preferredWidth != null) {
           child = SizedBox(width: preferredWidth, child: child);
@@ -457,8 +463,14 @@ class _AclContainerState extends State<AclContainer> {
         child = KeyedSubtree(key: component.componentKey, child: child);
       }
 
-      if ((component.expandX || unresolvedReferenceWidth) &&
-          canExpandHorizontally) {
+      if (effectiveAlignmentDelta < 0) {
+        child = Transform.translate(
+          offset: Offset(effectiveAlignmentDelta, 0),
+          child: child,
+        );
+      }
+
+      if (component.expandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
@@ -534,7 +546,7 @@ class _AclContainerState extends State<AclContainer> {
           continue;
         }
         final linkedHeight = component.useOtherDimY
-            ? _resolveReferencedSize(component.referenceKey)?.height
+            ? _resolveReferenceHeight(component.referenceKey)
             : null;
         final minH = (component.minimumSize?.height ?? linkedHeight ?? 0).clamp(
           0,
@@ -557,39 +569,67 @@ class _AclContainerState extends State<AclContainer> {
     if (key is! GlobalKey) {
       return null;
     }
+
+    final cached = _referenceSizeCache[key];
     final context = key.currentContext;
     if (context == null) {
       _hasUnresolvedReference = true;
-      return null;
+      return cached;
     }
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) {
       _hasUnresolvedReference = true;
-      return null;
+      return cached;
     }
-    return renderObject.size;
+    final size = renderObject.size;
+    _referenceSizeCache[key] = size;
+    return size;
+  }
+
+  double? _resolveReferenceWidth(Key? key) {
+    final size = _resolveReferencedSize(key);
+    if (size != null) {
+      return size.width;
+    }
+    final rect = _resolveReferencedRect(key);
+    return rect?.width;
+  }
+
+  double? _resolveReferenceHeight(Key? key) {
+    final size = _resolveReferencedSize(key);
+    if (size != null) {
+      return size.height;
+    }
+    final rect = _resolveReferencedRect(key);
+    return rect?.height;
   }
 
   Rect? _resolveReferencedRect(Key? key) {
     if (key is! GlobalKey) {
       return null;
     }
+
+    final cached = _referenceRectCache[key];
     final ownRenderObject = context.findRenderObject();
     final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
     final refContext = key.currentContext;
     if (ownBox == null || refContext == null) {
-      return null;
+      _hasUnresolvedReference = true;
+      return cached;
     }
     final refRenderObject = refContext.findRenderObject();
     if (refRenderObject is! RenderBox ||
         !refRenderObject.hasSize ||
         !ownBox.hasSize) {
-      return null;
+      _hasUnresolvedReference = true;
+      return cached;
     }
     final topLeft = ownBox.globalToLocal(
       refRenderObject.localToGlobal(Offset.zero),
     );
-    return topLeft & refRenderObject.size;
+    final rect = topLeft & refRenderObject.size;
+    _referenceRectCache[key] = rect;
+    return rect;
   }
 
   double _estimateComponentWidth(AclComponent component, double? linkedWidth) {
@@ -601,27 +641,27 @@ class _AclContainerState extends State<AclContainer> {
         .toDouble();
   }
 
-  double _computeAlignmentGap({
+  double _computeAlignmentDelta({
     required AclComponent component,
     required double plannedX,
   }) {
     final leftRefRect = _resolveReferencedRect(component.alignLeftToKey);
     if (leftRefRect != null) {
       final targetLeft = leftRefRect.left + component.alignmentGap;
-      return (targetLeft - plannedX).clamp(0.0, double.infinity);
+      return targetLeft - plannedX;
     }
 
     final rightRefRect = _resolveReferencedRect(component.alignRightToKey);
     if (rightRefRect != null) {
+      final linkedWidth = component.useOtherDimX
+          ? _resolveReferenceWidth(component.referenceKey)
+          : null;
       final widthEstimate = _estimateComponentWidth(
         component,
-        component.useOtherDimX
-            ? _resolveReferencedSize(component.referenceKey)?.width
-            : null,
+        linkedWidth ?? rightRefRect.width,
       );
-      final targetLeft =
-          rightRefRect.right - widthEstimate - component.alignmentGap;
-      return (targetLeft - plannedX).clamp(0.0, double.infinity);
+      final targetLeft = rightRefRect.right - widthEstimate;
+      return targetLeft - plannedX;
     }
 
     return 0;

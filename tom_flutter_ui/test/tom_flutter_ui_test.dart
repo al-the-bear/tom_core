@@ -121,5 +121,106 @@ void main() {
 
       expect(find.byType(Container), findsWidgets);
     });
+
+    testWidgets('applies reference alignment and same-size constraints', (
+      tester,
+    ) async {
+      final leftAnchorKey = GlobalKey(debugLabel: 'left-anchor-test');
+      final rightAnchorKey = GlobalKey(debugLabel: 'right-anchor-test');
+      final buttonAnchorKey = GlobalKey(debugLabel: 'button-anchor-test');
+
+      final alignedFieldAKey = GlobalKey(debugLabel: 'aligned-field-a');
+      final alignedFieldBKey = GlobalKey(debugLabel: 'aligned-field-b');
+      final linkedButtonKey = GlobalKey(debugLabel: 'linked-button');
+
+      final widget = MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 900,
+            child: AclBuilder()
+                .append(const SizedBox(width: 140, child: Text('Anchor Label')))
+                .setKey(leftAnchorKey)
+                .append(
+                  const SizedBox(
+                    width: 280,
+                    child: TextField(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  dist: 12,
+                )
+                .setKey(rightAnchorKey)
+                .newRow(dist: 10)
+                .append(const SizedBox(child: Text('Linked Label A')))
+                .sameWidthAs(leftAnchorKey)
+                .alignLeftToComp(leftAnchorKey)
+                .append(
+                  SizedBox(
+                    key: alignedFieldAKey,
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  dist: 12,
+                )
+                .sameSizeAs(rightAnchorKey)
+                .alignRightToComp(rightAnchorKey)
+                .newRow(dist: 10)
+                .append(const SizedBox(child: Text('Linked Label B')))
+                .sameWidthAs(leftAnchorKey)
+                .alignLeftToComp(leftAnchorKey)
+                .append(
+                  SizedBox(
+                    key: alignedFieldBKey,
+                    child: const TextField(
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  dist: 12,
+                )
+                .sameSizeAs(rightAnchorKey)
+                .alignRightToComp(rightAnchorKey, gap: 16)
+                .newRow(dist: 14)
+                .append(
+                  ElevatedButton(
+                    onPressed: () {},
+                    child: const Text('Anchor Action'),
+                  ),
+                )
+                .setKey(buttonAnchorKey)
+                .append(
+                  OutlinedButton(
+                    key: linkedButtonKey,
+                    onPressed: () {},
+                    child: const Text('Same Size Button'),
+                  ),
+                  dist: 16,
+                )
+                .sameSizeAs(buttonAnchorKey)
+                .build(),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      await tester.pump();
+      await tester.pump();
+
+      final rectA = tester.getRect(find.byKey(alignedFieldAKey));
+      final rectB = tester.getRect(find.byKey(alignedFieldBKey));
+      expect((rectA.right - rectB.right).abs(), closeTo(16, 1.0));
+
+      expect(find.byKey(buttonAnchorKey), findsOneWidget);
+      expect(find.byKey(linkedButtonKey), findsOneWidget);
+    });
   });
 }
