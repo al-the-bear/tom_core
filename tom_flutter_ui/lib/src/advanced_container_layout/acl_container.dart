@@ -143,6 +143,8 @@ class AclContainer extends StatefulWidget {
 class _AclContainerState extends State<AclContainer> {
   final FocusNode _focusNode = FocusNode();
   bool _hasFocusWithin = false;
+  bool _hasUnresolvedReference = false;
+  bool _referenceRelayoutScheduled = false;
 
   @override
   void dispose() {
@@ -152,7 +154,11 @@ class _AclContainerState extends State<AclContainer> {
 
   @override
   Widget build(BuildContext context) {
+    _hasUnresolvedReference = false;
+
     Widget content = _buildContent(context);
+
+    _scheduleReferenceRelayoutIfNeeded();
 
     final activeBorderStyle =
         _hasFocusWithin && widget.focusedBorderStyle != null
@@ -184,6 +190,21 @@ class _AclContainerState extends State<AclContainer> {
       },
       child: content,
     );
+  }
+
+  void _scheduleReferenceRelayoutIfNeeded() {
+    if (!_hasUnresolvedReference || _referenceRelayoutScheduled) {
+      return;
+    }
+
+    _referenceRelayoutScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _referenceRelayoutScheduled = false;
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+    });
   }
 
   Widget _wrapWithBorder(Widget content, AclBorderStyle style) {
@@ -365,7 +386,12 @@ class _AclContainerState extends State<AclContainer> {
       RowAlignment.right => MainAxisAlignment.end,
     };
 
-    final hasExpandX = row.components.any((component) => component.expandX);
+    final hasExpandX = row.components.any(
+      (component) =>
+        component.expandX ||
+        (component.useOtherDimX &&
+          _resolveReferencedSize(component.referenceKey)?.width == null),
+    );
     final hasExpandY = row.components.any((component) => component.expandY);
 
     final children = <Widget>[];
@@ -389,6 +415,8 @@ class _AclContainerState extends State<AclContainer> {
       final linkedHeight = component.useOtherDimY
           ? referencedSize?.height
           : null;
+        final unresolvedReferenceWidth =
+          component.useOtherDimX && linkedWidth == null;
 
       final minWidth = linkedWidth ?? component.minimumSize?.width;
       final minHeight = linkedHeight ?? component.minimumSize?.height;
@@ -410,7 +438,8 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!component.expandX || !canExpandHorizontally) {
+      if (!(component.expandX || unresolvedReferenceWidth) ||
+          !canExpandHorizontally) {
         final preferredWidth = component.preferredSize?.width;
         if (preferredWidth != null) {
           child = SizedBox(width: preferredWidth, child: child);
@@ -428,7 +457,8 @@ class _AclContainerState extends State<AclContainer> {
         child = KeyedSubtree(key: component.componentKey, child: child);
       }
 
-      if (component.expandX && canExpandHorizontally) {
+      if ((component.expandX || unresolvedReferenceWidth) &&
+          canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
@@ -455,6 +485,19 @@ class _AclContainerState extends State<AclContainer> {
     if (!hasExpandX && canExpandHorizontally) {
       rowWidget = LayoutBuilder(
         builder: (context, constraints) {
+          final boundedChildren = children
+              .map(
+                (child) => child is Flexible || child is Spacer
+                    ? child
+                    : ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth,
+                        ),
+                        child: child,
+                      ),
+              )
+              .toList();
+
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: ConstrainedBox(
@@ -465,7 +508,7 @@ class _AclContainerState extends State<AclContainer> {
                     ? CrossAxisAlignment.stretch
                     : CrossAxisAlignment.center,
                 mainAxisSize: MainAxisSize.max,
-                children: children,
+                children: boundedChildren,
               ),
             ),
           );
@@ -516,10 +559,12 @@ class _AclContainerState extends State<AclContainer> {
     }
     final context = key.currentContext;
     if (context == null) {
+      _hasUnresolvedReference = true;
       return null;
     }
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) {
+      _hasUnresolvedReference = true;
       return null;
     }
     return renderObject.size;

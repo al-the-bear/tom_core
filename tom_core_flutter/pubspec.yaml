@@ -14,7 +14,7 @@ dependencies:
   fetch_client: ^1.0.2
   timezone_to_country:
   web: ^1.1.1
-  tom_reflection: ^1.0.0
+  tom_reflection: any
   tom_core_kernel:
     path: ../tom_core_kernel
 

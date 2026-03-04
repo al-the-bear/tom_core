@@ -8,9 +8,9 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  tom_reflection: ^1.0.0
-  tom_basics: ^1.0.0
-  tom_crypto: ^1.0.0
+  tom_reflection: any
+  tom_basics: any
+  tom_crypto: any
   stack_trace:
   http:
   typed_data:
@@ -24,7 +24,7 @@ dev_dependencies:
   build: ^4.0.3
   tom_build:
     path: ../../devops/tom_build
-  tom_reflection_generator: ^1.0.0
+  tom_reflection_generator: any
   tom_core_server:
     path: ../tom_core_server
   mysql_client: any

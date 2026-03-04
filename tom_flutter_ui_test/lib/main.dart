@@ -524,8 +524,9 @@ class ReferenceConstraintsDemo extends StatefulWidget {
 }
 
 class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
-  final GlobalKey _refLabelKey = GlobalKey(debugLabel: 'ref-label');
-  final GlobalKey _refFieldKey = GlobalKey(debugLabel: 'ref-field');
+  final GlobalKey _leftAnchorKey = GlobalKey(debugLabel: 'left-anchor');
+  final GlobalKey _rightAnchorKey = GlobalKey(debugLabel: 'right-anchor');
+  final GlobalKey _buttonAnchorKey = GlobalKey(debugLabel: 'button-anchor');
 
   @override
   Widget build(BuildContext context) {
@@ -533,23 +534,25 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Second row aligns left/right to first row references and can copy size from referenced components.',
+          'Realistic reference constraints: labels and fields align to anchors from the first row, with size linking and right-edge locking.',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Container(
           width: double.infinity,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(
-                const SizedBox(width: 120, child: Text('Reference Label')),
+                const SizedBox(width: 140, child: Text('Anchor Label')),
               )
-              .setKey(_refLabelKey)
+              .setKey(_leftAnchorKey)
               .append(
                 const SizedBox(
-                  width: 220,
+                  width: 280,
                   child: TextField(
                     decoration: InputDecoration(
+                      labelText: 'Anchor Field',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -557,16 +560,16 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                 ),
                 dist: 12,
               )
-              .setKey(_refFieldKey)
+              .setKey(_rightAnchorKey)
               .newRow(dist: 10)
-              .append(const SizedBox(width: 100, child: Text('Aligned L/R')))
-              .sameWidthAs(_refLabelKey)
-              .alignLeftToComp(_refLabelKey)
+              .append(const SizedBox(child: Text('Linked Label A')))
+              .sameWidthAs(_leftAnchorKey)
+              .alignLeftToComp(_leftAnchorKey)
               .append(
                 const SizedBox(
-                  width: 220,
                   child: TextField(
                     decoration: InputDecoration(
+                      labelText: 'Aligned to right anchor',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -574,9 +577,42 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                 ),
                 dist: 12,
               )
-              .sameSizeAs(_refFieldKey)
-              .alignRightToComp(_refFieldKey)
+              .sameSizeAs(_rightAnchorKey)
+              .alignRightToComp(_rightAnchorKey)
+              .newRow(dist: 10)
+              .append(const SizedBox(child: Text('Linked Label B')))
+              .sameWidthAs(_leftAnchorKey)
+              .alignLeftToComp(_leftAnchorKey)
+              .append(
+                const SizedBox(
+                  child: TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Right aligned with +16 gap',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                dist: 12,
+              )
+              .sameSizeAs(_rightAnchorKey)
+              .alignRightToComp(_rightAnchorKey, gap: 16)
+              .newRow(dist: 14)
+              .append(
+                ElevatedButton(onPressed: () {}, child: const Text('Anchor Action')),
+              )
+              .setKey(_buttonAnchorKey)
+              .newRow(dist: 8)
+              .append(
+                OutlinedButton(onPressed: () {}, child: const Text('Same Size Button')),
+              )
+              .sameSizeAs(_buttonAnchorKey)
               .build(),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Expected: second/third-row labels share width with Anchor Label, fields lock to Anchor Field right edge, and final button copies anchor button size.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
     );

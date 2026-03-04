@@ -8,10 +8,10 @@ environment:
 
 dependencies:
   # D4rt runtime
-  tom_d4rt: ^1.8.0
+  tom_d4rt: any
   
   # D4rt base REPL with dcli bridges
-  tom_d4rt_dcli: ^1.0.0
+  tom_d4rt_dcli: any
   
   # Projects to bridge
   tom_core_kernel:
