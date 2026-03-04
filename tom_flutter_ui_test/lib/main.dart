@@ -543,9 +543,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .append(
-                const SizedBox(width: 140, child: Text('Anchor Label')),
-              )
+              .append(const SizedBox(width: 140, child: Text('Anchor Label')))
               .setKey(_leftAnchorKey)
               .append(
                 const SizedBox(

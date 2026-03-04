@@ -145,8 +145,9 @@ class _AclContainerState extends State<AclContainer> {
   bool _hasFocusWithin = false;
   bool _hasUnresolvedReference = false;
   bool _referenceRelayoutScheduled = false;
-  final Map<GlobalKey, Size> _referenceSizeCache = {};
-  final Map<GlobalKey, Rect> _referenceRectCache = {};
+  bool _referenceCacheRefreshScheduled = false;
+  final Map<Key, Size> _referenceSizeCache = {};
+  final Map<Key, Rect> _referenceRectCache = {};
 
   @override
   void dispose() {
@@ -160,6 +161,7 @@ class _AclContainerState extends State<AclContainer> {
 
     Widget content = _buildContent(context);
 
+    _scheduleReferenceCacheRefresh();
     _scheduleReferenceRelayoutIfNeeded();
 
     final activeBorderStyle =
@@ -207,6 +209,68 @@ class _AclContainerState extends State<AclContainer> {
       }
       setState(() {});
     });
+  }
+
+  void _scheduleReferenceCacheRefresh() {
+    if (_referenceCacheRefreshScheduled) {
+      return;
+    }
+
+    _referenceCacheRefreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _referenceCacheRefreshScheduled = false;
+      if (!mounted) {
+        return;
+      }
+
+      final ownRenderObject = context.findRenderObject();
+      final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
+      if (ownBox == null || !ownBox.hasSize) {
+        return;
+      }
+
+      bool changed = false;
+      for (final key in _componentKeys()) {
+        if (key is! GlobalKey) {
+          continue;
+        }
+        final refContext = key.currentContext;
+        final refRenderObject = refContext?.findRenderObject();
+        if (refRenderObject is! RenderBox || !refRenderObject.hasSize) {
+          continue;
+        }
+
+        final size = refRenderObject.size;
+        final topLeft = ownBox.globalToLocal(
+          refRenderObject.localToGlobal(Offset.zero),
+        );
+        final rect = topLeft & size;
+
+        if (_referenceSizeCache[key] != size) {
+          _referenceSizeCache[key] = size;
+          changed = true;
+        }
+        if (_referenceRectCache[key] != rect) {
+          _referenceRectCache[key] = rect;
+          changed = true;
+        }
+      }
+
+      if (changed && mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  Iterable<Key> _componentKeys() sync* {
+    for (final row in widget.rows) {
+      for (final component in row.components) {
+        final key = component.componentKey;
+        if (key != null) {
+          yield key;
+        }
+      }
+    }
   }
 
   Widget _wrapWithBorder(Widget content, AclBorderStyle style) {
@@ -399,9 +463,18 @@ class _AclContainerState extends State<AclContainer> {
         plannedX += component.gapBefore;
       }
 
+      final resolvedLinkedWidth = component.useOtherDimX
+          ? (_resolveReferenceWidth(component.referenceKey) ??
+                _resolveReferencedRect(component.alignRightToKey)?.width)
+          : null;
+      final resolvedLinkedHeight = component.useOtherDimY
+          ? _resolveReferenceHeight(component.referenceKey)
+          : null;
+
       final alignmentDelta = _computeAlignmentDelta(
         component: component,
         plannedX: plannedX,
+        resolvedLinkedWidth: resolvedLinkedWidth,
       );
 
       final explicitRightOffset = component.alignRightToKey != null
@@ -418,17 +491,20 @@ class _AclContainerState extends State<AclContainer> {
 
       Widget child = component.child;
 
-      final linkedWidth = component.useOtherDimX
-          ? _resolveReferenceWidth(component.referenceKey)
-          : null;
-      final linkedHeight = component.useOtherDimY
-          ? _resolveReferenceHeight(component.referenceKey)
-          : null;
-
-      final minWidth = linkedWidth ?? component.minimumSize?.width;
-      final minHeight = linkedHeight ?? component.minimumSize?.height;
-      final maxWidth = linkedWidth ?? component.maximumSize?.width;
-      final maxHeight = linkedHeight ?? component.maximumSize?.height;
+      final linkedWidth = resolvedLinkedWidth;
+      final linkedHeight = resolvedLinkedHeight;
+      final minWidth = component.useOtherDimX
+          ? (linkedWidth ?? component.minimumSize?.width)
+          : component.minimumSize?.width;
+      final minHeight = component.useOtherDimY
+          ? (linkedHeight ?? component.minimumSize?.height)
+          : component.minimumSize?.height;
+      final maxWidth = component.useOtherDimX
+          ? (linkedWidth ?? component.maximumSize?.width)
+          : component.maximumSize?.width;
+      final maxHeight = component.useOtherDimY
+          ? (linkedHeight ?? component.maximumSize?.height)
+          : component.maximumSize?.height;
 
       if (minWidth != null ||
           minHeight != null ||
@@ -460,7 +536,7 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       if (component.componentKey != null) {
-        child = KeyedSubtree(key: component.componentKey, child: child);
+        child = SizedBox(key: component.componentKey, child: child);
       }
 
       if (effectiveAlignmentDelta < 0) {
@@ -566,12 +642,16 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   Size? _resolveReferencedSize(Key? key) {
-    if (key is! GlobalKey) {
+    if (key == null) {
       return null;
     }
 
     final cached = _referenceSizeCache[key];
-    final context = key.currentContext;
+    if (cached != null) {
+      return cached;
+    }
+
+    final context = _resolveKeyContext(key);
     if (context == null) {
       _hasUnresolvedReference = true;
       return cached;
@@ -605,14 +685,18 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   Rect? _resolveReferencedRect(Key? key) {
-    if (key is! GlobalKey) {
+    if (key == null) {
       return null;
     }
 
     final cached = _referenceRectCache[key];
+    if (cached != null) {
+      return cached;
+    }
+
     final ownRenderObject = context.findRenderObject();
     final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
-    final refContext = key.currentContext;
+    final refContext = _resolveKeyContext(key);
     if (ownBox == null || refContext == null) {
       _hasUnresolvedReference = true;
       return cached;
@@ -632,6 +716,22 @@ class _AclContainerState extends State<AclContainer> {
     return rect;
   }
 
+  BuildContext? _resolveKeyContext(Key key) {
+    if (key is GlobalKey) {
+      return key.currentContext;
+    }
+
+    try {
+      final dynamic dynamicKey = key;
+      final dynamic context = dynamicKey.currentContext;
+      if (context is BuildContext) {
+        return context;
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
   double _estimateComponentWidth(AclComponent component, double? linkedWidth) {
     return (linkedWidth ??
             component.preferredSize?.width ??
@@ -644,6 +744,7 @@ class _AclContainerState extends State<AclContainer> {
   double _computeAlignmentDelta({
     required AclComponent component,
     required double plannedX,
+    required double? resolvedLinkedWidth,
   }) {
     final leftRefRect = _resolveReferencedRect(component.alignLeftToKey);
     if (leftRefRect != null) {
@@ -653,12 +754,9 @@ class _AclContainerState extends State<AclContainer> {
 
     final rightRefRect = _resolveReferencedRect(component.alignRightToKey);
     if (rightRefRect != null) {
-      final linkedWidth = component.useOtherDimX
-          ? _resolveReferenceWidth(component.referenceKey)
-          : null;
       final widthEstimate = _estimateComponentWidth(
         component,
-        linkedWidth ?? rightRefRect.width,
+        resolvedLinkedWidth ?? rightRefRect.width,
       );
       final targetLeft = rightRefRect.right - widthEstimate;
       return targetLeft - plannedX;
