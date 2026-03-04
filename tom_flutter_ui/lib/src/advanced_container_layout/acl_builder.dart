@@ -12,12 +12,23 @@ class _ComponentData {
   Size? minimumSize;
   Size? maximumSize;
   Key? referenceKey;
-  Key? alignLeftToKey;
-  Key? alignRightToKey;
-  double alignmentGap = 0;
+  Key? alignXToKey;
+  AclAxisPointX? alignXFrom;
+  AclAxisPointX? alignXTo;
+  double alignXGap = 0;
+  Key? alignYToKey;
+  AclAxisPointY? alignYFrom;
+  AclAxisPointY? alignYTo;
+  double alignYGap = 0;
+  AclRowCrossAlignment rowCrossAlignment = AclRowCrossAlignment.center;
   Key? componentKey;
 
-  _ComponentData({required this.child, this.flags = 0, this.gapBefore = 0});
+  _ComponentData({
+    required this.child,
+    this.flags = 0,
+    this.gapBefore = 0,
+    this.componentKey,
+  });
 
   AclComponent toComponent() {
     return AclComponent(
@@ -28,9 +39,15 @@ class _ComponentData {
       minimumSize: minimumSize,
       maximumSize: maximumSize,
       referenceKey: referenceKey,
-      alignLeftToKey: alignLeftToKey,
-      alignRightToKey: alignRightToKey,
-      alignmentGap: alignmentGap,
+      alignXToKey: alignXToKey,
+      alignXFrom: alignXFrom,
+      alignXTo: alignXTo,
+      alignXGap: alignXGap,
+      alignYToKey: alignYToKey,
+      alignYFrom: alignYFrom,
+      alignYTo: alignYTo,
+      alignYGap: alignYGap,
+      rowCrossAlignment: rowCrossAlignment,
       componentKey: componentKey,
     );
   }
@@ -62,6 +79,7 @@ class AclBuilder {
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
   Color? _backgroundColor;
+  final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
 
   AclBuilder() {
     _rows.add(_currentRow);
@@ -88,9 +106,9 @@ class AclBuilder {
     return this;
   }
 
-  AclBuilder setComp(Key referenceKey, int otherAttr) {
+  AclBuilder setComp(Object reference, int otherAttr) {
     if (_currentComponent != null) {
-      _currentComponent!.referenceKey = referenceKey;
+      _currentComponent!.referenceKey = _resolveReferenceKey(reference);
       _currentComponent!.flags |= (otherAttr & AclFlags.otherDim);
     }
     return this;
@@ -120,43 +138,242 @@ class AclBuilder {
   AclBuilder setKey(Key key) {
     if (_currentComponent != null) {
       _currentComponent!.componentKey = key;
+      _referenceKeyByObject[_currentComponent!.child] = key;
     }
     return this;
   }
 
-  AclBuilder sameSizeAs(Key referenceKey) =>
-      setComp(referenceKey, AclFlags.otherDim);
+  AclBuilder sameSizeAs(Object reference) =>
+      setComp(reference, AclFlags.otherDim);
 
-  AclBuilder sameWidthAs(Key referenceKey) =>
-      setComp(referenceKey, AclFlags.otherDimX);
+  AclBuilder sameWidthAs(Object reference) =>
+      setComp(reference, AclFlags.otherDimX);
 
-  AclBuilder sameHeightAs(Key referenceKey) =>
-      setComp(referenceKey, AclFlags.otherDimY);
+  AclBuilder sameHeightAs(Object reference) =>
+      setComp(reference, AclFlags.otherDimY);
 
-  AclBuilder alignLeftToComp(Key referenceKey, {double gap = 0}) {
+  AclBuilder alignLeftToComp(Object reference, {double gap = 0}) {
+    return alignLeftToLeft(reference, gap: gap);
+  }
+
+  AclBuilder alignRightToComp(Object reference, {double gap = 0}) {
+    return alignRightToRight(reference, gap: gap);
+  }
+
+  AclBuilder alignTopInRow() {
     if (_currentComponent != null) {
-      _currentComponent!.alignLeftToKey = referenceKey;
-      _currentComponent!.alignRightToKey = null;
-      _currentComponent!.alignmentGap = gap;
+      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.top;
     }
     return this;
   }
 
-  AclBuilder alignRightToComp(Key referenceKey, {double gap = 0}) {
+  AclBuilder alignCenterInRow() {
     if (_currentComponent != null) {
-      _currentComponent!.alignRightToKey = referenceKey;
-      _currentComponent!.alignLeftToKey = null;
-      _currentComponent!.alignmentGap = gap;
+      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.center;
     }
     return this;
+  }
+
+  AclBuilder alignBottomInRow() {
+    if (_currentComponent != null) {
+      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.bottom;
+    }
+    return this;
+  }
+
+  AclBuilder alignLeftToLeft(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.left,
+        referencePoint: AclAxisPointX.left,
+        gap: gap,
+      );
+
+  AclBuilder alignLeftToCenter(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.left,
+        referencePoint: AclAxisPointX.center,
+        gap: gap,
+      );
+
+  AclBuilder alignLeftToRight(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.left,
+        referencePoint: AclAxisPointX.right,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToLeft(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.center,
+        referencePoint: AclAxisPointX.left,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToCenter(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.center,
+        referencePoint: AclAxisPointX.center,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToRight(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.center,
+        referencePoint: AclAxisPointX.right,
+        gap: gap,
+      );
+
+  AclBuilder alignRightToLeft(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.right,
+        referencePoint: AclAxisPointX.left,
+        gap: gap,
+      );
+
+  AclBuilder alignRightToCenter(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.right,
+        referencePoint: AclAxisPointX.center,
+        gap: gap,
+      );
+
+  AclBuilder alignRightToRight(Object reference, {double gap = 0}) =>
+      _setHorizontalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointX.right,
+        referencePoint: AclAxisPointX.right,
+        gap: gap,
+      );
+
+  AclBuilder alignTopToTop(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.top,
+        referencePoint: AclAxisPointY.top,
+        gap: gap,
+      );
+
+  AclBuilder alignTopToCenter(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.top,
+        referencePoint: AclAxisPointY.center,
+        gap: gap,
+      );
+
+  AclBuilder alignTopToBottom(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.top,
+        referencePoint: AclAxisPointY.bottom,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToTop(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.center,
+        referencePoint: AclAxisPointY.top,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToCenterY(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.center,
+        referencePoint: AclAxisPointY.center,
+        gap: gap,
+      );
+
+  AclBuilder alignCenterToBottom(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.center,
+        referencePoint: AclAxisPointY.bottom,
+        gap: gap,
+      );
+
+  AclBuilder alignBottomToTop(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.bottom,
+        referencePoint: AclAxisPointY.top,
+        gap: gap,
+      );
+
+  AclBuilder alignBottomToCenter(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.bottom,
+        referencePoint: AclAxisPointY.center,
+        gap: gap,
+      );
+
+  AclBuilder alignBottomToBottom(Object reference, {double gap = 0}) =>
+      _setVerticalAlignment(
+        reference: reference,
+        selfPoint: AclAxisPointY.bottom,
+        referencePoint: AclAxisPointY.bottom,
+        gap: gap,
+      );
+
+  AclBuilder _setHorizontalAlignment({
+    required Object reference,
+    required AclAxisPointX selfPoint,
+    required AclAxisPointX referencePoint,
+    required double gap,
+  }) {
+    if (_currentComponent != null) {
+      _currentComponent!.alignXToKey = _resolveReferenceKey(reference);
+      _currentComponent!.alignXFrom = selfPoint;
+      _currentComponent!.alignXTo = referencePoint;
+      _currentComponent!.alignXGap = gap;
+    }
+    return this;
+  }
+
+  AclBuilder _setVerticalAlignment({
+    required Object reference,
+    required AclAxisPointY selfPoint,
+    required AclAxisPointY referencePoint,
+    required double gap,
+  }) {
+    if (_currentComponent != null) {
+      _currentComponent!.alignYToKey = _resolveReferenceKey(reference);
+      _currentComponent!.alignYFrom = selfPoint;
+      _currentComponent!.alignYTo = referencePoint;
+      _currentComponent!.alignYGap = gap;
+    }
+    return this;
+  }
+
+  Key _resolveReferenceKey(Object reference) {
+    if (reference is Key) {
+      return reference;
+    }
+    return _referenceKeyByObject.putIfAbsent(
+      reference,
+      () => GlobalKey(debugLabel: 'acl-ref-${_referenceKeyByObject.length}'),
+    );
   }
 
   AclBuilder append(Widget child, {double dist = 0}) {
+    final componentKey = _resolveReferenceKey(child);
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
       gapBefore: dist,
+      componentKey: componentKey,
     );
+    _referenceKeyByObject[child] = componentKey;
     _currentRow.components.add(_currentComponent!);
     return this;
   }

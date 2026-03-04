@@ -524,12 +524,24 @@ class ReferenceConstraintsDemo extends StatefulWidget {
 }
 
 class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
-  final GlobalKey _leftAnchorKey = GlobalKey(debugLabel: 'left-anchor');
-  final GlobalKey _rightAnchorKey = GlobalKey(debugLabel: 'right-anchor');
-  final GlobalKey _buttonAnchorKey = GlobalKey(debugLabel: 'button-anchor');
-
   @override
   Widget build(BuildContext context) {
+    final anchorLabel = const SizedBox(width: 140, child: Text('Anchor Label'));
+    final anchorField = const SizedBox(
+      width: 280,
+      child: TextField(
+        decoration: InputDecoration(
+          labelText: 'Anchor Field',
+          border: OutlineInputBorder(),
+          isDense: true,
+        ),
+      ),
+    );
+    final anchorButton = ElevatedButton(
+      onPressed: () {},
+      child: const Text('Anchor Action'),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -543,26 +555,12 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .append(const SizedBox(width: 140, child: Text('Anchor Label')))
-              .setKey(_leftAnchorKey)
-              .append(
-                const SizedBox(
-                  width: 280,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      labelText: 'Anchor Field',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                dist: 12,
-              )
-              .setKey(_rightAnchorKey)
+              .append(anchorLabel)
+              .append(anchorField, dist: 12)
               .newRow(dist: 10)
               .append(const SizedBox(child: Text('Linked Label A')))
-              .sameWidthAs(_leftAnchorKey)
-              .alignLeftToComp(_leftAnchorKey)
+              .sameWidthAs(anchorLabel)
+              .alignLeftToLeft(anchorLabel)
               .append(
                 const SizedBox(
                   child: TextField(
@@ -575,12 +573,13 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                 ),
                 dist: 12,
               )
-              .sameSizeAs(_rightAnchorKey)
-              .alignRightToComp(_rightAnchorKey)
+              .sameWidthAs(anchorField)
+              .sameHeightAs(anchorField)
+              .alignRightToRight(anchorField)
               .newRow(dist: 10)
               .append(const SizedBox(child: Text('Linked Label B')))
-              .sameWidthAs(_leftAnchorKey)
-              .alignLeftToComp(_leftAnchorKey)
+              .sameWidthAs(anchorLabel)
+              .alignLeftToLeft(anchorLabel)
               .append(
                 const SizedBox(
                   child: TextField(
@@ -593,17 +592,12 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                 ),
                 dist: 12,
               )
-              .sameSizeAs(_rightAnchorKey)
-              .alignRightToComp(_rightAnchorKey, gap: 16)
+              .sameWidthAs(anchorField)
+              .sameHeightAs(anchorField)
+              .alignRightToRight(anchorField, gap: 16)
               .newRow(dist: 14)
-              .append(
-                ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Anchor Action'),
-                ),
-              )
+              .append(anchorButton)
               .setPSize(220, 40)
-              .setKey(_buttonAnchorKey)
               .newRow(dist: 8)
               .append(
                 OutlinedButton(
@@ -611,7 +605,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                   child: const Text('Same Size Button'),
                 ),
               )
-              .sameSizeAs(_buttonAnchorKey)
+              .sameWidthAs(anchorButton)
+              .sameHeightAs(anchorButton)
               .build(),
         ),
         const SizedBox(height: 10),

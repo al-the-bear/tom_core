@@ -89,6 +89,30 @@ void main() {
           .build();
       expect(container.rows[0].components[0].minimumSize, const Size(50, 25));
     });
+
+    test('supports edge-to-edge APIs and keyless references', () {
+      final nameLabel = const SizedBox(width: 140, child: Text('Name'));
+      final nameField = const SizedBox(width: 280, child: Text('Name Field'));
+      final streetLabel = const SizedBox(child: Text('Street'));
+      final streetField = const SizedBox(child: Text('Street Field'));
+
+      final container = AclBuilder()
+          .append(nameLabel)
+          .append(nameField, dist: 10)
+          .newRow(dist: 8)
+          .append(streetLabel)
+          .alignLeftToLeft(nameLabel)
+          .append(streetField, dist: 10)
+          .sameWidthAs(nameField)
+          .sameHeightAs(nameField)
+          .alignRightToRight(nameField)
+          .build();
+
+      final linkedField = container.rows[1].components[1];
+      expect(linkedField.useOtherDimX, isTrue);
+      expect(linkedField.useOtherDimY, isTrue);
+      expect(linkedField.referenceKey, isNotNull);
+    });
   });
 
   group('AclContainer widget', () {
@@ -215,6 +239,8 @@ void main() {
       await tester.pumpWidget(widget);
       await tester.pump();
       await tester.pump();
+      await tester.pump();
+      await tester.pump();
 
       final anchorRect = tester.getRect(find.byKey(rightAnchorKey));
       final rectA = tester.getRect(find.byKey(alignedFieldAKey));
@@ -236,6 +262,62 @@ void main() {
         (linkedButtonRect.height - buttonAnchorRect.height).abs(),
         closeTo(0, 1.0),
       );
+    });
+
+    testWidgets('alignRightToRight gap counts to left (positive)', (
+      tester,
+    ) async {
+      final anchorField = Container(
+        key: const ValueKey('anchor-field'),
+        width: 220,
+        height: 36,
+        color: Colors.blue,
+      );
+      final linkedField = Container(
+        key: const ValueKey('linked-field'),
+        height: 36,
+        color: Colors.green,
+      );
+
+      final acl = AclBuilder()
+          .append(const SizedBox(width: 120, child: Text('Anchor')))
+          .append(anchorField, dist: 12)
+          .newRow(dist: 10)
+          .append(const SizedBox(width: 120, child: Text('Linked')))
+          .append(linkedField, dist: 12)
+          .sameWidthAs(anchorField)
+          .sameHeightAs(anchorField)
+          .alignRightToRight(anchorField, gap: 16)
+          .build();
+
+      final anchorComp = acl.rows[0].components[1];
+      final linkedComp = acl.rows[1].components[1];
+      expect(linkedComp.alignXToKey, same(anchorComp.componentKey));
+      expect(linkedComp.componentKey, isNot(same(anchorComp.componentKey)));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 900, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      final anchorRect = tester.getRect(
+        find.byKey(const ValueKey('anchor-field')),
+      );
+      final linkedRect = tester.getRect(
+        find.byKey(const ValueKey('linked-field')),
+      );
+
+      expect(
+        (linkedRect.right - (anchorRect.right - 16)).abs(),
+        closeTo(0, 1.0),
+      );
+      expect((linkedRect.width - anchorRect.width).abs(), closeTo(0, 1.0));
+      expect((linkedRect.height - anchorRect.height).abs(), closeTo(0, 1.0));
     });
   });
 }

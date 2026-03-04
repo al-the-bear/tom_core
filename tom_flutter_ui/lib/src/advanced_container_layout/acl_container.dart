@@ -5,6 +5,12 @@ import 'row_alignment.dart';
 
 enum AclBorderLineKind { single, doubleLine }
 
+enum AclAxisPointX { left, center, right }
+
+enum AclAxisPointY { top, center, bottom }
+
+enum AclRowCrossAlignment { top, center, bottom }
+
 class AclBorderStyle {
   final bool enabled;
   final bool rounded;
@@ -82,9 +88,15 @@ class AclComponent {
   final Size? minimumSize;
   final Size? maximumSize;
   final Key? referenceKey;
-  final Key? alignLeftToKey;
-  final Key? alignRightToKey;
-  final double alignmentGap;
+  final Key? alignXToKey;
+  final AclAxisPointX? alignXFrom;
+  final AclAxisPointX? alignXTo;
+  final double alignXGap;
+  final Key? alignYToKey;
+  final AclAxisPointY? alignYFrom;
+  final AclAxisPointY? alignYTo;
+  final double alignYGap;
+  final AclRowCrossAlignment rowCrossAlignment;
   final Key? componentKey;
 
   const AclComponent({
@@ -95,9 +107,15 @@ class AclComponent {
     this.minimumSize,
     this.maximumSize,
     this.referenceKey,
-    this.alignLeftToKey,
-    this.alignRightToKey,
-    this.alignmentGap = 0,
+    this.alignXToKey,
+    this.alignXFrom,
+    this.alignXTo,
+    this.alignXGap = 0,
+    this.alignYToKey,
+    this.alignYFrom,
+    this.alignYTo,
+    this.alignYGap = 0,
+    this.rowCrossAlignment = AclRowCrossAlignment.center,
     this.componentKey,
   });
 
@@ -465,28 +483,21 @@ class _AclContainerState extends State<AclContainer> {
 
       final resolvedLinkedWidth = component.useOtherDimX
           ? (_resolveReferenceWidth(component.referenceKey) ??
-                _resolveReferencedRect(component.alignRightToKey)?.width)
+                _resolveReferencedRect(component.alignXToKey)?.width)
           : null;
       final resolvedLinkedHeight = component.useOtherDimY
           ? _resolveReferenceHeight(component.referenceKey)
           : null;
 
-      final alignmentDelta = _computeAlignmentDelta(
+      final alignmentDelta = _computeHorizontalAlignmentDelta(
         component: component,
         plannedX: plannedX,
         resolvedLinkedWidth: resolvedLinkedWidth,
       );
 
-      final explicitRightOffset = component.alignRightToKey != null
-          ? component.alignmentGap
-          : 0.0;
-      final effectiveAlignmentDelta = alignmentDelta - explicitRightOffset;
-
-      if (effectiveAlignmentDelta > 0) {
-        children.add(SizedBox(width: effectiveAlignmentDelta));
-        plannedX += effectiveAlignmentDelta;
-      } else if (effectiveAlignmentDelta < 0) {
-        plannedX += effectiveAlignmentDelta;
+      if (alignmentDelta > 0) {
+        children.add(SizedBox(width: alignmentDelta));
+        plannedX += alignmentDelta;
       }
 
       Widget child = component.child;
@@ -536,12 +547,30 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       if (component.componentKey != null) {
-        child = SizedBox(key: component.componentKey, child: child);
+        child = Align(
+          key: component.componentKey,
+          alignment: Alignment.centerLeft,
+          widthFactor: 1,
+          heightFactor: 1,
+          child: child,
+        );
       }
 
-      if (effectiveAlignmentDelta < 0) {
+      child = _wrapWithRowCrossAlignment(child, component.rowCrossAlignment);
+
+      if (alignmentDelta < 0) {
         child = Transform.translate(
-          offset: Offset(effectiveAlignmentDelta, 0),
+          offset: Offset(alignmentDelta, 0),
+          child: child,
+        );
+      }
+
+      final verticalAlignmentOffset = _computeVerticalAlignmentOffset(
+        component,
+      );
+      if (verticalAlignmentOffset != 0) {
+        child = Transform.translate(
+          offset: Offset(0, verticalAlignmentOffset),
           child: child,
         );
       }
@@ -588,16 +617,13 @@ class _AclContainerState extends State<AclContainer> {
 
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Row(
-                mainAxisAlignment: mainAxisAlignment,
-                crossAxisAlignment: hasExpandY && canExpandVertically
-                    ? CrossAxisAlignment.stretch
-                    : CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: boundedChildren,
-              ),
+            child: Row(
+              mainAxisAlignment: mainAxisAlignment,
+              crossAxisAlignment: hasExpandY && canExpandVertically
+                  ? CrossAxisAlignment.stretch
+                  : CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: boundedChildren,
             ),
           );
         },
@@ -733,6 +759,11 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   double _estimateComponentWidth(AclComponent component, double? linkedWidth) {
+    final measuredWidth = _resolveReferenceWidth(component.componentKey);
+    if (measuredWidth != null) {
+      return measuredWidth.clamp(0, double.infinity).toDouble();
+    }
+
     return (linkedWidth ??
             component.preferredSize?.width ??
             component.minimumSize?.width ??
@@ -741,29 +772,91 @@ class _AclContainerState extends State<AclContainer> {
         .toDouble();
   }
 
-  double _computeAlignmentDelta({
+  double _computeHorizontalAlignmentDelta({
     required AclComponent component,
     required double plannedX,
     required double? resolvedLinkedWidth,
   }) {
-    final leftRefRect = _resolveReferencedRect(component.alignLeftToKey);
-    if (leftRefRect != null) {
-      final targetLeft = leftRefRect.left + component.alignmentGap;
-      return targetLeft - plannedX;
+    if (component.alignXToKey == null ||
+        component.alignXFrom == null ||
+        component.alignXTo == null) {
+      return 0;
     }
 
-    final rightRefRect = _resolveReferencedRect(component.alignRightToKey);
-    if (rightRefRect != null) {
-      final widthEstimate = _estimateComponentWidth(
-        component,
-        resolvedLinkedWidth ?? rightRefRect.width,
-      );
-      final targetLeft = rightRefRect.right - widthEstimate;
-      return targetLeft - plannedX;
+    final refRect = _resolveReferencedRect(component.alignXToKey);
+    if (refRect == null) {
+      _hasUnresolvedReference = true;
+      return 0;
     }
 
-    return 0;
+    final widthEstimate = _estimateComponentWidth(
+      component,
+      resolvedLinkedWidth ?? refRect.width,
+    );
+    final currentLocalPoint =
+        plannedX + _horizontalOffset(component.alignXFrom!, widthEstimate);
+    final targetLocalPoint = _horizontalPoint(refRect, component.alignXTo!);
+    final desiredLocalPoint = targetLocalPoint - component.alignXGap;
+    return desiredLocalPoint - currentLocalPoint;
   }
+
+  double _computeVerticalAlignmentOffset(AclComponent component) {
+    if (component.componentKey == null ||
+        component.alignYToKey == null ||
+        component.alignYFrom == null ||
+        component.alignYTo == null) {
+      return 0;
+    }
+
+    final selfRect = _resolveReferencedRect(component.componentKey);
+    final refRect = _resolveReferencedRect(component.alignYToKey);
+    if (selfRect == null || refRect == null) {
+      _hasUnresolvedReference = true;
+      return 0;
+    }
+
+    final currentPoint = _verticalPoint(selfRect, component.alignYFrom!);
+    final targetPoint = _verticalPoint(refRect, component.alignYTo!);
+    final desiredPoint = targetPoint - component.alignYGap;
+    return desiredPoint - currentPoint;
+  }
+
+  Widget _wrapWithRowCrossAlignment(
+    Widget child,
+    AclRowCrossAlignment rowCrossAlignment,
+  ) {
+    final alignment = switch (rowCrossAlignment) {
+      AclRowCrossAlignment.top => Alignment.topCenter,
+      AclRowCrossAlignment.center => Alignment.center,
+      AclRowCrossAlignment.bottom => Alignment.bottomCenter,
+    };
+
+    return Align(
+      alignment: alignment,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: child,
+    );
+  }
+
+  double _horizontalPoint(Rect rect, AclAxisPointX point) => switch (point) {
+    AclAxisPointX.left => rect.left,
+    AclAxisPointX.center => rect.center.dx,
+    AclAxisPointX.right => rect.right,
+  };
+
+  double _verticalPoint(Rect rect, AclAxisPointY point) => switch (point) {
+    AclAxisPointY.top => rect.top,
+    AclAxisPointY.center => rect.center.dy,
+    AclAxisPointY.bottom => rect.bottom,
+  };
+
+  double _horizontalOffset(AclAxisPointX point, double width) =>
+      switch (point) {
+        AclAxisPointX.left => 0,
+        AclAxisPointX.center => width / 2,
+        AclAxisPointX.right => width,
+      };
 }
 
 class AclLayout extends StatelessWidget {
