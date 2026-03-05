@@ -574,7 +574,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(anchorLabel)
@@ -644,7 +644,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(centerAnchor)
@@ -667,7 +667,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(verticalAnchor)
@@ -696,7 +696,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(topBottomAnchor)
@@ -725,7 +725,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(bottomTopAnchor)
@@ -776,7 +776,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(const SizedBox(width: 140, child: Text('12 chars:')))
