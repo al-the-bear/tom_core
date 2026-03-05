@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'acl_flags.dart';
@@ -167,6 +169,7 @@ class _AclContainerState extends State<AclContainer> {
   bool _referenceCacheRefreshScheduled = false;
   final Map<Key, Size> _referenceSizeCache = {};
   final Map<Key, Rect> _referenceRectCache = {};
+  final Map<Key, double> _appliedVerticalOffsetByKey = {};
 
   @override
   void dispose() {
@@ -494,6 +497,9 @@ class _AclContainerState extends State<AclContainer> {
 
     final children = <Widget>[];
     double plannedX = 0;
+    double minVerticalOffset = 0;
+    double maxVerticalExtent = 0;
+    double rowEstimatedHeight = 0;
     for (final component in row.components) {
       if (component.gapBefore > 0) {
         children.add(SizedBox(width: component.gapBefore));
@@ -565,6 +571,9 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
+      final estimatedHeight = _estimateComponentHeight(component, linkedHeight);
+      rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
+
       if (component.componentKey != null) {
         child = Align(
           key: component.componentKey,
@@ -587,6 +596,16 @@ class _AclContainerState extends State<AclContainer> {
       final verticalAlignmentOffset = _computeVerticalAlignmentOffset(
         component,
       );
+      minVerticalOffset = math.min(minVerticalOffset, verticalAlignmentOffset);
+      maxVerticalExtent = math.max(
+        maxVerticalExtent,
+        verticalAlignmentOffset + estimatedHeight,
+      );
+
+      final componentKey = component.componentKey;
+      if (componentKey != null) {
+        _appliedVerticalOffsetByKey[componentKey] = verticalAlignmentOffset;
+      }
       if (verticalAlignmentOffset != 0) {
         child = Transform.translate(
           offset: Offset(0, verticalAlignmentOffset),
@@ -657,6 +676,15 @@ class _AclContainerState extends State<AclContainer> {
             ? MainAxisSize.max
             : MainAxisSize.min,
         children: children,
+      );
+    }
+
+    final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
+    final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
+    if (extraTop > 0 || extraBottom > 0) {
+      rowWidget = Padding(
+        padding: EdgeInsets.only(top: extraTop, bottom: extraBottom),
+        child: rowWidget,
       );
     }
 
@@ -791,6 +819,23 @@ class _AclContainerState extends State<AclContainer> {
         .toDouble();
   }
 
+  double _estimateComponentHeight(
+    AclComponent component,
+    double? linkedHeight,
+  ) {
+    final measuredHeight = _resolveReferenceHeight(component.componentKey);
+    if (measuredHeight != null) {
+      return measuredHeight.clamp(0, double.infinity).toDouble();
+    }
+
+    return (linkedHeight ??
+            component.preferredSize?.height ??
+            component.minimumSize?.height ??
+            0)
+        .clamp(0, double.infinity)
+        .toDouble();
+  }
+
   double _computeHorizontalAlignmentDelta({
     required AclComponent component,
     required double plannedX,
@@ -834,7 +879,16 @@ class _AclContainerState extends State<AclContainer> {
       return 0;
     }
 
-    final currentPoint = _verticalPoint(selfRect, component.alignYFrom!);
+    final previousOffset =
+        _appliedVerticalOffsetByKey[component.componentKey] ?? 0;
+    final unshiftedSelfRect = previousOffset == 0
+        ? selfRect
+        : selfRect.translate(0, -previousOffset);
+
+    final currentPoint = _verticalPoint(
+      unshiftedSelfRect,
+      component.alignYFrom!,
+    );
     final targetPoint = _verticalPoint(refRect, component.alignYTo!);
     final desiredPoint = targetPoint - component.alignYGap;
     return desiredPoint - currentPoint;

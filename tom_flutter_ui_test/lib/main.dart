@@ -555,6 +555,14 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       width: 220,
       child: _DemoBox('Anchor Y', Colors.deepPurple),
     );
+    final topBottomAnchor = const SizedBox(
+      width: 220,
+      child: _DemoBox('Anchor (top->bottom)', Colors.deepOrange),
+    );
+    final bottomTopAnchor = const SizedBox(
+      width: 220,
+      child: _DemoBox('Anchor (bottom->top)', Colors.blueGrey),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,6 +686,64 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         const Text(
           'Expected: follower center Y aligns with anchor Y center without jumping.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Vertical alignTopToBottom reference alignment:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(topBottomAnchor)
+              .setPSize(220, 64)
+              .append(const SizedBox(width: 24))
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: _DemoBox('Follower top->anchor bottom', Colors.green),
+                ),
+              )
+              .setPSize(220, 36)
+              .alignTopToBottom(topBottomAnchor)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: follower top edge aligns to anchor bottom edge.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Vertical alignBottomToTop reference alignment:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(bottomTopAnchor)
+              .setPSize(220, 64)
+              .append(const SizedBox(width: 24))
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: _DemoBox('Follower bottom->anchor top', Colors.purple),
+                ),
+              )
+              .setPSize(220, 36)
+              .alignBottomToTop(bottomTopAnchor)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: follower bottom edge aligns to anchor top edge.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
