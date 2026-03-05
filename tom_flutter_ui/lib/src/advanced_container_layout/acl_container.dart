@@ -159,6 +159,7 @@ class AclContainer extends StatefulWidget {
 }
 
 class _AclContainerState extends State<AclContainer> {
+  static const double _geometryEpsilon = 0.5;
   final FocusNode _focusNode = FocusNode();
   bool _hasFocusWithin = false;
   bool _hasUnresolvedReference = false;
@@ -264,11 +265,11 @@ class _AclContainerState extends State<AclContainer> {
         );
         final rect = topLeft & size;
 
-        if (_referenceSizeCache[key] != size) {
+        if (!_isSameSize(_referenceSizeCache[key], size)) {
           _referenceSizeCache[key] = size;
           changed = true;
         }
-        if (_referenceRectCache[key] != rect) {
+        if (!_isSameRect(_referenceRectCache[key], rect)) {
           _referenceRectCache[key] = rect;
           changed = true;
         }
@@ -289,6 +290,24 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
     }
+  }
+
+  bool _isSameSize(Size? a, Size b) {
+    if (a == null) {
+      return false;
+    }
+    return (a.width - b.width).abs() < _geometryEpsilon &&
+        (a.height - b.height).abs() < _geometryEpsilon;
+  }
+
+  bool _isSameRect(Rect? a, Rect b) {
+    if (a == null) {
+      return false;
+    }
+    return (a.left - b.left).abs() < _geometryEpsilon &&
+        (a.top - b.top).abs() < _geometryEpsilon &&
+        (a.width - b.width).abs() < _geometryEpsilon &&
+        (a.height - b.height).abs() < _geometryEpsilon;
   }
 
   Widget _wrapWithBorder(Widget content, AclBorderStyle style) {

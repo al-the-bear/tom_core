@@ -138,6 +138,21 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setWidthInChars(
+    int chars, {
+    double charWidth = 8,
+    double height = 40,
+  }) {
+    if (_currentComponent == null) {
+      return this;
+    }
+
+    final width = (chars * charWidth).clamp(0, double.infinity).toDouble();
+    final currentHeight = _currentComponent!.preferredSize?.height ?? height;
+    _currentComponent!.preferredSize = Size(width, currentHeight);
+    return this;
+  }
+
   AclBuilder setMSize(double width, double height) {
     if (_currentComponent != null) {
       _currentComponent!.minimumSize = Size(width, height);

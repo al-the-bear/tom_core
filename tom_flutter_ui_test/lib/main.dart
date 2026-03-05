@@ -653,7 +653,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'Vertical reference alignment (center Y to center Y):',
+          'Vertical reference alignment (single-row, center Y to center Y):',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -662,16 +662,9 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .append(
-                const SizedBox(
-                  width: 240,
-                  child: _DemoBox('Top filler', Colors.orange),
-                ),
-              )
-              .newRow(dist: 10)
               .append(verticalAnchor)
               .setPSize(220, 70)
-              .newRow(dist: 16)
+              .append(const SizedBox(width: 24))
               .append(
                 const SizedBox(
                   width: 220,
@@ -684,7 +677,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Expected: follower center Y aligns with anchor Y center (cross-row vertical alignment).',
+          'Expected: follower center Y aligns with anchor Y center without jumping.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -700,9 +693,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
     final monoStyle = Theme.of(
       context,
     ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace');
-    final width12 = _measureWidthInChars(context, 12, style: monoStyle);
-    final width24 = _measureWidthInChars(context, 24, style: monoStyle);
-    final width36 = _measureWidthInChars(context, 36, style: monoStyle);
+    final charWidth = _measureWidthInChars(context, 1, style: monoStyle);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -713,7 +704,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'There is no dedicated setWidthInChars() API currently, so this demo measures text width and applies it via setPSize(width, height).',
+          'Using setWidthInChars(chars, charWidth: ..., height: ...). The sample derives charWidth from the current monospace style.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 12),
@@ -733,7 +724,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setPSize(width12, 40)
+              .setWidthInChars(12, charWidth: charWidth, height: 40)
               .newRow(dist: 10)
               .append(const SizedBox(width: 140, child: Text('24 chars:')))
               .append(
@@ -746,7 +737,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setPSize(width24, 40)
+              .setWidthInChars(24, charWidth: charWidth, height: 40)
               .newRow(dist: 10)
               .append(const SizedBox(width: 140, child: Text('36 chars:')))
               .append(
@@ -759,17 +750,17 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setPSize(width36, 40)
+              .setWidthInChars(36, charWidth: charWidth, height: 40)
               .build(),
         ),
         const SizedBox(height: 12),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
-final width = measureWidthInChars(context, 24, style: monospaceStyle);
+    final charWidth = measureWidthInChars(context, 1, style: monospaceStyle);
 
 AclBuilder()
     .append(TextField(style: monospaceStyle))
-    .setPSize(width, 40)
+      .setWidthInChars(24, charWidth: charWidth, height: 40)
     .build();
 '''),
       ],
