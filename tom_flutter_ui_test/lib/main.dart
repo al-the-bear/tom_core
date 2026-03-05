@@ -89,8 +89,18 @@ class _AclTab extends StatelessWidget {
           screen: ReferenceConstraintsDemo(),
         ),
         _DemoTile(
+          title: 'Convenience Placement',
+          description: 'addBelow/addLeft/addAbove/addRight composition',
+          screen: ConveniencePlacementDemo(),
+        ),
+        _DemoTile(
+          title: 'Mixed Placement Playground',
+          description: 'Mix convenience placement with rows and expandX',
+          screen: MixedPlacementPlaygroundDemo(),
+        ),
+        _DemoTile(
           title: 'Character Width Sizing',
-          description: 'setPSize with width measured from character count',
+          description: 'setWidthInChars for character-based field widths',
           screen: CharacterWidthSizingDemo(),
         ),
         _DemoTile(
@@ -866,6 +876,172 @@ AclBuilder()
       .setWidthInChars(24, charWidth: charWidth, height: 40)
     .build();
 '''),
+      ],
+    );
+  }
+}
+
+class ConveniencePlacementDemo extends StatelessWidget {
+  const ConveniencePlacementDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final firstWidget = const SizedBox(
+      width: 170,
+      child: _DemoBox('First', Colors.indigo),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Convenience placement methods chained from the previously appended widget:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(firstWidget)
+              .setPSize(170, 50)
+              .addBelow(
+                const SizedBox(
+                  width: 170,
+                  child: _DemoBox('Second', Colors.teal),
+                ),
+                vGap: 10,
+              )
+              .setPSize(170, 40)
+              .addLeft(
+                const SizedBox(
+                  width: 130,
+                  child: _DemoBox('Third', Colors.orange),
+                ),
+                hGap: 12,
+              )
+              .setPSize(130, 40)
+              .addAbove(
+                const SizedBox(
+                  width: 130,
+                  child: _DemoBox('Fourth', Colors.purple),
+                ),
+                vGap: 8,
+              )
+              .setPSize(130, 36)
+              .addRight(
+                const SizedBox(
+                  width: 150,
+                  child: _DemoBox('Fifth', Colors.blueGrey),
+                ),
+                hGap: 10,
+              )
+              .setPSize(150, 36)
+              .append(
+                const SizedBox(
+                  width: 170,
+                  child: _DemoBox('Sixth', Colors.lightBlue),
+                ),
+                dist: 12,
+              )
+              .setPSize(170, 40)
+              .newRow(dist: 14)
+              .append(const _DemoBox('Seventh expandX', Colors.green))
+              .expandX()
+              .append(const _DemoBox('Eighth expandX', Colors.red), dist: 8)
+              .expandX()
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: First/Second stack vertically; Third/Fourth/Fifth branch around the previous component; Seventh/Eighth share row width via expandX.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
+class MixedPlacementPlaygroundDemo extends StatelessWidget {
+  const MixedPlacementPlaygroundDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final formAnchor = const SizedBox(
+      width: 220,
+      child: _DemoBox('Form Anchor', Colors.deepPurple),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Mixed mode playground (regular rows + convenience placement + sameSize):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(formAnchor)
+              .setPSize(220, 56)
+              .addBelow(
+                const SizedBox(
+                  width: 220,
+                  child: TextField(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Below + left aligned',
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                vGap: 12,
+              )
+              .setPSize(220, 44)
+              .addRight(
+                const SizedBox(
+                  width: 200,
+                  child: _DemoBox('Hint Panel', Colors.teal),
+                ),
+                hGap: 12,
+                vOffset: 4,
+              )
+              .setPSize(200, 56)
+              .addAbove(
+                const SizedBox(
+                  width: 200,
+                  child: _DemoBox('Status', Colors.orange),
+                ),
+                vGap: 6,
+              )
+              .setPSize(200, 30)
+              .newRow(dist: 16)
+              .append(
+                ElevatedButton(
+                  onPressed: () {},
+                  child: const Text('Primary Action'),
+                ),
+              )
+              .setPSize(220, 40)
+              .append(
+                OutlinedButton(
+                  onPressed: () {},
+                  child: const Text('Mirror Size'),
+                ),
+                dist: 12,
+              )
+              .sameSize(formAnchor)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: combination of relative-placement constraints and standard row sequencing; final button mirrors anchor dimensions via sameSize().',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
       ],
     );
   }

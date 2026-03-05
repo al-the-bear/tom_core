@@ -113,6 +113,73 @@ void main() {
       expect(linkedField.useOtherDimY, isTrue);
       expect(linkedField.referenceKey, isNotNull);
     });
+
+    test('sameSize links width and height to reference', () {
+      final anchor = Container();
+      final follower = Container();
+
+      final container = AclBuilder()
+          .append(anchor)
+          .append(follower)
+          .sameSize(anchor)
+          .build();
+
+      final linked = container.rows[0].components[1];
+      expect(linked.useOtherDimX, isTrue);
+      expect(linked.useOtherDimY, isTrue);
+      expect(
+        linked.referenceKey,
+        same(container.rows[0].components[0].componentKey),
+      );
+    });
+
+    test('convenience placement APIs set expected alignments', () {
+      final first = Container();
+      final second = Container();
+      final third = Container();
+      final fourth = Container();
+      final fifth = Container();
+
+      final container = AclBuilder()
+          .append(first)
+          .addBelow(second, vGap: 10, hOffset: 4)
+          .addLeft(third, hGap: 6, vOffset: 3)
+          .addAbove(fourth, vGap: 8, hOffset: 2)
+          .addRight(fifth, hGap: 5, vOffset: 1)
+          .build();
+
+      final c2 = container.rows[0].components[1];
+      expect(c2.alignYFrom, AclAxisPointY.top);
+      expect(c2.alignYTo, AclAxisPointY.bottom);
+      expect(c2.alignYGap, -10);
+      expect(c2.alignXFrom, AclAxisPointX.left);
+      expect(c2.alignXTo, AclAxisPointX.left);
+      expect(c2.alignXGap, -4);
+
+      final c3 = container.rows[0].components[2];
+      expect(c3.alignXFrom, AclAxisPointX.right);
+      expect(c3.alignXTo, AclAxisPointX.left);
+      expect(c3.alignXGap, 6);
+      expect(c3.alignYFrom, AclAxisPointY.top);
+      expect(c3.alignYTo, AclAxisPointY.top);
+      expect(c3.alignYGap, -3);
+
+      final c4 = container.rows[0].components[3];
+      expect(c4.alignYFrom, AclAxisPointY.bottom);
+      expect(c4.alignYTo, AclAxisPointY.top);
+      expect(c4.alignYGap, 8);
+      expect(c4.alignXFrom, AclAxisPointX.left);
+      expect(c4.alignXTo, AclAxisPointX.left);
+      expect(c4.alignXGap, -2);
+
+      final c5 = container.rows[0].components[4];
+      expect(c5.alignXFrom, AclAxisPointX.left);
+      expect(c5.alignXTo, AclAxisPointX.right);
+      expect(c5.alignXGap, -5);
+      expect(c5.alignYFrom, AclAxisPointY.top);
+      expect(c5.alignYTo, AclAxisPointY.top);
+      expect(c5.alignYGap, -1);
+    });
   });
 
   group('AclContainer widget', () {

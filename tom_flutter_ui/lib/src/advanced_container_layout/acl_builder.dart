@@ -173,6 +173,9 @@ class AclBuilder {
   AclBuilder sameHeightAs(Object reference) =>
       setComp(reference, AclFlags.otherDimY);
 
+  AclBuilder sameSize(Object reference) =>
+      setComp(reference, AclFlags.otherDim);
+
   AclBuilder alignTopInRow() {
     if (_currentComponent != null) {
       _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.top;
@@ -375,6 +378,58 @@ class AclBuilder {
     return _referenceKeyByObject.putIfAbsent(
       reference,
       () => GlobalKey(debugLabel: 'acl-ref-${_referenceKeyByObject.length}'),
+    );
+  }
+
+  AclBuilder _appendRelative(
+    Widget child,
+    void Function(Object anchor) applyAlignment,
+  ) {
+    final anchor = _currentComponent?.child;
+    append(child);
+    if (anchor != null) {
+      applyAlignment(anchor);
+    }
+    return this;
+  }
+
+  AclBuilder addBelow(Widget child, {double vGap = 0, double hOffset = 0}) {
+    return _appendRelative(
+      child,
+      (anchor) => alignTopToBottom(
+        anchor,
+        gap: -vGap,
+      ).alignLeftToLeft(anchor, gap: -hOffset),
+    );
+  }
+
+  AclBuilder addLeft(Widget child, {double hGap = 0, double vOffset = 0}) {
+    return _appendRelative(
+      child,
+      (anchor) => alignRightToLeft(
+        anchor,
+        gap: hGap,
+      ).alignTopToTop(anchor, gap: -vOffset),
+    );
+  }
+
+  AclBuilder addAbove(Widget child, {double vGap = 0, double hOffset = 0}) {
+    return _appendRelative(
+      child,
+      (anchor) => alignBottomToTop(
+        anchor,
+        gap: vGap,
+      ).alignLeftToLeft(anchor, gap: -hOffset),
+    );
+  }
+
+  AclBuilder addRight(Widget child, {double hGap = 0, double vOffset = 0}) {
+    return _appendRelative(
+      child,
+      (anchor) => alignLeftToRight(
+        anchor,
+        gap: -hGap,
+      ).alignTopToTop(anchor, gap: -vOffset),
     );
   }
 
