@@ -84,8 +84,14 @@ class _AclTab extends StatelessWidget {
         ),
         _DemoTile(
           title: 'Reference Constraints',
-          description: 'same-size and left/right edge alignment to references',
+          description:
+              'same-size plus left/right/center/vertical alignment to references',
           screen: ReferenceConstraintsDemo(),
+        ),
+        _DemoTile(
+          title: 'Character Width Sizing',
+          description: 'setPSize with width measured from character count',
+          screen: CharacterWidthSizingDemo(),
         ),
         _DemoTile(
           title: 'Border Styles',
@@ -541,6 +547,14 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       onPressed: () {},
       child: const Text('Anchor Action'),
     );
+    final centerAnchor = const SizedBox(
+      width: 320,
+      child: _DemoBox('Anchor (center)', Colors.indigo),
+    );
+    final verticalAnchor = const SizedBox(
+      width: 220,
+      child: _DemoBox('Anchor Y', Colors.deepPurple),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -614,9 +628,166 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           'Expected: labels match anchor label width; first linked field right-edge matches anchor field; second linked field is offset by +16 from that edge; last button mirrors anchor action size.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
+        const SizedBox(height: 20),
+        const Text(
+          'Center-to-center reference alignment:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(centerAnchor)
+              .newRow(dist: 10)
+              .append(const _DemoBox('Follower', Colors.cyan))
+              .setPSize(140, 40)
+              .alignCenterToCenter(centerAnchor)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: follower center X equals anchor field center X.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Vertical reference alignment (center Y to center Y):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(
+                const SizedBox(
+                  width: 240,
+                  child: _DemoBox('Top filler', Colors.orange),
+                ),
+              )
+              .newRow(dist: 10)
+              .append(verticalAnchor)
+              .setPSize(220, 70)
+              .newRow(dist: 16)
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: _DemoBox('Follower Y', Colors.teal),
+                ),
+              )
+              .setPSize(220, 40)
+              .alignCenterToCenterY(verticalAnchor)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: follower center Y aligns with anchor Y center (cross-row vertical alignment).',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
       ],
     );
   }
+}
+
+class CharacterWidthSizingDemo extends StatelessWidget {
+  const CharacterWidthSizingDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final monoStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace');
+    final width12 = _measureWidthInChars(context, 12, style: monoStyle);
+    final width24 = _measureWidthInChars(context, 24, style: monoStyle);
+    final width36 = _measureWidthInChars(context, 36, style: monoStyle);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Character-based width sizing (setWidthInChars-style):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'There is no dedicated setWidthInChars() API currently, so this demo measures text width and applies it via setPSize(width, height).',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const SizedBox(width: 140, child: Text('12 chars:')))
+              .append(
+                TextField(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  style: monoStyle,
+                ),
+                dist: 12,
+              )
+              .setPSize(width12, 40)
+              .newRow(dist: 10)
+              .append(const SizedBox(width: 140, child: Text('24 chars:')))
+              .append(
+                TextField(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  style: monoStyle,
+                ),
+                dist: 12,
+              )
+              .setPSize(width24, 40)
+              .newRow(dist: 10)
+              .append(const SizedBox(width: 140, child: Text('36 chars:')))
+              .append(
+                TextField(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  style: monoStyle,
+                ),
+                dist: 12,
+              )
+              .setPSize(width36, 40)
+              .build(),
+        ),
+        const SizedBox(height: 12),
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+final width = measureWidthInChars(context, 24, style: monospaceStyle);
+
+AclBuilder()
+    .append(TextField(style: monospaceStyle))
+    .setPSize(width, 40)
+    .build();
+'''),
+      ],
+    );
+  }
+}
+
+double _measureWidthInChars(
+  BuildContext context,
+  int chars, {
+  TextStyle? style,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(text: 'W' * chars, style: style),
+    textDirection: Directionality.of(context),
+    maxLines: 1,
+  )..layout();
+  return painter.width;
 }
 
 class BorderStylesDemo extends StatelessWidget {
