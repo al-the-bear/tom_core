@@ -580,6 +580,15 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
+      final hasFiniteMaxWidth =
+          (component.maximumSize?.width ?? double.infinity).isFinite;
+      if (!isFlexNativeChild &&
+          component.expandX &&
+          canExpandHorizontally &&
+          !hasFiniteMaxWidth) {
+        child = SizedBox(width: double.infinity, child: child);
+      }
+
       final estimatedHeight = _estimateComponentHeight(component, linkedHeight);
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
       final estimatedWidth = _estimateComponentWidth(component, linkedWidth);
@@ -679,15 +688,29 @@ class _AclContainerState extends State<AclContainer> {
               )
               .toList();
 
+          final rowContent = Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: hasExpandY && canExpandVertically
+                ? CrossAxisAlignment.stretch
+                : CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: boundedChildren,
+          );
+
+          final alignment = switch (mainAxisAlignment) {
+            MainAxisAlignment.end ||
+            MainAxisAlignment.spaceBetween ||
+            MainAxisAlignment.spaceAround ||
+            MainAxisAlignment.spaceEvenly => Alignment.centerRight,
+            MainAxisAlignment.center => Alignment.center,
+            _ => Alignment.centerLeft,
+          };
+
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: Row(
-              mainAxisAlignment: mainAxisAlignment,
-              crossAxisAlignment: hasExpandY && canExpandVertically
-                  ? CrossAxisAlignment.stretch
-                  : CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: boundedChildren,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Align(alignment: alignment, child: rowContent),
             ),
           );
         },

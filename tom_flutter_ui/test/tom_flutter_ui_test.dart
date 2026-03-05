@@ -606,6 +606,96 @@ void main() {
       },
     );
 
+    testWidgets('row alignment left center right is respected', (tester) async {
+      final leftKey = GlobalKey(debugLabel: 'align-left');
+      final centerKey = GlobalKey(debugLabel: 'align-center');
+      final rightKey = GlobalKey(debugLabel: 'align-right');
+
+      final acl = AclBuilder()
+          .append(SizedBox(key: leftKey, width: 100, height: 32))
+          .setRowAlignment(RowAlignment.left)
+          .newRow(dist: 8)
+          .append(SizedBox(key: centerKey, width: 100, height: 32))
+          .setRowAlignment(RowAlignment.center)
+          .newRow(dist: 8)
+          .append(SizedBox(key: rightKey, width: 100, height: 32))
+          .setRowAlignment(RowAlignment.right)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 600, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final leftRect = tester.getRect(find.byKey(leftKey));
+      final centerRect = tester.getRect(find.byKey(centerKey));
+      final rightRect = tester.getRect(find.byKey(rightKey));
+
+      expect(leftRect.left < centerRect.left, isTrue);
+      expect(centerRect.left < rightRect.left, isTrue);
+      expect(centerRect.left, closeTo(250, 8));
+      expect(rightRect.left, closeTo(500, 8));
+    });
+
+    testWidgets('single expandX child grows between fixed siblings', (
+      tester,
+    ) async {
+      const leftKey = ValueKey('fixed-left');
+      const middleKey = ValueKey('expand-middle');
+      const rightKey = ValueKey('fixed-right');
+
+      final acl = AclBuilder()
+          .append(SizedBox(key: leftKey, width: 120, height: 36))
+          .append(SizedBox(key: middleKey, height: 36), dist: 8)
+          .setAttr(AclFlags.expandX)
+          .append(SizedBox(key: rightKey, width: 120, height: 36), dist: 8)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 640, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final leftRect = tester.getRect(find.byKey(leftKey));
+      final middleRect = tester.getRect(find.byKey(middleKey));
+      final rightRect = tester.getRect(find.byKey(rightKey));
+
+      expect(leftRect.width, closeTo(120, 1));
+      expect(rightRect.width, closeTo(120, 1));
+      expect(middleRect.width, greaterThan(350));
+    });
+
+    testWidgets('convenience placement horizontal position stays stable', (
+      tester,
+    ) async {
+      const firstKey = ValueKey('stable-first');
+      const leftKey = ValueKey('stable-left');
+
+      final acl = AclBuilder()
+          .append(SizedBox(key: firstKey, width: 180, height: 40))
+          .addLeft(SizedBox(key: leftKey, width: 120, height: 32), hGap: 12)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 620, child: acl)),
+        ),
+      );
+      await tester.pump();
+      final firstLeft = tester.getRect(find.byKey(leftKey));
+      await tester.pump();
+      await tester.pump();
+      final laterLeft = tester.getRect(find.byKey(leftKey));
+
+      expect((laterLeft.left - firstLeft.left).abs(), lessThanOrEqualTo(0.5));
+    });
+
     testWidgets('spacer as component does not throw parent-data error', (
       tester,
     ) async {
