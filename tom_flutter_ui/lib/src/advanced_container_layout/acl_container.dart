@@ -596,11 +596,15 @@ class _AclContainerState extends State<AclContainer> {
       final verticalAlignmentOffset = _computeVerticalAlignmentOffset(
         component,
       );
-      minVerticalOffset = math.min(minVerticalOffset, verticalAlignmentOffset);
-      maxVerticalExtent = math.max(
-        maxVerticalExtent,
-        verticalAlignmentOffset + estimatedHeight,
-      );
+
+      final baseTopInRow = hasExpandY && canExpandVertically
+          ? 0.0
+          : (rowEstimatedHeight - estimatedHeight) / 2;
+      final shiftedTopInRow = baseTopInRow + verticalAlignmentOffset;
+      final shiftedBottomInRow = shiftedTopInRow + estimatedHeight;
+
+      minVerticalOffset = math.min(minVerticalOffset, shiftedTopInRow);
+      maxVerticalExtent = math.max(maxVerticalExtent, shiftedBottomInRow);
 
       final componentKey = component.componentKey;
       if (componentKey != null) {

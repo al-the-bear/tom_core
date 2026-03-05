@@ -563,6 +563,10 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       width: 220,
       child: _DemoBox('Anchor (bottom->top)', Colors.blueGrey),
     );
+    final stackedAnchor = const SizedBox(
+      width: 220,
+      child: _DemoBox('Anchor (top->bottom + left)', Colors.brown),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,6 +748,39 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         const SizedBox(height: 8),
         const Text(
           'Expected: follower bottom edge aligns to anchor top edge.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Combined vertical + horizontal reference alignment:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(stackedAnchor)
+              .setPSize(220, 56)
+              .newRow()
+              .append(
+                const SizedBox(
+                  width: 220,
+                  child: _DemoBox(
+                    'Follower (left + below, 16px)',
+                    Colors.lightBlue,
+                  ),
+                ),
+              )
+              .setPSize(220, 36)
+              .alignLeftToLeft(stackedAnchor)
+              .alignTopToBottom(stackedAnchor, gap: -16)
+              .build(),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Expected: follower is directly below anchor with 16px vertical distance and same left edge.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
