@@ -547,5 +547,63 @@ void main() {
       expect(bottomRect.height > topRect.height, isTrue);
       expect((bottomRect.height / topRect.height), closeTo(2.0, 0.25));
     });
+
+    testWidgets(
+      'left convenience placement remains inside and next row expands',
+      (tester) async {
+        const hostKey = ValueKey('host-container');
+        const firstKey = ValueKey('first');
+        const leftKey = ValueKey('left-of-first');
+        const expAKey = ValueKey('expand-a');
+        const expBKey = ValueKey('expand-b');
+
+        final first = Container(key: firstKey, color: Colors.indigo);
+        final left = Container(key: leftKey, color: Colors.orange);
+        final expA = Container(key: expAKey, color: Colors.green);
+        final expB = Container(key: expBKey, color: Colors.red);
+
+        final acl = AclBuilder()
+            .append(first)
+            .setPSize(180, 48)
+            .addLeft(left, hGap: 12)
+            .setPSize(120, 36)
+            .newRow(dist: 14)
+            .append(expA)
+            .setAttr(AclFlags.expandX)
+            .setPSize(100, 36)
+            .append(expB, dist: 8)
+            .setAttr(AclFlags.expandX)
+            .setPSize(100, 36)
+            .build();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 620,
+                child: Container(
+                  key: hostKey,
+                  color: Colors.black12,
+                  child: acl,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+
+        final hostRect = tester.getRect(find.byKey(hostKey));
+        final firstRect = tester.getRect(find.byKey(firstKey));
+        final leftRect = tester.getRect(find.byKey(leftKey));
+        final expARect = tester.getRect(find.byKey(expAKey));
+        final expBRect = tester.getRect(find.byKey(expBKey));
+
+        expect(leftRect.left >= hostRect.left - 1, isTrue);
+        expect(firstRect.left >= hostRect.left - 1, isTrue);
+        expect(expARect.width > 240, isTrue);
+        expect(expBRect.width > 240, isTrue);
+      },
+    );
   });
 }

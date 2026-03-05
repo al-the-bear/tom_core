@@ -497,6 +497,9 @@ class _AclContainerState extends State<AclContainer> {
 
     final children = <Widget>[];
     double plannedX = 0;
+    double minHorizontalX = 0;
+    double maxHorizontalX = 0;
+    double rowEstimatedWidth = 0;
     double minVerticalOffset = 0;
     double maxVerticalExtent = 0;
     double rowEstimatedHeight = 0;
@@ -573,6 +576,17 @@ class _AclContainerState extends State<AclContainer> {
 
       final estimatedHeight = _estimateComponentHeight(component, linkedHeight);
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
+      final estimatedWidth = _estimateComponentWidth(component, linkedWidth);
+
+      final shiftedLeftInRow =
+          plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
+      final shiftedRightInRow = shiftedLeftInRow + estimatedWidth;
+      minHorizontalX = math.min(minHorizontalX, shiftedLeftInRow);
+      maxHorizontalX = math.max(maxHorizontalX, shiftedRightInRow);
+      rowEstimatedWidth = math.max(
+        rowEstimatedWidth,
+        plannedX + estimatedWidth,
+      );
 
       if (component.componentKey != null) {
         child = Align(
@@ -636,7 +650,7 @@ class _AclContainerState extends State<AclContainer> {
 
       children.add(child);
 
-      plannedX += _estimateComponentWidth(component, linkedWidth);
+      plannedX += estimatedWidth;
     }
 
     Widget rowWidget;
@@ -685,9 +699,16 @@ class _AclContainerState extends State<AclContainer> {
 
     final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
     final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
-    if (extraTop > 0 || extraBottom > 0) {
+    final extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
+    final extraRight = math.max(0.0, maxHorizontalX - rowEstimatedWidth);
+    if (extraTop > 0 || extraBottom > 0 || extraLeft > 0 || extraRight > 0) {
       rowWidget = Padding(
-        padding: EdgeInsets.only(top: extraTop, bottom: extraBottom),
+        padding: EdgeInsets.only(
+          left: extraLeft,
+          right: extraRight,
+          top: extraTop,
+          bottom: extraBottom,
+        ),
         child: rowWidget,
       );
     }
