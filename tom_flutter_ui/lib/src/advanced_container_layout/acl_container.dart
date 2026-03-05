@@ -888,6 +888,10 @@ class AclLayout extends StatelessWidget {
 }
 
 class Acl extends AclLayout {
+  final String? title;
+  final TextStyle? titleStyle;
+  final AclTitlePosition titlePosition;
+
   const Acl({
     super.key,
     required super.rows,
@@ -895,67 +899,27 @@ class Acl extends AclLayout {
     super.focusedBorderStyle,
     super.padding = EdgeInsets.zero,
     super.backgroundColor,
-  });
-}
-
-enum AclGroupTitlePosition { topLeft, topCenter, topRight }
-
-class AclGroup extends StatelessWidget {
-  final String? title;
-  final Widget child;
-  final AclBorderStyle borderStyle;
-  final AclBorderStyle? focusedBorderStyle;
-  final EdgeInsetsGeometry padding;
-  final Color? backgroundColor;
-  final TextStyle? titleStyle;
-  final AclGroupTitlePosition titlePosition;
-
-  const AclGroup({
-    super.key,
     this.title,
-    required this.child,
-    this.borderStyle = const AclBorderStyle(
-      lineKind: AclBorderLineKind.doubleLine,
-      with3dEffect: true,
-    ),
-    this.focusedBorderStyle,
-    this.padding = const EdgeInsets.all(8),
-    this.backgroundColor,
     this.titleStyle,
-    this.titlePosition = AclGroupTitlePosition.topLeft,
+    this.titlePosition = AclTitlePosition.topLeft,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (title == null || title!.isEmpty) {
+      return super.build(context);
+    }
+
     final theme = Theme.of(context);
     final titleTextStyle =
         titleStyle ??
         theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
-
-    if (title == null || title!.isEmpty) {
-      return AclContainer(
-        rows: [
-          AclRow(
-            components: [AclComponent(child: child, flags: AclFlags.expandX)],
-          ),
-        ],
-        borderStyle: borderStyle,
-        focusedBorderStyle: focusedBorderStyle,
-        padding: padding,
-        backgroundColor: backgroundColor,
-      );
-    }
-
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
     return Stack(
       children: [
         AclContainer(
-          rows: [
-            AclRow(
-              components: [AclComponent(child: child, flags: AclFlags.expandX)],
-            ),
-          ],
+          rows: rows,
           borderStyle: borderStyle,
           focusedBorderStyle: focusedBorderStyle,
           padding: padding.add(const EdgeInsets.only(top: 8)),
@@ -979,20 +943,22 @@ class AclGroup extends StatelessWidget {
   }
 
   Alignment _alignment() => switch (titlePosition) {
-    AclGroupTitlePosition.topLeft => Alignment.centerLeft,
-    AclGroupTitlePosition.topCenter => Alignment.center,
-    AclGroupTitlePosition.topRight => Alignment.centerRight,
+    AclTitlePosition.topLeft => Alignment.centerLeft,
+    AclTitlePosition.topCenter => Alignment.center,
+    AclTitlePosition.topRight => Alignment.centerRight,
   };
 
   double? _left() => switch (titlePosition) {
-    AclGroupTitlePosition.topLeft => 12,
-    AclGroupTitlePosition.topCenter => 0,
-    AclGroupTitlePosition.topRight => null,
+    AclTitlePosition.topLeft => 12,
+    AclTitlePosition.topCenter => 0,
+    AclTitlePosition.topRight => null,
   };
 
   double? _right() => switch (titlePosition) {
-    AclGroupTitlePosition.topLeft => null,
-    AclGroupTitlePosition.topCenter => 0,
-    AclGroupTitlePosition.topRight => 12,
+    AclTitlePosition.topLeft => null,
+    AclTitlePosition.topCenter => 0,
+    AclTitlePosition.topRight => 12,
   };
 }
+
+enum AclTitlePosition { topLeft, topCenter, topRight }

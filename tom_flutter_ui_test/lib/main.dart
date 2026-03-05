@@ -740,96 +740,90 @@ class GroupsDemo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'AclGroup - bordered containers with titles:',
+          'AclBuilder groups - bordered containers with titles:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        AclGroup(
-          title: 'User Information',
-          borderStyle: const AclBorderStyle(
-            lineKind: AclBorderLineKind.doubleLine,
-            with3dEffect: true,
-            primaryColor: Colors.blueGrey,
-          ),
-          child: AclBuilder()
-              .append(const SizedBox(width: 80, child: Text('Name:')))
-              .append(
-                const TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
+        AclBuilder(
+              title: 'User Information',
+              borderStyle: const AclBorderStyle(
+                lineKind: AclBorderLineKind.doubleLine,
+                with3dEffect: true,
+                primaryColor: Colors.blueGrey,
+              ),
+            )
+            .append(const SizedBox(width: 80, child: Text('Name:')))
+            .append(
+              const TextField(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
                 ),
-              )
-              .expandX()
-              .newRow(dist: 8)
-              .append(const SizedBox(width: 80, child: Text('Email:')))
-              .append(
-                const TextField(
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
+              ),
+            )
+            .expandX()
+            .newRow(dist: 8)
+            .append(const SizedBox(width: 80, child: Text('Email:')))
+            .append(
+              const TextField(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
                 ),
-              )
-              .expandX()
-              .build(),
-        ),
+              ),
+            )
+            .expandX()
+            .build(),
         const SizedBox(height: 16),
-        AclGroup(
-          title: 'Settings',
-          borderStyle: const AclBorderStyle(
-            lineKind: AclBorderLineKind.doubleLine,
-            rounded: true,
-            borderRadius: 10,
-            primaryColor: Colors.teal,
-          ),
-          titlePosition: AclGroupTitlePosition.topCenter,
-          child: AclBuilder()
-              .append(const Text('Enable notifications'))
-              .append(Switch(value: true, onChanged: (_) {}), dist: 10)
-              .newRow(dist: 8)
-              .append(const Text('Dark mode'))
-              .append(Switch(value: false, onChanged: (_) {}), dist: 10)
-              .build(),
-        ),
+        AclBuilder(
+              title: 'Settings',
+              borderStyle: const AclBorderStyle(
+                lineKind: AclBorderLineKind.doubleLine,
+                rounded: true,
+                borderRadius: 10,
+                primaryColor: Colors.teal,
+              ),
+              titlePosition: AclTitlePosition.topCenter,
+            )
+            .append(const Text('Enable notifications'))
+            .append(Switch(value: true, onChanged: (_) {}), dist: 10)
+            .newRow(dist: 8)
+            .append(const Text('Dark mode'))
+            .append(Switch(value: false, onChanged: (_) {}), dist: 10)
+            .build(),
         const SizedBox(height: 16),
-        AclGroup(
-          title: 'Actions',
-          borderStyle: const AclBorderStyle(
-            rounded: true,
-            borderRadius: 8,
-            primaryColor: Colors.deepPurple,
-            withShadow: true,
-          ),
-          titlePosition: AclGroupTitlePosition.topRight,
-          child: AclBuilder()
-              .append(
-                ElevatedButton(onPressed: () {}, child: const Text('Save')),
-              )
-              .append(
-                OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-                dist: 10,
-              )
-              .setRowAlignment(RowAlignment.center)
-              .build(),
-        ),
+        AclBuilder(
+              title: 'Actions',
+              borderStyle: const AclBorderStyle(
+                rounded: true,
+                borderRadius: 8,
+                primaryColor: Colors.deepPurple,
+                withShadow: true,
+              ),
+              titlePosition: AclTitlePosition.topRight,
+            )
+            .append(ElevatedButton(onPressed: () {}, child: const Text('Save')))
+            .append(
+              OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
+              dist: 10,
+            )
+            .setRowAlignment(RowAlignment.center)
+            .build(),
         const SizedBox(height: 24),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
-AclGroup(
+AclBuilder(
   title: 'User Information',
   borderStyle: AclBorderStyle(
     lineKind: AclBorderLineKind.doubleLine,
     with3dEffect: true,
   ),
-  titlePosition: AclGroupTitlePosition.topLeft,
-  child: AclBuilder()
-      .append(Label)
-      .append(TextField)
-      .expandX()
-      .build(),
+  titlePosition: AclTitlePosition.topLeft,
 )
+    .append(Label)
+    .append(TextField)
+    .expandX()
+    .build()
 '''),
       ],
     );
@@ -911,47 +905,44 @@ class NestedContainersDemo extends StatelessWidget {
           child: AclBuilder()
               .setPadding(const EdgeInsets.all(8))
               .append(
-                AclGroup(
-                  title: 'Outer Group',
-                  borderStyle: const AclBorderStyle(
-                    lineKind: AclBorderLineKind.doubleLine,
-                    with3dEffect: true,
-                    primaryColor: Colors.blueGrey,
-                  ),
-                  child: AclBuilder()
-                      .append(
-                        AclGroup(
-                          title: 'Inner Group A',
-                          borderStyle: const AclBorderStyle(
-                            lineKind: AclBorderLineKind.doubleLine,
-                            primaryColor: Colors.indigo,
-                          ),
-                          child: AclBuilder()
-                              .append(const Text('Content A1'))
-                              .newRow(dist: 4)
-                              .append(const Text('Content A2'))
-                              .build(),
-                        ),
-                      )
-                      .expandX()
-                      .append(
-                        AclGroup(
-                          title: 'Inner Group B',
-                          borderStyle: const AclBorderStyle(
-                            lineKind: AclBorderLineKind.doubleLine,
-                            primaryColor: Colors.teal,
-                          ),
-                          child: AclBuilder()
-                              .append(const Text('Content B1'))
-                              .newRow(dist: 4)
-                              .append(const Text('Content B2'))
-                              .build(),
-                        ),
-                        dist: 8,
-                      )
-                      .expandX()
-                      .build(),
-                ),
+                AclBuilder(
+                      title: 'Outer Group',
+                      borderStyle: const AclBorderStyle(
+                        lineKind: AclBorderLineKind.doubleLine,
+                        with3dEffect: true,
+                        primaryColor: Colors.blueGrey,
+                      ),
+                    )
+                    .append(
+                      AclBuilder(
+                            title: 'Inner Group A',
+                            borderStyle: const AclBorderStyle(
+                              lineKind: AclBorderLineKind.doubleLine,
+                              primaryColor: Colors.indigo,
+                            ),
+                          )
+                          .append(const Text('Content A1'))
+                          .newRow(dist: 4)
+                          .append(const Text('Content A2'))
+                          .build(),
+                    )
+                    .expandX()
+                    .append(
+                      AclBuilder(
+                            title: 'Inner Group B',
+                            borderStyle: const AclBorderStyle(
+                              lineKind: AclBorderLineKind.doubleLine,
+                              primaryColor: Colors.teal,
+                            ),
+                          )
+                          .append(const Text('Content B1'))
+                          .newRow(dist: 4)
+                          .append(const Text('Content B2'))
+                          .build(),
+                      dist: 8,
+                    )
+                    .expandX()
+                    .build(),
               )
               .expandX()
               .build(),
@@ -972,10 +963,9 @@ AclBuilder()
     )
     .expandX()
     .append(
-        AclGroup(
-            title: 'Group',
-            child: innerContent,
-        ),
+        AclBuilder(title: 'Group')
+          .append(innerContent)
+          .build(),
         dist: 8
     )
     .expandX()
@@ -1257,67 +1247,64 @@ class DynamicResizeDemo extends StatelessWidget {
                   .expandX()
                   .newRow(dist: 8)
                   .append(
-                    AclGroup(
-                      title: 'Navigation',
-                      borderStyle: const AclBorderStyle(
-                        lineKind: AclBorderLineKind.doubleLine,
-                        with3dEffect: true,
-                        primaryColor: Colors.blueGrey,
-                      ),
-                      child: AclBuilder()
-                          .append(const Text('Menu Item 1'))
-                          .newRow(dist: 4)
-                          .append(const Text('Menu Item 2'))
-                          .newRow(dist: 4)
-                          .append(const Text('Menu Item 3'))
-                          .newRow(dist: 4)
-                          .append(const Text('Menu Item 4'))
-                          .build(),
-                    ),
+                    AclBuilder(
+                          title: 'Navigation',
+                          borderStyle: const AclBorderStyle(
+                            lineKind: AclBorderLineKind.doubleLine,
+                            with3dEffect: true,
+                            primaryColor: Colors.blueGrey,
+                          ),
+                        )
+                        .append(const Text('Menu Item 1'))
+                        .newRow(dist: 4)
+                        .append(const Text('Menu Item 2'))
+                        .newRow(dist: 4)
+                        .append(const Text('Menu Item 3'))
+                        .newRow(dist: 4)
+                        .append(const Text('Menu Item 4'))
+                        .build(),
                   )
                   .expandY()
                   .append(
-                    AclGroup(
-                      title: 'Content',
-                      borderStyle: const AclBorderStyle(
-                        lineKind: AclBorderLineKind.doubleLine,
-                        with3dEffect: true,
-                        primaryColor: Colors.blueGrey,
-                      ),
-                      child: AclBuilder()
-                          .append(
-                            Text(
-                              'Width: ${widthText}px',
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                          )
-                          .newRow(dist: 8)
-                          .append(
-                            const Text(
-                              'This area expands to fill available space. '
-                              'Try resizing the window!',
-                            ),
-                          )
-                          .build(),
-                    ),
+                    AclBuilder(
+                          title: 'Content',
+                          borderStyle: const AclBorderStyle(
+                            lineKind: AclBorderLineKind.doubleLine,
+                            with3dEffect: true,
+                            primaryColor: Colors.blueGrey,
+                          ),
+                        )
+                        .append(
+                          Text(
+                            'Width: ${widthText}px',
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        )
+                        .newRow(dist: 8)
+                        .append(
+                          const Text(
+                            'This area expands to fill available space. '
+                            'Try resizing the window!',
+                          ),
+                        )
+                        .build(),
                     dist: 8,
                   )
                   .expandX()
                   .expandY()
                   .append(
-                    AclGroup(
-                      title: 'Details',
-                      borderStyle: const AclBorderStyle(
-                        lineKind: AclBorderLineKind.doubleLine,
-                        with3dEffect: true,
-                        primaryColor: Colors.blueGrey,
-                      ),
-                      child: AclBuilder()
-                          .append(const Text('Detail 1'))
-                          .newRow(dist: 4)
-                          .append(const Text('Detail 2'))
-                          .build(),
-                    ),
+                    AclBuilder(
+                          title: 'Details',
+                          borderStyle: const AclBorderStyle(
+                            lineKind: AclBorderLineKind.doubleLine,
+                            with3dEffect: true,
+                            primaryColor: Colors.blueGrey,
+                          ),
+                        )
+                        .append(const Text('Detail 1'))
+                        .newRow(dist: 4)
+                        .append(const Text('Detail 2'))
+                        .build(),
                     dist: 8,
                   )
                   .expandY()

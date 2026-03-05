@@ -79,9 +79,26 @@ class AclBuilder {
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
   Color? _backgroundColor;
+  String? _title;
+  TextStyle? _titleStyle;
+  AclTitlePosition _titlePosition;
   final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
 
-  AclBuilder() {
+  AclBuilder({
+    String? title,
+    AclBorderStyle borderStyle = const AclBorderStyle.none(),
+    AclBorderStyle? focusedBorderStyle,
+    EdgeInsetsGeometry padding = EdgeInsets.zero,
+    Color? backgroundColor,
+    TextStyle? titleStyle,
+    AclTitlePosition titlePosition = AclTitlePosition.topLeft,
+  }) : _title = title,
+       _borderStyle = borderStyle,
+       _focusedBorderStyle = focusedBorderStyle,
+       _padding = padding,
+       _backgroundColor = backgroundColor,
+       _titleStyle = titleStyle,
+       _titlePosition = titlePosition {
     _rows.add(_currentRow);
   }
 
@@ -396,6 +413,21 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setTitle(String? title) {
+    _title = title;
+    return this;
+  }
+
+  AclBuilder setTitleStyle(TextStyle style) {
+    _titleStyle = style;
+    return this;
+  }
+
+  AclBuilder setTitlePosition(AclTitlePosition position) {
+    _titlePosition = position;
+    return this;
+  }
+
   Acl build() {
     return Acl(
       rows: _rows.map((row) => row.toRow()).toList(),
@@ -403,6 +435,9 @@ class AclBuilder {
       focusedBorderStyle: _focusedBorderStyle,
       padding: _padding,
       backgroundColor: _backgroundColor,
+      title: _title,
+      titleStyle: _titleStyle,
+      titlePosition: _titlePosition,
     );
   }
 }
@@ -466,86 +501,4 @@ Acl AclColumn(List<AclRowDef> rowDefs) {
   }
 
   return builder.build();
-}
-
-class AclGroupBuilder {
-  String? _title;
-  Widget? _child;
-  AclBorderStyle _borderStyle = const AclBorderStyle(
-    lineKind: AclBorderLineKind.doubleLine,
-    with3dEffect: true,
-  );
-  AclBorderStyle? _focusedBorderStyle;
-  EdgeInsetsGeometry _padding = const EdgeInsets.all(8);
-  Color? _backgroundColor;
-  TextStyle? _titleStyle;
-  AclGroupTitlePosition _titlePosition = AclGroupTitlePosition.topLeft;
-
-  AclGroupBuilder title(String title) {
-    _title = title;
-    return this;
-  }
-
-  AclGroupBuilder child(Widget child) {
-    _child = child;
-    return this;
-  }
-
-  AclGroupBuilder borderStyle(AclBorderStyle style) {
-    _borderStyle = style;
-    return this;
-  }
-
-  AclGroupBuilder focusedBorderStyle(AclBorderStyle style) {
-    _focusedBorderStyle = style;
-    return this;
-  }
-
-  AclGroupBuilder padding(EdgeInsetsGeometry padding) {
-    _padding = padding;
-    return this;
-  }
-
-  AclGroupBuilder backgroundColor(Color color) {
-    _backgroundColor = color;
-    return this;
-  }
-
-  AclGroupBuilder titleStyle(TextStyle style) {
-    _titleStyle = style;
-    return this;
-  }
-
-  AclGroupBuilder titlePosition(AclGroupTitlePosition position) {
-    _titlePosition = position;
-    return this;
-  }
-
-  AclGroup buildWithContainer(void Function(AclBuilder) builder) {
-    final b = AclBuilder();
-    builder(b);
-    return AclGroup(
-      title: _title,
-      borderStyle: _borderStyle,
-      focusedBorderStyle: _focusedBorderStyle,
-      padding: _padding,
-      backgroundColor: _backgroundColor,
-      titleStyle: _titleStyle,
-      titlePosition: _titlePosition,
-      child: b.build(),
-    );
-  }
-
-  AclGroup build() {
-    return AclGroup(
-      title: _title,
-      borderStyle: _borderStyle,
-      focusedBorderStyle: _focusedBorderStyle,
-      padding: _padding,
-      backgroundColor: _backgroundColor,
-      titleStyle: _titleStyle,
-      titlePosition: _titlePosition,
-      child: _child ?? const SizedBox.shrink(),
-    );
-  }
 }
