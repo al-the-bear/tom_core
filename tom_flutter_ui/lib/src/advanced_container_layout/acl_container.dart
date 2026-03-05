@@ -529,6 +529,10 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       Widget child = component.child;
+      final isFlexNativeChild =
+          component.child is Flexible ||
+          component.child is Expanded ||
+          component.child is Spacer;
 
       final linkedWidth = resolvedLinkedWidth;
       final linkedHeight = resolvedLinkedHeight;
@@ -545,10 +549,11 @@ class _AclContainerState extends State<AclContainer> {
           ? (linkedHeight ?? component.maximumSize?.height)
           : component.maximumSize?.height;
 
-      if (minWidth != null ||
-          minHeight != null ||
-          maxWidth != null ||
-          maxHeight != null) {
+      if (!isFlexNativeChild &&
+          (minWidth != null ||
+              minHeight != null ||
+              maxWidth != null ||
+              maxHeight != null)) {
         child = ConstrainedBox(
           constraints: BoxConstraints(
             minWidth: minWidth ?? 0,
@@ -560,14 +565,15 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!component.expandX || !canExpandHorizontally) {
+      if (!isFlexNativeChild &&
+          (!component.expandX || !canExpandHorizontally)) {
         final preferredWidth = component.preferredSize?.width;
         if (preferredWidth != null) {
           child = SizedBox(width: preferredWidth, child: child);
         }
       }
 
-      if (!component.expandY || !canExpandVertically) {
+      if (!isFlexNativeChild && (!component.expandY || !canExpandVertically)) {
         final preferredHeight = component.preferredSize?.height;
         if (preferredHeight != null) {
           child = SizedBox(height: preferredHeight, child: child);
@@ -588,7 +594,7 @@ class _AclContainerState extends State<AclContainer> {
         plannedX + estimatedWidth,
       );
 
-      if (component.componentKey != null) {
+      if (!isFlexNativeChild && component.componentKey != null) {
         child = Align(
           key: component.componentKey,
           alignment: Alignment.centerLeft,
@@ -598,9 +604,11 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      child = _wrapWithRowCrossAlignment(child, component.rowCrossAlignment);
+      if (!isFlexNativeChild) {
+        child = _wrapWithRowCrossAlignment(child, component.rowCrossAlignment);
+      }
 
-      if (alignmentDelta < 0) {
+      if (!isFlexNativeChild && alignmentDelta < 0) {
         child = Transform.translate(
           offset: Offset(alignmentDelta, 0),
           child: child,
@@ -624,7 +632,7 @@ class _AclContainerState extends State<AclContainer> {
       if (componentKey != null) {
         _appliedVerticalOffsetByKey[componentKey] = verticalAlignmentOffset;
       }
-      if (verticalAlignmentOffset != 0) {
+      if (!isFlexNativeChild && verticalAlignmentOffset != 0) {
         child = Transform.translate(
           offset: Offset(0, verticalAlignmentOffset),
           child: child,
@@ -700,7 +708,9 @@ class _AclContainerState extends State<AclContainer> {
     final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
     final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
     final extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
-    final extraRight = math.max(0.0, maxHorizontalX - rowEstimatedWidth);
+    final extraRight = hasExpandX && canExpandHorizontally
+        ? 0.0
+        : math.max(0.0, maxHorizontalX - rowEstimatedWidth);
     if (extraTop > 0 || extraBottom > 0 || extraLeft > 0 || extraRight > 0) {
       rowWidget = Padding(
         padding: EdgeInsets.only(

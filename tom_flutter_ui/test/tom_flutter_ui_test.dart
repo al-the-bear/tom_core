@@ -605,5 +605,27 @@ void main() {
         expect(expBRect.width > 240, isTrue);
       },
     );
+
+    testWidgets('spacer as component does not throw parent-data error', (
+      tester,
+    ) async {
+      final acl = AclBuilder()
+          .append(const Text('Left'))
+          .append(const Spacer())
+          .setAttr(AclFlags.expandX)
+          .append(const Text('Right'))
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 500, child: acl)),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Left'), findsOneWidget);
+      expect(find.text('Right'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }
