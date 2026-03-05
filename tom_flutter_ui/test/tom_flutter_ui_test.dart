@@ -327,5 +327,158 @@ void main() {
       expect((linkedRect.width - anchorRect.width).abs(), closeTo(0, 1.0));
       expect((linkedRect.height - anchorRect.height).abs(), closeTo(0, 1.0));
     });
+
+    testWidgets('size overrides apply minimum preferred and maximum', (
+      tester,
+    ) async {
+      final constrainedBox = Container(
+        key: const ValueKey('size-override-box'),
+        color: Colors.amber,
+      );
+
+      final acl = AclBuilder()
+          .append(constrainedBox)
+          .setMSize(90, 28)
+          .setPSize(120, 40)
+          .setXSize(140, 44)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 500, child: acl)),
+        ),
+      );
+      await tester.pump();
+
+      final rect = tester.getRect(
+        find.byKey(const ValueKey('size-override-box')),
+      );
+      expect(rect.width, closeTo(120, 1.0));
+      expect(rect.height, closeTo(40, 1.0));
+    });
+
+    testWidgets('expandX distributes width by growth weight ratio', (
+      tester,
+    ) async {
+      final left = Container(
+        key: const ValueKey('expand-left'),
+        color: Colors.red,
+      );
+      final right = Container(
+        key: const ValueKey('expand-right'),
+        color: Colors.blue,
+      );
+
+      final acl = AclBuilder()
+          .append(left)
+          .setAttr(AclFlags.expandX)
+          .setMSize(100, 32)
+          .setPSize(200, 32)
+          .append(right, dist: 0)
+          .setAttr(AclFlags.expandX)
+          .setMSize(100, 32)
+          .setPSize(300, 32)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 500, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final leftRect = tester.getRect(
+        find.byKey(const ValueKey('expand-left')),
+      );
+      final rightRect = tester.getRect(
+        find.byKey(const ValueKey('expand-right')),
+      );
+
+      expect(leftRect.width, closeTo(500 / 3, 1.0));
+      expect(rightRect.width, closeTo((500 * 2) / 3, 1.0));
+      expect((rightRect.width / leftRect.width), closeTo(2.0, 0.05));
+    });
+
+    testWidgets('expandX honors explicit maximum while extra width remains', (
+      tester,
+    ) async {
+      final left = Container(
+        key: const ValueKey('max-left'),
+        color: Colors.purple,
+      );
+      final right = Container(
+        key: const ValueKey('max-right'),
+        color: Colors.orange,
+      );
+
+      final acl = AclBuilder()
+          .append(left)
+          .setAttr(AclFlags.expandX)
+          .setMSize(80, 30)
+          .setPSize(200, 30)
+          .setXSize(200, 30)
+          .append(right)
+          .setAttr(AclFlags.expandX)
+          .setMSize(80, 30)
+          .setPSize(220, 30)
+          .setXSize(220, 30)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 700, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final leftRect = tester.getRect(find.byKey(const ValueKey('max-left')));
+      final rightRect = tester.getRect(find.byKey(const ValueKey('max-right')));
+
+      expect(leftRect.width <= 200.5, isTrue);
+      expect(rightRect.width <= 220.5, isTrue);
+    });
+
+    testWidgets('expandY distributes vertical space by row growth weights', (
+      tester,
+    ) async {
+      final top = Container(
+        key: const ValueKey('expand-top'),
+        color: Colors.green,
+      );
+      final bottom = Container(
+        key: const ValueKey('expand-bottom'),
+        color: Colors.teal,
+      );
+
+      final acl = AclBuilder()
+          .append(top)
+          .setAttr(AclFlags.expandY)
+          .setMSize(100, 60)
+          .setPSize(100, 160)
+          .newRow(dist: 0)
+          .append(bottom)
+          .setAttr(AclFlags.expandY)
+          .setMSize(100, 60)
+          .setPSize(100, 260)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: SizedBox(width: 300, height: 420, child: acl)),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final topRect = tester.getRect(find.byKey(const ValueKey('expand-top')));
+      final bottomRect = tester.getRect(
+        find.byKey(const ValueKey('expand-bottom')),
+      );
+
+      expect(bottomRect.height > topRect.height, isTrue);
+      expect((bottomRect.height / topRect.height), closeTo(2.0, 0.25));
+    });
   });
 }
