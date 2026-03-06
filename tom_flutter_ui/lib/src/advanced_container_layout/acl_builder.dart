@@ -434,14 +434,20 @@ class AclBuilder {
   }
 
   AclBuilder append(Widget child, {double dist = 0}) {
-    final componentKey = _resolveReferenceKey(child);
+    final canAttachComponentKey =
+        child is! Flexible && child is! Expanded && child is! Spacer;
+    final componentKey = canAttachComponentKey
+        ? _resolveReferenceKey(child)
+        : null;
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
       gapBefore: dist,
       componentKey: componentKey,
     );
-    _referenceKeyByObject[child] = componentKey;
+    if (componentKey != null) {
+      _referenceKeyByObject[child] = componentKey;
+    }
     _currentRow.components.add(_currentComponent!);
     return this;
   }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
@@ -599,10 +601,26 @@ void main() {
         final expARect = tester.getRect(find.byKey(expAKey));
         final expBRect = tester.getRect(find.byKey(expBKey));
 
+        final leftStarts = <double>[leftRect.left];
+        final firstStarts = <double>[firstRect.left];
+        for (var i = 0; i < 6; i++) {
+          await tester.pump();
+          leftStarts.add(tester.getRect(find.byKey(leftKey)).left);
+          firstStarts.add(tester.getRect(find.byKey(firstKey)).left);
+        }
+
         expect(leftRect.left >= hostRect.left - 1, isTrue);
         expect(firstRect.left >= hostRect.left - 1, isTrue);
         expect(expARect.width > 240, isTrue);
         expect(expBRect.width > 240, isTrue);
+        expect(
+          leftStarts.reduce(math.max) - leftStarts.reduce(math.min),
+          lessThanOrEqualTo(0.5),
+        );
+        expect(
+          firstStarts.reduce(math.max) - firstStarts.reduce(math.min),
+          lessThanOrEqualTo(0.5),
+        );
       },
     );
 

@@ -169,6 +169,7 @@ class _AclContainerState extends State<AclContainer> {
   bool _referenceCacheRefreshScheduled = false;
   final Map<Key, Size> _referenceSizeCache = {};
   final Map<Key, Rect> _referenceRectCache = {};
+  final Map<Key, double> _appliedHorizontalOffsetByKey = {};
   final Map<Key, double> _appliedVerticalOffsetByKey = {};
 
   @override
@@ -503,6 +504,7 @@ class _AclContainerState extends State<AclContainer> {
     double minVerticalOffset = 0;
     double maxVerticalExtent = 0;
     double rowEstimatedHeight = 0;
+    final virtualRects = <Key, Rect>{};
     for (final component in row.components) {
       if (component.gapBefore > 0) {
         children.add(SizedBox(width: component.gapBefore));
@@ -521,6 +523,7 @@ class _AclContainerState extends State<AclContainer> {
         component: component,
         plannedX: plannedX,
         resolvedLinkedWidth: resolvedLinkedWidth,
+        virtualRects: virtualRects,
       );
 
       if (alignmentDelta > 0) {
@@ -603,6 +606,16 @@ class _AclContainerState extends State<AclContainer> {
         plannedX + estimatedWidth,
       );
 
+      final componentKey = component.componentKey;
+      if (componentKey != null) {
+        virtualRects[componentKey] = Rect.fromLTWH(
+          shiftedLeftInRow,
+          0,
+          estimatedWidth,
+          estimatedHeight,
+        );
+      }
+
       if (!isFlexNativeChild && component.componentKey != null) {
         child = Align(
           key: component.componentKey,
@@ -637,8 +650,9 @@ class _AclContainerState extends State<AclContainer> {
       minVerticalOffset = math.min(minVerticalOffset, shiftedTopInRow);
       maxVerticalExtent = math.max(maxVerticalExtent, shiftedBottomInRow);
 
-      final componentKey = component.componentKey;
       if (componentKey != null) {
+        _appliedHorizontalOffsetByKey[componentKey] =
+            (!isFlexNativeChild && alignmentDelta < 0) ? alignmentDelta : 0;
         _appliedVerticalOffsetByKey[componentKey] = verticalAlignmentOffset;
       }
       if (!isFlexNativeChild && verticalAlignmentOffset != 0) {
@@ -898,6 +912,7 @@ class _AclContainerState extends State<AclContainer> {
     required AclComponent component,
     required double plannedX,
     required double? resolvedLinkedWidth,
+    required Map<Key, Rect> virtualRects,
   }) {
     if (component.alignXToKey == null ||
         component.alignXFrom == null ||
@@ -905,11 +920,20 @@ class _AclContainerState extends State<AclContainer> {
       return 0;
     }
 
-    final refRect = _resolveReferencedRect(component.alignXToKey);
+    final key = component.alignXToKey;
+    final virtualRefRect = key != null ? virtualRects[key] : null;
+    final refRect = virtualRefRect ?? _resolveReferencedRect(key);
     if (refRect == null) {
       _hasUnresolvedReference = true;
       return 0;
     }
+
+    final refOffset = key == null
+        ? 0.0
+        : (_appliedHorizontalOffsetByKey[key] ?? 0.0);
+    final unshiftedRefRect = virtualRefRect != null || refOffset == 0
+        ? refRect
+        : refRect.translate(-refOffset, 0);
 
     final widthEstimate = _estimateComponentWidth(
       component,
@@ -917,7 +941,10 @@ class _AclContainerState extends State<AclContainer> {
     );
     final currentLocalPoint =
         plannedX + _horizontalOffset(component.alignXFrom!, widthEstimate);
-    final targetLocalPoint = _horizontalPoint(refRect, component.alignXTo!);
+    final targetLocalPoint = _horizontalPoint(
+      unshiftedRefRect,
+      component.alignXTo!,
+    );
     final desiredLocalPoint = targetLocalPoint - component.alignXGap;
     return desiredLocalPoint - currentLocalPoint;
   }
