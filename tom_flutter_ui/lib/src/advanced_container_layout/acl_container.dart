@@ -456,6 +456,8 @@ class _AclContainerState extends State<AclContainer> {
               row: row,
               canExpandHorizontally: canExpandHorizontally,
               canExpandVertically: canExpandVertically,
+              availableWidth:
+                  canExpandHorizontally ? constraints.maxWidth : null,
             ),
           );
         }
@@ -486,6 +488,7 @@ class _AclContainerState extends State<AclContainer> {
     required AclRow row,
     required bool canExpandHorizontally,
     required bool canExpandVertically,
+    double? availableWidth,
   }) {
     final mainAxisAlignment = switch (row.alignment) {
       RowAlignment.left => MainAxisAlignment.start,
@@ -496,6 +499,13 @@ class _AclContainerState extends State<AclContainer> {
     final hasExpandX = row.components.any((component) => component.expandX);
     final hasExpandY = row.components.any((component) => component.expandY);
 
+    // Compute proportionally shrunken widths when the row's natural visual
+    // width exceeds the available container width, scaling each component's
+    // effective width between its preferredSize and minimumSize.
+    final fittedWidths = (availableWidth != null && availableWidth.isFinite)
+        ? _computeFittedWidths(row: row, availableWidth: availableWidth)
+        : null;
+
     final children = <Widget>[];
     double plannedX = 0;
     double minHorizontalX = 0;
@@ -505,7 +515,9 @@ class _AclContainerState extends State<AclContainer> {
     double maxVerticalExtent = 0;
     double rowEstimatedHeight = 0;
     final virtualRects = <Key, Rect>{};
+    int componentIndex = -1;
     for (final component in row.components) {
+      componentIndex++;
       final isFlexNativeChild =
           component.child is Flexible ||
           component.child is Expanded ||
@@ -588,9 +600,10 @@ class _AclContainerState extends State<AclContainer> {
 
       if (!isFlexNativeChild &&
           (!component.expandX || !canExpandHorizontally)) {
-        final preferredWidth = component.preferredSize?.width;
-        if (preferredWidth != null) {
-          child = SizedBox(width: preferredWidth, child: child);
+        final effectiveWidth =
+            fittedWidths?[componentIndex] ?? component.preferredSize?.width;
+        if (effectiveWidth != null) {
+          child = SizedBox(width: effectiveWidth, child: child);
         }
       }
 
@@ -612,7 +625,11 @@ class _AclContainerState extends State<AclContainer> {
 
       final estimatedHeight = _estimateComponentHeight(component, linkedHeight);
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
-      final estimatedWidth = _estimateComponentWidth(component, linkedWidth);
+      final estimatedWidth = _estimateComponentWidth(
+        component,
+        linkedWidth,
+        fittedWidth: fittedWidths?[componentIndex],
+      );
 
       final shiftedLeftInRow =
           plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
@@ -687,10 +704,10 @@ class _AclContainerState extends State<AclContainer> {
             0,
             double.infinity,
           );
-          final prefW = (component.preferredSize?.width ?? minW).clamp(
-            minW,
-            double.infinity,
-          );
+          final prefW = (fittedWidths?[componentIndex] ??
+                  component.preferredSize?.width ??
+                  minW)
+              .clamp(minW, double.infinity);
           final flexWeight = ((prefW - minW).round()).clamp(1, 10000);
 
           child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
@@ -916,7 +933,125 @@ class _AclContainerState extends State<AclContainer> {
     return null;
   }
 
-  double _estimateComponentWidth(AclComponent component, double? linkedWidth) {
+  /// Dry-run pass: compute each component's fitted width when the row's
+  /// natural visual width (preferred sizes + gaps) exceeds [availableWidth].
+  /// Returns null when no shrinking is needed.
+  ///
+  /// Fitting shrinks each component proportionally within its
+  /// [preferredSize.width] → [minimumSize.width] budget so the total cluster
+  /// width fits within [availableWidth].
+  Map<int, double>? _computeFittedWidths({
+    required AclRow row,
+    required double availableWidth,
+  }) {
+    // --- Pass 1: compute natural positions using preferred sizes ---
+    double plannedX = 0;
+    double minHX = 0;
+    double maxHX = 0;
+    final vRects = <Key, Rect>{};
+    final prefWidths = <int, double>{};
+
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      // Skip flex-native and expandX children: expandX components are sized by
+      // Row's Flexible mechanism, not by SizedBox fitting.
+      if (comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer ||
+          comp.expandX) {
+        continue;
+      }
+
+      final linkedW = comp.useOtherDimX
+          ? (_resolveReferenceWidth(comp.referenceKey) ??
+                _resolveReferencedRect(comp.alignXToKey)?.width)
+          : null;
+
+      final bool collapseToVisual =
+          comp.alignXToKey == null && maxHX < plannedX;
+
+      if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
+
+      final delta = collapseToVisual
+          ? (maxHX + comp.gapBefore - plannedX)
+          : _computeHorizontalAlignmentDelta(
+              component: comp,
+              plannedX: plannedX,
+              resolvedLinkedWidth: linkedW,
+              virtualRects: vRects,
+            );
+
+      if (delta > 0) plannedX += delta;
+
+      // Use declared preferred size directly (bypass cache) for accuracy.
+      final pref =
+          (linkedW ?? comp.preferredSize?.width ?? comp.minimumSize?.width ?? 0)
+              .clamp(0.0, double.infinity);
+      prefWidths[i] = pref;
+
+      final h =
+          (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
+              .clamp(0.0, double.infinity);
+      final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
+      minHX = math.min(minHX, shiftedLeft);
+      maxHX = math.max(maxHX, shiftedLeft + pref);
+
+      final key = comp.componentKey;
+      if (key != null) {
+        vRects[key] = Rect.fromLTWH(shiftedLeft, 0, pref, h);
+      }
+      plannedX += pref;
+    }
+
+    final extraLeft = minHX < 0 ? -minHX : 0.0;
+    final naturalWidth = maxHX + extraLeft;
+    if (naturalWidth <= availableWidth) return null; // no shrinking needed
+
+    // --- Compute proportional shrink ---
+    final deficit = naturalWidth - availableWidth;
+    double shrinkCap = 0;
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer ||
+          comp.expandX) {
+        continue;
+      }
+      final pref = prefWidths[i] ?? 0.0;
+      final min = comp.minimumSize?.width ?? 0.0;
+      shrinkCap += math.max(0.0, pref - min);
+    }
+    if (shrinkCap < 1) return null;
+
+    final ratio = (deficit / shrinkCap).clamp(0.0, 1.0);
+    final fitted = <int, double>{};
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer ||
+          comp.expandX) {
+        continue;
+      }
+      final pref = prefWidths[i] ?? 0.0;
+      final min = comp.minimumSize?.width ?? 0.0;
+      fitted[i] = pref - math.max(0.0, pref - min) * ratio;
+    }
+    return fitted;
+  }
+
+  double _estimateComponentWidth(
+    AclComponent component,
+    double? linkedWidth, {
+    double? fittedWidth,
+  }) {
+    // When a fitted width is active, use it as the source of truth so
+    // virtualRects match the actual SizedBox constraint on the same frame,
+    // preventing a one-frame lag in alignment-delta computations.
+    if (fittedWidth != null) {
+      return fittedWidth.clamp(0, double.infinity).toDouble();
+    }
     final measuredWidth = _resolveReferenceWidth(component.componentKey);
     if (measuredWidth != null) {
       return measuredWidth.clamp(0, double.infinity).toDouble();

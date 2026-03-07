@@ -99,6 +99,12 @@ class _AclTab extends StatelessWidget {
           screen: MixedPlacementPlaygroundDemo(),
         ),
         _DemoTile(
+          title: 'Responsive Layout',
+          description:
+              'Shrink/grow between preferred and minimum sizes as the window resizes',
+          screen: ResponsiveConvenienceDemo(),
+        ),
+        _DemoTile(
           title: 'Character Width Sizing',
           description: 'setWidthInChars for character-based field widths',
           screen: CharacterWidthSizingDemo(),
@@ -1041,6 +1047,110 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
         const Text(
           'Expected: combination of relative-placement constraints and standard row sequencing; final button mirrors anchor dimensions via sameSize().',
           style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Responsive Convenience Demo
+// Shows shrink/grow behaviour when preferred > min sizes are set.
+// ─────────────────────────────────────────────────────────────────────────────
+class ResponsiveConvenienceDemo extends StatelessWidget {
+  const ResponsiveConvenienceDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Panel A: expandX input flanked by fixed labels ──────────────────
+        const Text(
+          'Panel A — expandX input between fixed labels',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Label [pref 120, min 80] | Input [pref 200, min 100, expandX] | Status [pref 100, min 60]. '
+          'Resize window: Input grows/shrinks; labels hold preferred until container forces them.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const _DemoBox('Label', Colors.lightBlue))
+              .setPSize(120, 48)
+              .setMSize(80, 48)
+              .append(const _DemoBox('Input [expandX]', Colors.lightGreen),
+                  dist: 8)
+              .setPSize(200, 48)
+              .setMSize(100, 48)
+              .setAttr(AclFlags.expandX)
+              .append(const _DemoBox('Status', Colors.orange), dist: 8)
+              .setPSize(100, 48)
+              .setMSize(60, 48)
+              .build(),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Panel B: three proportional addRight panels, no expandX ─────────
+        const Text(
+          'Panel B — proportional shrink across three fixed-size panels',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Alpha [pref 240, min 80] | Beta [pref 160, min 80] | Gamma [pref 120, min 60]. '
+          'Resize window: all three shrink proportionally toward their minimum sizes.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: 60,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const _DemoBox('Alpha', Colors.purple))
+              .setPSize(240, 48)
+              .setMSize(80, 48)
+              .append(const _DemoBox('Beta', Colors.teal), dist: 8)
+              .setPSize(160, 48)
+              .setMSize(80, 48)
+              .append(const _DemoBox('Gamma', Colors.red), dist: 8)
+              .setPSize(120, 48)
+              .setMSize(60, 48)
+              .build(),
+        ),
+        const SizedBox(height: 20),
+
+        // ── Panel C: addBelow convenience placement + size response ──────────
+        const Text(
+          'Panel C — addBelow convenience placement with responsive sizing',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Main [pref 300, min 120] with Sub [pref 160, min 80] placed below-left. '
+          'Resize window: Main and Sub shrink proportionally toward their minimums.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          height: 120,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const _DemoBox('Main', Colors.indigo))
+              .setPSize(300, 64)
+              .setMSize(120, 48)
+              .addBelow(const _DemoBox('Sub (below-left)', Colors.cyan))
+              .setPSize(160, 40)
+              .setMSize(80, 40)
+              .build(),
         ),
       ],
     );
