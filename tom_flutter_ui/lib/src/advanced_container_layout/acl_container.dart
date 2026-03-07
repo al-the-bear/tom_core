@@ -691,13 +691,32 @@ class _AclContainerState extends State<AclContainer> {
     if (!hasExpandX && canExpandHorizontally) {
       rowWidget = LayoutBuilder(
         builder: (context, constraints) {
+          // Wrap each child with a maxWidth constraint so that widgets requiring
+          // finite width (e.g. TextField) do not receive double.infinity from
+          // the SingleChildScrollView's unbounded horizontal layout pass.
+          // This does NOT affect the clip fix: Clip.none still allows
+          // negatively-translated components to paint into the extraLeft
+          // padding area regardless of per-child max constraints.
+          final boundedChildren = children
+              .map(
+                (child) => child is Flexible || child is Spacer
+                    ? child
+                    : ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth,
+                        ),
+                        child: child,
+                      ),
+              )
+              .toList();
+
           final rowContent = Row(
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: hasExpandY && canExpandVertically
                 ? CrossAxisAlignment.stretch
                 : CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
-            children: children,
+            children: boundedChildren,
           );
 
           final alignment = switch (mainAxisAlignment) {
