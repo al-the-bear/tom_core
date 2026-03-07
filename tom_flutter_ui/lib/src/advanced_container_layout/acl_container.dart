@@ -753,6 +753,15 @@ class _AclContainerState extends State<AclContainer> {
       );
     }
 
+    // When using ScrollView+Clip.none with an extraLeft padding zone, wrap the
+    // whole (Padding+ScrollView) in a ClipRect. The ClipRect clips to the
+    // container's full width: the extraLeft padding area is inside those bounds
+    // (visible for negatively-translated components), while content overflowing
+    // to the right is clipped at the container edge.
+    if (!hasExpandX && canExpandHorizontally && extraLeft > 0) {
+      rowWidget = ClipRect(child: rowWidget);
+    }
+
     if (hasExpandY && canExpandVertically) {
       int rowFlex = 1;
       for (final component in row.components) {
