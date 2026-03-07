@@ -506,7 +506,24 @@ class _AclContainerState extends State<AclContainer> {
     double rowEstimatedHeight = 0;
     final virtualRects = <Key, Rect>{};
     for (final component in row.components) {
-      if (component.gapBefore > 0) {
+      final isFlexNativeChild =
+          component.child is Flexible ||
+          component.child is Expanded ||
+          component.child is Spacer;
+
+      // For non-aligned components that follow convenience-placed (negatively
+      // translated) ones, plannedX may far exceed the visual right edge
+      // (maxHorizontalX), creating phantom layout space that pushes this
+      // component far to the right. Collapse it back to the visual cluster by
+      // computing an implicit alignment delta rather than advancing from the
+      // accumulated layout cursor.
+      final bool hasExplicitXAlignment = component.alignXToKey != null;
+      final bool collapseToVisual =
+          !isFlexNativeChild &&
+          !hasExplicitXAlignment &&
+          maxHorizontalX < plannedX;
+
+      if (component.gapBefore > 0 && !collapseToVisual) {
         children.add(SizedBox(width: component.gapBefore));
         plannedX += component.gapBefore;
       }
@@ -519,12 +536,17 @@ class _AclContainerState extends State<AclContainer> {
           ? _resolveReferenceHeight(component.referenceKey)
           : null;
 
-      final alignmentDelta = _computeHorizontalAlignmentDelta(
-        component: component,
-        plannedX: plannedX,
-        resolvedLinkedWidth: resolvedLinkedWidth,
-        virtualRects: virtualRects,
-      );
+      // collapseToVisual: place this component at maxHorizontalX + gapBefore
+      // (the visual cluster's right edge plus the requested spacing) instead
+      // of at the accumulated layout cursor (plannedX).
+      final double alignmentDelta = collapseToVisual
+          ? (maxHorizontalX + component.gapBefore - plannedX)
+          : _computeHorizontalAlignmentDelta(
+              component: component,
+              plannedX: plannedX,
+              resolvedLinkedWidth: resolvedLinkedWidth,
+              virtualRects: virtualRects,
+            );
 
       if (alignmentDelta > 0) {
         children.add(SizedBox(width: alignmentDelta));
@@ -532,10 +554,6 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       Widget child = component.child;
-      final isFlexNativeChild =
-          component.child is Flexible ||
-          component.child is Expanded ||
-          component.child is Spacer;
 
       final linkedWidth = resolvedLinkedWidth;
       final linkedHeight = resolvedLinkedHeight;
