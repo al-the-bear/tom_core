@@ -686,21 +686,31 @@ class _AclContainerState extends State<AclContainer> {
 
     Widget rowWidget;
 
+    // Compute extraLeft early so the ScrollView branch can embed it as a
+    // leading spacer instead of an outer Padding (which doesn't fix the
+    // negative-translate clip problem).
+    final double extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
+
     if (!hasExpandX && canExpandHorizontally) {
       rowWidget = LayoutBuilder(
         builder: (context, constraints) {
-          final boundedChildren = children
-              .map(
-                (child) => child is Flexible || child is Spacer
-                    ? child
-                    : ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth,
-                        ),
-                        child: child,
+          // When components are translated left via negative alignment deltas
+          // they land at negative x inside the SingleChildScrollView and get
+          // clipped. Fix: prepend a spacer equal to the leftward overhang so
+          // every widget shifts right and stays within the scroll viewport.
+          final List<Widget> boundedChildren = [
+            if (extraLeft > 0) SizedBox(width: extraLeft),
+            ...children.map(
+              (child) => child is Flexible || child is Spacer
+                  ? child
+                  : ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: constraints.maxWidth,
                       ),
-              )
-              .toList();
+                      child: child,
+                    ),
+            ),
+          ];
 
           final rowContent = Row(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -744,14 +754,17 @@ class _AclContainerState extends State<AclContainer> {
 
     final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
     final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
-    final extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
+    // For the SingleChildScrollView path, extraLeft is already embedded as a
+    // leading spacer inside the scroll content—don't double-apply it here.
+    final double paddingLeft =
+        (!hasExpandX && canExpandHorizontally) ? 0.0 : extraLeft;
     final extraRight = hasExpandX && canExpandHorizontally
         ? 0.0
         : math.max(0.0, maxHorizontalX - rowEstimatedWidth);
-    if (extraTop > 0 || extraBottom > 0 || extraLeft > 0 || extraRight > 0) {
+    if (extraTop > 0 || extraBottom > 0 || paddingLeft > 0 || extraRight > 0) {
       rowWidget = Padding(
         padding: EdgeInsets.only(
-          left: extraLeft,
+          left: paddingLeft,
           right: extraRight,
           top: extraTop,
           bottom: extraBottom,
