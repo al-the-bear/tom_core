@@ -955,10 +955,16 @@ class _AclContainerState extends State<AclContainer> {
       final comp = row.components[i];
       // Skip flex-native and expandX children: expandX components are sized by
       // Row's Flexible mechanism, not by SizedBox fitting.
+      // Skip convenience-placed components (alignXToKey != null): their visual
+      // position is determined by their anchor, not sequential layout. Including
+      // them in shrinkCap dilutes the ratio and causes anchors to be
+      // under-shrunk, then clamped by ConstrainedBox(maxWidth), causing a
+      // mismatch between estimatedWidth and actual layout width.
       if (comp.child is Flexible ||
           comp.child is Expanded ||
           comp.child is Spacer ||
-          comp.expandX) {
+          comp.expandX ||
+          comp.alignXToKey != null) {
         continue;
       }
 
@@ -1015,7 +1021,8 @@ class _AclContainerState extends State<AclContainer> {
       if (comp.child is Flexible ||
           comp.child is Expanded ||
           comp.child is Spacer ||
-          comp.expandX) {
+          comp.expandX ||
+          comp.alignXToKey != null) {
         continue;
       }
       final pref = prefWidths[i] ?? 0.0;
@@ -1031,7 +1038,8 @@ class _AclContainerState extends State<AclContainer> {
       if (comp.child is Flexible ||
           comp.child is Expanded ||
           comp.child is Spacer ||
-          comp.expandX) {
+          comp.expandX ||
+          comp.alignXToKey != null) {
         continue;
       }
       final pref = prefWidths[i] ?? 0.0;
