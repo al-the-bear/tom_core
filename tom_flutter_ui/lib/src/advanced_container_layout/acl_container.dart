@@ -684,8 +684,12 @@ class _AclContainerState extends State<AclContainer> {
       final minHeight = component.useOtherDimY
           ? (linkedHeight ?? component.minimumSize?.height ?? component.preferredSize?.height)
           : (component.minimumSize?.height ?? component.preferredSize?.height);
+      // For useOtherDimX components whose reference is not yet resolved (first frame),
+      // fall back to availableWidth as maxWidth — prevents TextField/Dropdown
+      // "unbounded width" assertion inside Row(mainAxisSize.max) rows.
       final maxWidth = component.useOtherDimX
-          ? (linkedWidth ?? component.maximumSize?.width)
+          ? (linkedWidth ?? component.maximumSize?.width ??
+              (availableWidth?.isFinite == true ? availableWidth : null))
           : component.maximumSize?.width;
       final maxHeight = component.useOtherDimY
           ? (linkedHeight ?? component.maximumSize?.height)
