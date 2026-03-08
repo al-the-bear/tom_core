@@ -1096,7 +1096,50 @@ class _AclContainerState extends State<AclContainer> {
 
     final extraLeft = minHX < 0 ? -minHX : 0.0;
     final naturalWidth = maxHX + extraLeft;
-    if (naturalWidth <= availableWidth) return null;
+
+    if (naturalWidth <= availableWidth) {
+      // ── Grow phase ──────────────────────────────────────────────────────
+      // When no component claims exclusive rights to surplus space (expandX /
+      // gap slot), distribute the surplus proportionally across all components
+      // up to their declared maximum widths.  Components without a finite
+      // maximumSize do not participate in growth (they stay at preferred).
+      final hasRowFiller =
+          row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
+      if (!hasRowFiller) {
+        final surplus = availableWidth - naturalWidth;
+        double growCap = 0;
+        for (int i = 0; i < row.components.length; i++) {
+          final comp = row.components[i];
+          if (skip(comp)) continue;
+          final max = comp.maximumSize?.width;
+          if (max == null || !max.isFinite) continue;
+          growCap += math.max(0.0, max - (prefWidths[i] ?? 0.0));
+        }
+        if (growCap >= 1) {
+          final ratio = (surplus / growCap).clamp(0.0, 1.0);
+          final grown = <int, double>{};
+          for (int i = 0; i < row.components.length; i++) {
+            final comp = row.components[i];
+            if (skip(comp)) continue;
+            // Natural-sized widgets (no hints) are not constrained.
+            if (comp.preferredSize == null &&
+                comp.minimumSize == null &&
+                comp.maximumSize == null &&
+                !comp.useOtherDimX) {
+              continue;
+            }
+            final pref = prefWidths[i] ?? 0.0;
+            final max = comp.maximumSize?.width;
+            final canGrow = (max != null && max.isFinite)
+                ? math.max(0.0, max - pref)
+                : 0.0;
+            grown[i] = pref + canGrow * ratio;
+          }
+          return grown;
+        }
+      }
+      return null;
+    }
 
     final deficit = naturalWidth - availableWidth;
     double shrinkCap = 0;

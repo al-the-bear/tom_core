@@ -1028,6 +1028,8 @@ AclBuilder()
       .setMWidthInChars(12, charWidth: charWidth)              // min = 12 chars
       .setXWidthInChars(48, charWidth: charWidth)              // max = 48 chars
     .build();
+// No expandX needed: surplus space is automatically distributed up to max.
+// expandX only needed to claim ALL remaining surplus exclusively.
 '''),
       ],
     );
