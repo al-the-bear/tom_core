@@ -1099,21 +1099,21 @@ class _AclContainerState extends State<AclContainer> {
 
     if (naturalWidth <= availableWidth) {
       // ── Grow phase ────────────────────────────────────────────────────────
-      // A component participates in grow if and only if it has an explicit
-      // finite maximumSize.  That value is both the opt-in signal and the
-      // growth ceiling.  Components without maximumSize (fixed labels, alignment
-      // anchors, sameWidthAs targets, etc.) stay at their preferred/reference
-      // width and are intentionally excluded from the grow pool.
+      // Any ACL-hinted component participates in grow.
+      // Components without maximumSize receive their full proportional share
+      // (no cap); components with a finite maximumSize are capped at that value.
+      // The surplus is inherently bounded: it equals availableWidth minus what
+      // is already occupied, so growth can never push past the container edge.
       //
-      // Truly natural-sized components (no ACL hints at all) contribute zero to
-      // naturalWidth (their pref = 0 in the loop above).  We measure their real
-      // widths separately and subtract them from the surplus so we never
-      // distribute space that physically belongs to them.
+      // Truly natural-sized components (no ACL hints at all) were recorded with
+      // pref = 0 in the loop above, so they are absent from naturalWidth.
+      // We measure their real widths and subtract them from the surplus before
+      // distributing, ensuring distributed space never overlaps their footprint.
       final hasRowFiller =
           row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
       if (!hasRowFiller) {
-        // Estimate space occupied by truly natural-sized (no-hint) components
-        // whose pref was recorded as 0 and is therefore absent from naturalWidth.
+        // Measure space occupied by truly natural-sized (no-hint) components
+        // whose pref was 0 and is therefore missing from naturalWidth.
         double naturalExcludedWidth = 0;
         for (int i = 0; i < row.components.length; i++) {
           final comp = row.components[i];
@@ -1122,8 +1122,6 @@ class _AclContainerState extends State<AclContainer> {
               comp.minimumSize != null ||
               comp.maximumSize != null ||
               comp.useOtherDimX) { continue; }
-          // Truly natural-sized: try the cached measured width from the previous
-          // frame, then fall back to the SizedBox child's declared width.
           final measuredW = _resolveReferenceWidth(comp.componentKey) ??
               (comp.child is SizedBox
                   ? ((comp.child as SizedBox).width ?? 0.0)
@@ -1140,8 +1138,10 @@ class _AclContainerState extends State<AclContainer> {
           for (int i = 0; i < row.components.length; i++) {
             final comp = row.components[i];
             if (skip(comp)) { continue; }
-            final max = comp.maximumSize?.width;
-            if (max == null || !max.isFinite) { continue; }
+            if (comp.preferredSize == null &&
+                comp.minimumSize == null &&
+                comp.maximumSize == null &&
+                !comp.useOtherDimX) { continue; }
             totalPref += prefWidths[i] ?? 0.0;
           }
           if (totalPref >= 1) {
@@ -1149,11 +1149,16 @@ class _AclContainerState extends State<AclContainer> {
             for (int i = 0; i < row.components.length; i++) {
               final comp = row.components[i];
               if (skip(comp)) { continue; }
-              final max = comp.maximumSize?.width;
-              if (max == null || !max.isFinite) { continue; }
+              if (comp.preferredSize == null &&
+                  comp.minimumSize == null &&
+                  comp.maximumSize == null &&
+                  !comp.useOtherDimX) { continue; }
               final pref = prefWidths[i] ?? 0.0;
               final share = effectiveSurplus * pref / totalPref;
-              grown[i] = math.min(pref + share, max);
+              final max = comp.maximumSize?.width;
+              grown[i] = (max != null && max.isFinite)
+                  ? math.min(pref + share, max)
+                  : pref + share;
             }
             if (grown.isNotEmpty) { return grown; }
           }
