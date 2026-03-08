@@ -1216,6 +1216,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               .newRow(dist: 12)
               .append(ElevatedButton(onPressed: () {}, child: const Text('Primary Action')))
               .setPSize(200, 40)
+              .setXSize(200, 40)
               .append(
                 OutlinedButton(onPressed: () {}, child: const Text('Mirror Size')),
                 dist: 12,

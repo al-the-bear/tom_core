@@ -1252,7 +1252,10 @@ class _AclContainerState extends State<AclContainer> {
       // map so that _buildRow will not wrap them in SizedBox(width: 0).
       if (comp.preferredSize == null && comp.minimumSize == null) continue;
       final pref = prefWidths[i] ?? 0.0;
-      final min = comp.minimumSize?.width ?? 0.0;
+      // Use the same min expression as shrinkCap: prefer minimumSize, fall back
+      // to preferredSize so that components with only setPSize are never shrunk
+      // below their preferred width (they contributed 0 to shrinkCap).
+      final min = comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
     }
     return fitted;
@@ -1266,18 +1269,23 @@ class _AclContainerState extends State<AclContainer> {
     double? fittedWidth,
   }) {
     if (fittedWidth != null) return fittedWidth.clamp(0, double.infinity).toDouble();
+    // For sameWidthAs/sameSize: the reference-locked width is the exact width.
+    // Return it immediately so the stale render-tree cache cannot override it.
+    if (linkedWidth != null) return linkedWidth.clamp(0, double.infinity).toDouble();
     final mw = _resolveReferenceWidth(component.componentKey);
     if (mw != null) return mw.clamp(0, double.infinity).toDouble();
-    return (linkedWidth ?? component.preferredSize?.width ??
+    return (component.preferredSize?.width ??
             component.minimumSize?.width ?? 0)
         .clamp(0, double.infinity)
         .toDouble();
   }
 
   double _estimateComponentHeight(AclComponent component, double? linkedHeight) {
+    // Reference-locked height takes priority over stale render-tree cache.
+    if (linkedHeight != null) return linkedHeight.clamp(0, double.infinity).toDouble();
     final mh = _resolveReferenceHeight(component.componentKey);
     if (mh != null) return mh.clamp(0, double.infinity).toDouble();
-    return (linkedHeight ?? component.preferredSize?.height ??
+    return (component.preferredSize?.height ??
             component.minimumSize?.height ?? 0)
         .clamp(0, double.infinity)
         .toDouble();
