@@ -89,13 +89,13 @@ class _AclTab extends StatelessWidget {
           screen: ReferenceConstraintsDemo(),
         ),
         _DemoTile(
-          title: 'Convenience Placement',
-          description: 'addBelow/addLeft/addAbove/addRight composition',
+          title: 'Cross-Row Alignment',
+          description: 'Reference other rows: alignTopToBottom, alignRightToRight, etc.',
           screen: ConveniencePlacementDemo(),
         ),
         _DemoTile(
           title: 'Mixed Placement Playground',
-          description: 'Mix convenience placement with rows and expandX',
+          description: 'Cross-row alignment combined with regular rows, sameSize, expandX',
           screen: MixedPlacementPlaygroundDemo(),
         ),
         _DemoTile(
@@ -133,6 +133,11 @@ class _AclTab extends StatelessWidget {
           title: 'Complex Layout',
           description: 'Combined features demonstration',
           screen: ComplexLayoutDemo(),
+        ),
+        _DemoTile(
+          title: 'Comprehensive Form',
+          description: '2-column form with gap slots, gap rows, separators, cross-row alignment',
+          screen: ComprehensiveFormDemo(),
         ),
         _DemoTile(
           title: 'Dynamic Resize Demo',
@@ -501,36 +506,121 @@ class SizeConstraintsDemo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Resize window: components keep minimum size, target preferred, and cap at maximum when possible.',
+          'Resize the window left/right. Components shrink proportionally toward M: — they never go below it.',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
+        const Text(
+          'M = minimum  |  P = preferred  |  X = maximum. '
+          'Labels in each box show the configured constraints.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Three proportional panels (no expandX) ────────────────────────
+        const Text(
+          'Horizontal: three panels shrink proportionally (no expandX)',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
         Container(
           width: double.infinity,
-          height: 180,
+          height: 52,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .append(
-                const _DemoBox('Min 80 / Pref 160 / Max 220', Colors.teal),
-              )
-              .setMSize(80, 40)
-              .setPSize(160, 40)
-              .setXSize(220, 40)
-              .setAttr(AclFlags.expandX)
-              .append(
-                const _DemoBox('Min 60 / Pref 120 / Max 180', Colors.indigo),
-                dist: 8,
-              )
-              .setMSize(60, 40)
-              .setPSize(120, 40)
-              .setXSize(180, 40)
-              .setAttr(AclFlags.expandX)
-              .newRow(dist: 10)
-              .append(const _DemoBox('Fixed sample', Colors.orange))
-              .setMSize(90, 36)
-              .setPSize(90, 36)
-              .setXSize(90, 36)
+              .append(const _DemoBox('Alpha\nM:80 P:200 X:280', Colors.teal))
+              .setMSize(80, 40).setPSize(200, 40).setXSize(280, 40)
+              .append(const _DemoBox('Beta\nM:60 P:160 X:220', Colors.indigo), dist: 6)
+              .setMSize(60, 40).setPSize(160, 40).setXSize(220, 40)
+              .append(const _DemoBox('Gamma\nM:50 P:120 X:160', Colors.orange), dist: 6)
+              .setMSize(50, 40).setPSize(120, 40).setXSize(160, 40)
               .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'All three shrink proportionally toward M:. Once any hits M: only the others continue shrinking.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Wide + narrow + fixed (asymmetric ranges) ─────────────────────
+        const Text(
+          'Horizontal: asymmetric panels — one fixed, others proportional',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const _DemoBox('Wide\nM:120 P:360 X:460', Colors.purple))
+              .setMSize(120, 40).setPSize(360, 40).setXSize(460, 40)
+              .append(const _DemoBox('Medium\nM:80 P:200 X:240', Colors.blueGrey), dist: 6)
+              .setMSize(80, 40).setPSize(200, 40).setXSize(240, 40)
+              .append(const _DemoBox('Fixed\nM:80 P:80 X:80', Colors.red), dist: 6)
+              .setMSize(80, 40).setPSize(80, 40).setXSize(80, 40)
+              .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Fixed (M=P=X=80) never shrinks. Wide and Medium share remaining shrink proportionally.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── expandX: one component fills all remaining space ──────────────
+        const Text(
+          'Horizontal + expandX: center component grows to fill remaining width',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(const _DemoBox('Fixed\nM:80 P:120 X:120', Colors.blueGrey))
+              .setMSize(80, 40).setPSize(120, 40).setXSize(120, 40)
+              .append(const _DemoBox('ExpandX\nM:120 P:300 X:∞', Colors.lightGreen), dist: 6)
+              .setMSize(120, 40).setPSize(300, 40)
+              .setAttr(AclFlags.expandX)
+              .append(const _DemoBox('Fixed\nM:60 P:90 X:90', Colors.cyan), dist: 6)
+              .setMSize(60, 40).setPSize(90, 40).setXSize(90, 40)
+              .build(),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Vertical: expandY fills bounded height ────────────────────────
+        const Text(
+          'Vertical: expandY fills height — resize by dragging window taller/shorter',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 200,
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+            child: AclBuilder()
+                .append(const _DemoBox('Row 1 – fixed\nM:60 P:60', Colors.orange))
+                .setMSize(double.infinity, 60).setPSize(double.infinity, 60)
+                .setAttr(AclFlags.expandX)
+                .newRow(dist: 4)
+                .append(const _DemoBox('Row 2 – expandY\nM:40 P:100', Colors.lightGreen))
+                .setMSize(double.infinity, 40).setPSize(double.infinity, 100)
+                .setAttr(AclFlags.expand)
+                .newRow(dist: 4)
+                .append(const _DemoBox('Row 3 – fixed\nM:40 P:40', Colors.teal))
+                .setMSize(double.infinity, 40).setPSize(double.infinity, 40)
+                .setAttr(AclFlags.expandX)
+                .build(),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Row 1 and Row 3 keep fixed height. Row 2 (expandY) absorbs all extra vertical space.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
     );
@@ -901,7 +991,7 @@ class ConveniencePlacementDemo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Convenience placement methods chained from the previously appended widget:',
+          'Cross-row alignment — position a component relative to any other component\'s edge:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -945,7 +1035,7 @@ class ConveniencePlacementDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Expected: First/Second stack vertically; Third/Fourth/Fifth branch around the previous component; Seventh/Eighth share row width via expandX.',
+          'Second aligns below First; Third aligns left of First; Fourth aligns above First; Fifth aligns right of First. Seventh/Eighth share row width via expandX.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -967,7 +1057,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Mixed mode playground (regular rows + convenience placement + sameSize):',
+          'Multi-row layout combining cross-row alignment, regular rows, and sameSize():',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -1021,7 +1111,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Expected: combination of relative-placement constraints and standard row sequencing; final button mirrors anchor dimensions via sameSize().',
+          'Hint Panel aligns right of anchor, Status aligns above anchor, Text Field aligns below anchor. Final button mirrors anchor via sameSize().',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -1103,15 +1193,15 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        // ── Panel C: addBelow convenience placement + size response ──────────
+        // ── Panel C: two-row responsive layout ──────────────────────────────
         const Text(
-          'Panel C — addBelow convenience placement with responsive sizing',
+          'Panel C — two-row layout with responsive sizing',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4),
         const Text(
-          'Main [pref 300, min 120] with Sub [pref 160, min 80] placed below-left. '
-          'Resize window: Main and Sub shrink proportionally toward their minimums.',
+          'Main [pref 300, min 120] in row 1, Sub [pref 160, min 80] in row 2. '
+          'Resize window: both shrink proportionally toward their minimums.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
@@ -1428,23 +1518,27 @@ class NestedContainersDemo extends StatelessWidget {
         Container(
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .setAclPadding(const EdgeInsets.all(8))
+              .setAclPadding(const EdgeInsets.all(12))
               .append(
                 AclBuilder(
                       title: 'Outer Group',
                       borderStyle: const AclBorderStyle(
                         kind: AclBorderKind.solidDouble,
                         color: Colors.blueGrey,
+                        borderInsets: EdgeInsets.fromLTRB(10, 18, 10, 10),
                       ),
                     )
+                    .setAclPadding(const EdgeInsets.all(10))
                     .append(
                       AclBuilder(
                             title: 'Inner Group A',
                             borderStyle: const AclBorderStyle(
                               kind: AclBorderKind.solidDouble,
                               color: Colors.indigo,
+                              borderInsets: EdgeInsets.fromLTRB(8, 16, 8, 8),
                             ),
                           )
+                          .setAclPadding(const EdgeInsets.all(8))
                           .append(const Text('Content A1'))
                           .newRow(dist: 4)
                           .append(const Text('Content A2'))
@@ -1457,8 +1551,10 @@ class NestedContainersDemo extends StatelessWidget {
                             borderStyle: const AclBorderStyle(
                               kind: AclBorderKind.solidDouble,
                               color: Colors.teal,
+                              borderInsets: EdgeInsets.fromLTRB(8, 16, 8, 8),
                             ),
                           )
+                          .setAclPadding(const EdgeInsets.all(8))
                           .append(const Text('Content B1'))
                           .newRow(dist: 4)
                           .append(const Text('Content B2'))
@@ -1534,13 +1630,17 @@ AclBuilder()
 class FormLayoutDemo extends StatelessWidget {
   const FormLayoutDemo({super.key});
 
+  static const double _lw = 110.0; // label column fixed width
+  static const double _fMin = 120.0; // field minimum width
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Typical form layout (like Java example):',
+          'Typical form layout — all fields use expandX with minimum size. '
+          'Resize the window: every field grows/shrinks, labels stay fixed.',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -1552,20 +1652,22 @@ class FormLayoutDemo extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: AclBuilder()
-              .append(const SizedBox(width: 100, child: Text('Date:')))
+              // Date row
+              .append(const SizedBox(width: _lw, child: Text('Date:')))
               .append(
-                const SizedBox(
-                  width: 200,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+                const TextField(
+                  decoration: InputDecoration(
+                    labelText: 'YYYY-MM-DD',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                 ),
               )
+              .setMSize(_fMin, 36).setPSize(240, 36)
+              .setAttr(AclFlags.expandX)
+              // Name row
               .newRow(dist: 12)
-              .append(const SizedBox(width: 100, child: Text('Name:')))
+              .append(const SizedBox(width: _lw, child: Text('Name:')))
               .append(
                 const TextField(
                   decoration: InputDecoration(
@@ -1574,32 +1676,46 @@ class FormLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
+              .setMSize(_fMin, 36).setPSize(320, 36)
               .setAttr(AclFlags.expandX)
+              // Cost Center row
               .newRow(dist: 12)
-              .append(const SizedBox(width: 100, child: Text('Cost Center:')))
+              .append(const SizedBox(width: _lw, child: Text('Cost Center:')))
               .append(
-                const SizedBox(
-                  width: 200,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+                const TextField(
+                  decoration: InputDecoration(
+                    labelText: 'CC-XXX',
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                 ),
               )
+              .setMSize(_fMin, 36).setPSize(240, 36)
+              .setAttr(AclFlags.expandX)
+              // Description row
               .newRow(dist: 12)
-              .append(const SizedBox(width: 100, child: Text('Description:')))
+              .append(
+                const SizedBox(
+                  width: _lw,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('Description:'),
+                  ),
+                ),
+              )
               .append(
                 const TextField(
                   maxLines: 3,
                   decoration: InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
+                    alignLabelWithHint: true,
                   ),
                 ),
               )
+              .setMSize(_fMin, 72).setPSize(320, 72)
               .setAttr(AclFlags.expandX)
+              // Buttons
               .newRow(dist: 20)
               .append(
                 ElevatedButton(onPressed: () {}, child: const Text('Submit')),
@@ -1611,25 +1727,12 @@ class FormLayoutDemo extends StatelessWidget {
               .setRowAlignment(RowAlignment.center)
               .build(),
         ),
-        const SizedBox(height: 24),
-        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
-        const _CodeBlock('''
-AclBuilder()
-    .append(Label_Date)
-    .append(TextField_Date)
-    .newRow(dist: 12)
-    .append(Label_Name)
-    .append(TextField_Name)
-    .setAttr(AclFlags.expandX)
-    .newRow(dist: 12)
-    .append(Label_CostCenter)
-    .append(TextField_CostCenter)
-    .newRow(dist: 20)
-    .append(Submit_Button)
-    .append(Cancel_Button, dist: 10)
-    .setRowAlignment(RowAlignment.center)
-    .build()
-'''),
+        const SizedBox(height: 8),
+        const Text(
+          'All fields use expandX + setMSize() so they grow with the container '
+          'but never shrink past their minimum.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
       ],
     );
   }
@@ -1663,34 +1766,32 @@ class ComplexLayoutDemo extends StatelessWidget {
               .newRow(dist: 16)
               .append(const SizedBox(width: 80, child: Text('User:')))
               .append(
-                const SizedBox(
-                  width: 150,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
                 ),
               )
-              .append(const SizedBox(width: 80, child: Text('Role:')), dist: 20)
+              .setMSize(120, 36).setPSize(200, 36).setAttr(AclFlags.expandX)
+              .gap(weight: 1)
+              .append(const SizedBox(width: 80, child: Text('Role:')))
               .append(
-                SizedBox(
-                  width: 150,
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                      DropdownMenuItem(value: 'user', child: Text('User')),
-                      DropdownMenuItem(value: 'guest', child: Text('Guest')),
-                    ],
-                    onChanged: (_) {},
+                DropdownButtonFormField<String>(
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
                   ),
+                  hint: const Text('Select'),
+                  items: const [
+                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                    DropdownMenuItem(value: 'user', child: Text('User')),
+                    DropdownMenuItem(value: 'guest', child: Text('Guest')),
+                  ],
+                  onChanged: (_) {},
                 ),
               )
+              .setMSize(120, 36).setPSize(180, 36).setAttr(AclFlags.expandX)
               .newRow(dist: 16)
               .append(
                 Container(
@@ -1723,6 +1824,245 @@ class ComplexLayoutDemo extends StatelessWidget {
               .append(const Text('v1.0.0'))
               .setRowAlignment(RowAlignment.left)
               .build(),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Comprehensive Form Demo
+// ─────────────────────────────────────────────────────────────────────────────
+class ComprehensiveFormDemo extends StatelessWidget {
+  const ComprehensiveFormDemo({super.key});
+
+  static const double _lw = 110.0; // label column fixed width
+  static const double _fMin = 100.0; // field minimum width
+
+  @override
+  Widget build(BuildContext context) {
+    // Reference widgets — same widget instance used as child AND alignment ref
+    final projectCodeField = const TextField(
+      decoration: InputDecoration(
+        labelText: 'PRJ-001',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+    );
+    final budgetField = const TextField(
+      decoration: InputDecoration(
+        labelText: '0.00',
+        border: OutlineInputBorder(),
+        isDense: true,
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Comprehensive Form — 2-column aligned layout, horizontal gap() slots, '
+          'vertical gapRow() with separators, and cross-row right-edge alignment.',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Resize the window: all fields grow/shrink. '
+          '"Duration" field right-aligns to "Code" field above it. '
+          '"Approver" field right-aligns to "Budget" field above it.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        AclBuilder(
+          title: 'New Project Request',
+          borderStyle: const AclBorderStyle.solid(
+            color: Colors.blueGrey,
+            lineWidth: 1.5,
+            rounded: true,
+            borderRadius: 8,
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+        )
+        // ── Section heading ────────────────────────────────────────────────
+        .append(const Text(
+          'Project Details',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.blueGrey),
+        ))
+        .gapRow(weight: 1)
+
+        // ── Row: Project Name | Code ───────────────────────────────────────
+        .append(const SizedBox(width: _lw, child: Text('Project Name')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'Full project name',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setMSize(_fMin, 36).setPSize(280, 36).setAttr(AclFlags.expandX)
+        .gap(weight: 2)
+        .append(const SizedBox(width: 70, child: Text('Code')))
+        .append(projectCodeField) // ← alignment reference
+        .setPSize(120, 36).setMSize(80, 36).setXSize(150, 36)
+
+        // ── Row: Department | Priority ─────────────────────────────────────
+        .newRow(dist: 10)
+        .append(const SizedBox(width: _lw, child: Text('Department')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'e.g. Engineering',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setMSize(_fMin, 36).setPSize(280, 36).setAttr(AclFlags.expandX)
+        .gap(weight: 2)
+        .append(const SizedBox(width: 70, child: Text('Priority')))
+        .append(DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          hint: const Text('Select'),
+          items: const [
+            DropdownMenuItem(value: 'high', child: Text('High')),
+            DropdownMenuItem(value: 'medium', child: Text('Medium')),
+            DropdownMenuItem(value: 'low', child: Text('Low')),
+          ],
+          onChanged: (_) {},
+        ))
+        .sameWidthAs(projectCodeField) // same width as Code field
+
+        // ── Gap row: single separator ─────────────────────────────────────
+        .gapRow(
+          weight: 4,
+          separator: const AclSeparator(
+            style: AclSeparatorStyle.single,
+            alignment: AclSeparatorAlignment.middle,
+          ),
+        )
+
+        // ── Row: Start Date | End Date | Duration (right-edge → Code) ─────
+        .append(const SizedBox(width: _lw, child: Text('Start Date')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'YYYY-MM-DD',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setPSize(140, 36).setMSize(90, 36).setXSize(180, 36)
+        .gap(weight: 2)
+        .append(const SizedBox(width: 70, child: Text('End Date')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'YYYY-MM-DD',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setPSize(140, 36).setMSize(90, 36).setXSize(180, 36)
+        // Extra field on same row: right edge aligns with Code field above
+        .append(const SizedBox(width: 44, child: Text(' Days')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: '#',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setPSize(60, 36).setMSize(50, 36).setXSize(75, 36)
+        .alignRightToRight(projectCodeField) // ← cross-row alignment
+
+        // ── Row: Description (full width) ──────────────────────────────────
+        .newRow(dist: 10)
+        .append(
+          const SizedBox(
+            width: _lw,
+            child: Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('Description'),
+            ),
+          ),
+        )
+        .append(const TextField(
+          maxLines: 3,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+            alignLabelWithHint: true,
+          ),
+        ))
+        .setMSize(_fMin, 72).setPSize(400, 72).setAttr(AclFlags.expandX)
+
+        // ── Double-line separator: section divider ─────────────────────────
+        .gapRow(
+          weight: 6,
+          separator: const AclSeparator(
+            style: AclSeparatorStyle.doubleLine,
+            alignment: AclSeparatorAlignment.middle,
+          ),
+        )
+        .append(const Text(
+          'Budget & Approval',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.blueGrey),
+        ))
+        .gapRow(weight: 1)
+
+        // ── Row: Cost Center | Budget ──────────────────────────────────────
+        .append(const SizedBox(width: _lw, child: Text('Cost Center')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'CC-XXX',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setMSize(_fMin, 36).setPSize(220, 36).setAttr(AclFlags.expandX)
+        .gap(weight: 2)
+        .append(const SizedBox(width: 90, child: Text('Budget (EUR)')))
+        .append(budgetField) // ← alignment reference for Approver
+        .setPSize(130, 36).setMSize(80, 36).setXSize(160, 36)
+
+        // ── Row: PO Number | Approver (right-edge → Budget) ───────────────
+        .newRow(dist: 10)
+        .append(const SizedBox(width: _lw, child: Text('PO Number')))
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'PO-XXX',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setMSize(_fMin, 36).setPSize(220, 36).setAttr(AclFlags.expandX)
+        .append(const SizedBox(width: 90, child: Text('Approver')), dist: 8)
+        .append(const TextField(
+          decoration: InputDecoration(
+            labelText: 'Name',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ))
+        .setPSize(130, 36).setMSize(80, 36).setXSize(160, 36)
+        .alignRightToRight(budgetField) // ← cross-row alignment
+
+        // ── Final gap + footer buttons ──────────────────────────────────────
+        .gapRow(weight: 4)
+        .gap() // push buttons to center
+        .append(const OutlinedButton(onPressed: null, child: Text('Cancel')))
+        .append(
+          ElevatedButton(onPressed: () {}, child: const Text('  Submit  ')),
+          dist: 8,
+        )
+        .gap() // push buttons to center
+        .build(),
+
+        const SizedBox(height: 8),
+        const Text(
+          'gap() = elastic horizontal spacer  ·  gapRow() = elastic vertical spacer  ·  '
+          'gapRow(separator:) = divider line  ·  alignRightToRight(ref) = cross-row alignment  ·  '
+          'sameWidthAs(ref) = same width as another component.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
     );
