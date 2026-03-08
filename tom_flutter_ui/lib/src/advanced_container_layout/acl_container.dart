@@ -256,17 +256,17 @@ class _AclContainerState extends State<AclContainer> {
 
     // ── Container-level sizing ──────────────────────────────────────────
     // preferred acts as minimum when no explicit minimum is given.
-    final minContW = widget.minimumContainerSize?.width ??
-        widget.preferredContainerSize?.width;
+    // minContW is intentionally NOT applied here — it is handled inside
+    // _buildContent so the layout engine can use it as the effective width
+    // (enabling expandX/gap to work correctly at the minimum width) and
+    // wrap in a horizontal scroll view when the window is narrower.
     final minContH = widget.minimumContainerSize?.height ??
         widget.preferredContainerSize?.height;
     final maxContW = widget.maximumContainerSize?.width;
     final maxContH = widget.maximumContainerSize?.height;
-    if (minContW != null || minContH != null ||
-        maxContW != null || maxContH != null) {
+    if (minContH != null || maxContW != null || maxContH != null) {
       content = ConstrainedBox(
         constraints: BoxConstraints(
-          minWidth: minContW ?? 0,
           minHeight: minContH ?? 0,
           maxWidth: maxContW ?? double.infinity,
           maxHeight: maxContH ?? double.infinity,
@@ -460,13 +460,32 @@ class _AclContainerState extends State<AclContainer> {
     );
     final hasGapRows =
         widget.rows.any((row) => row.isGapRow) && !widget.scrollableY;
+    // Effective minimum container width: preferred acts as minimum when no
+    // explicit minimum is given. Handled here (not in the outer ConstrainedBox)
+    // so the layout engine uses this width for expandX/gap distribution and can
+    // wrap in a horizontal scroll view when the window is narrower.
+    final minContW = (widget.minimumContainerSize?.width ??
+            widget.preferredContainerSize?.width ??
+            0.0)
+        .clamp(0.0, double.maxFinite);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final canExpandHorizontally = constraints.hasBoundedWidth;
+        final rawMaxW =
+            constraints.hasBoundedWidth ? constraints.maxWidth : 0.0;
+        // Use the larger of the real available width and the minimum container
+        // width so rows lay out as if they have at least minContW space.
+        final effectiveMaxW = math.max(rawMaxW, minContW);
+        final canExpandHorizontally = effectiveMaxW > 0;
         final canExpandVertically = constraints.hasBoundedHeight;
         final useMaxVertical =
             (hasExpandY || hasGapRows) && canExpandVertically;
+        // True when content is wider than the window (scroll mode).
+        final needsHorizontalScroll =
+            !widget.scrollableX &&
+            minContW > 0 &&
+            constraints.hasBoundedWidth &&
+            rawMaxW < minContW;
 
         final List<Widget> rowWidgets = [];
 
@@ -494,8 +513,7 @@ class _AclContainerState extends State<AclContainer> {
               row: row,
               canExpandHorizontally: canExpandHorizontally,
               canExpandVertically: canExpandVertically,
-              availableWidth:
-                  canExpandHorizontally ? constraints.maxWidth : null,
+              availableWidth: canExpandHorizontally ? effectiveMaxW : null,
             ),
           );
         }
@@ -510,6 +528,15 @@ class _AclContainerState extends State<AclContainer> {
 
         if (!canExpandHorizontally) {
           column = UnconstrainedBox(alignment: Alignment.topLeft, child: column);
+        }
+
+        if (needsHorizontalScroll) {
+          // Freeze width at minContW and allow the window to scroll over it.
+          column = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: SizedBox(width: minContW, child: column),
+          );
         }
 
         if (widget.scrollableY) {
@@ -616,10 +643,30 @@ class _AclContainerState extends State<AclContainer> {
       if (component.isGap) {
         if (!widget.scrollableX && gapWeightSum > 0) {
           if (rowFillsWidth) {
-            final flex =
-                (component.gapWeight / gapWeightSum * 10000)
-                    .round()
-                    .clamp(1, 10000);
+            // Normalize gap flex against expandX flex so that gap(weight:1)
+            // competes on the same scale as expandX components.
+            // When no expandX is in the row, use the classic 10000 scale.
+            final totalExpandXFlex = hasExpandX
+                ? row.components
+                    .where((c) => c.expandX && !c.isGap)
+                    .fold(0.0, (s, c) {
+                    final pref = c.preferredSize?.width ?? 0.0;
+                    final min = c.minimumSize?.width ?? 0.0;
+                    final diff = pref - min;
+                    return s + (diff > 0 && diff.isFinite ? diff : 1000.0);
+                  })
+                : 0.0;
+            final int flex;
+            if (totalExpandXFlex > 0) {
+              // Scale gap weight proportionally to total expandX flex.
+              flex = ((component.gapWeight / gapWeightSum) * totalExpandXFlex)
+                  .round()
+                  .clamp(1, 100000);
+            } else {
+              flex = (component.gapWeight / gapWeightSum * 10000)
+                  .round()
+                  .clamp(1, 10000);
+            }
             children.add(Spacer(flex: flex));
           } else {
             final gapWidth =
@@ -864,10 +911,7 @@ class _AclContainerState extends State<AclContainer> {
                   clipBehavior: Clip.none,
                   child: rowContent,
                 )
-              : SizedBox(
-                  width: constraints.maxWidth,
-                  child: Align(alignment: alignment, child: rowContent),
-                );
+              : Align(alignment: alignment, child: rowContent);
         },
       );
     } else {
@@ -1068,6 +1112,14 @@ class _AclContainerState extends State<AclContainer> {
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (skip(comp)) continue;
+      // Components with no ACL size hints at all render at their natural
+      // intrinsic / widget-defined size. Do NOT insert them into the fitted
+      // map so that _buildRow will not wrap them in SizedBox(width: 0).
+      if (comp.preferredSize == null &&
+          comp.minimumSize == null &&
+          !comp.useOtherDimX) {
+        continue;
+      }
       final pref = prefWidths[i] ?? 0.0;
       final min = comp.minimumSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
@@ -1271,12 +1323,15 @@ class Acl extends AclLayout {
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         AclContainer(
           rows: rows,
-          borderStyle: borderStyle,
-          focusedBorderStyle: focusedBorderStyle,
-          padding: padding.add(const EdgeInsets.only(top: 8)),
+          borderStyle: _titleAdjustedBorderStyle(borderStyle),
+          focusedBorderStyle: focusedBorderStyle != null
+              ? _titleAdjustedBorderStyle(focusedBorderStyle!)
+              : null,
+          padding: padding.add(const EdgeInsets.only(top: 14)),
           backgroundColor: backgroundColor,
           scrollableX: scrollableX,
           scrollableY: scrollableY,
@@ -1285,7 +1340,7 @@ class Acl extends AclLayout {
           maximumContainerSize: maximumContainerSize,
         ),
         Positioned(
-          top: -1,
+          top: 0,
           left: _left(),
           right: _right(),
           child: Align(
@@ -1298,6 +1353,16 @@ class Acl extends AclLayout {
           ),
         ),
       ],
+    );
+  }
+
+  /// When no explicit [AclBorderStyle.borderInsets] are set, injects an extra
+  /// top inner inset so that content starts below the floating title text.
+  AclBorderStyle _titleAdjustedBorderStyle(AclBorderStyle style) {
+    if (!style.enabled) return style;
+    if (style.borderInsets != EdgeInsets.zero) return style;
+    return style.copyWith(
+      borderInsets: const EdgeInsets.fromLTRB(4, 10, 4, 4),
     );
   }
 
