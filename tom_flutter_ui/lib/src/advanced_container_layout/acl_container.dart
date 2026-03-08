@@ -1094,6 +1094,7 @@ class _AclContainerState extends State<AclContainer> {
   Map<int, double>? _computeFittedWidths({
     required AclRow row,
     required double availableWidth,
+    Map<Key, Rect> crossRowVirtualRects = const {},
   }) {
     double plannedX = 0;
     double minHX = 0;
@@ -1114,7 +1115,8 @@ class _AclContainerState extends State<AclContainer> {
       if (skip(comp)) continue;
 
       final linkedW = comp.useOtherDimX
-          ? (_resolveReferenceWidth(comp.referenceKey) ??
+          ? (crossRowVirtualRects[comp.referenceKey]?.width ??
+              _resolveReferenceWidth(comp.referenceKey) ??
               _resolveReferencedRect(comp.alignXToKey)?.width)
           : null;
 

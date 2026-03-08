@@ -1189,6 +1189,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               // Row 1: anchor + regular sequential component
               .append(formAnchor)
               .setPSize(220, 50)
+              .setXSize(220, 50)
               .append(regularBox, dist: 12)
               .setPSize(140, 40)
               // Row 2: two components each using cross-row X alignment (no overlap)
