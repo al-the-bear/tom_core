@@ -5,87 +5,117 @@ import 'package:flutter/material.dart';
 import 'acl_flags.dart';
 import 'row_alignment.dart';
 
-enum AclBorderLineKind { single, doubleLine }
+// ── Border enums / types ─────────────────────────────────────────────────────
 
+/// Defines the visual shape of a container border.
+enum AclBorderKind {
+  none,
+  solid,
+  solidDouble,
+  top,
+  bottom,
+  left,
+  right,
+  horizontal,
+  vertical,
+}
+
+/// Axis point on the X axis.
 enum AclAxisPointX { left, center, right }
 
+/// Axis point on the Y axis.
 enum AclAxisPointY { top, center, bottom }
 
+/// Per-component vertical placement within its row when [AclComponent.alignYToKey] is null.
 enum AclRowCrossAlignment { top, center, bottom }
 
+// ── Separator types ──────────────────────────────────────────────────────────
+
+enum AclSeparatorStyle { single, doubleLine }
+
+enum AclSeparatorAlignment { top, middle, bottom }
+
+/// Horizontal divider drawn inside a gap row.
+class AclSeparator {
+  final AclSeparatorStyle style;
+  final Color? color;
+  final double lineWidth;
+  final AclSeparatorAlignment alignment;
+
+  const AclSeparator({
+    this.style = AclSeparatorStyle.single,
+    this.color,
+    this.lineWidth = 1.0,
+    this.alignment = AclSeparatorAlignment.middle,
+  });
+}
+
+// ── AclBorderStyle ───────────────────────────────────────────────────────────
+
 class AclBorderStyle {
-  final bool enabled;
+  final AclBorderKind kind;
+  final Color color;
+  final double lineWidth;
   final bool rounded;
   final double borderRadius;
-  final double lineWidth;
-  final AclBorderLineKind lineKind;
-  final bool withShadow;
-  final bool with3dEffect;
-  final Color primaryColor;
-  final Color? secondaryColor;
-  final Color? shadowColor;
   final EdgeInsetsGeometry borderInsets;
 
   const AclBorderStyle({
-    this.enabled = true,
+    this.kind = AclBorderKind.none,
+    this.color = const Color(0xFF9E9E9E),
+    this.lineWidth = 1.0,
     this.rounded = false,
-    this.borderRadius = 6,
-    this.lineWidth = 1,
-    this.lineKind = AclBorderLineKind.single,
-    this.withShadow = false,
-    this.with3dEffect = false,
-    this.primaryColor = const Color(0xFF9E9E9E),
-    this.secondaryColor,
-    this.shadowColor,
-    this.borderInsets = const EdgeInsets.all(8),
+    this.borderRadius = 8.0,
+    this.borderInsets = EdgeInsets.zero,
   });
 
   const AclBorderStyle.none()
-    : enabled = false,
-      rounded = false,
-      borderRadius = 0,
-      lineWidth = 0,
-      lineKind = AclBorderLineKind.single,
-      withShadow = false,
-      with3dEffect = false,
-      primaryColor = Colors.transparent,
-      secondaryColor = null,
-      shadowColor = null,
-      borderInsets = EdgeInsets.zero;
+      : kind = AclBorderKind.none,
+        color = Colors.transparent,
+        lineWidth = 0,
+        rounded = false,
+        borderRadius = 0,
+        borderInsets = EdgeInsets.zero;
+
+  const AclBorderStyle.solid({
+    this.color = const Color(0xFF9E9E9E),
+    this.lineWidth = 1.0,
+    this.rounded = false,
+    this.borderRadius = 8.0,
+    this.borderInsets = EdgeInsets.zero,
+  }) : kind = AclBorderKind.solid;
+
+  bool get enabled => kind != AclBorderKind.none;
 
   AclBorderStyle copyWith({
-    bool? enabled,
+    AclBorderKind? kind,
+    Color? color,
+    double? lineWidth,
     bool? rounded,
     double? borderRadius,
-    double? lineWidth,
-    AclBorderLineKind? lineKind,
-    bool? withShadow,
-    bool? with3dEffect,
-    Color? primaryColor,
-    Color? secondaryColor,
-    Color? shadowColor,
     EdgeInsetsGeometry? borderInsets,
   }) {
     return AclBorderStyle(
-      enabled: enabled ?? this.enabled,
+      kind: kind ?? this.kind,
+      color: color ?? this.color,
+      lineWidth: lineWidth ?? this.lineWidth,
       rounded: rounded ?? this.rounded,
       borderRadius: borderRadius ?? this.borderRadius,
-      lineWidth: lineWidth ?? this.lineWidth,
-      lineKind: lineKind ?? this.lineKind,
-      withShadow: withShadow ?? this.withShadow,
-      with3dEffect: with3dEffect ?? this.with3dEffect,
-      primaryColor: primaryColor ?? this.primaryColor,
-      secondaryColor: secondaryColor ?? this.secondaryColor,
-      shadowColor: shadowColor ?? this.shadowColor,
       borderInsets: borderInsets ?? this.borderInsets,
     );
   }
 }
 
+// ── AclComponent ─────────────────────────────────────────────────────────────
+
 class AclComponent {
   final Widget child;
   final int flags;
   final double gapBefore;
+
+  /// Relative weight used when this is a gap slot (isGap == true).
+  final double gapWeight;
+
   final Size? preferredSize;
   final Size? minimumSize;
   final Size? maximumSize;
@@ -105,6 +135,7 @@ class AclComponent {
     required this.child,
     this.flags = 0,
     this.gapBefore = 0,
+    this.gapWeight = 1.0,
     this.preferredSize,
     this.minimumSize,
     this.maximumSize,
@@ -128,17 +159,35 @@ class AclComponent {
   bool get useOtherDimY => (flags & AclFlags.otherDimY) != 0;
 }
 
+// ── AclRow ───────────────────────────────────────────────────────────────────
+
 class AclRow {
   final List<AclComponent> components;
   final RowAlignment alignment;
+
+  /// Fixed pixel gap before this row.
   final double gapBefore;
+
+  /// When true this row is an elastic vertical spacer, not a content row.
+  final bool isGapRow;
+
+  /// Relative weight for vertical space distribution among gap rows.
+  final double gapRowWeight;
+
+  /// Optional separator drawn inside the gap row area.
+  final AclSeparator? separator;
 
   const AclRow({
     required this.components,
     this.alignment = RowAlignment.left,
     this.gapBefore = 0,
+    this.isGapRow = false,
+    this.gapRowWeight = 1.0,
+    this.separator,
   });
 }
+
+// ── AclContainer ─────────────────────────────────────────────────────────────
 
 class AclContainer extends StatefulWidget {
   final List<AclRow> rows;
@@ -147,6 +196,12 @@ class AclContainer extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
 
+  /// Enables horizontal scrolling; gap slots collapse to 0 on the X axis.
+  final bool scrollableX;
+
+  /// Enables vertical scrolling; gap rows collapse to 0 on the Y axis.
+  final bool scrollableY;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -154,6 +209,8 @@ class AclContainer extends StatefulWidget {
     this.focusedBorderStyle,
     this.padding = EdgeInsets.zero,
     this.backgroundColor,
+    this.scrollableX = false,
+    this.scrollableY = false,
   });
 
   @override
@@ -189,8 +246,8 @@ class _AclContainerState extends State<AclContainer> {
 
     final activeBorderStyle =
         _hasFocusWithin && widget.focusedBorderStyle != null
-        ? widget.focusedBorderStyle!
-        : widget.borderStyle;
+            ? widget.focusedBorderStyle!
+            : widget.borderStyle;
 
     content = _wrapWithBorder(content, activeBorderStyle);
 
@@ -203,13 +260,9 @@ class _AclContainerState extends State<AclContainer> {
       canRequestFocus: false,
       skipTraversal: true,
       onFocusChange: (hasFocus) {
-        if (_hasFocusWithin == hasFocus || !mounted) {
-          return;
-        }
+        if (_hasFocusWithin == hasFocus || !mounted) return;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted || _hasFocusWithin == hasFocus) {
-            return;
-          }
+          if (!mounted || _hasFocusWithin == hasFocus) return;
           setState(() {
             _hasFocusWithin = hasFocus;
           });
@@ -220,48 +273,32 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   void _scheduleReferenceRelayoutIfNeeded() {
-    if (!_hasUnresolvedReference || _referenceRelayoutScheduled) {
-      return;
-    }
-
+    if (!_hasUnresolvedReference || _referenceRelayoutScheduled) return;
     _referenceRelayoutScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _referenceRelayoutScheduled = false;
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       setState(() {});
     });
   }
 
   void _scheduleReferenceCacheRefresh() {
-    if (_referenceCacheRefreshScheduled) {
-      return;
-    }
-
+    if (_referenceCacheRefreshScheduled) return;
     _referenceCacheRefreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _referenceCacheRefreshScheduled = false;
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       final ownRenderObject = context.findRenderObject();
       final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
-      if (ownBox == null || !ownBox.hasSize) {
-        return;
-      }
+      if (ownBox == null || !ownBox.hasSize) return;
 
       bool changed = false;
       for (final key in _componentKeys()) {
-        if (key is! GlobalKey) {
-          continue;
-        }
+        if (key is! GlobalKey) continue;
         final refContext = key.currentContext;
         final refRenderObject = refContext?.findRenderObject();
-        if (refRenderObject is! RenderBox || !refRenderObject.hasSize) {
-          continue;
-        }
+        if (refRenderObject is! RenderBox || !refRenderObject.hasSize) continue;
 
         final size = refRenderObject.size;
         final topLeft = ownBox.globalToLocal(
@@ -279,9 +316,7 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
-      if (changed && mounted) {
-        setState(() {});
-      }
+      if (changed && mounted) setState(() {});
     });
   }
 
@@ -289,81 +324,49 @@ class _AclContainerState extends State<AclContainer> {
     for (final row in widget.rows) {
       for (final component in row.components) {
         final key = component.componentKey;
-        if (key != null) {
-          yield key;
-        }
+        if (key != null) yield key;
       }
     }
   }
 
   bool _isSameSize(Size? a, Size b) {
-    if (a == null) {
-      return false;
-    }
+    if (a == null) return false;
     return (a.width - b.width).abs() < _geometryEpsilon &&
         (a.height - b.height).abs() < _geometryEpsilon;
   }
 
   bool _isSameRect(Rect? a, Rect b) {
-    if (a == null) {
-      return false;
-    }
+    if (a == null) return false;
     return (a.left - b.left).abs() < _geometryEpsilon &&
         (a.top - b.top).abs() < _geometryEpsilon &&
         (a.width - b.width).abs() < _geometryEpsilon &&
         (a.height - b.height).abs() < _geometryEpsilon;
   }
 
+  // ── Border rendering ───────────────────────────────────────────────────────
+
   Widget _wrapWithBorder(Widget content, AclBorderStyle style) {
     final hasBackground = widget.backgroundColor != null;
 
     if (!style.enabled) {
-      if (!hasBackground) {
-        return content;
-      }
+      if (!hasBackground) return content;
       return Container(color: widget.backgroundColor, child: content);
     }
 
-    final baseColor = style.primaryColor;
-    final accentColor =
-        style.secondaryColor ?? Color.lerp(baseColor, Colors.white, 0.35)!;
-    final dark3d = Color.lerp(baseColor, Colors.black, 0.35)!;
-    final light3d = Color.lerp(baseColor, Colors.white, 0.45)!;
+    final color = style.color;
     final radius = style.rounded ? style.borderRadius : 0.0;
-    final shadowColor =
-        style.shadowColor ?? Color.lerp(baseColor, Colors.black, 0.55)!;
 
-    final border = style.with3dEffect
-        ? Border(
-            top: BorderSide(color: light3d, width: style.lineWidth),
-            left: BorderSide(color: light3d, width: style.lineWidth),
-            right: BorderSide(color: dark3d, width: style.lineWidth),
-            bottom: BorderSide(color: dark3d, width: style.lineWidth),
-          )
-        : Border.all(color: baseColor, width: style.lineWidth);
+    final contentWithInsets = style.borderInsets != EdgeInsets.zero
+        ? Padding(padding: style.borderInsets, child: content)
+        : content;
 
-    final contentWithInsets = Padding(
-      padding: style.borderInsets,
-      child: content,
-    );
-
-    Widget decorated = Container(
-      decoration: BoxDecoration(
-        color: widget.backgroundColor,
-        border: border,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: contentWithInsets,
-    );
-
-    if (style.lineKind == AclBorderLineKind.doubleLine) {
-      final innerRadius = radius > 0
-          ? (radius - 2).clamp(0.0, radius).toDouble()
-          : 0.0;
-      decorated = Container(
+    if (style.kind == AclBorderKind.solidDouble) {
+      final innerRadius =
+          radius > 0 ? (radius - 2.0).clamp(0.0, radius) : 0.0;
+      return Container(
         decoration: BoxDecoration(
           color: widget.backgroundColor,
-          border: Border.all(color: baseColor, width: style.lineWidth),
+          border: Border.all(color: color, width: style.lineWidth),
           borderRadius: BorderRadius.circular(radius),
         ),
         child: Padding(
@@ -371,7 +374,7 @@ class _AclContainerState extends State<AclContainer> {
           child: Container(
             decoration: BoxDecoration(
               color: widget.backgroundColor,
-              border: Border.all(color: accentColor, width: style.lineWidth),
+              border: Border.all(color: color, width: style.lineWidth),
               borderRadius: BorderRadius.circular(innerRadius),
             ),
             child: contentWithInsets,
@@ -380,77 +383,74 @@ class _AclContainerState extends State<AclContainer> {
       );
     }
 
-    if (style.withShadow) {
-      final blurExtent = (style.lineWidth * 4).clamp(3.0, 10.0);
-      final shadowStart = shadowColor.withValues(alpha: 0.28);
-      final shadowEnd = shadowColor.withValues(alpha: 0.0);
+    final Border? border = switch (style.kind) {
+      AclBorderKind.solid => Border.all(color: color, width: style.lineWidth),
+      AclBorderKind.top =>
+        Border(top: BorderSide(color: color, width: style.lineWidth)),
+      AclBorderKind.bottom =>
+        Border(bottom: BorderSide(color: color, width: style.lineWidth)),
+      AclBorderKind.left =>
+        Border(left: BorderSide(color: color, width: style.lineWidth)),
+      AclBorderKind.right =>
+        Border(right: BorderSide(color: color, width: style.lineWidth)),
+      AclBorderKind.horizontal => Border(
+          top: BorderSide(color: color, width: style.lineWidth),
+          bottom: BorderSide(color: color, width: style.lineWidth),
+        ),
+      AclBorderKind.vertical => Border(
+          left: BorderSide(color: color, width: style.lineWidth),
+          right: BorderSide(color: color, width: style.lineWidth),
+        ),
+      _ => null,
+    };
 
-      decorated = Stack(
-        clipBehavior: Clip.none,
-        children: [
-          decorated,
-          Positioned(
-            top: style.lineWidth,
-            bottom: style.lineWidth,
-            right: -blurExtent,
-            width: blurExtent,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [shadowStart, shadowEnd],
-                  ),
-                  borderRadius: BorderRadius.horizontal(
-                    right: Radius.circular(radius > 0 ? radius : 2),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: style.lineWidth,
-            right: style.lineWidth,
-            bottom: -blurExtent,
-            height: blurExtent,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [shadowStart, shadowEnd],
-                  ),
-                  borderRadius: BorderRadius.vertical(
-                    bottom: Radius.circular(radius > 0 ? radius : 2),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return decorated;
+    return Container(
+      decoration: BoxDecoration(
+        color: widget.backgroundColor,
+        border: border,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: contentWithInsets,
+    );
   }
+
+  // ── Content building ───────────────────────────────────────────────────────
 
   Widget _buildContent(BuildContext context) {
     final hasExpandY = widget.rows.any(
-      (row) => row.components.any((component) => component.expandY),
+      (row) => !row.isGapRow && row.components.any((c) => c.expandY),
     );
+    final hasGapRows =
+        widget.rows.any((row) => row.isGapRow) && !widget.scrollableY;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final canExpandHorizontally = constraints.hasBoundedWidth;
         final canExpandVertically = constraints.hasBoundedHeight;
+        final useMaxVertical =
+            (hasExpandY || hasGapRows) && canExpandVertically;
 
         final List<Widget> rowWidgets = [];
+
         for (final row in widget.rows) {
+          if (row.isGapRow) {
+            if (!widget.scrollableY && canExpandVertically) {
+              final weight =
+                  (row.gapRowWeight * 1000).round().clamp(1, 1000000);
+              final gapContent = row.separator != null
+                  ? _buildSeparatorWidget(row.separator!)
+                  : const SizedBox.expand();
+              rowWidgets.add(
+                Flexible(flex: weight, fit: FlexFit.tight, child: gapContent),
+              );
+            }
+            continue;
+          }
+
           if (row.gapBefore > 0) {
             rowWidgets.add(SizedBox(height: row.gapBefore));
           }
+
           rowWidgets.add(
             _buildRow(
               row: row,
@@ -463,9 +463,7 @@ class _AclContainerState extends State<AclContainer> {
         }
 
         Widget column = Column(
-          mainAxisSize: hasExpandY && canExpandVertically
-              ? MainAxisSize.max
-              : MainAxisSize.min,
+          mainAxisSize: useMaxVertical ? MainAxisSize.max : MainAxisSize.min,
           crossAxisAlignment: canExpandHorizontally
               ? CrossAxisAlignment.stretch
               : CrossAxisAlignment.start,
@@ -473,8 +471,12 @@ class _AclContainerState extends State<AclContainer> {
         );
 
         if (!canExpandHorizontally) {
-          column = UnconstrainedBox(
-            alignment: Alignment.topLeft,
+          column = UnconstrainedBox(alignment: Alignment.topLeft, child: column);
+        }
+
+        if (widget.scrollableY) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.vertical,
             child: column,
           );
         }
@@ -482,6 +484,36 @@ class _AclContainerState extends State<AclContainer> {
         return column;
       },
     );
+  }
+
+  Widget _buildSeparatorWidget(AclSeparator separator) {
+    return LayoutBuilder(builder: (context, _) {
+      final theme = Theme.of(context);
+      final lineColor = separator.color ?? theme.dividerColor;
+      Widget line = Container(height: separator.lineWidth, color: lineColor);
+
+      Widget content;
+      if (separator.style == AclSeparatorStyle.doubleLine) {
+        content = Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            line,
+            SizedBox(height: separator.lineWidth * 2),
+            Container(height: separator.lineWidth, color: lineColor),
+          ],
+        );
+      } else {
+        content = line;
+      }
+
+      final alignment = switch (separator.alignment) {
+        AclSeparatorAlignment.top => Alignment.topCenter,
+        AclSeparatorAlignment.middle => Alignment.center,
+        AclSeparatorAlignment.bottom => Alignment.bottomCenter,
+      };
+
+      return Align(alignment: alignment, child: content);
+    });
   }
 
   Widget _buildRow({
@@ -496,15 +528,37 @@ class _AclContainerState extends State<AclContainer> {
       RowAlignment.right => MainAxisAlignment.end,
     };
 
-    final hasExpandX = row.components.any((component) => component.expandX);
-    final hasExpandY = row.components.any((component) => component.expandY);
+    final hasExpandX = row.components.any((c) => c.expandX && !c.isGap);
+    final hasExpandY = row.components.any((c) => c.expandY);
+    final hasGapSlots = row.components.any((c) => c.isGap);
+    final rowFillsWidth = hasExpandX || hasGapSlots;
 
-    // Compute proportionally shrunken widths when the row's natural visual
-    // width exceeds the available container width, scaling each component's
-    // effective width between its preferredSize and minimumSize.
     final fittedWidths = (availableWidth != null && availableWidth.isFinite)
         ? _computeFittedWidths(row: row, availableWidth: availableWidth)
         : null;
+
+    // Gap slot distribution
+    double totalFitted = 0;
+    if (hasGapSlots && availableWidth != null && availableWidth.isFinite) {
+      for (int i = 0; i < row.components.length; i++) {
+        final comp = row.components[i];
+        if (comp.isGap) continue;
+        final fw = fittedWidths?[i];
+        if (fw != null) {
+          totalFitted += fw;
+        } else {
+          totalFitted += comp.preferredSize?.width ?? 0;
+        }
+      }
+    }
+    final double gapRemaining = hasGapSlots && availableWidth != null
+        ? math.max(0, availableWidth - totalFitted)
+        : 0;
+    final double gapWeightSum = hasGapSlots
+        ? row.components
+            .where((c) => c.isGap)
+            .fold(0.0, (s, c) => s + c.gapWeight)
+        : 0;
 
     final children = <Widget>[];
     double plannedX = 0;
@@ -516,19 +570,37 @@ class _AclContainerState extends State<AclContainer> {
     double rowEstimatedHeight = 0;
     final virtualRects = <Key, Rect>{};
     int componentIndex = -1;
+
     for (final component in row.components) {
       componentIndex++;
+
+      // ── Gap slot ──────────────────────────────────────────────────────────
+      if (component.isGap) {
+        if (!widget.scrollableX && gapWeightSum > 0) {
+          if (rowFillsWidth) {
+            final flex =
+                (component.gapWeight / gapWeightSum * 10000)
+                    .round()
+                    .clamp(1, 10000);
+            children.add(Spacer(flex: flex));
+          } else {
+            final gapWidth =
+                (gapRemaining * component.gapWeight / gapWeightSum)
+                    .clamp(0.0, double.infinity);
+            if (gapWidth > 0) children.add(SizedBox(width: gapWidth));
+            plannedX += gapWidth;
+            maxHorizontalX = math.max(maxHorizontalX, plannedX);
+          }
+        }
+        continue;
+      }
+
+      // ── Regular component ─────────────────────────────────────────────────
       final isFlexNativeChild =
           component.child is Flexible ||
           component.child is Expanded ||
           component.child is Spacer;
 
-      // For non-aligned components that follow convenience-placed (negatively
-      // translated) ones, plannedX may far exceed the visual right edge
-      // (maxHorizontalX), creating phantom layout space that pushes this
-      // component far to the right. Collapse it back to the visual cluster by
-      // computing an implicit alignment delta rather than advancing from the
-      // accumulated layout cursor.
       final bool hasExplicitXAlignment = component.alignXToKey != null;
       final bool collapseToVisual =
           !isFlexNativeChild &&
@@ -542,15 +614,12 @@ class _AclContainerState extends State<AclContainer> {
 
       final resolvedLinkedWidth = component.useOtherDimX
           ? (_resolveReferenceWidth(component.referenceKey) ??
-                _resolveReferencedRect(component.alignXToKey)?.width)
+              _resolveReferencedRect(component.alignXToKey)?.width)
           : null;
       final resolvedLinkedHeight = component.useOtherDimY
           ? _resolveReferenceHeight(component.referenceKey)
           : null;
 
-      // collapseToVisual: place this component at maxHorizontalX + gapBefore
-      // (the visual cluster's right edge plus the requested spacing) instead
-      // of at the accumulated layout cursor (plannedX).
       final double alignmentDelta = collapseToVisual
           ? (maxHorizontalX + component.gapBefore - plannedX)
           : _computeHorizontalAlignmentDelta(
@@ -623,7 +692,8 @@ class _AclContainerState extends State<AclContainer> {
         child = SizedBox(width: double.infinity, child: child);
       }
 
-      final estimatedHeight = _estimateComponentHeight(component, linkedHeight);
+      final estimatedHeight =
+          _estimateComponentHeight(component, linkedHeight);
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
       final estimatedWidth = _estimateComponentWidth(
         component,
@@ -636,18 +706,13 @@ class _AclContainerState extends State<AclContainer> {
       final shiftedRightInRow = shiftedLeftInRow + estimatedWidth;
       minHorizontalX = math.min(minHorizontalX, shiftedLeftInRow);
       maxHorizontalX = math.max(maxHorizontalX, shiftedRightInRow);
-      rowEstimatedWidth = math.max(
-        rowEstimatedWidth,
-        plannedX + estimatedWidth,
-      );
+      rowEstimatedWidth =
+          math.max(rowEstimatedWidth, plannedX + estimatedWidth);
 
       final componentKey = component.componentKey;
       if (componentKey != null) {
         virtualRects[componentKey] = Rect.fromLTWH(
-          shiftedLeftInRow,
-          0,
-          estimatedWidth,
-          estimatedHeight,
+          shiftedLeftInRow, 0, estimatedWidth, estimatedHeight,
         );
       }
 
@@ -666,15 +731,10 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       if (!isFlexNativeChild && alignmentDelta < 0) {
-        child = Transform.translate(
-          offset: Offset(alignmentDelta, 0),
-          child: child,
-        );
+        child = Transform.translate(offset: Offset(alignmentDelta, 0), child: child);
       }
 
-      final verticalAlignmentOffset = _computeVerticalAlignmentOffset(
-        component,
-      );
+      final verticalAlignmentOffset = _computeVerticalAlignmentOffset(component);
 
       final baseTopInRow = hasExpandY && canExpandVertically
           ? 0.0
@@ -692,54 +752,43 @@ class _AclContainerState extends State<AclContainer> {
       }
       if (!isFlexNativeChild && verticalAlignmentOffset != 0) {
         child = Transform.translate(
-          offset: Offset(0, verticalAlignmentOffset),
-          child: child,
+          offset: Offset(0, verticalAlignmentOffset), child: child,
         );
       }
 
       if (component.expandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
-          final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
-            0,
-            double.infinity,
-          );
+          final minW =
+              (component.minimumSize?.width ?? linkedWidth ?? 0)
+                  .clamp(0, double.infinity);
           final prefW = (fittedWidths?[componentIndex] ??
-                  component.preferredSize?.width ??
-                  minW)
+                  component.preferredSize?.width ?? minW)
               .clamp(minW, double.infinity);
           final flexWeight = ((prefW - minW).round()).clamp(1, 10000);
-
           child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
         }
       }
 
       children.add(child);
-
       plannedX += estimatedWidth;
     }
 
-    Widget rowWidget;
+    // ── Row widget assembly ───────────────────────────────────────────────────
 
+    Widget rowWidget;
     final double extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
 
-    if (!hasExpandX && canExpandHorizontally) {
+    if (!rowFillsWidth && canExpandHorizontally) {
       rowWidget = LayoutBuilder(
         builder: (context, constraints) {
-          // Wrap each child with a maxWidth constraint so that widgets requiring
-          // finite width (e.g. TextField) do not receive double.infinity from
-          // the SingleChildScrollView's unbounded horizontal layout pass.
-          // This does NOT affect the clip fix: Clip.none still allows
-          // negatively-translated components to paint into the extraLeft
-          // padding area regardless of per-child max constraints.
           final boundedChildren = children
               .map(
                 (child) => child is Flexible || child is Spacer
                     ? child
                     : ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth,
-                        ),
+                        constraints:
+                            BoxConstraints(maxWidth: constraints.maxWidth),
                         child: child,
                       ),
               )
@@ -758,32 +807,37 @@ class _AclContainerState extends State<AclContainer> {
             MainAxisAlignment.end ||
             MainAxisAlignment.spaceBetween ||
             MainAxisAlignment.spaceAround ||
-            MainAxisAlignment.spaceEvenly => Alignment.centerRight,
+            MainAxisAlignment.spaceEvenly =>
+              Alignment.centerRight,
             MainAxisAlignment.center => Alignment.center,
             _ => Alignment.centerLeft,
           };
 
-          // clipBehavior: Clip.none allows components translated to negative x
-          // (via convenience placement alignment deltas) to paint into the
-          // extraLeft padding area reserved by the outer Padding widget, rather
-          // than being clipped at the scroll viewport's x=0 boundary.
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.none,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minWidth: constraints.maxWidth),
-              child: Align(alignment: alignment, child: rowContent),
-            ),
-          );
+          return widget.scrollableX
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  child: rowContent,
+                )
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  clipBehavior: Clip.none,
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Align(alignment: alignment, child: rowContent),
+                  ),
+                );
         },
       );
     } else {
       rowWidget = Row(
-        mainAxisAlignment: mainAxisAlignment,
+        mainAxisAlignment:
+            hasGapSlots ? MainAxisAlignment.start : mainAxisAlignment,
         crossAxisAlignment: hasExpandY && canExpandVertically
             ? CrossAxisAlignment.stretch
             : CrossAxisAlignment.center,
-        mainAxisSize: hasExpandX && canExpandHorizontally
+        mainAxisSize: rowFillsWidth && canExpandHorizontally
             ? MainAxisSize.max
             : MainAxisSize.min,
         children: children,
@@ -791,8 +845,9 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
-    final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
-    final extraRight = hasExpandX && canExpandHorizontally
+    final extraBottom =
+        math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
+    final extraRight = rowFillsWidth && canExpandHorizontally
         ? 0.0
         : math.max(0.0, maxHorizontalX - rowEstimatedWidth);
     if (extraTop > 0 || extraBottom > 0 || extraLeft > 0 || extraRight > 0) {
@@ -807,175 +862,125 @@ class _AclContainerState extends State<AclContainer> {
       );
     }
 
-    // When using ScrollView+Clip.none with an extraLeft padding zone, wrap the
-    // whole (Padding+ScrollView) in a ClipRect. The ClipRect clips to the
-    // container's full width: the extraLeft padding area is inside those bounds
-    // (visible for negatively-translated components), while content overflowing
-    // to the right is clipped at the container edge.
-    if (!hasExpandX && canExpandHorizontally && extraLeft > 0) {
+    if (!rowFillsWidth && canExpandHorizontally && extraLeft > 0) {
       rowWidget = ClipRect(child: rowWidget);
     }
 
     if (hasExpandY && canExpandVertically) {
       int rowFlex = 1;
       for (final component in row.components) {
-        if (!component.expandY) {
-          continue;
-        }
+        if (!component.expandY) continue;
         final linkedHeight = component.useOtherDimY
             ? _resolveReferenceHeight(component.referenceKey)
             : null;
-        final minH = (component.minimumSize?.height ?? linkedHeight ?? 0).clamp(
-          0,
-          double.infinity,
-        );
-        final prefH = (component.preferredSize?.height ?? minH).clamp(
-          minH,
-          double.infinity,
-        );
+        final minH =
+            (component.minimumSize?.height ?? linkedHeight ?? 0)
+                .clamp(0, double.infinity);
+        final prefH =
+            (component.preferredSize?.height ?? minH).clamp(minH, double.infinity);
         rowFlex = (rowFlex + (prefH - minH).round()).clamp(1, 10000);
       }
-
       return Flexible(flex: rowFlex, fit: FlexFit.tight, child: rowWidget);
     }
 
     return rowWidget;
   }
 
+  // ── Reference resolution ──────────────────────────────────────────────────
+
   Size? _resolveReferencedSize(Key? key) {
-    if (key == null) {
-      return null;
-    }
-
+    if (key == null) return null;
     final cached = _referenceSizeCache[key];
-    if (cached != null) {
-      return cached;
-    }
-
-    final context = _resolveKeyContext(key);
-    if (context == null) {
+    if (cached != null) return cached;
+    final ctx = _resolveKeyContext(key);
+    if (ctx == null) {
       _hasUnresolvedReference = true;
       return cached;
     }
-    final renderObject = context.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.hasSize) {
+    final ro = ctx.findRenderObject();
+    if (ro is! RenderBox || !ro.hasSize) {
       _hasUnresolvedReference = true;
       return cached;
     }
-    final size = renderObject.size;
-    _referenceSizeCache[key] = size;
-    return size;
+    _referenceSizeCache[key] = ro.size;
+    return ro.size;
   }
 
   double? _resolveReferenceWidth(Key? key) {
-    final size = _resolveReferencedSize(key);
-    if (size != null) {
-      return size.width;
-    }
-    final rect = _resolveReferencedRect(key);
-    return rect?.width;
+    final s = _resolveReferencedSize(key);
+    if (s != null) return s.width;
+    return _resolveReferencedRect(key)?.width;
   }
 
   double? _resolveReferenceHeight(Key? key) {
-    final size = _resolveReferencedSize(key);
-    if (size != null) {
-      return size.height;
-    }
-    final rect = _resolveReferencedRect(key);
-    return rect?.height;
+    final s = _resolveReferencedSize(key);
+    if (s != null) return s.height;
+    return _resolveReferencedRect(key)?.height;
   }
 
   Rect? _resolveReferencedRect(Key? key) {
-    if (key == null) {
-      return null;
-    }
-
+    if (key == null) return null;
     final cached = _referenceRectCache[key];
-    if (cached != null) {
-      return cached;
-    }
+    if (cached != null) return cached;
 
-    final ownRenderObject = context.findRenderObject();
-    final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
-    final refContext = _resolveKeyContext(key);
-    if (ownBox == null || refContext == null) {
+    final ownRO = context.findRenderObject();
+    final ownBox = ownRO is RenderBox ? ownRO : null;
+    final refCtx = _resolveKeyContext(key);
+    if (ownBox == null || refCtx == null) {
       _hasUnresolvedReference = true;
       return cached;
     }
-    final refRenderObject = refContext.findRenderObject();
-    if (refRenderObject is! RenderBox ||
-        !refRenderObject.hasSize ||
-        !ownBox.hasSize) {
+    final refRO = refCtx.findRenderObject();
+    if (refRO is! RenderBox || !refRO.hasSize || !ownBox.hasSize) {
       _hasUnresolvedReference = true;
       return cached;
     }
-    final topLeft = ownBox.globalToLocal(
-      refRenderObject.localToGlobal(Offset.zero),
-    );
-    final rect = topLeft & refRenderObject.size;
+    final topLeft = ownBox.globalToLocal(refRO.localToGlobal(Offset.zero));
+    final rect = topLeft & refRO.size;
     _referenceRectCache[key] = rect;
     return rect;
   }
 
   BuildContext? _resolveKeyContext(Key key) {
-    if (key is GlobalKey) {
-      return key.currentContext;
-    }
-
+    if (key is GlobalKey) return key.currentContext;
     try {
-      final dynamic dynamicKey = key;
-      final dynamic context = dynamicKey.currentContext;
-      if (context is BuildContext) {
-        return context;
-      }
+      final dynamic dk = key;
+      final dynamic c = dk.currentContext;
+      if (c is BuildContext) return c;
     } catch (_) {}
-
     return null;
   }
 
-  /// Dry-run pass: compute each component's fitted width when the row's
-  /// natural visual width (preferred sizes + gaps) exceeds [availableWidth].
-  /// Returns null when no shrinking is needed.
-  ///
-  /// Fitting shrinks each component proportionally within its
-  /// [preferredSize.width] → [minimumSize.width] budget so the total cluster
-  /// width fits within [availableWidth].
+  // ── Fitted width calculation ──────────────────────────────────────────────
+
   Map<int, double>? _computeFittedWidths({
     required AclRow row,
     required double availableWidth,
   }) {
-    // --- Pass 1: compute natural positions using preferred sizes ---
     double plannedX = 0;
     double minHX = 0;
     double maxHX = 0;
     final vRects = <Key, Rect>{};
     final prefWidths = <int, double>{};
 
+    bool skip(AclComponent c) =>
+        c.isGap ||
+        c.child is Flexible ||
+        c.child is Expanded ||
+        c.child is Spacer ||
+        c.expandX ||
+        c.alignXToKey != null;
+
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
-      // Skip flex-native and expandX children: expandX components are sized by
-      // Row's Flexible mechanism, not by SizedBox fitting.
-      // Skip convenience-placed components (alignXToKey != null): their visual
-      // position is determined by their anchor, not sequential layout. Including
-      // them in shrinkCap dilutes the ratio and causes anchors to be
-      // under-shrunk, then clamped by ConstrainedBox(maxWidth), causing a
-      // mismatch between estimatedWidth and actual layout width.
-      if (comp.child is Flexible ||
-          comp.child is Expanded ||
-          comp.child is Spacer ||
-          comp.expandX ||
-          comp.alignXToKey != null) {
-        continue;
-      }
+      if (skip(comp)) continue;
 
       final linkedW = comp.useOtherDimX
           ? (_resolveReferenceWidth(comp.referenceKey) ??
-                _resolveReferencedRect(comp.alignXToKey)?.width)
+              _resolveReferencedRect(comp.alignXToKey)?.width)
           : null;
 
-      final bool collapseToVisual =
-          comp.alignXToKey == null && maxHX < plannedX;
-
+      final bool collapseToVisual = comp.alignXToKey == null && maxHX < plannedX;
       if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
 
       final delta = collapseToVisual
@@ -989,45 +994,32 @@ class _AclContainerState extends State<AclContainer> {
 
       if (delta > 0) plannedX += delta;
 
-      // Use declared preferred size directly (bypass cache) for accuracy.
-      final pref =
-          (linkedW ?? comp.preferredSize?.width ?? comp.minimumSize?.width ?? 0)
-              .clamp(0.0, double.infinity);
+      final pref = (linkedW ??
+              comp.preferredSize?.width ?? comp.minimumSize?.width ?? 0)
+          .clamp(0.0, double.infinity);
       prefWidths[i] = pref;
 
-      final h =
-          (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
-              .clamp(0.0, double.infinity);
+      final h = (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
+          .clamp(0.0, double.infinity);
       final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
       minHX = math.min(minHX, shiftedLeft);
       maxHX = math.max(maxHX, shiftedLeft + pref);
 
       final key = comp.componentKey;
-      if (key != null) {
-        vRects[key] = Rect.fromLTWH(shiftedLeft, 0, pref, h);
-      }
+      if (key != null) vRects[key] = Rect.fromLTWH(shiftedLeft, 0, pref, h);
       plannedX += pref;
     }
 
     final extraLeft = minHX < 0 ? -minHX : 0.0;
     final naturalWidth = maxHX + extraLeft;
-    if (naturalWidth <= availableWidth) return null; // no shrinking needed
+    if (naturalWidth <= availableWidth) return null;
 
-    // --- Compute proportional shrink ---
     final deficit = naturalWidth - availableWidth;
     double shrinkCap = 0;
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
-      if (comp.child is Flexible ||
-          comp.child is Expanded ||
-          comp.child is Spacer ||
-          comp.expandX ||
-          comp.alignXToKey != null) {
-        continue;
-      }
-      final pref = prefWidths[i] ?? 0.0;
-      final min = comp.minimumSize?.width ?? 0.0;
-      shrinkCap += math.max(0.0, pref - min);
+      if (skip(comp)) continue;
+      shrinkCap += math.max(0.0, (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? 0));
     }
     if (shrinkCap < 1) return null;
 
@@ -1035,13 +1027,7 @@ class _AclContainerState extends State<AclContainer> {
     final fitted = <int, double>{};
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
-      if (comp.child is Flexible ||
-          comp.child is Expanded ||
-          comp.child is Spacer ||
-          comp.expandX ||
-          comp.alignXToKey != null) {
-        continue;
-      }
+      if (skip(comp)) continue;
       final pref = prefWidths[i] ?? 0.0;
       final min = comp.minimumSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
@@ -1049,46 +1035,32 @@ class _AclContainerState extends State<AclContainer> {
     return fitted;
   }
 
+  // ── Width / height estimation ─────────────────────────────────────────────
+
   double _estimateComponentWidth(
     AclComponent component,
     double? linkedWidth, {
     double? fittedWidth,
   }) {
-    // When a fitted width is active, use it as the source of truth so
-    // virtualRects match the actual SizedBox constraint on the same frame,
-    // preventing a one-frame lag in alignment-delta computations.
-    if (fittedWidth != null) {
-      return fittedWidth.clamp(0, double.infinity).toDouble();
-    }
-    final measuredWidth = _resolveReferenceWidth(component.componentKey);
-    if (measuredWidth != null) {
-      return measuredWidth.clamp(0, double.infinity).toDouble();
-    }
-
-    return (linkedWidth ??
-            component.preferredSize?.width ??
-            component.minimumSize?.width ??
-            0)
+    if (fittedWidth != null) return fittedWidth.clamp(0, double.infinity).toDouble();
+    final mw = _resolveReferenceWidth(component.componentKey);
+    if (mw != null) return mw.clamp(0, double.infinity).toDouble();
+    return (linkedWidth ?? component.preferredSize?.width ??
+            component.minimumSize?.width ?? 0)
         .clamp(0, double.infinity)
         .toDouble();
   }
 
-  double _estimateComponentHeight(
-    AclComponent component,
-    double? linkedHeight,
-  ) {
-    final measuredHeight = _resolveReferenceHeight(component.componentKey);
-    if (measuredHeight != null) {
-      return measuredHeight.clamp(0, double.infinity).toDouble();
-    }
-
-    return (linkedHeight ??
-            component.preferredSize?.height ??
-            component.minimumSize?.height ??
-            0)
+  double _estimateComponentHeight(AclComponent component, double? linkedHeight) {
+    final mh = _resolveReferenceHeight(component.componentKey);
+    if (mh != null) return mh.clamp(0, double.infinity).toDouble();
+    return (linkedHeight ?? component.preferredSize?.height ??
+            component.minimumSize?.height ?? 0)
         .clamp(0, double.infinity)
         .toDouble();
   }
+
+  // ── Alignment delta computation ───────────────────────────────────────────
 
   double _computeHorizontalAlignmentDelta({
     required AclComponent component,
@@ -1110,25 +1082,19 @@ class _AclContainerState extends State<AclContainer> {
       return 0;
     }
 
-    final refOffset = key == null
-        ? 0.0
-        : (_appliedHorizontalOffsetByKey[key] ?? 0.0);
+    final refOffset = key == null ? 0.0 : (_appliedHorizontalOffsetByKey[key] ?? 0.0);
     final unshiftedRefRect = virtualRefRect != null || refOffset == 0
         ? refRect
         : refRect.translate(-refOffset, 0);
 
     final widthEstimate = _estimateComponentWidth(
-      component,
-      resolvedLinkedWidth ?? refRect.width,
+      component, resolvedLinkedWidth ?? refRect.width,
     );
     final currentLocalPoint =
         plannedX + _horizontalOffset(component.alignXFrom!, widthEstimate);
-    final targetLocalPoint = _horizontalPoint(
-      unshiftedRefRect,
-      component.alignXTo!,
-    );
-    final desiredLocalPoint = targetLocalPoint - component.alignXGap;
-    return desiredLocalPoint - currentLocalPoint;
+    final targetLocalPoint =
+        _horizontalPoint(unshiftedRefRect, component.alignXTo!);
+    return (targetLocalPoint - component.alignXGap) - currentLocalPoint;
   }
 
   double _computeVerticalAlignmentOffset(AclComponent component) {
@@ -1152,13 +1118,9 @@ class _AclContainerState extends State<AclContainer> {
         ? selfRect
         : selfRect.translate(0, -previousOffset);
 
-    final currentPoint = _verticalPoint(
-      unshiftedSelfRect,
-      component.alignYFrom!,
-    );
+    final currentPoint = _verticalPoint(unshiftedSelfRect, component.alignYFrom!);
     final targetPoint = _verticalPoint(refRect, component.alignYTo!);
-    final desiredPoint = targetPoint - component.alignYGap;
-    return desiredPoint - currentPoint;
+    return (targetPoint - component.alignYGap) - currentPoint;
   }
 
   Widget _wrapWithRowCrossAlignment(
@@ -1170,34 +1132,29 @@ class _AclContainerState extends State<AclContainer> {
       AclRowCrossAlignment.center => Alignment.center,
       AclRowCrossAlignment.bottom => Alignment.bottomCenter,
     };
-
-    return Align(
-      alignment: alignment,
-      widthFactor: 1,
-      heightFactor: 1,
-      child: child,
-    );
+    return Align(alignment: alignment, widthFactor: 1, heightFactor: 1, child: child);
   }
 
   double _horizontalPoint(Rect rect, AclAxisPointX point) => switch (point) {
-    AclAxisPointX.left => rect.left,
-    AclAxisPointX.center => rect.center.dx,
-    AclAxisPointX.right => rect.right,
-  };
+        AclAxisPointX.left => rect.left,
+        AclAxisPointX.center => rect.center.dx,
+        AclAxisPointX.right => rect.right,
+      };
 
   double _verticalPoint(Rect rect, AclAxisPointY point) => switch (point) {
-    AclAxisPointY.top => rect.top,
-    AclAxisPointY.center => rect.center.dy,
-    AclAxisPointY.bottom => rect.bottom,
-  };
+        AclAxisPointY.top => rect.top,
+        AclAxisPointY.center => rect.center.dy,
+        AclAxisPointY.bottom => rect.bottom,
+      };
 
-  double _horizontalOffset(AclAxisPointX point, double width) =>
-      switch (point) {
+  double _horizontalOffset(AclAxisPointX point, double width) => switch (point) {
         AclAxisPointX.left => 0,
         AclAxisPointX.center => width / 2,
         AclAxisPointX.right => width,
       };
 }
+
+// ── AclLayout / Acl ──────────────────────────────────────────────────────────
 
 class AclLayout extends StatelessWidget {
   final List<AclRow> rows;
@@ -1205,6 +1162,8 @@ class AclLayout extends StatelessWidget {
   final AclBorderStyle? focusedBorderStyle;
   final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
+  final bool scrollableX;
+  final bool scrollableY;
 
   const AclLayout({
     super.key,
@@ -1213,6 +1172,8 @@ class AclLayout extends StatelessWidget {
     this.focusedBorderStyle,
     this.padding = EdgeInsets.zero,
     this.backgroundColor,
+    this.scrollableX = false,
+    this.scrollableY = false,
   });
 
   @override
@@ -1223,6 +1184,8 @@ class AclLayout extends StatelessWidget {
       focusedBorderStyle: focusedBorderStyle,
       padding: padding,
       backgroundColor: backgroundColor,
+      scrollableX: scrollableX,
+      scrollableY: scrollableY,
     );
   }
 }
@@ -1239,6 +1202,8 @@ class Acl extends AclLayout {
     super.focusedBorderStyle,
     super.padding = EdgeInsets.zero,
     super.backgroundColor,
+    super.scrollableX = false,
+    super.scrollableY = false,
     this.title,
     this.titleStyle,
     this.titlePosition = AclTitlePosition.topLeft,
@@ -1246,13 +1211,10 @@ class Acl extends AclLayout {
 
   @override
   Widget build(BuildContext context) {
-    if (title == null || title!.isEmpty) {
-      return super.build(context);
-    }
+    if (title == null || title!.isEmpty) return super.build(context);
 
     final theme = Theme.of(context);
-    final titleTextStyle =
-        titleStyle ??
+    final titleTextStyle = titleStyle ??
         theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
@@ -1264,6 +1226,8 @@ class Acl extends AclLayout {
           focusedBorderStyle: focusedBorderStyle,
           padding: padding.add(const EdgeInsets.only(top: 8)),
           backgroundColor: backgroundColor,
+          scrollableX: scrollableX,
+          scrollableY: scrollableY,
         ),
         Positioned(
           top: -1,
@@ -1283,22 +1247,22 @@ class Acl extends AclLayout {
   }
 
   Alignment _alignment() => switch (titlePosition) {
-    AclTitlePosition.topLeft => Alignment.centerLeft,
-    AclTitlePosition.topCenter => Alignment.center,
-    AclTitlePosition.topRight => Alignment.centerRight,
-  };
+        AclTitlePosition.topLeft => Alignment.centerLeft,
+        AclTitlePosition.topCenter => Alignment.center,
+        AclTitlePosition.topRight => Alignment.centerRight,
+      };
 
   double? _left() => switch (titlePosition) {
-    AclTitlePosition.topLeft => 12,
-    AclTitlePosition.topCenter => 0,
-    AclTitlePosition.topRight => null,
-  };
+        AclTitlePosition.topLeft => 12,
+        AclTitlePosition.topCenter => 0,
+        AclTitlePosition.topRight => null,
+      };
 
   double? _right() => switch (titlePosition) {
-    AclTitlePosition.topLeft => null,
-    AclTitlePosition.topCenter => 0,
-    AclTitlePosition.topRight => 12,
-  };
+        AclTitlePosition.topLeft => null,
+        AclTitlePosition.topCenter => 0,
+        AclTitlePosition.topRight => 12,
+      };
 }
 
 enum AclTitlePosition { topLeft, topCenter, topRight }

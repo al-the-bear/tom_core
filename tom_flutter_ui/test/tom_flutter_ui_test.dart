@@ -144,10 +144,18 @@ void main() {
 
       final container = AclBuilder()
           .append(first)
-          .addBelow(second, vGap: 10, hOffset: 4)
-          .addLeft(third, hGap: 6, vOffset: 3)
-          .addAbove(fourth, vGap: 8, hOffset: 2)
-          .addRight(fifth, hGap: 5, vOffset: 1)
+          .append(second)
+          .alignTopToBottom(first, gap: -10)
+          .alignLeftToLeft(first, gap: -4)
+          .append(third)
+          .alignRightToLeft(first, gap: 6)
+          .alignTopToTop(first, gap: -3)
+          .append(fourth)
+          .alignBottomToTop(first, gap: 8)
+          .alignLeftToLeft(first, gap: -2)
+          .append(fifth)
+          .alignLeftToRight(first, gap: -5)
+          .alignTopToTop(first, gap: -1)
           .build();
 
       final c2 = container.rows[0].components[1];
@@ -201,13 +209,7 @@ void main() {
     testWidgets('applies border style when enabled', (tester) async {
       final container = AclBuilder()
           .append(const Text('Framed'))
-          .setBorderStyle(
-            const AclBorderStyle(
-              enabled: true,
-              lineKind: AclBorderLineKind.single,
-              primaryColor: Colors.blue,
-            ),
-          )
+          .setAclBorderStyle(const AclBorderStyle.solid(color: Colors.blue))
           .build();
 
       await tester.pumpWidget(MaterialApp(home: Scaffold(body: container)));
@@ -567,8 +569,10 @@ void main() {
         final acl = AclBuilder()
             .append(first)
             .setPSize(180, 48)
-            .addLeft(left, hGap: 12)
+            .append(left)
             .setPSize(120, 36)
+            .alignRightToLeft(first, gap: 12)
+            .alignTopToTop(first)
             .newRow(dist: 14)
             .append(expA)
             .setAttr(AclFlags.expandX)
@@ -695,9 +699,13 @@ void main() {
       const firstKey = ValueKey('stable-first');
       const leftKey = ValueKey('stable-left');
 
+      final firstBox = SizedBox(key: firstKey, width: 180, height: 40);
+      final leftBox = SizedBox(key: leftKey, width: 120, height: 32);
       final acl = AclBuilder()
-          .append(SizedBox(key: firstKey, width: 180, height: 40))
-          .addLeft(SizedBox(key: leftKey, width: 120, height: 32), hGap: 12)
+          .append(firstBox)
+          .append(leftBox)
+          .alignRightToLeft(firstBox, gap: 12)
+          .alignTopToTop(firstBox)
           .build();
 
       await tester.pumpWidget(

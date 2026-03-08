@@ -700,7 +700,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
                 ),
               )
               .setPSize(220, 40)
-              .alignCenterToCenterY(verticalAnchor)
+              .alignMiddleToMiddle(verticalAnchor)
               .build(),
         ),
         const SizedBox(height: 8),
@@ -912,38 +912,22 @@ class ConveniencePlacementDemo extends StatelessWidget {
           child: AclBuilder()
               .append(firstWidget)
               .setPSize(170, 50)
-              .addBelow(
-                const SizedBox(
-                  width: 170,
-                  child: _DemoBox('Second', Colors.teal),
-                ),
-                vGap: 10,
-              )
+              .append(const SizedBox(width: 170, child: _DemoBox('Second', Colors.teal)))
               .setPSize(170, 40)
-              .addLeft(
-                const SizedBox(
-                  width: 130,
-                  child: _DemoBox('Third', Colors.orange),
-                ),
-                hGap: 12,
-              )
+              .alignTopToBottom(firstWidget, gap: -10)
+              .alignLeftToLeft(firstWidget)
+              .append(const SizedBox(width: 130, child: _DemoBox('Third', Colors.orange)))
               .setPSize(130, 40)
-              .addAbove(
-                const SizedBox(
-                  width: 130,
-                  child: _DemoBox('Fourth', Colors.purple),
-                ),
-                vGap: 8,
-              )
+              .alignRightToLeft(firstWidget, gap: 12)
+              .alignTopToTop(firstWidget)
+              .append(const SizedBox(width: 130, child: _DemoBox('Fourth', Colors.purple)))
               .setPSize(130, 36)
-              .addRight(
-                const SizedBox(
-                  width: 150,
-                  child: _DemoBox('Fifth', Colors.blueGrey),
-                ),
-                hGap: 10,
-              )
+              .alignBottomToTop(firstWidget, gap: 8)
+              .alignLeftToLeft(firstWidget)
+              .append(const SizedBox(width: 150, child: _DemoBox('Fifth', Colors.blueGrey)))
               .setPSize(150, 36)
+              .alignLeftToRight(firstWidget, gap: -10)
+              .alignTopToTop(firstWidget)
               .append(
                 const SizedBox(
                   width: 170,
@@ -994,7 +978,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
           child: AclBuilder()
               .append(formAnchor)
               .setPSize(220, 56)
-              .addBelow(
+              .append(
                 const SizedBox(
                   width: 220,
                   child: TextField(
@@ -1005,26 +989,18 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
                     ),
                   ),
                 ),
-                vGap: 12,
               )
               .setPSize(220, 44)
-              .addRight(
-                const SizedBox(
-                  width: 200,
-                  child: _DemoBox('Hint Panel', Colors.teal),
-                ),
-                hGap: 12,
-                vOffset: 4,
-              )
+              .alignTopToBottom(formAnchor, gap: -12)
+              .alignLeftToLeft(formAnchor)
+              .append(const SizedBox(width: 200, child: _DemoBox('Hint Panel', Colors.teal)))
               .setPSize(200, 56)
-              .addAbove(
-                const SizedBox(
-                  width: 200,
-                  child: _DemoBox('Status', Colors.orange),
-                ),
-                vGap: 6,
-              )
+              .alignLeftToRight(formAnchor, gap: -12)
+              .alignTopToTop(formAnchor, gap: -4)
+              .append(const SizedBox(width: 200, child: _DemoBox('Status', Colors.orange)))
               .setPSize(200, 30)
+              .alignBottomToTop(formAnchor, gap: 6)
+              .alignLeftToLeft(formAnchor)
               .newRow(dist: 16)
               .append(
                 ElevatedButton(
@@ -1147,7 +1123,8 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
               .append(const _DemoBox('Main', Colors.indigo))
               .setPSize(300, 64)
               .setMSize(120, 48)
-              .addBelow(const _DemoBox('Sub (below-left)', Colors.cyan))
+              .newRow()
+              .append(const _DemoBox('Sub (below-left)', Colors.cyan))
               .setPSize(160, 40)
               .setMSize(80, 40)
               .build(),
@@ -1190,15 +1167,16 @@ class BorderStylesDemo extends StatelessWidget {
         const SizedBox(height: 12),
         _buildBorderExample(
           'Single line',
-          const AclBorderStyle(primaryColor: Colors.blueGrey, lineWidth: 2),
+          const AclBorderStyle(kind: AclBorderKind.solid,
+        color: Colors.blueGrey, lineWidth: 2),
         ),
         const SizedBox(height: 12),
         _buildBorderExample(
           'Rounded',
-          const AclBorderStyle(
-            rounded: true,
+          const AclBorderStyle(kind: AclBorderKind.solid,
+        rounded: true,
             borderRadius: 10,
-            primaryColor: Colors.blue,
+            color: Colors.blue,
             lineWidth: 2,
           ),
         ),
@@ -1206,29 +1184,27 @@ class BorderStylesDemo extends StatelessWidget {
         _buildBorderExample(
           'Double line',
           const AclBorderStyle(
-            lineKind: AclBorderLineKind.doubleLine,
-            primaryColor: Colors.teal,
-            secondaryColor: Colors.tealAccent,
+            kind: AclBorderKind.solidDouble,
+            color: Colors.teal,
             lineWidth: 1.5,
           ),
         ),
         const SizedBox(height: 12),
         _buildBorderExample(
-          '3D effect',
+          'Horizontal lines',
           const AclBorderStyle(
-            with3dEffect: true,
-            primaryColor: Colors.brown,
+            kind: AclBorderKind.horizontal,
+            color: Colors.brown,
             lineWidth: 1.5,
           ),
         ),
         const SizedBox(height: 12),
         _buildBorderExample(
-          'Shadow + rounded',
-          const AclBorderStyle(
-            withShadow: true,
-            rounded: true,
+          'Double line rounded',
+          const AclBorderStyle(kind: AclBorderKind.solid,
+        rounded: true,
             borderRadius: 10,
-            primaryColor: Colors.purple,
+            color: Colors.purple,
             lineWidth: 2,
           ),
         ),
@@ -1238,8 +1214,8 @@ class BorderStylesDemo extends StatelessWidget {
           const AclBorderStyle(
             rounded: true,
             borderRadius: 10,
-            lineKind: AclBorderLineKind.doubleLine,
-            primaryColor: Colors.indigo,
+            kind: AclBorderKind.solidDouble,
+            color: Colors.indigo,
             borderInsets: EdgeInsets.fromLTRB(24, 8, 24, 8),
           ),
         ),
@@ -1247,12 +1223,12 @@ class BorderStylesDemo extends StatelessWidget {
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
 AclBuilder()
-    .setBorderStyle(
+    .setAclBorderStyle(
       const AclBorderStyle(
         rounded: true,
-        lineKind: AclBorderLineKind.doubleLine,
+        kind: AclBorderKind.solidDouble,
         lineWidth: 2,
-        primaryColor: Colors.blue,
+        color: Colors.blue,
         borderInsets: EdgeInsets.all(8),
       ),
     )
@@ -1272,8 +1248,8 @@ AclBuilder()
         ),
         Expanded(
           child: AclBuilder()
-              .setBorderStyle(style)
-              .setPadding(const EdgeInsets.all(8))
+              .setAclBorderStyle(style)
+              .setAclPadding(const EdgeInsets.all(8))
               .append(const Text('Content inside'))
               .build(),
         ),
@@ -1298,9 +1274,8 @@ class GroupsDemo extends StatelessWidget {
         AclBuilder(
               title: 'User Information',
               borderStyle: const AclBorderStyle(
-                lineKind: AclBorderLineKind.doubleLine,
-                with3dEffect: true,
-                primaryColor: Colors.blueGrey,
+                kind: AclBorderKind.solidDouble,
+                color: Colors.blueGrey,
               ),
             )
             .append(const SizedBox(width: 80, child: Text('Name:')))
@@ -1329,10 +1304,10 @@ class GroupsDemo extends StatelessWidget {
         AclBuilder(
               title: 'Settings',
               borderStyle: const AclBorderStyle(
-                lineKind: AclBorderLineKind.doubleLine,
+                kind: AclBorderKind.solidDouble,
                 rounded: true,
                 borderRadius: 10,
-                primaryColor: Colors.teal,
+                color: Colors.teal,
               ),
               titlePosition: AclTitlePosition.topCenter,
             )
@@ -1346,10 +1321,10 @@ class GroupsDemo extends StatelessWidget {
         AclBuilder(
               title: 'Actions',
               borderStyle: const AclBorderStyle(
+                kind: AclBorderKind.solid,
+                color: Colors.deepPurple,
                 rounded: true,
                 borderRadius: 8,
-                primaryColor: Colors.deepPurple,
-                withShadow: true,
               ),
               titlePosition: AclTitlePosition.topRight,
             )
@@ -1366,8 +1341,7 @@ class GroupsDemo extends StatelessWidget {
 AclBuilder(
   title: 'User Information',
   borderStyle: AclBorderStyle(
-    lineKind: AclBorderLineKind.doubleLine,
-    with3dEffect: true,
+    kind: AclBorderKind.solidDouble,
   ),
   titlePosition: AclTitlePosition.topLeft,
 )
@@ -1454,22 +1428,21 @@ class NestedContainersDemo extends StatelessWidget {
         Container(
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .setPadding(const EdgeInsets.all(8))
+              .setAclPadding(const EdgeInsets.all(8))
               .append(
                 AclBuilder(
                       title: 'Outer Group',
                       borderStyle: const AclBorderStyle(
-                        lineKind: AclBorderLineKind.doubleLine,
-                        with3dEffect: true,
-                        primaryColor: Colors.blueGrey,
+                        kind: AclBorderKind.solidDouble,
+                        color: Colors.blueGrey,
                       ),
                     )
                     .append(
                       AclBuilder(
                             title: 'Inner Group A',
                             borderStyle: const AclBorderStyle(
-                              lineKind: AclBorderLineKind.doubleLine,
-                              primaryColor: Colors.indigo,
+                              kind: AclBorderKind.solidDouble,
+                              color: Colors.indigo,
                             ),
                           )
                           .append(const Text('Content A1'))
@@ -1482,8 +1455,8 @@ class NestedContainersDemo extends StatelessWidget {
                       AclBuilder(
                             title: 'Inner Group B',
                             borderStyle: const AclBorderStyle(
-                              lineKind: AclBorderLineKind.doubleLine,
-                              primaryColor: Colors.teal,
+                              kind: AclBorderKind.solidDouble,
+                              color: Colors.teal,
                             ),
                           )
                           .append(const Text('Content B1'))
@@ -1505,8 +1478,8 @@ class NestedContainersDemo extends StatelessWidget {
 AclBuilder()
     .append(
         AclBuilder()
-            .setBorderStyle(
-              AclBorderStyle(primaryColor: Colors.grey),
+            .setAclBorderStyle(kind: AclBorderKind.solid,
+        AclBorderStyle(color: Colors.grey),
             )
             .append(child1)
             .append(child2)
@@ -1784,7 +1757,7 @@ class DynamicResizeDemo extends StatelessWidget {
               height: 300,
               decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
               child: AclBuilder()
-                  .setPadding(const EdgeInsets.all(8))
+                  .setAclPadding(const EdgeInsets.all(8))
                   .append(
                     Container(
                       padding: const EdgeInsets.all(8),
@@ -1801,9 +1774,8 @@ class DynamicResizeDemo extends StatelessWidget {
                     AclBuilder(
                           title: 'Navigation',
                           borderStyle: const AclBorderStyle(
-                            lineKind: AclBorderLineKind.doubleLine,
-                            with3dEffect: true,
-                            primaryColor: Colors.blueGrey,
+                            kind: AclBorderKind.solidDouble,
+                            color: Colors.blueGrey,
                           ),
                         )
                         .append(const Text('Menu Item 1'))
@@ -1820,9 +1792,8 @@ class DynamicResizeDemo extends StatelessWidget {
                     AclBuilder(
                           title: 'Content',
                           borderStyle: const AclBorderStyle(
-                            lineKind: AclBorderLineKind.doubleLine,
-                            with3dEffect: true,
-                            primaryColor: Colors.blueGrey,
+                            kind: AclBorderKind.solidDouble,
+                            color: Colors.blueGrey,
                           ),
                         )
                         .append(
@@ -1847,9 +1818,8 @@ class DynamicResizeDemo extends StatelessWidget {
                     AclBuilder(
                           title: 'Details',
                           borderStyle: const AclBorderStyle(
-                            lineKind: AclBorderLineKind.doubleLine,
-                            with3dEffect: true,
-                            primaryColor: Colors.blueGrey,
+                            kind: AclBorderKind.solidDouble,
+                            color: Colors.blueGrey,
                           ),
                         )
                         .append(const Text('Detail 1'))
@@ -1960,59 +1930,50 @@ class FluentApiDemo extends StatelessWidget {
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(const _DemoBox('alignCenter()', Colors.green))
-              .alignCenter()
+              .setRowAlignCenter()
               .build(),
         ),
         const SizedBox(height: 24),
         const Text(
-          'Using AclBuild helper function:',
+          'Using AclBuilder directly:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-          child: AclBuild(
-            (b) => b
-                .append(const _DemoBox('A', Colors.red))
-                .append(const _DemoBox('B', Colors.green), dist: 10)
-                .append(const _DemoBox('C', Colors.blue), dist: 10),
-          ),
+          child: AclBuilder()
+              .append(const _DemoBox('A', Colors.red))
+              .append(const _DemoBox('B', Colors.green), dist: 10)
+              .append(const _DemoBox('C', Colors.blue), dist: 10)
+              .build(),
         ),
         const SizedBox(height: 24),
         const Text(
-          'Using AclColumn helper:',
+          'Multi-row layout:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-          child: AclColumn([
-            AclRowDef(
-              children: [
-                const Text('Label:'),
-                const SizedBox(width: 8),
+          child: AclBuilder()
+              .append(const Text('Label:'))
+              .append(
                 const TextField(
                   decoration: InputDecoration(
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
                 ),
-              ],
-              alignment: RowAlignment.left,
-              childFlags: [0, 0, AclFlags.expandX],
-            ),
-            AclRowDef(
-              children: [
-                ElevatedButton(onPressed: () {}, child: const Text('OK')),
-                OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
-              ],
-              alignment: RowAlignment.center,
-              gapBefore: 16,
-              childSpacing: 10,
-            ),
-          ]),
+                dist: 8,
+              )
+              .expandX()
+              .newRow(dist: 16)
+              .append(ElevatedButton(onPressed: () {}, child: const Text('OK')))
+              .append(OutlinedButton(onPressed: () {}, child: const Text('Cancel')), dist: 10)
+              .setRowAlignCenter()
+              .build(),
         ),
         const SizedBox(height: 24),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -2024,7 +1985,7 @@ AclBuilder()
     .expandY()    // same as .setAttr(AclFlags.expandY)
     .expand()     // same as .setAttr(AclFlags.expand)
     .alignLeft()  // same as .setRowAlignment(RowAlignment.left)
-    .alignCenter()
+    .setRowAlignCenter()
     .alignRight()
     .build()
 

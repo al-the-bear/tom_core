@@ -8,6 +8,7 @@ class _ComponentData {
   Widget child;
   int flags;
   double gapBefore;
+  double gapWeight;
   Size? preferredSize;
   Size? minimumSize;
   Size? maximumSize;
@@ -27,6 +28,7 @@ class _ComponentData {
     required this.child,
     this.flags = 0,
     this.gapBefore = 0,
+    this.gapWeight = 1.0,
     this.componentKey,
   });
 
@@ -35,6 +37,7 @@ class _ComponentData {
       child: child,
       flags: flags,
       gapBefore: gapBefore,
+      gapWeight: gapWeight,
       preferredSize: preferredSize,
       minimumSize: minimumSize,
       maximumSize: maximumSize,
@@ -57,18 +60,23 @@ class _RowData {
   List<_ComponentData> components = [];
   RowAlignment alignment = RowAlignment.left;
   double gapBefore = 0;
+  bool isGapRow = false;
+  double gapRowWeight = 1.0;
+  AclSeparator? separator;
 
   AclRow toRow() {
     return AclRow(
-      components: components
-          .map((component) => component.toComponent())
-          .toList(),
+      components: components.map((c) => c.toComponent()).toList(),
       alignment: alignment,
       gapBefore: gapBefore,
+      isGapRow: isGapRow,
+      gapRowWeight: gapRowWeight,
+      separator: separator,
     );
   }
 }
 
+/// Fluent builder for [Acl] layout containers.
 class AclBuilder {
   final List<_RowData> _rows = [];
   _RowData _currentRow = _RowData();
@@ -82,6 +90,8 @@ class AclBuilder {
   String? _title;
   TextStyle? _titleStyle;
   AclTitlePosition _titlePosition;
+  bool _scrollableX = false;
+  bool _scrollableY = false;
   final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
 
   AclBuilder({
@@ -92,64 +102,83 @@ class AclBuilder {
     Color? backgroundColor,
     TextStyle? titleStyle,
     AclTitlePosition titlePosition = AclTitlePosition.topLeft,
-  }) : _title = title,
-       _borderStyle = borderStyle,
-       _focusedBorderStyle = focusedBorderStyle,
-       _padding = padding,
-       _backgroundColor = backgroundColor,
-       _titleStyle = titleStyle,
-       _titlePosition = titlePosition {
+  })  : _title = title,
+        _borderStyle = borderStyle,
+        _focusedBorderStyle = focusedBorderStyle,
+        _padding = padding,
+        _backgroundColor = backgroundColor,
+        _titleStyle = titleStyle,
+        _titlePosition = titlePosition {
     _rows.add(_currentRow);
   }
 
-  AclBuilder setDefaultFlags(int flags) {
-    _defaultFlags = flags;
-    return this;
-  }
+  // ── Component placement ────────────────────────────────────────────────────
 
-  int get defaultFlags => _defaultFlags;
-
-  AclBuilder setAttr(int attr) {
-    if (_currentComponent != null) {
-      _currentComponent!.flags |= attr;
+  /// Appends a component to the current row.
+  AclBuilder append(Widget child, {double dist = 0}) {
+    final canAttachComponentKey =
+        child is! Flexible && child is! Expanded && child is! Spacer;
+    final componentKey =
+        canAttachComponentKey ? _resolveReferenceKey(child) : null;
+    _currentComponent = _ComponentData(
+      child: child,
+      flags: _defaultFlags,
+      gapBefore: dist,
+      componentKey: componentKey,
+    );
+    if (componentKey != null) {
+      _referenceKeyByObject[child] = componentKey;
     }
+    _currentRow.components.add(_currentComponent!);
     return this;
   }
 
-  AclBuilder clearAttr(int newAttr) {
-    if (_currentComponent != null) {
-      _currentComponent!.flags &= ~newAttr;
-    }
+  /// Inserts an elastic horizontal gap slot into the current row.
+  AclBuilder gap({double weight = 1}) {
+    final gapWidget = const SizedBox.shrink();
+    final data = _ComponentData(
+      child: gapWidget,
+      flags: AclFlags.gapElement,
+      gapBefore: 0,
+      gapWeight: weight,
+    );
+    _currentComponent = null; // gap is not a target for per-component methods
+    _currentRow.components.add(data);
     return this;
   }
 
-  AclBuilder setComp(Object reference, int otherAttr) {
-    if (_currentComponent != null) {
-      _currentComponent!.referenceKey = _resolveReferenceKey(reference);
-      _currentComponent!.flags |= (otherAttr & AclFlags.otherDim);
-    }
+  // ── Row management ─────────────────────────────────────────────────────────
+
+  /// Starts a new content row.
+  AclBuilder newRow({double dist = 0}) {
+    _currentRow = _RowData()..gapBefore = dist;
+    _rows.add(_currentRow);
+    _currentComponent = null;
     return this;
   }
+
+  /// Inserts an elastic vertical gap row; **implicitly starts a new content row**.
+  ///
+  /// In scrollable-Y mode, the gap row collapses to zero height.
+  AclBuilder gapRow({double weight = 1, AclSeparator? separator}) {
+    final gapRowData = _RowData()
+      ..isGapRow = true
+      ..gapRowWeight = weight
+      ..separator = separator;
+    _rows.add(gapRowData);
+    // Implicitly start a fresh content row after the gap row
+    _currentRow = _RowData();
+    _rows.add(_currentRow);
+    _currentComponent = null;
+    return this;
+  }
+
+  // ── Per-component sizing ───────────────────────────────────────────────────
 
   AclBuilder setPSize(double width, double height) {
     if (_currentComponent != null) {
       _currentComponent!.preferredSize = Size(width, height);
     }
-    return this;
-  }
-
-  AclBuilder setWidthInChars(
-    int chars, {
-    double charWidth = 8,
-    double height = 40,
-  }) {
-    if (_currentComponent == null) {
-      return this;
-    }
-
-    final width = (chars * charWidth).clamp(0, double.infinity).toDouble();
-    final currentHeight = _currentComponent!.preferredSize?.height ?? height;
-    _currentComponent!.preferredSize = Size(width, currentHeight);
     return this;
   }
 
@@ -167,14 +196,49 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setWidthInChars(
+    int chars, {
+    double charWidth = 8,
+    double height = 40,
+  }) {
+    if (_currentComponent == null) return this;
+    final width = (chars * charWidth).clamp(0, double.infinity).toDouble();
+    final currentHeight = _currentComponent!.preferredSize?.height ?? height;
+    _currentComponent!.preferredSize = Size(width, currentHeight);
+    return this;
+  }
+
+  // ── Per-component flags ────────────────────────────────────────────────────
+
+  AclBuilder setAttr(int attr) {
+    if (_currentComponent != null) _currentComponent!.flags |= attr;
+    return this;
+  }
+
+  AclBuilder clearAttr(int newAttr) {
+    if (_currentComponent != null) _currentComponent!.flags &= ~newAttr;
+    return this;
+  }
+
+  // ── Per-component size references ──────────────────────────────────────────
+
+  AclBuilder setComp(Object reference, int otherAttr) {
+    if (_currentComponent != null) {
+      _currentComponent!.referenceKey = _resolveReferenceKey(reference);
+      _currentComponent!.flags |= (otherAttr & AclFlags.otherDim);
+    }
+    return this;
+  }
+
   AclBuilder sameWidthAs(Object reference) =>
       setComp(reference, AclFlags.otherDimX);
 
   AclBuilder sameHeightAs(Object reference) =>
       setComp(reference, AclFlags.otherDimY);
 
-  AclBuilder sameSize(Object reference) =>
-      setComp(reference, AclFlags.otherDim);
+  AclBuilder sameSize(Object reference) => setComp(reference, AclFlags.otherDim);
+
+  // ── Per-component row cross-alignment ─────────────────────────────────────
 
   AclBuilder alignTopInRow() {
     if (_currentComponent != null) {
@@ -183,7 +247,7 @@ class AclBuilder {
     return this;
   }
 
-  AclBuilder alignCenterInRow() {
+  AclBuilder alignMiddleInRow() {
     if (_currentComponent != null) {
       _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.center;
     }
@@ -196,6 +260,8 @@ class AclBuilder {
     }
     return this;
   }
+
+  // ── Cross-row horizontal alignment ────────────────────────────────────────
 
   AclBuilder alignLeftToLeft(Object reference, {double gap = 0}) =>
       _setHorizontalAlignment(
@@ -269,6 +335,8 @@ class AclBuilder {
         gap: gap,
       );
 
+  // ── Same-row vertical alignment ───────────────────────────────────────────
+
   AclBuilder alignTopToTop(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
@@ -277,7 +345,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignTopToCenter(Object reference, {double gap = 0}) =>
+  AclBuilder alignTopToMiddle(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.top,
@@ -293,7 +361,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToTop(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToTop(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -301,7 +369,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToCenterY(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToMiddle(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -309,7 +377,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignCenterToBottom(Object reference, {double gap = 0}) =>
+  AclBuilder alignMiddleToBottom(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.center,
@@ -325,7 +393,7 @@ class AclBuilder {
         gap: gap,
       );
 
-  AclBuilder alignBottomToCenter(Object reference, {double gap = 0}) =>
+  AclBuilder alignBottomToMiddle(Object reference, {double gap = 0}) =>
       _setVerticalAlignment(
         reference: reference,
         selfPoint: AclAxisPointY.bottom,
@@ -340,6 +408,93 @@ class AclBuilder {
         referencePoint: AclAxisPointY.bottom,
         gap: gap,
       );
+
+  // ── Row-level ──────────────────────────────────────────────────────────────
+
+  AclBuilder setRowAlignment(RowAlignment align) {
+    _currentRow.alignment = align;
+    return this;
+  }
+
+  // ── Container-level sizing ─────────────────────────────────────────────────
+
+  AclBuilder setAclScrollableX() {
+    _scrollableX = true;
+    return this;
+  }
+
+  AclBuilder setAclScrollableY() {
+    _scrollableY = true;
+    return this;
+  }
+
+  // ── Container-level decoration ─────────────────────────────────────────────
+
+  AclBuilder setAclDefaultFlags(int flags) {
+    _defaultFlags = flags;
+    return this;
+  }
+
+  int get defaultFlags => _defaultFlags;
+
+  AclBuilder setAclBorderStyle(AclBorderStyle style) {
+    _borderStyle = style;
+    return this;
+  }
+
+  AclBuilder setAclBorderInsets(EdgeInsetsGeometry insets) {
+    _borderStyle = _borderStyle.copyWith(borderInsets: insets);
+    return this;
+  }
+
+  AclBuilder setAclFocusedBorderStyle(AclBorderStyle style) {
+    _focusedBorderStyle = style;
+    return this;
+  }
+
+  AclBuilder setAclPadding(EdgeInsetsGeometry padding) {
+    _padding = padding;
+    return this;
+  }
+
+  AclBuilder setAclBackgroundColor(Color color) {
+    _backgroundColor = color;
+    return this;
+  }
+
+  AclBuilder setAclTitle(String? title) {
+    _title = title;
+    return this;
+  }
+
+  AclBuilder setAclTitleStyle(TextStyle style) {
+    _titleStyle = style;
+    return this;
+  }
+
+  AclBuilder setAclTitlePosition(AclTitlePosition position) {
+    _titlePosition = position;
+    return this;
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
+  Acl build() {
+    return Acl(
+      rows: _rows.map((row) => row.toRow()).toList(),
+      borderStyle: _borderStyle,
+      focusedBorderStyle: _focusedBorderStyle,
+      padding: _padding,
+      backgroundColor: _backgroundColor,
+      scrollableX: _scrollableX,
+      scrollableY: _scrollableY,
+      title: _title,
+      titleStyle: _titleStyle,
+      titlePosition: _titlePosition,
+    );
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
 
   AclBuilder _setHorizontalAlignment({
     required Object reference,
@@ -372,148 +527,10 @@ class AclBuilder {
   }
 
   Key _resolveReferenceKey(Object reference) {
-    if (reference is Key) {
-      return reference;
-    }
+    if (reference is Key) return reference;
     return _referenceKeyByObject.putIfAbsent(
       reference,
       () => GlobalKey(debugLabel: 'acl-ref-${_referenceKeyByObject.length}'),
-    );
-  }
-
-  AclBuilder _appendRelative(
-    Widget child,
-    void Function(Object anchor) applyAlignment,
-  ) {
-    final anchor = _currentComponent?.child;
-    append(child);
-    if (anchor != null) {
-      applyAlignment(anchor);
-    }
-    return this;
-  }
-
-  AclBuilder addBelow(Widget child, {double vGap = 0, double hOffset = 0}) {
-    return _appendRelative(
-      child,
-      (anchor) => alignTopToBottom(
-        anchor,
-        gap: -vGap,
-      ).alignLeftToLeft(anchor, gap: -hOffset),
-    );
-  }
-
-  AclBuilder addLeft(Widget child, {double hGap = 0, double vOffset = 0}) {
-    return _appendRelative(
-      child,
-      (anchor) => alignRightToLeft(
-        anchor,
-        gap: hGap,
-      ).alignTopToTop(anchor, gap: -vOffset),
-    );
-  }
-
-  AclBuilder addAbove(Widget child, {double vGap = 0, double hOffset = 0}) {
-    return _appendRelative(
-      child,
-      (anchor) => alignBottomToTop(
-        anchor,
-        gap: vGap,
-      ).alignLeftToLeft(anchor, gap: -hOffset),
-    );
-  }
-
-  AclBuilder addRight(Widget child, {double hGap = 0, double vOffset = 0}) {
-    return _appendRelative(
-      child,
-      (anchor) => alignLeftToRight(
-        anchor,
-        gap: -hGap,
-      ).alignTopToTop(anchor, gap: -vOffset),
-    );
-  }
-
-  AclBuilder append(Widget child, {double dist = 0}) {
-    final canAttachComponentKey =
-        child is! Flexible && child is! Expanded && child is! Spacer;
-    final componentKey = canAttachComponentKey
-        ? _resolveReferenceKey(child)
-        : null;
-    _currentComponent = _ComponentData(
-      child: child,
-      flags: _defaultFlags,
-      gapBefore: dist,
-      componentKey: componentKey,
-    );
-    if (componentKey != null) {
-      _referenceKeyByObject[child] = componentKey;
-    }
-    _currentRow.components.add(_currentComponent!);
-    return this;
-  }
-
-  AclBuilder newRow({double dist = 0}) {
-    _currentRow = _RowData()..gapBefore = dist;
-    _rows.add(_currentRow);
-    _currentComponent = null;
-    return this;
-  }
-
-  AclBuilder setRowAlignment(RowAlignment align) {
-    _currentRow.alignment = align;
-    return this;
-  }
-
-  AclBuilder setBorderStyle(AclBorderStyle style) {
-    _borderStyle = style;
-    return this;
-  }
-
-  AclBuilder setBorderInsets(EdgeInsetsGeometry insets) {
-    _borderStyle = _borderStyle.copyWith(borderInsets: insets);
-    return this;
-  }
-
-  AclBuilder setFocusedBorderStyle(AclBorderStyle style) {
-    _focusedBorderStyle = style;
-    return this;
-  }
-
-  AclBuilder setPadding(EdgeInsetsGeometry padding) {
-    _padding = padding;
-    return this;
-  }
-
-  AclBuilder setBackgroundColor(Color color) {
-    _backgroundColor = color;
-    return this;
-  }
-
-  AclBuilder setTitle(String? title) {
-    _title = title;
-    return this;
-  }
-
-  AclBuilder setTitleStyle(TextStyle style) {
-    _titleStyle = style;
-    return this;
-  }
-
-  AclBuilder setTitlePosition(AclTitlePosition position) {
-    _titlePosition = position;
-    return this;
-  }
-
-  Acl build() {
-    return Acl(
-      rows: _rows.map((row) => row.toRow()).toList(),
-      borderStyle: _borderStyle,
-      focusedBorderStyle: _focusedBorderStyle,
-      padding: _padding,
-      backgroundColor: _backgroundColor,
-      title: _title,
-      titleStyle: _titleStyle,
-      titlePosition: _titlePosition,
     );
   }
 }
@@ -523,58 +540,7 @@ extension AclBuilderExtensions on AclBuilder {
   AclBuilder expandY() => setAttr(AclFlags.expandY);
   AclBuilder expand() => setAttr(AclFlags.expand);
 
-  AclBuilder alignLeft() => setRowAlignment(RowAlignment.left);
-  AclBuilder alignCenter() => setRowAlignment(RowAlignment.center);
-  AclBuilder alignRight() => setRowAlignment(RowAlignment.right);
-}
-
-// ignore: non_constant_identifier_names
-Widget AclBuild(void Function(AclBuilder) builder) {
-  final b = AclBuilder();
-  builder(b);
-  return b.build();
-}
-
-class AclRowDef {
-  final List<Widget> children;
-  final RowAlignment alignment;
-  final double gapBefore;
-  final List<int>? childFlags;
-  final double childSpacing;
-
-  const AclRowDef({
-    required this.children,
-    this.alignment = RowAlignment.left,
-    this.gapBefore = 0,
-    this.childFlags,
-    this.childSpacing = 0,
-  });
-}
-
-// ignore: non_constant_identifier_names
-Acl AclColumn(List<AclRowDef> rowDefs) {
-  final builder = AclBuilder();
-
-  for (int i = 0; i < rowDefs.length; i++) {
-    final rowDef = rowDefs[i];
-
-    if (i > 0) {
-      builder.newRow(dist: rowDef.gapBefore);
-    } else if (rowDef.gapBefore > 0) {
-      builder.newRow(dist: rowDef.gapBefore);
-    }
-
-    builder.setRowAlignment(rowDef.alignment);
-
-    for (int j = 0; j < rowDef.children.length; j++) {
-      final dist = j > 0 ? rowDef.childSpacing : 0.0;
-      builder.append(rowDef.children[j], dist: dist);
-
-      if (rowDef.childFlags != null && j < rowDef.childFlags!.length) {
-        builder.setAttr(rowDef.childFlags![j]);
-      }
-    }
-  }
-
-  return builder.build();
+  AclBuilder setRowAlignLeft() => setRowAlignment(RowAlignment.left);
+  AclBuilder setRowAlignCenter() => setRowAlignment(RowAlignment.center);
+  AclBuilder setRowAlignRight() => setRowAlignment(RowAlignment.right);
 }
