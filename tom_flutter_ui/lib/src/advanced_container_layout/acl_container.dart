@@ -1100,40 +1100,44 @@ class _AclContainerState extends State<AclContainer> {
     if (naturalWidth <= availableWidth) {
       // ── Grow phase ──────────────────────────────────────────────────────
       // When no component claims exclusive rights to surplus space (expandX /
-      // gap slot), distribute the surplus proportionally across all components
-      // up to their declared maximum widths.  Components without a finite
-      // maximumSize do not participate in growth (they stay at preferred).
+      // gap slot), distribute the surplus proportionally by preferred width.
+      // Components with no ACL hints at all (natural-sized) are excluded.
+      // Components with a finite maximumSize are capped at that max.
+      // Components with NO maximumSize grow without bound — maximumSize is a
+      // ceiling, not a prerequisite for growth.
       final hasRowFiller =
           row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
       if (!hasRowFiller) {
         final surplus = availableWidth - naturalWidth;
-        double growCap = 0;
+        // Distribute surplus proportionally by preferred width.
+        // Components with no ACL hints at all (natural-sized) are excluded.
+        // Components with a finite maximumSize are capped at that max.
+        // Components with no maximumSize grow without bound (their full share).
+        double totalPref = 0;
         for (int i = 0; i < row.components.length; i++) {
           final comp = row.components[i];
-          if (skip(comp)) continue;
-          final max = comp.maximumSize?.width;
-          if (max == null || !max.isFinite) continue;
-          growCap += math.max(0.0, max - (prefWidths[i] ?? 0.0));
+          if (skip(comp)) { continue; }
+          if (comp.preferredSize == null &&
+              comp.minimumSize == null &&
+              comp.maximumSize == null &&
+              !comp.useOtherDimX) { continue; }
+          totalPref += prefWidths[i] ?? 0.0;
         }
-        if (growCap >= 1) {
-          final ratio = (surplus / growCap).clamp(0.0, 1.0);
+        if (totalPref >= 1) {
           final grown = <int, double>{};
           for (int i = 0; i < row.components.length; i++) {
             final comp = row.components[i];
-            if (skip(comp)) continue;
-            // Natural-sized widgets (no hints) are not constrained.
+            if (skip(comp)) { continue; }
             if (comp.preferredSize == null &&
                 comp.minimumSize == null &&
                 comp.maximumSize == null &&
-                !comp.useOtherDimX) {
-              continue;
-            }
+                !comp.useOtherDimX) { continue; }
             final pref = prefWidths[i] ?? 0.0;
+            final share = surplus * pref / totalPref;
             final max = comp.maximumSize?.width;
-            final canGrow = (max != null && max.isFinite)
-                ? math.max(0.0, max - pref)
-                : 0.0;
-            grown[i] = pref + canGrow * ratio;
+            grown[i] = (max != null && max.isFinite)
+                ? math.min(pref + share, max)
+                : pref + share;
           }
           return grown;
         }
