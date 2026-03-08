@@ -972,6 +972,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
               .append(const SizedBox(width: 90, child: Text('12 chars:')))
+              .setPSize(90, 40)
               .append(
                 TextField(
                   decoration: const InputDecoration(
@@ -987,6 +988,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
               .setXWidthInChars(24, charWidth: charWidth)
               .newRow(dist: 10)
               .append(const SizedBox(width: 90, child: Text('24 chars:')))
+              .setPSize(90, 40)
               .append(
                 TextField(
                   decoration: const InputDecoration(
@@ -1002,6 +1004,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
               .setXWidthInChars(48, charWidth: charWidth)
               .newRow(dist: 10)
               .append(const SizedBox(width: 90, child: Text('36 chars:')))
+              .setPSize(90, 40)
               .append(
                 TextField(
                   decoration: const InputDecoration(
