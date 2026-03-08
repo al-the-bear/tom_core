@@ -503,6 +503,15 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
+      if (_currentComponent!.alignYToKey != null) {
+        throw UnsupportedError(
+          'AclBuilder: a component cannot have both a horizontal (X) alignment '
+          'and a vertical (Y) alignment set on the same component. '
+          'Use alignX* for cross-row horizontal alignment OR alignY* for '
+          'same-row vertical alignment — never both on the same component. '
+          '(2D absolute positioning via combined X+Y alignment was removed.)',
+        );
+      }
       _currentComponent!.alignXToKey = _resolveReferenceKey(reference);
       _currentComponent!.alignXFrom = selfPoint;
       _currentComponent!.alignXTo = referencePoint;
@@ -518,6 +527,15 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
+      if (_currentComponent!.alignXToKey != null) {
+        throw UnsupportedError(
+          'AclBuilder: a component cannot have both a vertical (Y) alignment '
+          'and a horizontal (X) alignment set on the same component. '
+          'Use alignX* for cross-row horizontal alignment OR alignY* for '
+          'same-row vertical alignment — never both on the same component. '
+          '(2D absolute positioning via combined X+Y alignment was removed.)',
+        );
+      }
       _currentComponent!.alignYToKey = _resolveReferenceKey(reference);
       _currentComponent!.alignYFrom = selfPoint;
       _currentComponent!.alignYTo = referencePoint;

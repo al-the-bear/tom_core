@@ -669,11 +669,6 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       width: 220,
       child: _DemoBox('Anchor (bottom->top)', Colors.blueGrey),
     );
-    final stackedAnchor = const SizedBox(
-      width: 220,
-      child: _DemoBox('Anchor (top->bottom + left)', Colors.brown),
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -858,35 +853,57 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'Combined vertical + horizontal reference alignment:',
+          'Rule: alignX* and alignY* are mutually exclusive per component:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-          child: AclBuilder()
-              .append(stackedAnchor)
-              .setPSize(220, 56)
-              .newRow()
-              .append(
-                const SizedBox(
-                  width: 220,
-                  child: _DemoBox(
-                    'Follower (left + below, 16px)',
-                    Colors.lightBlue,
-                  ),
-                ),
-              )
-              .setPSize(220, 36)
-              .alignLeftToLeft(stackedAnchor)
-              .alignTopToBottom(stackedAnchor, gap: -16)
-              .build(),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(border: Border.all(color: Colors.red.shade300)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '✗  INVALID — throws UnsupportedError:',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '  .append(follower)\n'
+                '  .alignLeftToLeft(anchor)    // sets X alignment\n'
+                '  .alignTopToBottom(anchor)   // ERROR: X already set on this component',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '✓  VALID — X only (horizontal, cross-row):',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '  .append(follower)\n'
+                '  .alignLeftToLeft(anchor)   // snap left edge only',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '✓  VALID — Y only (vertical, same-row tweaking):',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '  .append(follower)\n'
+                '  .alignTopToTop(anchor)     // snap top edge only',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Expected: follower is directly below anchor with 16px vertical distance and same left edge.',
+          'To place a component below-and-left-of an anchor, use newRow() to start a new row, '
+          'then use alignLeftToLeft() (X only) on the component in that row.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -982,61 +999,113 @@ class ConveniencePlacementDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstWidget = const SizedBox(
-      width: 170,
-      child: _DemoBox('First', Colors.indigo),
+    final tallRef = const SizedBox(
+      width: 160,
+      child: _DemoBox('Tall Ref\n(h=80)', Colors.indigo),
+    );
+    final rowRef = const SizedBox(
+      width: 200,
+      child: _DemoBox('Row-1 Anchor', Colors.deepPurple),
     );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Cross-row alignment — position a component relative to any other component\'s edge:',
+          'Cross-row alignment — components in one row reference anchor components in another:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
+
+        // ── Group 1: same-row vertical alignment (Y only) ─────────────────
+        const Text(
+          'Same-row vertical alignment (Y only) — one alignment per component:',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          height: 100,
+          padding: EdgeInsets.zero,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
+              .append(tallRef)
+              .setPSize(160, 80)
+              // Top-align to Tall Ref
+              .append(const SizedBox(width: 100, child: _DemoBox('Top\nalign', Colors.teal)), dist: 8)
+              .setPSize(100, 36)
+              .alignTopToTop(tallRef)
+              // Middle-align to Tall Ref
+              .append(const SizedBox(width: 120, child: _DemoBox('Middle\nalign', Colors.orange)), dist: 8)
+              .setPSize(120, 36)
+              .alignMiddleToMiddle(tallRef)
+              // Bottom-align to Tall Ref
+              .append(const SizedBox(width: 100, child: _DemoBox('Bottom\nalign', Colors.green)), dist: 8)
+              .setPSize(100, 36)
+              .alignBottomToBottom(tallRef)
+              .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Each small box uses one alignY* call to snap its edge to the Tall Ref\'s corresponding edge.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Group 2: cross-row horizontal alignment (X only) ─────────────
+        const Text(
+          'Cross-row horizontal alignment (X only) — row 2 fields snap to row 1 anchor edges:',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
         Container(
           width: double.infinity,
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              .append(firstWidget)
-              .setPSize(170, 50)
-              .append(const SizedBox(width: 170, child: _DemoBox('Second', Colors.teal)))
-              .setPSize(170, 40)
-              .alignTopToBottom(firstWidget, gap: -10)
-              .alignLeftToLeft(firstWidget)
-              .append(const SizedBox(width: 130, child: _DemoBox('Third', Colors.orange)))
-              .setPSize(130, 40)
-              .alignRightToLeft(firstWidget, gap: 12)
-              .alignTopToTop(firstWidget)
-              .append(const SizedBox(width: 130, child: _DemoBox('Fourth', Colors.purple)))
-              .setPSize(130, 36)
-              .alignBottomToTop(firstWidget, gap: 8)
-              .alignLeftToLeft(firstWidget)
-              .append(const SizedBox(width: 150, child: _DemoBox('Fifth', Colors.blueGrey)))
-              .setPSize(150, 36)
-              .alignLeftToRight(firstWidget, gap: -10)
-              .alignTopToTop(firstWidget)
-              .append(
-                const SizedBox(
-                  width: 170,
-                  child: _DemoBox('Sixth', Colors.lightBlue),
-                ),
-                dist: 12,
-              )
-              .setPSize(170, 40)
-              .newRow(dist: 14)
+              // Row 1: anchor
+              .append(rowRef)
+              .setPSize(200, 44)
+              // Row 2: two fields cross-row aligned to anchor
+              .newRow(dist: 8)
+              .append(const SizedBox(width: 160, child: _DemoBox('←Left to\nAnchor\'s left', Colors.lightBlue)))
+              .setPSize(160, 44)
+              .alignLeftToLeft(rowRef)
+              .append(const SizedBox(width: 160, child: _DemoBox('Right to\nAnchor\'s right→', Colors.pink)), dist: 8)
+              .setPSize(160, 44)
+              .alignRightToRight(rowRef)
+              .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Row 2 components each use one alignX* call. Left box\'s left edge == Anchor\'s left; '
+          'Right box\'s right edge == Anchor\'s right.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Group 3: expandX ──────────────────────────────────────────────
+        const Text(
+          'expandX — two components share available row width:',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: double.infinity,
+          height: 52,
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          child: AclBuilder()
               .append(const _DemoBox('Seventh expandX', Colors.green))
               .expandX()
               .append(const _DemoBox('Eighth expandX', Colors.red), dist: 8)
               .expandX()
               .build(),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         const Text(
-          'Second aligns below First; Third aligns left of First; Fourth aligns above First; Fifth aligns right of First. Seventh/Eighth share row width via expandX.',
-          style: TextStyle(fontSize: 12, color: Colors.black54),
+          'Rule: use alignX* (horizontal) OR alignY* (vertical) — never both on the same component. '
+          'Combining both is 2D absolute positioning and throws an error.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
     );
@@ -1050,7 +1119,11 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     final formAnchor = const SizedBox(
       width: 220,
-      child: _DemoBox('Form Anchor', Colors.deepPurple),
+      child: _DemoBox('Form Anchor\n(ref)', Colors.deepPurple),
+    );
+    final tallBox = const SizedBox(
+      width: 140,
+      child: _DemoBox('Tall\n(h=70)', Colors.blueGrey),
     );
 
     return Column(
@@ -1066,44 +1139,35 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
+              // Row 1: anchor + regular sequential component
               .append(formAnchor)
-              .setPSize(220, 56)
-              .append(
-                const SizedBox(
-                  width: 220,
-                  child: TextField(
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Below + left aligned',
-                      isDense: true,
-                    ),
-                  ),
-                ),
-              )
-              .setPSize(220, 44)
-              .alignTopToBottom(formAnchor, gap: -12)
+              .setPSize(220, 50)
+              .append(const _DemoBox('Regular (+dist)', Colors.orange), dist: 12)
+              .setPSize(140, 40)
+              // Row 2: cross-row horizontal X alignment (X only per component)
+              .newRow(dist: 8)
+              .append(const SizedBox(width: 160, child: _DemoBox('Left→Left', Colors.teal)))
+              .setPSize(160, 40)
               .alignLeftToLeft(formAnchor)
-              .append(const SizedBox(width: 200, child: _DemoBox('Hint Panel', Colors.teal)))
-              .setPSize(200, 56)
-              .alignLeftToRight(formAnchor, gap: -12)
-              .alignTopToTop(formAnchor, gap: -4)
-              .append(const SizedBox(width: 200, child: _DemoBox('Status', Colors.orange)))
-              .setPSize(200, 30)
-              .alignBottomToTop(formAnchor, gap: 6)
-              .alignLeftToLeft(formAnchor)
-              .newRow(dist: 16)
+              .append(const SizedBox(width: 170, child: _DemoBox('Right→Right', Colors.indigo)), dist: 8)
+              .setPSize(170, 40)
+              .alignRightToRight(formAnchor)
+              // Row 3: same-row vertical Y alignment (Y only per component)
+              .newRow(dist: 8)
+              .append(tallBox)
+              .setPSize(140, 70)
+              .append(const SizedBox(width: 120, child: _DemoBox('Top↑align', Colors.green)), dist: 8)
+              .setPSize(120, 36)
+              .alignTopToTop(tallBox)
+              .append(const SizedBox(width: 120, child: _DemoBox('Bot↓align', Colors.red)), dist: 8)
+              .setPSize(120, 36)
+              .alignBottomToBottom(tallBox)
+              // Row 4: sameSize reference
+              .newRow(dist: 12)
+              .append(ElevatedButton(onPressed: () {}, child: const Text('Primary Action')))
+              .setPSize(200, 40)
               .append(
-                ElevatedButton(
-                  onPressed: () {},
-                  child: const Text('Primary Action'),
-                ),
-              )
-              .setPSize(220, 40)
-              .append(
-                OutlinedButton(
-                  onPressed: () {},
-                  child: const Text('Mirror Size'),
-                ),
+                OutlinedButton(onPressed: () {}, child: const Text('Mirror Size')),
                 dist: 12,
               )
               .sameSize(formAnchor)
@@ -1111,7 +1175,8 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Hint Panel aligns right of anchor, Status aligns above anchor, Text Field aligns below anchor. Final button mirrors anchor via sameSize().',
+          'Row 2 uses alignX* (horizontal) only. Row 3 uses alignY* (vertical) only within the row. '
+          'sameSize() in row 4 mirrors the anchor\'s dimensions.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
