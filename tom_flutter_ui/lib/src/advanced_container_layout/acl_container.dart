@@ -529,6 +529,11 @@ class _AclContainerState extends State<AclContainer> {
             rawMaxW < minContW;
 
         final List<Widget> rowWidgets = [];
+        // Shared map: every row appends its components' analytically-computed
+        // positions here so that later rows can resolve cross-row alignments
+        // and sameWidthAs widths from the CURRENT frame's layout rather than
+        // reading the stale render-tree cache.
+        final crossRowVirtualRects = <Key, Rect>{};
 
         for (final row in widget.rows) {
           if (row.isGapRow) {
@@ -555,6 +560,7 @@ class _AclContainerState extends State<AclContainer> {
               canExpandHorizontally: canExpandHorizontally,
               canExpandVertically: canExpandVertically,
               availableWidth: canExpandHorizontally ? effectiveMaxW : null,
+              crossRowVirtualRects: crossRowVirtualRects,
             ),
           );
         }
@@ -627,6 +633,7 @@ class _AclContainerState extends State<AclContainer> {
     required bool canExpandHorizontally,
     required bool canExpandVertically,
     double? availableWidth,
+    required Map<Key, Rect> crossRowVirtualRects,
   }) {
     final mainAxisAlignment = switch (row.alignment) {
       RowAlignment.left => MainAxisAlignment.start,
@@ -739,7 +746,8 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       final resolvedLinkedWidth = component.useOtherDimX
-          ? (_resolveReferenceWidth(component.referenceKey) ??
+          ? (crossRowVirtualRects[component.referenceKey]?.width ??
+              _resolveReferenceWidth(component.referenceKey) ??
               _resolveReferencedRect(component.alignXToKey)?.width)
           : null;
       final resolvedLinkedHeight = component.useOtherDimY
@@ -753,6 +761,7 @@ class _AclContainerState extends State<AclContainer> {
               plannedX: plannedX,
               resolvedLinkedWidth: resolvedLinkedWidth,
               virtualRects: virtualRects,
+              crossRowVirtualRects: crossRowVirtualRects,
             );
 
       if (alignmentDelta > 0) {
@@ -843,9 +852,13 @@ class _AclContainerState extends State<AclContainer> {
 
       final componentKey = component.componentKey;
       if (componentKey != null) {
-        virtualRects[componentKey] = Rect.fromLTWH(
+        final vRect = Rect.fromLTWH(
           shiftedLeftInRow, 0, estimatedWidth, estimatedHeight,
         );
+        virtualRects[componentKey] = vRect;
+        // Also publish to the cross-row map so that components in later rows
+        // can resolve alignX* / sameWidthAs against this frame's geometry.
+        crossRowVirtualRects[componentKey] = vRect;
       }
 
       if (!isFlexNativeChild && component.componentKey != null) {
@@ -1115,6 +1128,7 @@ class _AclContainerState extends State<AclContainer> {
               plannedX: plannedX,
               resolvedLinkedWidth: linkedW,
               virtualRects: vRects,
+              crossRowVirtualRects: vRects,
             );
 
       if (delta > 0) plannedX += delta;
@@ -1272,6 +1286,7 @@ class _AclContainerState extends State<AclContainer> {
     required double plannedX,
     required double? resolvedLinkedWidth,
     required Map<Key, Rect> virtualRects,
+    required Map<Key, Rect> crossRowVirtualRects,
   }) {
     if (component.alignXToKey == null ||
         component.alignXFrom == null ||
@@ -1280,7 +1295,11 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     final key = component.alignXToKey;
-    final virtualRefRect = key != null ? virtualRects[key] : null;
+    // Prefer the analytically-computed rect from the current frame (cross-row
+    // or same-row virtual maps) over the stale render-tree cache.
+    final virtualRefRect = key != null
+        ? (crossRowVirtualRects[key] ?? virtualRects[key])
+        : null;
     final refRect = virtualRefRect ?? _resolveReferencedRect(key);
     if (refRect == null) {
       _hasUnresolvedReference = true;
