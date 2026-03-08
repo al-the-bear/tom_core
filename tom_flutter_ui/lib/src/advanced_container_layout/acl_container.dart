@@ -1098,48 +1098,65 @@ class _AclContainerState extends State<AclContainer> {
     final naturalWidth = maxHX + extraLeft;
 
     if (naturalWidth <= availableWidth) {
-      // ── Grow phase ──────────────────────────────────────────────────────
-      // When no component claims exclusive rights to surplus space (expandX /
-      // gap slot), distribute the surplus proportionally by preferred width.
-      // Components with no ACL hints at all (natural-sized) are excluded.
-      // Components with a finite maximumSize are capped at that max.
-      // Components with NO maximumSize grow without bound — maximumSize is a
-      // ceiling, not a prerequisite for growth.
+      // ── Grow phase ────────────────────────────────────────────────────────
+      // A component participates in grow if and only if it has an explicit
+      // finite maximumSize.  That value is both the opt-in signal and the
+      // growth ceiling.  Components without maximumSize (fixed labels, alignment
+      // anchors, sameWidthAs targets, etc.) stay at their preferred/reference
+      // width and are intentionally excluded from the grow pool.
+      //
+      // Truly natural-sized components (no ACL hints at all) contribute zero to
+      // naturalWidth (their pref = 0 in the loop above).  We measure their real
+      // widths separately and subtract them from the surplus so we never
+      // distribute space that physically belongs to them.
       final hasRowFiller =
           row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
       if (!hasRowFiller) {
-        final surplus = availableWidth - naturalWidth;
-        // Distribute surplus proportionally by preferred width.
-        // Components with no ACL hints at all (natural-sized) are excluded.
-        // Components with a finite maximumSize are capped at that max.
-        // Components with no maximumSize grow without bound (their full share).
-        double totalPref = 0;
+        // Estimate space occupied by truly natural-sized (no-hint) components
+        // whose pref was recorded as 0 and is therefore absent from naturalWidth.
+        double naturalExcludedWidth = 0;
         for (int i = 0; i < row.components.length; i++) {
           final comp = row.components[i];
           if (skip(comp)) { continue; }
-          if (comp.preferredSize == null &&
-              comp.minimumSize == null &&
-              comp.maximumSize == null &&
-              !comp.useOtherDimX) { continue; }
-          totalPref += prefWidths[i] ?? 0.0;
+          if (comp.preferredSize != null ||
+              comp.minimumSize != null ||
+              comp.maximumSize != null ||
+              comp.useOtherDimX) { continue; }
+          // Truly natural-sized: try the cached measured width from the previous
+          // frame, then fall back to the SizedBox child's declared width.
+          final measuredW = _resolveReferenceWidth(comp.componentKey) ??
+              (comp.child is SizedBox
+                  ? ((comp.child as SizedBox).width ?? 0.0)
+                  : 0.0);
+          naturalExcludedWidth += measuredW;
         }
-        if (totalPref >= 1) {
-          final grown = <int, double>{};
+
+        final effectiveSurplus = math.max(
+          0.0,
+          availableWidth - naturalWidth - naturalExcludedWidth,
+        );
+        if (effectiveSurplus >= 1) {
+          double totalPref = 0;
           for (int i = 0; i < row.components.length; i++) {
             final comp = row.components[i];
             if (skip(comp)) { continue; }
-            if (comp.preferredSize == null &&
-                comp.minimumSize == null &&
-                comp.maximumSize == null &&
-                !comp.useOtherDimX) { continue; }
-            final pref = prefWidths[i] ?? 0.0;
-            final share = surplus * pref / totalPref;
             final max = comp.maximumSize?.width;
-            grown[i] = (max != null && max.isFinite)
-                ? math.min(pref + share, max)
-                : pref + share;
+            if (max == null || !max.isFinite) { continue; }
+            totalPref += prefWidths[i] ?? 0.0;
           }
-          return grown;
+          if (totalPref >= 1) {
+            final grown = <int, double>{};
+            for (int i = 0; i < row.components.length; i++) {
+              final comp = row.components[i];
+              if (skip(comp)) { continue; }
+              final max = comp.maximumSize?.width;
+              if (max == null || !max.isFinite) { continue; }
+              final pref = prefWidths[i] ?? 0.0;
+              final share = effectiveSurplus * pref / totalPref;
+              grown[i] = math.min(pref + share, max);
+            }
+            if (grown.isNotEmpty) { return grown; }
+          }
         }
       }
       return null;
