@@ -202,6 +202,16 @@ class AclContainer extends StatefulWidget {
   /// Enables vertical scrolling; gap rows collapse to 0 on the Y axis.
   final bool scrollableY;
 
+  /// Optional preferred container size. Acts as the minimum when no explicit
+  /// minimum is set. Maximum is unlimited unless [maximumContainerSize] is set.
+  final Size? preferredContainerSize;
+
+  /// Optional minimum container size.
+  final Size? minimumContainerSize;
+
+  /// Optional maximum container size.
+  final Size? maximumContainerSize;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -211,6 +221,9 @@ class AclContainer extends StatefulWidget {
     this.backgroundColor,
     this.scrollableX = false,
     this.scrollableY = false,
+    this.preferredContainerSize,
+    this.minimumContainerSize,
+    this.maximumContainerSize,
   });
 
   @override
@@ -240,6 +253,27 @@ class _AclContainerState extends State<AclContainer> {
     _hasUnresolvedReference = false;
 
     Widget content = _buildContent(context);
+
+    // ── Container-level sizing ──────────────────────────────────────────
+    // preferred acts as minimum when no explicit minimum is given.
+    final minContW = widget.minimumContainerSize?.width ??
+        widget.preferredContainerSize?.width;
+    final minContH = widget.minimumContainerSize?.height ??
+        widget.preferredContainerSize?.height;
+    final maxContW = widget.maximumContainerSize?.width;
+    final maxContH = widget.maximumContainerSize?.height;
+    if (minContW != null || minContH != null ||
+        maxContW != null || maxContH != null) {
+      content = ConstrainedBox(
+        constraints: BoxConstraints(
+          minWidth: minContW ?? 0,
+          minHeight: minContH ?? 0,
+          maxWidth: maxContW ?? double.infinity,
+          maxHeight: maxContH ?? double.infinity,
+        ),
+        child: content,
+      );
+    }
 
     _scheduleReferenceCacheRefresh();
     _scheduleReferenceRelayoutIfNeeded();
@@ -638,12 +672,14 @@ class _AclContainerState extends State<AclContainer> {
 
       final linkedWidth = resolvedLinkedWidth;
       final linkedHeight = resolvedLinkedHeight;
+      // Default: minimum = preferred size when no explicit minimum is set;
+      // maximum = unlimited when not set.
       final minWidth = component.useOtherDimX
-          ? (linkedWidth ?? component.minimumSize?.width)
-          : component.minimumSize?.width;
+          ? (linkedWidth ?? component.minimumSize?.width ?? component.preferredSize?.width)
+          : (component.minimumSize?.width ?? component.preferredSize?.width);
       final minHeight = component.useOtherDimY
-          ? (linkedHeight ?? component.minimumSize?.height)
-          : component.minimumSize?.height;
+          ? (linkedHeight ?? component.minimumSize?.height ?? component.preferredSize?.height)
+          : (component.minimumSize?.height ?? component.preferredSize?.height);
       final maxWidth = component.useOtherDimX
           ? (linkedWidth ?? component.maximumSize?.width)
           : component.maximumSize?.width;
@@ -1020,7 +1056,7 @@ class _AclContainerState extends State<AclContainer> {
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (skip(comp)) continue;
-      shrinkCap += math.max(0.0, (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? 0));
+      shrinkCap += math.max(0.0, (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0));
     }
     if (shrinkCap < 1) return null;
 
@@ -1165,6 +1201,9 @@ class AclLayout extends StatelessWidget {
   final Color? backgroundColor;
   final bool scrollableX;
   final bool scrollableY;
+  final Size? preferredContainerSize;
+  final Size? minimumContainerSize;
+  final Size? maximumContainerSize;
 
   const AclLayout({
     super.key,
@@ -1175,6 +1214,9 @@ class AclLayout extends StatelessWidget {
     this.backgroundColor,
     this.scrollableX = false,
     this.scrollableY = false,
+    this.preferredContainerSize,
+    this.minimumContainerSize,
+    this.maximumContainerSize,
   });
 
   @override
@@ -1187,6 +1229,9 @@ class AclLayout extends StatelessWidget {
       backgroundColor: backgroundColor,
       scrollableX: scrollableX,
       scrollableY: scrollableY,
+      preferredContainerSize: preferredContainerSize,
+      minimumContainerSize: minimumContainerSize,
+      maximumContainerSize: maximumContainerSize,
     );
   }
 }
@@ -1205,6 +1250,9 @@ class Acl extends AclLayout {
     super.backgroundColor,
     super.scrollableX = false,
     super.scrollableY = false,
+    super.preferredContainerSize,
+    super.minimumContainerSize,
+    super.maximumContainerSize,
     this.title,
     this.titleStyle,
     this.titlePosition = AclTitlePosition.topLeft,
@@ -1229,6 +1277,9 @@ class Acl extends AclLayout {
           backgroundColor: backgroundColor,
           scrollableX: scrollableX,
           scrollableY: scrollableY,
+          preferredContainerSize: preferredContainerSize,
+          minimumContainerSize: minimumContainerSize,
+          maximumContainerSize: maximumContainerSize,
         ),
         Positioned(
           top: -1,

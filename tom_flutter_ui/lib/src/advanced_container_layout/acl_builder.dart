@@ -22,6 +22,7 @@ class _ComponentData {
   AclAxisPointY? alignYTo;
   double alignYGap = 0;
   AclRowCrossAlignment rowCrossAlignment = AclRowCrossAlignment.center;
+  bool rowCrossAlignmentSet = false;
   Key? componentKey;
 
   _ComponentData({
@@ -92,6 +93,9 @@ class AclBuilder {
   AclTitlePosition _titlePosition;
   bool _scrollableX = false;
   bool _scrollableY = false;
+  Size? _preferredContainerSize;
+  Size? _minimumContainerSize;
+  Size? _maximumContainerSize;
   final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
   // Maps each appended widget object (by identity) to the row it was added to.
   // Used for O(1) row-constraint validation in alignX*/alignY*.
@@ -253,21 +257,42 @@ class AclBuilder {
 
   AclBuilder alignTopInRow() {
     if (_currentComponent != null) {
+      if (_currentComponent!.alignYToKey != null) {
+        throw UnsupportedError(
+          'AclBuilder: alignTopInRow() cannot be combined with an alignY* method on '
+          'the same component — alignY* overrides the row cross-alignment.',
+        );
+      }
       _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.top;
+      _currentComponent!.rowCrossAlignmentSet = true;
     }
     return this;
   }
 
   AclBuilder alignMiddleInRow() {
     if (_currentComponent != null) {
+      if (_currentComponent!.alignYToKey != null) {
+        throw UnsupportedError(
+          'AclBuilder: alignMiddleInRow() cannot be combined with an alignY* method on '
+          'the same component — alignY* overrides the row cross-alignment.',
+        );
+      }
       _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.center;
+      _currentComponent!.rowCrossAlignmentSet = true;
     }
     return this;
   }
 
   AclBuilder alignBottomInRow() {
     if (_currentComponent != null) {
+      if (_currentComponent!.alignYToKey != null) {
+        throw UnsupportedError(
+          'AclBuilder: alignBottomInRow() cannot be combined with an alignY* method on '
+          'the same component — alignY* overrides the row cross-alignment.',
+        );
+      }
       _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.bottom;
+      _currentComponent!.rowCrossAlignmentSet = true;
     }
     return this;
   }
@@ -429,6 +454,21 @@ class AclBuilder {
 
   // ── Container-level sizing ─────────────────────────────────────────────────
 
+  AclBuilder setAclPSize(double width, double height) {
+    _preferredContainerSize = Size(width, height);
+    return this;
+  }
+
+  AclBuilder setAclMSize(double width, double height) {
+    _minimumContainerSize = Size(width, height);
+    return this;
+  }
+
+  AclBuilder setAclXSize(double width, double height) {
+    _maximumContainerSize = Size(width, height);
+    return this;
+  }
+
   AclBuilder setAclScrollableX() {
     _scrollableX = true;
     return this;
@@ -502,6 +542,9 @@ class AclBuilder {
       title: _title,
       titleStyle: _titleStyle,
       titlePosition: _titlePosition,
+      preferredContainerSize: _preferredContainerSize,
+      minimumContainerSize: _minimumContainerSize,
+      maximumContainerSize: _maximumContainerSize,
     );
   }
 
@@ -542,6 +585,12 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
+      if (_currentComponent!.rowCrossAlignmentSet) {
+        throw UnsupportedError(
+          'AclBuilder: alignY* cannot be combined with alignTopInRow()/alignMiddleInRow()'
+          '/alignBottomInRow() on the same component — remove the alignInRow() call.',
+        );
+      }
       final refRow = _rowByObject[reference];
       if (refRow == null) {
         throw UnsupportedError(
