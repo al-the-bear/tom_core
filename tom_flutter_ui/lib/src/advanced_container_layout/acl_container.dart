@@ -392,7 +392,11 @@ class _AclContainerState extends State<AclContainer> {
 
     final contentWithInsets = style.borderInsets != EdgeInsets.zero
         ? Padding(padding: style.borderInsets, child: content)
-        : content;
+        // Default inner insets: 4 px on all sides when border is active and
+        // no explicit borderInsets were configured.
+        : style.enabled
+            ? Padding(padding: const EdgeInsets.all(4), child: content)
+            : content;
 
     if (style.kind == AclBorderKind.solidDouble) {
       final innerRadius =
@@ -856,14 +860,9 @@ class _AclContainerState extends State<AclContainer> {
                   clipBehavior: Clip.none,
                   child: rowContent,
                 )
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  clipBehavior: Clip.none,
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minWidth: constraints.maxWidth),
-                    child: Align(alignment: alignment, child: rowContent),
-                  ),
+              : SizedBox(
+                  width: constraints.maxWidth,
+                  child: Align(alignment: alignment, child: rowContent),
                 );
         },
       );

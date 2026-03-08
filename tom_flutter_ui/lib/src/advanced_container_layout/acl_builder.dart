@@ -211,15 +211,38 @@ class AclBuilder {
     return this;
   }
 
-  AclBuilder setWidthInChars(
+  /// Sets the **preferred** width of the current component using a character-count.
+  /// [charWidth] is the width of one character in pixels (default 8).
+  /// [height] is used as the preferred height when no height has been set yet.
+  AclBuilder setPWidthInChars(
     int chars, {
     double charWidth = 8,
     double height = 40,
   }) {
     if (_currentComponent == null) return this;
-    final width = (chars * charWidth).clamp(0, double.infinity).toDouble();
+    final width = (chars * charWidth).clamp(0.0, double.maxFinite);
     final currentHeight = _currentComponent!.preferredSize?.height ?? height;
     _currentComponent!.preferredSize = Size(width, currentHeight);
+    return this;
+  }
+
+  /// Sets the **minimum** width of the current component using a character-count.
+  /// Preserves the existing minimum height (defaults to 0 if unset).
+  AclBuilder setMWidthInChars(int chars, {double charWidth = 8}) {
+    if (_currentComponent == null) return this;
+    final width = (chars * charWidth).clamp(0.0, double.maxFinite);
+    final currentHeight = _currentComponent!.minimumSize?.height ?? 0.0;
+    _currentComponent!.minimumSize = Size(width, currentHeight);
+    return this;
+  }
+
+  /// Sets the **maximum** width of the current component using a character-count.
+  /// Preserves the existing maximum height (defaults to infinity if unset).
+  AclBuilder setXWidthInChars(int chars, {double charWidth = 8}) {
+    if (_currentComponent == null) return this;
+    final width = (chars * charWidth).clamp(0.0, double.maxFinite);
+    final currentHeight = _currentComponent!.maximumSize?.height ?? double.infinity;
+    _currentComponent!.maximumSize = Size(width, currentHeight);
     return this;
   }
 

@@ -106,7 +106,7 @@ class _AclTab extends StatelessWidget {
         ),
         _DemoTile(
           title: 'Character Width Sizing',
-          description: 'setWidthInChars for character-based field widths',
+          description: 'setPWidthInChars / setMWidthInChars / setXWidthInChars for character-based field widths',
           screen: CharacterWidthSizingDemo(),
         ),
         _DemoTile(
@@ -118,6 +118,11 @@ class _AclTab extends StatelessWidget {
           title: 'Groups (Titled Borders)',
           description: 'Group boxes with titles',
           screen: GroupsDemo(),
+        ),
+        _DemoTile(
+          title: 'Bordered Groups',
+          description: 'Single-line borders with topLeft / topCenter / topRight titles',
+          screen: BorderedGroupsDemo(),
         ),
         _DemoTile(
           title: 'Nested Containers',
@@ -952,12 +957,12 @@ class CharacterWidthSizingDemo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Character-based width sizing (setWidthInChars-style):',
+          'Character-based width sizing (setPWidthInChars-style):',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Using setWidthInChars(chars, charWidth: ..., height: ...). The sample derives charWidth from the current monospace style.',
+          'Using setPWidthInChars(chars, charWidth: ..., height: ...) to set the preferred width in character units. The sample derives charWidth from the current monospace style.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 12),
@@ -977,7 +982,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setWidthInChars(12, charWidth: charWidth, height: 40)
+              .setPWidthInChars(12, charWidth: charWidth, height: 40)
               .newRow(dist: 10)
               .append(const SizedBox(width: 140, child: Text('24 chars:')))
               .append(
@@ -990,7 +995,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setWidthInChars(24, charWidth: charWidth, height: 40)
+              .setPWidthInChars(24, charWidth: charWidth, height: 40)
               .newRow(dist: 10)
               .append(const SizedBox(width: 140, child: Text('36 chars:')))
               .append(
@@ -1003,7 +1008,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
                 ),
                 dist: 12,
               )
-              .setWidthInChars(36, charWidth: charWidth, height: 40)
+              .setPWidthInChars(36, charWidth: charWidth, height: 40)
               .build(),
         ),
         const SizedBox(height: 12),
@@ -1013,7 +1018,9 @@ class CharacterWidthSizingDemo extends StatelessWidget {
 
 AclBuilder()
     .append(TextField(style: monospaceStyle))
-      .setWidthInChars(24, charWidth: charWidth, height: 40)
+      .setPWidthInChars(24, charWidth: charWidth, height: 40)
+      .setMWidthInChars(12, charWidth: charWidth)   // min = 12 chars
+      .setXWidthInChars(48, charWidth: charWidth)   // max = 48 chars
     .build();
 '''),
       ],
@@ -1095,11 +1102,11 @@ class ConveniencePlacementDemo extends StatelessWidget {
               .setPSize(200, 44)
               // Row 2: two fields cross-row aligned to anchor
               .newRow(dist: 8)
-              .append(const SizedBox(width: 160, child: _DemoBox('←Left to\nAnchor\'s left', Colors.lightBlue)))
-              .setPSize(160, 44)
+              .append(const SizedBox(width: 90, child: _DemoBox('←Left to\nAnchor\'s left', Colors.lightBlue)))
+              .setPSize(90, 44)
               .alignLeftToLeft(rowRef)
-              .append(const SizedBox(width: 160, child: _DemoBox('Right to\nAnchor\'s right→', Colors.pink)), dist: 8)
-              .setPSize(160, 44)
+              .append(const SizedBox(width: 90, child: _DemoBox('Right to\nAnchor\'s right→', Colors.pink)), dist: 8)
+              .setPSize(90, 44)
               .alignRightToRight(rowRef)
               .build(),
         ),
@@ -1149,6 +1156,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
       width: 220,
       child: _DemoBox('Form Anchor\n(ref)', Colors.deepPurple),
     );
+    const regularBox = _DemoBox('Regular (+dist:12)', Colors.orange);
     final tallBox = const SizedBox(
       width: 140,
       child: _DemoBox('Tall\n(h=70)', Colors.blueGrey),
@@ -1170,16 +1178,18 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               // Row 1: anchor + regular sequential component
               .append(formAnchor)
               .setPSize(220, 50)
-              .append(const _DemoBox('Regular (+dist)', Colors.orange), dist: 12)
+              .append(regularBox, dist: 12)
               .setPSize(140, 40)
-              // Row 2: cross-row horizontal X alignment (X only per component)
+              // Row 2: two components each using cross-row X alignment (no overlap)
+              //   Right→Right: right edge of box aligns to formAnchor's right (x=220)
+              //   Left→Regular: left edge of box aligns to regularBox's left (x=232)
               .newRow(dist: 8)
-              .append(const SizedBox(width: 160, child: _DemoBox('Left→Left', Colors.teal)))
+              .append(const SizedBox(width: 160, child: _DemoBox('Right→Right\n(formAnchor)', Colors.indigo)))
               .setPSize(160, 40)
-              .alignLeftToLeft(formAnchor)
-              .append(const SizedBox(width: 170, child: _DemoBox('Right→Right', Colors.indigo)), dist: 8)
-              .setPSize(170, 40)
               .alignRightToRight(formAnchor)
+              .append(const SizedBox(width: 120, child: _DemoBox('Left→Regular\n(+dist:12)', Colors.teal)), dist: 8)
+              .setPSize(120, 40)
+              .alignLeftToLeft(regularBox)
               // Row 3: same-row vertical Y alignment (Y only per component)
               .newRow(dist: 8)
               .append(tallBox)
@@ -1203,8 +1213,10 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Row 2 uses alignX* (horizontal) only. Row 3 uses alignY* (vertical) only within the row. '
-          'sameSize() in row 4 mirrors the anchor\'s dimensions.',
+          'Row 2 uses two different cross-row X alignments on the same row: '
+          'Right→Right aligns right edge to formAnchor; Left→Regular aligns left edge to the '
+          '"Regular" component from Row 1 (no overlap). Row 3 uses alignY* within the row. '
+          'sameSize() in Row 4 mirrors the anchor\'s dimensions.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -1532,6 +1544,128 @@ AclBuilder(
     .append(TextField)
     .expandX()
     .build()
+'''),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bordered Groups Demo
+// Single-line borders with various title positions.
+// ─────────────────────────────────────────────────────────────────────────────
+class BorderedGroupsDemo extends StatelessWidget {
+  const BorderedGroupsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Single-line bordered groups with title positions:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+
+        // ── topLeft title ──────────────────────────────────────────────────
+        const Text('topLeft title — solid border, square corners:',
+            style: TextStyle(fontSize: 12, color: Colors.black54)),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: 'Contact Details',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.blueGrey,
+            lineWidth: 1.5,
+          ),
+          titlePosition: AclTitlePosition.topLeft,
+        )
+            .append(const SizedBox(width: 80, child: Text('Name:')))
+            .append(
+              const TextField(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            )
+            .expandX()
+            .newRow(dist: 8)
+            .append(const SizedBox(width: 80, child: Text('Phone:')))
+            .append(
+              const TextField(
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            )
+            .expandX()
+            .build(),
+        const SizedBox(height: 20),
+
+        // ── topCenter title ────────────────────────────────────────────────
+        const Text('topCenter title — solid border, rounded corners:',
+            style: TextStyle(fontSize: 12, color: Colors.black54)),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: '⚙ Preferences',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.teal,
+            lineWidth: 1.5,
+            rounded: true,
+            borderRadius: 10,
+          ),
+          titlePosition: AclTitlePosition.topCenter,
+        )
+            .append(const Text('Dark mode'))
+            .append(Switch(value: false, onChanged: (_) {}), dist: 8)
+            .newRow(dist: 6)
+            .append(const Text('Notifications'))
+            .append(Switch(value: true, onChanged: (_) {}), dist: 8)
+            .build(),
+        const SizedBox(height: 20),
+
+        // ── topRight title ─────────────────────────────────────────────────
+        const Text('topRight title — solid border, rounded corners:',
+            style: TextStyle(fontSize: 12, color: Colors.black54)),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: 'Actions ✓',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.deepPurple,
+            lineWidth: 1.5,
+            rounded: true,
+            borderRadius: 8,
+          ),
+          titlePosition: AclTitlePosition.topRight,
+        )
+            .append(ElevatedButton(onPressed: () {}, child: const Text('Save')))
+            .append(
+              OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
+              dist: 8,
+            )
+            .setRowAlignment(RowAlignment.center)
+            .build(),
+        const SizedBox(height: 24),
+
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+AclBuilder(
+  title: 'Contact Details',
+  borderStyle: AclBorderStyle(
+    kind: AclBorderKind.solid,
+    color: Colors.blueGrey,
+    lineWidth: 1.5,
+  ),
+  titlePosition: AclTitlePosition.topLeft,  // or topCenter / topRight
+)
+  .append(label)
+  .append(textField).expandX()
+  .build()
 '''),
       ],
     );
@@ -1866,7 +2000,7 @@ class ComplexLayoutDemo extends StatelessWidget {
                   ),
                 ),
               )
-              .setMSize(120, 36).setPSize(200, 36).setAttr(AclFlags.expandX)
+              .setMSize(120, 36).setPSize(200, 36)
               .gap(weight: 1)
               .append(const SizedBox(width: 80, child: Text('Role:')))
               .append(
@@ -1884,7 +2018,7 @@ class ComplexLayoutDemo extends StatelessWidget {
                   onChanged: (_) {},
                 ),
               )
-              .setMSize(120, 36).setPSize(180, 36).setAttr(AclFlags.expandX)
+              .setMSize(120, 36).setPSize(180, 36)
               .newRow(dist: 16)
               .append(
                 Container(
@@ -2148,6 +2282,8 @@ class ComprehensiveFormDemo extends StatelessWidget {
           dist: 8,
         )
         .gap() // push buttons to center
+        // Minimum container width prevents overflow at very narrow windows.
+        .setAclMSize(550, 0)
         .build(),
 
         const SizedBox(height: 8),
