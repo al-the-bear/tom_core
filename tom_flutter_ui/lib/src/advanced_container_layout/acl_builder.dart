@@ -93,6 +93,9 @@ class AclBuilder {
   bool _scrollableX = false;
   bool _scrollableY = false;
   final Map<Object, Key> _referenceKeyByObject = Map<Object, Key>.identity();
+  // Maps each appended widget object (by identity) to the row it was added to.
+  // Used for O(1) row-constraint validation in alignX*/alignY*.
+  final Map<Object, _RowData> _rowByObject = Map<Object, _RowData>.identity();
 
   AclBuilder({
     String? title,
@@ -118,6 +121,13 @@ class AclBuilder {
   AclBuilder append(Widget child, {double dist = 0}) {
     final canAttachComponentKey =
         child is! Flexible && child is! Expanded && child is! Spacer;
+    if (canAttachComponentKey && _rowByObject.containsKey(child)) {
+      throw UnsupportedError(
+        'AclBuilder: the same widget instance was appended more than once. '
+        'Each component must be a distinct object so identity-based lookup '
+        'and key generation stay unambiguous.',
+      );
+    }
     final componentKey =
         canAttachComponentKey ? _resolveReferenceKey(child) : null;
     _currentComponent = _ComponentData(
@@ -128,6 +138,7 @@ class AclBuilder {
     );
     if (componentKey != null) {
       _referenceKeyByObject[child] = componentKey;
+      _rowByObject[child] = _currentRow;
     }
     _currentRow.components.add(_currentComponent!);
     return this;
@@ -503,22 +514,20 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
-      final refKey = _resolveReferenceKey(reference);
-      final refRow = _findRowForKey(refKey);
+      final refRow = _rowByObject[reference];
       if (refRow == null) {
         throw UnsupportedError(
-          'AclBuilder: alignX* forward reference — the reference component '
-          'must be declared in a previous row before calling alignX* methods.',
+          'AclBuilder: alignX* forward reference — the reference widget '
+          'must have been appended in a previous row before calling alignX* methods.',
         );
       }
       if (refRow == _currentRow) {
         throw UnsupportedError(
-          'AclBuilder: alignX* same-row reference — the reference component '
-          'must be in a different row. Use alignY* for same-row vertical '
-          'alignment instead.',
+          'AclBuilder: alignX* same-row reference — the reference widget '
+          'must be in a different row. Use alignY* for same-row vertical alignment.',
         );
       }
-      _currentComponent!.alignXToKey = refKey;
+      _currentComponent!.alignXToKey = _resolveReferenceKey(reference);
       _currentComponent!.alignXFrom = selfPoint;
       _currentComponent!.alignXTo = referencePoint;
       _currentComponent!.alignXGap = gap;
@@ -533,38 +542,25 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
-      final refKey = _resolveReferenceKey(reference);
-      final refRow = _findRowForKey(refKey);
+      final refRow = _rowByObject[reference];
       if (refRow == null) {
         throw UnsupportedError(
-          'AclBuilder: alignY* forward reference — the reference component '
-          'must be declared earlier in the same row before calling alignY* methods.',
+          'AclBuilder: alignY* forward reference — the reference widget '
+          'must have been appended earlier in the same row before calling alignY* methods.',
         );
       }
       if (refRow != _currentRow) {
         throw UnsupportedError(
-          'AclBuilder: alignY* cross-row reference — the reference component '
-          'must be in the same row. Use alignX* for cross-row horizontal '
-          'alignment instead.',
+          'AclBuilder: alignY* cross-row reference — the reference widget '
+          'must be in the same row. Use alignX* for cross-row horizontal alignment.',
         );
       }
-      _currentComponent!.alignYToKey = refKey;
+      _currentComponent!.alignYToKey = _resolveReferenceKey(reference);
       _currentComponent!.alignYFrom = selfPoint;
       _currentComponent!.alignYTo = referencePoint;
       _currentComponent!.alignYGap = gap;
     }
     return this;
-  }
-
-  /// Finds the [_RowData] that contains a component with the given [key],
-  /// or returns `null` if no such component has been added yet.
-  _RowData? _findRowForKey(Key key) {
-    for (final row in _rows) {
-      for (final comp in row.components) {
-        if (comp.componentKey == key) return row;
-      }
-    }
-    return null;
   }
 
   Key _resolveReferenceKey(Object reference) {
