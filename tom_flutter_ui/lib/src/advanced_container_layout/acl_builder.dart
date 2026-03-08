@@ -503,16 +503,22 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
-      if (_currentComponent!.alignYToKey != null) {
+      final refKey = _resolveReferenceKey(reference);
+      final refRow = _findRowForKey(refKey);
+      if (refRow == null) {
         throw UnsupportedError(
-          'AclBuilder: a component cannot have both a horizontal (X) alignment '
-          'and a vertical (Y) alignment set on the same component. '
-          'Use alignX* for cross-row horizontal alignment OR alignY* for '
-          'same-row vertical alignment — never both on the same component. '
-          '(2D absolute positioning via combined X+Y alignment was removed.)',
+          'AclBuilder: alignX* forward reference — the reference component '
+          'must be declared in a previous row before calling alignX* methods.',
         );
       }
-      _currentComponent!.alignXToKey = _resolveReferenceKey(reference);
+      if (refRow == _currentRow) {
+        throw UnsupportedError(
+          'AclBuilder: alignX* same-row reference — the reference component '
+          'must be in a different row. Use alignY* for same-row vertical '
+          'alignment instead.',
+        );
+      }
+      _currentComponent!.alignXToKey = refKey;
       _currentComponent!.alignXFrom = selfPoint;
       _currentComponent!.alignXTo = referencePoint;
       _currentComponent!.alignXGap = gap;
@@ -527,21 +533,38 @@ class AclBuilder {
     required double gap,
   }) {
     if (_currentComponent != null) {
-      if (_currentComponent!.alignXToKey != null) {
+      final refKey = _resolveReferenceKey(reference);
+      final refRow = _findRowForKey(refKey);
+      if (refRow == null) {
         throw UnsupportedError(
-          'AclBuilder: a component cannot have both a vertical (Y) alignment '
-          'and a horizontal (X) alignment set on the same component. '
-          'Use alignX* for cross-row horizontal alignment OR alignY* for '
-          'same-row vertical alignment — never both on the same component. '
-          '(2D absolute positioning via combined X+Y alignment was removed.)',
+          'AclBuilder: alignY* forward reference — the reference component '
+          'must be declared earlier in the same row before calling alignY* methods.',
         );
       }
-      _currentComponent!.alignYToKey = _resolveReferenceKey(reference);
+      if (refRow != _currentRow) {
+        throw UnsupportedError(
+          'AclBuilder: alignY* cross-row reference — the reference component '
+          'must be in the same row. Use alignX* for cross-row horizontal '
+          'alignment instead.',
+        );
+      }
+      _currentComponent!.alignYToKey = refKey;
       _currentComponent!.alignYFrom = selfPoint;
       _currentComponent!.alignYTo = referencePoint;
       _currentComponent!.alignYGap = gap;
     }
     return this;
+  }
+
+  /// Finds the [_RowData] that contains a component with the given [key],
+  /// or returns `null` if no such component has been added yet.
+  _RowData? _findRowForKey(Key key) {
+    for (final row in _rows) {
+      for (final comp in row.components) {
+        if (comp.componentKey == key) return row;
+      }
+    }
+    return null;
   }
 
   Key _resolveReferenceKey(Object reference) {

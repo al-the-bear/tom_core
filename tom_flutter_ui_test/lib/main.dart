@@ -853,7 +853,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 20),
         const Text(
-          'Rule: alignX* and alignY* are mutually exclusive per component:',
+          'Row constraint rules for alignX* and alignY*:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
@@ -865,36 +865,63 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                '✗  INVALID — throws UnsupportedError:',
+                '✗  INVALID — alignX* with same-row reference (throws):',
                 style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red),
               ),
               const SizedBox(height: 4),
               const Text(
+                '  // anchor and follower are in the SAME row\n'
                 '  .append(follower)\n'
-                '  .alignLeftToLeft(anchor)    // sets X alignment\n'
-                '  .alignTopToBottom(anchor)   // ERROR: X already set on this component',
+                '  .alignLeftToLeft(anchor)   // ERROR: anchor is in same row',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '✗  INVALID — alignY* with different-row reference (throws):',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '  // anchor is in row 0, follower is in row 1\n'
+                '  .append(follower)\n'
+                '  .alignTopToTop(anchor)     // ERROR: anchor is in a different row',
                 style: TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
               const SizedBox(height: 10),
               const Text(
-                '✓  VALID — X only (horizontal, cross-row):',
+                '✓  VALID — alignX* with different-row reference:',
                 style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
               ),
               const SizedBox(height: 4),
               const Text(
+                '  // anchor in row 0, follower in row 1\n'
                 '  .append(follower)\n'
-                '  .alignLeftToLeft(anchor)   // snap left edge only',
+                '  .alignLeftToLeft(anchor)   // OK: anchor is in a different row',
                 style: TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
               const SizedBox(height: 10),
               const Text(
-                '✓  VALID — Y only (vertical, same-row tweaking):',
+                '✓  VALID — alignY* with same-row reference:',
                 style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
               ),
               const SizedBox(height: 4),
               const Text(
+                '  // tallRef and follower are in the SAME row\n'
                 '  .append(follower)\n'
-                '  .alignTopToTop(anchor)     // snap top edge only',
+                '  .alignTopToTop(tallRef)    // OK: tallRef is in the same row',
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                '✓  VALID — both alignX* and alignY* on the same component:',
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '  // xAnchor in row 0, yRef in same row as follower (row 1)\n'
+                '  .append(follower)\n'
+                '  .alignLeftToLeft(xAnchor)  // X ref in different row — OK\n'
+                '  .alignTopToTop(yRef)        // Y ref in same row — OK',
                 style: TextStyle(fontFamily: 'monospace', fontSize: 12),
               ),
             ],
@@ -902,8 +929,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'To place a component below-and-left-of an anchor, use newRow() to start a new row, '
-          'then use alignLeftToLeft() (X only) on the component in that row.',
+          'Summary: alignX* requires a different-row reference; alignY* requires a same-row reference. '
+          'Both can be set on the same component as long as each reference satisfies its row constraint.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
@@ -1103,8 +1130,9 @@ class ConveniencePlacementDemo extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Rule: use alignX* (horizontal) OR alignY* (vertical) — never both on the same component. '
-          'Combining both is 2D absolute positioning and throws an error.',
+          'Rule: alignX* requires a different-row reference (cross-row horizontal); '
+          'alignY* requires a same-row reference (same-row vertical). '
+          'Both may be set on one component if each reference satisfies its row constraint.',
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
