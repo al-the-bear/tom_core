@@ -249,6 +249,47 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   @override
+  void didUpdateWidget(AclContainer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The AclBuilder creates NEW GlobalKeys on every parent build() call because
+    // _referenceKeyByObject lives on the transient AclBuilder instance.  Transfer
+    // cached size/rect entries from the old keys (previous build) to the new keys
+    // (current build) by matching components by structural position (row index,
+    // component index).  This eliminates the one-frame cache-miss lag on every
+    // resize and makes alignment + sameWidthAs tracking instantaneous.
+    _remapCachesByPosition(oldWidget.rows, widget.rows);
+  }
+
+  void _remapCachesByPosition(List<AclRow> oldRows, List<AclRow> newRows) {
+    final newSizeCache = <Key, Size>{};
+    final newRectCache = <Key, Rect>{};
+    final minRows = math.min(oldRows.length, newRows.length);
+    for (int ri = 0; ri < minRows; ri++) {
+      final oldComps = oldRows[ri].components;
+      final newComps = newRows[ri].components;
+      final len = math.min(oldComps.length, newComps.length);
+      for (int ci = 0; ci < len; ci++) {
+        final oldKey = oldComps[ci].componentKey;
+        final newKey = newComps[ci].componentKey;
+        if (newKey == null) continue;
+        final sz = oldKey != null ? _referenceSizeCache[oldKey] : null;
+        if (sz != null) newSizeCache[newKey] = sz;
+        final rect = oldKey != null ? _referenceRectCache[oldKey] : null;
+        if (rect != null) newRectCache[newKey] = rect;
+      }
+    }
+    _referenceSizeCache
+      ..clear()
+      ..addAll(newSizeCache);
+    _referenceRectCache
+      ..clear()
+      ..addAll(newRectCache);
+    // Applied offsets will be recomputed in the current build pass.
+    _appliedHorizontalOffsetByKey.clear();
+    _appliedVerticalOffsetByKey.clear();
+  }
+
+  @override
   Widget build(BuildContext context) {
     _hasUnresolvedReference = false;
 
@@ -1138,10 +1179,12 @@ class _AclContainerState extends State<AclContainer> {
           for (int i = 0; i < row.components.length; i++) {
             final comp = row.components[i];
             if (skip(comp)) { continue; }
+            // sameWidthAs / sameSize targets: width is fixed = reference width.
+            // Already counted in naturalWidth; excluded from surplus distribution.
+            if (comp.useOtherDimX) { continue; }
             if (comp.preferredSize == null &&
                 comp.minimumSize == null &&
-                comp.maximumSize == null &&
-                !comp.useOtherDimX) { continue; }
+                comp.maximumSize == null) { continue; }
             totalPref += prefWidths[i] ?? 0.0;
           }
           if (totalPref >= 1) {
@@ -1149,10 +1192,10 @@ class _AclContainerState extends State<AclContainer> {
             for (int i = 0; i < row.components.length; i++) {
               final comp = row.components[i];
               if (skip(comp)) { continue; }
+              if (comp.useOtherDimX) { continue; }
               if (comp.preferredSize == null &&
                   comp.minimumSize == null &&
-                  comp.maximumSize == null &&
-                  !comp.useOtherDimX) { continue; }
+                  comp.maximumSize == null) { continue; }
               final pref = prefWidths[i] ?? 0.0;
               final share = effectiveSurplus * pref / totalPref;
               final max = comp.maximumSize?.width;
@@ -1172,6 +1215,8 @@ class _AclContainerState extends State<AclContainer> {
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (skip(comp)) continue;
+      // sameWidthAs / sameSize: width fixed by reference — cannot shrink.
+      if (comp.useOtherDimX) continue;
       shrinkCap += math.max(0.0, (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0));
     }
     if (shrinkCap < 1) return null;
@@ -1181,14 +1226,13 @@ class _AclContainerState extends State<AclContainer> {
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (skip(comp)) continue;
+      // sameWidthAs / sameSize: fixed by reference — excluded from fitted widths;
+      // the ConstrainedBox(min=ref, max=ref) in _buildRow enforces the width.
+      if (comp.useOtherDimX) continue;
       // Components with no ACL size hints at all render at their natural
       // intrinsic / widget-defined size. Do NOT insert them into the fitted
       // map so that _buildRow will not wrap them in SizedBox(width: 0).
-      if (comp.preferredSize == null &&
-          comp.minimumSize == null &&
-          !comp.useOtherDimX) {
-        continue;
-      }
+      if (comp.preferredSize == null && comp.minimumSize == null) continue;
       final pref = prefWidths[i] ?? 0.0;
       final min = comp.minimumSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
