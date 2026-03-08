@@ -761,11 +761,12 @@ class _AclContainerState extends State<AclContainer> {
         if (!hasOwnFlexParentData) {
           final minW =
               (component.minimumSize?.width ?? linkedWidth ?? 0)
-                  .clamp(0, double.infinity);
+                  .clamp(0.0, double.maxFinite);
           final prefW = (fittedWidths?[componentIndex] ??
                   component.preferredSize?.width ?? minW)
-              .clamp(minW, double.infinity);
-          final flexWeight = ((prefW - minW).round()).clamp(1, 10000);
+              .clamp(minW, double.maxFinite);
+          final diff = prefW - minW;
+          final flexWeight = (diff.isFinite ? diff.round() : 1000).clamp(1, 10000);
           child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
         }
       }

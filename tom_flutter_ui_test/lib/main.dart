@@ -604,15 +604,15 @@ class SizeConstraintsDemo extends StatelessWidget {
             decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
             child: AclBuilder()
                 .append(const _DemoBox('Row 1 – fixed\nM:60 P:60', Colors.orange))
-                .setMSize(double.infinity, 60).setPSize(double.infinity, 60)
+                .setMSize(0, 60).setPSize(400, 60)
                 .setAttr(AclFlags.expandX)
                 .newRow(dist: 4)
                 .append(const _DemoBox('Row 2 – expandY\nM:40 P:100', Colors.lightGreen))
-                .setMSize(double.infinity, 40).setPSize(double.infinity, 100)
+                .setMSize(0, 40).setPSize(400, 100)
                 .setAttr(AclFlags.expand)
                 .newRow(dist: 4)
                 .append(const _DemoBox('Row 3 – fixed\nM:40 P:40', Colors.teal))
-                .setMSize(double.infinity, 40).setPSize(double.infinity, 40)
+                .setMSize(0, 40).setPSize(400, 40)
                 .setAttr(AclFlags.expandX)
                 .build(),
           ),
