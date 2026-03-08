@@ -751,7 +751,8 @@ class _AclContainerState extends State<AclContainer> {
               _resolveReferencedRect(component.alignXToKey)?.width)
           : null;
       final resolvedLinkedHeight = component.useOtherDimY
-          ? _resolveReferenceHeight(component.referenceKey)
+          ? (crossRowVirtualRects[component.referenceKey]?.height ??
+              _resolveReferenceHeight(component.referenceKey))
           : null;
 
       final double alignmentDelta = collapseToVisual
@@ -1009,7 +1010,8 @@ class _AclContainerState extends State<AclContainer> {
       for (final component in row.components) {
         if (!component.expandY) continue;
         final linkedHeight = component.useOtherDimY
-            ? _resolveReferenceHeight(component.referenceKey)
+            ? (crossRowVirtualRects[component.referenceKey]?.height ??
+                _resolveReferenceHeight(component.referenceKey))
             : null;
         final minH =
             (component.minimumSize?.height ?? linkedHeight ?? 0)
