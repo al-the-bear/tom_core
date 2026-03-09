@@ -68,6 +68,12 @@ class _AclTab extends StatelessWidget {
           screen: AlignmentDemo(),
         ),
         _DemoTile(
+          title: 'All Dimensions',
+          description: 'Full-window layout: expandX + expandY + both combined',
+          fullScreen: true,
+          screen: const AllDimensionsDemo(),
+        ),
+        _DemoTile(
           title: 'Expand Flags',
           description: 'EXPANDX, EXPANDY for flexible layouts',
           screen: ExpandDemo(),
@@ -185,11 +191,13 @@ class _DemoTile extends StatelessWidget {
   final String title;
   final String description;
   final Widget screen;
+  final bool fullScreen;
 
   const _DemoTile({
     required this.title,
     required this.description,
     required this.screen,
+    this.fullScreen = false,
   });
 
   @override
@@ -202,7 +210,11 @@ class _DemoTile extends StatelessWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => DemoScaffold(title: title, child: screen),
+            builder: (context) => DemoScaffold(
+              title: title,
+              child: screen,
+              fullScreen: fullScreen,
+            ),
           ),
         ),
       ),
@@ -213,8 +225,14 @@ class _DemoTile extends StatelessWidget {
 class DemoScaffold extends StatelessWidget {
   final String title;
   final Widget child;
+  final bool fullScreen;
 
-  const DemoScaffold({super.key, required this.title, required this.child});
+  const DemoScaffold({
+    super.key,
+    required this.title,
+    required this.child,
+    this.fullScreen = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -223,10 +241,12 @@ class DemoScaffold extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(title),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: child,
-      ),
+      body: fullScreen
+          ? child
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: child,
+            ),
     );
   }
 }
@@ -350,6 +370,90 @@ AclBuilder()
     .build()
 '''),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// All Dimensions Demo
+// Fills the full window. Single ACL layout demonstrating all three expand
+// patterns from the Expand Flags demo combined into one container:
+//   Row 1 — single ExpandX between two fixed ends
+//   Row 2 — three equal ExpandX panels
+//   Row 3 — ExpandY row: fixed sidebars + ExpandX+Y centre (fills remaining height)
+// ─────────────────────────────────────────────────────────────────────────────
+class AllDimensionsDemo extends StatelessWidget {
+  const AllDimensionsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: AclBuilder()
+          // ── Row 1: single ExpandX — fixed left, expand centre, fixed right ──
+          .append(const _DemoBox('Fixed L\n(140)', Colors.blueGrey))
+          .setPSize(140, 44)
+          .append(const _DemoBox('ExpandX — fills remaining width', Colors.lightGreen))
+          .setPSize(200, 44)
+          .setAttr(AclFlags.expandX)
+          .append(const _DemoBox('Fixed R\n(100)', Colors.blueGrey))
+          .setPSize(100, 44)
+          // ── Row 2: three equal ExpandX panels ────────────────────────────
+          .newRow(dist: 4)
+          .append(const _DemoBox('ExpandX #1', Colors.red))
+          .setPSize(100, 40)
+          .setAttr(AclFlags.expandX)
+          .append(const _DemoBox('ExpandX #2', Colors.green))
+          .setPSize(100, 40)
+          .setAttr(AclFlags.expandX)
+          .append(const _DemoBox('ExpandX #3', Colors.blue))
+          .setPSize(100, 40)
+          .setAttr(AclFlags.expandX)
+          // ── Row 3: expandY — fills all remaining height ───────────────────
+          // Left sidebar and right panel: fixed width, expandY (fill row height).
+          // Centre: expandX + expandY (fills remaining width AND height).
+          .newRow(dist: 4)
+          .append(
+            Container(
+              color: Colors.indigo.withAlpha(50),
+              alignment: Alignment.topCenter,
+              padding: const EdgeInsets.all(8),
+              child: const Text(
+                'Left Sidebar\n(fixed width,\nexpandY)',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+          .setPSize(140, 200)
+          .setMSize(80, 100)
+          .setAttr(AclFlags.expandY)
+          .append(
+            Container(
+              color: Colors.lightBlue.withAlpha(60),
+              alignment: Alignment.center,
+              child: const Text(
+                'ExpandX + ExpandY\n(fills remaining width AND height)',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+          .setPSize(200, 200)
+          .setMSize(100, 100)
+          .setAttr(AclFlags.expand)
+          .append(
+            Container(
+              color: Colors.deepOrange.withAlpha(50),
+              alignment: Alignment.topCenter,
+              padding: const EdgeInsets.all(8),
+              child: const Text(
+                'Right Panel\n(fixed width,\nexpandY)',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          )
+          .setPSize(120, 200)
+          .setMSize(60, 100)
+          .setAttr(AclFlags.expandY)
+          .build(),
     );
   }
 }
