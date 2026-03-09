@@ -1324,7 +1324,7 @@ class _AclContainerState extends State<AclContainer> {
         : refRect.translate(-refOffset, 0);
 
     final widthEstimate = _estimateComponentWidth(
-      component, resolvedLinkedWidth ?? refRect.width,
+      component, resolvedLinkedWidth,
     );
     final currentLocalPoint =
         plannedX + _horizontalOffset(component.alignXFrom!, widthEstimate);
