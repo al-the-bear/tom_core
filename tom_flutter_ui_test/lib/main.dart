@@ -1186,15 +1186,17 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
           padding: EdgeInsets.zero,
           decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
           child: AclBuilder()
-              // Row 1: anchor + regular sequential component
+              // Row 1: anchor (pref=220, min=140, no max) + regular (pref=120, min=70, no max)
+              // Both resize freely — note intentionally different min/pref values.
               .append(formAnchor)
               .setPSize(220, 50)
-              .setXSize(220, 50)
+              .setMSize(140, 40)
               .append(regularBox, dist: 12)
-              .setPSize(140, 40)
+              .setPSize(120, 40)
+              .setMSize(70, 40)
               // Row 2: two components each using cross-row X alignment (no overlap)
-              //   Right→Right: right edge of box aligns to formAnchor's right (x=220)
-              //   Left→Regular: left edge of box aligns to regularBox's left (x=232)
+              //   Right→Right: right edge of box aligns to formAnchor's right
+              //   Left→Regular: left edge of box aligns to regularBox's left
               .newRow(dist: 8)
               .append(const SizedBox(width: 160, child: _DemoBox('Right→Right\n(formAnchor)', Colors.indigo)))
               .setPSize(160, 40)
@@ -1212,11 +1214,12 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               .append(const SizedBox(width: 120, child: _DemoBox('Bot↓align', Colors.red)), dist: 8)
               .setPSize(120, 36)
               .alignBottomToBottom(tallBox)
-              // Row 4: sameSize reference
+              // Row 4: Primary Action (pref=200, min=100, no max) + Mirror Size tracks formAnchor.
+              // Resize the window: Primary Action grows/shrinks; Mirror Size mirrors formAnchor's size.
               .newRow(dist: 12)
               .append(ElevatedButton(onPressed: () {}, child: const Text('Primary Action')))
               .setPSize(200, 40)
-              .setXSize(200, 40)
+              .setMSize(100, 40)
               .append(
                 OutlinedButton(onPressed: () {}, child: const Text('Mirror Size')),
                 dist: 12,
