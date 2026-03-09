@@ -262,6 +262,13 @@ class AclBuilder {
 
   AclBuilder setComp(Object reference, int otherAttr) {
     if (_currentComponent != null) {
+      if (_rowByObject[reference] == _currentRow) {
+        throw UnsupportedError(
+          'AclBuilder: sameWidthAs / sameHeightAs / sameSize cannot reference a '
+          'component in the same row. Move the reference to a different row, '
+          'or use a cross-row anchor.',
+        );
+      }
       _currentComponent!.referenceKey = _resolveReferenceKey(reference);
       _currentComponent!.flags |= (otherAttr & AclFlags.otherDim);
     }

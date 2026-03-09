@@ -1172,8 +1172,11 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
       width: 140,
       child: _DemoBox('Tall\n(h=70)', Colors.blueGrey),
     );
+    // Row 4 buttons — captured so Row 5 can mirror them via sameSize().
     final primaryAction =
         ElevatedButton(onPressed: () {}, child: const Text('Primary Action'));
+    final secondaryAction =
+        OutlinedButton(onPressed: () {}, child: const Text('Secondary'));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1216,25 +1219,31 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               .append(const SizedBox(width: 120, child: _DemoBox('Bot↓align', Colors.red)), dist: 8)
               .setPSize(120, 36)
               .alignBottomToBottom(tallBox)
-              // Row 4: Primary Action (pref=200, min=100, no max) + Mirror Size tracks Primary Action.
-              // Resize the window: both buttons stay the same size because Mirror Size uses sameSize().
+              // Row 4: two buttons with intentionally different min/pref/max sizes.
               .newRow(dist: 12)
               .append(primaryAction)
-              .setPSize(200, 40)
+              .setPSize(180, 40)
               .setMSize(100, 40)
-              .append(
-                OutlinedButton(onPressed: () {}, child: const Text('Mirror Size')),
-                dist: 12,
-              )
+              .setXSize(260, 40)
+              .append(secondaryAction, dist: 12)
+              .setPSize(120, 40)
+              .setMSize(70, 40)
+              .setXSize(180, 40)
+              // Row 5: mirrors of Row 4 using cross-row sameSize().
+              // sameSize() on the same row is disallowed by the engine.
+              .newRow(dist: 8)
+              .append(OutlinedButton(onPressed: () {}, child: const Text('Mirror Primary')))
               .sameSize(primaryAction)
+              .append(OutlinedButton(onPressed: () {}, child: const Text('Mirror Secondary')), dist: 12)
+              .sameSize(secondaryAction)
               .build(),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Row 2 uses two different cross-row X alignments on the same row: '
-          'Right→Right aligns right edge to formAnchor; Left→Regular aligns left edge to the '
-          '"Regular" component from Row 1 (no overlap). Row 3 uses alignY* within the row. '
-          'sameSize() in Row 4 makes Mirror Size identical to Primary Action.',
+          'Row 2 uses two cross-row X alignments: Right→Right aligns to formAnchor; '
+          'Left→Regular aligns to regularBox (no overlap). Row 3 uses same-row alignY. '
+          'Row 4 has two buttons with different min/pref/max. '
+          'Row 5 mirrors both via cross-row sameSize() — same-row mirroring is disallowed.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
