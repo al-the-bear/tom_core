@@ -1172,6 +1172,8 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
       width: 140,
       child: _DemoBox('Tall\n(h=70)', Colors.blueGrey),
     );
+    final primaryAction =
+        ElevatedButton(onPressed: () {}, child: const Text('Primary Action'));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1214,17 +1216,17 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
               .append(const SizedBox(width: 120, child: _DemoBox('Bot↓align', Colors.red)), dist: 8)
               .setPSize(120, 36)
               .alignBottomToBottom(tallBox)
-              // Row 4: Primary Action (pref=200, min=100, no max) + Mirror Size tracks formAnchor.
-              // Resize the window: Primary Action grows/shrinks; Mirror Size mirrors formAnchor's size.
+              // Row 4: Primary Action (pref=200, min=100, no max) + Mirror Size tracks Primary Action.
+              // Resize the window: both buttons stay the same size because Mirror Size uses sameSize().
               .newRow(dist: 12)
-              .append(ElevatedButton(onPressed: () {}, child: const Text('Primary Action')))
+              .append(primaryAction)
               .setPSize(200, 40)
               .setMSize(100, 40)
               .append(
                 OutlinedButton(onPressed: () {}, child: const Text('Mirror Size')),
                 dist: 12,
               )
-              .sameSize(formAnchor)
+              .sameSize(primaryAction)
               .build(),
         ),
         const SizedBox(height: 8),
@@ -1232,7 +1234,7 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
           'Row 2 uses two different cross-row X alignments on the same row: '
           'Right→Right aligns right edge to formAnchor; Left→Regular aligns left edge to the '
           '"Regular" component from Row 1 (no overlap). Row 3 uses alignY* within the row. '
-          'sameSize() in Row 4 mirrors the anchor\'s dimensions.',
+          'sameSize() in Row 4 makes Mirror Size identical to Primary Action.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
       ],
