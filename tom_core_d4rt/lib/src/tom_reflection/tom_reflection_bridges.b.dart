@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 3 files
-// Generated: 2026-02-27T00:31:23.687003
+// Generated: 2026-03-12T17:01:44.932295
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -10,6 +10,7 @@ import 'package:tom_d4rt/tom_d4rt.dart';
 import 'package:tom_reflection/src/reflection/capability.dart' as $tom_reflection_1;
 import 'package:tom_reflection/src/reflection/mirrors.dart' as $tom_reflection_2;
 import 'package:tom_reflection/tom_reflection.dart' as $tom_reflection_3;
+import 'package:tom_reflection/src/reflection/reflection_builder_based.dart' as $aux_tom_reflection;
 
 /// Bridge class for tom_reflection module.
 class TomReflectionBridge {
@@ -77,59 +78,78 @@ class TomReflectionBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'ReflectionInterface': 'package:tom_reflection/tom_reflection.dart',
-      'Reflection': 'package:tom_reflection/tom_reflection.dart',
-      'StringInvocation': 'package:tom_reflection/tom_reflection.dart',
-      'ReflectCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'ApiReflectCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'NamePatternCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'MetadataQuantifiedCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'InstanceInvokeCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'InstanceInvokeMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'StaticInvokeCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'StaticInvokeMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TopLevelInvokeCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TopLevelInvokeMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'NewInstanceCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'NewInstanceMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'MetadataCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TypeCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TypeRelationsCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'LibraryCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'DeclarationsCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'UriCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'LibraryDependenciesCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'InvokingCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'InvokingMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TypingCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'ReflecteeQuantifyCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'SuperclassQuantifyCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'TypeAnnotationQuantifyCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'ImportAttachedCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'GlobalQuantifyCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'GlobalQuantifyMetaCapability': 'package:tom_reflection/src/reflection/capability.dart',
-      'NoSuchCapabilityError': 'package:tom_reflection/src/reflection/capability.dart',
-      'ReflectionNoSuchMethodError': 'package:tom_reflection/src/reflection/capability.dart',
-      'Mirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'DeclarationMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'ObjectMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'InstanceMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'ClosureMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'LibraryMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'LibraryDependencyMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'CombinatorMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'TypeMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'ClassMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'FunctionTypeMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'TypeVariableMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'TypedefMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'MethodMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'VariableMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'ParameterMirror': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'SourceLocation': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'Comment': 'package:tom_reflection/src/reflection/mirrors.dart',
-      'TypeValue': 'package:tom_reflection/src/reflection/mirrors.dart',
+      'ReflectionInterface': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\tom_reflection.dart',
+      'Reflection': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\tom_reflection.dart',
+      'StringInvocation': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\tom_reflection.dart',
+      'ReflectCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'ApiReflectCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'NamePatternCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'MetadataQuantifiedCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'InstanceInvokeCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'InstanceInvokeMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'StaticInvokeCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'StaticInvokeMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TopLevelInvokeCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TopLevelInvokeMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'NewInstanceCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'NewInstanceMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'MetadataCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TypeCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TypeRelationsCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'LibraryCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'DeclarationsCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'UriCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'LibraryDependenciesCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'InvokingCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'InvokingMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TypingCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'ReflecteeQuantifyCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'SuperclassQuantifyCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'TypeAnnotationQuantifyCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'ImportAttachedCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'GlobalQuantifyCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'GlobalQuantifyMetaCapability': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'NoSuchCapabilityError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'ReflectionNoSuchMethodError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'Mirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'DeclarationMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'ObjectMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'InstanceMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'ClosureMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'LibraryMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'LibraryDependencyMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'CombinatorMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'TypeMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'ClassMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'FunctionTypeMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'TypeVariableMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'TypedefMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'MethodMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'VariableMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'ParameterMirror': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'SourceLocation': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'Comment': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'TypeValue': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
     };
+  }
+
+  /// Returns a map of type alias names to their target class names.
+  ///
+  /// Type aliases like `typedef MaterialStateProperty<T> = WidgetStateProperty<T>`
+  /// are registered so that code using the alias name can resolve to the
+  /// bridged class under its canonical name.
+  static Map<String, String> classAliases() {
+    return {
+    };
+  }
+
+  /// Returns the list of function typedef names declared in this library.
+  ///
+  /// Function typedefs like `typedef VoidCallback = void Function()` are
+  /// registered so that they can be used as type arguments in D4rt scripts.
+  static List<String> functionTypedefs() {
+    return [
+    ];
   }
 
   /// Returns all bridged enum definitions.
@@ -148,7 +168,7 @@ class TomReflectionBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
     return {
-      'StringInvocationKind': 'package:tom_reflection/src/reflection/capability.dart',
+      'StringInvocationKind': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
     };
   }
 
@@ -204,107 +224,107 @@ class TomReflectionBridge {
     final errors = <String>[];
 
     try {
-      interpreter.registerGlobalVariable('instanceInvokeCapability', $tom_reflection_1.instanceInvokeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('instanceInvokeCapability', instanceInvokeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "instanceInvokeCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('staticInvokeCapability', $tom_reflection_1.staticInvokeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('staticInvokeCapability', staticInvokeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "staticInvokeCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('topLevelInvokeCapability', $tom_reflection_1.topLevelInvokeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('topLevelInvokeCapability', topLevelInvokeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "topLevelInvokeCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('newInstanceCapability', $tom_reflection_1.newInstanceCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('newInstanceCapability', newInstanceCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "newInstanceCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('metadataCapability', $tom_reflection_1.metadataCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('metadataCapability', metadataCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "metadataCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('typeCapability', $tom_reflection_1.typeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('typeCapability', typeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "typeCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('typeRelationsCapability', $tom_reflection_1.typeRelationsCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('typeRelationsCapability', typeRelationsCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "typeRelationsCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('reflectedTypeCapability', $tom_reflection_1.reflectedTypeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('reflectedTypeCapability', reflectedTypeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "reflectedTypeCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('libraryCapability', $tom_reflection_1.libraryCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('libraryCapability', libraryCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "libraryCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('declarationsCapability', $tom_reflection_1.declarationsCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('declarationsCapability', declarationsCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "declarationsCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('uriCapability', $tom_reflection_1.uriCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('uriCapability', uriCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "uriCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('libraryDependenciesCapability', $tom_reflection_1.libraryDependenciesCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('libraryDependenciesCapability', libraryDependenciesCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "libraryDependenciesCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('invokingCapability', $tom_reflection_1.invokingCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('invokingCapability', invokingCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "invokingCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('typingCapability', $tom_reflection_1.typingCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('typingCapability', typingCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "typingCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('delegateCapability', $tom_reflection_1.delegateCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('delegateCapability', delegateCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "delegateCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('subtypeQuantifyCapability', $tom_reflection_1.subtypeQuantifyCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('subtypeQuantifyCapability', subtypeQuantifyCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "subtypeQuantifyCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('superclassQuantifyCapability', $tom_reflection_1.superclassQuantifyCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('superclassQuantifyCapability', superclassQuantifyCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "superclassQuantifyCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('typeAnnotationQuantifyCapability', $tom_reflection_1.typeAnnotationQuantifyCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('typeAnnotationQuantifyCapability', typeAnnotationQuantifyCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "typeAnnotationQuantifyCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('typeAnnotationDeepQuantifyCapability', $tom_reflection_1.typeAnnotationDeepQuantifyCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('typeAnnotationDeepQuantifyCapability', typeAnnotationDeepQuantifyCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "typeAnnotationDeepQuantifyCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('correspondingSetterQuantifyCapability', $tom_reflection_1.correspondingSetterQuantifyCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('correspondingSetterQuantifyCapability', correspondingSetterQuantifyCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "correspondingSetterQuantifyCapability": $e');
     }
     try {
-      interpreter.registerGlobalVariable('admitSubtypeCapability', $tom_reflection_1.admitSubtypeCapability, importPath, sourceUri: 'package:tom_reflection/src/reflection/capability.dart');
+      interpreter.registerGlobalVariable('admitSubtypeCapability', admitSubtypeCapability, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart');
     } catch (e) {
       errors.add('Failed to register variable "admitSubtypeCapability": $e');
     }
@@ -324,7 +344,7 @@ class TomReflectionBridge {
         final positionalArguments = D4.getRequiredArg<List>(positional, 2, 'positionalArguments', 'reflectionNoSuchInvokableError');
         final namedArguments = D4.getRequiredArg<Map<Symbol, dynamic>?>(positional, 3, 'namedArguments', 'reflectionNoSuchInvokableError');
         final kind = D4.getRequiredArg<$tom_reflection_1.StringInvocationKind>(positional, 4, 'kind', 'reflectionNoSuchInvokableError');
-        return $tom_reflection_1.reflectionNoSuchInvokableError(receiver, memberName, positionalArguments, namedArguments, kind);
+        return reflectionNoSuchInvokableError(receiver, memberName, positionalArguments, namedArguments, kind);
       },
       'reflectionNoSuchMethodError': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'reflectionNoSuchMethodError');
@@ -332,7 +352,7 @@ class TomReflectionBridge {
         final memberName = D4.getRequiredArg<String>(positional, 1, 'memberName', 'reflectionNoSuchMethodError');
         final positionalArguments = D4.getRequiredArg<List>(positional, 2, 'positionalArguments', 'reflectionNoSuchMethodError');
         final namedArguments = D4.getRequiredArg<Map<Symbol, dynamic>?>(positional, 3, 'namedArguments', 'reflectionNoSuchMethodError');
-        return $tom_reflection_1.reflectionNoSuchMethodError(receiver, memberName, positionalArguments, namedArguments);
+        return reflectionNoSuchMethodError(receiver, memberName, positionalArguments, namedArguments);
       },
       'reflectionNoSuchGetterError': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'reflectionNoSuchGetterError');
@@ -340,7 +360,7 @@ class TomReflectionBridge {
         final memberName = D4.getRequiredArg<String>(positional, 1, 'memberName', 'reflectionNoSuchGetterError');
         final positionalArguments = D4.getRequiredArg<List>(positional, 2, 'positionalArguments', 'reflectionNoSuchGetterError');
         final namedArguments = D4.getRequiredArg<Map<Symbol, dynamic>?>(positional, 3, 'namedArguments', 'reflectionNoSuchGetterError');
-        return $tom_reflection_1.reflectionNoSuchGetterError(receiver, memberName, positionalArguments, namedArguments);
+        return reflectionNoSuchGetterError(receiver, memberName, positionalArguments, namedArguments);
       },
       'reflectionNoSuchSetterError': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'reflectionNoSuchSetterError');
@@ -348,7 +368,7 @@ class TomReflectionBridge {
         final memberName = D4.getRequiredArg<String>(positional, 1, 'memberName', 'reflectionNoSuchSetterError');
         final positionalArguments = D4.getRequiredArg<List>(positional, 2, 'positionalArguments', 'reflectionNoSuchSetterError');
         final namedArguments = D4.getRequiredArg<Map<Symbol, dynamic>?>(positional, 3, 'namedArguments', 'reflectionNoSuchSetterError');
-        return $tom_reflection_1.reflectionNoSuchSetterError(receiver, memberName, positionalArguments, namedArguments);
+        return reflectionNoSuchSetterError(receiver, memberName, positionalArguments, namedArguments);
       },
       'reflectionNoSuchConstructorError': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 4, 'reflectionNoSuchConstructorError');
@@ -356,7 +376,7 @@ class TomReflectionBridge {
         final constructorName = D4.getRequiredArg<String>(positional, 1, 'constructorName', 'reflectionNoSuchConstructorError');
         final positionalArguments = D4.getRequiredArg<List>(positional, 2, 'positionalArguments', 'reflectionNoSuchConstructorError');
         final namedArguments = D4.getRequiredArg<Map<Symbol, dynamic>?>(positional, 3, 'namedArguments', 'reflectionNoSuchConstructorError');
-        return $tom_reflection_1.reflectionNoSuchConstructorError(receiver, constructorName, positionalArguments, namedArguments);
+        return reflectionNoSuchConstructorError(receiver, constructorName, positionalArguments, namedArguments);
       },
     };
   }
@@ -367,11 +387,11 @@ class TomReflectionBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'reflectionNoSuchInvokableError': 'package:tom_reflection/src/reflection/capability.dart',
-      'reflectionNoSuchMethodError': 'package:tom_reflection/src/reflection/capability.dart',
-      'reflectionNoSuchGetterError': 'package:tom_reflection/src/reflection/capability.dart',
-      'reflectionNoSuchSetterError': 'package:tom_reflection/src/reflection/capability.dart',
-      'reflectionNoSuchConstructorError': 'package:tom_reflection/src/reflection/capability.dart',
+      'reflectionNoSuchInvokableError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'reflectionNoSuchMethodError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'reflectionNoSuchGetterError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'reflectionNoSuchSetterError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'reflectionNoSuchConstructorError': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
     };
   }
 
@@ -393,9 +413,9 @@ class TomReflectionBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
-      'package:tom_reflection/src/reflection/capability.dart',
-      'package:tom_reflection/src/reflection/mirrors.dart',
-      'package:tom_reflection/tom_reflection.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\capability.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\src\reflection\mirrors.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_reflection-1.0.1\lib\tom_reflection.dart',
     ];
   }
 
@@ -430,41 +450,42 @@ class TomReflectionBridge {
 
 BridgedClass _createReflectionInterfaceBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_3.ReflectionInterface,
+    nativeType: ReflectionInterface,
     name: 'ReflectionInterface',
+    isAssignable: (v) => v is ReflectionInterface,
     constructors: {
     },
     getters: {
-      'libraries': (visitor, target) => D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface').libraries,
-      'annotatedClasses': (visitor, target) => D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface').annotatedClasses,
+      'libraries': (visitor, target) => D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface').libraries,
+      'annotatedClasses': (visitor, target) => D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface').annotatedClasses,
     },
     methods: {
       'canReflect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface');
+        final t = D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface');
         D4.requireMinArgs(positional, 1, 'canReflect');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'canReflect');
         return t.canReflect(o);
       },
       'reflect': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface');
+        final t = D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface');
         D4.requireMinArgs(positional, 1, 'reflect');
         final o = D4.getRequiredArg<Object>(positional, 0, 'o', 'reflect');
         return t.reflect(o);
       },
       'canReflectType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface');
+        final t = D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface');
         D4.requireMinArgs(positional, 1, 'canReflectType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'canReflectType');
         return t.canReflectType(type);
       },
       'reflectType': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface');
+        final t = D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface');
         D4.requireMinArgs(positional, 1, 'reflectType');
         final type = D4.getRequiredArg<Type>(positional, 0, 'type', 'reflectType');
         return t.reflectType(type);
       },
       'findLibrary': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_3.ReflectionInterface>(target, 'ReflectionInterface');
+        final t = D4.validateTarget<ReflectionInterface>(target, 'ReflectionInterface');
         D4.requireMinArgs(positional, 1, 'findLibrary');
         final library = D4.getRequiredArg<String>(positional, 0, 'library', 'findLibrary');
         return t.findLibrary(library);
@@ -492,6 +513,7 @@ BridgedClass _createReflectionBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_3.Reflection,
     name: 'Reflection',
+    isAssignable: (v) => v is $tom_reflection_3.Reflection,
     constructors: {
     },
     getters: {
@@ -572,6 +594,7 @@ BridgedClass _createStringInvocationBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_3.StringInvocation,
     name: 'StringInvocation',
+    isAssignable: (v) => v is $tom_reflection_3.StringInvocation,
     constructors: {
     },
     getters: {
@@ -603,6 +626,7 @@ BridgedClass _createReflectCapabilityBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_1.ReflectCapability,
     name: 'ReflectCapability',
+    isAssignable: (v) => v is $tom_reflection_1.ReflectCapability,
     constructors: {
     },
   );
@@ -614,8 +638,9 @@ BridgedClass _createReflectCapabilityBridge() {
 
 BridgedClass _createApiReflectCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.ApiReflectCapability,
+    nativeType: ApiReflectCapability,
     name: 'ApiReflectCapability',
+    isAssignable: (v) => v is ApiReflectCapability,
     constructors: {
     },
   );
@@ -627,12 +652,13 @@ BridgedClass _createApiReflectCapabilityBridge() {
 
 BridgedClass _createNamePatternCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.NamePatternCapability,
+    nativeType: NamePatternCapability,
     name: 'NamePatternCapability',
+    isAssignable: (v) => v is NamePatternCapability,
     constructors: {
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.NamePatternCapability>(target, 'NamePatternCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<NamePatternCapability>(target, 'NamePatternCapability').namePattern,
     },
     getterSignatures: {
       'namePattern': 'String get namePattern',
@@ -646,12 +672,13 @@ BridgedClass _createNamePatternCapabilityBridge() {
 
 BridgedClass _createMetadataQuantifiedCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.MetadataQuantifiedCapability,
+    nativeType: MetadataQuantifiedCapability,
     name: 'MetadataQuantifiedCapability',
+    isAssignable: (v) => v is MetadataQuantifiedCapability,
     constructors: {
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.MetadataQuantifiedCapability>(target, 'MetadataQuantifiedCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<MetadataQuantifiedCapability>(target, 'MetadataQuantifiedCapability').metadataType,
     },
     getterSignatures: {
       'metadataType': 'Type get metadataType',
@@ -665,17 +692,18 @@ BridgedClass _createMetadataQuantifiedCapabilityBridge() {
 
 BridgedClass _createInstanceInvokeCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.InstanceInvokeCapability,
+    nativeType: InstanceInvokeCapability,
     name: 'InstanceInvokeCapability',
+    isAssignable: (v) => v is InstanceInvokeCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'InstanceInvokeCapability');
         final namePattern = D4.getRequiredArg<String>(positional, 0, 'namePattern', 'InstanceInvokeCapability');
-        return $tom_reflection_1.InstanceInvokeCapability(namePattern);
+        return InstanceInvokeCapability(namePattern);
       },
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.InstanceInvokeCapability>(target, 'InstanceInvokeCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<InstanceInvokeCapability>(target, 'InstanceInvokeCapability').namePattern,
     },
     constructorSignatures: {
       '': 'const InstanceInvokeCapability(String namePattern)',
@@ -692,17 +720,18 @@ BridgedClass _createInstanceInvokeCapabilityBridge() {
 
 BridgedClass _createInstanceInvokeMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.InstanceInvokeMetaCapability,
+    nativeType: InstanceInvokeMetaCapability,
     name: 'InstanceInvokeMetaCapability',
+    isAssignable: (v) => v is InstanceInvokeMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'InstanceInvokeMetaCapability');
         final metadataType = D4.getRequiredArg<Type>(positional, 0, 'metadataType', 'InstanceInvokeMetaCapability');
-        return $tom_reflection_1.InstanceInvokeMetaCapability(metadataType);
+        return InstanceInvokeMetaCapability(metadataType);
       },
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.InstanceInvokeMetaCapability>(target, 'InstanceInvokeMetaCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<InstanceInvokeMetaCapability>(target, 'InstanceInvokeMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const InstanceInvokeMetaCapability(Type metadataType)',
@@ -719,17 +748,18 @@ BridgedClass _createInstanceInvokeMetaCapabilityBridge() {
 
 BridgedClass _createStaticInvokeCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.StaticInvokeCapability,
+    nativeType: StaticInvokeCapability,
     name: 'StaticInvokeCapability',
+    isAssignable: (v) => v is StaticInvokeCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'StaticInvokeCapability');
         final namePattern = D4.getRequiredArg<String>(positional, 0, 'namePattern', 'StaticInvokeCapability');
-        return $tom_reflection_1.StaticInvokeCapability(namePattern);
+        return StaticInvokeCapability(namePattern);
       },
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.StaticInvokeCapability>(target, 'StaticInvokeCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<StaticInvokeCapability>(target, 'StaticInvokeCapability').namePattern,
     },
     constructorSignatures: {
       '': 'const StaticInvokeCapability(String namePattern)',
@@ -746,17 +776,18 @@ BridgedClass _createStaticInvokeCapabilityBridge() {
 
 BridgedClass _createStaticInvokeMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.StaticInvokeMetaCapability,
+    nativeType: StaticInvokeMetaCapability,
     name: 'StaticInvokeMetaCapability',
+    isAssignable: (v) => v is StaticInvokeMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'StaticInvokeMetaCapability');
         final metadata = D4.getRequiredArg<Type>(positional, 0, 'metadata', 'StaticInvokeMetaCapability');
-        return $tom_reflection_1.StaticInvokeMetaCapability(metadata);
+        return StaticInvokeMetaCapability(metadata);
       },
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.StaticInvokeMetaCapability>(target, 'StaticInvokeMetaCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<StaticInvokeMetaCapability>(target, 'StaticInvokeMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const StaticInvokeMetaCapability(Type metadata)',
@@ -773,17 +804,18 @@ BridgedClass _createStaticInvokeMetaCapabilityBridge() {
 
 BridgedClass _createTopLevelInvokeCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TopLevelInvokeCapability,
+    nativeType: TopLevelInvokeCapability,
     name: 'TopLevelInvokeCapability',
+    isAssignable: (v) => v is TopLevelInvokeCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TopLevelInvokeCapability');
         final namePattern = D4.getRequiredArg<String>(positional, 0, 'namePattern', 'TopLevelInvokeCapability');
-        return $tom_reflection_1.TopLevelInvokeCapability(namePattern);
+        return TopLevelInvokeCapability(namePattern);
       },
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.TopLevelInvokeCapability>(target, 'TopLevelInvokeCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<TopLevelInvokeCapability>(target, 'TopLevelInvokeCapability').namePattern,
     },
     constructorSignatures: {
       '': 'const TopLevelInvokeCapability(String namePattern)',
@@ -800,17 +832,18 @@ BridgedClass _createTopLevelInvokeCapabilityBridge() {
 
 BridgedClass _createTopLevelInvokeMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TopLevelInvokeMetaCapability,
+    nativeType: TopLevelInvokeMetaCapability,
     name: 'TopLevelInvokeMetaCapability',
+    isAssignable: (v) => v is TopLevelInvokeMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TopLevelInvokeMetaCapability');
         final metadataType = D4.getRequiredArg<Type>(positional, 0, 'metadataType', 'TopLevelInvokeMetaCapability');
-        return $tom_reflection_1.TopLevelInvokeMetaCapability(metadataType);
+        return TopLevelInvokeMetaCapability(metadataType);
       },
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.TopLevelInvokeMetaCapability>(target, 'TopLevelInvokeMetaCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<TopLevelInvokeMetaCapability>(target, 'TopLevelInvokeMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const TopLevelInvokeMetaCapability(Type metadataType)',
@@ -827,17 +860,18 @@ BridgedClass _createTopLevelInvokeMetaCapabilityBridge() {
 
 BridgedClass _createNewInstanceCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.NewInstanceCapability,
+    nativeType: NewInstanceCapability,
     name: 'NewInstanceCapability',
+    isAssignable: (v) => v is NewInstanceCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'NewInstanceCapability');
         final namePattern = D4.getRequiredArg<String>(positional, 0, 'namePattern', 'NewInstanceCapability');
-        return $tom_reflection_1.NewInstanceCapability(namePattern);
+        return NewInstanceCapability(namePattern);
       },
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.NewInstanceCapability>(target, 'NewInstanceCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<NewInstanceCapability>(target, 'NewInstanceCapability').namePattern,
     },
     constructorSignatures: {
       '': 'const NewInstanceCapability(String namePattern)',
@@ -854,17 +888,18 @@ BridgedClass _createNewInstanceCapabilityBridge() {
 
 BridgedClass _createNewInstanceMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.NewInstanceMetaCapability,
+    nativeType: NewInstanceMetaCapability,
     name: 'NewInstanceMetaCapability',
+    isAssignable: (v) => v is NewInstanceMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'NewInstanceMetaCapability');
         final metadataType = D4.getRequiredArg<Type>(positional, 0, 'metadataType', 'NewInstanceMetaCapability');
-        return $tom_reflection_1.NewInstanceMetaCapability(metadataType);
+        return NewInstanceMetaCapability(metadataType);
       },
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.NewInstanceMetaCapability>(target, 'NewInstanceMetaCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<NewInstanceMetaCapability>(target, 'NewInstanceMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const NewInstanceMetaCapability(Type metadataType)',
@@ -881,11 +916,12 @@ BridgedClass _createNewInstanceMetaCapabilityBridge() {
 
 BridgedClass _createMetadataCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.MetadataCapability,
+    nativeType: MetadataCapability,
     name: 'MetadataCapability',
+    isAssignable: (v) => v is MetadataCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.MetadataCapability();
+        return MetadataCapability();
       },
     },
     constructorSignatures: {
@@ -900,11 +936,12 @@ BridgedClass _createMetadataCapabilityBridge() {
 
 BridgedClass _createTypeCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TypeCapability,
+    nativeType: TypeCapability,
     name: 'TypeCapability',
+    isAssignable: (v) => v is TypeCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.TypeCapability();
+        return TypeCapability();
       },
     },
     constructorSignatures: {
@@ -919,11 +956,12 @@ BridgedClass _createTypeCapabilityBridge() {
 
 BridgedClass _createTypeRelationsCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TypeRelationsCapability,
+    nativeType: TypeRelationsCapability,
     name: 'TypeRelationsCapability',
+    isAssignable: (v) => v is TypeRelationsCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.TypeRelationsCapability();
+        return TypeRelationsCapability();
       },
     },
     constructorSignatures: {
@@ -938,11 +976,12 @@ BridgedClass _createTypeRelationsCapabilityBridge() {
 
 BridgedClass _createLibraryCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.LibraryCapability,
+    nativeType: LibraryCapability,
     name: 'LibraryCapability',
+    isAssignable: (v) => v is LibraryCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.LibraryCapability();
+        return LibraryCapability();
       },
     },
     constructorSignatures: {
@@ -957,11 +996,12 @@ BridgedClass _createLibraryCapabilityBridge() {
 
 BridgedClass _createDeclarationsCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.DeclarationsCapability,
+    nativeType: DeclarationsCapability,
     name: 'DeclarationsCapability',
+    isAssignable: (v) => v is DeclarationsCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.DeclarationsCapability();
+        return DeclarationsCapability();
       },
     },
     constructorSignatures: {
@@ -976,11 +1016,12 @@ BridgedClass _createDeclarationsCapabilityBridge() {
 
 BridgedClass _createUriCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.UriCapability,
+    nativeType: UriCapability,
     name: 'UriCapability',
+    isAssignable: (v) => v is UriCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.UriCapability();
+        return UriCapability();
       },
     },
     constructorSignatures: {
@@ -995,11 +1036,12 @@ BridgedClass _createUriCapabilityBridge() {
 
 BridgedClass _createLibraryDependenciesCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.LibraryDependenciesCapability,
+    nativeType: LibraryDependenciesCapability,
     name: 'LibraryDependenciesCapability',
+    isAssignable: (v) => v is LibraryDependenciesCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.LibraryDependenciesCapability();
+        return LibraryDependenciesCapability();
       },
     },
     constructorSignatures: {
@@ -1014,17 +1056,18 @@ BridgedClass _createLibraryDependenciesCapabilityBridge() {
 
 BridgedClass _createInvokingCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.InvokingCapability,
+    nativeType: InvokingCapability,
     name: 'InvokingCapability',
+    isAssignable: (v) => v is InvokingCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'InvokingCapability');
         final namePattern = D4.getRequiredArg<String>(positional, 0, 'namePattern', 'InvokingCapability');
-        return $tom_reflection_1.InvokingCapability(namePattern);
+        return InvokingCapability(namePattern);
       },
     },
     getters: {
-      'namePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.InvokingCapability>(target, 'InvokingCapability').namePattern,
+      'namePattern': (visitor, target) => D4.validateTarget<InvokingCapability>(target, 'InvokingCapability').namePattern,
     },
     constructorSignatures: {
       '': 'const InvokingCapability(String namePattern)',
@@ -1041,17 +1084,18 @@ BridgedClass _createInvokingCapabilityBridge() {
 
 BridgedClass _createInvokingMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.InvokingMetaCapability,
+    nativeType: InvokingMetaCapability,
     name: 'InvokingMetaCapability',
+    isAssignable: (v) => v is InvokingMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'InvokingMetaCapability');
         final metadataType = D4.getRequiredArg<Type>(positional, 0, 'metadataType', 'InvokingMetaCapability');
-        return $tom_reflection_1.InvokingMetaCapability(metadataType);
+        return InvokingMetaCapability(metadataType);
       },
     },
     getters: {
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.InvokingMetaCapability>(target, 'InvokingMetaCapability').metadataType,
+      'metadataType': (visitor, target) => D4.validateTarget<InvokingMetaCapability>(target, 'InvokingMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const InvokingMetaCapability(Type metadataType)',
@@ -1068,11 +1112,12 @@ BridgedClass _createInvokingMetaCapabilityBridge() {
 
 BridgedClass _createTypingCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TypingCapability,
+    nativeType: TypingCapability,
     name: 'TypingCapability',
+    isAssignable: (v) => v is TypingCapability,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_1.TypingCapability();
+        return TypingCapability();
       },
     },
     constructorSignatures: {
@@ -1087,8 +1132,9 @@ BridgedClass _createTypingCapabilityBridge() {
 
 BridgedClass _createReflecteeQuantifyCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.ReflecteeQuantifyCapability,
+    nativeType: ReflecteeQuantifyCapability,
     name: 'ReflecteeQuantifyCapability',
+    isAssignable: (v) => v is ReflecteeQuantifyCapability,
     constructors: {
     },
   );
@@ -1100,19 +1146,20 @@ BridgedClass _createReflecteeQuantifyCapabilityBridge() {
 
 BridgedClass _createSuperclassQuantifyCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.SuperclassQuantifyCapability,
+    nativeType: SuperclassQuantifyCapability,
     name: 'SuperclassQuantifyCapability',
+    isAssignable: (v) => v is SuperclassQuantifyCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'SuperclassQuantifyCapability');
         final upperBound = D4.getRequiredArg<Type>(positional, 0, 'upperBound', 'SuperclassQuantifyCapability');
         final excludeUpperBound = D4.getNamedArgWithDefault<bool>(named, 'excludeUpperBound', false);
-        return $tom_reflection_1.SuperclassQuantifyCapability(upperBound, excludeUpperBound: excludeUpperBound);
+        return SuperclassQuantifyCapability(upperBound, excludeUpperBound: excludeUpperBound);
       },
     },
     getters: {
-      'upperBound': (visitor, target) => D4.validateTarget<$tom_reflection_1.SuperclassQuantifyCapability>(target, 'SuperclassQuantifyCapability').upperBound,
-      'excludeUpperBound': (visitor, target) => D4.validateTarget<$tom_reflection_1.SuperclassQuantifyCapability>(target, 'SuperclassQuantifyCapability').excludeUpperBound,
+      'upperBound': (visitor, target) => D4.validateTarget<SuperclassQuantifyCapability>(target, 'SuperclassQuantifyCapability').upperBound,
+      'excludeUpperBound': (visitor, target) => D4.validateTarget<SuperclassQuantifyCapability>(target, 'SuperclassQuantifyCapability').excludeUpperBound,
     },
     constructorSignatures: {
       '': 'const SuperclassQuantifyCapability(Type upperBound, {bool excludeUpperBound = false})',
@@ -1130,16 +1177,17 @@ BridgedClass _createSuperclassQuantifyCapabilityBridge() {
 
 BridgedClass _createTypeAnnotationQuantifyCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.TypeAnnotationQuantifyCapability,
+    nativeType: TypeAnnotationQuantifyCapability,
     name: 'TypeAnnotationQuantifyCapability',
+    isAssignable: (v) => v is TypeAnnotationQuantifyCapability,
     constructors: {
       '': (visitor, positional, named) {
         final transitive = D4.getNamedArgWithDefault<bool>(named, 'transitive', false);
-        return $tom_reflection_1.TypeAnnotationQuantifyCapability(transitive: transitive);
+        return TypeAnnotationQuantifyCapability(transitive: transitive);
       },
     },
     getters: {
-      'transitive': (visitor, target) => D4.validateTarget<$tom_reflection_1.TypeAnnotationQuantifyCapability>(target, 'TypeAnnotationQuantifyCapability').transitive,
+      'transitive': (visitor, target) => D4.validateTarget<TypeAnnotationQuantifyCapability>(target, 'TypeAnnotationQuantifyCapability').transitive,
     },
     constructorSignatures: {
       '': 'const TypeAnnotationQuantifyCapability({bool transitive = false})',
@@ -1156,17 +1204,18 @@ BridgedClass _createTypeAnnotationQuantifyCapabilityBridge() {
 
 BridgedClass _createImportAttachedCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.ImportAttachedCapability,
+    nativeType: ImportAttachedCapability,
     name: 'ImportAttachedCapability',
+    isAssignable: (v) => v is ImportAttachedCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ImportAttachedCapability');
         final reflector = D4.getRequiredArg<$tom_reflection_3.Reflection>(positional, 0, 'reflector', 'ImportAttachedCapability');
-        return $tom_reflection_1.ImportAttachedCapability(reflector);
+        return ImportAttachedCapability(reflector);
       },
     },
     getters: {
-      'reflector': (visitor, target) => D4.validateTarget<$tom_reflection_1.ImportAttachedCapability>(target, 'ImportAttachedCapability').reflector,
+      'reflector': (visitor, target) => D4.validateTarget<ImportAttachedCapability>(target, 'ImportAttachedCapability').reflector,
     },
     constructorSignatures: {
       '': 'const ImportAttachedCapability(Reflection reflector)',
@@ -1183,19 +1232,20 @@ BridgedClass _createImportAttachedCapabilityBridge() {
 
 BridgedClass _createGlobalQuantifyCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.GlobalQuantifyCapability,
+    nativeType: GlobalQuantifyCapability,
     name: 'GlobalQuantifyCapability',
+    isAssignable: (v) => v is GlobalQuantifyCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'GlobalQuantifyCapability');
         final classNamePattern = D4.getRequiredArg<String>(positional, 0, 'classNamePattern', 'GlobalQuantifyCapability');
         final reflector = D4.getRequiredArg<$tom_reflection_3.Reflection>(positional, 1, 'reflector', 'GlobalQuantifyCapability');
-        return $tom_reflection_1.GlobalQuantifyCapability(classNamePattern, reflector);
+        return GlobalQuantifyCapability(classNamePattern, reflector);
       },
     },
     getters: {
-      'reflector': (visitor, target) => D4.validateTarget<$tom_reflection_1.GlobalQuantifyCapability>(target, 'GlobalQuantifyCapability').reflector,
-      'classNamePattern': (visitor, target) => D4.validateTarget<$tom_reflection_1.GlobalQuantifyCapability>(target, 'GlobalQuantifyCapability').classNamePattern,
+      'reflector': (visitor, target) => D4.validateTarget<GlobalQuantifyCapability>(target, 'GlobalQuantifyCapability').reflector,
+      'classNamePattern': (visitor, target) => D4.validateTarget<GlobalQuantifyCapability>(target, 'GlobalQuantifyCapability').classNamePattern,
     },
     constructorSignatures: {
       '': 'const GlobalQuantifyCapability(String classNamePattern, Reflection reflector)',
@@ -1213,19 +1263,20 @@ BridgedClass _createGlobalQuantifyCapabilityBridge() {
 
 BridgedClass _createGlobalQuantifyMetaCapabilityBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.GlobalQuantifyMetaCapability,
+    nativeType: GlobalQuantifyMetaCapability,
     name: 'GlobalQuantifyMetaCapability',
+    isAssignable: (v) => v is GlobalQuantifyMetaCapability,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'GlobalQuantifyMetaCapability');
         final metadataType = D4.getRequiredArg<Type>(positional, 0, 'metadataType', 'GlobalQuantifyMetaCapability');
         final reflector = D4.getRequiredArg<$tom_reflection_3.Reflection>(positional, 1, 'reflector', 'GlobalQuantifyMetaCapability');
-        return $tom_reflection_1.GlobalQuantifyMetaCapability(metadataType, reflector);
+        return GlobalQuantifyMetaCapability(metadataType, reflector);
       },
     },
     getters: {
-      'reflector': (visitor, target) => D4.validateTarget<$tom_reflection_1.GlobalQuantifyMetaCapability>(target, 'GlobalQuantifyMetaCapability').reflector,
-      'metadataType': (visitor, target) => D4.validateTarget<$tom_reflection_1.GlobalQuantifyMetaCapability>(target, 'GlobalQuantifyMetaCapability').metadataType,
+      'reflector': (visitor, target) => D4.validateTarget<GlobalQuantifyMetaCapability>(target, 'GlobalQuantifyMetaCapability').reflector,
+      'metadataType': (visitor, target) => D4.validateTarget<GlobalQuantifyMetaCapability>(target, 'GlobalQuantifyMetaCapability').metadataType,
     },
     constructorSignatures: {
       '': 'const GlobalQuantifyMetaCapability(Type metadataType, Reflection reflector)',
@@ -1243,17 +1294,18 @@ BridgedClass _createGlobalQuantifyMetaCapabilityBridge() {
 
 BridgedClass _createNoSuchCapabilityErrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.NoSuchCapabilityError,
+    nativeType: NoSuchCapabilityError,
     name: 'NoSuchCapabilityError',
+    isAssignable: (v) => v is NoSuchCapabilityError,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'NoSuchCapabilityError');
         final message = D4.getRequiredArg<String>(positional, 0, 'message', 'NoSuchCapabilityError');
-        return $tom_reflection_1.NoSuchCapabilityError(message);
+        return NoSuchCapabilityError(message);
       },
     },
     getters: {
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_reflection_1.NoSuchCapabilityError>(target, 'NoSuchCapabilityError').stackTrace,
+      'stackTrace': (visitor, target) => D4.validateTarget<NoSuchCapabilityError>(target, 'NoSuchCapabilityError').stackTrace,
     },
     constructorSignatures: {
       '': 'factory NoSuchCapabilityError(String message)',
@@ -1270,8 +1322,9 @@ BridgedClass _createNoSuchCapabilityErrorBridge() {
 
 BridgedClass _createReflectionNoSuchMethodErrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_1.ReflectionNoSuchMethodError,
+    nativeType: ReflectionNoSuchMethodError,
     name: 'ReflectionNoSuchMethodError',
+    isAssignable: (v) => v is ReflectionNoSuchMethodError,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 5, 'ReflectionNoSuchMethodError');
@@ -1286,21 +1339,21 @@ BridgedClass _createReflectionNoSuchMethodErrorBridge() {
         }
         final namedArguments = D4.coerceMapOrNull<Symbol, dynamic>(positional[3], 'namedArguments');
         final kind = D4.getRequiredArg<$tom_reflection_1.StringInvocationKind>(positional, 4, 'kind', 'ReflectionNoSuchMethodError');
-        return $tom_reflection_1.ReflectionNoSuchMethodError(receiver, memberName, positionalArguments, namedArguments, kind);
+        return ReflectionNoSuchMethodError(receiver, memberName, positionalArguments, namedArguments, kind);
       },
     },
     getters: {
-      'receiver': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').receiver,
-      'memberName': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').memberName,
-      'positionalArguments': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').positionalArguments,
-      'namedArguments': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').namedArguments,
-      'kind': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').kind,
-      'invocation': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').invocation,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').stackTrace,
+      'receiver': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').receiver,
+      'memberName': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').memberName,
+      'positionalArguments': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').positionalArguments,
+      'namedArguments': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').namedArguments,
+      'kind': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').kind,
+      'invocation': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').invocation,
+      'stackTrace': (visitor, target) => D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError').stackTrace,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_1.ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError');
+        final t = D4.validateTarget<ReflectionNoSuchMethodError>(target, 'ReflectionNoSuchMethodError');
         return t.toString();
       },
     },
@@ -1328,8 +1381,9 @@ BridgedClass _createReflectionNoSuchMethodErrorBridge() {
 
 BridgedClass _createMirrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.Mirror,
+    nativeType: Mirror,
     name: 'Mirror',
+    isAssignable: (v) => v is Mirror,
     constructors: {
     },
   );
@@ -1343,6 +1397,7 @@ BridgedClass _createDeclarationMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.DeclarationMirror,
     name: 'DeclarationMirror',
+    isAssignable: (v) => v is $tom_reflection_2.DeclarationMirror,
     constructors: {
     },
     getters: {
@@ -1372,13 +1427,14 @@ BridgedClass _createDeclarationMirrorBridge() {
 
 BridgedClass _createObjectMirrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.ObjectMirror,
+    nativeType: ObjectMirror,
     name: 'ObjectMirror',
+    isAssignable: (v) => v is ObjectMirror,
     constructors: {
     },
     methods: {
       'invoke': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ObjectMirror>(target, 'ObjectMirror');
+        final t = D4.validateTarget<ObjectMirror>(target, 'ObjectMirror');
         D4.requireMinArgs(positional, 2, 'invoke');
         final memberName = D4.getRequiredArg<String>(positional, 0, 'memberName', 'invoke');
         final positionalArguments = D4.getRequiredArg<List>(positional, 1, 'positionalArguments', 'invoke');
@@ -1388,13 +1444,13 @@ BridgedClass _createObjectMirrorBridge() {
         return t.invoke(memberName, positionalArguments, namedArguments);
       },
       'invokeGetter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ObjectMirror>(target, 'ObjectMirror');
+        final t = D4.validateTarget<ObjectMirror>(target, 'ObjectMirror');
         D4.requireMinArgs(positional, 1, 'invokeGetter');
         final getterName = D4.getRequiredArg<String>(positional, 0, 'getterName', 'invokeGetter');
         return t.invokeGetter(getterName);
       },
       'invokeSetter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ObjectMirror>(target, 'ObjectMirror');
+        final t = D4.validateTarget<ObjectMirror>(target, 'ObjectMirror');
         D4.requireMinArgs(positional, 2, 'invokeSetter');
         final setterName = D4.getRequiredArg<String>(positional, 0, 'setterName', 'invokeSetter');
         final value = D4.getRequiredArg<Object?>(positional, 1, 'value', 'invokeSetter');
@@ -1417,6 +1473,7 @@ BridgedClass _createInstanceMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.InstanceMirror,
     name: 'InstanceMirror',
+    isAssignable: (v) => v is $tom_reflection_2.InstanceMirror,
     constructors: {
     },
     getters: {
@@ -1485,20 +1542,21 @@ BridgedClass _createInstanceMirrorBridge() {
 
 BridgedClass _createClosureMirrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.ClosureMirror,
+    nativeType: ClosureMirror,
     name: 'ClosureMirror',
+    isAssignable: (v) => v is ClosureMirror,
     constructors: {
     },
     getters: {
-      'function': (visitor, target) => D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror').function,
-      'type': (visitor, target) => D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror').type,
-      'hasReflectee': (visitor, target) => D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror').hasReflectee,
-      'reflectee': (visitor, target) => D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror').reflectee,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror').hashCode,
+      'function': (visitor, target) => D4.validateTarget<ClosureMirror>(target, 'ClosureMirror').function,
+      'type': (visitor, target) => D4.validateTarget<ClosureMirror>(target, 'ClosureMirror').type,
+      'hasReflectee': (visitor, target) => D4.validateTarget<ClosureMirror>(target, 'ClosureMirror').hasReflectee,
+      'reflectee': (visitor, target) => D4.validateTarget<ClosureMirror>(target, 'ClosureMirror').reflectee,
+      'hashCode': (visitor, target) => D4.validateTarget<ClosureMirror>(target, 'ClosureMirror').hashCode,
     },
     methods: {
       'apply': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         D4.requireMinArgs(positional, 1, 'apply');
         final positionalArguments = D4.getRequiredArg<List>(positional, 0, 'positionalArguments', 'apply');
         final namedArguments = positional.length > 1
@@ -1507,13 +1565,13 @@ BridgedClass _createClosureMirrorBridge() {
         return t.apply(positionalArguments, namedArguments);
       },
       'delegate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         D4.requireMinArgs(positional, 1, 'delegate');
         final invocation = D4.getRequiredArg<Invocation>(positional, 0, 'invocation', 'delegate');
         return t.delegate(invocation);
       },
       'invoke': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         D4.requireMinArgs(positional, 2, 'invoke');
         final memberName = D4.getRequiredArg<String>(positional, 0, 'memberName', 'invoke');
         if (positional.length <= 1) {
@@ -1526,20 +1584,20 @@ BridgedClass _createClosureMirrorBridge() {
         return t.invoke(memberName, positionalArguments, namedArguments);
       },
       'invokeGetter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         D4.requireMinArgs(positional, 1, 'invokeGetter');
         final getterName = D4.getRequiredArg<String>(positional, 0, 'getterName', 'invokeGetter');
         return t.invokeGetter(getterName);
       },
       'invokeSetter': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         D4.requireMinArgs(positional, 2, 'invokeSetter');
         final setterName = D4.getRequiredArg<String>(positional, 0, 'setterName', 'invokeSetter');
         final value = D4.getRequiredArg<Object?>(positional, 1, 'value', 'invokeSetter');
         return t.invokeSetter(setterName, value);
       },
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.ClosureMirror>(target, 'ClosureMirror');
+        final t = D4.validateTarget<ClosureMirror>(target, 'ClosureMirror');
         final other = D4.getRequiredArg<Object>(positional, 0, 'other', 'operator==');
         return t == other;
       },
@@ -1569,6 +1627,7 @@ BridgedClass _createLibraryMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.LibraryMirror,
     name: 'LibraryMirror',
+    isAssignable: (v) => v is $tom_reflection_2.LibraryMirror,
     constructors: {
     },
     getters: {
@@ -1646,6 +1705,7 @@ BridgedClass _createLibraryDependencyMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.LibraryDependencyMirror,
     name: 'LibraryDependencyMirror',
+    isAssignable: (v) => v is $tom_reflection_2.LibraryDependencyMirror,
     constructors: {
     },
     getters: {
@@ -1681,6 +1741,7 @@ BridgedClass _createCombinatorMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.CombinatorMirror,
     name: 'CombinatorMirror',
+    isAssignable: (v) => v is $tom_reflection_2.CombinatorMirror,
     constructors: {
     },
     getters: {
@@ -1704,6 +1765,7 @@ BridgedClass _createTypeMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.TypeMirror,
     name: 'TypeMirror',
+    isAssignable: (v) => v is $tom_reflection_2.TypeMirror,
     constructors: {
     },
     getters: {
@@ -1829,6 +1891,7 @@ BridgedClass _createClassMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.ClassMirror,
     name: 'ClassMirror',
+    isAssignable: (v) => v is $tom_reflection_2.ClassMirror,
     constructors: {
     },
     getters: {
@@ -1983,9 +2046,9 @@ BridgedClass _createClassMirrorBridge() {
       'invoker': 'Function invoker(String memberName)',
       'isInstanceOf': 'bool isInstanceOf(Object? object)',
       'isSubtype': 'bool isSubtype()',
-      'createNullableList': 'List<T> createNullableList()',
-      'createNullableSet': 'Set<T> createNullableSet()',
-      'createNullableValuedMap': 'Map<dynamic, T> createNullableValuedMap()',
+      'createNullableList': 'List<T?> createNullableList()',
+      'createNullableSet': 'Set<T?> createNullableSet()',
+      'createNullableValuedMap': 'Map<K, T?> createNullableValuedMap()',
       'isSubtypeOf': 'bool isSubtypeOf(TypeMirror<dynamic> other)',
       'isAssignableTo': 'bool isAssignableTo(TypeMirror<dynamic> other)',
       'invoke': 'Object? invoke(String memberName, List<dynamic> positionalArguments, [Map<Symbol, dynamic>? namedArguments])',
@@ -2035,6 +2098,7 @@ BridgedClass _createFunctionTypeMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.FunctionTypeMirror,
     name: 'FunctionTypeMirror',
+    isAssignable: (v) => v is $tom_reflection_2.FunctionTypeMirror,
     constructors: {
     },
     getters: {
@@ -2187,17 +2251,17 @@ BridgedClass _createFunctionTypeMirrorBridge() {
     methodSignatures: {
       'createList': 'List<T> createList()',
       'createSet': 'Set<T> createSet()',
-      'createValuedMap': 'Map<dynamic, T> createValuedMap()',
-      'createKeyedMap': 'Map<T, dynamic> createKeyedMap()',
+      'createValuedMap': 'Map<K, T> createValuedMap()',
+      'createKeyedMap': 'Map<T, V> createKeyedMap()',
       'createKeyedValuedMap': 'Map<T, T> createKeyedValuedMap()',
       'newInstance': 'Object newInstance(String constructorName, List<dynamic> positionalArguments, [Map<Symbol, dynamic> namedArguments])',
       'isSubclassOf': 'bool isSubclassOf(ClassMirror<dynamic> other)',
       'invoker': 'Function invoker(String memberName)',
       'isInstanceOf': 'bool isInstanceOf(Object? object)',
       'isSubtype': 'bool isSubtype()',
-      'createNullableList': 'List<T> createNullableList()',
-      'createNullableSet': 'Set<T> createNullableSet()',
-      'createNullableValuedMap': 'Map<dynamic, T> createNullableValuedMap()',
+      'createNullableList': 'List<T?> createNullableList()',
+      'createNullableSet': 'Set<T?> createNullableSet()',
+      'createNullableValuedMap': 'Map<K, T?> createNullableValuedMap()',
       'isSubtypeOf': 'bool isSubtypeOf(TypeMirror<dynamic> other)',
       'isAssignableTo': 'bool isAssignableTo(TypeMirror<dynamic> other)',
       'invoke': 'Object? invoke(String memberName, List<dynamic> positionalArguments, [Map<Symbol, dynamic>? namedArguments])',
@@ -2250,6 +2314,7 @@ BridgedClass _createTypeVariableMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.TypeVariableMirror,
     name: 'TypeVariableMirror',
+    isAssignable: (v) => v is $tom_reflection_2.TypeVariableMirror,
     constructors: {
     },
     getters: {
@@ -2340,14 +2405,14 @@ BridgedClass _createTypeVariableMirrorBridge() {
     methodSignatures: {
       'createList': 'List<T> createList()',
       'createSet': 'Set<T> createSet()',
-      'createValuedMap': 'Map<dynamic, T> createValuedMap()',
-      'createKeyedMap': 'Map<T, dynamic> createKeyedMap()',
+      'createValuedMap': 'Map<K, T> createValuedMap()',
+      'createKeyedMap': 'Map<T, V> createKeyedMap()',
       'createKeyedValuedMap': 'Map<T, T> createKeyedValuedMap()',
       'isInstanceOf': 'bool isInstanceOf(Object? object)',
       'isSubtype': 'bool isSubtype()',
-      'createNullableList': 'List<T> createNullableList()',
-      'createNullableSet': 'Set<T> createNullableSet()',
-      'createNullableValuedMap': 'Map<dynamic, T> createNullableValuedMap()',
+      'createNullableList': 'List<T?> createNullableList()',
+      'createNullableSet': 'Set<T?> createNullableSet()',
+      'createNullableValuedMap': 'Map<K, T?> createNullableValuedMap()',
       'isSubtypeOf': 'bool isSubtypeOf(TypeMirror<dynamic> other)',
       'isAssignableTo': 'bool isAssignableTo(TypeMirror<dynamic> other)',
     },
@@ -2384,83 +2449,84 @@ BridgedClass _createTypeVariableMirrorBridge() {
 
 BridgedClass _createTypedefMirrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.TypedefMirror,
+    nativeType: TypedefMirror,
     name: 'TypedefMirror',
+    isAssignable: (v) => v is TypedefMirror,
     constructors: {
     },
     getters: {
-      'referent': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').referent,
-      'reflectedGenericType': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').reflectedGenericType,
-      'hasReflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').hasReflectedType,
-      'reflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').reflectedType,
-      'typeVariables': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').typeVariables,
-      'typeArguments': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').typeArguments,
-      'reflectedTypeArguments': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').reflectedTypeArguments,
-      'isOriginalDeclaration': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isOriginalDeclaration,
-      'originalDeclaration': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').originalDeclaration,
-      'isNullable': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isNullable,
-      'isNonNullable': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isNonNullable,
-      'isPotentiallyNullable': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isPotentiallyNullable,
-      'isPotentiallyNonNullable': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isPotentiallyNonNullable,
-      'simpleName': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').simpleName,
-      'qualifiedName': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').qualifiedName,
-      'owner': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').owner,
-      'isPrivate': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isPrivate,
-      'isTopLevel': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').isTopLevel,
-      'location': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').location,
-      'metadata': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror').metadata,
+      'referent': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').referent,
+      'reflectedGenericType': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').reflectedGenericType,
+      'hasReflectedType': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').hasReflectedType,
+      'reflectedType': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').reflectedType,
+      'typeVariables': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').typeVariables,
+      'typeArguments': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').typeArguments,
+      'reflectedTypeArguments': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').reflectedTypeArguments,
+      'isOriginalDeclaration': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isOriginalDeclaration,
+      'originalDeclaration': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').originalDeclaration,
+      'isNullable': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isNullable,
+      'isNonNullable': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isNonNullable,
+      'isPotentiallyNullable': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isPotentiallyNullable,
+      'isPotentiallyNonNullable': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isPotentiallyNonNullable,
+      'simpleName': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').simpleName,
+      'qualifiedName': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').qualifiedName,
+      'owner': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').owner,
+      'isPrivate': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isPrivate,
+      'isTopLevel': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').isTopLevel,
+      'location': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').location,
+      'metadata': (visitor, target) => D4.validateTarget<TypedefMirror>(target, 'TypedefMirror').metadata,
     },
     methods: {
       'createList': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createList();
       },
       'createSet': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createSet();
       },
       'createValuedMap': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createValuedMap();
       },
       'createKeyedMap': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createKeyedMap();
       },
       'createKeyedValuedMap': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createKeyedValuedMap();
       },
       'isInstanceOf': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         D4.requireMinArgs(positional, 1, 'isInstanceOf');
         final object = D4.getRequiredArg<Object?>(positional, 0, 'object', 'isInstanceOf');
         return t.isInstanceOf(object);
       },
       'isSubtype': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.isSubtype();
       },
       'createNullableList': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createNullableList();
       },
       'createNullableSet': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createNullableSet();
       },
       'createNullableValuedMap': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         return t.createNullableValuedMap();
       },
       'isSubtypeOf': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         D4.requireMinArgs(positional, 1, 'isSubtypeOf');
         final other = D4.getRequiredArg<$tom_reflection_2.TypeMirror<dynamic>>(positional, 0, 'other', 'isSubtypeOf');
         return t.isSubtypeOf(other);
       },
       'isAssignableTo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.TypedefMirror>(target, 'TypedefMirror');
+        final t = D4.validateTarget<TypedefMirror>(target, 'TypedefMirror');
         D4.requireMinArgs(positional, 1, 'isAssignableTo');
         final other = D4.getRequiredArg<$tom_reflection_2.TypeMirror<dynamic>>(positional, 0, 'other', 'isAssignableTo');
         return t.isAssignableTo(other);
@@ -2469,14 +2535,14 @@ BridgedClass _createTypedefMirrorBridge() {
     methodSignatures: {
       'createList': 'List<T> createList()',
       'createSet': 'Set<T> createSet()',
-      'createValuedMap': 'Map<dynamic, T> createValuedMap()',
-      'createKeyedMap': 'Map<T, dynamic> createKeyedMap()',
+      'createValuedMap': 'Map<K, T> createValuedMap()',
+      'createKeyedMap': 'Map<T, V> createKeyedMap()',
       'createKeyedValuedMap': 'Map<T, T> createKeyedValuedMap()',
       'isInstanceOf': 'bool isInstanceOf(Object? object)',
       'isSubtype': 'bool isSubtype()',
-      'createNullableList': 'List<T> createNullableList()',
-      'createNullableSet': 'Set<T> createNullableSet()',
-      'createNullableValuedMap': 'Map<dynamic, T> createNullableValuedMap()',
+      'createNullableList': 'List<T?> createNullableList()',
+      'createNullableSet': 'Set<T?> createNullableSet()',
+      'createNullableValuedMap': 'Map<K, T?> createNullableValuedMap()',
       'isSubtypeOf': 'bool isSubtypeOf(TypeMirror<dynamic> other)',
       'isAssignableTo': 'bool isAssignableTo(TypeMirror<dynamic> other)',
     },
@@ -2513,6 +2579,7 @@ BridgedClass _createMethodMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.MethodMirror,
     name: 'MethodMirror',
+    isAssignable: (v) => v is $tom_reflection_2.MethodMirror,
     constructors: {
     },
     getters: {
@@ -2591,31 +2658,32 @@ BridgedClass _createMethodMirrorBridge() {
 
 BridgedClass _createVariableMirrorBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.VariableMirror,
+    nativeType: VariableMirror,
     name: 'VariableMirror',
+    isAssignable: (v) => v is VariableMirror,
     constructors: {
     },
     getters: {
-      'type': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').type,
-      'hasReflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').hasReflectedType,
-      'reflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').reflectedType,
-      'hasDynamicReflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').hasDynamicReflectedType,
-      'dynamicReflectedType': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').dynamicReflectedType,
-      'isStatic': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').isStatic,
-      'isFinal': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').isFinal,
-      'isConst': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').isConst,
-      'hashCode': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').hashCode,
-      'owner': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').owner,
-      'simpleName': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').simpleName,
-      'qualifiedName': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').qualifiedName,
-      'isPrivate': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').isPrivate,
-      'isTopLevel': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').isTopLevel,
-      'location': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').location,
-      'metadata': (visitor, target) => D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror').metadata,
+      'type': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').type,
+      'hasReflectedType': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').hasReflectedType,
+      'reflectedType': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').reflectedType,
+      'hasDynamicReflectedType': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').hasDynamicReflectedType,
+      'dynamicReflectedType': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').dynamicReflectedType,
+      'isStatic': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').isStatic,
+      'isFinal': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').isFinal,
+      'isConst': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').isConst,
+      'hashCode': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').hashCode,
+      'owner': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').owner,
+      'simpleName': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').simpleName,
+      'qualifiedName': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').qualifiedName,
+      'isPrivate': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').isPrivate,
+      'isTopLevel': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').isTopLevel,
+      'location': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').location,
+      'metadata': (visitor, target) => D4.validateTarget<VariableMirror>(target, 'VariableMirror').metadata,
     },
     methods: {
       '==': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_reflection_2.VariableMirror>(target, 'VariableMirror');
+        final t = D4.validateTarget<VariableMirror>(target, 'VariableMirror');
         final other = D4.getRequiredArg<dynamic>(positional, 0, 'other', 'operator==');
         return t == other;
       },
@@ -2649,6 +2717,7 @@ BridgedClass _createParameterMirrorBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.ParameterMirror,
     name: 'ParameterMirror',
+    isAssignable: (v) => v is $tom_reflection_2.ParameterMirror,
     constructors: {
     },
     getters: {
@@ -2713,6 +2782,7 @@ BridgedClass _createSourceLocationBridge() {
   return BridgedClass(
     nativeType: $tom_reflection_2.SourceLocation,
     name: 'SourceLocation',
+    isAssignable: (v) => v is $tom_reflection_2.SourceLocation,
     constructors: {
     },
     getters: {
@@ -2734,21 +2804,22 @@ BridgedClass _createSourceLocationBridge() {
 
 BridgedClass _createCommentBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.Comment,
+    nativeType: Comment,
     name: 'Comment',
+    isAssignable: (v) => v is Comment,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 3, 'Comment');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'Comment');
         final trimmedText = D4.getRequiredArg<String>(positional, 1, 'trimmedText', 'Comment');
         final isDocComment = D4.getRequiredArg<bool>(positional, 2, 'isDocComment', 'Comment');
-        return $tom_reflection_2.Comment(text, trimmedText, isDocComment);
+        return Comment(text, trimmedText, isDocComment);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<$tom_reflection_2.Comment>(target, 'Comment').text,
-      'trimmedText': (visitor, target) => D4.validateTarget<$tom_reflection_2.Comment>(target, 'Comment').trimmedText,
-      'isDocComment': (visitor, target) => D4.validateTarget<$tom_reflection_2.Comment>(target, 'Comment').isDocComment,
+      'text': (visitor, target) => D4.validateTarget<Comment>(target, 'Comment').text,
+      'trimmedText': (visitor, target) => D4.validateTarget<Comment>(target, 'Comment').trimmedText,
+      'isDocComment': (visitor, target) => D4.validateTarget<Comment>(target, 'Comment').isDocComment,
     },
     constructorSignatures: {
       '': 'const Comment(String text, String trimmedText, bool isDocComment)',
@@ -2767,15 +2838,16 @@ BridgedClass _createCommentBridge() {
 
 BridgedClass _createTypeValueBridge() {
   return BridgedClass(
-    nativeType: $tom_reflection_2.TypeValue,
+    nativeType: TypeValue,
     name: 'TypeValue',
+    isAssignable: (v) => v is TypeValue,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_reflection_2.TypeValue();
+        return TypeValue();
       },
     },
     getters: {
-      'type': (visitor, target) => D4.validateTarget<$tom_reflection_2.TypeValue>(target, 'TypeValue').type,
+      'type': (visitor, target) => D4.validateTarget<TypeValue>(target, 'TypeValue').type,
     },
     constructorSignatures: {
       '': 'const TypeValue()',

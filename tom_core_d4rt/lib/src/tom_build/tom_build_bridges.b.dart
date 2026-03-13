@@ -1,8 +1,8 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 17 files
-// Generated: 2026-02-27T00:31:26.987613
+// Generated: 2026-03-12T17:01:49.891256
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
@@ -10,21 +10,10 @@ import 'dart:async';
 
 import 'package:tom_build/src/analyzer/workspace_analyzer.dart' as $tom_build_1;
 import 'package:tom_build/src/reflection_generator/reflection_generator.dart' as $tom_build_2;
-import 'package:tom_build/src/scripting/env.dart' as $tom_build_3;
-import 'package:tom_build/src/scripting/fs.dart' as $tom_build_4;
-import 'package:tom_build/src/scripting/glob.dart' as $tom_build_5;
-import 'package:tom_build/src/scripting/maps.dart' as $tom_build_6;
-import 'package:tom_build/src/scripting/path.dart' as $tom_build_7;
-import 'package:tom_build/src/scripting/shell.dart' as $tom_build_8;
-import 'package:tom_build/src/scripting/text.dart' as $tom_build_9;
-import 'package:tom_build/src/scripting/workspace.dart' as $tom_build_10;
-import 'package:tom_build/src/scripting/yaml.dart' as $tom_build_11;
-import 'package:tom_build/src/scripting/zone.dart' as $tom_build_12;
-import 'package:tom_build/src/tom/file_object_model/file_object_model.dart' as $tom_build_13;
-import 'package:tom_build/src/tom/file_object_model/workspace_parser.dart' as $tom_build_14;
-import 'package:tom_build/src/tom/tom_context.dart' as $tom_build_15;
-import 'package:tom_build/src/tools/tool_context.dart' as $tom_build_16;
-import 'package:tom_build/src/tools/workspace_info.dart' as $tom_build_17;
+import 'package:tom_build/src/tom/file_object_model/file_object_model.dart' as $tom_build_3;
+import 'package:tom_build/src/tom/tom_context.dart' as $tom_build_4;
+import 'package:tom_build/src/tools/tool_context.dart' as $tom_build_5;
+import 'package:tom_build/src/tools/workspace_info.dart' as $tom_build_6;
 import 'package:yaml/src/yaml_node.dart' as $yaml_1;
 
 /// Bridge class for tom_build module.
@@ -99,86 +88,105 @@ class TomBuildBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'AnalyzerOptions': 'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'WorkspaceAnalyzer': 'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'ProjectInfo': 'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'PartInfo': 'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'ModuleInfo': 'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'ReflectionGeneratorRunner': 'package:tom_build/src/reflection_generator/reflection_generator.dart',
-      'ReflectionGeneratorRunnerOptions': 'package:tom_build/src/reflection_generator/reflection_generator.dart',
-      'ReflectionGeneratorRunnerResult': 'package:tom_build/src/reflection_generator/reflection_generator.dart',
-      'TomEnv': 'package:tom_build/src/scripting/env.dart',
-      'TomEnvironmentException': 'package:tom_build/src/scripting/env.dart',
-      'TomFs': 'package:tom_build/src/scripting/fs.dart',
-      'TomGlob': 'package:tom_build/src/scripting/glob.dart',
-      'TomMaps': 'package:tom_build/src/scripting/maps.dart',
-      'TomPth': 'package:tom_build/src/scripting/path.dart',
-      'TomShell': 'package:tom_build/src/scripting/shell.dart',
-      'TomShellException': 'package:tom_build/src/scripting/shell.dart',
-      'TomText': 'package:tom_build/src/scripting/text.dart',
-      'WorkspaceInfo': 'package:tom_build/src/tools/workspace_info.dart',
-      'MetadataModes': 'package:tom_build/src/tools/workspace_info.dart',
-      'MetadataMode': 'package:tom_build/src/tools/workspace_info.dart',
-      'WorkspaceGroup': 'package:tom_build/src/tools/workspace_info.dart',
-      'WorkspaceProject': 'package:tom_build/src/tools/workspace_info.dart',
-      'PlatformInfo': 'package:tom_build/src/tools/tool_context.dart',
-      'ToolContext': 'package:tom_build/src/tools/tool_context.dart',
-      'ToolContextException': 'package:tom_build/src/tools/tool_context.dart',
-      'ModeValidationResult': 'package:tom_build/src/tools/tool_context.dart',
-      'TomWs': 'package:tom_build/src/scripting/workspace.dart',
-      'ScriptYaml': 'package:tom_build/src/scripting/yaml.dart',
-      'TomZoned': 'package:tom_build/src/scripting/zone.dart',
-      'TomWorkspace': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'TomMaster': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'TomProject': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'WorkspaceModes': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'SupportedMode': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ModeTypeConfig': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ModeEntry': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ActionModeConfiguration': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ActionModeEntry': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ModeDefinitions': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ModeDef': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ActionDef': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ActionConfig': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'GroupDef': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ProjectTypeDef': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'Features': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'CrossCompilation': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'BuildOnTarget': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'Pipeline': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'PipelineProject': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'PipelineAction': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ProjectEntry': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'VersionSettings': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'PackageModule': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'Part': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'Module': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'ExecutableDef': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'WorkspaceParser': 'package:tom_build/src/tom/file_object_model/workspace_parser.dart',
-      'TomContext': 'package:tom_build/src/tom/tom_context.dart',
+      'AnalyzerOptions': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'WorkspaceAnalyzer': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'ProjectInfo': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'PartInfo': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'ModuleInfo': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'ReflectionGeneratorRunner': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\reflection_generator\reflection_generator.dart',
+      'ReflectionGeneratorRunnerOptions': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\reflection_generator\reflection_generator.dart',
+      'ReflectionGeneratorRunnerResult': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\reflection_generator\reflection_generator.dart',
+      'TomEnv': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\env.dart',
+      'TomEnvironmentException': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\env.dart',
+      'TomFs': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\fs.dart',
+      'TomGlob': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\glob.dart',
+      'TomMaps': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\maps.dart',
+      'TomPth': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\path.dart',
+      'TomShell': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\shell.dart',
+      'TomShellException': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\shell.dart',
+      'TomText': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\text.dart',
+      'WorkspaceInfo': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
+      'MetadataModes': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
+      'MetadataMode': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
+      'WorkspaceGroup': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
+      'WorkspaceProject': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
+      'PlatformInfo': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'ToolContext': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'ToolContextException': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'ModeValidationResult': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'TomWs': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\workspace.dart',
+      'ScriptYaml': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\yaml.dart',
+      'TomZoned': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\zone.dart',
+      'TomWorkspace': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'TomMaster': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'TomProject': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'WorkspaceModes': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'SupportedMode': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ModeTypeConfig': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ModeEntry': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ActionModeConfiguration': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ActionModeEntry': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ModeDefinitions': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ModeDef': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ActionDef': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ActionConfig': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'GroupDef': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ProjectTypeDef': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'Features': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'CrossCompilation': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'BuildOnTarget': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'Pipeline': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'PipelineProject': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'PipelineAction': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ProjectEntry': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'VersionSettings': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'PackageModule': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'Part': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'Module': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'ExecutableDef': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'WorkspaceParser': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\workspace_parser.dart',
+      'TomContext': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\tom_context.dart',
     };
+  }
+
+  /// Returns a map of type alias names to their target class names.
+  ///
+  /// Type aliases like `typedef MaterialStateProperty<T> = WidgetStateProperty<T>`
+  /// are registered so that code using the alias name can resolve to the
+  /// bridged class under its canonical name.
+  static Map<String, String> classAliases() {
+    return {
+    };
+  }
+
+  /// Returns the list of function typedef names declared in this library.
+  ///
+  /// Function typedefs like `typedef VoidCallback = void Function()` are
+  /// registered so that they can be used as type arguments in D4rt scripts.
+  static List<String> functionTypedefs() {
+    return [
+    ];
   }
 
   /// Returns all bridged enum definitions.
   static List<BridgedEnumDefinition> bridgedEnums() {
     return [
-      BridgedEnumDefinition<$tom_build_16.CpuArchitecture>(
+      BridgedEnumDefinition<$tom_build_5.CpuArchitecture>(
         name: 'CpuArchitecture',
-        values: $tom_build_16.CpuArchitecture.values,
+        values: $tom_build_5.CpuArchitecture.values,
         methods: {
           'toString': (visitor, target, positional, named, typeArgs) {
-            final t = target as $tom_build_16.CpuArchitecture;
+            final t = target as $tom_build_5.CpuArchitecture;
             return Function.apply(t.toString, positional, named.map((k, v) => MapEntry(Symbol(k), v)));
           },
         },
       ),
-      BridgedEnumDefinition<$tom_build_16.OperatingSystem>(
+      BridgedEnumDefinition<$tom_build_5.OperatingSystem>(
         name: 'OperatingSystem',
-        values: $tom_build_16.OperatingSystem.values,
+        values: $tom_build_5.OperatingSystem.values,
         methods: {
           'toString': (visitor, target, positional, named, typeArgs) {
-            final t = target as $tom_build_16.OperatingSystem;
+            final t = target as $tom_build_5.OperatingSystem;
             return Function.apply(t.toString, positional, named.map((k, v) => MapEntry(Symbol(k), v)));
           },
         },
@@ -192,8 +200,8 @@ class TomBuildBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> enumSourceUris() {
     return {
-      'CpuArchitecture': 'package:tom_build/src/tools/tool_context.dart',
-      'OperatingSystem': 'package:tom_build/src/tools/tool_context.dart',
+      'CpuArchitecture': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'OperatingSystem': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
     };
   }
 
@@ -249,7 +257,7 @@ class TomBuildBridge {
     final errors = <String>[];
 
     try {
-      interpreter.registerGlobalVariable('tom', $tom_build_15.tom, importPath, sourceUri: 'package:tom_build/src/tom/tom_context.dart');
+      interpreter.registerGlobalVariable('tom', tom, importPath, sourceUri: 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\tom_context.dart');
     } catch (e) {
       errors.add('Failed to register variable "tom": $e');
     }
@@ -265,28 +273,28 @@ class TomBuildBridge {
       'loadYamlFile': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadYamlFile');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'loadYamlFile');
-        return $tom_build_13.loadYamlFile(path);
+        return loadYamlFile(path);
       },
       'makeCleanMap': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'makeCleanMap');
         final data = D4.getRequiredArg<dynamic>(positional, 0, 'data', 'makeCleanMap');
-        return $tom_build_13.makeCleanMap(data);
+        return makeCleanMap(data);
       },
       'toYamlString': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'toYamlString');
         final data = D4.getRequiredArg<Map<String, dynamic>>(positional, 0, 'data', 'toYamlString');
         final indent = D4.getNamedArgWithDefault<int>(named, 'indent', 0);
-        return $tom_build_13.toYamlString(data, indent: indent);
+        return toYamlString(data, indent: indent);
       },
       'initializeTomContext': (visitor, positional, named, typeArgs) {
-        final workspace = D4.getRequiredNamedArg<$tom_build_13.TomWorkspace>(named, 'workspace', 'initializeTomContext');
+        final workspace = D4.getRequiredNamedArg<$tom_build_3.TomWorkspace>(named, 'workspace', 'initializeTomContext');
         final workspaceContext = D4.getOptionalNamedArg<Object?>(named, 'workspaceContext');
-        final currentProject = D4.getOptionalNamedArg<$tom_build_13.TomProject?>(named, 'currentProject');
+        final currentProject = D4.getOptionalNamedArg<$tom_build_3.TomProject?>(named, 'currentProject');
         final workspacePath = D4.getOptionalNamedArg<String?>(named, 'workspacePath');
-        return $tom_build_15.initializeTomContext(workspace: workspace, workspaceContext: workspaceContext, currentProject: currentProject, workspacePath: workspacePath);
+        return initializeTomContext(workspace: workspace, workspaceContext: workspaceContext, currentProject: currentProject, workspacePath: workspacePath);
       },
       'resetTomContext': (visitor, positional, named, typeArgs) {
-        return $tom_build_15.resetTomContext();
+        return resetTomContext();
       },
     };
   }
@@ -297,11 +305,11 @@ class TomBuildBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'loadYamlFile': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'makeCleanMap': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'toYamlString': 'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'initializeTomContext': 'package:tom_build/src/tom/tom_context.dart',
-      'resetTomContext': 'package:tom_build/src/tom/tom_context.dart',
+      'loadYamlFile': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'makeCleanMap': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'toYamlString': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'initializeTomContext': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\tom_context.dart',
+      'resetTomContext': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\tom_context.dart',
     };
   }
 
@@ -323,23 +331,23 @@ class TomBuildBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
-      'package:tom_build/src/analyzer/workspace_analyzer.dart',
-      'package:tom_build/src/reflection_generator/reflection_generator.dart',
-      'package:tom_build/src/scripting/env.dart',
-      'package:tom_build/src/scripting/fs.dart',
-      'package:tom_build/src/scripting/glob.dart',
-      'package:tom_build/src/scripting/maps.dart',
-      'package:tom_build/src/scripting/path.dart',
-      'package:tom_build/src/scripting/shell.dart',
-      'package:tom_build/src/scripting/text.dart',
-      'package:tom_build/src/scripting/workspace.dart',
-      'package:tom_build/src/scripting/yaml.dart',
-      'package:tom_build/src/scripting/zone.dart',
-      'package:tom_build/src/tom/file_object_model/file_object_model.dart',
-      'package:tom_build/src/tom/file_object_model/workspace_parser.dart',
-      'package:tom_build/src/tom/tom_context.dart',
-      'package:tom_build/src/tools/tool_context.dart',
-      'package:tom_build/src/tools/workspace_info.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\analyzer\workspace_analyzer.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\reflection_generator\reflection_generator.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\env.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\fs.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\glob.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\maps.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\path.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\shell.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\text.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\workspace.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\yaml.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\scripting\zone.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\file_object_model.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\file_object_model\workspace_parser.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tom\tom_context.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\tool_context.dart',
+      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_build\lib\src\tools\workspace_info.dart',
     ];
   }
 
@@ -377,6 +385,7 @@ BridgedClass _createAnalyzerOptionsBridge() {
   return BridgedClass(
     nativeType: $tom_build_1.AnalyzerOptions,
     name: 'AnalyzerOptions',
+    isAssignable: (v) => v is $tom_build_1.AnalyzerOptions,
     constructors: {
       '': (visitor, positional, named) {
         final includeTestProjects = D4.getNamedArgWithDefault<bool>(named, 'includeTestProjects', false);
@@ -409,40 +418,39 @@ BridgedClass _createAnalyzerOptionsBridge() {
 
 BridgedClass _createWorkspaceAnalyzerBridge() {
   return BridgedClass(
-    nativeType: $tom_build_1.WorkspaceAnalyzer,
+    nativeType: WorkspaceAnalyzer,
     name: 'WorkspaceAnalyzer',
+    isAssignable: (v) => v is WorkspaceAnalyzer,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WorkspaceAnalyzer');
         final workspaceRoot = D4.getRequiredArg<String>(positional, 0, 'workspaceRoot', 'WorkspaceAnalyzer');
         final options = D4.getNamedArgWithDefault<$tom_build_1.AnalyzerOptions>(named, 'options', const $tom_build_1.AnalyzerOptions());
-        return $tom_build_1.WorkspaceAnalyzer(workspaceRoot, options: options);
+        return WorkspaceAnalyzer(workspaceRoot, options: options);
       },
     },
     getters: {
-      'workspaceRoot': (visitor, target) => D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').workspaceRoot,
-      'options': (visitor, target) => D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').options,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').projects,
-      'workspaceSettings': (visitor, target) => D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').workspaceSettings,
-      'buildOrder': (visitor, target) => D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').buildOrder,
+      'workspaceRoot': (visitor, target) => D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').workspaceRoot,
+      'options': (visitor, target) => D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').options,
+      'projects': (visitor, target) => D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').projects,
+      'workspaceSettings': (visitor, target) => D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').workspaceSettings,
+      'buildOrder': (visitor, target) => D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').buildOrder,
     },
     setters: {
-      'workspaceSettings': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').workspaceSettings = (value as Map).cast<String, dynamic>(),
       'buildOrder': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').buildOrder = (value as List).cast<String>().toList(),
+        D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer').buildOrder = (value as List).cast<String>().toList(),
     },
     methods: {
       'analyze': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_1.WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer');
+        final t = D4.validateTarget<WorkspaceAnalyzer>(target, 'WorkspaceAnalyzer');
         return t.analyze();
       },
     },
     staticGetters: {
-      'defaultWorkspaceSettings': (visitor) => $tom_build_1.WorkspaceAnalyzer.defaultWorkspaceSettings,
-      'defaultBuildConfig': (visitor) => $tom_build_1.WorkspaceAnalyzer.defaultBuildConfig,
-      'defaultRunConfig': (visitor) => $tom_build_1.WorkspaceAnalyzer.defaultRunConfig,
-      'defaultDeployConfig': (visitor) => $tom_build_1.WorkspaceAnalyzer.defaultDeployConfig,
+      'defaultWorkspaceSettings': (visitor) => WorkspaceAnalyzer.defaultWorkspaceSettings,
+      'defaultBuildConfig': (visitor) => WorkspaceAnalyzer.defaultBuildConfig,
+      'defaultRunConfig': (visitor) => WorkspaceAnalyzer.defaultRunConfig,
+      'defaultDeployConfig': (visitor) => WorkspaceAnalyzer.defaultDeployConfig,
     },
     constructorSignatures: {
       '': 'WorkspaceAnalyzer(String workspaceRoot, {AnalyzerOptions options = const AnalyzerOptions()})',
@@ -478,6 +486,7 @@ BridgedClass _createProjectInfoBridge() {
   return BridgedClass(
     nativeType: $tom_build_1.ProjectInfo,
     name: 'ProjectInfo',
+    isAssignable: (v) => v is $tom_build_1.ProjectInfo,
     constructors: {
       '': (visitor, positional, named) {
         final path = D4.getRequiredNamedArg<String>(named, 'path', 'ProjectInfo');
@@ -517,9 +526,9 @@ BridgedClass _createProjectInfoBridge() {
     },
     setters: {
       'packageModule': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').packageModule = value as $tom_build_1.ModuleInfo?,
+        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').packageModule = D4.extractBridgedArgOrNull<$tom_build_1.ModuleInfo>(value, 'packageModule'),
       'appModule': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').appModule = value as $tom_build_1.ModuleInfo?,
+        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').appModule = D4.extractBridgedArgOrNull<$tom_build_1.ModuleInfo>(value, 'appModule'),
       'copilotGuidelines': (visitor, target, value) => 
         D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').copilotGuidelines = (value as List).cast<String>().toList(),
       'docs': (visitor, target, value) => 
@@ -528,24 +537,8 @@ BridgedClass _createProjectInfoBridge() {
         D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').tests = (value as List).cast<String>().toList(),
       'examples': (visitor, target, value) => 
         D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').examples = (value as List).cast<String>().toList(),
-      'localIndexEntries': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').localIndexEntries = (value as Map).cast<String, dynamic>(),
       'buildAfter': (visitor, target, value) => 
         D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').buildAfter = (value as List).cast<String>().toList(),
-      'features': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').features = (value as Map).cast<String, bool>(),
-      'pubspec': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').pubspec = (value as Map).cast<String, dynamic>(),
-      'packageJson': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').packageJson = (value as Map).cast<String, dynamic>(),
-      'pyproject': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').pyproject = (value as Map).cast<String, dynamic>(),
-      'buildConfig': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').buildConfig = (value as Map).cast<String, dynamic>(),
-      'runConfig': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').runConfig = (value as Map).cast<String, dynamic>(),
-      'deployConfig': (visitor, target, value) => 
-        D4.validateTarget<$tom_build_1.ProjectInfo>(target, 'ProjectInfo').deployConfig = (value as Map).cast<String, dynamic>(),
     },
     constructorSignatures: {
       '': 'ProjectInfo({required String path, required String name, required String displayName, String? projectName, String? description, required String type, String? projectFolder})',
@@ -603,6 +596,7 @@ BridgedClass _createPartInfoBridge() {
   return BridgedClass(
     nativeType: $tom_build_1.PartInfo,
     name: 'PartInfo',
+    isAssignable: (v) => v is $tom_build_1.PartInfo,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'PartInfo');
@@ -640,6 +634,7 @@ BridgedClass _createModuleInfoBridge() {
   return BridgedClass(
     nativeType: $tom_build_1.ModuleInfo,
     name: 'ModuleInfo',
+    isAssignable: (v) => v is $tom_build_1.ModuleInfo,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'ModuleInfo');
@@ -676,33 +671,34 @@ BridgedClass _createModuleInfoBridge() {
 
 BridgedClass _createReflectionGeneratorRunnerBridge() {
   return BridgedClass(
-    nativeType: $tom_build_2.ReflectionGeneratorRunner,
+    nativeType: ReflectionGeneratorRunner,
     name: 'ReflectionGeneratorRunner',
+    isAssignable: (v) => v is ReflectionGeneratorRunner,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ReflectionGeneratorRunner');
         final projectPath = D4.getRequiredArg<String>(positional, 0, 'projectPath', 'ReflectionGeneratorRunner');
         final options = D4.getOptionalNamedArg<$tom_build_2.ReflectionGeneratorRunnerOptions?>(named, 'options');
         final workspacePath = D4.getOptionalNamedArg<String?>(named, 'workspacePath');
-        return $tom_build_2.ReflectionGeneratorRunner(projectPath, options: options, workspacePath: workspacePath);
+        return ReflectionGeneratorRunner(projectPath, options: options, workspacePath: workspacePath);
       },
     },
     getters: {
-      'projectPath': (visitor, target) => D4.validateTarget<$tom_build_2.ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').projectPath,
-      'options': (visitor, target) => D4.validateTarget<$tom_build_2.ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').options,
-      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_2.ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').workspacePath,
+      'projectPath': (visitor, target) => D4.validateTarget<ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').projectPath,
+      'options': (visitor, target) => D4.validateTarget<ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').options,
+      'workspacePath': (visitor, target) => D4.validateTarget<ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner').workspacePath,
     },
     methods: {
       'generate': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_2.ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner');
+        final t = D4.validateTarget<ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner');
         final target_ = D4.getNamedArgWithDefault<String>(named, 'target', 'lib/');
         final all = D4.getNamedArgWithDefault<bool>(named, 'all', false);
         return t.generate(target: target_, all: all);
       },
       'build': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_2.ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner');
+        final t = D4.validateTarget<ReflectionGeneratorRunner>(target, 'ReflectionGeneratorRunner');
         final configFile = D4.getOptionalNamedArg<String?>(named, 'configFile');
-        return t.build(configFile: configFile);
+        return (t as dynamic).build(configFile: configFile);
       },
     },
     constructorSignatures: {
@@ -728,6 +724,7 @@ BridgedClass _createReflectionGeneratorRunnerOptionsBridge() {
   return BridgedClass(
     nativeType: $tom_build_2.ReflectionGeneratorRunnerOptions,
     name: 'ReflectionGeneratorRunnerOptions',
+    isAssignable: (v) => v is $tom_build_2.ReflectionGeneratorRunnerOptions,
     constructors: {
       '': (visitor, positional, named) {
         final verbose = D4.getNamedArgWithDefault<bool>(named, 'verbose', false);
@@ -760,6 +757,7 @@ BridgedClass _createReflectionGeneratorRunnerResultBridge() {
   return BridgedClass(
     nativeType: $tom_build_2.ReflectionGeneratorRunnerResult,
     name: 'ReflectionGeneratorRunnerResult',
+    isAssignable: (v) => v is $tom_build_2.ReflectionGeneratorRunnerResult,
     constructors: {
       '': (visitor, positional, named) {
         final success = D4.getRequiredNamedArg<bool>(named, 'success', 'ReflectionGeneratorRunnerResult');
@@ -805,48 +803,49 @@ BridgedClass _createReflectionGeneratorRunnerResultBridge() {
 
 BridgedClass _createTomEnvBridge() {
   return BridgedClass(
-    nativeType: $tom_build_3.TomEnv,
+    nativeType: TomEnv,
     name: 'TomEnv',
+    isAssignable: (v) => v is TomEnv,
     constructors: {
     },
     staticGetters: {
-      'home': (visitor) => $tom_build_3.TomEnv.home,
-      'path': (visitor) => $tom_build_3.TomEnv.path,
-      'shell': (visitor) => $tom_build_3.TomEnv.shell,
-      'user': (visitor) => $tom_build_3.TomEnv.user,
-      'temp': (visitor) => $tom_build_3.TomEnv.temp,
-      'cwd': (visitor) => $tom_build_3.TomEnv.cwd,
-      'isCI': (visitor) => $tom_build_3.TomEnv.isCI,
-      'isDev': (visitor) => $tom_build_3.TomEnv.isDev,
-      'isProd': (visitor) => $tom_build_3.TomEnv.isProd,
-      'os': (visitor) => $tom_build_3.TomEnv.os,
-      'osVersion': (visitor) => $tom_build_3.TomEnv.osVersion,
-      'processors': (visitor) => $tom_build_3.TomEnv.processors,
-      'dartVersion': (visitor) => $tom_build_3.TomEnv.dartVersion,
-      'hostname': (visitor) => $tom_build_3.TomEnv.hostname,
-      'isMacOS': (visitor) => $tom_build_3.TomEnv.isMacOS,
-      'isLinux': (visitor) => $tom_build_3.TomEnv.isLinux,
-      'isWindows': (visitor) => $tom_build_3.TomEnv.isWindows,
+      'home': (visitor) => TomEnv.home,
+      'path': (visitor) => TomEnv.path,
+      'shell': (visitor) => TomEnv.shell,
+      'user': (visitor) => TomEnv.user,
+      'temp': (visitor) => TomEnv.temp,
+      'cwd': (visitor) => TomEnv.cwd,
+      'isCI': (visitor) => TomEnv.isCI,
+      'isDev': (visitor) => TomEnv.isDev,
+      'isProd': (visitor) => TomEnv.isProd,
+      'os': (visitor) => TomEnv.os,
+      'osVersion': (visitor) => TomEnv.osVersion,
+      'processors': (visitor) => TomEnv.processors,
+      'dartVersion': (visitor) => TomEnv.dartVersion,
+      'hostname': (visitor) => TomEnv.hostname,
+      'isMacOS': (visitor) => TomEnv.isMacOS,
+      'isLinux': (visitor) => TomEnv.isLinux,
+      'isWindows': (visitor) => TomEnv.isWindows,
     },
     staticMethods: {
       'load': (visitor, positional, named, typeArgs) {
         final directory = D4.getOptionalArg<String?>(positional, 0, 'directory');
-        return $tom_build_3.TomEnv.load(directory);
+        return TomEnv.load(directory);
       },
       'reload': (visitor, positional, named, typeArgs) {
         final directory = D4.getOptionalArg<String?>(positional, 0, 'directory');
-        return $tom_build_3.TomEnv.reload(directory);
+        return TomEnv.reload(directory);
       },
       'loadFile': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadFile');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'loadFile');
-        return $tom_build_3.TomEnv.loadFile(path);
+        return TomEnv.loadFile(path);
       },
       'resolve': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'resolve');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'resolve');
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
-        return $tom_build_3.TomEnv.resolve(text, workingDir: workingDir);
+        return TomEnv.resolve(text, workingDir: workingDir);
       },
       'resolveWith': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'resolveWith');
@@ -855,7 +854,7 @@ BridgedClass _createTomEnvBridge() {
           throw ArgumentError('resolveWith: Missing required argument "environment" at position 1');
         }
         final environment = D4.coerceMap<String, String>(positional[1], 'environment');
-        return $tom_build_3.TomEnv.resolveWith(text, environment);
+        return TomEnv.resolveWith(text, environment);
       },
       'resolveMap': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'resolveMap');
@@ -864,7 +863,7 @@ BridgedClass _createTomEnvBridge() {
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
-        return $tom_build_3.TomEnv.resolveMap(map, workingDir: workingDir);
+        return TomEnv.resolveMap(map, workingDir: workingDir);
       },
       'resolveMapWith': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'resolveMapWith');
@@ -876,66 +875,66 @@ BridgedClass _createTomEnvBridge() {
           throw ArgumentError('resolveMapWith: Missing required argument "environment" at position 1');
         }
         final environment = D4.coerceMap<String, String>(positional[1], 'environment');
-        return $tom_build_3.TomEnv.resolveMapWith(map, environment);
+        return TomEnv.resolveMapWith(map, environment);
       },
       'get': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'get');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'get');
         final defaultValue = D4.getOptionalArg<String?>(positional, 1, 'defaultValue');
-        return $tom_build_3.TomEnv.get(name, defaultValue);
+        return TomEnv.get(name, defaultValue);
       },
       'require': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'require');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'require');
         final message = D4.getOptionalNamedArg<String?>(named, 'message');
-        return $tom_build_3.TomEnv.require(name, message: message);
+        return TomEnv.require(name, message: message);
       },
       'has': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'has');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'has');
-        return $tom_build_3.TomEnv.has(name);
+        return TomEnv.has(name);
       },
       'isSet': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isSet');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'isSet');
-        return $tom_build_3.TomEnv.isSet(name);
+        return TomEnv.isSet(name);
       },
       'all': (visitor, positional, named, typeArgs) {
-        return $tom_build_3.TomEnv.all();
+        return TomEnv.all();
       },
       'withPrefix': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'withPrefix');
         final prefix = D4.getRequiredArg<String>(positional, 0, 'prefix', 'withPrefix');
         final strip = D4.getNamedArgWithDefault<bool>(named, 'strip', false);
-        return $tom_build_3.TomEnv.withPrefix(prefix, strip: strip);
+        return TomEnv.withPrefix(prefix, strip: strip);
       },
       'getInt': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getInt');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getInt');
         final defaultValue = D4.getOptionalArg<int?>(positional, 1, 'defaultValue');
-        return $tom_build_3.TomEnv.getInt(name, defaultValue);
+        return TomEnv.getInt(name, defaultValue);
       },
       'getBool': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getBool');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getBool');
         final defaultValue = D4.getOptionalArgWithDefault<bool>(positional, 1, 'defaultValue', false);
-        return $tom_build_3.TomEnv.getBool(name, defaultValue);
+        return TomEnv.getBool(name, defaultValue);
       },
       'getList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getList');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getList');
         final separator = D4.getOptionalNamedArg<String?>(named, 'separator');
-        return $tom_build_3.TomEnv.getList(name, separator: separator);
+        return TomEnv.getList(name, separator: separator);
       },
       'expand': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'expand');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'expand');
-        return $tom_build_3.TomEnv.expand(text);
+        return TomEnv.expand(text);
       },
       'expandWithDefaults': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'expandWithDefaults');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'expandWithDefaults');
-        return $tom_build_3.TomEnv.expandWithDefaults(text);
+        return TomEnv.expandWithDefaults(text);
       },
     },
     staticMethodSignatures: {
@@ -986,21 +985,22 @@ BridgedClass _createTomEnvBridge() {
 
 BridgedClass _createTomEnvironmentExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_build_3.TomEnvironmentException,
+    nativeType: TomEnvironmentException,
     name: 'TomEnvironmentException',
+    isAssignable: (v) => v is TomEnvironmentException,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomEnvironmentException');
         final message = D4.getRequiredArg<String>(positional, 0, 'message', 'TomEnvironmentException');
-        return $tom_build_3.TomEnvironmentException(message);
+        return TomEnvironmentException(message);
       },
     },
     getters: {
-      'message': (visitor, target) => D4.validateTarget<$tom_build_3.TomEnvironmentException>(target, 'TomEnvironmentException').message,
+      'message': (visitor, target) => D4.validateTarget<TomEnvironmentException>(target, 'TomEnvironmentException').message,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_3.TomEnvironmentException>(target, 'TomEnvironmentException');
+        final t = D4.validateTarget<TomEnvironmentException>(target, 'TomEnvironmentException');
         return t.toString();
       },
     },
@@ -1022,36 +1022,37 @@ BridgedClass _createTomEnvironmentExceptionBridge() {
 
 BridgedClass _createTomFsBridge() {
   return BridgedClass(
-    nativeType: $tom_build_4.TomFs,
+    nativeType: TomFs,
     name: 'TomFs',
+    isAssignable: (v) => v is TomFs,
     constructors: {
     },
     staticMethods: {
       'read': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'read');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'read');
-        return $tom_build_4.TomFs.read(path);
+        return TomFs.read(path);
       },
       'readBytes': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'readBytes');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'readBytes');
-        return $tom_build_4.TomFs.readBytes(path);
+        return TomFs.readBytes(path);
       },
       'readLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'readLines');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'readLines');
-        return $tom_build_4.TomFs.readLines(path);
+        return TomFs.readLines(path);
       },
       'tryRead': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'tryRead');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'tryRead');
-        return $tom_build_4.TomFs.tryRead(path);
+        return TomFs.tryRead(path);
       },
       'write': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'write');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'write');
         final content = D4.getRequiredArg<String>(positional, 1, 'content', 'write');
-        return $tom_build_4.TomFs.write(path, content);
+        return TomFs.write(path, content);
       },
       'writeBytes': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'writeBytes');
@@ -1060,69 +1061,69 @@ BridgedClass _createTomFsBridge() {
           throw ArgumentError('writeBytes: Missing required argument "bytes" at position 1');
         }
         final bytes = D4.coerceList<int>(positional[1], 'bytes');
-        return $tom_build_4.TomFs.writeBytes(path, bytes);
+        return TomFs.writeBytes(path, bytes);
       },
       'append': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'append');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'append');
         final content = D4.getRequiredArg<String>(positional, 1, 'content', 'append');
-        return $tom_build_4.TomFs.append(path, content);
+        return TomFs.append(path, content);
       },
       'appendLine': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'appendLine');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'appendLine');
         final line = D4.getRequiredArg<String>(positional, 1, 'line', 'appendLine');
-        return $tom_build_4.TomFs.appendLine(path, line);
+        return TomFs.appendLine(path, line);
       },
       'exists': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'exists');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'exists');
-        return $tom_build_4.TomFs.exists(path);
+        return TomFs.exists(path);
       },
       'isFile': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isFile');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isFile');
-        return $tom_build_4.TomFs.isFile(path);
+        return TomFs.isFile(path);
       },
       'isDir': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isDir');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isDir');
-        return $tom_build_4.TomFs.isDir(path);
+        return TomFs.isDir(path);
       },
       'isEmpty': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isEmpty');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isEmpty');
-        return $tom_build_4.TomFs.isEmpty(path);
+        return TomFs.isEmpty(path);
       },
       'copy': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'copy');
         final from = D4.getRequiredArg<String>(positional, 0, 'from', 'copy');
         final to = D4.getRequiredArg<String>(positional, 1, 'to', 'copy');
         final overwrite = D4.getNamedArgWithDefault<bool>(named, 'overwrite', true);
-        return $tom_build_4.TomFs.copy(from, to, overwrite: overwrite);
+        return TomFs.copy(from, to, overwrite: overwrite);
       },
       'move': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'move');
         final from = D4.getRequiredArg<String>(positional, 0, 'from', 'move');
         final to = D4.getRequiredArg<String>(positional, 1, 'to', 'move');
-        return $tom_build_4.TomFs.move(from, to);
+        return TomFs.move(from, to);
       },
       'delete': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'delete');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'delete');
         final recursive = D4.getNamedArgWithDefault<bool>(named, 'recursive', false);
-        return $tom_build_4.TomFs.delete(path, recursive: recursive);
+        return TomFs.delete(path, recursive: recursive);
       },
       'deleteIfExists': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'deleteIfExists');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'deleteIfExists');
         final recursive = D4.getNamedArgWithDefault<bool>(named, 'recursive', false);
-        return $tom_build_4.TomFs.deleteIfExists(path, recursive: recursive);
+        return TomFs.deleteIfExists(path, recursive: recursive);
       },
       'mkdir': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'mkdir');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'mkdir');
-        return $tom_build_4.TomFs.mkdir(path);
+        return TomFs.mkdir(path);
       },
       'ls': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'ls');
@@ -1130,50 +1131,50 @@ BridgedClass _createTomFsBridge() {
         final recursive = D4.getNamedArgWithDefault<bool>(named, 'recursive', false);
         final filesOnly = D4.getNamedArgWithDefault<bool>(named, 'filesOnly', false);
         final dirsOnly = D4.getNamedArgWithDefault<bool>(named, 'dirsOnly', false);
-        return $tom_build_4.TomFs.ls(path, recursive: recursive, filesOnly: filesOnly, dirsOnly: dirsOnly);
+        return TomFs.ls(path, recursive: recursive, filesOnly: filesOnly, dirsOnly: dirsOnly);
       },
       'files': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'files');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'files');
         final recursive = D4.getNamedArgWithDefault<bool>(named, 'recursive', false);
-        return $tom_build_4.TomFs.files(path, recursive: recursive);
+        return TomFs.files(path, recursive: recursive);
       },
       'dirs': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'dirs');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'dirs');
         final recursive = D4.getNamedArgWithDefault<bool>(named, 'recursive', false);
-        return $tom_build_4.TomFs.dirs(path, recursive: recursive);
+        return TomFs.dirs(path, recursive: recursive);
       },
       'size': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'size');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'size');
-        return $tom_build_4.TomFs.size(path);
+        return TomFs.size(path);
       },
       'mtime': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'mtime');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'mtime');
-        return $tom_build_4.TomFs.mtime(path);
+        return TomFs.mtime(path);
       },
       'atime': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'atime');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'atime');
-        return $tom_build_4.TomFs.atime(path);
+        return TomFs.atime(path);
       },
       'touch': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'touch');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'touch');
         final time = D4.getOptionalArg<DateTime?>(positional, 1, 'time');
-        return $tom_build_4.TomFs.touch(path, time);
+        return TomFs.touch(path, time);
       },
       'temp': (visitor, positional, named, typeArgs) {
         final prefix = D4.getOptionalNamedArg<String?>(named, 'prefix');
         final suffix = D4.getOptionalNamedArg<String?>(named, 'suffix');
         final content = D4.getOptionalNamedArg<String?>(named, 'content');
-        return $tom_build_4.TomFs.temp(prefix: prefix, suffix: suffix, content: content);
+        return TomFs.temp(prefix: prefix, suffix: suffix, content: content);
       },
       'tempDir': (visitor, positional, named, typeArgs) {
         final prefix = D4.getOptionalNamedArg<String?>(named, 'prefix');
-        return $tom_build_4.TomFs.tempDir(prefix: prefix);
+        return TomFs.tempDir(prefix: prefix);
       },
     },
     staticMethodSignatures: {
@@ -1213,8 +1214,9 @@ BridgedClass _createTomFsBridge() {
 
 BridgedClass _createTomGlobBridge() {
   return BridgedClass(
-    nativeType: $tom_build_5.TomGlob,
+    nativeType: TomGlob,
     name: 'TomGlob',
+    isAssignable: (v) => v is TomGlob,
     constructors: {
     },
     staticMethods: {
@@ -1223,7 +1225,7 @@ BridgedClass _createTomGlobBridge() {
         final pattern = D4.getRequiredArg<String>(positional, 0, 'pattern', 'find');
         final root = D4.getOptionalNamedArg<String?>(named, 'root');
         final followLinks = D4.getNamedArgWithDefault<bool>(named, 'followLinks', true);
-        return $tom_build_5.TomGlob.find(pattern, root: root, followLinks: followLinks);
+        return TomGlob.find(pattern, root: root, followLinks: followLinks);
       },
       'findAny': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findAny');
@@ -1233,25 +1235,25 @@ BridgedClass _createTomGlobBridge() {
         final patterns = D4.coerceList<String>(positional[0], 'patterns');
         final root = D4.getOptionalNamedArg<String?>(named, 'root');
         final followLinks = D4.getNamedArgWithDefault<bool>(named, 'followLinks', true);
-        return $tom_build_5.TomGlob.findAny(patterns, root: root, followLinks: followLinks);
+        return TomGlob.findAny(patterns, root: root, followLinks: followLinks);
       },
       'findFiles': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findFiles');
         final pattern = D4.getRequiredArg<String>(positional, 0, 'pattern', 'findFiles');
         final root = D4.getOptionalNamedArg<String?>(named, 'root');
-        return $tom_build_5.TomGlob.findFiles(pattern, root: root);
+        return TomGlob.findFiles(pattern, root: root);
       },
       'findDirs': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'findDirs');
         final pattern = D4.getRequiredArg<String>(positional, 0, 'pattern', 'findDirs');
         final root = D4.getOptionalNamedArg<String?>(named, 'root');
-        return $tom_build_5.TomGlob.findDirs(pattern, root: root);
+        return TomGlob.findDirs(pattern, root: root);
       },
       'matches': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'matches');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'matches');
         final pattern = D4.getRequiredArg<String>(positional, 1, 'pattern', 'matches');
-        return $tom_build_5.TomGlob.matches(path, pattern);
+        return TomGlob.matches(path, pattern);
       },
       'matchesAny': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'matchesAny');
@@ -1260,7 +1262,7 @@ BridgedClass _createTomGlobBridge() {
           throw ArgumentError('matchesAny: Missing required argument "patterns" at position 1');
         }
         final patterns = D4.coerceList<String>(positional[1], 'patterns');
-        return $tom_build_5.TomGlob.matchesAny(path, patterns);
+        return TomGlob.matchesAny(path, patterns);
       },
       'filter': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'filter');
@@ -1269,7 +1271,7 @@ BridgedClass _createTomGlobBridge() {
         }
         final paths = D4.coerceList<String>(positional[0], 'paths');
         final pattern = D4.getRequiredArg<String>(positional, 1, 'pattern', 'filter');
-        return $tom_build_5.TomGlob.filter(paths, pattern);
+        return TomGlob.filter(paths, pattern);
       },
       'exclude': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'exclude');
@@ -1278,7 +1280,7 @@ BridgedClass _createTomGlobBridge() {
         }
         final paths = D4.coerceList<String>(positional[0], 'paths');
         final pattern = D4.getRequiredArg<String>(positional, 1, 'pattern', 'exclude');
-        return $tom_build_5.TomGlob.exclude(paths, pattern);
+        return TomGlob.exclude(paths, pattern);
       },
     },
     staticMethodSignatures: {
@@ -1300,8 +1302,9 @@ BridgedClass _createTomGlobBridge() {
 
 BridgedClass _createTomMapsBridge() {
   return BridgedClass(
-    nativeType: $tom_build_6.TomMaps,
+    nativeType: TomMaps,
     name: 'TomMaps',
+    isAssignable: (v) => v is TomMaps,
     constructors: {
     },
     staticMethods: {
@@ -1315,7 +1318,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('mergeOneSided: Missing required argument "source" at position 1');
         }
         final source = D4.coerceMap<String, dynamic>(positional[1], 'source');
-        return $tom_build_6.TomMaps.mergeOneSided(target_, source);
+        return TomMaps.mergeOneSided(target_, source);
       },
       'merge': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'merge');
@@ -1327,7 +1330,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('merge: Missing required argument "overrides" at position 1');
         }
         final overrides = D4.coerceMap<String, dynamic>(positional[1], 'overrides');
-        return $tom_build_6.TomMaps.merge(base, overrides);
+        return TomMaps.merge(base, overrides);
       },
       'mergeAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'mergeAll');
@@ -1335,7 +1338,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('mergeAll: Missing required argument "maps" at position 0');
         }
         final maps = D4.coerceList<Map<String, dynamic>>(positional[0], 'maps');
-        return $tom_build_6.TomMaps.mergeAll(maps);
+        return TomMaps.mergeAll(maps);
       },
       'traverse': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'traverse');
@@ -1347,9 +1350,9 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('traverse: Missing required argument "processor" at position 1');
         }
         final processorRaw = positional[1];
-        final processor = (String p0, dynamic p1) { return D4.callInterpreterCallback(visitor, processorRaw, [p0, p1]) as dynamic; };
+        final processor = (String p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, processorRaw, [p0, p1])); };
         final prefix = D4.getNamedArgWithDefault<String>(named, 'prefix', '');
-        return $tom_build_6.TomMaps.traverse(map, processor, prefix: prefix);
+        return TomMaps.traverse(map, processor, prefix: prefix);
       },
       'flatten': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'flatten');
@@ -1357,7 +1360,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('flatten: Missing required argument "map" at position 0');
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
-        return $tom_build_6.TomMaps.flatten(map);
+        return TomMaps.flatten(map);
       },
       'unflatten': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'unflatten');
@@ -1365,7 +1368,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('unflatten: Missing required argument "map" at position 0');
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
-        return $tom_build_6.TomMaps.unflatten(map);
+        return TomMaps.unflatten(map);
       },
       'get': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'get');
@@ -1374,7 +1377,7 @@ BridgedClass _createTomMapsBridge() {
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final path = D4.getRequiredArg<String>(positional, 1, 'path', 'get');
-        return $tom_build_6.TomMaps.get(map, path);
+        return TomMaps.get(map, path);
       },
       'getOr': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'getOr');
@@ -1384,7 +1387,7 @@ BridgedClass _createTomMapsBridge() {
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final path = D4.getRequiredArg<String>(positional, 1, 'path', 'getOr');
         final defaultValue = D4.getRequiredArg<dynamic>(positional, 2, 'defaultValue', 'getOr');
-        return $tom_build_6.TomMaps.getOr(map, path, defaultValue);
+        return TomMaps.getOr(map, path, defaultValue);
       },
       'set': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'set');
@@ -1394,7 +1397,7 @@ BridgedClass _createTomMapsBridge() {
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final path = D4.getRequiredArg<String>(positional, 1, 'path', 'set');
         final value = D4.getRequiredArg<dynamic>(positional, 2, 'value', 'set');
-        return $tom_build_6.TomMaps.set(map, path, value);
+        return TomMaps.set(map, path, value);
       },
       'has': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'has');
@@ -1403,7 +1406,7 @@ BridgedClass _createTomMapsBridge() {
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final path = D4.getRequiredArg<String>(positional, 1, 'path', 'has');
-        return $tom_build_6.TomMaps.has(map, path);
+        return TomMaps.has(map, path);
       },
       'remove': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'remove');
@@ -1412,7 +1415,7 @@ BridgedClass _createTomMapsBridge() {
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
         final path = D4.getRequiredArg<String>(positional, 1, 'path', 'remove');
-        return $tom_build_6.TomMaps.remove(map, path);
+        return TomMaps.remove(map, path);
       },
       'copy': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'copy');
@@ -1420,7 +1423,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('copy: Missing required argument "map" at position 0');
         }
         final map = D4.coerceMap<String, dynamic>(positional[0], 'map');
-        return $tom_build_6.TomMaps.copy(map);
+        return TomMaps.copy(map);
       },
       'clean': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'clean');
@@ -1428,7 +1431,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('clean: Missing required argument "map" at position 0');
         }
         final map = D4.coerceMap<dynamic, dynamic>(positional[0], 'map');
-        return $tom_build_6.TomMaps.clean(map);
+        return TomMaps.clean(map);
       },
       'pick': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'pick');
@@ -1440,7 +1443,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('pick: Missing required argument "keys" at position 1');
         }
         final keys = D4.coerceList<String>(positional[1], 'keys');
-        return $tom_build_6.TomMaps.pick(map, keys);
+        return TomMaps.pick(map, keys);
       },
       'omit': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'omit');
@@ -1452,7 +1455,7 @@ BridgedClass _createTomMapsBridge() {
           throw ArgumentError('omit: Missing required argument "keys" at position 1');
         }
         final keys = D4.coerceList<String>(positional[1], 'keys');
-        return $tom_build_6.TomMaps.omit(map, keys);
+        return TomMaps.omit(map, keys);
       },
     },
     staticMethodSignatures: {
@@ -1481,15 +1484,16 @@ BridgedClass _createTomMapsBridge() {
 
 BridgedClass _createTomPthBridge() {
   return BridgedClass(
-    nativeType: $tom_build_7.TomPth,
+    nativeType: TomPth,
     name: 'TomPth',
+    isAssignable: (v) => v is TomPth,
     constructors: {
     },
     staticGetters: {
-      'cwd': (visitor) => $tom_build_7.TomPth.cwd,
-      'home': (visitor) => $tom_build_7.TomPth.home,
-      'temp': (visitor) => $tom_build_7.TomPth.temp,
-      'separator': (visitor) => $tom_build_7.TomPth.separator,
+      'cwd': (visitor) => TomPth.cwd,
+      'home': (visitor) => TomPth.home,
+      'temp': (visitor) => TomPth.temp,
+      'separator': (visitor) => TomPth.separator,
     },
     staticMethods: {
       'join': (visitor, positional, named, typeArgs) {
@@ -1500,7 +1504,7 @@ BridgedClass _createTomPthBridge() {
         final part4 = D4.getOptionalArg<String?>(positional, 3, 'part4');
         final part5 = D4.getOptionalArg<String?>(positional, 4, 'part5');
         final part6 = D4.getOptionalArg<String?>(positional, 5, 'part6');
-        return $tom_build_7.TomPth.join(part1, part2, part3, part4, part5, part6);
+        return TomPth.join(part1, part2, part3, part4, part5, part6);
       },
       'joinAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'joinAll');
@@ -1508,91 +1512,91 @@ BridgedClass _createTomPthBridge() {
           throw ArgumentError('joinAll: Missing required argument "parts" at position 0');
         }
         final parts = D4.coerceList<String>(positional[0], 'parts');
-        return $tom_build_7.TomPth.joinAll(parts);
+        return TomPth.joinAll(parts);
       },
       'dirname': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'dirname');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'dirname');
-        return $tom_build_7.TomPth.dirname(path);
+        return TomPth.dirname(path);
       },
       'basename': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'basename');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'basename');
-        return $tom_build_7.TomPth.basename(path);
+        return TomPth.basename(path);
       },
       'basenameNoExt': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'basenameNoExt');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'basenameNoExt');
-        return $tom_build_7.TomPth.basenameNoExt(path);
+        return TomPth.basenameNoExt(path);
       },
       'extension': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'extension');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'extension');
-        return $tom_build_7.TomPth.extension(path);
+        return TomPth.extension(path);
       },
       'split': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'split');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'split');
-        return $tom_build_7.TomPth.split(path);
+        return TomPth.split(path);
       },
       'absolute': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'absolute');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'absolute');
-        return $tom_build_7.TomPth.absolute(path);
+        return TomPth.absolute(path);
       },
       'relative': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'relative');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'relative');
         final from = D4.getOptionalNamedArg<String?>(named, 'from');
-        return $tom_build_7.TomPth.relative(path, from: from);
+        return TomPth.relative(path, from: from);
       },
       'normalize': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'normalize');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'normalize');
-        return $tom_build_7.TomPth.normalize(path);
+        return TomPth.normalize(path);
       },
       'canonical': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'canonical');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'canonical');
-        return $tom_build_7.TomPth.canonical(path);
+        return TomPth.canonical(path);
       },
       'setExtension': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'setExtension');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'setExtension');
         final extension = D4.getRequiredArg<String>(positional, 1, 'extension', 'setExtension');
-        return $tom_build_7.TomPth.setExtension(path, extension);
+        return TomPth.setExtension(path, extension);
       },
       'withoutExtension': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'withoutExtension');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'withoutExtension');
-        return $tom_build_7.TomPth.withoutExtension(path);
+        return TomPth.withoutExtension(path);
       },
       'isAbsolute': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isAbsolute');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isAbsolute');
-        return $tom_build_7.TomPth.isAbsolute(path);
+        return TomPth.isAbsolute(path);
       },
       'isRelative': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isRelative');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isRelative');
-        return $tom_build_7.TomPth.isRelative(path);
+        return TomPth.isRelative(path);
       },
       'isWithin': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'isWithin');
         final parent = D4.getRequiredArg<String>(positional, 0, 'parent', 'isWithin');
         final child = D4.getRequiredArg<String>(positional, 1, 'child', 'isWithin');
-        return $tom_build_7.TomPth.isWithin(parent, child);
+        return TomPth.isWithin(parent, child);
       },
       'equals': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'equals');
         final path1 = D4.getRequiredArg<String>(positional, 0, 'path1', 'equals');
         final path2 = D4.getRequiredArg<String>(positional, 1, 'path2', 'equals');
-        return $tom_build_7.TomPth.equals(path1, path2);
+        return TomPth.equals(path1, path2);
       },
       'expandHome': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'expandHome');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'expandHome');
-        return $tom_build_7.TomPth.expandHome(path);
+        return TomPth.expandHome(path);
       },
     },
     staticMethodSignatures: {
@@ -1630,8 +1634,9 @@ BridgedClass _createTomPthBridge() {
 
 BridgedClass _createTomShellBridge() {
   return BridgedClass(
-    nativeType: $tom_build_8.TomShell,
+    nativeType: TomShell,
     name: 'TomShell',
+    isAssignable: (v) => v is TomShell,
     constructors: {
     },
     staticMethods: {
@@ -1642,7 +1647,7 @@ BridgedClass _createTomShellBridge() {
         final quiet = D4.getNamedArgWithDefault<bool>(named, 'quiet', false);
         final env = D4.coerceMapOrNull<String, String>(named['env'], 'env');
         final resolveEnv = D4.getNamedArgWithDefault<bool>(named, 'resolveEnv', true);
-        return $tom_build_8.TomShell.run(command, workingDir: workingDir, quiet: quiet, env: env, resolveEnv: resolveEnv);
+        return TomShell.run(command, workingDir: workingDir, quiet: quiet, env: env, resolveEnv: resolveEnv);
       },
       'exec': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'exec');
@@ -1650,7 +1655,7 @@ BridgedClass _createTomShellBridge() {
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
         final env = D4.coerceMapOrNull<String, String>(named['env'], 'env');
         final resolveEnv = D4.getNamedArgWithDefault<bool>(named, 'resolveEnv', true);
-        return $tom_build_8.TomShell.exec(command, workingDir: workingDir, env: env, resolveEnv: resolveEnv);
+        return TomShell.exec(command, workingDir: workingDir, env: env, resolveEnv: resolveEnv);
       },
       'capture': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'capture');
@@ -1658,7 +1663,7 @@ BridgedClass _createTomShellBridge() {
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
         final env = D4.coerceMapOrNull<String, String>(named['env'], 'env');
         final resolveEnv = D4.getNamedArgWithDefault<bool>(named, 'resolveEnv', true);
-        return $tom_build_8.TomShell.capture(command, workingDir: workingDir, env: env, resolveEnv: resolveEnv);
+        return TomShell.capture(command, workingDir: workingDir, env: env, resolveEnv: resolveEnv);
       },
       'runAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'runAll');
@@ -1669,7 +1674,7 @@ BridgedClass _createTomShellBridge() {
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
         final stopOnError = D4.getNamedArgWithDefault<bool>(named, 'stopOnError', true);
         final resolveEnv = D4.getNamedArgWithDefault<bool>(named, 'resolveEnv', true);
-        return $tom_build_8.TomShell.runAll(commands, workingDir: workingDir, stopOnError: stopOnError, resolveEnv: resolveEnv);
+        return TomShell.runAll(commands, workingDir: workingDir, stopOnError: stopOnError, resolveEnv: resolveEnv);
       },
       'pipe': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'pipe');
@@ -1677,17 +1682,17 @@ BridgedClass _createTomShellBridge() {
         final input = D4.getRequiredArg<String>(positional, 1, 'input', 'pipe');
         final workingDir = D4.getOptionalNamedArg<String?>(named, 'workingDir');
         final resolveEnv = D4.getNamedArgWithDefault<bool>(named, 'resolveEnv', true);
-        return $tom_build_8.TomShell.pipe(command, input, workingDir: workingDir, resolveEnv: resolveEnv);
+        return TomShell.pipe(command, input, workingDir: workingDir, resolveEnv: resolveEnv);
       },
       'hasCommand': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'hasCommand');
         final command = D4.getRequiredArg<String>(positional, 0, 'command', 'hasCommand');
-        return $tom_build_8.TomShell.hasCommand(command);
+        return TomShell.hasCommand(command);
       },
       'which': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'which');
         final command = D4.getRequiredArg<String>(positional, 0, 'command', 'which');
-        return $tom_build_8.TomShell.which(command);
+        return TomShell.which(command);
       },
     },
     staticMethodSignatures: {
@@ -1708,26 +1713,27 @@ BridgedClass _createTomShellBridge() {
 
 BridgedClass _createTomShellExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_build_8.TomShellException,
+    nativeType: TomShellException,
     name: 'TomShellException',
+    isAssignable: (v) => v is TomShellException,
     constructors: {
       '': (visitor, positional, named) {
         final command = D4.getRequiredNamedArg<String>(named, 'command', 'TomShellException');
         final exitCode = D4.getRequiredNamedArg<int>(named, 'exitCode', 'TomShellException');
         final stderr = D4.getRequiredNamedArg<String>(named, 'stderr', 'TomShellException');
         final stdout = D4.getRequiredNamedArg<String>(named, 'stdout', 'TomShellException');
-        return $tom_build_8.TomShellException(command: command, exitCode: exitCode, stderr: stderr, stdout: stdout);
+        return TomShellException(command: command, exitCode: exitCode, stderr: stderr, stdout: stdout);
       },
     },
     getters: {
-      'command': (visitor, target) => D4.validateTarget<$tom_build_8.TomShellException>(target, 'TomShellException').command,
-      'exitCode': (visitor, target) => D4.validateTarget<$tom_build_8.TomShellException>(target, 'TomShellException').exitCode,
-      'stderr': (visitor, target) => D4.validateTarget<$tom_build_8.TomShellException>(target, 'TomShellException').stderr,
-      'stdout': (visitor, target) => D4.validateTarget<$tom_build_8.TomShellException>(target, 'TomShellException').stdout,
+      'command': (visitor, target) => D4.validateTarget<TomShellException>(target, 'TomShellException').command,
+      'exitCode': (visitor, target) => D4.validateTarget<TomShellException>(target, 'TomShellException').exitCode,
+      'stderr': (visitor, target) => D4.validateTarget<TomShellException>(target, 'TomShellException').stderr,
+      'stdout': (visitor, target) => D4.validateTarget<TomShellException>(target, 'TomShellException').stdout,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_8.TomShellException>(target, 'TomShellException');
+        final t = D4.validateTarget<TomShellException>(target, 'TomShellException');
         return t.toString();
       },
     },
@@ -1752,8 +1758,9 @@ BridgedClass _createTomShellExceptionBridge() {
 
 BridgedClass _createTomTextBridge() {
   return BridgedClass(
-    nativeType: $tom_build_9.TomText,
+    nativeType: TomText,
     name: 'TomText',
+    isAssignable: (v) => v is TomText,
     constructors: {
     },
     staticMethods: {
@@ -1766,38 +1773,38 @@ BridgedClass _createTomTextBridge() {
         final values = D4.coerceMap<String, dynamic>(positional[1], 'values');
         final open = D4.getNamedArgWithDefault<String>(named, 'open', '{{');
         final close = D4.getNamedArgWithDefault<String>(named, 'close', '}}');
-        return $tom_build_9.TomText.template(text, values, open: open, close: close);
+        return TomText.template(text, values, open: open, close: close);
       },
       'indent': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'indent');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'indent');
         final spaces = D4.getRequiredArg<int>(positional, 1, 'spaces', 'indent');
         final char = D4.getNamedArgWithDefault<String>(named, 'char', ' ');
-        return $tom_build_9.TomText.indent(text, spaces, char: char);
+        return TomText.indent(text, spaces, char: char);
       },
       'dedent': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'dedent');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'dedent');
-        return $tom_build_9.TomText.dedent(text);
+        return TomText.dedent(text);
       },
       'wrap': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'wrap');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'wrap');
         final width = D4.getRequiredArg<int>(positional, 1, 'width', 'wrap');
         final lineBreak = D4.getNamedArgWithDefault<String>(named, 'lineBreak', '\n');
-        return $tom_build_9.TomText.wrap(text, width, lineBreak: lineBreak);
+        return TomText.wrap(text, width, lineBreak: lineBreak);
       },
       'truncate': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'truncate');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'truncate');
         final maxLength = D4.getRequiredArg<int>(positional, 1, 'maxLength', 'truncate');
         final suffix = D4.getNamedArgWithDefault<String>(named, 'suffix', '...');
-        return $tom_build_9.TomText.truncate(text, maxLength, suffix: suffix);
+        return TomText.truncate(text, maxLength, suffix: suffix);
       },
       'lines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'lines');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'lines');
-        return $tom_build_9.TomText.lines(text);
+        return TomText.lines(text);
       },
       'joinLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'joinLines');
@@ -1806,7 +1813,7 @@ BridgedClass _createTomTextBridge() {
         }
         final lines = D4.coerceList<String>(positional[0], 'lines');
         final separator = D4.getNamedArgWithDefault<String>(named, 'separator', '\n');
-        return $tom_build_9.TomText.joinLines(lines, separator: separator);
+        return TomText.joinLines(lines, separator: separator);
       },
       'filterLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'filterLines');
@@ -1815,8 +1822,8 @@ BridgedClass _createTomTextBridge() {
           throw ArgumentError('filterLines: Missing required argument "predicate" at position 1');
         }
         final predicateRaw = positional[1];
-        final predicate = (String p0) { return D4.callInterpreterCallback(visitor, predicateRaw, [p0]) as bool; };
-        return $tom_build_9.TomText.filterLines(text, predicate);
+        final predicate = (String p0) { return D4.callInterpreterCallback(visitor!, predicateRaw, [p0]) as bool; };
+        return TomText.filterLines(text, predicate);
       },
       'mapLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'mapLines');
@@ -1825,116 +1832,116 @@ BridgedClass _createTomTextBridge() {
           throw ArgumentError('mapLines: Missing required argument "mapper" at position 1');
         }
         final mapperRaw = positional[1];
-        final mapper = (String p0) { return D4.callInterpreterCallback(visitor, mapperRaw, [p0]) as String; };
-        return $tom_build_9.TomText.mapLines(text, mapper);
+        final mapper = (String p0) { return D4.callInterpreterCallback(visitor!, mapperRaw, [p0]) as String; };
+        return TomText.mapLines(text, mapper);
       },
       'head': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'head');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'head');
         final n = D4.getRequiredArg<int>(positional, 1, 'n', 'head');
-        return $tom_build_9.TomText.head(text, n);
+        return TomText.head(text, n);
       },
       'tail': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'tail');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'tail');
         final n = D4.getRequiredArg<int>(positional, 1, 'n', 'tail');
-        return $tom_build_9.TomText.tail(text, n);
+        return TomText.tail(text, n);
       },
       'lineCount': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'lineCount');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'lineCount');
-        return $tom_build_9.TomText.lineCount(text);
+        return TomText.lineCount(text);
       },
       'wordCount': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'wordCount');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'wordCount');
-        return $tom_build_9.TomText.wordCount(text);
+        return TomText.wordCount(text);
       },
       'charCount': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'charCount');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'charCount');
         final excludeWhitespace = D4.getNamedArgWithDefault<bool>(named, 'excludeWhitespace', true);
-        return $tom_build_9.TomText.charCount(text, excludeWhitespace: excludeWhitespace);
+        return TomText.charCount(text, excludeWhitespace: excludeWhitespace);
       },
       'between': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'between');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'between');
         final start = D4.getRequiredArg<String>(positional, 1, 'start', 'between');
         final end = D4.getRequiredArg<String>(positional, 2, 'end', 'between');
-        return $tom_build_9.TomText.between(text, start, end);
+        return TomText.between(text, start, end);
       },
       'allBetween': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'allBetween');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'allBetween');
         final start = D4.getRequiredArg<String>(positional, 1, 'start', 'allBetween');
         final end = D4.getRequiredArg<String>(positional, 2, 'end', 'allBetween');
-        return $tom_build_9.TomText.allBetween(text, start, end);
+        return TomText.allBetween(text, start, end);
       },
       'slug': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'slug');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'slug');
-        return $tom_build_9.TomText.slug(text);
+        return TomText.slug(text);
       },
       'camelCase': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'camelCase');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'camelCase');
-        return $tom_build_9.TomText.camelCase(text);
+        return TomText.camelCase(text);
       },
       'pascalCase': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'pascalCase');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'pascalCase');
-        return $tom_build_9.TomText.pascalCase(text);
+        return TomText.pascalCase(text);
       },
       'snakeCase': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'snakeCase');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'snakeCase');
-        return $tom_build_9.TomText.snakeCase(text);
+        return TomText.snakeCase(text);
       },
       'kebabCase': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'kebabCase');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'kebabCase');
-        return $tom_build_9.TomText.kebabCase(text);
+        return TomText.kebabCase(text);
       },
       'titleCase': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'titleCase');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'titleCase');
-        return $tom_build_9.TomText.titleCase(text);
+        return TomText.titleCase(text);
       },
       'padLeft': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'padLeft');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'padLeft');
         final width = D4.getRequiredArg<int>(positional, 1, 'width', 'padLeft');
         final char = D4.getNamedArgWithDefault<String>(named, 'char', ' ');
-        return $tom_build_9.TomText.padLeft(text, width, char: char);
+        return TomText.padLeft(text, width, char: char);
       },
       'padRight': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'padRight');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'padRight');
         final width = D4.getRequiredArg<int>(positional, 1, 'width', 'padRight');
         final char = D4.getNamedArgWithDefault<String>(named, 'char', ' ');
-        return $tom_build_9.TomText.padRight(text, width, char: char);
+        return TomText.padRight(text, width, char: char);
       },
       'center': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'center');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'center');
         final width = D4.getRequiredArg<int>(positional, 1, 'width', 'center');
         final char = D4.getNamedArgWithDefault<String>(named, 'char', ' ');
-        return $tom_build_9.TomText.center(text, width, char: char);
+        return TomText.center(text, width, char: char);
       },
       'removeBlankLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'removeBlankLines');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'removeBlankLines');
-        return $tom_build_9.TomText.removeBlankLines(text);
+        return TomText.removeBlankLines(text);
       },
       'collapseBlankLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'collapseBlankLines');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'collapseBlankLines');
-        return $tom_build_9.TomText.collapseBlankLines(text);
+        return TomText.collapseBlankLines(text);
       },
       'trimLines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'trimLines');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'trimLines');
-        return $tom_build_9.TomText.trimLines(text);
+        return TomText.trimLines(text);
       },
       'containsAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'containsAll');
@@ -1943,7 +1950,7 @@ BridgedClass _createTomTextBridge() {
           throw ArgumentError('containsAll: Missing required argument "patterns" at position 1');
         }
         final patterns = D4.coerceList<String>(positional[1], 'patterns');
-        return $tom_build_9.TomText.containsAll(text, patterns);
+        return TomText.containsAll(text, patterns);
       },
       'containsAny': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'containsAny');
@@ -1952,7 +1959,7 @@ BridgedClass _createTomTextBridge() {
           throw ArgumentError('containsAny: Missing required argument "patterns" at position 1');
         }
         final patterns = D4.coerceList<String>(positional[1], 'patterns');
-        return $tom_build_9.TomText.containsAny(text, patterns);
+        return TomText.containsAny(text, patterns);
       },
       'replaceAll': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'replaceAll');
@@ -1961,32 +1968,32 @@ BridgedClass _createTomTextBridge() {
           throw ArgumentError('replaceAll: Missing required argument "replacements" at position 1');
         }
         final replacements = D4.coerceMap<String, String>(positional[1], 'replacements');
-        return $tom_build_9.TomText.replaceAll(text, replacements);
+        return TomText.replaceAll(text, replacements);
       },
       'escapeHtml': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'escapeHtml');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'escapeHtml');
-        return $tom_build_9.TomText.escapeHtml(text);
+        return TomText.escapeHtml(text);
       },
       'unescapeHtml': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'unescapeHtml');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'unescapeHtml');
-        return $tom_build_9.TomText.unescapeHtml(text);
+        return TomText.unescapeHtml(text);
       },
       'escapeJson': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'escapeJson');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'escapeJson');
-        return $tom_build_9.TomText.escapeJson(text);
+        return TomText.escapeJson(text);
       },
       'escapeRegex': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'escapeRegex');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'escapeRegex');
-        return $tom_build_9.TomText.escapeRegex(text);
+        return TomText.escapeRegex(text);
       },
       'escapeShell': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'escapeShell');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'escapeShell');
-        return $tom_build_9.TomText.escapeShell(text);
+        return TomText.escapeShell(text);
       },
     },
     staticMethodSignatures: {
@@ -2036,39 +2043,40 @@ BridgedClass _createTomTextBridge() {
 
 BridgedClass _createWorkspaceInfoBridge() {
   return BridgedClass(
-    nativeType: $tom_build_17.WorkspaceInfo,
+    nativeType: $tom_build_6.WorkspaceInfo,
     name: 'WorkspaceInfo',
+    isAssignable: (v) => v is $tom_build_6.WorkspaceInfo,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getOptionalNamedArg<String?>(named, 'name');
         final settings = named.containsKey('settings') && named['settings'] != null
             ? D4.coerceMap<String, dynamic>(named['settings'], 'settings')
             : const <String, dynamic>{};
-        final workspaceModes = D4.getOptionalNamedArg<$tom_build_17.MetadataModes?>(named, 'workspaceModes');
+        final workspaceModes = D4.getOptionalNamedArg<$tom_build_6.MetadataModes?>(named, 'workspaceModes');
         final groups = named.containsKey('groups') && named['groups'] != null
-            ? D4.coerceMap<String, $tom_build_17.WorkspaceGroup>(named['groups'], 'groups')
-            : const <String, $tom_build_17.WorkspaceGroup>{};
+            ? D4.coerceMap<String, $tom_build_6.WorkspaceGroup>(named['groups'], 'groups')
+            : const <String, $tom_build_6.WorkspaceGroup>{};
         final buildOrder = named.containsKey('buildOrder') && named['buildOrder'] != null
             ? D4.coerceList<String>(named['buildOrder'], 'buildOrder')
             : const <String>[];
         final projects = named.containsKey('projects') && named['projects'] != null
-            ? D4.coerceMap<String, $tom_build_17.WorkspaceProject>(named['projects'], 'projects')
-            : const <String, $tom_build_17.WorkspaceProject>{};
-        return $tom_build_17.WorkspaceInfo(name: name, settings: settings, workspaceModes: workspaceModes, groups: groups, buildOrder: buildOrder, projects: projects);
+            ? D4.coerceMap<String, $tom_build_6.WorkspaceProject>(named['projects'], 'projects')
+            : const <String, $tom_build_6.WorkspaceProject>{};
+        return $tom_build_6.WorkspaceInfo(name: name, settings: settings, workspaceModes: workspaceModes, groups: groups, buildOrder: buildOrder, projects: projects);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WorkspaceInfo');
         final yaml = D4.getRequiredArg<$yaml_1.YamlMap>(positional, 0, 'yaml', 'WorkspaceInfo');
-        return $tom_build_17.WorkspaceInfo.fromYaml(yaml);
+        return $tom_build_6.WorkspaceInfo.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').name,
-      'settings': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').settings,
-      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').workspaceModes,
-      'groups': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').groups,
-      'buildOrder': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').buildOrder,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceInfo>(target, 'WorkspaceInfo').projects,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').name,
+      'settings': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').settings,
+      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').workspaceModes,
+      'groups': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').groups,
+      'buildOrder': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').buildOrder,
+      'projects': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceInfo>(target, 'WorkspaceInfo').projects,
     },
     constructorSignatures: {
       '': 'WorkspaceInfo({String? name, Map<String, dynamic> settings = const {}, MetadataModes? workspaceModes, Map<String, WorkspaceGroup> groups = const {}, List<String> buildOrder = const [], Map<String, WorkspaceProject> projects = const {}})',
@@ -2091,25 +2099,26 @@ BridgedClass _createWorkspaceInfoBridge() {
 
 BridgedClass _createMetadataModesBridge() {
   return BridgedClass(
-    nativeType: $tom_build_17.MetadataModes,
+    nativeType: $tom_build_6.MetadataModes,
     name: 'MetadataModes',
+    isAssignable: (v) => v is $tom_build_6.MetadataModes,
     constructors: {
       '': (visitor, positional, named) {
         final supportedModes = named.containsKey('supportedModes') && named['supportedModes'] != null
-            ? D4.coerceList<$tom_build_17.MetadataMode>(named['supportedModes'], 'supportedModes')
-            : const <$tom_build_17.MetadataMode>[];
+            ? D4.coerceList<$tom_build_6.MetadataMode>(named['supportedModes'], 'supportedModes')
+            : const <$tom_build_6.MetadataMode>[];
         final defaultMode = D4.getOptionalNamedArg<String?>(named, 'defaultMode');
-        return $tom_build_17.MetadataModes(supportedModes: supportedModes, defaultMode: defaultMode);
+        return $tom_build_6.MetadataModes(supportedModes: supportedModes, defaultMode: defaultMode);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MetadataModes');
         final yaml = D4.getRequiredArg<$yaml_1.YamlMap>(positional, 0, 'yaml', 'MetadataModes');
-        return $tom_build_17.MetadataModes.fromYaml(yaml);
+        return $tom_build_6.MetadataModes.fromYaml(yaml);
       },
     },
     getters: {
-      'supportedModes': (visitor, target) => D4.validateTarget<$tom_build_17.MetadataModes>(target, 'MetadataModes').supportedModes,
-      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_17.MetadataModes>(target, 'MetadataModes').defaultMode,
+      'supportedModes': (visitor, target) => D4.validateTarget<$tom_build_6.MetadataModes>(target, 'MetadataModes').supportedModes,
+      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_6.MetadataModes>(target, 'MetadataModes').defaultMode,
     },
     constructorSignatures: {
       '': 'MetadataModes({List<MetadataMode> supportedModes = const [], String? defaultMode})',
@@ -2128,8 +2137,9 @@ BridgedClass _createMetadataModesBridge() {
 
 BridgedClass _createMetadataModeBridge() {
   return BridgedClass(
-    nativeType: $tom_build_17.MetadataMode,
+    nativeType: $tom_build_6.MetadataMode,
     name: 'MetadataMode',
+    isAssignable: (v) => v is $tom_build_6.MetadataMode,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'MetadataMode');
@@ -2137,18 +2147,18 @@ BridgedClass _createMetadataModeBridge() {
             ? D4.coerceList<String>(named['implies'], 'implies')
             : const <String>[];
         final description = D4.getOptionalNamedArg<String?>(named, 'description');
-        return $tom_build_17.MetadataMode(name: name, implies: implies, description: description);
+        return $tom_build_6.MetadataMode(name: name, implies: implies, description: description);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MetadataMode');
         final yaml = D4.getRequiredArg<$yaml_1.YamlMap>(positional, 0, 'yaml', 'MetadataMode');
-        return $tom_build_17.MetadataMode.fromYaml(yaml);
+        return $tom_build_6.MetadataMode.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_17.MetadataMode>(target, 'MetadataMode').name,
-      'implies': (visitor, target) => D4.validateTarget<$tom_build_17.MetadataMode>(target, 'MetadataMode').implies,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_17.MetadataMode>(target, 'MetadataMode').description,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_6.MetadataMode>(target, 'MetadataMode').name,
+      'implies': (visitor, target) => D4.validateTarget<$tom_build_6.MetadataMode>(target, 'MetadataMode').implies,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_6.MetadataMode>(target, 'MetadataMode').description,
     },
     constructorSignatures: {
       '': 'MetadataMode({required String name, List<String> implies = const [], String? description})',
@@ -2168,8 +2178,9 @@ BridgedClass _createMetadataModeBridge() {
 
 BridgedClass _createWorkspaceGroupBridge() {
   return BridgedClass(
-    nativeType: $tom_build_17.WorkspaceGroup,
+    nativeType: $tom_build_6.WorkspaceGroup,
     name: 'WorkspaceGroup',
+    isAssignable: (v) => v is $tom_build_6.WorkspaceGroup,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'WorkspaceGroup');
@@ -2177,19 +2188,19 @@ BridgedClass _createWorkspaceGroupBridge() {
         final projects = named.containsKey('projects') && named['projects'] != null
             ? D4.coerceList<String>(named['projects'], 'projects')
             : const <String>[];
-        return $tom_build_17.WorkspaceGroup(name: name, description: description, projects: projects);
+        return $tom_build_6.WorkspaceGroup(name: name, description: description, projects: projects);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'WorkspaceGroup');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'WorkspaceGroup');
         final yaml = D4.getRequiredArg<$yaml_1.YamlMap>(positional, 1, 'yaml', 'WorkspaceGroup');
-        return $tom_build_17.WorkspaceGroup.fromYaml(name, yaml);
+        return $tom_build_6.WorkspaceGroup.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceGroup>(target, 'WorkspaceGroup').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceGroup>(target, 'WorkspaceGroup').description,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceGroup>(target, 'WorkspaceGroup').projects,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceGroup>(target, 'WorkspaceGroup').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceGroup>(target, 'WorkspaceGroup').description,
+      'projects': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceGroup>(target, 'WorkspaceGroup').projects,
     },
     constructorSignatures: {
       '': 'WorkspaceGroup({required String name, String? description, List<String> projects = const []})',
@@ -2209,8 +2220,9 @@ BridgedClass _createWorkspaceGroupBridge() {
 
 BridgedClass _createWorkspaceProjectBridge() {
   return BridgedClass(
-    nativeType: $tom_build_17.WorkspaceProject,
+    nativeType: $tom_build_6.WorkspaceProject,
     name: 'WorkspaceProject',
+    isAssignable: (v) => v is $tom_build_6.WorkspaceProject,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'WorkspaceProject');
@@ -2248,31 +2260,31 @@ BridgedClass _createWorkspaceProjectBridge() {
         final copilotGuidelines = named.containsKey('copilotGuidelines') && named['copilotGuidelines'] != null
             ? D4.coerceList<String>(named['copilotGuidelines'], 'copilotGuidelines')
             : const <String>[];
-        return $tom_build_17.WorkspaceProject(name: name, displayName: displayName, projectName: projectName, type: type, description: description, buildAfter: buildAfter, features: features, build: build, run: run, deploy: deploy, binaries: binaries, docs: docs, tests: tests, examples: examples, copilotGuidelines: copilotGuidelines);
+        return $tom_build_6.WorkspaceProject(name: name, displayName: displayName, projectName: projectName, type: type, description: description, buildAfter: buildAfter, features: features, build: build, run: run, deploy: deploy, binaries: binaries, docs: docs, tests: tests, examples: examples, copilotGuidelines: copilotGuidelines);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'WorkspaceProject');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'WorkspaceProject');
         final yaml = D4.getRequiredArg<$yaml_1.YamlMap>(positional, 1, 'yaml', 'WorkspaceProject');
-        return $tom_build_17.WorkspaceProject.fromYaml(name, yaml);
+        return $tom_build_6.WorkspaceProject.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').name,
-      'displayName': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').displayName,
-      'projectName': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').projectName,
-      'type': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').type,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').description,
-      'buildAfter': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').buildAfter,
-      'features': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').features,
-      'build': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').build,
-      'run': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').run,
-      'deploy': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').deploy,
-      'binaries': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').binaries,
-      'docs': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').docs,
-      'tests': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').tests,
-      'examples': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').examples,
-      'copilotGuidelines': (visitor, target) => D4.validateTarget<$tom_build_17.WorkspaceProject>(target, 'WorkspaceProject').copilotGuidelines,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').name,
+      'displayName': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').displayName,
+      'projectName': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').projectName,
+      'type': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').type,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').description,
+      'buildAfter': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').buildAfter,
+      'features': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').features,
+      'build': (visitor, target) => (D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject') as dynamic).build,
+      'run': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').run,
+      'deploy': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').deploy,
+      'binaries': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').binaries,
+      'docs': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').docs,
+      'tests': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').tests,
+      'examples': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').examples,
+      'copilotGuidelines': (visitor, target) => D4.validateTarget<$tom_build_6.WorkspaceProject>(target, 'WorkspaceProject').copilotGuidelines,
     },
     constructorSignatures: {
       '': 'WorkspaceProject({required String name, String? displayName, String? projectName, String? type, String? description, List<String> buildAfter = const [], Map<String, bool> features = const {}, Map<String, dynamic> build = const {}, Map<String, dynamic> run = const {}, Map<String, dynamic> deploy = const {}, List<String> binaries = const [], List<String> docs = const [], List<String> tests = const [], List<String> examples = const [], List<String> copilotGuidelines = const []})',
@@ -2304,28 +2316,29 @@ BridgedClass _createWorkspaceProjectBridge() {
 
 BridgedClass _createPlatformInfoBridge() {
   return BridgedClass(
-    nativeType: $tom_build_16.PlatformInfo,
+    nativeType: $tom_build_5.PlatformInfo,
     name: 'PlatformInfo',
+    isAssignable: (v) => v is $tom_build_5.PlatformInfo,
     constructors: {
       'detect': (visitor, positional, named) {
-        return $tom_build_16.PlatformInfo.detect();
+        return $tom_build_5.PlatformInfo.detect();
       },
     },
     getters: {
-      'os': (visitor, target) => D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo').os,
-      'architecture': (visitor, target) => D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo').architecture,
-      'platform': (visitor, target) => D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo').platform,
-      'dartTargetPlatforms': (visitor, target) => D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo').dartTargetPlatforms,
+      'os': (visitor, target) => D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo').os,
+      'architecture': (visitor, target) => D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo').architecture,
+      'platform': (visitor, target) => D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo').platform,
+      'dartTargetPlatforms': (visitor, target) => D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo').dartTargetPlatforms,
     },
     methods: {
       'canBuildFor': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo');
+        final t = D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo');
         D4.requireMinArgs(positional, 1, 'canBuildFor');
         final targetPlatform = D4.getRequiredArg<String>(positional, 0, 'targetPlatform', 'canBuildFor');
         return t.canBuildFor(targetPlatform);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_16.PlatformInfo>(target, 'PlatformInfo');
+        final t = D4.validateTarget<$tom_build_5.PlatformInfo>(target, 'PlatformInfo');
         return t.toString();
       },
     },
@@ -2351,22 +2364,23 @@ BridgedClass _createPlatformInfoBridge() {
 
 BridgedClass _createToolContextBridge() {
   return BridgedClass(
-    nativeType: $tom_build_16.ToolContext,
+    nativeType: $tom_build_5.ToolContext,
     name: 'ToolContext',
+    isAssignable: (v) => v is $tom_build_5.ToolContext,
     constructors: {
     },
     getters: {
-      'workspaceInfo': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').workspaceInfo,
-      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').workspacePath,
-      'platformInfo': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').platformInfo,
-      'os': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').os,
-      'architecture': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').architecture,
-      'platform': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').platform,
-      'dartTargetPlatforms': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext').dartTargetPlatforms,
+      'workspaceInfo': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').workspaceInfo,
+      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').workspacePath,
+      'platformInfo': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').platformInfo,
+      'os': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').os,
+      'architecture': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').architecture,
+      'platform': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').platform,
+      'dartTargetPlatforms': (visitor, target) => D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext').dartTargetPlatforms,
     },
     methods: {
       'validateModes': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_16.ToolContext>(target, 'ToolContext');
+        final t = D4.validateTarget<$tom_build_5.ToolContext>(target, 'ToolContext');
         D4.requireMinArgs(positional, 1, 'validateModes');
         if (positional.isEmpty) {
           throw ArgumentError('validateModes: Missing required argument "requestedModes" at position 0');
@@ -2376,20 +2390,20 @@ BridgedClass _createToolContextBridge() {
       },
     },
     staticGetters: {
-      'current': (visitor) => $tom_build_16.ToolContext.current,
-      'isInitialized': (visitor) => $tom_build_16.ToolContext.isInitialized,
+      'current': (visitor) => $tom_build_5.ToolContext.current,
+      'isInitialized': (visitor) => $tom_build_5.ToolContext.isInitialized,
     },
     staticMethods: {
       'load': (visitor, positional, named, typeArgs) {
         final workspacePath = D4.getOptionalNamedArg<String?>(named, 'workspacePath');
-        return $tom_build_16.ToolContext.load(workspacePath: workspacePath);
+        return $tom_build_5.ToolContext.load(workspacePath: workspacePath);
       },
       'reload': (visitor, positional, named, typeArgs) {
         final workspacePath = D4.getOptionalNamedArg<String?>(named, 'workspacePath');
-        return $tom_build_16.ToolContext.reload(workspacePath: workspacePath);
+        return $tom_build_5.ToolContext.reload(workspacePath: workspacePath);
       },
       'clear': (visitor, positional, named, typeArgs) {
-        return $tom_build_16.ToolContext.clear();
+        return $tom_build_5.ToolContext.clear();
       },
     },
     methodSignatures: {
@@ -2422,21 +2436,22 @@ BridgedClass _createToolContextBridge() {
 
 BridgedClass _createToolContextExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_build_16.ToolContextException,
+    nativeType: ToolContextException,
     name: 'ToolContextException',
+    isAssignable: (v) => v is ToolContextException,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ToolContextException');
         final message = D4.getRequiredArg<String>(positional, 0, 'message', 'ToolContextException');
-        return $tom_build_16.ToolContextException(message);
+        return ToolContextException(message);
       },
     },
     getters: {
-      'message': (visitor, target) => D4.validateTarget<$tom_build_16.ToolContextException>(target, 'ToolContextException').message,
+      'message': (visitor, target) => D4.validateTarget<ToolContextException>(target, 'ToolContextException').message,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_16.ToolContextException>(target, 'ToolContextException');
+        final t = D4.validateTarget<ToolContextException>(target, 'ToolContextException');
         return t.toString();
       },
     },
@@ -2458,8 +2473,9 @@ BridgedClass _createToolContextExceptionBridge() {
 
 BridgedClass _createModeValidationResultBridge() {
   return BridgedClass(
-    nativeType: $tom_build_16.ModeValidationResult,
+    nativeType: $tom_build_5.ModeValidationResult,
     name: 'ModeValidationResult',
+    isAssignable: (v) => v is $tom_build_5.ModeValidationResult,
     constructors: {
       'success': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ModeValidationResult');
@@ -2467,18 +2483,18 @@ BridgedClass _createModeValidationResultBridge() {
           throw ArgumentError('ModeValidationResult: Missing required argument "resolvedModes" at position 0');
         }
         final resolvedModes = D4.coerceList<String>(positional[0], 'resolvedModes');
-        return $tom_build_16.ModeValidationResult.success(resolvedModes);
+        return $tom_build_5.ModeValidationResult.success(resolvedModes);
       },
       'error': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ModeValidationResult');
         final message = D4.getRequiredArg<String>(positional, 0, 'message', 'ModeValidationResult');
-        return $tom_build_16.ModeValidationResult.error(message);
+        return $tom_build_5.ModeValidationResult.error(message);
       },
     },
     getters: {
-      'isValid': (visitor, target) => D4.validateTarget<$tom_build_16.ModeValidationResult>(target, 'ModeValidationResult').isValid,
-      'errorMessage': (visitor, target) => D4.validateTarget<$tom_build_16.ModeValidationResult>(target, 'ModeValidationResult').errorMessage,
-      'resolvedModes': (visitor, target) => D4.validateTarget<$tom_build_16.ModeValidationResult>(target, 'ModeValidationResult').resolvedModes,
+      'isValid': (visitor, target) => D4.validateTarget<$tom_build_5.ModeValidationResult>(target, 'ModeValidationResult').isValid,
+      'errorMessage': (visitor, target) => D4.validateTarget<$tom_build_5.ModeValidationResult>(target, 'ModeValidationResult').errorMessage,
+      'resolvedModes': (visitor, target) => D4.validateTarget<$tom_build_5.ModeValidationResult>(target, 'ModeValidationResult').resolvedModes,
     },
     constructorSignatures: {
       'success': 'factory ModeValidationResult.success(List<String> resolvedModes)',
@@ -2498,59 +2514,60 @@ BridgedClass _createModeValidationResultBridge() {
 
 BridgedClass _createTomWsBridge() {
   return BridgedClass(
-    nativeType: $tom_build_10.TomWs,
+    nativeType: TomWs,
     name: 'TomWs',
+    isAssignable: (v) => v is TomWs,
     constructors: {
     },
     staticGetters: {
-      'context': (visitor) => $tom_build_10.TomWs.context,
-      'info': (visitor) => $tom_build_10.TomWs.info,
-      'path': (visitor) => $tom_build_10.TomWs.path,
-      'platform': (visitor) => $tom_build_10.TomWs.platform,
-      'projects': (visitor) => $tom_build_10.TomWs.projects,
-      'projectsMap': (visitor) => $tom_build_10.TomWs.projectsMap,
-      'groups': (visitor) => $tom_build_10.TomWs.groups,
-      'groupsMap': (visitor) => $tom_build_10.TomWs.groupsMap,
-      'name': (visitor) => $tom_build_10.TomWs.name,
-      'buildOrder': (visitor) => $tom_build_10.TomWs.buildOrder,
-      'projectNames': (visitor) => $tom_build_10.TomWs.projectNames,
-      'groupNames': (visitor) => $tom_build_10.TomWs.groupNames,
-      'dartPackages': (visitor) => $tom_build_10.TomWs.dartPackages,
-      'flutterApps': (visitor) => $tom_build_10.TomWs.flutterApps,
-      'dartServers': (visitor) => $tom_build_10.TomWs.dartServers,
-      'vscodeExtensions': (visitor) => $tom_build_10.TomWs.vscodeExtensions,
-      'isMacOS': (visitor) => $tom_build_10.TomWs.isMacOS,
-      'isLinux': (visitor) => $tom_build_10.TomWs.isLinux,
-      'isWindows': (visitor) => $tom_build_10.TomWs.isWindows,
-      'osName': (visitor) => $tom_build_10.TomWs.osName,
-      'arch': (visitor) => $tom_build_10.TomWs.arch,
-      'isLoaded': (visitor) => $tom_build_10.TomWs.isLoaded,
+      'context': (visitor) => TomWs.context,
+      'info': (visitor) => TomWs.info,
+      'path': (visitor) => TomWs.path,
+      'platform': (visitor) => TomWs.platform,
+      'projects': (visitor) => TomWs.projects,
+      'projectsMap': (visitor) => TomWs.projectsMap,
+      'groups': (visitor) => TomWs.groups,
+      'groupsMap': (visitor) => TomWs.groupsMap,
+      'name': (visitor) => TomWs.name,
+      'buildOrder': (visitor) => TomWs.buildOrder,
+      'projectNames': (visitor) => TomWs.projectNames,
+      'groupNames': (visitor) => TomWs.groupNames,
+      'dartPackages': (visitor) => TomWs.dartPackages,
+      'flutterApps': (visitor) => TomWs.flutterApps,
+      'dartServers': (visitor) => TomWs.dartServers,
+      'vscodeExtensions': (visitor) => TomWs.vscodeExtensions,
+      'isMacOS': (visitor) => TomWs.isMacOS,
+      'isLinux': (visitor) => TomWs.isLinux,
+      'isWindows': (visitor) => TomWs.isWindows,
+      'osName': (visitor) => TomWs.osName,
+      'arch': (visitor) => TomWs.arch,
+      'isLoaded': (visitor) => TomWs.isLoaded,
     },
     staticMethods: {
       'project': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'project');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'project');
-        return $tom_build_10.TomWs.project(name);
+        return TomWs.project(name);
       },
       'hasProject': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'hasProject');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'hasProject');
-        return $tom_build_10.TomWs.hasProject(name);
+        return TomWs.hasProject(name);
       },
       'projectsInGroup': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'projectsInGroup');
         final groupName = D4.getRequiredArg<String>(positional, 0, 'groupName', 'projectsInGroup');
-        return $tom_build_10.TomWs.projectsInGroup(groupName);
+        return TomWs.projectsInGroup(groupName);
       },
       'group': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'group');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'group');
-        return $tom_build_10.TomWs.group(name);
+        return TomWs.group(name);
       },
       'hasGroup': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'hasGroup');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'hasGroup');
-        return $tom_build_10.TomWs.hasGroup(name);
+        return TomWs.hasGroup(name);
       },
       'where': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'where');
@@ -2558,16 +2575,16 @@ BridgedClass _createTomWsBridge() {
           throw ArgumentError('where: Missing required argument "test" at position 0');
         }
         final testRaw = positional[0];
-        final test = ($tom_build_17.WorkspaceProject p0) { return D4.callInterpreterCallback(visitor, testRaw, [p0]) as bool; };
-        return $tom_build_10.TomWs.where(test);
+        final test = ($tom_build_6.WorkspaceProject p0) { return D4.callInterpreterCallback(visitor!, testRaw, [p0]) as bool; };
+        return TomWs.where(test);
       },
       'ofType': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'ofType');
         final type = D4.getRequiredArg<String>(positional, 0, 'type', 'ofType');
-        return $tom_build_10.TomWs.ofType(type);
+        return TomWs.ofType(type);
       },
       'reload': (visitor, positional, named, typeArgs) {
-        return $tom_build_10.TomWs.reload();
+        return TomWs.reload();
       },
     },
     staticMethodSignatures: {
@@ -2613,46 +2630,47 @@ BridgedClass _createTomWsBridge() {
 
 BridgedClass _createScriptYamlBridge() {
   return BridgedClass(
-    nativeType: $tom_build_11.ScriptYaml,
+    nativeType: ScriptYaml,
     name: 'ScriptYaml',
+    isAssignable: (v) => v is ScriptYaml,
     constructors: {
     },
     staticMethods: {
       'load': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'load');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'load');
-        return $tom_build_11.ScriptYaml.load(path);
+        return ScriptYaml.load(path);
       },
       'loadWithEnv': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadWithEnv');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'loadWithEnv');
         final environment = D4.coerceMapOrNull<String, String>(named['environment'], 'environment');
-        return $tom_build_11.ScriptYaml.loadWithEnv(path, environment: environment);
+        return ScriptYaml.loadWithEnv(path, environment: environment);
       },
       'parse': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parse');
         final yamlContent = D4.getRequiredArg<String>(positional, 0, 'yamlContent', 'parse');
-        return $tom_build_11.ScriptYaml.parse(yamlContent);
+        return ScriptYaml.parse(yamlContent);
       },
       'parseList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseList');
         final yamlContent = D4.getRequiredArg<String>(positional, 0, 'yamlContent', 'parseList');
-        return $tom_build_11.ScriptYaml.parseList(yamlContent);
+        return ScriptYaml.parseList(yamlContent);
       },
       'parseAny': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseAny');
         final yamlContent = D4.getRequiredArg<String>(positional, 0, 'yamlContent', 'parseAny');
-        return $tom_build_11.ScriptYaml.parseAny(yamlContent);
+        return ScriptYaml.parseAny(yamlContent);
       },
       'loadAny': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadAny');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'loadAny');
-        return $tom_build_11.ScriptYaml.loadAny(path);
+        return ScriptYaml.loadAny(path);
       },
       'loadList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadList');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'loadList');
-        return $tom_build_11.ScriptYaml.loadList(path);
+        return ScriptYaml.loadList(path);
       },
       'loadAndMerge': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadAndMerge');
@@ -2660,7 +2678,7 @@ BridgedClass _createScriptYamlBridge() {
           throw ArgumentError('loadAndMerge: Missing required argument "paths" at position 0');
         }
         final paths = D4.coerceList<String>(positional[0], 'paths');
-        return $tom_build_11.ScriptYaml.loadAndMerge(paths);
+        return ScriptYaml.loadAndMerge(paths);
       },
       'loadAndMergeWithEnv': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'loadAndMergeWithEnv');
@@ -2669,12 +2687,12 @@ BridgedClass _createScriptYamlBridge() {
         }
         final paths = D4.coerceList<String>(positional[0], 'paths');
         final environment = D4.coerceMapOrNull<String, String>(named['environment'], 'environment');
-        return $tom_build_11.ScriptYaml.loadAndMergeWithEnv(paths, environment: environment);
+        return ScriptYaml.loadAndMergeWithEnv(paths, environment: environment);
       },
       'isValidFile': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'isValidFile');
         final path = D4.getRequiredArg<String>(positional, 0, 'path', 'isValidFile');
-        return $tom_build_11.ScriptYaml.isValidFile(path);
+        return ScriptYaml.isValidFile(path);
       },
     },
     staticMethodSignatures: {
@@ -2698,23 +2716,24 @@ BridgedClass _createScriptYamlBridge() {
 
 BridgedClass _createTomZonedBridge() {
   return BridgedClass(
-    nativeType: $tom_build_12.TomZoned,
+    nativeType: TomZoned,
     name: 'TomZoned',
+    isAssignable: (v) => v is TomZoned,
     constructors: {
     },
     staticGetters: {
-      'current': (visitor) => $tom_build_12.TomZoned.current,
-      'root': (visitor) => $tom_build_12.TomZoned.root,
+      'current': (visitor) => TomZoned.current,
+      'root': (visitor) => TomZoned.root,
     },
     staticMethods: {
       'get': (visitor, positional, named, typeArgs) {
         final name = D4.getOptionalArg<String?>(positional, 0, 'name');
-        return $tom_build_12.TomZoned.get(name);
+        return TomZoned.get(name);
       },
       'getByKey': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'getByKey');
         final key = D4.getRequiredArg<Object>(positional, 0, 'key', 'getByKey');
-        return $tom_build_12.TomZoned.getByKey(key);
+        return TomZoned.getByKey(key);
       },
       'run': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'run');
@@ -2726,8 +2745,8 @@ BridgedClass _createTomZonedBridge() {
           throw ArgumentError('run: Missing required argument "body" at position 1');
         }
         final bodyRaw = positional[1];
-        final body = () { return D4.callInterpreterCallback(visitor, bodyRaw, []) as dynamic; };
-        return $tom_build_12.TomZoned.run(values, body);
+        final body = () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); };
+        return TomZoned.run(values, body);
       },
       'runAsync': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'runAsync');
@@ -2739,8 +2758,8 @@ BridgedClass _createTomZonedBridge() {
           throw ArgumentError('runAsync: Missing required argument "body" at position 1');
         }
         final bodyRaw = positional[1];
-        final body = () { return D4.callInterpreterCallback(visitor, bodyRaw, []) as Future<dynamic>; };
-        return $tom_build_12.TomZoned.runAsync(values, body);
+        final body = () { return D4.callInterpreterCallback(visitor!, bodyRaw, []) as Future<dynamic>; };
+        return TomZoned.runAsync(values, body);
       },
       'runGuarded': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'runGuarded');
@@ -2748,22 +2767,22 @@ BridgedClass _createTomZonedBridge() {
           throw ArgumentError('runGuarded: Missing required argument "body" at position 0');
         }
         final bodyRaw = positional[0];
-        final body = () { return D4.callInterpreterCallback(visitor, bodyRaw, []) as dynamic; };
+        final body = () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); };
         if (!named.containsKey('onError') || named['onError'] == null) {
           throw ArgumentError('runGuarded: Missing required named argument "onError"');
         }
         final onErrorRaw = named['onError'];
-        final onError = (Object p0, StackTrace p1) { D4.callInterpreterCallback(visitor, onErrorRaw, [p0, p1]); };
+        final onError = (Object p0, StackTrace p1) { D4.callInterpreterCallback(visitor!, onErrorRaw, [p0, p1]); };
         final values = D4.coerceMapOrNull<Object, Object?>(named['values'], 'values');
-        return $tom_build_12.TomZoned.runGuarded(body, onError: onError, values: values);
+        return TomZoned.runGuarded(body, onError: onError, values: values);
       },
       'has': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'has');
         final key = D4.getRequiredArg<Object>(positional, 0, 'key', 'has');
-        return $tom_build_12.TomZoned.has(key);
+        return TomZoned.has(key);
       },
       'hasType': (visitor, positional, named, typeArgs) {
-        return $tom_build_12.TomZoned.hasType();
+        return TomZoned.hasType();
       },
     },
     staticMethodSignatures: {
@@ -2788,8 +2807,9 @@ BridgedClass _createTomZonedBridge() {
 
 BridgedClass _createTomWorkspaceBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.TomWorkspace,
+    nativeType: $tom_build_3.TomWorkspace,
     name: 'TomWorkspace',
+    isAssignable: (v) => v is $tom_build_3.TomWorkspace,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getOptionalNamedArg<String?>(named, 'name');
@@ -2797,37 +2817,37 @@ BridgedClass _createTomWorkspaceBridge() {
         final operatingSystems = D4.coerceListOrNull<String>(named['operatingSystems'], 'operatingSystems');
         final mobilePlatforms = D4.coerceListOrNull<String>(named['mobilePlatforms'], 'mobilePlatforms');
         final imports = D4.coerceListOrNull<String>(named['imports'], 'imports');
-        final workspaceModes = D4.getOptionalNamedArg<$tom_build_13.WorkspaceModes?>(named, 'workspaceModes');
-        final crossCompilation = D4.getOptionalNamedArg<$tom_build_13.CrossCompilation?>(named, 'crossCompilation');
+        final workspaceModes = D4.getOptionalNamedArg<$tom_build_3.WorkspaceModes?>(named, 'workspaceModes');
+        final crossCompilation = D4.getOptionalNamedArg<$tom_build_3.CrossCompilation?>(named, 'crossCompilation');
         final groups = named.containsKey('groups') && named['groups'] != null
-            ? D4.coerceMap<String, $tom_build_13.GroupDef>(named['groups'], 'groups')
-            : const <String, $tom_build_13.GroupDef>{};
+            ? D4.coerceMap<String, $tom_build_3.GroupDef>(named['groups'], 'groups')
+            : const <String, $tom_build_3.GroupDef>{};
         final projectTypes = named.containsKey('projectTypes') && named['projectTypes'] != null
-            ? D4.coerceMap<String, $tom_build_13.ProjectTypeDef>(named['projectTypes'], 'projectTypes')
-            : const <String, $tom_build_13.ProjectTypeDef>{};
+            ? D4.coerceMap<String, $tom_build_3.ProjectTypeDef>(named['projectTypes'], 'projectTypes')
+            : const <String, $tom_build_3.ProjectTypeDef>{};
         final actions = named.containsKey('actions') && named['actions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ActionDef>(named['actions'], 'actions')
-            : const <String, $tom_build_13.ActionDef>{};
+            ? D4.coerceMap<String, $tom_build_3.ActionDef>(named['actions'], 'actions')
+            : const <String, $tom_build_3.ActionDef>{};
         final modeDefinitions = named.containsKey('modeDefinitions') && named['modeDefinitions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
-            : const <String, $tom_build_13.ModeDefinitions>{};
+            ? D4.coerceMap<String, $tom_build_3.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
+            : const <String, $tom_build_3.ModeDefinitions>{};
         final pipelines = named.containsKey('pipelines') && named['pipelines'] != null
-            ? D4.coerceMap<String, $tom_build_13.Pipeline>(named['pipelines'], 'pipelines')
-            : const <String, $tom_build_13.Pipeline>{};
+            ? D4.coerceMap<String, $tom_build_3.Pipeline>(named['pipelines'], 'pipelines')
+            : const <String, $tom_build_3.Pipeline>{};
         final projectInfo = named.containsKey('projectInfo') && named['projectInfo'] != null
-            ? D4.coerceMap<String, $tom_build_13.ProjectEntry>(named['projectInfo'], 'projectInfo')
-            : const <String, $tom_build_13.ProjectEntry>{};
+            ? D4.coerceMap<String, $tom_build_3.ProjectEntry>(named['projectInfo'], 'projectInfo')
+            : const <String, $tom_build_3.ProjectEntry>{};
         final deps = named.containsKey('deps') && named['deps'] != null
             ? D4.coerceMap<String, String>(named['deps'], 'deps')
             : const <String, String>{};
         final depsDev = named.containsKey('depsDev') && named['depsDev'] != null
             ? D4.coerceMap<String, String>(named['depsDev'], 'depsDev')
             : const <String, String>{};
-        final versionSettings = D4.getOptionalNamedArg<$tom_build_13.VersionSettings?>(named, 'versionSettings');
+        final versionSettings = D4.getOptionalNamedArg<$tom_build_3.VersionSettings?>(named, 'versionSettings');
         final customTags = named.containsKey('customTags') && named['customTags'] != null
             ? D4.coerceMap<String, dynamic>(named['customTags'], 'customTags')
             : const <String, dynamic>{};
-        return $tom_build_13.TomWorkspace(name: name, binaries: binaries, operatingSystems: operatingSystems, mobilePlatforms: mobilePlatforms, imports: imports, workspaceModes: workspaceModes, crossCompilation: crossCompilation, groups: groups, projectTypes: projectTypes, actions: actions, modeDefinitions: modeDefinitions, pipelines: pipelines, projectInfo: projectInfo, deps: deps, depsDev: depsDev, versionSettings: versionSettings, customTags: customTags);
+        return $tom_build_3.TomWorkspace(name: name, binaries: binaries, operatingSystems: operatingSystems, mobilePlatforms: mobilePlatforms, imports: imports, workspaceModes: workspaceModes, crossCompilation: crossCompilation, groups: groups, projectTypes: projectTypes, actions: actions, modeDefinitions: modeDefinitions, pipelines: pipelines, projectInfo: projectInfo, deps: deps, depsDev: depsDev, versionSettings: versionSettings, customTags: customTags);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomWorkspace');
@@ -2835,31 +2855,31 @@ BridgedClass _createTomWorkspaceBridge() {
           throw ArgumentError('TomWorkspace: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.TomWorkspace.fromYaml(yaml);
+        return $tom_build_3.TomWorkspace.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').name,
-      'binaries': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').binaries,
-      'operatingSystems': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').operatingSystems,
-      'mobilePlatforms': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').mobilePlatforms,
-      'imports': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').imports,
-      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').workspaceModes,
-      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').crossCompilation,
-      'groups': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').groups,
-      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').projectTypes,
-      'actions': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').actions,
-      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').modeDefinitions,
-      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').pipelines,
-      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').projectInfo,
-      'deps': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').deps,
-      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').depsDev,
-      'versionSettings': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').versionSettings,
-      'customTags': (visitor, target) => D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace').customTags,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').name,
+      'binaries': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').binaries,
+      'operatingSystems': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').operatingSystems,
+      'mobilePlatforms': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').mobilePlatforms,
+      'imports': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').imports,
+      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').workspaceModes,
+      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').crossCompilation,
+      'groups': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').groups,
+      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').projectTypes,
+      'actions': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').actions,
+      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').modeDefinitions,
+      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').pipelines,
+      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').projectInfo,
+      'deps': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').deps,
+      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').depsDev,
+      'versionSettings': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').versionSettings,
+      'customTags': (visitor, target) => D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace').customTags,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.TomWorkspace>(target, 'TomWorkspace');
+        final t = D4.validateTarget<$tom_build_3.TomWorkspace>(target, 'TomWorkspace');
         return t.toYaml();
       },
     },
@@ -2898,8 +2918,9 @@ BridgedClass _createTomWorkspaceBridge() {
 
 BridgedClass _createTomMasterBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.TomMaster,
+    nativeType: $tom_build_3.TomMaster,
     name: 'TomMaster',
+    isAssignable: (v) => v is $tom_build_3.TomMaster,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getOptionalNamedArg<String?>(named, 'name');
@@ -2907,47 +2928,47 @@ BridgedClass _createTomMasterBridge() {
         final operatingSystems = D4.coerceListOrNull<String>(named['operatingSystems'], 'operatingSystems');
         final mobilePlatforms = D4.coerceListOrNull<String>(named['mobilePlatforms'], 'mobilePlatforms');
         final imports = D4.coerceListOrNull<String>(named['imports'], 'imports');
-        final workspaceModes = D4.getOptionalNamedArg<$tom_build_13.WorkspaceModes?>(named, 'workspaceModes');
-        final crossCompilation = D4.getOptionalNamedArg<$tom_build_13.CrossCompilation?>(named, 'crossCompilation');
+        final workspaceModes = D4.getOptionalNamedArg<$tom_build_3.WorkspaceModes?>(named, 'workspaceModes');
+        final crossCompilation = D4.getOptionalNamedArg<$tom_build_3.CrossCompilation?>(named, 'crossCompilation');
         final groups = named.containsKey('groups') && named['groups'] != null
-            ? D4.coerceMap<String, $tom_build_13.GroupDef>(named['groups'], 'groups')
-            : const <String, $tom_build_13.GroupDef>{};
+            ? D4.coerceMap<String, $tom_build_3.GroupDef>(named['groups'], 'groups')
+            : const <String, $tom_build_3.GroupDef>{};
         final projectTypes = named.containsKey('projectTypes') && named['projectTypes'] != null
-            ? D4.coerceMap<String, $tom_build_13.ProjectTypeDef>(named['projectTypes'], 'projectTypes')
-            : const <String, $tom_build_13.ProjectTypeDef>{};
+            ? D4.coerceMap<String, $tom_build_3.ProjectTypeDef>(named['projectTypes'], 'projectTypes')
+            : const <String, $tom_build_3.ProjectTypeDef>{};
         final actions = named.containsKey('actions') && named['actions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ActionDef>(named['actions'], 'actions')
-            : const <String, $tom_build_13.ActionDef>{};
+            ? D4.coerceMap<String, $tom_build_3.ActionDef>(named['actions'], 'actions')
+            : const <String, $tom_build_3.ActionDef>{};
         final modeDefinitions = named.containsKey('modeDefinitions') && named['modeDefinitions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
-            : const <String, $tom_build_13.ModeDefinitions>{};
+            ? D4.coerceMap<String, $tom_build_3.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
+            : const <String, $tom_build_3.ModeDefinitions>{};
         final pipelines = named.containsKey('pipelines') && named['pipelines'] != null
-            ? D4.coerceMap<String, $tom_build_13.Pipeline>(named['pipelines'], 'pipelines')
-            : const <String, $tom_build_13.Pipeline>{};
+            ? D4.coerceMap<String, $tom_build_3.Pipeline>(named['pipelines'], 'pipelines')
+            : const <String, $tom_build_3.Pipeline>{};
         final projectInfo = named.containsKey('projectInfo') && named['projectInfo'] != null
-            ? D4.coerceMap<String, $tom_build_13.ProjectEntry>(named['projectInfo'], 'projectInfo')
-            : const <String, $tom_build_13.ProjectEntry>{};
+            ? D4.coerceMap<String, $tom_build_3.ProjectEntry>(named['projectInfo'], 'projectInfo')
+            : const <String, $tom_build_3.ProjectEntry>{};
         final deps = named.containsKey('deps') && named['deps'] != null
             ? D4.coerceMap<String, String>(named['deps'], 'deps')
             : const <String, String>{};
         final depsDev = named.containsKey('depsDev') && named['depsDev'] != null
             ? D4.coerceMap<String, String>(named['depsDev'], 'depsDev')
             : const <String, String>{};
-        final versionSettings = D4.getOptionalNamedArg<$tom_build_13.VersionSettings?>(named, 'versionSettings');
+        final versionSettings = D4.getOptionalNamedArg<$tom_build_3.VersionSettings?>(named, 'versionSettings');
         final customTags = named.containsKey('customTags') && named['customTags'] != null
             ? D4.coerceMap<String, dynamic>(named['customTags'], 'customTags')
             : const <String, dynamic>{};
         final scanTimestamp = D4.getOptionalNamedArg<String?>(named, 'scanTimestamp');
         final projects = named.containsKey('projects') && named['projects'] != null
-            ? D4.coerceMap<String, $tom_build_13.TomProject>(named['projects'], 'projects')
-            : const <String, $tom_build_13.TomProject>{};
+            ? D4.coerceMap<String, $tom_build_3.TomProject>(named['projects'], 'projects')
+            : const <String, $tom_build_3.TomProject>{};
         final buildOrder = named.containsKey('buildOrder') && named['buildOrder'] != null
             ? D4.coerceList<String>(named['buildOrder'], 'buildOrder')
             : const <String>[];
         final actionOrder = named.containsKey('actionOrder') && named['actionOrder'] != null
             ? D4.coerceMap<String, List<String>>(named['actionOrder'], 'actionOrder')
             : const <String, List<String>>{};
-        return $tom_build_13.TomMaster(name: name, binaries: binaries, operatingSystems: operatingSystems, mobilePlatforms: mobilePlatforms, imports: imports, workspaceModes: workspaceModes, crossCompilation: crossCompilation, groups: groups, projectTypes: projectTypes, actions: actions, modeDefinitions: modeDefinitions, pipelines: pipelines, projectInfo: projectInfo, deps: deps, depsDev: depsDev, versionSettings: versionSettings, customTags: customTags, scanTimestamp: scanTimestamp, projects: projects, buildOrder: buildOrder, actionOrder: actionOrder);
+        return $tom_build_3.TomMaster(name: name, binaries: binaries, operatingSystems: operatingSystems, mobilePlatforms: mobilePlatforms, imports: imports, workspaceModes: workspaceModes, crossCompilation: crossCompilation, groups: groups, projectTypes: projectTypes, actions: actions, modeDefinitions: modeDefinitions, pipelines: pipelines, projectInfo: projectInfo, deps: deps, depsDev: depsDev, versionSettings: versionSettings, customTags: customTags, scanTimestamp: scanTimestamp, projects: projects, buildOrder: buildOrder, actionOrder: actionOrder);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomMaster');
@@ -2955,35 +2976,35 @@ BridgedClass _createTomMasterBridge() {
           throw ArgumentError('TomMaster: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.TomMaster.fromYaml(yaml);
+        return $tom_build_3.TomMaster.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').name,
-      'binaries': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').binaries,
-      'operatingSystems': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').operatingSystems,
-      'mobilePlatforms': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').mobilePlatforms,
-      'imports': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').imports,
-      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').workspaceModes,
-      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').crossCompilation,
-      'groups': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').groups,
-      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').projectTypes,
-      'actions': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').actions,
-      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').modeDefinitions,
-      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').pipelines,
-      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').projectInfo,
-      'deps': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').deps,
-      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').depsDev,
-      'versionSettings': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').versionSettings,
-      'customTags': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').customTags,
-      'scanTimestamp': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').scanTimestamp,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').projects,
-      'buildOrder': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').buildOrder,
-      'actionOrder': (visitor, target) => D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster').actionOrder,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').name,
+      'binaries': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').binaries,
+      'operatingSystems': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').operatingSystems,
+      'mobilePlatforms': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').mobilePlatforms,
+      'imports': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').imports,
+      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').workspaceModes,
+      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').crossCompilation,
+      'groups': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').groups,
+      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').projectTypes,
+      'actions': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').actions,
+      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').modeDefinitions,
+      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').pipelines,
+      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').projectInfo,
+      'deps': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').deps,
+      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').depsDev,
+      'versionSettings': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').versionSettings,
+      'customTags': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').customTags,
+      'scanTimestamp': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').scanTimestamp,
+      'projects': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').projects,
+      'buildOrder': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').buildOrder,
+      'actionOrder': (visitor, target) => D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster').actionOrder,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.TomMaster>(target, 'TomMaster');
+        final t = D4.validateTarget<$tom_build_3.TomMaster>(target, 'TomMaster');
         return t.toYaml();
       },
     },
@@ -3026,8 +3047,9 @@ BridgedClass _createTomMasterBridge() {
 
 BridgedClass _createTomProjectBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.TomProject,
+    nativeType: $tom_build_3.TomProject,
     name: 'TomProject',
+    isAssignable: (v) => v is $tom_build_3.TomProject,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'TomProject');
@@ -3040,26 +3062,26 @@ BridgedClass _createTomProjectBridge() {
         final actionOrder = named.containsKey('actionOrder') && named['actionOrder'] != null
             ? D4.coerceMap<String, List<String>>(named['actionOrder'], 'actionOrder')
             : const <String, List<String>>{};
-        final features = D4.getOptionalNamedArg<$tom_build_13.Features?>(named, 'features');
+        final features = D4.getOptionalNamedArg<$tom_build_3.Features?>(named, 'features');
         final actions = named.containsKey('actions') && named['actions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ActionDef>(named['actions'], 'actions')
-            : const <String, $tom_build_13.ActionDef>{};
+            ? D4.coerceMap<String, $tom_build_3.ActionDef>(named['actions'], 'actions')
+            : const <String, $tom_build_3.ActionDef>{};
         final modeDefinitions = named.containsKey('modeDefinitions') && named['modeDefinitions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
-            : const <String, $tom_build_13.ModeDefinitions>{};
-        final crossCompilation = D4.getOptionalNamedArg<$tom_build_13.CrossCompilation?>(named, 'crossCompilation');
-        final packageModule = D4.getOptionalNamedArg<$tom_build_13.PackageModule?>(named, 'packageModule');
+            ? D4.coerceMap<String, $tom_build_3.ModeDefinitions>(named['modeDefinitions'], 'modeDefinitions')
+            : const <String, $tom_build_3.ModeDefinitions>{};
+        final crossCompilation = D4.getOptionalNamedArg<$tom_build_3.CrossCompilation?>(named, 'crossCompilation');
+        final packageModule = D4.getOptionalNamedArg<$tom_build_3.PackageModule?>(named, 'packageModule');
         final parts = named.containsKey('parts') && named['parts'] != null
-            ? D4.coerceMap<String, $tom_build_13.Part>(named['parts'], 'parts')
-            : const <String, $tom_build_13.Part>{};
+            ? D4.coerceMap<String, $tom_build_3.Part>(named['parts'], 'parts')
+            : const <String, $tom_build_3.Part>{};
         final tests = D4.coerceListOrNull<String>(named['tests'], 'tests');
         final examples = D4.coerceListOrNull<String>(named['examples'], 'examples');
         final docs = D4.coerceListOrNull<String>(named['docs'], 'docs');
         final copilotGuidelines = D4.coerceListOrNull<String>(named['copilotGuidelines'], 'copilotGuidelines');
         final binaryFiles = D4.coerceListOrNull<String>(named['binaryFiles'], 'binaryFiles');
         final executables = named.containsKey('executables') && named['executables'] != null
-            ? D4.coerceList<$tom_build_13.ExecutableDef>(named['executables'], 'executables')
-            : const <$tom_build_13.ExecutableDef>[];
+            ? D4.coerceList<$tom_build_3.ExecutableDef>(named['executables'], 'executables')
+            : const <$tom_build_3.ExecutableDef>[];
         final metadataFiles = named.containsKey('metadataFiles') && named['metadataFiles'] != null
             ? D4.coerceMap<String, dynamic>(named['metadataFiles'], 'metadataFiles')
             : const <String, dynamic>{};
@@ -3067,7 +3089,7 @@ BridgedClass _createTomProjectBridge() {
         final customTags = named.containsKey('customTags') && named['customTags'] != null
             ? D4.coerceMap<String, dynamic>(named['customTags'], 'customTags')
             : const <String, dynamic>{};
-        return $tom_build_13.TomProject(name: name, type: type, description: description, binaries: binaries, buildAfter: buildAfter, actionOrder: actionOrder, features: features, actions: actions, modeDefinitions: modeDefinitions, crossCompilation: crossCompilation, packageModule: packageModule, parts: parts, tests: tests, examples: examples, docs: docs, copilotGuidelines: copilotGuidelines, binaryFiles: binaryFiles, executables: executables, metadataFiles: metadataFiles, actionModeDefinitions: actionModeDefinitions, customTags: customTags);
+        return $tom_build_3.TomProject(name: name, type: type, description: description, binaries: binaries, buildAfter: buildAfter, actionOrder: actionOrder, features: features, actions: actions, modeDefinitions: modeDefinitions, crossCompilation: crossCompilation, packageModule: packageModule, parts: parts, tests: tests, examples: examples, docs: docs, copilotGuidelines: copilotGuidelines, binaryFiles: binaryFiles, executables: executables, metadataFiles: metadataFiles, actionModeDefinitions: actionModeDefinitions, customTags: customTags);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomProject');
@@ -3076,43 +3098,43 @@ BridgedClass _createTomProjectBridge() {
           throw ArgumentError('TomProject: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        final defaultActions = D4.coerceMapOrNull<String, $tom_build_13.ActionDef>(named['defaultActions'], 'defaultActions');
-        return $tom_build_13.TomProject.fromYaml(name, yaml, defaultActions: defaultActions);
+        final defaultActions = D4.coerceMapOrNull<String, $tom_build_3.ActionDef>(named['defaultActions'], 'defaultActions');
+        return $tom_build_3.TomProject.fromYaml(name, yaml, defaultActions: defaultActions);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').name,
-      'type': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').type,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').description,
-      'binaries': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').binaries,
-      'buildAfter': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').buildAfter,
-      'actionOrder': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').actionOrder,
-      'features': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').features,
-      'actions': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').actions,
-      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').modeDefinitions,
-      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').crossCompilation,
-      'packageModule': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').packageModule,
-      'parts': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').parts,
-      'tests': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').tests,
-      'examples': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').examples,
-      'docs': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').docs,
-      'copilotGuidelines': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').copilotGuidelines,
-      'binaryFiles': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').binaryFiles,
-      'executables': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').executables,
-      'metadataFiles': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').metadataFiles,
-      'actionModeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').actionModeDefinitions,
-      'customTags': (visitor, target) => D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject').customTags,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').name,
+      'type': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').type,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').description,
+      'binaries': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').binaries,
+      'buildAfter': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').buildAfter,
+      'actionOrder': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').actionOrder,
+      'features': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').features,
+      'actions': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').actions,
+      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').modeDefinitions,
+      'crossCompilation': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').crossCompilation,
+      'packageModule': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').packageModule,
+      'parts': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').parts,
+      'tests': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').tests,
+      'examples': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').examples,
+      'docs': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').docs,
+      'copilotGuidelines': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').copilotGuidelines,
+      'binaryFiles': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').binaryFiles,
+      'executables': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').executables,
+      'metadataFiles': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').metadataFiles,
+      'actionModeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').actionModeDefinitions,
+      'customTags': (visitor, target) => D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject').customTags,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject');
+        final t = D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject');
         return t.toYaml();
       },
       'toYamlCompact': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.TomProject>(target, 'TomProject');
-        final workspaceCrossCompilation = D4.getOptionalNamedArg<$tom_build_13.CrossCompilation?>(named, 'workspaceCrossCompilation');
-        final workspaceModeDefinitions = D4.coerceMapOrNull<String, $tom_build_13.ModeDefinitions>(named['workspaceModeDefinitions'], 'workspaceModeDefinitions');
-        final workspaceActions = D4.coerceMapOrNull<String, $tom_build_13.ActionDef>(named['workspaceActions'], 'workspaceActions');
+        final t = D4.validateTarget<$tom_build_3.TomProject>(target, 'TomProject');
+        final workspaceCrossCompilation = D4.getOptionalNamedArg<$tom_build_3.CrossCompilation?>(named, 'workspaceCrossCompilation');
+        final workspaceModeDefinitions = D4.coerceMapOrNull<String, $tom_build_3.ModeDefinitions>(named['workspaceModeDefinitions'], 'workspaceModeDefinitions');
+        final workspaceActions = D4.coerceMapOrNull<String, $tom_build_3.ActionDef>(named['workspaceActions'], 'workspaceActions');
         return t.toYamlCompact(workspaceCrossCompilation: workspaceCrossCompilation, workspaceModeDefinitions: workspaceModeDefinitions, workspaceActions: workspaceActions);
       },
     },
@@ -3156,22 +3178,23 @@ BridgedClass _createTomProjectBridge() {
 
 BridgedClass _createWorkspaceModesBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.WorkspaceModes,
+    nativeType: $tom_build_3.WorkspaceModes,
     name: 'WorkspaceModes',
+    isAssignable: (v) => v is $tom_build_3.WorkspaceModes,
     constructors: {
       '': (visitor, positional, named) {
         final modeTypes = named.containsKey('modeTypes') && named['modeTypes'] != null
             ? D4.coerceList<String>(named['modeTypes'], 'modeTypes')
             : const <String>[];
         final supported = named.containsKey('supported') && named['supported'] != null
-            ? D4.coerceList<$tom_build_13.SupportedMode>(named['supported'], 'supported')
-            : const <$tom_build_13.SupportedMode>[];
+            ? D4.coerceList<$tom_build_3.SupportedMode>(named['supported'], 'supported')
+            : const <$tom_build_3.SupportedMode>[];
         final modeTypeConfigs = named.containsKey('modeTypeConfigs') && named['modeTypeConfigs'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeTypeConfig>(named['modeTypeConfigs'], 'modeTypeConfigs')
-            : const <String, $tom_build_13.ModeTypeConfig>{};
-        final actionModeConfiguration = D4.getOptionalNamedArg<$tom_build_13.ActionModeConfiguration?>(named, 'actionModeConfiguration');
+            ? D4.coerceMap<String, $tom_build_3.ModeTypeConfig>(named['modeTypeConfigs'], 'modeTypeConfigs')
+            : const <String, $tom_build_3.ModeTypeConfig>{};
+        final actionModeConfiguration = D4.getOptionalNamedArg<$tom_build_3.ActionModeConfiguration?>(named, 'actionModeConfiguration');
         final defaultMode = D4.getOptionalNamedArg<String?>(named, 'defaultMode');
-        return $tom_build_13.WorkspaceModes(modeTypes: modeTypes, supported: supported, modeTypeConfigs: modeTypeConfigs, actionModeConfiguration: actionModeConfiguration, defaultMode: defaultMode);
+        return $tom_build_3.WorkspaceModes(modeTypes: modeTypes, supported: supported, modeTypeConfigs: modeTypeConfigs, actionModeConfiguration: actionModeConfiguration, defaultMode: defaultMode);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WorkspaceModes');
@@ -3179,20 +3202,20 @@ BridgedClass _createWorkspaceModesBridge() {
           throw ArgumentError('WorkspaceModes: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.WorkspaceModes.fromYaml(yaml);
+        return $tom_build_3.WorkspaceModes.fromYaml(yaml);
       },
     },
     getters: {
-      'modeTypes': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').modeTypes,
-      'supported': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').supported,
-      'modeTypeConfigs': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').modeTypeConfigs,
-      'actionModeConfiguration': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').actionModeConfiguration,
-      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').defaultMode,
-      'supportedModes': (visitor, target) => D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes').supportedModes,
+      'modeTypes': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').modeTypes,
+      'supported': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').supported,
+      'modeTypeConfigs': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').modeTypeConfigs,
+      'actionModeConfiguration': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').actionModeConfiguration,
+      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').defaultMode,
+      'supportedModes': (visitor, target) => D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes').supportedModes,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.WorkspaceModes>(target, 'WorkspaceModes');
+        final t = D4.validateTarget<$tom_build_3.WorkspaceModes>(target, 'WorkspaceModes');
         return t.toYaml();
       },
     },
@@ -3220,8 +3243,9 @@ BridgedClass _createWorkspaceModesBridge() {
 
 BridgedClass _createSupportedModeBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.SupportedMode,
+    nativeType: $tom_build_3.SupportedMode,
     name: 'SupportedMode',
+    isAssignable: (v) => v is $tom_build_3.SupportedMode,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'SupportedMode');
@@ -3229,7 +3253,7 @@ BridgedClass _createSupportedModeBridge() {
         final implies = named.containsKey('implies') && named['implies'] != null
             ? D4.coerceList<String>(named['implies'], 'implies')
             : const <String>[];
-        return $tom_build_13.SupportedMode(name: name, description: description, implies: implies);
+        return $tom_build_3.SupportedMode(name: name, description: description, implies: implies);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'SupportedMode');
@@ -3237,17 +3261,17 @@ BridgedClass _createSupportedModeBridge() {
           throw ArgumentError('SupportedMode: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.SupportedMode.fromYaml(yaml);
+        return $tom_build_3.SupportedMode.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.SupportedMode>(target, 'SupportedMode').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.SupportedMode>(target, 'SupportedMode').description,
-      'implies': (visitor, target) => D4.validateTarget<$tom_build_13.SupportedMode>(target, 'SupportedMode').implies,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.SupportedMode>(target, 'SupportedMode').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.SupportedMode>(target, 'SupportedMode').description,
+      'implies': (visitor, target) => D4.validateTarget<$tom_build_3.SupportedMode>(target, 'SupportedMode').implies,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.SupportedMode>(target, 'SupportedMode');
+        final t = D4.validateTarget<$tom_build_3.SupportedMode>(target, 'SupportedMode');
         return t.toYaml();
       },
     },
@@ -3272,15 +3296,16 @@ BridgedClass _createSupportedModeBridge() {
 
 BridgedClass _createModeTypeConfigBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ModeTypeConfig,
+    nativeType: $tom_build_3.ModeTypeConfig,
     name: 'ModeTypeConfig',
+    isAssignable: (v) => v is $tom_build_3.ModeTypeConfig,
     constructors: {
       '': (visitor, positional, named) {
         final defaultMode = D4.getOptionalNamedArg<String?>(named, 'defaultMode');
         final entries = named.containsKey('entries') && named['entries'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeEntry>(named['entries'], 'entries')
-            : const <String, $tom_build_13.ModeEntry>{};
-        return $tom_build_13.ModeTypeConfig(defaultMode: defaultMode, entries: entries);
+            ? D4.coerceMap<String, $tom_build_3.ModeEntry>(named['entries'], 'entries')
+            : const <String, $tom_build_3.ModeEntry>{};
+        return $tom_build_3.ModeTypeConfig(defaultMode: defaultMode, entries: entries);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ModeTypeConfig');
@@ -3288,16 +3313,16 @@ BridgedClass _createModeTypeConfigBridge() {
           throw ArgumentError('ModeTypeConfig: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ModeTypeConfig.fromYaml(yaml);
+        return $tom_build_3.ModeTypeConfig.fromYaml(yaml);
       },
     },
     getters: {
-      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_13.ModeTypeConfig>(target, 'ModeTypeConfig').defaultMode,
-      'entries': (visitor, target) => D4.validateTarget<$tom_build_13.ModeTypeConfig>(target, 'ModeTypeConfig').entries,
+      'defaultMode': (visitor, target) => D4.validateTarget<$tom_build_3.ModeTypeConfig>(target, 'ModeTypeConfig').defaultMode,
+      'entries': (visitor, target) => D4.validateTarget<$tom_build_3.ModeTypeConfig>(target, 'ModeTypeConfig').entries,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ModeTypeConfig>(target, 'ModeTypeConfig');
+        final t = D4.validateTarget<$tom_build_3.ModeTypeConfig>(target, 'ModeTypeConfig');
         return t.toYaml();
       },
     },
@@ -3321,8 +3346,9 @@ BridgedClass _createModeTypeConfigBridge() {
 
 BridgedClass _createModeEntryBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ModeEntry,
+    nativeType: $tom_build_3.ModeEntry,
     name: 'ModeEntry',
+    isAssignable: (v) => v is $tom_build_3.ModeEntry,
     constructors: {
       '': (visitor, positional, named) {
         final description = D4.getOptionalNamedArg<String?>(named, 'description');
@@ -3332,7 +3358,7 @@ BridgedClass _createModeEntryBridge() {
         final properties = named.containsKey('properties') && named['properties'] != null
             ? D4.coerceMap<String, dynamic>(named['properties'], 'properties')
             : const <String, dynamic>{};
-        return $tom_build_13.ModeEntry(description: description, modes: modes, properties: properties);
+        return $tom_build_3.ModeEntry(description: description, modes: modes, properties: properties);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ModeEntry');
@@ -3340,17 +3366,17 @@ BridgedClass _createModeEntryBridge() {
           throw ArgumentError('ModeEntry: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ModeEntry.fromYaml(yaml);
+        return $tom_build_3.ModeEntry.fromYaml(yaml);
       },
     },
     getters: {
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.ModeEntry>(target, 'ModeEntry').description,
-      'modes': (visitor, target) => D4.validateTarget<$tom_build_13.ModeEntry>(target, 'ModeEntry').modes,
-      'properties': (visitor, target) => D4.validateTarget<$tom_build_13.ModeEntry>(target, 'ModeEntry').properties,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.ModeEntry>(target, 'ModeEntry').description,
+      'modes': (visitor, target) => D4.validateTarget<$tom_build_3.ModeEntry>(target, 'ModeEntry').modes,
+      'properties': (visitor, target) => D4.validateTarget<$tom_build_3.ModeEntry>(target, 'ModeEntry').properties,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ModeEntry>(target, 'ModeEntry');
+        final t = D4.validateTarget<$tom_build_3.ModeEntry>(target, 'ModeEntry');
         return t.toYaml();
       },
     },
@@ -3375,14 +3401,15 @@ BridgedClass _createModeEntryBridge() {
 
 BridgedClass _createActionModeConfigurationBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ActionModeConfiguration,
+    nativeType: $tom_build_3.ActionModeConfiguration,
     name: 'ActionModeConfiguration',
+    isAssignable: (v) => v is $tom_build_3.ActionModeConfiguration,
     constructors: {
       '': (visitor, positional, named) {
         final entries = named.containsKey('entries') && named['entries'] != null
-            ? D4.coerceMap<String, $tom_build_13.ActionModeEntry>(named['entries'], 'entries')
-            : const <String, $tom_build_13.ActionModeEntry>{};
-        return $tom_build_13.ActionModeConfiguration(entries: entries);
+            ? D4.coerceMap<String, $tom_build_3.ActionModeEntry>(named['entries'], 'entries')
+            : const <String, $tom_build_3.ActionModeEntry>{};
+        return $tom_build_3.ActionModeConfiguration(entries: entries);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ActionModeConfiguration');
@@ -3390,15 +3417,15 @@ BridgedClass _createActionModeConfigurationBridge() {
           throw ArgumentError('ActionModeConfiguration: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ActionModeConfiguration.fromYaml(yaml);
+        return $tom_build_3.ActionModeConfiguration.fromYaml(yaml);
       },
     },
     getters: {
-      'entries': (visitor, target) => D4.validateTarget<$tom_build_13.ActionModeConfiguration>(target, 'ActionModeConfiguration').entries,
+      'entries': (visitor, target) => D4.validateTarget<$tom_build_3.ActionModeConfiguration>(target, 'ActionModeConfiguration').entries,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ActionModeConfiguration>(target, 'ActionModeConfiguration');
+        final t = D4.validateTarget<$tom_build_3.ActionModeConfiguration>(target, 'ActionModeConfiguration');
         return t.toYaml();
       },
     },
@@ -3421,15 +3448,16 @@ BridgedClass _createActionModeConfigurationBridge() {
 
 BridgedClass _createActionModeEntryBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ActionModeEntry,
+    nativeType: $tom_build_3.ActionModeEntry,
     name: 'ActionModeEntry',
+    isAssignable: (v) => v is $tom_build_3.ActionModeEntry,
     constructors: {
       '': (visitor, positional, named) {
         final description = D4.getOptionalNamedArg<String?>(named, 'description');
         final modes = named.containsKey('modes') && named['modes'] != null
             ? D4.coerceMap<String, String>(named['modes'], 'modes')
             : const <String, String>{};
-        return $tom_build_13.ActionModeEntry(description: description, modes: modes);
+        return $tom_build_3.ActionModeEntry(description: description, modes: modes);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ActionModeEntry');
@@ -3437,16 +3465,16 @@ BridgedClass _createActionModeEntryBridge() {
           throw ArgumentError('ActionModeEntry: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ActionModeEntry.fromYaml(yaml);
+        return $tom_build_3.ActionModeEntry.fromYaml(yaml);
       },
     },
     getters: {
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.ActionModeEntry>(target, 'ActionModeEntry').description,
-      'modes': (visitor, target) => D4.validateTarget<$tom_build_13.ActionModeEntry>(target, 'ActionModeEntry').modes,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.ActionModeEntry>(target, 'ActionModeEntry').description,
+      'modes': (visitor, target) => D4.validateTarget<$tom_build_3.ActionModeEntry>(target, 'ActionModeEntry').modes,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ActionModeEntry>(target, 'ActionModeEntry');
+        final t = D4.validateTarget<$tom_build_3.ActionModeEntry>(target, 'ActionModeEntry');
         return t.toYaml();
       },
     },
@@ -3470,14 +3498,15 @@ BridgedClass _createActionModeEntryBridge() {
 
 BridgedClass _createModeDefinitionsBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ModeDefinitions,
+    nativeType: $tom_build_3.ModeDefinitions,
     name: 'ModeDefinitions',
+    isAssignable: (v) => v is $tom_build_3.ModeDefinitions,
     constructors: {
       '': (visitor, positional, named) {
         final definitions = named.containsKey('definitions') && named['definitions'] != null
-            ? D4.coerceMap<String, $tom_build_13.ModeDef>(named['definitions'], 'definitions')
-            : const <String, $tom_build_13.ModeDef>{};
-        return $tom_build_13.ModeDefinitions(definitions: definitions);
+            ? D4.coerceMap<String, $tom_build_3.ModeDef>(named['definitions'], 'definitions')
+            : const <String, $tom_build_3.ModeDef>{};
+        return $tom_build_3.ModeDefinitions(definitions: definitions);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ModeDefinitions');
@@ -3485,15 +3514,15 @@ BridgedClass _createModeDefinitionsBridge() {
           throw ArgumentError('ModeDefinitions: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ModeDefinitions.fromYaml(yaml);
+        return $tom_build_3.ModeDefinitions.fromYaml(yaml);
       },
     },
     getters: {
-      'definitions': (visitor, target) => D4.validateTarget<$tom_build_13.ModeDefinitions>(target, 'ModeDefinitions').definitions,
+      'definitions': (visitor, target) => D4.validateTarget<$tom_build_3.ModeDefinitions>(target, 'ModeDefinitions').definitions,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ModeDefinitions>(target, 'ModeDefinitions');
+        final t = D4.validateTarget<$tom_build_3.ModeDefinitions>(target, 'ModeDefinitions');
         return t.toYaml();
       },
     },
@@ -3516,8 +3545,9 @@ BridgedClass _createModeDefinitionsBridge() {
 
 BridgedClass _createModeDefBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ModeDef,
+    nativeType: $tom_build_3.ModeDef,
     name: 'ModeDef',
+    isAssignable: (v) => v is $tom_build_3.ModeDef,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'ModeDef');
@@ -3525,7 +3555,7 @@ BridgedClass _createModeDefBridge() {
         final properties = named.containsKey('properties') && named['properties'] != null
             ? D4.coerceMap<String, dynamic>(named['properties'], 'properties')
             : const <String, dynamic>{};
-        return $tom_build_13.ModeDef(name: name, description: description, properties: properties);
+        return $tom_build_3.ModeDef(name: name, description: description, properties: properties);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'ModeDef');
@@ -3534,17 +3564,17 @@ BridgedClass _createModeDefBridge() {
           throw ArgumentError('ModeDef: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.ModeDef.fromYaml(name, yaml);
+        return $tom_build_3.ModeDef.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.ModeDef>(target, 'ModeDef').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.ModeDef>(target, 'ModeDef').description,
-      'properties': (visitor, target) => D4.validateTarget<$tom_build_13.ModeDef>(target, 'ModeDef').properties,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.ModeDef>(target, 'ModeDef').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.ModeDef>(target, 'ModeDef').description,
+      'properties': (visitor, target) => D4.validateTarget<$tom_build_3.ModeDef>(target, 'ModeDef').properties,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ModeDef>(target, 'ModeDef');
+        final t = D4.validateTarget<$tom_build_3.ModeDef>(target, 'ModeDef');
         return t.toYaml();
       },
     },
@@ -3569,19 +3599,20 @@ BridgedClass _createModeDefBridge() {
 
 BridgedClass _createActionDefBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ActionDef,
+    nativeType: $tom_build_3.ActionDef,
     name: 'ActionDef',
+    isAssignable: (v) => v is $tom_build_3.ActionDef,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'ActionDef');
         final description = D4.getOptionalNamedArg<String?>(named, 'description');
         final skipTypes = D4.coerceListOrNull<String>(named['skipTypes'], 'skipTypes');
         final appliesToTypes = D4.coerceListOrNull<String>(named['appliesToTypes'], 'appliesToTypes');
-        final defaultConfig = D4.getOptionalNamedArg<$tom_build_13.ActionConfig?>(named, 'defaultConfig');
+        final defaultConfig = D4.getOptionalNamedArg<$tom_build_3.ActionConfig?>(named, 'defaultConfig');
         final typeConfigs = named.containsKey('typeConfigs') && named['typeConfigs'] != null
-            ? D4.coerceMap<String, $tom_build_13.ActionConfig>(named['typeConfigs'], 'typeConfigs')
-            : const <String, $tom_build_13.ActionConfig>{};
-        return $tom_build_13.ActionDef(name: name, description: description, skipTypes: skipTypes, appliesToTypes: appliesToTypes, defaultConfig: defaultConfig, typeConfigs: typeConfigs);
+            ? D4.coerceMap<String, $tom_build_3.ActionConfig>(named['typeConfigs'], 'typeConfigs')
+            : const <String, $tom_build_3.ActionConfig>{};
+        return $tom_build_3.ActionDef(name: name, description: description, skipTypes: skipTypes, appliesToTypes: appliesToTypes, defaultConfig: defaultConfig, typeConfigs: typeConfigs);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'ActionDef');
@@ -3590,20 +3621,20 @@ BridgedClass _createActionDefBridge() {
           throw ArgumentError('ActionDef: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.ActionDef.fromYaml(name, yaml);
+        return $tom_build_3.ActionDef.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').description,
-      'skipTypes': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').skipTypes,
-      'appliesToTypes': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').appliesToTypes,
-      'defaultConfig': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').defaultConfig,
-      'typeConfigs': (visitor, target) => D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef').typeConfigs,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').description,
+      'skipTypes': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').skipTypes,
+      'appliesToTypes': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').appliesToTypes,
+      'defaultConfig': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').defaultConfig,
+      'typeConfigs': (visitor, target) => D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef').typeConfigs,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ActionDef>(target, 'ActionDef');
+        final t = D4.validateTarget<$tom_build_3.ActionDef>(target, 'ActionDef');
         return t.toYaml();
       },
     },
@@ -3631,8 +3662,9 @@ BridgedClass _createActionDefBridge() {
 
 BridgedClass _createActionConfigBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ActionConfig,
+    nativeType: $tom_build_3.ActionConfig,
     name: 'ActionConfig',
+    isAssignable: (v) => v is $tom_build_3.ActionConfig,
     constructors: {
       '': (visitor, positional, named) {
         final preCommands = D4.coerceListOrNull<dynamic>(named['preCommands'], 'preCommands');
@@ -3643,7 +3675,7 @@ BridgedClass _createActionConfigBridge() {
         final customTags = named.containsKey('customTags') && named['customTags'] != null
             ? D4.coerceMap<String, dynamic>(named['customTags'], 'customTags')
             : const <String, dynamic>{};
-        return $tom_build_13.ActionConfig(preCommands: preCommands, commands: commands, postCommands: postCommands, customTags: customTags);
+        return $tom_build_3.ActionConfig(preCommands: preCommands, commands: commands, postCommands: postCommands, customTags: customTags);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ActionConfig');
@@ -3651,18 +3683,18 @@ BridgedClass _createActionConfigBridge() {
           throw ArgumentError('ActionConfig: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ActionConfig.fromYaml(yaml);
+        return $tom_build_3.ActionConfig.fromYaml(yaml);
       },
     },
     getters: {
-      'preCommands': (visitor, target) => D4.validateTarget<$tom_build_13.ActionConfig>(target, 'ActionConfig').preCommands,
-      'commands': (visitor, target) => D4.validateTarget<$tom_build_13.ActionConfig>(target, 'ActionConfig').commands,
-      'postCommands': (visitor, target) => D4.validateTarget<$tom_build_13.ActionConfig>(target, 'ActionConfig').postCommands,
-      'customTags': (visitor, target) => D4.validateTarget<$tom_build_13.ActionConfig>(target, 'ActionConfig').customTags,
+      'preCommands': (visitor, target) => D4.validateTarget<$tom_build_3.ActionConfig>(target, 'ActionConfig').preCommands,
+      'commands': (visitor, target) => D4.validateTarget<$tom_build_3.ActionConfig>(target, 'ActionConfig').commands,
+      'postCommands': (visitor, target) => D4.validateTarget<$tom_build_3.ActionConfig>(target, 'ActionConfig').postCommands,
+      'customTags': (visitor, target) => D4.validateTarget<$tom_build_3.ActionConfig>(target, 'ActionConfig').customTags,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ActionConfig>(target, 'ActionConfig');
+        final t = D4.validateTarget<$tom_build_3.ActionConfig>(target, 'ActionConfig');
         return t.toYaml();
       },
     },
@@ -3688,8 +3720,9 @@ BridgedClass _createActionConfigBridge() {
 
 BridgedClass _createGroupDefBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.GroupDef,
+    nativeType: $tom_build_3.GroupDef,
     name: 'GroupDef',
+    isAssignable: (v) => v is $tom_build_3.GroupDef,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'GroupDef');
@@ -3698,7 +3731,7 @@ BridgedClass _createGroupDefBridge() {
             ? D4.coerceList<String>(named['projects'], 'projects')
             : const <String>[];
         final projectInfoOverrides = D4.coerceMapOrNull<String, dynamic>(named['projectInfoOverrides'], 'projectInfoOverrides');
-        return $tom_build_13.GroupDef(name: name, description: description, projects: projects, projectInfoOverrides: projectInfoOverrides);
+        return $tom_build_3.GroupDef(name: name, description: description, projects: projects, projectInfoOverrides: projectInfoOverrides);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'GroupDef');
@@ -3707,18 +3740,18 @@ BridgedClass _createGroupDefBridge() {
           throw ArgumentError('GroupDef: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.GroupDef.fromYaml(name, yaml);
+        return $tom_build_3.GroupDef.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.GroupDef>(target, 'GroupDef').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.GroupDef>(target, 'GroupDef').description,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_13.GroupDef>(target, 'GroupDef').projects,
-      'projectInfoOverrides': (visitor, target) => D4.validateTarget<$tom_build_13.GroupDef>(target, 'GroupDef').projectInfoOverrides,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.GroupDef>(target, 'GroupDef').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.GroupDef>(target, 'GroupDef').description,
+      'projects': (visitor, target) => D4.validateTarget<$tom_build_3.GroupDef>(target, 'GroupDef').projects,
+      'projectInfoOverrides': (visitor, target) => D4.validateTarget<$tom_build_3.GroupDef>(target, 'GroupDef').projectInfoOverrides,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.GroupDef>(target, 'GroupDef');
+        final t = D4.validateTarget<$tom_build_3.GroupDef>(target, 'GroupDef');
         return t.toYaml();
       },
     },
@@ -3744,8 +3777,9 @@ BridgedClass _createGroupDefBridge() {
 
 BridgedClass _createProjectTypeDefBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ProjectTypeDef,
+    nativeType: $tom_build_3.ProjectTypeDef,
     name: 'ProjectTypeDef',
+    isAssignable: (v) => v is $tom_build_3.ProjectTypeDef,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'ProjectTypeDef');
@@ -3754,7 +3788,7 @@ BridgedClass _createProjectTypeDefBridge() {
             ? D4.coerceMap<String, String>(named['metadataFiles'], 'metadataFiles')
             : const <String, String>{};
         final projectInfoOverrides = D4.coerceMapOrNull<String, dynamic>(named['projectInfoOverrides'], 'projectInfoOverrides');
-        return $tom_build_13.ProjectTypeDef(name: name, description: description, metadataFiles: metadataFiles, projectInfoOverrides: projectInfoOverrides);
+        return $tom_build_3.ProjectTypeDef(name: name, description: description, metadataFiles: metadataFiles, projectInfoOverrides: projectInfoOverrides);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'ProjectTypeDef');
@@ -3763,18 +3797,18 @@ BridgedClass _createProjectTypeDefBridge() {
           throw ArgumentError('ProjectTypeDef: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.ProjectTypeDef.fromYaml(key, yaml);
+        return $tom_build_3.ProjectTypeDef.fromYaml(key, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectTypeDef>(target, 'ProjectTypeDef').name,
-      'description': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectTypeDef>(target, 'ProjectTypeDef').description,
-      'metadataFiles': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectTypeDef>(target, 'ProjectTypeDef').metadataFiles,
-      'projectInfoOverrides': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectTypeDef>(target, 'ProjectTypeDef').projectInfoOverrides,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectTypeDef>(target, 'ProjectTypeDef').name,
+      'description': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectTypeDef>(target, 'ProjectTypeDef').description,
+      'metadataFiles': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectTypeDef>(target, 'ProjectTypeDef').metadataFiles,
+      'projectInfoOverrides': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectTypeDef>(target, 'ProjectTypeDef').projectInfoOverrides,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ProjectTypeDef>(target, 'ProjectTypeDef');
+        final t = D4.validateTarget<$tom_build_3.ProjectTypeDef>(target, 'ProjectTypeDef');
         return t.toYaml();
       },
     },
@@ -3800,14 +3834,15 @@ BridgedClass _createProjectTypeDefBridge() {
 
 BridgedClass _createFeaturesBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.Features,
+    nativeType: $tom_build_3.Features,
     name: 'Features',
+    isAssignable: (v) => v is $tom_build_3.Features,
     constructors: {
       '': (visitor, positional, named) {
         final flags = named.containsKey('flags') && named['flags'] != null
             ? D4.coerceMap<String, bool>(named['flags'], 'flags')
             : const <String, bool>{};
-        return $tom_build_13.Features(flags: flags);
+        return $tom_build_3.Features(flags: flags);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Features');
@@ -3815,19 +3850,19 @@ BridgedClass _createFeaturesBridge() {
           throw ArgumentError('Features: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.Features.fromYaml(yaml);
+        return $tom_build_3.Features.fromYaml(yaml);
       },
     },
     getters: {
-      'flags': (visitor, target) => D4.validateTarget<$tom_build_13.Features>(target, 'Features').flags,
+      'flags': (visitor, target) => D4.validateTarget<$tom_build_3.Features>(target, 'Features').flags,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.Features>(target, 'Features');
+        final t = D4.validateTarget<$tom_build_3.Features>(target, 'Features');
         return t.toYaml();
       },
       '[]': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.Features>(target, 'Features');
+        final t = D4.validateTarget<$tom_build_3.Features>(target, 'Features');
         final index = D4.getRequiredArg<String>(positional, 0, 'index', 'operator[]');
         return t[index];
       },
@@ -3851,17 +3886,18 @@ BridgedClass _createFeaturesBridge() {
 
 BridgedClass _createCrossCompilationBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.CrossCompilation,
+    nativeType: $tom_build_3.CrossCompilation,
     name: 'CrossCompilation',
+    isAssignable: (v) => v is $tom_build_3.CrossCompilation,
     constructors: {
       '': (visitor, positional, named) {
         final allTargets = named.containsKey('allTargets') && named['allTargets'] != null
             ? D4.coerceList<String>(named['allTargets'], 'allTargets')
             : const <String>[];
         final buildOn = named.containsKey('buildOn') && named['buildOn'] != null
-            ? D4.coerceMap<String, $tom_build_13.BuildOnTarget>(named['buildOn'], 'buildOn')
-            : const <String, $tom_build_13.BuildOnTarget>{};
-        return $tom_build_13.CrossCompilation(allTargets: allTargets, buildOn: buildOn);
+            ? D4.coerceMap<String, $tom_build_3.BuildOnTarget>(named['buildOn'], 'buildOn')
+            : const <String, $tom_build_3.BuildOnTarget>{};
+        return $tom_build_3.CrossCompilation(allTargets: allTargets, buildOn: buildOn);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'CrossCompilation');
@@ -3869,16 +3905,16 @@ BridgedClass _createCrossCompilationBridge() {
           throw ArgumentError('CrossCompilation: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.CrossCompilation.fromYaml(yaml);
+        return $tom_build_3.CrossCompilation.fromYaml(yaml);
       },
     },
     getters: {
-      'allTargets': (visitor, target) => D4.validateTarget<$tom_build_13.CrossCompilation>(target, 'CrossCompilation').allTargets,
-      'buildOn': (visitor, target) => D4.validateTarget<$tom_build_13.CrossCompilation>(target, 'CrossCompilation').buildOn,
+      'allTargets': (visitor, target) => D4.validateTarget<$tom_build_3.CrossCompilation>(target, 'CrossCompilation').allTargets,
+      'buildOn': (visitor, target) => D4.validateTarget<$tom_build_3.CrossCompilation>(target, 'CrossCompilation').buildOn,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.CrossCompilation>(target, 'CrossCompilation');
+        final t = D4.validateTarget<$tom_build_3.CrossCompilation>(target, 'CrossCompilation');
         return t.toYaml();
       },
     },
@@ -3902,14 +3938,15 @@ BridgedClass _createCrossCompilationBridge() {
 
 BridgedClass _createBuildOnTargetBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.BuildOnTarget,
+    nativeType: $tom_build_3.BuildOnTarget,
     name: 'BuildOnTarget',
+    isAssignable: (v) => v is $tom_build_3.BuildOnTarget,
     constructors: {
       '': (visitor, positional, named) {
         final targets = named.containsKey('targets') && named['targets'] != null
             ? D4.coerceList<String>(named['targets'], 'targets')
             : const <String>[];
-        return $tom_build_13.BuildOnTarget(targets: targets);
+        return $tom_build_3.BuildOnTarget(targets: targets);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'BuildOnTarget');
@@ -3917,15 +3954,15 @@ BridgedClass _createBuildOnTargetBridge() {
           throw ArgumentError('BuildOnTarget: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.BuildOnTarget.fromYaml(yaml);
+        return $tom_build_3.BuildOnTarget.fromYaml(yaml);
       },
     },
     getters: {
-      'targets': (visitor, target) => D4.validateTarget<$tom_build_13.BuildOnTarget>(target, 'BuildOnTarget').targets,
+      'targets': (visitor, target) => D4.validateTarget<$tom_build_3.BuildOnTarget>(target, 'BuildOnTarget').targets,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.BuildOnTarget>(target, 'BuildOnTarget');
+        final t = D4.validateTarget<$tom_build_3.BuildOnTarget>(target, 'BuildOnTarget');
         return t.toYaml();
       },
     },
@@ -3948,19 +3985,20 @@ BridgedClass _createBuildOnTargetBridge() {
 
 BridgedClass _createPipelineBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.Pipeline,
+    nativeType: $tom_build_3.Pipeline,
     name: 'Pipeline',
+    isAssignable: (v) => v is $tom_build_3.Pipeline,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'Pipeline');
         final globalParameters = D4.coerceListOrNull<String>(named['globalParameters'], 'globalParameters');
         final projects = named.containsKey('projects') && named['projects'] != null
-            ? D4.coerceList<$tom_build_13.PipelineProject>(named['projects'], 'projects')
-            : const <$tom_build_13.PipelineProject>[];
+            ? D4.coerceList<$tom_build_3.PipelineProject>(named['projects'], 'projects')
+            : const <$tom_build_3.PipelineProject>[];
         final actions = named.containsKey('actions') && named['actions'] != null
-            ? D4.coerceList<$tom_build_13.PipelineAction>(named['actions'], 'actions')
-            : const <$tom_build_13.PipelineAction>[];
-        return $tom_build_13.Pipeline(name: name, globalParameters: globalParameters, projects: projects, actions: actions);
+            ? D4.coerceList<$tom_build_3.PipelineAction>(named['actions'], 'actions')
+            : const <$tom_build_3.PipelineAction>[];
+        return $tom_build_3.Pipeline(name: name, globalParameters: globalParameters, projects: projects, actions: actions);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Pipeline');
@@ -3969,18 +4007,18 @@ BridgedClass _createPipelineBridge() {
           throw ArgumentError('Pipeline: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.Pipeline.fromYaml(name, yaml);
+        return $tom_build_3.Pipeline.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.Pipeline>(target, 'Pipeline').name,
-      'globalParameters': (visitor, target) => D4.validateTarget<$tom_build_13.Pipeline>(target, 'Pipeline').globalParameters,
-      'projects': (visitor, target) => D4.validateTarget<$tom_build_13.Pipeline>(target, 'Pipeline').projects,
-      'actions': (visitor, target) => D4.validateTarget<$tom_build_13.Pipeline>(target, 'Pipeline').actions,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.Pipeline>(target, 'Pipeline').name,
+      'globalParameters': (visitor, target) => D4.validateTarget<$tom_build_3.Pipeline>(target, 'Pipeline').globalParameters,
+      'projects': (visitor, target) => D4.validateTarget<$tom_build_3.Pipeline>(target, 'Pipeline').projects,
+      'actions': (visitor, target) => D4.validateTarget<$tom_build_3.Pipeline>(target, 'Pipeline').actions,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.Pipeline>(target, 'Pipeline');
+        final t = D4.validateTarget<$tom_build_3.Pipeline>(target, 'Pipeline');
         return t.toYaml();
       },
     },
@@ -4006,12 +4044,13 @@ BridgedClass _createPipelineBridge() {
 
 BridgedClass _createPipelineProjectBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.PipelineProject,
+    nativeType: $tom_build_3.PipelineProject,
     name: 'PipelineProject',
+    isAssignable: (v) => v is $tom_build_3.PipelineProject,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'PipelineProject');
-        return $tom_build_13.PipelineProject(name: name);
+        return $tom_build_3.PipelineProject(name: name);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'PipelineProject');
@@ -4019,15 +4058,15 @@ BridgedClass _createPipelineProjectBridge() {
           throw ArgumentError('PipelineProject: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.PipelineProject.fromYaml(yaml);
+        return $tom_build_3.PipelineProject.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.PipelineProject>(target, 'PipelineProject').name,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.PipelineProject>(target, 'PipelineProject').name,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.PipelineProject>(target, 'PipelineProject');
+        final t = D4.validateTarget<$tom_build_3.PipelineProject>(target, 'PipelineProject');
         return t.toYaml();
       },
     },
@@ -4050,12 +4089,13 @@ BridgedClass _createPipelineProjectBridge() {
 
 BridgedClass _createPipelineActionBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.PipelineAction,
+    nativeType: $tom_build_3.PipelineAction,
     name: 'PipelineAction',
+    isAssignable: (v) => v is $tom_build_3.PipelineAction,
     constructors: {
       '': (visitor, positional, named) {
         final action = D4.getRequiredNamedArg<String>(named, 'action', 'PipelineAction');
-        return $tom_build_13.PipelineAction(action: action);
+        return $tom_build_3.PipelineAction(action: action);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'PipelineAction');
@@ -4063,15 +4103,15 @@ BridgedClass _createPipelineActionBridge() {
           throw ArgumentError('PipelineAction: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.PipelineAction.fromYaml(yaml);
+        return $tom_build_3.PipelineAction.fromYaml(yaml);
       },
     },
     getters: {
-      'action': (visitor, target) => D4.validateTarget<$tom_build_13.PipelineAction>(target, 'PipelineAction').action,
+      'action': (visitor, target) => D4.validateTarget<$tom_build_3.PipelineAction>(target, 'PipelineAction').action,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.PipelineAction>(target, 'PipelineAction');
+        final t = D4.validateTarget<$tom_build_3.PipelineAction>(target, 'PipelineAction');
         return t.toYaml();
       },
     },
@@ -4094,15 +4134,16 @@ BridgedClass _createPipelineActionBridge() {
 
 BridgedClass _createProjectEntryBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ProjectEntry,
+    nativeType: $tom_build_3.ProjectEntry,
     name: 'ProjectEntry',
+    isAssignable: (v) => v is $tom_build_3.ProjectEntry,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'ProjectEntry');
         final settings = named.containsKey('settings') && named['settings'] != null
             ? D4.coerceMap<String, dynamic>(named['settings'], 'settings')
             : const <String, dynamic>{};
-        return $tom_build_13.ProjectEntry(name: name, settings: settings);
+        return $tom_build_3.ProjectEntry(name: name, settings: settings);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'ProjectEntry');
@@ -4111,16 +4152,16 @@ BridgedClass _createProjectEntryBridge() {
           throw ArgumentError('ProjectEntry: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.ProjectEntry.fromYaml(name, yaml);
+        return $tom_build_3.ProjectEntry.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectEntry>(target, 'ProjectEntry').name,
-      'settings': (visitor, target) => D4.validateTarget<$tom_build_13.ProjectEntry>(target, 'ProjectEntry').settings,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectEntry>(target, 'ProjectEntry').name,
+      'settings': (visitor, target) => D4.validateTarget<$tom_build_3.ProjectEntry>(target, 'ProjectEntry').settings,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ProjectEntry>(target, 'ProjectEntry');
+        final t = D4.validateTarget<$tom_build_3.ProjectEntry>(target, 'ProjectEntry');
         return t.toYaml();
       },
     },
@@ -4144,15 +4185,16 @@ BridgedClass _createProjectEntryBridge() {
 
 BridgedClass _createVersionSettingsBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.VersionSettings,
+    nativeType: $tom_build_3.VersionSettings,
     name: 'VersionSettings',
+    isAssignable: (v) => v is $tom_build_3.VersionSettings,
     constructors: {
       '': (visitor, positional, named) {
         final prereleaseTag = D4.getOptionalNamedArg<String?>(named, 'prereleaseTag');
         final autoIncrement = D4.getOptionalNamedArg<bool?>(named, 'autoIncrement');
         final minDevBuild = D4.getOptionalNamedArg<int?>(named, 'minDevBuild');
         final actionCounter = D4.getOptionalNamedArg<int?>(named, 'actionCounter');
-        return $tom_build_13.VersionSettings(prereleaseTag: prereleaseTag, autoIncrement: autoIncrement, minDevBuild: minDevBuild, actionCounter: actionCounter);
+        return $tom_build_3.VersionSettings(prereleaseTag: prereleaseTag, autoIncrement: autoIncrement, minDevBuild: minDevBuild, actionCounter: actionCounter);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'VersionSettings');
@@ -4160,18 +4202,18 @@ BridgedClass _createVersionSettingsBridge() {
           throw ArgumentError('VersionSettings: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.VersionSettings.fromYaml(yaml);
+        return $tom_build_3.VersionSettings.fromYaml(yaml);
       },
     },
     getters: {
-      'prereleaseTag': (visitor, target) => D4.validateTarget<$tom_build_13.VersionSettings>(target, 'VersionSettings').prereleaseTag,
-      'autoIncrement': (visitor, target) => D4.validateTarget<$tom_build_13.VersionSettings>(target, 'VersionSettings').autoIncrement,
-      'minDevBuild': (visitor, target) => D4.validateTarget<$tom_build_13.VersionSettings>(target, 'VersionSettings').minDevBuild,
-      'actionCounter': (visitor, target) => D4.validateTarget<$tom_build_13.VersionSettings>(target, 'VersionSettings').actionCounter,
+      'prereleaseTag': (visitor, target) => D4.validateTarget<$tom_build_3.VersionSettings>(target, 'VersionSettings').prereleaseTag,
+      'autoIncrement': (visitor, target) => D4.validateTarget<$tom_build_3.VersionSettings>(target, 'VersionSettings').autoIncrement,
+      'minDevBuild': (visitor, target) => D4.validateTarget<$tom_build_3.VersionSettings>(target, 'VersionSettings').minDevBuild,
+      'actionCounter': (visitor, target) => D4.validateTarget<$tom_build_3.VersionSettings>(target, 'VersionSettings').actionCounter,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.VersionSettings>(target, 'VersionSettings');
+        final t = D4.validateTarget<$tom_build_3.VersionSettings>(target, 'VersionSettings');
         return t.toYaml();
       },
     },
@@ -4197,14 +4239,15 @@ BridgedClass _createVersionSettingsBridge() {
 
 BridgedClass _createPackageModuleBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.PackageModule,
+    nativeType: $tom_build_3.PackageModule,
     name: 'PackageModule',
+    isAssignable: (v) => v is $tom_build_3.PackageModule,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'PackageModule');
         final libraryFile = D4.getOptionalNamedArg<String?>(named, 'libraryFile');
         final sourceFolders = D4.coerceListOrNull<String>(named['sourceFolders'], 'sourceFolders');
-        return $tom_build_13.PackageModule(name: name, libraryFile: libraryFile, sourceFolders: sourceFolders);
+        return $tom_build_3.PackageModule(name: name, libraryFile: libraryFile, sourceFolders: sourceFolders);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'PackageModule');
@@ -4212,17 +4255,17 @@ BridgedClass _createPackageModuleBridge() {
           throw ArgumentError('PackageModule: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.PackageModule.fromYaml(yaml);
+        return $tom_build_3.PackageModule.fromYaml(yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.PackageModule>(target, 'PackageModule').name,
-      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_13.PackageModule>(target, 'PackageModule').libraryFile,
-      'sourceFolders': (visitor, target) => D4.validateTarget<$tom_build_13.PackageModule>(target, 'PackageModule').sourceFolders,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.PackageModule>(target, 'PackageModule').name,
+      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_3.PackageModule>(target, 'PackageModule').libraryFile,
+      'sourceFolders': (visitor, target) => D4.validateTarget<$tom_build_3.PackageModule>(target, 'PackageModule').sourceFolders,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.PackageModule>(target, 'PackageModule');
+        final t = D4.validateTarget<$tom_build_3.PackageModule>(target, 'PackageModule');
         return t.toYaml();
       },
     },
@@ -4247,16 +4290,17 @@ BridgedClass _createPackageModuleBridge() {
 
 BridgedClass _createPartBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.Part,
+    nativeType: $tom_build_3.Part,
     name: 'Part',
+    isAssignable: (v) => v is $tom_build_3.Part,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'Part');
         final libraryFile = D4.getOptionalNamedArg<String?>(named, 'libraryFile');
         final modules = named.containsKey('modules') && named['modules'] != null
-            ? D4.coerceMap<String, $tom_build_13.Module>(named['modules'], 'modules')
-            : const <String, $tom_build_13.Module>{};
-        return $tom_build_13.Part(name: name, libraryFile: libraryFile, modules: modules);
+            ? D4.coerceMap<String, $tom_build_3.Module>(named['modules'], 'modules')
+            : const <String, $tom_build_3.Module>{};
+        return $tom_build_3.Part(name: name, libraryFile: libraryFile, modules: modules);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Part');
@@ -4265,17 +4309,17 @@ BridgedClass _createPartBridge() {
           throw ArgumentError('Part: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.Part.fromYaml(name, yaml);
+        return $tom_build_3.Part.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.Part>(target, 'Part').name,
-      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_13.Part>(target, 'Part').libraryFile,
-      'modules': (visitor, target) => D4.validateTarget<$tom_build_13.Part>(target, 'Part').modules,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.Part>(target, 'Part').name,
+      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_3.Part>(target, 'Part').libraryFile,
+      'modules': (visitor, target) => D4.validateTarget<$tom_build_3.Part>(target, 'Part').modules,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.Part>(target, 'Part');
+        final t = D4.validateTarget<$tom_build_3.Part>(target, 'Part');
         return t.toYaml();
       },
     },
@@ -4300,13 +4344,14 @@ BridgedClass _createPartBridge() {
 
 BridgedClass _createModuleBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.Module,
+    nativeType: $tom_build_3.Module,
     name: 'Module',
+    isAssignable: (v) => v is $tom_build_3.Module,
     constructors: {
       '': (visitor, positional, named) {
         final name = D4.getRequiredNamedArg<String>(named, 'name', 'Module');
         final libraryFile = D4.getOptionalNamedArg<String?>(named, 'libraryFile');
-        return $tom_build_13.Module(name: name, libraryFile: libraryFile);
+        return $tom_build_3.Module(name: name, libraryFile: libraryFile);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'Module');
@@ -4315,16 +4360,16 @@ BridgedClass _createModuleBridge() {
           throw ArgumentError('Module: Missing required argument "yaml" at position 1');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[1], 'yaml');
-        return $tom_build_13.Module.fromYaml(name, yaml);
+        return $tom_build_3.Module.fromYaml(name, yaml);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_build_13.Module>(target, 'Module').name,
-      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_13.Module>(target, 'Module').libraryFile,
+      'name': (visitor, target) => D4.validateTarget<$tom_build_3.Module>(target, 'Module').name,
+      'libraryFile': (visitor, target) => D4.validateTarget<$tom_build_3.Module>(target, 'Module').libraryFile,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.Module>(target, 'Module');
+        final t = D4.validateTarget<$tom_build_3.Module>(target, 'Module');
         return t.toYaml();
       },
     },
@@ -4348,13 +4393,14 @@ BridgedClass _createModuleBridge() {
 
 BridgedClass _createExecutableDefBridge() {
   return BridgedClass(
-    nativeType: $tom_build_13.ExecutableDef,
+    nativeType: $tom_build_3.ExecutableDef,
     name: 'ExecutableDef',
+    isAssignable: (v) => v is $tom_build_3.ExecutableDef,
     constructors: {
       '': (visitor, positional, named) {
         final source = D4.getRequiredNamedArg<String>(named, 'source', 'ExecutableDef');
         final output = D4.getRequiredNamedArg<String>(named, 'output', 'ExecutableDef');
-        return $tom_build_13.ExecutableDef(source: source, output: output);
+        return $tom_build_3.ExecutableDef(source: source, output: output);
       },
       'fromYaml': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'ExecutableDef');
@@ -4362,16 +4408,16 @@ BridgedClass _createExecutableDefBridge() {
           throw ArgumentError('ExecutableDef: Missing required argument "yaml" at position 0');
         }
         final yaml = D4.coerceMap<String, dynamic>(positional[0], 'yaml');
-        return $tom_build_13.ExecutableDef.fromYaml(yaml);
+        return $tom_build_3.ExecutableDef.fromYaml(yaml);
       },
     },
     getters: {
-      'source': (visitor, target) => D4.validateTarget<$tom_build_13.ExecutableDef>(target, 'ExecutableDef').source,
-      'output': (visitor, target) => D4.validateTarget<$tom_build_13.ExecutableDef>(target, 'ExecutableDef').output,
+      'source': (visitor, target) => D4.validateTarget<$tom_build_3.ExecutableDef>(target, 'ExecutableDef').source,
+      'output': (visitor, target) => D4.validateTarget<$tom_build_3.ExecutableDef>(target, 'ExecutableDef').output,
     },
     methods: {
       'toYaml': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_13.ExecutableDef>(target, 'ExecutableDef');
+        final t = D4.validateTarget<$tom_build_3.ExecutableDef>(target, 'ExecutableDef');
         return t.toYaml();
       },
     },
@@ -4395,21 +4441,22 @@ BridgedClass _createExecutableDefBridge() {
 
 BridgedClass _createWorkspaceParserBridge() {
   return BridgedClass(
-    nativeType: $tom_build_14.WorkspaceParser,
+    nativeType: WorkspaceParser,
     name: 'WorkspaceParser',
+    isAssignable: (v) => v is WorkspaceParser,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'WorkspaceParser');
         final workspacePath = D4.getRequiredArg<String>(positional, 0, 'workspacePath', 'WorkspaceParser');
-        return $tom_build_14.WorkspaceParser(workspacePath);
+        return WorkspaceParser(workspacePath);
       },
     },
     getters: {
-      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_14.WorkspaceParser>(target, 'WorkspaceParser').workspacePath,
+      'workspacePath': (visitor, target) => D4.validateTarget<WorkspaceParser>(target, 'WorkspaceParser').workspacePath,
     },
     methods: {
       'parse': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_14.WorkspaceParser>(target, 'WorkspaceParser');
+        final t = D4.validateTarget<WorkspaceParser>(target, 'WorkspaceParser');
         return t.parse();
       },
     },
@@ -4431,74 +4478,75 @@ BridgedClass _createWorkspaceParserBridge() {
 
 BridgedClass _createTomContextBridge() {
   return BridgedClass(
-    nativeType: $tom_build_15.TomContext,
+    nativeType: $tom_build_4.TomContext,
     name: 'TomContext',
+    isAssignable: (v) => v is $tom_build_4.TomContext,
     constructors: {
       '': (visitor, positional, named) {
-        final workspace = D4.getRequiredNamedArg<$tom_build_13.TomWorkspace>(named, 'workspace', 'TomContext');
+        final workspace = D4.getRequiredNamedArg<$tom_build_3.TomWorkspace>(named, 'workspace', 'TomContext');
         final workspaceContext = D4.getOptionalNamedArg<Object?>(named, 'workspaceContext');
-        final currentProject = D4.getOptionalNamedArg<$tom_build_13.TomProject?>(named, 'currentProject');
+        final currentProject = D4.getOptionalNamedArg<$tom_build_3.TomProject?>(named, 'currentProject');
         final workspacePath = D4.getOptionalNamedArg<String?>(named, 'workspacePath');
-        return $tom_build_15.TomContext(workspace: workspace, workspaceContext: workspaceContext, currentProject: currentProject, workspacePath: workspacePath);
+        return $tom_build_4.TomContext(workspace: workspace, workspaceContext: workspaceContext, currentProject: currentProject, workspacePath: workspacePath);
       },
     },
     getters: {
-      'isInitialized': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').isInitialized,
-      'workspace': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').workspace,
-      'workspaceContext': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').workspaceContext,
-      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').workspacePath,
-      'cwd': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').cwd,
-      'project': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').project,
-      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').projectInfo,
-      'groups': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').groups,
-      'actions': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').actions,
-      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').modeDefinitions,
-      'deps': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').deps,
-      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').depsDev,
-      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').workspaceModes,
-      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').projectTypes,
-      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').pipelines,
-      'customTags': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').customTags,
-      'env': (visitor, target) => D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext').env,
+      'isInitialized': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').isInitialized,
+      'workspace': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').workspace,
+      'workspaceContext': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').workspaceContext,
+      'workspacePath': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').workspacePath,
+      'cwd': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').cwd,
+      'project': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').project,
+      'projectInfo': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').projectInfo,
+      'groups': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').groups,
+      'actions': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').actions,
+      'modeDefinitions': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').modeDefinitions,
+      'deps': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').deps,
+      'depsDev': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').depsDev,
+      'workspaceModes': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').workspaceModes,
+      'projectTypes': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').projectTypes,
+      'pipelines': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').pipelines,
+      'customTags': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').customTags,
+      'env': (visitor, target) => D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext').env,
     },
     methods: {
       'getProjectInfo': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         D4.requireMinArgs(positional, 1, 'getProjectInfo');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getProjectInfo');
         return t.getProjectInfo(name);
       },
       'getGroup': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         D4.requireMinArgs(positional, 1, 'getGroup');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getGroup');
         return t.getGroup(name);
       },
       'getAction': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         D4.requireMinArgs(positional, 1, 'getAction');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getAction');
         return t.getAction(name);
       },
       'getDep': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         D4.requireMinArgs(positional, 1, 'getDep');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'getDep');
         return t.getDep(name);
       },
       'getCustomTag': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         D4.requireMinArgs(positional, 1, 'getCustomTag');
         final key = D4.getRequiredArg<String>(positional, 0, 'key', 'getCustomTag');
         return t.getCustomTag(key);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_build_15.TomContext>(target, 'TomContext');
+        final t = D4.validateTarget<$tom_build_4.TomContext>(target, 'TomContext');
         return t.toString();
       },
     },
     staticGetters: {
-      'current': (visitor) => $tom_build_15.TomContext.current,
+      'current': (visitor) => $tom_build_4.TomContext.current,
     },
     constructorSignatures: {
       '': 'TomContext({required TomWorkspace workspace, Object? workspaceContext, TomProject? currentProject, String? workspacePath})',

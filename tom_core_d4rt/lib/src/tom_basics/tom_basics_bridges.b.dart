@@ -1,16 +1,16 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-02-27T00:31:23.395359
+// Generated: 2026-03-12T17:01:44.528494
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 
-import 'package:tom_basics/src/exception_base.dart' as $tom_basics_1;
-import 'package:tom_basics/src/logging/logging.dart' as $tom_basics_2;
-import 'package:tom_basics/src/runtime/platform_environment_runtime.dart' as $tom_basics_3;
-import 'package:tom_basics/src/runtime/platform_neutral.dart' as $tom_basics_4;
+import 'package:http/src/client.dart' as $http_1;
+import 'package:tom_basics/src/logging/logging.dart' as $tom_basics_1;
+import 'package:tom_basics/src/runtime/platform_environment_runtime.dart' as $tom_basics_2;
+import 'package:tom_basics/src/runtime/platform_neutral.dart' as $tom_basics_3;
 
 /// Bridge class for tom_basics module.
 class TomBasicsBridge {
@@ -37,18 +37,37 @@ class TomBasicsBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'TomBaseException': 'package:tom_basics/src/exception_base.dart',
-      'TomLogLevel': 'package:tom_basics/src/logging/logging.dart',
-      'TomLogger': 'package:tom_basics/src/logging/logging.dart',
-      'TomLoggable': 'package:tom_basics/src/logging/logging.dart',
-      'TomLogOutput': 'package:tom_basics/src/logging/logging.dart',
-      'TomConsoleLogOutput': 'package:tom_basics/src/logging/logging.dart',
-      'TomPlatformUtils': 'package:tom_basics/src/runtime/platform_neutral.dart',
-      'TomFallbackPlatformUtils': 'package:tom_basics/src/runtime/platform_neutral.dart',
-      'TomEnvironment': 'package:tom_basics/src/runtime/platform_environment_runtime.dart',
-      'TomPlatform': 'package:tom_basics/src/runtime/platform_environment_runtime.dart',
-      'TomRuntime': 'package:tom_basics/src/runtime/platform_environment_runtime.dart',
+      'TomBaseException': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\exception_base.dart',
+      'TomLogLevel': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'TomLogger': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'TomLoggable': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'TomLogOutput': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'TomConsoleLogOutput': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'TomPlatformUtils': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_neutral.dart',
+      'TomFallbackPlatformUtils': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_neutral.dart',
+      'TomEnvironment': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart',
+      'TomPlatform': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart',
+      'TomRuntime': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart',
     };
+  }
+
+  /// Returns a map of type alias names to their target class names.
+  ///
+  /// Type aliases like `typedef MaterialStateProperty<T> = WidgetStateProperty<T>`
+  /// are registered so that code using the alias name can resolve to the
+  /// bridged class under its canonical name.
+  static Map<String, String> classAliases() {
+    return {
+    };
+  }
+
+  /// Returns the list of function typedef names declared in this library.
+  ///
+  /// Function typedefs like `typedef VoidCallback = void Function()` are
+  /// registered so that they can be used as type arguments in D4rt scripts.
+  static List<String> functionTypedefs() {
+    return [
+    ];
   }
 
   /// Returns all bridged enum definitions.
@@ -111,57 +130,57 @@ class TomBasicsBridge {
     final errors = <String>[];
 
     try {
-      interpreter.registerGlobalVariable('tomLog', $tom_basics_2.tomLog, importPath, sourceUri: 'package:tom_basics/src/logging/logging.dart');
+      interpreter.registerGlobalVariable('tomLog', tomLog, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart');
     } catch (e) {
       errors.add('Failed to register variable "tomLog": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformWeb', $tom_basics_3.platformWeb, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformWeb', platformWeb, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformWeb": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformMacos', $tom_basics_3.platformMacos, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformMacos', platformMacos, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformMacos": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformWindows', $tom_basics_3.platformWindows, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformWindows', platformWindows, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformWindows": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformAndroid', $tom_basics_3.platformAndroid, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformAndroid', platformAndroid, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformAndroid": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformIos', $tom_basics_3.platformIos, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformIos', platformIos, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformIos": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformLinux', $tom_basics_3.platformLinux, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformLinux', platformLinux, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformLinux": $e');
     }
     try {
-      interpreter.registerGlobalVariable('platformFuchsia', $tom_basics_3.platformFuchsia, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('platformFuchsia', platformFuchsia, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "platformFuchsia": $e');
     }
     try {
-      interpreter.registerGlobalVariable('defaultTomEnvironment', $tom_basics_3.defaultTomEnvironment, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('defaultTomEnvironment', defaultTomEnvironment, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "defaultTomEnvironment": $e');
     }
     try {
-      interpreter.registerGlobalVariable('noTomEnvironment', $tom_basics_3.noTomEnvironment, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('noTomEnvironment', noTomEnvironment, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "noTomEnvironment": $e');
     }
     try {
-      interpreter.registerGlobalVariable('noTomPlatform', $tom_basics_3.noTomPlatform, importPath, sourceUri: 'package:tom_basics/src/runtime/platform_environment_runtime.dart');
+      interpreter.registerGlobalVariable('noTomPlatform', noTomPlatform, importPath, sourceUri: 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart');
     } catch (e) {
       errors.add('Failed to register variable "noTomPlatform": $e');
     }
@@ -178,7 +197,7 @@ class TomBasicsBridge {
         D4.requireMinArgs(positional, 2, 'limited');
         final o = D4.getRequiredArg<Object?>(positional, 0, 'o', 'limited');
         final maxLength = D4.getRequiredArg<dynamic>(positional, 1, 'maxLength', 'limited');
-        return $tom_basics_2.limited(o, maxLength);
+        return limited(o, maxLength);
       },
     };
   }
@@ -189,7 +208,7 @@ class TomBasicsBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'limited': 'package:tom_basics/src/logging/logging.dart',
+      'limited': 'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
     };
   }
 
@@ -207,10 +226,10 @@ class TomBasicsBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
-      'package:tom_basics/src/exception_base.dart',
-      'package:tom_basics/src/logging/logging.dart',
-      'package:tom_basics/src/runtime/platform_environment_runtime.dart',
-      'package:tom_basics/src/runtime/platform_neutral.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\exception_base.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\logging\logging.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_environment_runtime.dart',
+      'C:\Users\alexi\AppData\Local\Pub\Cache\hosted\pub.dev\tom_basics-1.0.0\lib\src\runtime\platform_neutral.dart',
     ];
   }
 
@@ -240,8 +259,9 @@ class TomBasicsBridge {
 
 BridgedClass _createTomBaseExceptionBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_1.TomBaseException,
+    nativeType: TomBaseException,
     name: 'TomBaseException',
+    isAssignable: (v) => v is TomBaseException,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'TomBaseException');
@@ -252,47 +272,45 @@ BridgedClass _createTomBaseExceptionBridge() {
         final rootException = D4.getOptionalNamedArg<Object?>(named, 'rootException');
         final stack = D4.getOptionalNamedArg<Object?>(named, 'stack');
         final uuid = D4.getOptionalNamedArg<String?>(named, 'uuid');
-        return $tom_basics_1.TomBaseException(key, defaultUserMessage, requestUuid: requestUuid, parameters: parameters, rootException: rootException, stack: stack, uuid: uuid);
+        return TomBaseException(key, defaultUserMessage, requestUuid: requestUuid, parameters: parameters, rootException: rootException, stack: stack, uuid: uuid);
       },
     },
     getters: {
-      'uuid': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').uuid,
-      'requestUuid': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').requestUuid,
-      'timeStamp': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').timeStamp,
-      'key': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').key,
-      'defaultUserMessage': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').defaultUserMessage,
-      'parameters': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').parameters,
-      'stack': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').stack,
-      'rootException': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').rootException,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').stackTrace,
+      'uuid': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').uuid,
+      'requestUuid': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').requestUuid,
+      'timeStamp': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').timeStamp,
+      'key': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').key,
+      'defaultUserMessage': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').defaultUserMessage,
+      'parameters': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').parameters,
+      'stack': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').stack,
+      'rootException': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').rootException,
+      'stackTrace': (visitor, target) => D4.validateTarget<TomBaseException>(target, 'TomBaseException').stackTrace,
     },
     setters: {
       'uuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').uuid = value as String,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').uuid = D4.extractBridgedArg<String>(value, 'uuid'),
       'requestUuid': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').requestUuid = value as String?,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').requestUuid = D4.extractBridgedArgOrNull<String>(value, 'requestUuid'),
       'timeStamp': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').timeStamp = value as DateTime,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').timeStamp = D4.extractBridgedArg<DateTime>(value, 'timeStamp'),
       'key': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').key = value as String,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').key = D4.extractBridgedArg<String>(value, 'key'),
       'defaultUserMessage': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').defaultUserMessage = value as String,
-      'parameters': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').parameters = value == null ? null : (value as Map).cast<String, Object?>(),
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').defaultUserMessage = D4.extractBridgedArg<String>(value, 'defaultUserMessage'),
       'stack': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').stack = value as Object?,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').stack = D4.extractBridgedArgOrNull<Object>(value, 'stack'),
       'rootException': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').rootException = value as Object?,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').rootException = D4.extractBridgedArgOrNull<Object>(value, 'rootException'),
       'stackTrace': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException').stackTrace = value as String,
+        D4.validateTarget<TomBaseException>(target, 'TomBaseException').stackTrace = D4.extractBridgedArg<String>(value, 'stackTrace'),
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException');
+        final t = D4.validateTarget<TomBaseException>(target, 'TomBaseException');
         return t.toString();
       },
       'printStackTrace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_1.TomBaseException>(target, 'TomBaseException');
+        final t = D4.validateTarget<TomBaseException>(target, 'TomBaseException');
         final depth = D4.getOptionalArgWithDefault<int>(positional, 0, 'depth', -1);
         t.printStackTrace(depth);
         return null;
@@ -336,108 +354,109 @@ BridgedClass _createTomBaseExceptionBridge() {
 
 BridgedClass _createTomLogLevelBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_2.TomLogLevel,
+    nativeType: $tom_basics_1.TomLogLevel,
     name: 'TomLogLevel',
+    isAssignable: (v) => v is $tom_basics_1.TomLogLevel,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomLogLevel');
         final levelPattern = D4.getRequiredArg<int>(positional, 0, 'levelPattern', 'TomLogLevel');
-        return $tom_basics_2.TomLogLevel(levelPattern);
+        return $tom_basics_1.TomLogLevel(levelPattern);
       },
     },
     getters: {
-      'levelPattern': (visitor, target) => D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel').levelPattern,
+      'levelPattern': (visitor, target) => D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel').levelPattern,
     },
     setters: {
       'levelPattern': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel').levelPattern = value as int,
+        D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel').levelPattern = D4.extractBridgedArg<int>(value, 'levelPattern'),
     },
     methods: {
       'matches': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel');
+        final t = D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel');
         D4.requireMinArgs(positional, 1, 'matches');
-        final messageLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'messageLevel', 'matches');
+        final messageLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'messageLevel', 'matches');
         return t.matches(messageLevel);
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel');
+        final t = D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel');
         return t.toString();
       },
       '+': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel');
-        final other = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'other', 'operator+');
+        final t = D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel');
+        final other = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'other', 'operator+');
         return t + other;
       },
       '-': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogLevel>(target, 'TomLogLevel');
-        final other = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'other', 'operator-');
+        final t = D4.validateTarget<$tom_basics_1.TomLogLevel>(target, 'TomLogLevel');
+        final other = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'other', 'operator-');
         return t - other;
       },
     },
     staticGetters: {
-      'trace': (visitor) => $tom_basics_2.TomLogLevel.trace,
-      'debug': (visitor) => $tom_basics_2.TomLogLevel.debug,
-      'traffic': (visitor) => $tom_basics_2.TomLogLevel.traffic,
-      'info': (visitor) => $tom_basics_2.TomLogLevel.info,
-      'warn': (visitor) => $tom_basics_2.TomLogLevel.warn,
-      'status': (visitor) => $tom_basics_2.TomLogLevel.status,
-      'error': (visitor) => $tom_basics_2.TomLogLevel.error,
-      'severe': (visitor) => $tom_basics_2.TomLogLevel.severe,
-      'fatal': (visitor) => $tom_basics_2.TomLogLevel.fatal,
-      'all': (visitor) => $tom_basics_2.TomLogLevel.all,
-      'development': (visitor) => $tom_basics_2.TomLogLevel.development,
-      'extended': (visitor) => $tom_basics_2.TomLogLevel.extended,
-      'errors': (visitor) => $tom_basics_2.TomLogLevel.errors,
-      'production': (visitor) => $tom_basics_2.TomLogLevel.production,
-      'still': (visitor) => $tom_basics_2.TomLogLevel.still,
-      'silent': (visitor) => $tom_basics_2.TomLogLevel.silent,
-      'off': (visitor) => $tom_basics_2.TomLogLevel.off,
-      'none': (visitor) => $tom_basics_2.TomLogLevel.none,
+      'trace': (visitor) => $tom_basics_1.TomLogLevel.trace,
+      'debug': (visitor) => $tom_basics_1.TomLogLevel.debug,
+      'traffic': (visitor) => $tom_basics_1.TomLogLevel.traffic,
+      'info': (visitor) => $tom_basics_1.TomLogLevel.info,
+      'warn': (visitor) => $tom_basics_1.TomLogLevel.warn,
+      'status': (visitor) => $tom_basics_1.TomLogLevel.status,
+      'error': (visitor) => $tom_basics_1.TomLogLevel.error,
+      'severe': (visitor) => $tom_basics_1.TomLogLevel.severe,
+      'fatal': (visitor) => $tom_basics_1.TomLogLevel.fatal,
+      'all': (visitor) => $tom_basics_1.TomLogLevel.all,
+      'development': (visitor) => $tom_basics_1.TomLogLevel.development,
+      'extended': (visitor) => $tom_basics_1.TomLogLevel.extended,
+      'errors': (visitor) => $tom_basics_1.TomLogLevel.errors,
+      'production': (visitor) => $tom_basics_1.TomLogLevel.production,
+      'still': (visitor) => $tom_basics_1.TomLogLevel.still,
+      'silent': (visitor) => $tom_basics_1.TomLogLevel.silent,
+      'off': (visitor) => $tom_basics_1.TomLogLevel.off,
+      'none': (visitor) => $tom_basics_1.TomLogLevel.none,
     },
     staticMethods: {
       'byName': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'byName');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'byName');
-        return $tom_basics_2.TomLogLevel.byName(name);
+        return $tom_basics_1.TomLogLevel.byName(name);
       },
     },
     staticSetters: {
       'trace': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.trace = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.trace = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'trace'),
       'debug': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.debug = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.debug = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'debug'),
       'traffic': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.traffic = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.traffic = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'traffic'),
       'info': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.info = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.info = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'info'),
       'warn': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.warn = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.warn = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'warn'),
       'status': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.status = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.status = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'status'),
       'error': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.error = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.error = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'error'),
       'severe': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.severe = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.severe = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'severe'),
       'fatal': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.fatal = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.fatal = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'fatal'),
       'all': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.all = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.all = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'all'),
       'development': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.development = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.development = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'development'),
       'extended': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.extended = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.extended = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'extended'),
       'errors': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.errors = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.errors = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'errors'),
       'production': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.production = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.production = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'production'),
       'still': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.still = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.still = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'still'),
       'silent': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.silent = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.silent = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'silent'),
       'off': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.off = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.off = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'off'),
       'none': (visitor, value) => 
-        $tom_basics_2.TomLogLevel.none = value as $tom_basics_2.TomLogLevel,
+        $tom_basics_1.TomLogLevel.none = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'none'),
     },
     constructorSignatures: {
       '': 'TomLogLevel(int levelPattern)',
@@ -504,196 +523,197 @@ BridgedClass _createTomLogLevelBridge() {
 
 BridgedClass _createTomLoggerBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_2.TomLogger,
+    nativeType: $tom_basics_1.TomLogger,
     name: 'TomLogger',
+    isAssignable: (v) => v is $tom_basics_1.TomLogger,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_basics_2.TomLogger();
+        return $tom_basics_1.TomLogger();
       },
     },
     getters: {
-      'logLevel': (visitor, target) => D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger').logLevel,
-      'logOutput': (visitor, target) => D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger').logOutput,
+      'logLevel': (visitor, target) => D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger').logLevel,
+      'logOutput': (visitor, target) => D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger').logOutput,
     },
     setters: {
       'logOutput': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger').logOutput = value as $tom_basics_2.TomLogOutput,
+        D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger').logOutput = D4.extractBridgedArg<$tom_basics_1.TomLogOutput>(value, 'logOutput'),
     },
     methods: {
       'setLogLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'setLogLevel');
-        final l = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'l', 'setLogLevel');
+        final l = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'l', 'setLogLevel');
         t.setLogLevel(l);
         return null;
       },
       'pushLogLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'pushLogLevel');
-        final l = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'l', 'pushLogLevel');
+        final l = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'l', 'pushLogLevel');
         t.pushLogLevel(l);
         return null;
       },
       'popLogLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         t.popLogLevel();
         return null;
       },
       'info': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'info');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'info');
         t.info(s);
         return null;
       },
       'warn': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'warn');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'warn');
         t.warn(s);
         return null;
       },
       'error': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'error');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'error');
         t.error(s);
         return null;
       },
       'debug': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'debug');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'debug');
         t.debug(s);
         return null;
       },
       'trace': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'trace');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'trace');
         t.trace(s);
         return null;
       },
       'traffic': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'traffic');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'traffic');
         t.traffic(s);
         return null;
       },
       'severe': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'severe');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'severe');
         t.severe(s);
         return null;
       },
       'fatal': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'fatal');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'fatal');
         t.fatal(s);
         return null;
       },
       'status': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'status');
         final s = D4.getRequiredArg<Object>(positional, 0, 's', 'status');
         t.status(s);
         return null;
       },
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 3, 'output');
-        final messageLogLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'messageLogLevel', 'output');
+        final messageLogLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'messageLogLevel', 'output');
         final level = D4.getRequiredArg<String>(positional, 1, 'level', 'output');
         final message = D4.getRequiredArg<Object>(positional, 2, 'message', 'output');
         t.output(messageLogLevel, level, message);
         return null;
       },
       'addNameLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 2, 'addNameLevel');
         final t_ = D4.getRequiredArg<String>(positional, 0, 't', 'addNameLevel');
-        final tll = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'tll', 'addNameLevel');
+        final tll = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 1, 'tll', 'addNameLevel');
         t.addNameLevel(t_, tll);
         return null;
       },
       'getNameLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'getNameLevel');
         final t_ = D4.getRequiredArg<String>(positional, 0, 't', 'getNameLevel');
         return t.getNameLevel(t_);
       },
       'removeNameLevel': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'removeNameLevel');
         final t_ = D4.getRequiredArg<String>(positional, 0, 't', 'removeNameLevel');
         t.removeNameLevel(t_);
         return null;
       },
       'setLogLevelByName': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'setLogLevelByName');
         final levelName = D4.getRequiredArg<String>(positional, 0, 'levelName', 'setLogLevelByName');
         t.setLogLevelByName(levelName);
         return null;
       },
       'setLogLevelExceptions': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         D4.requireMinArgs(positional, 1, 'setLogLevelExceptions');
         final pattern = D4.getRequiredArg<String>(positional, 0, 'pattern', 'setLogLevelExceptions');
         t.setLogLevelExceptions(pattern);
         return null;
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogger>(target, 'TomLogger');
+        final t = D4.validateTarget<$tom_basics_1.TomLogger>(target, 'TomLogger');
         return t.toString();
       },
     },
     staticGetters: {
-      'INFO': (visitor) => $tom_basics_2.TomLogger.INFO,
-      'ERROR': (visitor) => $tom_basics_2.TomLogger.ERROR,
-      'WARN': (visitor) => $tom_basics_2.TomLogger.WARN,
-      'DEBUG': (visitor) => $tom_basics_2.TomLogger.DEBUG,
-      'TRACE': (visitor) => $tom_basics_2.TomLogger.TRACE,
-      'TRAFFIC': (visitor) => $tom_basics_2.TomLogger.TRAFFIC,
-      'SEVERE': (visitor) => $tom_basics_2.TomLogger.SEVERE,
-      'FATAL': (visitor) => $tom_basics_2.TomLogger.FATAL,
-      'STATUS': (visitor) => $tom_basics_2.TomLogger.STATUS,
-      'globalSettingDetermineCaller': (visitor) => $tom_basics_2.TomLogger.globalSettingDetermineCaller,
-      'fallback': (visitor) => $tom_basics_2.TomLogger.fallback,
-      'globalSettingInfoEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingInfoEnabled,
-      'globalSettingWarnEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingWarnEnabled,
-      'globalSettingErrorEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingErrorEnabled,
-      'globalSettingDebugEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingDebugEnabled,
-      'globalSettingTraceEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingTraceEnabled,
-      'globalSettingTrafficEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingTrafficEnabled,
-      'globalSettingSevereEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingSevereEnabled,
-      'globalSettingFatalEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingFatalEnabled,
-      'globalSettingStatusEnabled': (visitor) => $tom_basics_2.TomLogger.globalSettingStatusEnabled,
+      'INFO': (visitor) => $tom_basics_1.TomLogger.INFO,
+      'ERROR': (visitor) => $tom_basics_1.TomLogger.ERROR,
+      'WARN': (visitor) => $tom_basics_1.TomLogger.WARN,
+      'DEBUG': (visitor) => $tom_basics_1.TomLogger.DEBUG,
+      'TRACE': (visitor) => $tom_basics_1.TomLogger.TRACE,
+      'TRAFFIC': (visitor) => $tom_basics_1.TomLogger.TRAFFIC,
+      'SEVERE': (visitor) => $tom_basics_1.TomLogger.SEVERE,
+      'FATAL': (visitor) => $tom_basics_1.TomLogger.FATAL,
+      'STATUS': (visitor) => $tom_basics_1.TomLogger.STATUS,
+      'globalSettingDetermineCaller': (visitor) => $tom_basics_1.TomLogger.globalSettingDetermineCaller,
+      'fallback': (visitor) => $tom_basics_1.TomLogger.fallback,
+      'globalSettingInfoEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingInfoEnabled,
+      'globalSettingWarnEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingWarnEnabled,
+      'globalSettingErrorEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingErrorEnabled,
+      'globalSettingDebugEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingDebugEnabled,
+      'globalSettingTraceEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingTraceEnabled,
+      'globalSettingTrafficEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingTrafficEnabled,
+      'globalSettingSevereEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingSevereEnabled,
+      'globalSettingFatalEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingFatalEnabled,
+      'globalSettingStatusEnabled': (visitor) => $tom_basics_1.TomLogger.globalSettingStatusEnabled,
     },
     staticSetters: {
       'globalSettingDetermineCaller': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingDetermineCaller = value as bool,
+        $tom_basics_1.TomLogger.globalSettingDetermineCaller = D4.extractBridgedArg<bool>(value, 'globalSettingDetermineCaller'),
       'globalSettingInfoEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingInfoEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingInfoEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingInfoEnabled'),
       'globalSettingWarnEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingWarnEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingWarnEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingWarnEnabled'),
       'globalSettingErrorEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingErrorEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingErrorEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingErrorEnabled'),
       'globalSettingDebugEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingDebugEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingDebugEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingDebugEnabled'),
       'globalSettingTraceEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingTraceEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingTraceEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingTraceEnabled'),
       'globalSettingTrafficEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingTrafficEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingTrafficEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingTrafficEnabled'),
       'globalSettingSevereEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingSevereEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingSevereEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingSevereEnabled'),
       'globalSettingFatalEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingFatalEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingFatalEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingFatalEnabled'),
       'globalSettingStatusEnabled': (visitor, value) => 
-        $tom_basics_2.TomLogger.globalSettingStatusEnabled = value as bool,
+        $tom_basics_1.TomLogger.globalSettingStatusEnabled = D4.extractBridgedArg<bool>(value, 'globalSettingStatusEnabled'),
     },
     constructorSignatures: {
       '': 'TomLogger()',
@@ -769,12 +789,13 @@ BridgedClass _createTomLoggerBridge() {
 
 BridgedClass _createTomLoggableBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_2.TomLoggable,
+    nativeType: TomLoggable,
     name: 'TomLoggable',
+    isAssignable: (v) => v is TomLoggable,
     constructors: {
     },
     getters: {
-      'logRepresentation': (visitor, target) => D4.validateTarget<$tom_basics_2.TomLoggable>(target, 'TomLoggable').logRepresentation,
+      'logRepresentation': (visitor, target) => D4.validateTarget<TomLoggable>(target, 'TomLoggable').logRepresentation,
     },
     getterSignatures: {
       'logRepresentation': 'String get logRepresentation',
@@ -788,16 +809,17 @@ BridgedClass _createTomLoggableBridge() {
 
 BridgedClass _createTomLogOutputBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_2.TomLogOutput,
+    nativeType: $tom_basics_1.TomLogOutput,
     name: 'TomLogOutput',
+    isAssignable: (v) => v is $tom_basics_1.TomLogOutput,
     constructors: {
     },
     methods: {
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogOutput>(target, 'TomLogOutput');
+        final t = D4.validateTarget<$tom_basics_1.TomLogOutput>(target, 'TomLogOutput');
         D4.requireMinArgs(positional, 7, 'output');
-        final loggerLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
-        final logLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'logLevel', 'output');
+        final loggerLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
+        final logLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 1, 'logLevel', 'output');
         final level = D4.getRequiredArg<String>(positional, 2, 'level', 'output');
         final message = D4.getRequiredArg<Object>(positional, 3, 'message', 'output');
         final isolateName = D4.getRequiredArg<String>(positional, 4, 'isolateName', 'output');
@@ -807,18 +829,18 @@ BridgedClass _createTomLogOutputBridge() {
         return null;
       },
       'convertToString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomLogOutput>(target, 'TomLogOutput');
+        final t = D4.validateTarget<$tom_basics_1.TomLogOutput>(target, 'TomLogOutput');
         D4.requireMinArgs(positional, 1, 'convertToString');
         final message = D4.getRequiredArg<Object>(positional, 0, 'message', 'convertToString');
         return t.convertToString(message);
       },
     },
     staticGetters: {
-      'globalSettingRemoteLogEndpoint': (visitor) => $tom_basics_2.TomLogOutput.globalSettingRemoteLogEndpoint,
+      'globalSettingRemoteLogEndpoint': (visitor) => $tom_basics_1.TomLogOutput.globalSettingRemoteLogEndpoint,
     },
     staticSetters: {
       'globalSettingRemoteLogEndpoint': (visitor, value) => 
-        $tom_basics_2.TomLogOutput.globalSettingRemoteLogEndpoint = value as String,
+        $tom_basics_1.TomLogOutput.globalSettingRemoteLogEndpoint = D4.extractBridgedArg<String>(value, 'globalSettingRemoteLogEndpoint'),
     },
     methodSignatures: {
       'output': 'void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, String? origin)',
@@ -839,26 +861,27 @@ BridgedClass _createTomLogOutputBridge() {
 
 BridgedClass _createTomConsoleLogOutputBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_2.TomConsoleLogOutput,
+    nativeType: TomConsoleLogOutput,
     name: 'TomConsoleLogOutput',
+    isAssignable: (v) => v is TomConsoleLogOutput,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_basics_2.TomConsoleLogOutput();
+        return TomConsoleLogOutput();
       },
     },
     getters: {
-      'useExtendedFormat': (visitor, target) => D4.validateTarget<$tom_basics_2.TomConsoleLogOutput>(target, 'TomConsoleLogOutput').useExtendedFormat,
+      'useExtendedFormat': (visitor, target) => D4.validateTarget<TomConsoleLogOutput>(target, 'TomConsoleLogOutput').useExtendedFormat,
     },
     setters: {
       'useExtendedFormat': (visitor, target, value) => 
-        D4.validateTarget<$tom_basics_2.TomConsoleLogOutput>(target, 'TomConsoleLogOutput').useExtendedFormat = value as bool,
+        D4.validateTarget<TomConsoleLogOutput>(target, 'TomConsoleLogOutput').useExtendedFormat = D4.extractBridgedArg<bool>(value, 'useExtendedFormat'),
     },
     methods: {
       'output': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomConsoleLogOutput>(target, 'TomConsoleLogOutput');
+        final t = D4.validateTarget<TomConsoleLogOutput>(target, 'TomConsoleLogOutput');
         D4.requireMinArgs(positional, 6, 'output');
-        final loggerLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
-        final logLevel = D4.getRequiredArg<$tom_basics_2.TomLogLevel>(positional, 1, 'logLevel', 'output');
+        final loggerLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 0, 'loggerLevel', 'output');
+        final logLevel = D4.getRequiredArg<$tom_basics_1.TomLogLevel>(positional, 1, 'logLevel', 'output');
         final level = D4.getRequiredArg<String>(positional, 2, 'level', 'output');
         final message = D4.getRequiredArg<Object>(positional, 3, 'message', 'output');
         final isolateName = D4.getRequiredArg<String>(positional, 4, 'isolateName', 'output');
@@ -868,21 +891,21 @@ BridgedClass _createTomConsoleLogOutputBridge() {
         return null;
       },
       'convertToString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_2.TomConsoleLogOutput>(target, 'TomConsoleLogOutput');
+        final t = D4.validateTarget<TomConsoleLogOutput>(target, 'TomConsoleLogOutput');
         D4.requireMinArgs(positional, 1, 'convertToString');
         final message = D4.getRequiredArg<Object>(positional, 0, 'message', 'convertToString');
         return t.convertToString(message);
       },
     },
     staticGetters: {
-      'globalSettingStderrLogLevel': (visitor) => $tom_basics_2.TomConsoleLogOutput.globalSettingStderrLogLevel,
-      'globalSettingStdoutLogLevel': (visitor) => $tom_basics_2.TomConsoleLogOutput.globalSettingStdoutLogLevel,
+      'globalSettingStderrLogLevel': (visitor) => TomConsoleLogOutput.globalSettingStderrLogLevel,
+      'globalSettingStdoutLogLevel': (visitor) => TomConsoleLogOutput.globalSettingStdoutLogLevel,
     },
     staticSetters: {
       'globalSettingStderrLogLevel': (visitor, value) => 
-        $tom_basics_2.TomConsoleLogOutput.globalSettingStderrLogLevel = value as $tom_basics_2.TomLogLevel,
+        TomConsoleLogOutput.globalSettingStderrLogLevel = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'globalSettingStderrLogLevel'),
       'globalSettingStdoutLogLevel': (visitor, value) => 
-        $tom_basics_2.TomConsoleLogOutput.globalSettingStdoutLogLevel = value as $tom_basics_2.TomLogLevel,
+        TomConsoleLogOutput.globalSettingStdoutLogLevel = D4.extractBridgedArg<$tom_basics_1.TomLogLevel>(value, 'globalSettingStdoutLogLevel'),
     },
     constructorSignatures: {
       '': 'TomConsoleLogOutput()',
@@ -914,92 +937,93 @@ BridgedClass _createTomConsoleLogOutputBridge() {
 
 BridgedClass _createTomPlatformUtilsBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_4.TomPlatformUtils,
+    nativeType: $tom_basics_3.TomPlatformUtils,
     name: 'TomPlatformUtils',
+    isAssignable: (v) => v is $tom_basics_3.TomPlatformUtils,
     constructors: {
     },
     methods: {
       'isDesktop': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isDesktop();
       },
       'isMobile': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isMobile();
       },
       'isWeb': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isWeb();
       },
       'isWindows': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isWindows();
       },
       'isLinux': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isLinux();
       },
       'isMacOs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isMacOs();
       },
       'isFuchsia': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isFuchsia();
       },
       'isAndroid': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isAndroid();
       },
       'isIos': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.isIos();
       },
       'outError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         D4.requireMinArgs(positional, 1, 'outError');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'outError');
         t.outError(s);
         return null;
       },
       'out': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         D4.requireMinArgs(positional, 1, 'out');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'out');
         t.out(s);
         return null;
       },
       'httpClient': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.httpClient();
       },
       'getTomEnvVars': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.getTomEnvVars();
       },
       'getBrowserLocation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.getBrowserLocation();
       },
       'getIsolateName': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomPlatformUtils>(target, 'TomPlatformUtils');
+        final t = D4.validateTarget<$tom_basics_3.TomPlatformUtils>(target, 'TomPlatformUtils');
         return t.getIsolateName();
       },
     },
     staticGetters: {
-      'envVars': (visitor) => $tom_basics_4.TomPlatformUtils.envVars,
-      'current': (visitor) => $tom_basics_4.TomPlatformUtils.current,
+      'envVars': (visitor) => $tom_basics_3.TomPlatformUtils.envVars,
+      'current': (visitor) => $tom_basics_3.TomPlatformUtils.current,
     },
     staticMethods: {
       'setCurrentPlatform': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setCurrentPlatform');
-        final newCurrent = D4.getRequiredArg<$tom_basics_4.TomPlatformUtils>(positional, 0, 'newCurrent', 'setCurrentPlatform');
-        return $tom_basics_4.TomPlatformUtils.setCurrentPlatform(newCurrent);
+        final newCurrent = D4.getRequiredArg<$tom_basics_3.TomPlatformUtils>(positional, 0, 'newCurrent', 'setCurrentPlatform');
+        return $tom_basics_3.TomPlatformUtils.setCurrentPlatform(newCurrent);
       },
     },
     staticSetters: {
       'envVars': (visitor, value) => 
-        $tom_basics_4.TomPlatformUtils.envVars = (value as Map).cast<String, String>(),
+        $tom_basics_3.TomPlatformUtils.envVars = (value as Map).cast<String, String>(),
     },
     methodSignatures: {
       'isDesktop': 'bool isDesktop()',
@@ -1037,78 +1061,79 @@ BridgedClass _createTomPlatformUtilsBridge() {
 
 BridgedClass _createTomFallbackPlatformUtilsBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_4.TomFallbackPlatformUtils,
+    nativeType: TomFallbackPlatformUtils,
     name: 'TomFallbackPlatformUtils',
+    isAssignable: (v) => v is TomFallbackPlatformUtils,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_basics_4.TomFallbackPlatformUtils();
+        return TomFallbackPlatformUtils();
       },
     },
     methods: {
       'isDesktop': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isDesktop();
       },
       'isMobile': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isMobile();
       },
       'isWeb': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isWeb();
       },
       'isWindows': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isWindows();
       },
       'isLinux': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isLinux();
       },
       'isMacOs': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isMacOs();
       },
       'isFuchsia': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isFuchsia();
       },
       'isAndroid': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isAndroid();
       },
       'isIos': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.isIos();
       },
       'outError': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         D4.requireMinArgs(positional, 1, 'outError');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'outError');
         t.outError(s);
         return null;
       },
       'out': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         D4.requireMinArgs(positional, 1, 'out');
         final s = D4.getRequiredArg<String>(positional, 0, 's', 'out');
         t.out(s);
         return null;
       },
       'httpClient': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.httpClient();
       },
       'getTomEnvVars': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.getTomEnvVars();
       },
       'getBrowserLocation': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.getBrowserLocation();
       },
       'getIsolateName': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_4.TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
+        final t = D4.validateTarget<TomFallbackPlatformUtils>(target, 'TomFallbackPlatformUtils');
         return t.getIsolateName();
       },
     },
@@ -1141,34 +1166,35 @@ BridgedClass _createTomFallbackPlatformUtilsBridge() {
 
 BridgedClass _createTomEnvironmentBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_3.TomEnvironment,
+    nativeType: $tom_basics_2.TomEnvironment,
     name: 'TomEnvironment',
+    isAssignable: (v) => v is $tom_basics_2.TomEnvironment,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomEnvironment');
         final env = D4.getRequiredArg<String>(positional, 0, 'env', 'TomEnvironment');
-        final parent = D4.getOptionalNamedArg<$tom_basics_3.TomEnvironment?>(named, 'parent');
+        final parent = D4.getOptionalNamedArg<$tom_basics_2.TomEnvironment?>(named, 'parent');
         final initializerRaw = named['initializer'];
         final isTest = D4.getNamedArgWithDefault<bool>(named, 'isTest', false);
         final isDevelopment = D4.getNamedArgWithDefault<bool>(named, 'isDevelopment', false);
-        return $tom_basics_3.TomEnvironment(env, parent: parent, initializer: initializerRaw == null ? null : ($tom_basics_3.TomEnvironment p0) { D4.callInterpreterCallback(visitor, initializerRaw, [p0]); }, isTest: isTest, isDevelopment: isDevelopment);
+        return $tom_basics_2.TomEnvironment(env, parent: parent, initializer: initializerRaw == null ? null : ($tom_basics_2.TomEnvironment p0) { D4.callInterpreterCallback(visitor!, initializerRaw, [p0]); }, isTest: isTest, isDevelopment: isDevelopment);
       },
     },
     getters: {
-      'parent': (visitor, target) => D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment').parent,
-      'env': (visitor, target) => D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment').env,
-      'initializer': (visitor, target) => D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment').initializer,
-      'isTest': (visitor, target) => D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment').isTest,
-      'isDevelopment': (visitor, target) => D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment').isDevelopment,
+      'parent': (visitor, target) => D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment').parent,
+      'env': (visitor, target) => D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment').env,
+      'initializer': (visitor, target) => D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment').initializer,
+      'isTest': (visitor, target) => D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment').isTest,
+      'isDevelopment': (visitor, target) => D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment').isDevelopment,
     },
     methods: {
       'initialize': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment');
+        final t = D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment');
         t.initialize();
         return null;
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_3.TomEnvironment>(target, 'TomEnvironment');
+        final t = D4.validateTarget<$tom_basics_2.TomEnvironment>(target, 'TomEnvironment');
         return t.toString();
       },
     },
@@ -1195,38 +1221,39 @@ BridgedClass _createTomEnvironmentBridge() {
 
 BridgedClass _createTomPlatformBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_3.TomPlatform,
+    nativeType: $tom_basics_2.TomPlatform,
     name: 'TomPlatform',
+    isAssignable: (v) => v is $tom_basics_2.TomPlatform,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'TomPlatform');
         final name = D4.getRequiredArg<String>(positional, 0, 'name', 'TomPlatform');
-        return $tom_basics_3.TomPlatform(name);
+        return $tom_basics_2.TomPlatform(name);
       },
     },
     getters: {
-      'name': (visitor, target) => D4.validateTarget<$tom_basics_3.TomPlatform>(target, 'TomPlatform').name,
+      'name': (visitor, target) => D4.validateTarget<$tom_basics_2.TomPlatform>(target, 'TomPlatform').name,
     },
     methods: {
       'setInitializer': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_3.TomPlatform>(target, 'TomPlatform');
+        final t = D4.validateTarget<$tom_basics_2.TomPlatform>(target, 'TomPlatform');
         D4.requireMinArgs(positional, 1, 'setInitializer');
         if (positional.isEmpty) {
           throw ArgumentError('setInitializer: Missing required argument "initializer" at position 0');
         }
         final initializerRaw = positional[0];
-        t.setInitializer(($tom_basics_3.TomPlatform p0, $tom_basics_3.TomEnvironment? p1) { D4.callInterpreterCallback(visitor, initializerRaw, [p0, p1]); });
+        t.setInitializer(($tom_basics_2.TomPlatform p0, $tom_basics_2.TomEnvironment? p1) { D4.callInterpreterCallback(visitor!, initializerRaw, [p0, p1]); });
         return null;
       },
       'initializePlatform': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_3.TomPlatform>(target, 'TomPlatform');
+        final t = D4.validateTarget<$tom_basics_2.TomPlatform>(target, 'TomPlatform');
         D4.requireMinArgs(positional, 1, 'initializePlatform');
-        final env = D4.getRequiredArg<$tom_basics_3.TomEnvironment?>(positional, 0, 'env', 'initializePlatform');
+        final env = D4.getRequiredArg<$tom_basics_2.TomEnvironment?>(positional, 0, 'env', 'initializePlatform');
         t.initializePlatform(env);
         return null;
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_basics_3.TomPlatform>(target, 'TomPlatform');
+        final t = D4.validateTarget<$tom_basics_2.TomPlatform>(target, 'TomPlatform');
         return t.toString();
       },
     },
@@ -1250,63 +1277,64 @@ BridgedClass _createTomPlatformBridge() {
 
 BridgedClass _createTomRuntimeBridge() {
   return BridgedClass(
-    nativeType: $tom_basics_3.TomRuntime,
+    nativeType: TomRuntime,
     name: 'TomRuntime',
+    isAssignable: (v) => v is TomRuntime,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_basics_3.TomRuntime();
+        return TomRuntime();
       },
     },
     staticMethods: {
       'printReport': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.printReport();
+        return TomRuntime.printReport();
       },
       'getEnvironments': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getEnvironments();
+        return TomRuntime.getEnvironments();
       },
       'addEnvironment': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'addEnvironment');
-        final env = D4.getRequiredArg<$tom_basics_3.TomEnvironment>(positional, 0, 'env', 'addEnvironment');
-        return $tom_basics_3.TomRuntime.addEnvironment(env);
+        final env = D4.getRequiredArg<$tom_basics_2.TomEnvironment>(positional, 0, 'env', 'addEnvironment');
+        return TomRuntime.addEnvironment(env);
       },
       'setRootEnvironment': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setRootEnvironment');
-        final env = D4.getRequiredArg<$tom_basics_3.TomEnvironment>(positional, 0, 'env', 'setRootEnvironment');
-        return $tom_basics_3.TomRuntime.setRootEnvironment(env);
+        final env = D4.getRequiredArg<$tom_basics_2.TomEnvironment>(positional, 0, 'env', 'setRootEnvironment');
+        return TomRuntime.setRootEnvironment(env);
       },
       'setCurrentEnvironment': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setCurrentEnvironment');
         final name = D4.getRequiredArg<String?>(positional, 0, 'name', 'setCurrentEnvironment');
         final fallback = D4.getOptionalArgWithDefault<String>(positional, 1, 'fallback', "defaultRoot");
-        return $tom_basics_3.TomRuntime.setCurrentEnvironment(name, fallback);
+        return TomRuntime.setCurrentEnvironment(name, fallback);
       },
       'getCurrentEnvironment': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getCurrentEnvironment();
+        return TomRuntime.getCurrentEnvironment();
       },
       'getEnvironmentHierarchy': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getEnvironmentHierarchy();
+        return TomRuntime.getEnvironmentHierarchy();
       },
       'getRoot': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getRoot();
+        return TomRuntime.getRoot();
       },
       'addPlatform': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'addPlatform');
-        final platform = D4.getRequiredArg<$tom_basics_3.TomPlatform>(positional, 0, 'platform', 'addPlatform');
-        return $tom_basics_3.TomRuntime.addPlatform(platform);
+        final platform = D4.getRequiredArg<$tom_basics_2.TomPlatform>(positional, 0, 'platform', 'addPlatform');
+        return TomRuntime.addPlatform(platform);
       },
       'getPlatforms': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getPlatforms();
+        return TomRuntime.getPlatforms();
       },
       'getCurrentPlatform': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.getCurrentPlatform();
+        return TomRuntime.getCurrentPlatform();
       },
       'setCurrentPlatform': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'setCurrentPlatform');
-        final platform = D4.getRequiredArg<$tom_basics_3.TomPlatform>(positional, 0, 'platform', 'setCurrentPlatform');
-        return $tom_basics_3.TomRuntime.setCurrentPlatform(platform);
+        final platform = D4.getRequiredArg<$tom_basics_2.TomPlatform>(positional, 0, 'platform', 'setCurrentPlatform');
+        return TomRuntime.setCurrentPlatform(platform);
       },
       'initializePlatform': (visitor, positional, named, typeArgs) {
-        return $tom_basics_3.TomRuntime.initializePlatform();
+        return TomRuntime.initializePlatform();
       },
     },
     constructorSignatures: {

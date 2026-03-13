@@ -1,6 +1,9 @@
 // D4rt Bridge - Generated file, do not edit
 // Test runner for tom_dartscript_bridges
-// Generated: 2026-02-27T00:31:35.231083
+// Generated: 2026-03-12T17:01:57.725270
+
+// ignore_for_file: avoid_print
+
 //
 // Usage:
 //   dart run bin/d4rtrun.b.dart <script.dart|.d4rt>  Run a D4rt script file
@@ -16,17 +19,17 @@ import 'dart:io';
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt_dcli/dartscript.b.dart' as imported_0;
-import 'package:tom_dartscript_bridges/src/tom_basics/tom_basics_bridges.b.dart' as tom_basics_bridges;
-import 'package:tom_dartscript_bridges/src/tom_reflection/tom_reflection_bridges.b.dart' as tom_reflection_bridges;
-import 'package:tom_dartscript_bridges/src/tom_process_monitor/tom_process_monitor_bridges.b.dart' as tom_process_monitor_bridges;
-import 'package:tom_dartscript_bridges/src/tom_core_kernel/tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
-import 'package:tom_dartscript_bridges/src/tom_build/tom_build_bridges.b.dart' as tom_build_bridges;
-import 'package:tom_dartscript_bridges/src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_bridges;
-import 'package:tom_dartscript_bridges/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
-import 'package:tom_dartscript_bridges/src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
-import 'package:tom_dartscript_bridges/src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
-import 'package:tom_dartscript_bridges/src/tom_md2latex/tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
-import 'package:tom_dartscript_bridges/src/tom_md2pdf/tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
+import 'package:tom_core_d4rt/src/tom_basics/tom_basics_bridges.b.dart' as tom_basics_bridges;
+import 'package:tom_core_d4rt/src/tom_reflection/tom_reflection_bridges.b.dart' as tom_reflection_bridges;
+import 'package:tom_core_d4rt/src/tom_process_monitor/tom_process_monitor_bridges.b.dart' as tom_process_monitor_bridges;
+import 'package:tom_core_d4rt/src/tom_core_kernel/tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
+import 'package:tom_core_d4rt/src/tom_build/tom_build_bridges.b.dart' as tom_build_bridges;
+import 'package:tom_core_d4rt/src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_bridges;
+import 'package:tom_core_d4rt/src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
+import 'package:tom_core_d4rt/src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
+import 'package:tom_core_d4rt/src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
+import 'package:tom_core_d4rt/src/tom_md2latex/tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
+import 'package:tom_core_d4rt/src/tom_md2pdf/tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
 
 /// Init script source that imports all bridged modules.
 const String _initSource = '''
