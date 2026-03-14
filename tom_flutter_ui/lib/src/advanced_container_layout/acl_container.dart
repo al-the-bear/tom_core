@@ -1001,6 +1001,12 @@ class _AclContainerState extends State<AclContainer> {
 
     // ── Vertical alignment deltas (same-row) ─────────────────────────────
     // Requires virtual rects to be built first; update them with Y offsets.
+    //
+    // Virtual rects all have top=0. But _buildRow places each component at
+    // baseTopInRow = (rowH - compH) / 2 by default (centred in the row).
+    // We must adjust the rect Y by this default offset so the delta reflects
+    // a shift FROM that default position, not from an artificial top=0.
+    final hasRowExpandY = row.components.any((c) => !c.isGap && c.expandY);
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (comp.alignYToKey == null ||
@@ -1015,8 +1021,17 @@ class _AclContainerState extends State<AclContainer> {
           virtualRects[comp.alignYToKey];
       if (selfRect == null || refRect == null) continue;
 
-      final selfPoint = _verticalPoint(selfRect, comp.alignYFrom!);
-      final refPoint = _verticalPoint(refRect, comp.alignYTo!);
+      // When the row has expandY components, baseTopInRow = 0; otherwise
+      // each component defaults to (rowH - compH) / 2 (centred).
+      double defaultTop(Rect r) => hasRowExpandY
+          ? 0.0
+          : (rowEstimatedHeight - r.height) / 2;
+
+      final adjSelfRect = selfRect.translate(0, defaultTop(selfRect));
+      final adjRefRect  = refRect.translate(0, defaultTop(refRect));
+
+      final selfPoint = _verticalPoint(adjSelfRect, comp.alignYFrom!);
+      final refPoint  = _verticalPoint(adjRefRect,  comp.alignYTo!);
       final delta = (refPoint - comp.alignYGap) - selfPoint;
       verticalDeltas[i] = delta;
     }
@@ -1290,16 +1305,26 @@ class _AclContainerState extends State<AclContainer> {
       rowEstimatedWidth = math.max(rowEstimatedWidth, plannedX + estimatedWidth);
 
       if (!isFlexNativeChild && component.componentKey != null) {
-        child = Align(
-          key: component.componentKey,
-          alignment: Alignment.centerLeft,
-          widthFactor: 1,
-          heightFactor: 1,
-          child: child,
-        );
+        if (component.expandY && canExpandVertically) {
+          // expandY: use a transparent SizedBox to carry the key without
+          // loosening the cross-axis (height) constraints that allow this
+          // component to fill the row.
+          child = SizedBox(key: component.componentKey, child: child);
+        } else {
+          child = Align(
+            key: component.componentKey,
+            alignment: Alignment.centerLeft,
+            widthFactor: 1,
+            heightFactor: 1,
+            child: child,
+          );
+        }
       }
 
-      if (!isFlexNativeChild) {
+      // Skip cross-alignment wrapping for expandY components — they are
+      // stretched by CrossAxisAlignment.stretch and must not have their
+      // height constraints loosened by an Align(heightFactor:1) wrapper.
+      if (!isFlexNativeChild && !(component.expandY && canExpandVertically)) {
         child = _wrapWithRowCrossAlignment(child, component.rowCrossAlignment);
       }
 
