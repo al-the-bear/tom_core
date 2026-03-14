@@ -701,14 +701,32 @@ class _AclContainerState extends State<AclContainer> {
         for (final row in widget.rows) {
           if (row.isGapRow) {
             if (!widget.scrollableY && canExpandVertically) {
-              final weight =
-                  (row.gapRowWeight * 1000).round().clamp(1, 1000000);
-              final gapContent = row.separator != null
-                  ? _buildSeparatorWidget(row.separator!)
-                  : const SizedBox.expand();
-              rowWidgets.add(
-                Flexible(flex: weight, fit: FlexFit.tight, child: gapContent),
-              );
+              if (!hasExpandY) {
+                // No expandY rows in layout: gap rows expand proportionally.
+                final weight =
+                    (row.gapRowWeight * 1000).round().clamp(1, 1000000);
+                final gapContent = row.separator != null
+                    ? _buildSeparatorWidget(row.separator!)
+                    : const SizedBox.expand();
+                rowWidgets.add(
+                  Flexible(
+                    flex: weight,
+                    fit: FlexFit.tight,
+                    child: gapContent,
+                  ),
+                );
+              } else if (row.separator != null) {
+                // expandY rows are present: separator still renders at a small
+                // fixed height so the visual divider is not lost, but it does
+                // NOT compete for the extra vertical space.
+                rowWidgets.add(
+                  SizedBox(
+                    height: 12,
+                    child: _buildSeparatorWidget(row.separator!),
+                  ),
+                );
+                // Pure spacing gap rows (no separator) collapse to nothing.
+              }
             }
             continue;
           }
