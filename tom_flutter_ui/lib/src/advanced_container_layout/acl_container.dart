@@ -921,10 +921,11 @@ class _AclContainerState extends State<AclContainer> {
           comp.child is Spacer;
 
       final hasExplicitXAlignment = comp.alignXToKey != null;
-      final collapseToVisual =
-          !isFlexNative && !hasExplicitXAlignment && maxHorizontalX < plannedX;
 
-      if (comp.gapBefore > 0 && !collapseToVisual) {
+      // Always advance plannedX by gapBefore so the delta is measured from
+      // after the gap regardless of collapseToVisual (keeps pre-calc and
+      // _buildRow in sync with no re-detection needed in the widget builder).
+      if (comp.gapBefore > 0) {
         plannedX += comp.gapBefore;
       }
 
@@ -933,8 +934,9 @@ class _AclContainerState extends State<AclContainer> {
 
       // Horizontal alignment delta
       double hDelta = 0;
-      if (collapseToVisual) {
-        hDelta = maxHorizontalX + comp.gapBefore - plannedX;
+      if (!isFlexNative && !hasExplicitXAlignment && maxHorizontalX < plannedX) {
+        // collapseToVisual: snap back to the visual right edge (negative delta).
+        hDelta = maxHorizontalX - plannedX;
       } else if (hasExplicitXAlignment) {
         hDelta = _calcHorizontalDelta(
           comp: comp,
@@ -1180,15 +1182,9 @@ class _AclContainerState extends State<AclContainer> {
       final alignmentDelta = layout.horizontalDeltas[componentIndex] ?? 0.0;
       final verticalAlignmentOffset = layout.verticalDeltas[componentIndex] ?? 0.0;
 
-      final bool collapseToVisual =
-          !isFlexNativeChild &&
-          component.alignXToKey == null &&
-          maxHorizontalX < plannedX;
-
-      // gapBefore is already baked into the plannedX tracking in _computeRowLayout.
-      // We still need to emit the SizedBox(gapBefore) for the Flutter row unless
-      // collapseToVisual suppresses it (in which case the alignmentDelta handles it).
-      if (component.gapBefore > 0 && !collapseToVisual) {
+      // Always emit gapBefore — the pre-calc always accounts for it in plannedX
+      // so the alignmentDelta is always measured from after the gap.
+      if (component.gapBefore > 0) {
         children.add(SizedBox(width: component.gapBefore));
         plannedX += component.gapBefore;
       }
