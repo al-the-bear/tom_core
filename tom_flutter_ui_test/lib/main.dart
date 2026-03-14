@@ -339,7 +339,7 @@ class AlignmentDemo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _ResizableBox(
-          initialHeight: 120,
+          initialHeight: 140,
           child: AclBuilder()
               .append(const _DemoBox('Left', Colors.red))
               .append(const _DemoBox('Aligned', Colors.green))
@@ -771,7 +771,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 12),
         _ResizableBox(
-          initialHeight: 200,
+          initialHeight: 280,
           child: AclBuilder()
               .append(anchorLabel)
               .append(anchorField, dist: 12)
@@ -887,7 +887,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         _ResizableBox(
-          initialHeight: 80,
+          initialHeight: 110,
           child: AclBuilder()
               .append(topBottomAnchor)
               .setPSize(220, 64)
@@ -914,7 +914,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         _ResizableBox(
-          initialHeight: 80,
+          initialHeight: 110,
           child: AclBuilder()
               .append(bottomTopAnchor)
               .setPSize(220, 64)
@@ -2185,16 +2185,19 @@ class ComprehensiveFormDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
-        AclBuilder(
-          title: 'New Project Request',
-          borderStyle: const AclBorderStyle.solid(
-            color: Colors.blueGrey,
-            lineWidth: 1.5,
-            rounded: true,
-            borderRadius: 8,
-          ),
-          padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
-        )
+        _ResizableBox(
+          initialHeight: 500,
+          showBorder: false,
+          child: AclBuilder(
+            title: 'New Project Request',
+            borderStyle: const AclBorderStyle.solid(
+              color: Colors.blueGrey,
+              lineWidth: 1.5,
+              rounded: true,
+              borderRadius: 8,
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+          )
         // ── Section heading ────────────────────────────────────────────────
         .append(const Text(
           'Project Details',
@@ -2380,6 +2383,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
         // Minimum container width prevents overflow at very narrow windows.
         .setAclMSize(550, 0)
         .build(),
+        ),
 
         const SizedBox(height: 8),
         const Text(
@@ -2669,11 +2673,19 @@ AclColumn([
 class _ResizableBox extends StatefulWidget {
   final Widget child;
 
-  /// Initial height in logical pixels.  Must be provided; controls whether
-  /// the bottom-edge handle is shown.
+  /// Initial height in logical pixels.
   final double initialHeight;
 
-  const _ResizableBox({required this.child, this.initialHeight = 120});
+  /// Whether to draw the thin grey border around the content.
+  /// Set to false when the child already provides its own visible border
+  /// (e.g. an AclBuilder with title/borderStyle).
+  final bool showBorder;
+
+  const _ResizableBox({
+    required this.child,
+    this.initialHeight = 120,
+    this.showBorder = true,
+  });
 
   @override
   State<_ResizableBox> createState() => _ResizableBoxState();
@@ -2706,13 +2718,15 @@ class _ResizableBoxState extends State<_ResizableBox> {
         height: h,
         child: Stack(
           children: [
-            // ── Content with grey border ─────────────────────────────────
+            // ── Content (optionally with grey border) ──────────────────
             Positioned.fill(
-              child: Container(
-                decoration:
-                    BoxDecoration(border: Border.all(color: Colors.grey)),
-                child: widget.child,
-              ),
+              child: widget.showBorder
+                  ? Container(
+                      decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey)),
+                      child: widget.child,
+                    )
+                  : widget.child,
             ),
 
             // ── Right-edge drag handle ───────────────────────────────────
