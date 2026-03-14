@@ -187,6 +187,51 @@ class AclRow {
   });
 }
 
+// ── Pre-calculation data structures ──────────────────────────────────────────
+
+/// Pre-computed layout values for a single content row, produced by the
+/// pre-calculation loop. These values are handed directly to [_buildRow] so
+/// that Flutter layout is performed in a single pass with all sizes fixed.
+class _AclRowLayout {
+  /// Fitted (phase 1/2/3) widths by component index. null → natural size.
+  final Map<int, double> fittedWidths;
+
+  /// Computed horizontal translation delta for each component index.
+  /// 0.0 for components that have no alignXToKey.
+  final Map<int, double> horizontalDeltas;
+
+  /// Computed vertical translation delta for each component index.
+  /// 0.0 for components that have no alignYToKey.
+  final Map<int, double> verticalDeltas;
+
+  /// Resolved linked widths (from sameWidthAs / sameSize) by component index.
+  final Map<int, double> linkedWidths;
+
+  /// Resolved linked heights (from sameHeightAs / sameSize) by component index.
+  final Map<int, double> linkedHeights;
+
+  /// Width assigned to each gap slot by component index (0 when scrollableX).
+  final Map<int, double> gapSlotWidths;
+
+  /// Virtual rect for every component (by componentKey). Published for
+  /// cross-row constraint resolution in subsequent rows.
+  final Map<Key, Rect> virtualRects;
+
+  /// Estimated row height from the pre-calc pass.
+  final double estimatedHeight;
+
+  _AclRowLayout({
+    required this.fittedWidths,
+    required this.horizontalDeltas,
+    required this.verticalDeltas,
+    required this.linkedWidths,
+    required this.linkedHeights,
+    required this.gapSlotWidths,
+    required this.virtualRects,
+    required this.estimatedHeight,
+  });
+}
+
 // ── AclContainer ─────────────────────────────────────────────────────────────
 
 class AclContainer extends StatefulWidget {
@@ -232,15 +277,16 @@ class AclContainer extends StatefulWidget {
 
 class _AclContainerState extends State<AclContainer> {
   static const double _geometryEpsilon = 0.5;
+  static const int _maxPreCalcIterations = 20;
+
   final FocusNode _focusNode = FocusNode();
   bool _hasFocusWithin = false;
-  bool _hasUnresolvedReference = false;
-  bool _referenceRelayoutScheduled = false;
-  bool _referenceCacheRefreshScheduled = false;
-  final Map<Key, Size> _referenceSizeCache = {};
-  final Map<Key, Rect> _referenceRectCache = {};
-  final Map<Key, double> _appliedHorizontalOffsetByKey = {};
-  final Map<Key, double> _appliedVerticalOffsetByKey = {};
+  bool _naturalSizeCacheRefreshScheduled = false;
+
+  /// Cache of measured natural sizes for components with no explicit ACL size
+  /// hints. Populated by the post-frame callback; used as the seed for the
+  /// pre-calculation loop. Keys are the component's [AclComponent.componentKey].
+  final Map<Key, Size> _naturalSizeCache = {};
 
   @override
   void dispose() {
@@ -251,18 +297,18 @@ class _AclContainerState extends State<AclContainer> {
   @override
   void didUpdateWidget(AclContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The AclBuilder creates NEW GlobalKeys on every parent build() call because
-    // _referenceKeyByObject lives on the transient AclBuilder instance.  Transfer
-    // cached size/rect entries from the old keys (previous build) to the new keys
-    // (current build) by matching components by structural position (row index,
-    // component index).  This eliminates the one-frame cache-miss lag on every
-    // resize and makes alignment + sameWidthAs tracking instantaneous.
-    _remapCachesByPosition(oldWidget.rows, widget.rows);
+    // AclBuilder generates new GlobalKeys on every build() call. Transfer
+    // cached natural sizes from old keys to new keys by structural position
+    // (row index × component index) so there is no one-frame cache-miss lag
+    // after a parent rebuild.
+    _remapNaturalSizeCacheByPosition(oldWidget.rows, widget.rows);
   }
 
-  void _remapCachesByPosition(List<AclRow> oldRows, List<AclRow> newRows) {
-    final newSizeCache = <Key, Size>{};
-    final newRectCache = <Key, Rect>{};
+  void _remapNaturalSizeCacheByPosition(
+    List<AclRow> oldRows,
+    List<AclRow> newRows,
+  ) {
+    final newCache = <Key, Size>{};
     final minRows = math.min(oldRows.length, newRows.length);
     for (int ri = 0; ri < minRows; ri++) {
       final oldComps = oldRows[ri].components;
@@ -272,35 +318,21 @@ class _AclContainerState extends State<AclContainer> {
         final oldKey = oldComps[ci].componentKey;
         final newKey = newComps[ci].componentKey;
         if (newKey == null) continue;
-        final sz = oldKey != null ? _referenceSizeCache[oldKey] : null;
-        if (sz != null) newSizeCache[newKey] = sz;
-        final rect = oldKey != null ? _referenceRectCache[oldKey] : null;
-        if (rect != null) newRectCache[newKey] = rect;
+        final sz = oldKey != null ? _naturalSizeCache[oldKey] : null;
+        if (sz != null) newCache[newKey] = sz;
       }
     }
-    _referenceSizeCache
+    _naturalSizeCache
       ..clear()
-      ..addAll(newSizeCache);
-    _referenceRectCache
-      ..clear()
-      ..addAll(newRectCache);
-    // Applied offsets will be recomputed in the current build pass.
-    _appliedHorizontalOffsetByKey.clear();
-    _appliedVerticalOffsetByKey.clear();
+      ..addAll(newCache);
   }
 
   @override
   Widget build(BuildContext context) {
-    _hasUnresolvedReference = false;
-
     Widget content = _buildContent(context);
 
-    // ── Container-level sizing ──────────────────────────────────────────
-    // preferred acts as minimum when no explicit minimum is given.
-    // minContW is intentionally NOT applied here — it is handled inside
-    // _buildContent so the layout engine can use it as the effective width
-    // (enabling expandX/gap to work correctly at the minimum width) and
-    // wrap in a horizontal scroll view when the window is narrower.
+    // Container-level height/width constraints. minContW is handled inside
+    // _buildContent (inside LayoutBuilder) so expandX/gap use the correct width.
     final minContH = widget.minimumContainerSize?.height ??
         widget.preferredContainerSize?.height;
     final maxContW = widget.maximumContainerSize?.width;
@@ -316,8 +348,9 @@ class _AclContainerState extends State<AclContainer> {
       );
     }
 
-    _scheduleReferenceCacheRefresh();
-    _scheduleReferenceRelayoutIfNeeded();
+    // Post-frame: re-measure natural-sized components. If any size changed,
+    // trigger one rebuild. This is the ONLY path that reads the render tree.
+    _scheduleNaturalSizeCacheRefresh();
 
     final activeBorderStyle =
         _hasFocusWithin && widget.focusedBorderStyle != null
@@ -347,47 +380,39 @@ class _AclContainerState extends State<AclContainer> {
     );
   }
 
-  void _scheduleReferenceRelayoutIfNeeded() {
-    if (!_hasUnresolvedReference || _referenceRelayoutScheduled) return;
-    _referenceRelayoutScheduled = true;
+  void _scheduleNaturalSizeCacheRefresh() {
+    if (_naturalSizeCacheRefreshScheduled) return;
+    _naturalSizeCacheRefreshScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _referenceRelayoutScheduled = false;
+      _naturalSizeCacheRefreshScheduled = false;
       if (!mounted) return;
-      setState(() {});
-    });
-  }
-
-  void _scheduleReferenceCacheRefresh() {
-    if (_referenceCacheRefreshScheduled) return;
-    _referenceCacheRefreshScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _referenceCacheRefreshScheduled = false;
-      if (!mounted) return;
-
-      final ownRenderObject = context.findRenderObject();
-      final ownBox = ownRenderObject is RenderBox ? ownRenderObject : null;
-      if (ownBox == null || !ownBox.hasSize) return;
 
       bool changed = false;
-      for (final key in _componentKeys()) {
-        if (key is! GlobalKey) continue;
-        final refContext = key.currentContext;
-        final refRenderObject = refContext?.findRenderObject();
-        if (refRenderObject is! RenderBox || !refRenderObject.hasSize) continue;
+      for (final row in widget.rows) {
+        for (final comp in row.components) {
+          final key = comp.componentKey;
+          if (key is! GlobalKey) continue;
+          // Only refresh entries for natural-sized components (no ACL hints).
+          // Explicitly-sized components never enter the cache.
+          if (comp.preferredSize != null ||
+              comp.minimumSize != null ||
+              comp.maximumSize != null ||
+              comp.useOtherDimX ||
+              comp.useOtherDimY) {
+            continue;
+          }
 
-        final size = refRenderObject.size;
-        final topLeft = ownBox.globalToLocal(
-          refRenderObject.localToGlobal(Offset.zero),
-        );
-        final rect = topLeft & size;
-
-        if (!_isSameSize(_referenceSizeCache[key], size)) {
-          _referenceSizeCache[key] = size;
-          changed = true;
-        }
-        if (!_isSameRect(_referenceRectCache[key], rect)) {
-          _referenceRectCache[key] = rect;
-          changed = true;
+          final ctx = key.currentContext;
+          final ro = ctx?.findRenderObject();
+          if (ro is! RenderBox || !ro.hasSize) continue;
+          final size = ro.size;
+          final cached = _naturalSizeCache[key];
+          if (cached == null ||
+              (cached.width - size.width).abs() >= _geometryEpsilon ||
+              (cached.height - size.height).abs() >= _geometryEpsilon) {
+            _naturalSizeCache[key] = size;
+            changed = true;
+          }
         }
       }
 
@@ -395,27 +420,167 @@ class _AclContainerState extends State<AclContainer> {
     });
   }
 
-  Iterable<Key> _componentKeys() sync* {
-    for (final row in widget.rows) {
-      for (final component in row.components) {
-        final key = component.componentKey;
-        if (key != null) yield key;
-      }
+  // ── Fitted width calculation (pure Dart — no render tree reads) ─────────────
+
+  /// Returns fitted widths for components that need shrinking or growing to fit
+  /// [availableWidth]. Returns `null` if no adjustment is needed.
+  ///
+  /// [linkedWidths] — pre-resolved sameWidthAs / sameSize widths (index → width).
+  Map<int, double>? _computeFittedWidths({
+    required AclRow row,
+    required double availableWidth,
+    required Map<Key, Rect> crossRowVirtualRects,
+    Map<int, double> linkedWidths = const {},
+  }) {
+    double plannedX = 0;
+    double minHX = 0;
+    double maxHX = 0;
+    final vRects = <Key, Rect>{};
+    final prefWidths = <int, double>{};
+
+    bool skip(AclComponent c) =>
+        c.isGap ||
+        c.child is Flexible ||
+        c.child is Expanded ||
+        c.child is Spacer ||
+        c.expandX ||
+        c.alignXToKey != null;
+
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (skip(comp)) continue;
+
+      final linkedW = linkedWidths[i] ??
+          (comp.useOtherDimX ? crossRowVirtualRects[comp.referenceKey]?.width : null);
+
+      final bool collapseToVisual = comp.alignXToKey == null && maxHX < plannedX;
+      if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
+
+      final delta = collapseToVisual
+          ? (maxHX + comp.gapBefore - plannedX)
+          : _calcHorizontalDelta(
+              comp: comp,
+              plannedX: plannedX,
+              linkedWidth: linkedW,
+              virtualRects: vRects,
+              crossRowVirtualRects: crossRowVirtualRects,
+              fittedWidths: const {},
+            );
+
+      if (delta > 0) plannedX += delta;
+
+      final pref =
+          (linkedW ?? comp.preferredSize?.width ?? comp.minimumSize?.width ?? 0)
+              .clamp(0.0, double.infinity);
+      prefWidths[i] = pref;
+
+      final h =
+          (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
+              .clamp(0.0, double.infinity);
+      final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
+      minHX = math.min(minHX, shiftedLeft);
+      maxHX = math.max(maxHX, shiftedLeft + pref);
+
+      final key = comp.componentKey;
+      if (key != null) vRects[key] = Rect.fromLTWH(shiftedLeft, 0, pref, h);
+      plannedX += pref;
     }
-  }
 
-  bool _isSameSize(Size? a, Size b) {
-    if (a == null) return false;
-    return (a.width - b.width).abs() < _geometryEpsilon &&
-        (a.height - b.height).abs() < _geometryEpsilon;
-  }
+    final extraLeft = minHX < 0 ? -minHX : 0.0;
+    final naturalWidth = maxHX + extraLeft;
 
-  bool _isSameRect(Rect? a, Rect b) {
-    if (a == null) return false;
-    return (a.left - b.left).abs() < _geometryEpsilon &&
-        (a.top - b.top).abs() < _geometryEpsilon &&
-        (a.width - b.width).abs() < _geometryEpsilon &&
-        (a.height - b.height).abs() < _geometryEpsilon;
+    if (naturalWidth <= availableWidth) {
+      // ── Grow phase ─────────────────────────────────────────────────────
+      // Natural-sized (no-hint) components use cached size as seed.
+      final hasRowFiller =
+          row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
+      if (!hasRowFiller) {
+        double naturalExcludedWidth = 0;
+        for (int i = 0; i < row.components.length; i++) {
+          final comp = row.components[i];
+          if (skip(comp)) continue;
+          if (comp.preferredSize != null ||
+              comp.minimumSize != null ||
+              comp.maximumSize != null ||
+              comp.useOtherDimX) {
+            continue;
+          }
+          // Use cached natural width as seed; falls back to 0 on first frame.
+          naturalExcludedWidth += _naturalWidth(comp) ??
+              (comp.child is SizedBox
+                  ? ((comp.child as SizedBox).width ?? 0.0)
+                  : 0.0);
+        }
+
+        final effectiveSurplus = math.max(
+          0.0,
+          availableWidth - naturalWidth - naturalExcludedWidth,
+        );
+        if (effectiveSurplus >= 1) {
+          double totalPref = 0;
+          for (int i = 0; i < row.components.length; i++) {
+            final comp = row.components[i];
+            if (skip(comp)) continue;
+            if (comp.useOtherDimX) continue;
+            if (comp.preferredSize == null &&
+                comp.minimumSize == null &&
+                comp.maximumSize == null) {
+              continue;
+            }
+            totalPref += prefWidths[i] ?? 0.0;
+          }
+          if (totalPref >= 1) {
+            final grown = <int, double>{};
+            for (int i = 0; i < row.components.length; i++) {
+              final comp = row.components[i];
+              if (skip(comp)) continue;
+              if (comp.useOtherDimX) continue;
+              if (comp.preferredSize == null &&
+                  comp.minimumSize == null &&
+                  comp.maximumSize == null) {
+                continue;
+              }
+              final pref = prefWidths[i] ?? 0.0;
+              final share = effectiveSurplus * pref / totalPref;
+              final max = comp.maximumSize?.width;
+              grown[i] = (max != null && max.isFinite)
+                  ? math.min(pref + share, max)
+                  : pref + share;
+            }
+            if (grown.isNotEmpty) return grown;
+          }
+        }
+      }
+      return null;
+    }
+
+    // ── Shrink phase ────────────────────────────────────────────────────────
+    final deficit = naturalWidth - availableWidth;
+    double shrinkCap = 0;
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (skip(comp)) continue;
+      if (comp.useOtherDimX) continue;
+      shrinkCap += math.max(
+        0.0,
+        (prefWidths[i] ?? 0) -
+            (comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0),
+      );
+    }
+    if (shrinkCap < 1) return null;
+
+    final ratio = (deficit / shrinkCap).clamp(0.0, 1.0);
+    final fitted = <int, double>{};
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (skip(comp)) continue;
+      if (comp.useOtherDimX) continue;
+      if (comp.preferredSize == null && comp.minimumSize == null) continue;
+      final pref = prefWidths[i] ?? 0.0;
+      final min = comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0.0;
+      fitted[i] = pref - math.max(0.0, pref - min) * ratio;
+    }
+    return fitted;
   }
 
   // ── Border rendering ───────────────────────────────────────────────────────
@@ -501,10 +666,6 @@ class _AclContainerState extends State<AclContainer> {
     );
     final hasGapRows =
         widget.rows.any((row) => row.isGapRow) && !widget.scrollableY;
-    // Effective minimum container width: preferred acts as minimum when no
-    // explicit minimum is given. Handled here (not in the outer ConstrainedBox)
-    // so the layout engine uses this width for expandX/gap distribution and can
-    // wrap in a horizontal scroll view when the window is narrower.
     final minContW = (widget.minimumContainerSize?.width ??
             widget.preferredContainerSize?.width ??
             0.0)
@@ -514,26 +675,28 @@ class _AclContainerState extends State<AclContainer> {
       builder: (context, constraints) {
         final rawMaxW =
             constraints.hasBoundedWidth ? constraints.maxWidth : 0.0;
-        // Use the larger of the real available width and the minimum container
-        // width so rows lay out as if they have at least minContW space.
         final effectiveMaxW = math.max(rawMaxW, minContW);
         final canExpandHorizontally = effectiveMaxW > 0;
         final canExpandVertically = constraints.hasBoundedHeight;
         final useMaxVertical =
             (hasExpandY || hasGapRows) && canExpandVertically;
-        // True when content is wider than the window (scroll mode).
         final needsHorizontalScroll =
             !widget.scrollableX &&
             minContW > 0 &&
             constraints.hasBoundedWidth &&
             rawMaxW < minContW;
 
+        // ── Pre-calculation loop ─────────────────────────────────────────
+        // Run iterations in pure Dart until all sizes and alignment deltas
+        // converge. The render tree is only consulted once via the
+        // _naturalSizeCache (populated by the post-frame callback).
+        final rowLayouts = _runPreCalcLoop(
+          effectiveMaxW: canExpandHorizontally ? effectiveMaxW : null,
+        );
+
+        // ── Assemble Flutter widget tree from pre-computed values ────────
         final List<Widget> rowWidgets = [];
-        // Shared map: every row appends its components' analytically-computed
-        // positions here so that later rows can resolve cross-row alignments
-        // and sameWidthAs widths from the CURRENT frame's layout rather than
-        // reading the stale render-tree cache.
-        final crossRowVirtualRects = <Key, Rect>{};
+        int contentRowIndex = 0;
 
         for (final row in widget.rows) {
           if (row.isGapRow) {
@@ -554,13 +717,14 @@ class _AclContainerState extends State<AclContainer> {
             rowWidgets.add(SizedBox(height: row.gapBefore));
           }
 
+          final layout = rowLayouts[contentRowIndex++];
           rowWidgets.add(
             _buildRow(
               row: row,
+              layout: layout,
               canExpandHorizontally: canExpandHorizontally,
               canExpandVertically: canExpandVertically,
               availableWidth: canExpandHorizontally ? effectiveMaxW : null,
-              crossRowVirtualRects: crossRowVirtualRects,
             ),
           );
         }
@@ -578,7 +742,6 @@ class _AclContainerState extends State<AclContainer> {
         }
 
         if (needsHorizontalScroll) {
-          // Freeze width at minContW and allow the window to scroll over it.
           column = SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             physics: const ClampingScrollPhysics(),
@@ -596,6 +759,318 @@ class _AclContainerState extends State<AclContainer> {
         return column;
       },
     );
+  }
+
+  // ── Pre-calculation loop ──────────────────────────────────────────────────
+
+  /// Runs the iterative pre-calculation loop and returns one [_AclRowLayout]
+  /// per content row (gap rows are skipped).
+  ///
+  /// Uses only [_naturalSizeCache] as external input (no render-tree reads).
+  /// Iterates up to [_maxPreCalcIterations] times until all values converge
+  /// within [_geometryEpsilon].
+  List<_AclRowLayout> _runPreCalcLoop({required double? effectiveMaxW}) {
+    final contentRows =
+        widget.rows.where((r) => !r.isGapRow).toList(growable: false);
+
+    List<_AclRowLayout>? prev;
+
+    for (int iter = 0; iter < _maxPreCalcIterations; iter++) {
+      // Cross-row virtual rects accumulated as we process rows in order.
+      final crossRowVirtualRects = <Key, Rect>{};
+      // For Y-alignment we also need the virtual rects of same-row components
+      // that were placed earlier in the row. These are local to each row pass
+      // and built up inside _computeRowLayout.
+
+      final current = <_AclRowLayout>[];
+      for (final row in contentRows) {
+        final layout = _computeRowLayout(
+          row: row,
+          availableWidth: effectiveMaxW,
+          crossRowVirtualRects: crossRowVirtualRects,
+        );
+        // Publish this row's virtual rects for subsequent rows.
+        crossRowVirtualRects.addAll(layout.virtualRects);
+        current.add(layout);
+      }
+
+      if (prev != null && _hasConverged(prev, current)) {
+        return current;
+      }
+      prev = current;
+    }
+
+    return prev!;
+  }
+
+  bool _hasConverged(List<_AclRowLayout> a, List<_AclRowLayout> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      final ra = a[i];
+      final rb = b[i];
+      if ((ra.estimatedHeight - rb.estimatedHeight).abs() >= _geometryEpsilon) {
+        return false;
+      }
+      for (final entry in rb.fittedWidths.entries) {
+        final prev = ra.fittedWidths[entry.key];
+        if (prev == null || (prev - entry.value).abs() >= _geometryEpsilon) {
+          return false;
+        }
+      }
+      for (final entry in rb.horizontalDeltas.entries) {
+        final prev = ra.horizontalDeltas[entry.key];
+        if (prev == null || (prev - entry.value).abs() >= _geometryEpsilon) {
+          return false;
+        }
+      }
+      for (final entry in rb.verticalDeltas.entries) {
+        final prev = ra.verticalDeltas[entry.key];
+        if (prev == null || (prev - entry.value).abs() >= _geometryEpsilon) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /// Pure-Dart computation of layout values for one content row.
+  _AclRowLayout _computeRowLayout({
+    required AclRow row,
+    required double? availableWidth,
+    required Map<Key, Rect> crossRowVirtualRects,
+  }) {
+    final fittedWidths = <int, double>{};
+    final horizontalDeltas = <int, double>{};
+    final verticalDeltas = <int, double>{};
+    final linkedWidths = <int, double>{};
+    final linkedHeights = <int, double>{};
+    final gapSlotWidths = <int, double>{};
+    final virtualRects = <Key, Rect>{};
+
+    // ── Phase 0: resolve linked sizes from sameWidthAs / sameHeightAs ────
+    final hasGapSlots = row.components.any((c) => c.isGap);
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (comp.useOtherDimX && comp.referenceKey != null) {
+        final refRect = crossRowVirtualRects[comp.referenceKey];
+        if (refRect != null) linkedWidths[i] = refRect.width;
+      }
+      if (comp.useOtherDimY && comp.referenceKey != null) {
+        final refRect = crossRowVirtualRects[comp.referenceKey];
+        if (refRect != null) linkedHeights[i] = refRect.height;
+      }
+    }
+
+    // ── Phase 1/2/3: compute fitted widths ───────────────────────────────
+    if (availableWidth != null && availableWidth.isFinite) {
+      final fw = _computeFittedWidths(
+        row: row,
+        availableWidth: availableWidth,
+        crossRowVirtualRects: crossRowVirtualRects,
+        linkedWidths: linkedWidths,
+      );
+      if (fw != null) fittedWidths.addAll(fw);
+    }
+
+    // ── Gap slot widths ───────────────────────────────────────────────────
+    if (hasGapSlots && availableWidth != null && availableWidth.isFinite) {
+      double totalFitted = 0;
+      for (int i = 0; i < row.components.length; i++) {
+        final comp = row.components[i];
+        if (comp.isGap) continue;
+        totalFitted += fittedWidths[i] ??
+            linkedWidths[i] ??
+            comp.preferredSize?.width ??
+            _naturalWidth(comp) ??
+            0;
+      }
+      final gapRemaining =
+          math.max(0.0, availableWidth - totalFitted);
+      final gapWeightSum = row.components
+          .where((c) => c.isGap)
+          .fold(0.0, (s, c) => s + c.gapWeight);
+      if (gapWeightSum > 0 && !widget.scrollableX) {
+        for (int i = 0; i < row.components.length; i++) {
+          final comp = row.components[i];
+          if (!comp.isGap) continue;
+          gapSlotWidths[i] =
+              (gapRemaining * comp.gapWeight / gapWeightSum)
+                  .clamp(0.0, double.infinity);
+        }
+      }
+    }
+
+    // ── Build virtual rects and compute alignment deltas ──────────────────
+    double plannedX = 0;
+    double maxHorizontalX = 0;
+    double rowEstimatedHeight = 0;
+    // Same-row virtual rects needed for Y-alignment back-references.
+    final sameRowVirtualRects = <Key, Rect>{};
+
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+
+      if (comp.isGap) {
+        plannedX += gapSlotWidths[i] ?? 0;
+        maxHorizontalX = math.max(maxHorizontalX, plannedX);
+        continue;
+      }
+
+      final isFlexNative = comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer;
+
+      final hasExplicitXAlignment = comp.alignXToKey != null;
+      final collapseToVisual =
+          !isFlexNative && !hasExplicitXAlignment && maxHorizontalX < plannedX;
+
+      if (comp.gapBefore > 0 && !collapseToVisual) {
+        plannedX += comp.gapBefore;
+      }
+
+      final linkedW = linkedWidths[i];
+      final linkedH = linkedHeights[i];
+
+      // Horizontal alignment delta
+      double hDelta = 0;
+      if (collapseToVisual) {
+        hDelta = maxHorizontalX + comp.gapBefore - plannedX;
+      } else if (hasExplicitXAlignment) {
+        hDelta = _calcHorizontalDelta(
+          comp: comp,
+          plannedX: plannedX,
+          linkedWidth: linkedW,
+          virtualRects: sameRowVirtualRects,
+          crossRowVirtualRects: crossRowVirtualRects,
+          fittedWidths: fittedWidths,
+        );
+      }
+      horizontalDeltas[i] = hDelta;
+
+      final estimatedW = _estimateW(comp, linkedW, fittedWidths[i]);
+      final estimatedH = _estimateH(comp, linkedH);
+
+      rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedH);
+
+      final shiftedLeft = plannedX + (hDelta < 0 ? hDelta : 0);
+      final shiftedRight = shiftedLeft + estimatedW;
+      maxHorizontalX = math.max(maxHorizontalX, shiftedRight);
+
+      final key = comp.componentKey;
+      if (key != null) {
+        final vRect =
+            Rect.fromLTWH(shiftedLeft, 0, estimatedW, estimatedH);
+        virtualRects[key] = vRect;
+        sameRowVirtualRects[key] = vRect;
+      }
+
+      plannedX += (hDelta > 0 ? hDelta : 0) + estimatedW;
+    }
+
+    // ── Vertical alignment deltas (same-row) ─────────────────────────────
+    // Requires virtual rects to be built first; update them with Y offsets.
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (comp.alignYToKey == null ||
+          comp.alignYFrom == null ||
+          comp.alignYTo == null ||
+          comp.componentKey == null) {
+        continue;
+      }
+
+      final selfRect = virtualRects[comp.componentKey];
+      final refRect = sameRowVirtualRects[comp.alignYToKey] ??
+          virtualRects[comp.alignYToKey];
+      if (selfRect == null || refRect == null) continue;
+
+      final selfPoint = _verticalPoint(selfRect, comp.alignYFrom!);
+      final refPoint = _verticalPoint(refRect, comp.alignYTo!);
+      final delta = (refPoint - comp.alignYGap) - selfPoint;
+      verticalDeltas[i] = delta;
+    }
+
+    return _AclRowLayout(
+      fittedWidths: fittedWidths,
+      horizontalDeltas: horizontalDeltas,
+      verticalDeltas: verticalDeltas,
+      linkedWidths: linkedWidths,
+      linkedHeights: linkedHeights,
+      gapSlotWidths: gapSlotWidths,
+      virtualRects: virtualRects,
+      estimatedHeight: rowEstimatedHeight,
+    );
+  }
+
+  // ── Natural size helpers ──────────────────────────────────────────────────
+
+  double? _naturalWidth(AclComponent comp) {
+    final key = comp.componentKey;
+    if (key == null) return null;
+    return _naturalSizeCache[key]?.width ??
+        (comp.child is SizedBox
+            ? (comp.child as SizedBox).width
+            : null);
+  }
+
+  double? _naturalHeight(AclComponent comp) {
+    final key = comp.componentKey;
+    if (key == null) return null;
+    return _naturalSizeCache[key]?.height;
+  }
+
+  double _estimateW(
+    AclComponent comp,
+    double? linkedWidth,
+    double? fittedWidth,
+  ) {
+    if (fittedWidth != null) return fittedWidth.clamp(0, double.infinity);
+    if (linkedWidth != null) return linkedWidth.clamp(0, double.infinity);
+    return (comp.preferredSize?.width ??
+            comp.minimumSize?.width ??
+            _naturalWidth(comp) ??
+            0)
+        .clamp(0, double.infinity);
+  }
+
+  double _estimateH(AclComponent comp, double? linkedHeight) {
+    if (linkedHeight != null) return linkedHeight.clamp(0, double.infinity);
+    return (comp.preferredSize?.height ??
+            comp.minimumSize?.height ??
+            _naturalHeight(comp) ??
+            0)
+        .clamp(0, double.infinity);
+  }
+
+  // ── Horizontal delta (pure Dart) ──────────────────────────────────────────
+
+  double _calcHorizontalDelta({
+    required AclComponent comp,
+    required double plannedX,
+    required double? linkedWidth,
+    required Map<Key, Rect> virtualRects,
+    required Map<Key, Rect> crossRowVirtualRects,
+    required Map<int, double> fittedWidths,
+  }) {
+    if (comp.alignXToKey == null ||
+        comp.alignXFrom == null ||
+        comp.alignXTo == null) {
+      return 0;
+    }
+
+    final key = comp.alignXToKey!;
+    final refRect =
+        crossRowVirtualRects[key] ?? virtualRects[key];
+    if (refRect == null) return 0;
+
+    final widthEstimate = linkedWidth ??
+        (comp.preferredSize?.width ??
+            comp.minimumSize?.width ??
+            _naturalWidth(comp) ??
+            0);
+    final selfPoint =
+        plannedX + _horizontalOffset(comp.alignXFrom!, widthEstimate);
+    final targetPoint = _horizontalPoint(refRect, comp.alignXTo!);
+    return (targetPoint - comp.alignXGap) - selfPoint;
   }
 
   Widget _buildSeparatorWidget(AclSeparator separator) {
@@ -628,12 +1103,14 @@ class _AclContainerState extends State<AclContainer> {
     });
   }
 
+  // ── Row widget assembly (Flutter tree only — all values pre-computed) ───────
+
   Widget _buildRow({
     required AclRow row,
+    required _AclRowLayout layout,
     required bool canExpandHorizontally,
     required bool canExpandVertically,
     double? availableWidth,
-    required Map<Key, Rect> crossRowVirtualRects,
   }) {
     final mainAxisAlignment = switch (row.alignment) {
       RowAlignment.left => MainAxisAlignment.start,
@@ -646,32 +1123,9 @@ class _AclContainerState extends State<AclContainer> {
     final hasGapSlots = row.components.any((c) => c.isGap);
     final rowFillsWidth = hasExpandX || hasGapSlots;
 
-    final fittedWidths = (availableWidth != null && availableWidth.isFinite)
-        ? _computeFittedWidths(row: row, availableWidth: availableWidth)
-        : null;
-
-    // Gap slot distribution
-    double totalFitted = 0;
-    if (hasGapSlots && availableWidth != null && availableWidth.isFinite) {
-      for (int i = 0; i < row.components.length; i++) {
-        final comp = row.components[i];
-        if (comp.isGap) continue;
-        final fw = fittedWidths?[i];
-        if (fw != null) {
-          totalFitted += fw;
-        } else {
-          totalFitted += comp.preferredSize?.width ?? 0;
-        }
-      }
-    }
-    final double gapRemaining = hasGapSlots && availableWidth != null
-        ? math.max(0, availableWidth - totalFitted)
-        : 0;
-    final double gapWeightSum = hasGapSlots
-        ? row.components
-            .where((c) => c.isGap)
-            .fold(0.0, (s, c) => s + c.gapWeight)
-        : 0;
+    final gapWeightSum = hasGapSlots
+        ? row.components.where((c) => c.isGap).fold(0.0, (s, c) => s + c.gapWeight)
+        : 0.0;
 
     final children = <Widget>[];
     double plannedX = 0;
@@ -680,8 +1134,7 @@ class _AclContainerState extends State<AclContainer> {
     double rowEstimatedWidth = 0;
     double minVerticalOffset = 0;
     double maxVerticalExtent = 0;
-    double rowEstimatedHeight = 0;
-    final virtualRects = <Key, Rect>{};
+    final rowEstimatedHeight = layout.estimatedHeight;
     int componentIndex = -1;
 
     for (final component in row.components) {
@@ -691,13 +1144,8 @@ class _AclContainerState extends State<AclContainer> {
       if (component.isGap) {
         if (!widget.scrollableX && gapWeightSum > 0) {
           if (rowFillsWidth) {
-            // Normalize gap flex against expandX flex so that gap(weight:1)
-            // competes on the same scale as expandX components.
-            // When no expandX is in the row, use the classic 10000 scale.
             final totalExpandXFlex = hasExpandX
-                ? row.components
-                    .where((c) => c.expandX && !c.isGap)
-                    .fold(0.0, (s, c) {
+                ? row.components.where((c) => c.expandX && !c.isGap).fold(0.0, (s, c) {
                     final pref = c.preferredSize?.width ?? 0.0;
                     final min = c.minimumSize?.width ?? 0.0;
                     final diff = pref - min;
@@ -706,20 +1154,15 @@ class _AclContainerState extends State<AclContainer> {
                 : 0.0;
             final int flex;
             if (totalExpandXFlex > 0) {
-              // Scale gap weight proportionally to total expandX flex.
-              flex = ((component.gapWeight / gapWeightSum) * totalExpandXFlex)
-                  .round()
-                  .clamp(1, 100000);
+              flex =
+                  ((component.gapWeight / gapWeightSum) * totalExpandXFlex).round().clamp(1, 100000);
             } else {
-              flex = (component.gapWeight / gapWeightSum * 10000)
-                  .round()
-                  .clamp(1, 10000);
+              flex = (component.gapWeight / gapWeightSum * 10000).round().clamp(1, 10000);
             }
             children.add(Spacer(flex: flex));
           } else {
             final gapWidth =
-                (gapRemaining * component.gapWeight / gapWeightSum)
-                    .clamp(0.0, double.infinity);
+                (layout.gapSlotWidths[componentIndex] ?? 0).clamp(0.0, double.infinity);
             if (gapWidth > 0) children.add(SizedBox(width: gapWidth));
             plannedX += gapWidth;
             maxHorizontalX = math.max(maxHorizontalX, plannedX);
@@ -734,36 +1177,21 @@ class _AclContainerState extends State<AclContainer> {
           component.child is Expanded ||
           component.child is Spacer;
 
-      final bool hasExplicitXAlignment = component.alignXToKey != null;
+      final alignmentDelta = layout.horizontalDeltas[componentIndex] ?? 0.0;
+      final verticalAlignmentOffset = layout.verticalDeltas[componentIndex] ?? 0.0;
+
       final bool collapseToVisual =
           !isFlexNativeChild &&
-          !hasExplicitXAlignment &&
+          component.alignXToKey == null &&
           maxHorizontalX < plannedX;
 
+      // gapBefore is already baked into the plannedX tracking in _computeRowLayout.
+      // We still need to emit the SizedBox(gapBefore) for the Flutter row unless
+      // collapseToVisual suppresses it (in which case the alignmentDelta handles it).
       if (component.gapBefore > 0 && !collapseToVisual) {
         children.add(SizedBox(width: component.gapBefore));
         plannedX += component.gapBefore;
       }
-
-      final resolvedLinkedWidth = component.useOtherDimX
-          ? (crossRowVirtualRects[component.referenceKey]?.width ??
-              _resolveReferenceWidth(component.referenceKey) ??
-              _resolveReferencedRect(component.alignXToKey)?.width)
-          : null;
-      final resolvedLinkedHeight = component.useOtherDimY
-          ? (crossRowVirtualRects[component.referenceKey]?.height ??
-              _resolveReferenceHeight(component.referenceKey))
-          : null;
-
-      final double alignmentDelta = collapseToVisual
-          ? (maxHorizontalX + component.gapBefore - plannedX)
-          : _computeHorizontalAlignmentDelta(
-              component: component,
-              plannedX: plannedX,
-              resolvedLinkedWidth: resolvedLinkedWidth,
-              virtualRects: virtualRects,
-              crossRowVirtualRects: crossRowVirtualRects,
-            );
 
       if (alignmentDelta > 0) {
         children.add(SizedBox(width: alignmentDelta));
@@ -772,10 +1200,10 @@ class _AclContainerState extends State<AclContainer> {
 
       Widget child = component.child;
 
-      final linkedWidth = resolvedLinkedWidth;
-      final linkedHeight = resolvedLinkedHeight;
-      // Default: minimum = preferred size when no explicit minimum is set;
-      // maximum = unlimited when not set.
+      final linkedWidth = layout.linkedWidths[componentIndex];
+      final linkedHeight = layout.linkedHeights[componentIndex];
+      final fittedWidth = layout.fittedWidths[componentIndex];
+
       final minWidth = component.useOtherDimX
           ? (linkedWidth ?? component.minimumSize?.width ?? component.preferredSize?.width)
           : (component.minimumSize?.width ?? component.preferredSize?.width);
@@ -786,7 +1214,8 @@ class _AclContainerState extends State<AclContainer> {
       // fall back to availableWidth as maxWidth — prevents TextField/Dropdown
       // "unbounded width" assertion inside Row(mainAxisSize.max) rows.
       final maxWidth = component.useOtherDimX
-          ? (linkedWidth ?? component.maximumSize?.width ??
+          ? (linkedWidth ??
+              component.maximumSize?.width ??
               (availableWidth?.isFinite == true ? availableWidth : null))
           : component.maximumSize?.width;
       final maxHeight = component.useOtherDimY
@@ -794,10 +1223,7 @@ class _AclContainerState extends State<AclContainer> {
           : component.maximumSize?.height;
 
       if (!isFlexNativeChild &&
-          (minWidth != null ||
-              minHeight != null ||
-              maxWidth != null ||
-              maxHeight != null)) {
+          (minWidth != null || minHeight != null || maxWidth != null || maxHeight != null)) {
         child = ConstrainedBox(
           constraints: BoxConstraints(
             minWidth: minWidth ?? 0,
@@ -809,10 +1235,8 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!isFlexNativeChild &&
-          (!component.expandX || !canExpandHorizontally)) {
-        final effectiveWidth =
-            fittedWidths?[componentIndex] ?? component.preferredSize?.width;
+      if (!isFlexNativeChild && (!component.expandX || !canExpandHorizontally)) {
+        final effectiveWidth = fittedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
           child = SizedBox(width: effectiveWidth, child: child);
         }
@@ -825,42 +1249,19 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
-      final hasFiniteMaxWidth =
-          (component.maximumSize?.width ?? double.infinity).isFinite;
-      if (!isFlexNativeChild &&
-          component.expandX &&
-          canExpandHorizontally &&
-          !hasFiniteMaxWidth) {
+      final hasFiniteMaxWidth = (component.maximumSize?.width ?? double.infinity).isFinite;
+      if (!isFlexNativeChild && component.expandX && canExpandHorizontally && !hasFiniteMaxWidth) {
         child = SizedBox(width: double.infinity, child: child);
       }
 
-      final estimatedHeight =
-          _estimateComponentHeight(component, linkedHeight);
-      rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedHeight);
-      final estimatedWidth = _estimateComponentWidth(
-        component,
-        linkedWidth,
-        fittedWidth: fittedWidths?[componentIndex],
-      );
+      final estimatedWidth = _estimateW(component, linkedWidth, fittedWidth);
+      final estimatedHeight = _estimateH(component, linkedHeight);
 
-      final shiftedLeftInRow =
-          plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
+      final shiftedLeftInRow = plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
       final shiftedRightInRow = shiftedLeftInRow + estimatedWidth;
       minHorizontalX = math.min(minHorizontalX, shiftedLeftInRow);
       maxHorizontalX = math.max(maxHorizontalX, shiftedRightInRow);
-      rowEstimatedWidth =
-          math.max(rowEstimatedWidth, plannedX + estimatedWidth);
-
-      final componentKey = component.componentKey;
-      if (componentKey != null) {
-        final vRect = Rect.fromLTWH(
-          shiftedLeftInRow, 0, estimatedWidth, estimatedHeight,
-        );
-        virtualRects[componentKey] = vRect;
-        // Also publish to the cross-row map so that components in later rows
-        // can resolve alignX* / sameWidthAs against this frame's geometry.
-        crossRowVirtualRects[componentKey] = vRect;
-      }
+      rowEstimatedWidth = math.max(rowEstimatedWidth, plannedX + estimatedWidth);
 
       if (!isFlexNativeChild && component.componentKey != null) {
         child = Align(
@@ -880,8 +1281,6 @@ class _AclContainerState extends State<AclContainer> {
         child = Transform.translate(offset: Offset(alignmentDelta, 0), child: child);
       }
 
-      final verticalAlignmentOffset = _computeVerticalAlignmentOffset(component);
-
       final baseTopInRow = hasExpandY && canExpandVertically
           ? 0.0
           : (rowEstimatedHeight - estimatedHeight) / 2;
@@ -891,14 +1290,10 @@ class _AclContainerState extends State<AclContainer> {
       minVerticalOffset = math.min(minVerticalOffset, shiftedTopInRow);
       maxVerticalExtent = math.max(maxVerticalExtent, shiftedBottomInRow);
 
-      if (componentKey != null) {
-        _appliedHorizontalOffsetByKey[componentKey] =
-            (!isFlexNativeChild && alignmentDelta < 0) ? alignmentDelta : 0;
-        _appliedVerticalOffsetByKey[componentKey] = verticalAlignmentOffset;
-      }
       if (!isFlexNativeChild && verticalAlignmentOffset != 0) {
         child = Transform.translate(
-          offset: Offset(0, verticalAlignmentOffset), child: child,
+          offset: Offset(0, verticalAlignmentOffset),
+          child: child,
         );
       }
 
@@ -906,11 +1301,9 @@ class _AclContainerState extends State<AclContainer> {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
           final minW =
-              (component.minimumSize?.width ?? linkedWidth ?? 0)
-                  .clamp(0.0, double.maxFinite);
-          final prefW = (fittedWidths?[componentIndex] ??
-                  component.preferredSize?.width ?? minW)
-              .clamp(minW, double.maxFinite);
+              (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(0.0, double.maxFinite);
+          final prefW =
+              (fittedWidth ?? component.preferredSize?.width ?? minW).clamp(minW, double.maxFinite);
           final diff = prefW - minW;
           final flexWeight = (diff.isFinite ? diff.round() : 1000).clamp(1, 10000);
           child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
@@ -934,8 +1327,7 @@ class _AclContainerState extends State<AclContainer> {
                 (child) => child is Flexible || child is Spacer
                     ? child
                     : ConstrainedBox(
-                        constraints:
-                            BoxConstraints(maxWidth: constraints.maxWidth),
+                        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
                         child: child,
                       ),
               )
@@ -971,21 +1363,18 @@ class _AclContainerState extends State<AclContainer> {
       );
     } else {
       rowWidget = Row(
-        mainAxisAlignment:
-            hasGapSlots ? MainAxisAlignment.start : mainAxisAlignment,
+        mainAxisAlignment: hasGapSlots ? MainAxisAlignment.start : mainAxisAlignment,
         crossAxisAlignment: hasExpandY && canExpandVertically
             ? CrossAxisAlignment.stretch
             : CrossAxisAlignment.center,
-        mainAxisSize: rowFillsWidth && canExpandHorizontally
-            ? MainAxisSize.max
-            : MainAxisSize.min,
+        mainAxisSize:
+            rowFillsWidth && canExpandHorizontally ? MainAxisSize.max : MainAxisSize.min,
         children: children,
       );
     }
 
     final double extraTop = minVerticalOffset < 0 ? -minVerticalOffset : 0.0;
-    final extraBottom =
-        math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
+    final extraBottom = math.max(0.0, maxVerticalExtent - rowEstimatedHeight);
     final extraRight = rowFillsWidth && canExpandHorizontally
         ? 0.0
         : math.max(0.0, maxHorizontalX - rowEstimatedWidth);
@@ -1009,354 +1398,15 @@ class _AclContainerState extends State<AclContainer> {
       int rowFlex = 1;
       for (final component in row.components) {
         if (!component.expandY) continue;
-        final linkedHeight = component.useOtherDimY
-            ? (crossRowVirtualRects[component.referenceKey]?.height ??
-                _resolveReferenceHeight(component.referenceKey))
-            : null;
-        final minH =
-            (component.minimumSize?.height ?? linkedHeight ?? 0)
-                .clamp(0, double.infinity);
-        final prefH =
-            (component.preferredSize?.height ?? minH).clamp(minH, double.infinity);
+        final linkedH = layout.linkedHeights[row.components.indexOf(component)];
+        final minH = (component.minimumSize?.height ?? linkedH ?? 0).clamp(0, double.infinity);
+        final prefH = (component.preferredSize?.height ?? minH).clamp(minH, double.infinity);
         rowFlex = (rowFlex + (prefH - minH).round()).clamp(1, 10000);
       }
       return Flexible(flex: rowFlex, fit: FlexFit.tight, child: rowWidget);
     }
 
     return rowWidget;
-  }
-
-  // ── Reference resolution ──────────────────────────────────────────────────
-
-  Size? _resolveReferencedSize(Key? key) {
-    if (key == null) return null;
-    final cached = _referenceSizeCache[key];
-    if (cached != null) return cached;
-    final ctx = _resolveKeyContext(key);
-    if (ctx == null) {
-      _hasUnresolvedReference = true;
-      return cached;
-    }
-    final ro = ctx.findRenderObject();
-    if (ro is! RenderBox || !ro.hasSize) {
-      _hasUnresolvedReference = true;
-      return cached;
-    }
-    _referenceSizeCache[key] = ro.size;
-    return ro.size;
-  }
-
-  double? _resolveReferenceWidth(Key? key) {
-    final s = _resolveReferencedSize(key);
-    if (s != null) return s.width;
-    return _resolveReferencedRect(key)?.width;
-  }
-
-  double? _resolveReferenceHeight(Key? key) {
-    final s = _resolveReferencedSize(key);
-    if (s != null) return s.height;
-    return _resolveReferencedRect(key)?.height;
-  }
-
-  Rect? _resolveReferencedRect(Key? key) {
-    if (key == null) return null;
-    final cached = _referenceRectCache[key];
-    if (cached != null) return cached;
-
-    final ownRO = context.findRenderObject();
-    final ownBox = ownRO is RenderBox ? ownRO : null;
-    final refCtx = _resolveKeyContext(key);
-    if (ownBox == null || refCtx == null) {
-      _hasUnresolvedReference = true;
-      return cached;
-    }
-    final refRO = refCtx.findRenderObject();
-    if (refRO is! RenderBox || !refRO.hasSize || !ownBox.hasSize) {
-      _hasUnresolvedReference = true;
-      return cached;
-    }
-    final topLeft = ownBox.globalToLocal(refRO.localToGlobal(Offset.zero));
-    final rect = topLeft & refRO.size;
-    _referenceRectCache[key] = rect;
-    return rect;
-  }
-
-  BuildContext? _resolveKeyContext(Key key) {
-    if (key is GlobalKey) return key.currentContext;
-    try {
-      final dynamic dk = key;
-      final dynamic c = dk.currentContext;
-      if (c is BuildContext) return c;
-    } catch (_) {}
-    return null;
-  }
-
-  // ── Fitted width calculation ──────────────────────────────────────────────
-
-  Map<int, double>? _computeFittedWidths({
-    required AclRow row,
-    required double availableWidth,
-    Map<Key, Rect> crossRowVirtualRects = const {},
-  }) {
-    double plannedX = 0;
-    double minHX = 0;
-    double maxHX = 0;
-    final vRects = <Key, Rect>{};
-    final prefWidths = <int, double>{};
-
-    bool skip(AclComponent c) =>
-        c.isGap ||
-        c.child is Flexible ||
-        c.child is Expanded ||
-        c.child is Spacer ||
-        c.expandX ||
-        c.alignXToKey != null;
-
-    for (int i = 0; i < row.components.length; i++) {
-      final comp = row.components[i];
-      if (skip(comp)) continue;
-
-      final linkedW = comp.useOtherDimX
-          ? (crossRowVirtualRects[comp.referenceKey]?.width ??
-              _resolveReferenceWidth(comp.referenceKey) ??
-              _resolveReferencedRect(comp.alignXToKey)?.width)
-          : null;
-
-      final bool collapseToVisual = comp.alignXToKey == null && maxHX < plannedX;
-      if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
-
-      final delta = collapseToVisual
-          ? (maxHX + comp.gapBefore - plannedX)
-          : _computeHorizontalAlignmentDelta(
-              component: comp,
-              plannedX: plannedX,
-              resolvedLinkedWidth: linkedW,
-              virtualRects: vRects,
-              crossRowVirtualRects: vRects,
-            );
-
-      if (delta > 0) plannedX += delta;
-
-      final pref = (linkedW ??
-              comp.preferredSize?.width ?? comp.minimumSize?.width ?? 0)
-          .clamp(0.0, double.infinity);
-      prefWidths[i] = pref;
-
-      final h = (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
-          .clamp(0.0, double.infinity);
-      final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
-      minHX = math.min(minHX, shiftedLeft);
-      maxHX = math.max(maxHX, shiftedLeft + pref);
-
-      final key = comp.componentKey;
-      if (key != null) vRects[key] = Rect.fromLTWH(shiftedLeft, 0, pref, h);
-      plannedX += pref;
-    }
-
-    final extraLeft = minHX < 0 ? -minHX : 0.0;
-    final naturalWidth = maxHX + extraLeft;
-
-    if (naturalWidth <= availableWidth) {
-      // ── Grow phase ────────────────────────────────────────────────────────
-      // Any ACL-hinted component participates in grow.
-      // Components without maximumSize receive their full proportional share
-      // (no cap); components with a finite maximumSize are capped at that value.
-      // The surplus is inherently bounded: it equals availableWidth minus what
-      // is already occupied, so growth can never push past the container edge.
-      //
-      // Truly natural-sized components (no ACL hints at all) were recorded with
-      // pref = 0 in the loop above, so they are absent from naturalWidth.
-      // We measure their real widths and subtract them from the surplus before
-      // distributing, ensuring distributed space never overlaps their footprint.
-      final hasRowFiller =
-          row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
-      if (!hasRowFiller) {
-        // Measure space occupied by truly natural-sized (no-hint) components
-        // whose pref was 0 and is therefore missing from naturalWidth.
-        double naturalExcludedWidth = 0;
-        for (int i = 0; i < row.components.length; i++) {
-          final comp = row.components[i];
-          if (skip(comp)) { continue; }
-          if (comp.preferredSize != null ||
-              comp.minimumSize != null ||
-              comp.maximumSize != null ||
-              comp.useOtherDimX) { continue; }
-          final measuredW = _resolveReferenceWidth(comp.componentKey) ??
-              (comp.child is SizedBox
-                  ? ((comp.child as SizedBox).width ?? 0.0)
-                  : 0.0);
-          naturalExcludedWidth += measuredW;
-        }
-
-        final effectiveSurplus = math.max(
-          0.0,
-          availableWidth - naturalWidth - naturalExcludedWidth,
-        );
-        if (effectiveSurplus >= 1) {
-          double totalPref = 0;
-          for (int i = 0; i < row.components.length; i++) {
-            final comp = row.components[i];
-            if (skip(comp)) { continue; }
-            // sameWidthAs / sameSize targets: width is fixed = reference width.
-            // Already counted in naturalWidth; excluded from surplus distribution.
-            if (comp.useOtherDimX) { continue; }
-            if (comp.preferredSize == null &&
-                comp.minimumSize == null &&
-                comp.maximumSize == null) { continue; }
-            totalPref += prefWidths[i] ?? 0.0;
-          }
-          if (totalPref >= 1) {
-            final grown = <int, double>{};
-            for (int i = 0; i < row.components.length; i++) {
-              final comp = row.components[i];
-              if (skip(comp)) { continue; }
-              if (comp.useOtherDimX) { continue; }
-              if (comp.preferredSize == null &&
-                  comp.minimumSize == null &&
-                  comp.maximumSize == null) { continue; }
-              final pref = prefWidths[i] ?? 0.0;
-              final share = effectiveSurplus * pref / totalPref;
-              final max = comp.maximumSize?.width;
-              grown[i] = (max != null && max.isFinite)
-                  ? math.min(pref + share, max)
-                  : pref + share;
-            }
-            if (grown.isNotEmpty) { return grown; }
-          }
-        }
-      }
-      return null;
-    }
-
-    final deficit = naturalWidth - availableWidth;
-    double shrinkCap = 0;
-    for (int i = 0; i < row.components.length; i++) {
-      final comp = row.components[i];
-      if (skip(comp)) continue;
-      // sameWidthAs / sameSize: width fixed by reference — cannot shrink.
-      if (comp.useOtherDimX) continue;
-      shrinkCap += math.max(0.0, (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0));
-    }
-    if (shrinkCap < 1) return null;
-
-    final ratio = (deficit / shrinkCap).clamp(0.0, 1.0);
-    final fitted = <int, double>{};
-    for (int i = 0; i < row.components.length; i++) {
-      final comp = row.components[i];
-      if (skip(comp)) continue;
-      // sameWidthAs / sameSize: fixed by reference — excluded from fitted widths;
-      // the ConstrainedBox(min=ref, max=ref) in _buildRow enforces the width.
-      if (comp.useOtherDimX) continue;
-      // Components with no ACL size hints at all render at their natural
-      // intrinsic / widget-defined size. Do NOT insert them into the fitted
-      // map so that _buildRow will not wrap them in SizedBox(width: 0).
-      if (comp.preferredSize == null && comp.minimumSize == null) continue;
-      final pref = prefWidths[i] ?? 0.0;
-      // Use the same min expression as shrinkCap: prefer minimumSize, fall back
-      // to preferredSize so that components with only setPSize are never shrunk
-      // below their preferred width (they contributed 0 to shrinkCap).
-      final min = comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0.0;
-      fitted[i] = pref - math.max(0.0, pref - min) * ratio;
-    }
-    return fitted;
-  }
-
-  // ── Width / height estimation ─────────────────────────────────────────────
-
-  double _estimateComponentWidth(
-    AclComponent component,
-    double? linkedWidth, {
-    double? fittedWidth,
-  }) {
-    if (fittedWidth != null) return fittedWidth.clamp(0, double.infinity).toDouble();
-    // For sameWidthAs/sameSize: the reference-locked width is the exact width.
-    // Return it immediately so the stale render-tree cache cannot override it.
-    if (linkedWidth != null) return linkedWidth.clamp(0, double.infinity).toDouble();
-    final mw = _resolveReferenceWidth(component.componentKey);
-    if (mw != null) return mw.clamp(0, double.infinity).toDouble();
-    return (component.preferredSize?.width ??
-            component.minimumSize?.width ?? 0)
-        .clamp(0, double.infinity)
-        .toDouble();
-  }
-
-  double _estimateComponentHeight(AclComponent component, double? linkedHeight) {
-    // Reference-locked height takes priority over stale render-tree cache.
-    if (linkedHeight != null) return linkedHeight.clamp(0, double.infinity).toDouble();
-    final mh = _resolveReferenceHeight(component.componentKey);
-    if (mh != null) return mh.clamp(0, double.infinity).toDouble();
-    return (component.preferredSize?.height ??
-            component.minimumSize?.height ?? 0)
-        .clamp(0, double.infinity)
-        .toDouble();
-  }
-
-  // ── Alignment delta computation ───────────────────────────────────────────
-
-  double _computeHorizontalAlignmentDelta({
-    required AclComponent component,
-    required double plannedX,
-    required double? resolvedLinkedWidth,
-    required Map<Key, Rect> virtualRects,
-    required Map<Key, Rect> crossRowVirtualRects,
-  }) {
-    if (component.alignXToKey == null ||
-        component.alignXFrom == null ||
-        component.alignXTo == null) {
-      return 0;
-    }
-
-    final key = component.alignXToKey;
-    // Prefer the analytically-computed rect from the current frame (cross-row
-    // or same-row virtual maps) over the stale render-tree cache.
-    final virtualRefRect = key != null
-        ? (crossRowVirtualRects[key] ?? virtualRects[key])
-        : null;
-    final refRect = virtualRefRect ?? _resolveReferencedRect(key);
-    if (refRect == null) {
-      _hasUnresolvedReference = true;
-      return 0;
-    }
-
-    final refOffset = key == null ? 0.0 : (_appliedHorizontalOffsetByKey[key] ?? 0.0);
-    final unshiftedRefRect = virtualRefRect != null || refOffset == 0
-        ? refRect
-        : refRect.translate(-refOffset, 0);
-
-    final widthEstimate = _estimateComponentWidth(
-      component, resolvedLinkedWidth,
-    );
-    final currentLocalPoint =
-        plannedX + _horizontalOffset(component.alignXFrom!, widthEstimate);
-    final targetLocalPoint =
-        _horizontalPoint(unshiftedRefRect, component.alignXTo!);
-    return (targetLocalPoint - component.alignXGap) - currentLocalPoint;
-  }
-
-  double _computeVerticalAlignmentOffset(AclComponent component) {
-    if (component.componentKey == null ||
-        component.alignYToKey == null ||
-        component.alignYFrom == null ||
-        component.alignYTo == null) {
-      return 0;
-    }
-
-    final selfRect = _resolveReferencedRect(component.componentKey);
-    final refRect = _resolveReferencedRect(component.alignYToKey);
-    if (selfRect == null || refRect == null) {
-      _hasUnresolvedReference = true;
-      return 0;
-    }
-
-    final previousOffset =
-        _appliedVerticalOffsetByKey[component.componentKey] ?? 0;
-    final unshiftedSelfRect = previousOffset == 0
-        ? selfRect
-        : selfRect.translate(0, -previousOffset);
-
-    final currentPoint = _verticalPoint(unshiftedSelfRect, component.alignYFrom!);
-    final targetPoint = _verticalPoint(refRect, component.alignYTo!);
-    return (targetPoint - component.alignYGap) - currentPoint;
   }
 
   Widget _wrapWithRowCrossAlignment(
