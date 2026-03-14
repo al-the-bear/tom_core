@@ -177,6 +177,11 @@ class AclRow {
   /// Optional separator drawn inside the gap row area.
   final AclSeparator? separator;
 
+  /// Minimum pixel height for this gap row when a layout with [expandY]
+  /// components is present. Defaults to 0 (pure spacing gaps collapse; a
+  /// [separator] gapRow always gets at least 9 px regardless of this value).
+  final double gapRowMinSize;
+
   const AclRow({
     required this.components,
     this.alignment = RowAlignment.left,
@@ -184,6 +189,7 @@ class AclRow {
     this.isGapRow = false,
     this.gapRowWeight = 1.0,
     this.separator,
+    this.gapRowMinSize = 0,
   });
 }
 
@@ -715,17 +721,23 @@ class _AclContainerState extends State<AclContainer> {
                     child: gapContent,
                   ),
                 );
-              } else if (row.separator != null) {
-                // expandY rows are present: separator still renders at a small
-                // fixed height so the visual divider is not lost, but it does
-                // NOT compete for the extra vertical space.
-                rowWidgets.add(
-                  SizedBox(
-                    height: 12,
-                    child: _buildSeparatorWidget(row.separator!),
-                  ),
-                );
-                // Pure spacing gap rows (no separator) collapse to nothing.
+              } else {
+                // expandY rows are present: gap rows do NOT compete for the
+                // extra vertical space.
+                if (row.separator != null) {
+                  // Separator: at least 9px (4px pad + line + 4px pad),
+                  // or the caller-specified minSize if larger.
+                  final sepHeight = math.max(9.0, row.gapRowMinSize);
+                  rowWidgets.add(
+                    SizedBox(
+                      height: sepHeight,
+                      child: _buildSeparatorWidget(row.separator!),
+                    ),
+                  );
+                } else if (row.gapRowMinSize > 0) {
+                  // Pure spacing gap: collapse unless a minimum was specified.
+                  rowWidgets.add(SizedBox(height: row.gapRowMinSize));
+                }
               }
             }
             continue;

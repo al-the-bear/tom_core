@@ -64,6 +64,7 @@ class _RowData {
   bool isGapRow = false;
   double gapRowWeight = 1.0;
   AclSeparator? separator;
+  double gapRowMinSize = 0;
 
   AclRow toRow() {
     return AclRow(
@@ -73,6 +74,7 @@ class _RowData {
       isGapRow: isGapRow,
       gapRowWeight: gapRowWeight,
       separator: separator,
+      gapRowMinSize: gapRowMinSize,
     );
   }
 }
@@ -175,11 +177,18 @@ class AclBuilder {
   /// Inserts an elastic vertical gap row; **implicitly starts a new content row**.
   ///
   /// In scrollable-Y mode, the gap row collapses to zero height.
-  AclBuilder gapRow({double weight = 1, AclSeparator? separator}) {
+  ///
+  /// When the layout also contains [expandY] components, gap rows yield all
+  /// extra vertical space to those rows. In that case:
+  /// * A [separator] gapRow renders at [minSize] height (minimum 9 px).
+  /// * A pure spacing gapRow renders at [minSize] height, or collapses to
+  ///   nothing if [minSize] is 0 (the default).
+  AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0}) {
     final gapRowData = _RowData()
       ..isGapRow = true
       ..gapRowWeight = weight
-      ..separator = separator;
+      ..separator = separator
+      ..gapRowMinSize = minSize;
     _rows.add(gapRowData);
     // Implicitly start a fresh content row after the gap row
     _currentRow = _RowData();
