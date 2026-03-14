@@ -338,9 +338,8 @@ class AlignmentDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 120,
           child: AclBuilder()
               .append(const _DemoBox('Left', Colors.red))
               .append(const _DemoBox('Aligned', Colors.green))
@@ -471,9 +470,7 @@ class ExpandDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
           child: AclBuilder()
               .append(const _DemoBox('Fixed', Colors.red))
               .append(const _DemoBox('EXPANDX', Colors.green))
@@ -487,9 +484,7 @@ class ExpandDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
           child: AclBuilder()
               .append(const _DemoBox('Expand 1', Colors.red))
               .setAttr(AclFlags.expandX)
@@ -505,9 +500,8 @@ class ExpandDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 200,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 200,
           child: AclBuilder()
               .append(const _DemoBox('Fixed Row', Colors.red))
               .newRow()
@@ -632,10 +626,8 @@ class SizeConstraintsDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          height: 52,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 52,
           child: AclBuilder()
               .append(const _DemoBox('Alpha\nM:80 P:200 X:280', Colors.teal))
               .setMSize(80, 40).setPSize(200, 40).setXSize(280, 40)
@@ -658,10 +650,8 @@ class SizeConstraintsDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          height: 52,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 52,
           child: AclBuilder()
               .append(const _DemoBox('Wide\nM:120 P:360 X:460', Colors.purple))
               .setMSize(120, 40).setPSize(360, 40).setXSize(460, 40)
@@ -684,10 +674,8 @@ class SizeConstraintsDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        Container(
-          width: double.infinity,
-          height: 52,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 52,
           child: AclBuilder()
               .append(const _DemoBox('Fixed\nM:80 P:120 X:120', Colors.blueGrey))
               .setMSize(80, 40).setPSize(120, 40).setXSize(120, 40)
@@ -706,25 +694,21 @@ class SizeConstraintsDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
-        SizedBox(
-          height: 200,
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
-            child: AclBuilder()
-                .append(const _DemoBox('Row 1 – fixed\nM:60 P:60', Colors.orange))
-                .setMSize(0, 60).setPSize(400, 60)
-                .setAttr(AclFlags.expandX)
-                .newRow(dist: 4)
-                .append(const _DemoBox('Row 2 – expandY\nM:40 P:100', Colors.lightGreen))
-                .setMSize(0, 40).setPSize(400, 100)
-                .setAttr(AclFlags.expand)
-                .newRow(dist: 4)
-                .append(const _DemoBox('Row 3 – fixed\nM:40 P:40', Colors.teal))
-                .setMSize(0, 40).setPSize(400, 40)
-                .setAttr(AclFlags.expandX)
-                .build(),
-          ),
+        _ResizableBox(
+          initialHeight: 200,
+          child: AclBuilder()
+              .append(const _DemoBox('Row 1 – fixed\nM:60 P:60', Colors.orange))
+              .setMSize(0, 60).setPSize(400, 60)
+              .setAttr(AclFlags.expandX)
+              .newRow(dist: 4)
+              .append(const _DemoBox('Row 2 – expandY\nM:40 P:100', Colors.lightGreen))
+              .setMSize(0, 40).setPSize(400, 100)
+              .setAttr(AclFlags.expand)
+              .newRow(dist: 4)
+              .append(const _DemoBox('Row 3 – fixed\nM:40 P:40', Colors.teal))
+              .setMSize(0, 40).setPSize(400, 40)
+              .setAttr(AclFlags.expandX)
+              .build(),
         ),
         const SizedBox(height: 4),
         const Text(
@@ -786,10 +770,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 200,
           child: AclBuilder()
               .append(anchorLabel)
               .append(anchorField, dist: 12)
@@ -856,10 +838,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 100,
           child: AclBuilder()
               .append(centerAnchor)
               .newRow(dist: 10)
@@ -879,10 +859,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 80,
           child: AclBuilder()
               .append(verticalAnchor)
               .setPSize(220, 70)
@@ -908,10 +886,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 80,
           child: AclBuilder()
               .append(topBottomAnchor)
               .setPSize(220, 64)
@@ -937,10 +913,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 80,
           child: AclBuilder()
               .append(bottomTopAnchor)
               .setPSize(220, 64)
@@ -1070,10 +1044,8 @@ class CharacterWidthSizingDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 180,
           child: AclBuilder()
               .append(const SizedBox(width: 90, child: Text('12 chars:')))
               .setPSize(90, 40)
@@ -1172,11 +1144,8 @@ class ConveniencePlacementDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          height: 100,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 100,
           child: AclBuilder()
               .append(tallRef)
               .setPSize(160, 80)
@@ -1207,10 +1176,8 @@ class ConveniencePlacementDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 100,
           child: AclBuilder()
               // Row 1: anchor
               .append(rowRef)
@@ -1239,10 +1206,8 @@ class ConveniencePlacementDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          height: 52,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 52,
           child: AclBuilder()
               .append(const _DemoBox('Seventh expandX', Colors.green))
               .expandX()
@@ -1290,10 +1255,8 @@ class MixedPlacementPlaygroundDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 300,
           child: AclBuilder()
               // Row 1: anchor (pref=220, min=140, no max) + regular (pref=120, min=70, no max)
               // Both resize freely — note intentionally different min/pref values.
@@ -1379,10 +1342,8 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          height: 60,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 60,
           child: AclBuilder()
               .append(const _DemoBox('Label', Colors.lightBlue))
               .setPSize(120, 48)
@@ -1411,10 +1372,8 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          height: 60,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 60,
           child: AclBuilder()
               .append(const _DemoBox('Alpha', Colors.purple))
               .setPSize(240, 48)
@@ -1441,10 +1400,8 @@ class ResponsiveConvenienceDemo extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          height: 120,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 120,
           child: AclBuilder()
               .append(const _DemoBox('Main', Colors.indigo))
               .setPSize(300, 64)
@@ -1873,8 +1830,8 @@ class NestedContainersDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 160,
           child: AclBuilder()
               .setAclPadding(const EdgeInsets.all(12))
               .append(
@@ -2002,14 +1959,10 @@ class FormLayoutDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(8),
-          ),
+        _ResizableBox(
+          initialHeight: 320,
           child: AclBuilder()
+              .setAclPadding(const EdgeInsets.all(16))
               // Date row
               .append(const SizedBox(width: _lw, child: Text('Date:')))
               .append(
@@ -2109,11 +2062,10 @@ class ComplexLayoutDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          height: 400,
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 400,
           child: AclBuilder()
+              .setAclPadding(const EdgeInsets.all(8))
               .append(
                 const Text(
                   'Application Form',
@@ -2465,9 +2417,8 @@ class DynamicResizeDemo extends StatelessWidget {
             const SizedBox(height: 8),
             const Text('Resize the window to see layouts adapt dynamically.'),
             const SizedBox(height: 16),
-            Container(
-              height: 300,
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+            _ResizableBox(
+              initialHeight: 300,
               child: AclBuilder()
                   .setAclPadding(const EdgeInsets.all(8))
                   .append(
@@ -2555,9 +2506,8 @@ class DynamicResizeDemo extends StatelessWidget {
             const SizedBox(height: 16),
             const Text('Three-column layout that adapts:'),
             const SizedBox(height: 8),
-            Container(
-              height: 150,
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+            _ResizableBox(
+              initialHeight: 150,
               child: AclBuilder()
                   .append(
                     const _ExpandingBox(
@@ -2627,9 +2577,7 @@ class FluentApiDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
           child: AclBuilder()
               .append(const _DemoBox('expandX()', Colors.red))
               .expandX()
@@ -2637,9 +2585,7 @@ class FluentApiDemo extends StatelessWidget {
               .build(),
         ),
         const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
           child: AclBuilder()
               .append(const _DemoBox('alignCenter()', Colors.green))
               .setRowAlignCenter()
@@ -2651,9 +2597,7 @@ class FluentApiDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
           child: AclBuilder()
               .append(const _DemoBox('A', Colors.red))
               .append(const _DemoBox('B', Colors.green), dist: 10)
@@ -2666,9 +2610,8 @@ class FluentApiDemo extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+        _ResizableBox(
+          initialHeight: 100,
           child: AclBuilder()
               .append(const Text('Label:'))
               .append(
@@ -2716,6 +2659,168 @@ AclColumn([
       ],
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Resizable wrapper for ACL demo containers.
+// Drag the right edge to resize width, bottom edge (or corner grip) to resize
+// height.  A small chip in the bottom-right corner always shows the live size.
+// ─────────────────────────────────────────────────────────────────────────────
+class _ResizableBox extends StatefulWidget {
+  final Widget child;
+
+  /// Initial height in logical pixels.  Must be provided; controls whether
+  /// the bottom-edge handle is shown.
+  final double initialHeight;
+
+  const _ResizableBox({required this.child, this.initialHeight = 120});
+
+  @override
+  State<_ResizableBox> createState() => _ResizableBoxState();
+}
+
+class _ResizableBoxState extends State<_ResizableBox> {
+  double? _width; // seeded on first layout from available constraints
+  late double _height;
+
+  static const double _grip = 10.0;
+  static const double _minW = 80.0;
+  static const double _minH = 32.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _height = widget.initialHeight;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      _width ??=
+          constraints.hasBoundedWidth ? constraints.maxWidth : 400.0;
+      final w = _width!.clamp(_minW, double.infinity);
+      final h = _height;
+
+      return SizedBox(
+        width: w,
+        height: h,
+        child: Stack(
+          children: [
+            // ── Content with grey border ─────────────────────────────────
+            Positioned.fill(
+              child: Container(
+                decoration:
+                    BoxDecoration(border: Border.all(color: Colors.grey)),
+                child: widget.child,
+              ),
+            ),
+
+            // ── Right-edge drag handle ───────────────────────────────────
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: _grip,
+              width: _grip,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeLeftRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (d) => setState(() {
+                    _width =
+                        (w + d.delta.dx).clamp(_minW, double.infinity);
+                  }),
+                ),
+              ),
+            ),
+
+            // ── Bottom-edge drag handle ──────────────────────────────────
+            Positioned(
+              left: 0,
+              right: _grip,
+              bottom: 0,
+              height: _grip,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeUpDown,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (d) => setState(() {
+                    _height = (h + d.delta.dy).clamp(_minH, double.infinity);
+                  }),
+                ),
+              ),
+            ),
+
+            // ── Corner drag handle (visual grip + resize both axes) ──────
+            Positioned(
+              right: 0,
+              bottom: 0,
+              width: _grip * 2,
+              height: _grip * 2,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.resizeUpLeftDownRight,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onPanUpdate: (d) => setState(() {
+                    _width =
+                        (w + d.delta.dx).clamp(_minW, double.infinity);
+                    _height =
+                        (h + d.delta.dy).clamp(_minH, double.infinity);
+                  }),
+                  child: CustomPaint(painter: _GripPainter()),
+                ),
+              ),
+            ),
+
+            // ── Live size chip ───────────────────────────────────────────
+            Positioned(
+              right: _grip * 2 + 2,
+              bottom: _grip + 2,
+              child: IgnorePointer(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  child: Text(
+                    '${w.round()} × ${h.round()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+/// Paints a classic 3-line resize grip in the bottom-right corner.
+class _GripPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.grey.shade500
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    for (var i = 1; i <= 3; i++) {
+      final offset = i * 4.0;
+      canvas.drawLine(
+        Offset(size.width - offset, size.height),
+        Offset(size.width, size.height - offset),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _DemoBox extends StatelessWidget {
