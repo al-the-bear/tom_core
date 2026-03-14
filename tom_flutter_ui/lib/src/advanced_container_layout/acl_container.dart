@@ -952,9 +952,14 @@ class _AclContainerState extends State<AclContainer> {
 
       final hasExplicitXAlignment = comp.alignXToKey != null;
 
-      // Always advance plannedX by gapBefore so the delta is measured from
-      // after the gap regardless of collapseToVisual (keeps pre-calc and
-      // _buildRow in sync with no re-detection needed in the widget builder).
+      // Check collapseToVisual BEFORE advancing by gapBefore so that explicit
+      // gaps (dist:) are never cancelled. When collapsing, the component ends
+      // up at (maxHX + gapBefore) — flush with the previous component's visual
+      // right edge, plus the requested gap. Both pre-calc and _buildRow emit
+      // SizedBox(gapBefore) first, then apply hDelta as a spacer or Transform,
+      // so they remain in sync.
+      double hDelta = 0;
+      final priorPlannedX = plannedX;
       if (comp.gapBefore > 0) {
         plannedX += comp.gapBefore;
       }
@@ -963,10 +968,10 @@ class _AclContainerState extends State<AclContainer> {
       final linkedH = linkedHeights[i];
 
       // Horizontal alignment delta
-      double hDelta = 0;
-      if (!isFlexNative && !hasExplicitXAlignment && maxHorizontalX < plannedX) {
-        // collapseToVisual: snap back to the visual right edge (negative delta).
-        hDelta = maxHorizontalX - plannedX;
+      if (!isFlexNative && !hasExplicitXAlignment && maxHorizontalX < priorPlannedX) {
+        // collapseToVisual: maxHX lags behind the natural planned position.
+        // Place component at maxHX + gapBefore by using priorPlannedX as base.
+        hDelta = maxHorizontalX - priorPlannedX;
       } else if (hasExplicitXAlignment) {
         hDelta = _calcHorizontalDelta(
           comp: comp,

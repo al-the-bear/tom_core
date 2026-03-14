@@ -842,6 +842,9 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           initialHeight: 100,
           child: AclBuilder()
               .append(centerAnchor)
+              .setPSize(320, 48)
+              .setMSize(50, 48)
+              .setXSize(320, 48)
               .newRow(dist: 10)
               .append(const _DemoBox('Follower', Colors.cyan))
               .setPSize(140, 40)
