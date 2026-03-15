@@ -1594,6 +1594,10 @@ class Acl extends AclLayout {
   /// border (solidDouble ≈ lineWidth*2 + 4).
   static const double _kBorderMask = 4.0;
 
+  /// Approximate font descent used to shift [AclTitleBorderAlign.bottom]
+  /// so the text baseline — not the descender line — sits on the border.
+  static const double _kBaselineDescentAdjust = 3.0;
+
   @override
   Widget build(BuildContext context) {
     final hasTitle = titleWidget != null ||
@@ -1617,8 +1621,9 @@ class Acl extends AclLayout {
         child: titleWidget,
       );
     } else {
-      final titleTextStyle = titleStyle ??
-          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
+      final titleTextStyle = (titleStyle ??
+          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))
+          ?.copyWith(height: 1.0);
       titleLabel = Container(
         color: bg,
         padding: const EdgeInsets.symmetric(
@@ -1645,7 +1650,8 @@ class Acl extends AclLayout {
     //   top    → anchor pulled _kBorderMask above border top so bg
     //            (whose top edge = anchor Y) starts before the border.
     final titleY = switch (titleBorderAlign) {
-      AclTitleBorderAlign.bottom => _kTitleReserve + _kBorderMask,
+      AclTitleBorderAlign.bottom =>
+        _kTitleReserve + _kBorderMask + _kBaselineDescentAdjust,
       AclTitleBorderAlign.middle => _kTitleReserve,
       AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask,
     };
