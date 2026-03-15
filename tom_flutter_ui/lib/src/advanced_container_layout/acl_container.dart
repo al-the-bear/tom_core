@@ -1653,7 +1653,7 @@ class Acl extends AclLayout {
       AclTitleBorderAlign.bottom =>
         _kTitleReserve + _kBorderMask + _kBaselineDescentAdjust,
       AclTitleBorderAlign.middle => _kTitleReserve,
-      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask,
+      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask - 4.0,
     };
 
     return Stack(
@@ -1705,7 +1705,7 @@ class Acl extends AclLayout {
     if (!style.enabled) return style;
     if (style.borderInsets != EdgeInsets.zero) return style;
     final topInset = switch (align) {
-      AclTitleBorderAlign.bottom => 4.0,
+      AclTitleBorderAlign.bottom => 8.0,
       AclTitleBorderAlign.middle => 10.0,
       AclTitleBorderAlign.top => 18.0,
     };
