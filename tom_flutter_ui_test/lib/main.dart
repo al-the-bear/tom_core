@@ -1757,6 +1757,58 @@ AclBuilder(
             ),
           ],
         ),
+        const SizedBox(height: 24),
+        const Text(
+          'Widget title (instead of plain text):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Any widget can be used as a title, positioned the same way.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 12),
+        AclBuilder(
+          titleWidget: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.person, size: 16, color: Colors.blue),
+              SizedBox(width: 4),
+              Text('User Profile',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, color: Colors.blue)),
+            ],
+          ),
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.blue,
+            rounded: true,
+            borderRadius: 8,
+          ),
+          titleBorderAlign: AclTitleBorderAlign.bottom,
+        )
+            .append(const _DemoBox('Widget Title', Colors.blue))
+            .append(const _DemoBox('Content', Colors.lightBlue), dist: 8)
+            .build(),
+        const SizedBox(height: 16),
+        AclBuilder(
+          titleWidget: Chip(
+            avatar: Icon(Icons.settings, size: 14),
+            label: Text('Settings', style: TextStyle(fontSize: 12)),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solidDouble,
+            color: Colors.green,
+            rounded: true,
+            borderRadius: 8,
+          ),
+          titleBorderAlign: AclTitleBorderAlign.middle,
+          titlePosition: AclTitlePosition.topCenter,
+        )
+            .append(const _DemoBox('Chip as Title', Colors.green))
+            .build(),
       ],
     );
   }

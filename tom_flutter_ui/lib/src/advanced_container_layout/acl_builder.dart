@@ -91,6 +91,7 @@ class AclBuilder {
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
   Color? _backgroundColor;
   String? _title;
+  Widget? _titleWidget;
   TextStyle? _titleStyle;
   AclTitlePosition _titlePosition;
   AclTitleBorderAlign _titleBorderAlign;
@@ -106,6 +107,7 @@ class AclBuilder {
 
   AclBuilder({
     String? title,
+    Widget? titleWidget,
     AclBorderStyle borderStyle = const AclBorderStyle.none(),
     AclBorderStyle? focusedBorderStyle,
     EdgeInsetsGeometry padding = EdgeInsets.zero,
@@ -114,6 +116,7 @@ class AclBuilder {
     AclTitlePosition titlePosition = AclTitlePosition.topLeft,
     AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
   })  : _title = title,
+        _titleWidget = titleWidget,
         _borderStyle = borderStyle,
         _focusedBorderStyle = focusedBorderStyle,
         _padding = padding,
@@ -560,6 +563,11 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setAclTitleWidget(Widget? widget) {
+    _titleWidget = widget;
+    return this;
+  }
+
   AclBuilder setAclTitleStyle(TextStyle style) {
     _titleStyle = style;
     return this;
@@ -587,6 +595,7 @@ class AclBuilder {
       scrollableX: _scrollableX,
       scrollableY: _scrollableY,
       title: _title,
+      titleWidget: _titleWidget,
       titleStyle: _titleStyle,
       titlePosition: _titlePosition,
       titleBorderAlign: _titleBorderAlign,
