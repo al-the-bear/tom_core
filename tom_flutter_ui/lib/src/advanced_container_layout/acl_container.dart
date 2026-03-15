@@ -1651,9 +1651,9 @@ class Acl extends AclLayout {
     //            (whose top edge = anchor Y) starts before the border.
     final titleY = switch (titleBorderAlign) {
       AclTitleBorderAlign.bottom =>
-        _kTitleReserve + _kBorderMask + _kBaselineDescentAdjust,
+        _kTitleReserve + _kBorderMask + _kBaselineDescentAdjust + 1.0,
       AclTitleBorderAlign.middle => _kTitleReserve,
-      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask - 4.0,
+      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask - 5.0,
     };
 
     return Stack(
