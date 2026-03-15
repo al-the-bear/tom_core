@@ -93,6 +93,7 @@ class AclBuilder {
   String? _title;
   TextStyle? _titleStyle;
   AclTitlePosition _titlePosition;
+  AclTitleBorderAlign _titleBorderAlign;
   bool _scrollableX = false;
   bool _scrollableY = false;
   Size? _preferredContainerSize;
@@ -111,13 +112,15 @@ class AclBuilder {
     Color? backgroundColor,
     TextStyle? titleStyle,
     AclTitlePosition titlePosition = AclTitlePosition.topLeft,
+    AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
   })  : _title = title,
         _borderStyle = borderStyle,
         _focusedBorderStyle = focusedBorderStyle,
         _padding = padding,
         _backgroundColor = backgroundColor,
         _titleStyle = titleStyle,
-        _titlePosition = titlePosition {
+        _titlePosition = titlePosition,
+        _titleBorderAlign = titleBorderAlign {
     _rows.add(_currentRow);
   }
 
@@ -567,6 +570,11 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setAclTitleBorderAlign(AclTitleBorderAlign align) {
+    _titleBorderAlign = align;
+    return this;
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
 
   Acl build() {
@@ -581,6 +589,7 @@ class AclBuilder {
       title: _title,
       titleStyle: _titleStyle,
       titlePosition: _titlePosition,
+      titleBorderAlign: _titleBorderAlign,
       preferredContainerSize: _preferredContainerSize,
       minimumContainerSize: _minimumContainerSize,
       maximumContainerSize: _maximumContainerSize,

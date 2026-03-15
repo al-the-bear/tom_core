@@ -973,10 +973,27 @@ class _AclContainerState extends State<AclContainer> {
         // Place component at maxHX + gapBefore by using priorPlannedX as base.
         hDelta = maxHorizontalX - priorPlannedX;
       } else if (hasExplicitXAlignment) {
+        // For components with explicit X alignment in rows that do not fill
+        // the available width, _buildRow wraps every child with
+        // ConstrainedBox(maxWidth: constraints.maxWidth). The actual rendered
+        // width is therefore min(preferredWidth, containerWidth). Feed the same
+        // effective width into _calcHorizontalDelta so the centre point is right.
+        final rowFillsWidth =
+            row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
+        double? alignLinkedW = linkedW;
+        if (!rowFillsWidth &&
+            alignLinkedW == null &&
+            availableWidth != null &&
+            availableWidth.isFinite) {
+          final pref = comp.preferredSize?.width;
+          if (pref != null && pref > availableWidth) {
+            alignLinkedW = availableWidth;
+          }
+        }
         hDelta = _calcHorizontalDelta(
           comp: comp,
           plannedX: plannedX,
-          linkedWidth: linkedW,
+          linkedWidth: alignLinkedW,
           virtualRects: sameRowVirtualRects,
           crossRowVirtualRects: crossRowVirtualRects,
           fittedWidths: fittedWidths,
@@ -1545,6 +1562,7 @@ class Acl extends AclLayout {
   final String? title;
   final TextStyle? titleStyle;
   final AclTitlePosition titlePosition;
+  final AclTitleBorderAlign titleBorderAlign;
 
   const Acl({
     super.key,
@@ -1561,7 +1579,12 @@ class Acl extends AclLayout {
     this.title,
     this.titleStyle,
     this.titlePosition = AclTitlePosition.topLeft,
+    this.titleBorderAlign = AclTitleBorderAlign.bottom,
   });
+
+  // How many logical pixels above the border line the Stack reserves for the
+  // title label. Determines the border's Y position inside the Stack.
+  static const double _kTitleStripHeight = 14.0;
 
   @override
   Widget build(BuildContext context) {
@@ -1572,16 +1595,29 @@ class Acl extends AclLayout {
         theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
+    // The border top edge sits at (outerPadding.top + _kTitleStripHeight)
+    // from the Stack origin. FractionalTranslation shifts the label vertically
+    // so that it aligns correctly with the border line.
+    final resolvedPadding =
+        padding.resolve(Directionality.maybeOf(context));
+    final double borderTop = resolvedPadding.top + _kTitleStripHeight;
+
+    final titleTranslation = switch (titleBorderAlign) {
+      AclTitleBorderAlign.top => Offset.zero,           // label top  = border
+      AclTitleBorderAlign.middle => const Offset(0, -0.5), // label centre = border
+      AclTitleBorderAlign.bottom => const Offset(0, -1.0), // label bottom = border
+    };
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
         AclContainer(
           rows: rows,
-          borderStyle: _titleAdjustedBorderStyle(borderStyle),
+          borderStyle: _titleAdjustedBorderStyle(borderStyle, titleBorderAlign),
           focusedBorderStyle: focusedBorderStyle != null
-              ? _titleAdjustedBorderStyle(focusedBorderStyle!)
+              ? _titleAdjustedBorderStyle(focusedBorderStyle!, titleBorderAlign)
               : null,
-          padding: padding.add(const EdgeInsets.only(top: 14)),
+          padding: padding.add(EdgeInsets.only(top: _kTitleStripHeight)),
           backgroundColor: backgroundColor,
           scrollableX: scrollableX,
           scrollableY: scrollableY,
@@ -1590,15 +1626,18 @@ class Acl extends AclLayout {
           maximumContainerSize: maximumContainerSize,
         ),
         Positioned(
-          top: 0,
+          top: borderTop,
           left: _left(),
           right: _right(),
           child: Align(
             alignment: _alignment(),
-            child: Container(
-              color: bg,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(title!, style: titleTextStyle),
+            child: FractionalTranslation(
+              translation: titleTranslation,
+              child: Container(
+                color: bg,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(title!, style: titleTextStyle),
+              ),
             ),
           ),
         ),
@@ -1606,13 +1645,25 @@ class Acl extends AclLayout {
     );
   }
 
-  /// When no explicit [AclBorderStyle.borderInsets] are set, injects an extra
-  /// top inner inset so that content starts below the floating title text.
-  AclBorderStyle _titleAdjustedBorderStyle(AclBorderStyle style) {
+  /// When no explicit [AclBorderStyle.borderInsets] are set, injects a top
+  /// inner inset sized to keep content below the floating title label.
+  /// The required clearance depends on [titleBorderAlign]:
+  ///   bottom → label finishes at the border line (10 px gap is enough)
+  ///   middle → label straddles the border (14 px keeps content clear)
+  ///   top    → label hangs fully inside the border (24 px guards the label)
+  AclBorderStyle _titleAdjustedBorderStyle(
+    AclBorderStyle style,
+    AclTitleBorderAlign align,
+  ) {
     if (!style.enabled) return style;
     if (style.borderInsets != EdgeInsets.zero) return style;
+    final topInset = switch (align) {
+      AclTitleBorderAlign.bottom => 10.0,
+      AclTitleBorderAlign.middle => 14.0,
+      AclTitleBorderAlign.top => 24.0,
+    };
     return style.copyWith(
-      borderInsets: const EdgeInsets.fromLTRB(4, 10, 4, 4),
+      borderInsets: EdgeInsets.fromLTRB(4, topInset, 4, 4),
     );
   }
 
@@ -1636,3 +1687,13 @@ class Acl extends AclLayout {
 }
 
 enum AclTitlePosition { topLeft, topCenter, topRight }
+
+/// Controls how the title label is vertically positioned relative to the
+/// border line of a titled [Acl] container.
+///
+/// * [top]    — the top edge of the label sits on the border line; the label
+///              hangs downward from the border (into the container interior).
+/// * [middle] — the label is centred on the border line; half above, half below.
+/// * [bottom] — the bottom edge of the label sits on the border line; the label
+///              floats above the border (default, classic field-set look).
+enum AclTitleBorderAlign { top, middle, bottom }

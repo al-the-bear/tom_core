@@ -1636,6 +1636,127 @@ AclBuilder(
     .expandX()
     .build()
 '''),
+        const SizedBox(height: 24),
+        const Text(
+          'Title border alignment:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Controls where the title sits vertically on the border line.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── bottom (default) ────────────────────────────────────────────────
+        const Text(
+          'titleBorderAlign: bottom  (default — label floats above the border)',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: 'Bottom Align',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.indigo,
+            lineWidth: 1.5,
+          ),
+          titleBorderAlign: AclTitleBorderAlign.bottom,
+        )
+            .append(const _DemoBox('Item A', Colors.indigo))
+            .append(const _DemoBox('Item B', Colors.indigoAccent), dist: 8)
+            .build(),
+        const SizedBox(height: 20),
+
+        // ── middle ──────────────────────────────────────────────────────────
+        const Text(
+          'titleBorderAlign: middle  (label centred on the border line)',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: 'Middle Align',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.teal,
+            lineWidth: 1.5,
+          ),
+          titleBorderAlign: AclTitleBorderAlign.middle,
+        )
+            .append(const _DemoBox('Item A', Colors.teal))
+            .append(const _DemoBox('Item B', Colors.tealAccent), dist: 8)
+            .build(),
+        const SizedBox(height: 20),
+
+        // ── top ─────────────────────────────────────────────────────────────
+        const Text(
+          'titleBorderAlign: top  (label hangs down from the border)',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 4),
+        AclBuilder(
+          title: 'Top Align',
+          borderStyle: const AclBorderStyle(
+            kind: AclBorderKind.solid,
+            color: Colors.deepOrange,
+            lineWidth: 1.5,
+          ),
+          titleBorderAlign: AclTitleBorderAlign.top,
+        )
+            .append(const _DemoBox('Item A', Colors.deepOrange))
+            .append(const _DemoBox('Item B', Colors.orange), dist: 8)
+            .build(),
+        const SizedBox(height: 20),
+
+        // ── all three side-by-side with rounded double border ───────────────
+        const Text(
+          'All three with rounded double border:',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: AclBuilder(
+                title: 'Bottom',
+                borderStyle: const AclBorderStyle(
+                  kind: AclBorderKind.solidDouble,
+                  color: Colors.indigo,
+                  rounded: true,
+                  borderRadius: 8,
+                ),
+                titleBorderAlign: AclTitleBorderAlign.bottom,
+              ).append(const _DemoBox('Content', Colors.indigo)).build(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AclBuilder(
+                title: 'Middle',
+                borderStyle: const AclBorderStyle(
+                  kind: AclBorderKind.solidDouble,
+                  color: Colors.teal,
+                  rounded: true,
+                  borderRadius: 8,
+                ),
+                titleBorderAlign: AclTitleBorderAlign.middle,
+              ).append(const _DemoBox('Content', Colors.teal)).build(),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AclBuilder(
+                title: 'Top',
+                borderStyle: const AclBorderStyle(
+                  kind: AclBorderKind.solidDouble,
+                  color: Colors.deepOrange,
+                  rounded: true,
+                  borderRadius: 8,
+                ),
+                titleBorderAlign: AclTitleBorderAlign.top,
+              ).append(const _DemoBox('Content', Colors.deepOrange)).build(),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -2698,9 +2819,16 @@ class _ResizableBoxState extends State<_ResizableBox> {
   double? _width; // seeded on first layout from available constraints
   late double _height;
 
+  // Global-position-based drag tracking so the container edge follows the
+  // pointer 1:1 regardless of gesture-arena contention from parent scrollables.
+  double? _panStartX;
+  double? _panStartW;
+  double? _panStartY;
+  double? _panStartH;
+
   static const double _grip = 10.0;
-  static const double _minW = 80.0;
-  static const double _minH = 32.0;
+  static const double _minW = 100.0;
+  static const double _minH = 100.0;
 
   @override
   void initState() {
@@ -2742,9 +2870,15 @@ class _ResizableBoxState extends State<_ResizableBox> {
                 cursor: SystemMouseCursors.resizeLeftRight,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartX = d.globalPosition.dx;
+                    _panStartW = _width;
+                  },
                   onPanUpdate: (d) => setState(() {
-                    _width =
-                        (w + d.delta.dx).clamp(_minW, double.infinity);
+                    _width = ((_panStartW ?? w) +
+                            d.globalPosition.dx -
+                            (_panStartX ?? d.globalPosition.dx))
+                        .clamp(_minW, double.infinity);
                   }),
                 ),
               ),
@@ -2760,8 +2894,15 @@ class _ResizableBoxState extends State<_ResizableBox> {
                 cursor: SystemMouseCursors.resizeUpDown,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartY = d.globalPosition.dy;
+                    _panStartH = _height;
+                  },
                   onPanUpdate: (d) => setState(() {
-                    _height = (h + d.delta.dy).clamp(_minH, double.infinity);
+                    _height = ((_panStartH ?? h) +
+                            d.globalPosition.dy -
+                            (_panStartY ?? d.globalPosition.dy))
+                        .clamp(_minH, double.infinity);
                   }),
                 ),
               ),
@@ -2777,11 +2918,21 @@ class _ResizableBoxState extends State<_ResizableBox> {
                 cursor: SystemMouseCursors.resizeUpLeftDownRight,
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,
+                  onPanStart: (d) {
+                    _panStartX = d.globalPosition.dx;
+                    _panStartW = _width;
+                    _panStartY = d.globalPosition.dy;
+                    _panStartH = _height;
+                  },
                   onPanUpdate: (d) => setState(() {
-                    _width =
-                        (w + d.delta.dx).clamp(_minW, double.infinity);
-                    _height =
-                        (h + d.delta.dy).clamp(_minH, double.infinity);
+                    _width = ((_panStartW ?? w) +
+                            d.globalPosition.dx -
+                            (_panStartX ?? d.globalPosition.dx))
+                        .clamp(_minW, double.infinity);
+                    _height = ((_panStartH ?? h) +
+                            d.globalPosition.dy -
+                            (_panStartY ?? d.globalPosition.dy))
+                        .clamp(_minH, double.infinity);
                   }),
                   child: CustomPaint(painter: _GripPainter()),
                 ),
