@@ -1588,6 +1588,12 @@ class Acl extends AclLayout {
   /// The AclContainer is pushed down by this amount inside the Stack.
   static const double _kTitleReserve = 14.0;
 
+  /// Extra vertical extent of the background-coloured mask beyond the title
+  /// content. This ensures the mask overlaps (and hides) the border line
+  /// regardless of alignment. Must be at least as large as the thickest
+  /// border (solidDouble ≈ lineWidth*2 + 4).
+  static const double _kBorderMask = 4.0;
+
   @override
   Widget build(BuildContext context) {
     final hasTitle = titleWidget != null ||
@@ -1598,11 +1604,16 @@ class Acl extends AclLayout {
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
     // Build the title label — either a custom widget or styled text.
+    // The background-coloured Container extends _kBorderMask above and below
+    // the content to fully mask the border segment behind it.
     final Widget titleLabel;
     if (titleWidget != null) {
       titleLabel = Container(
         color: bg,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: _kBorderMask,
+        ),
         child: titleWidget,
       );
     } else {
@@ -1610,20 +1621,33 @@ class Acl extends AclLayout {
           theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
       titleLabel = Container(
         color: bg,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: _kBorderMask,
+        ),
         child: Text(title!, style: titleTextStyle),
       );
     }
 
-    // The title label is positioned at the border top edge  (_kTitleReserve
-    // from the Stack origin) and then translated vertically so that
-    //   bottom → label bottom touches border  (translate -1.0 × own height)
-    //   middle → label center sits on border  (translate -0.5 × own height)
-    //   top    → label top sits on border     (translate  0.0)
+    // FractionalTranslation shifts the label so the desired edge/centre
+    // aligns with the anchor Y position.
     final titleTranslation = switch (titleBorderAlign) {
       AclTitleBorderAlign.top => Offset.zero,
       AclTitleBorderAlign.middle => const Offset(0, -0.5),
       AclTitleBorderAlign.bottom => const Offset(0, -1.0),
+    };
+
+    // The anchor Y position is shifted per-alignment so the bg-coloured
+    // Container always overlaps the full border width:
+    //   bottom → anchor pushed _kBorderMask below border top so bg
+    //            (whose bottom edge = anchor Y) extends past the border.
+    //   middle → anchor at border top; the bg straddles it naturally.
+    //   top    → anchor pulled _kBorderMask above border top so bg
+    //            (whose top edge = anchor Y) starts before the border.
+    final titleY = switch (titleBorderAlign) {
+      AclTitleBorderAlign.bottom => _kTitleReserve + _kBorderMask,
+      AclTitleBorderAlign.middle => _kTitleReserve,
+      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask,
     };
 
     return Stack(
@@ -1647,7 +1671,7 @@ class Acl extends AclLayout {
           ),
         ),
         Positioned(
-          top: _kTitleReserve,
+          top: titleY,
           left: _left(),
           right: _right(),
           child: Align(
