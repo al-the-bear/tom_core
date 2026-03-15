@@ -1642,6 +1642,14 @@ class Acl extends AclLayout {
       AclTitleBorderAlign.bottom => const Offset(0, -1.0),
     };
 
+    // For solidDouble borders the title should centre on the midpoint
+    // between the outer and inner border lines rather than the outer edge.
+    // Outer centre = w/2, inner centre = 2.5w + 2, midpoint = 1.5w + 1.
+    final borderCenterOffset =
+        borderStyle.kind == AclBorderKind.solidDouble
+            ? 1.5 * borderStyle.lineWidth + 1.0
+            : 0.0;
+
     // The anchor Y position is shifted per-alignment so the bg-coloured
     // Container always overlaps the full border width:
     //   bottom → anchor pushed _kBorderMask below border top so bg
@@ -1651,9 +1659,9 @@ class Acl extends AclLayout {
     //            (whose top edge = anchor Y) starts before the border.
     final titleY = switch (titleBorderAlign) {
       AclTitleBorderAlign.bottom =>
-        _kTitleReserve + _kBorderMask + _kBaselineDescentAdjust + 1.0,
-      AclTitleBorderAlign.middle => _kTitleReserve,
-      AclTitleBorderAlign.top => _kTitleReserve - _kBorderMask - 5.0,
+        _kTitleReserve + borderCenterOffset + _kBorderMask + _kBaselineDescentAdjust + 1.0,
+      AclTitleBorderAlign.middle => _kTitleReserve + borderCenterOffset,
+      AclTitleBorderAlign.top => _kTitleReserve + borderCenterOffset - _kBorderMask - 5.0,
     };
 
     return Stack(
