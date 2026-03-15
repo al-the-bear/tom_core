@@ -1564,6 +1564,7 @@ class Acl extends AclLayout {
   final TextStyle? titleStyle;
   final AclTitlePosition titlePosition;
   final AclTitleBorderAlign titleBorderAlign;
+  final double titleVerticalOffset;
 
   const Acl({
     super.key,
@@ -1582,6 +1583,7 @@ class Acl extends AclLayout {
     this.titleStyle,
     this.titlePosition = AclTitlePosition.topLeft,
     this.titleBorderAlign = AclTitleBorderAlign.bottom,
+    this.titleVerticalOffset = 0.0,
   });
 
   /// Vertical space reserved above the border line for the title label.
@@ -1662,7 +1664,7 @@ class Acl extends AclLayout {
         _kTitleReserve + borderCenterOffset + _kBorderMask + _kBaselineDescentAdjust + 1.0,
       AclTitleBorderAlign.middle => _kTitleReserve + borderCenterOffset,
       AclTitleBorderAlign.top => _kTitleReserve + borderCenterOffset - _kBorderMask - 5.0,
-    };
+    } + titleVerticalOffset;
 
     return Stack(
       clipBehavior: Clip.none,

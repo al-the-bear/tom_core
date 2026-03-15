@@ -95,6 +95,7 @@ class AclBuilder {
   TextStyle? _titleStyle;
   AclTitlePosition _titlePosition;
   AclTitleBorderAlign _titleBorderAlign;
+  double _titleVerticalOffset = 0.0;
   bool _scrollableX = false;
   bool _scrollableY = false;
   Size? _preferredContainerSize;
@@ -115,6 +116,7 @@ class AclBuilder {
     TextStyle? titleStyle,
     AclTitlePosition titlePosition = AclTitlePosition.topLeft,
     AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
+    double titleVerticalOffset = 0.0,
   })  : _title = title,
         _titleWidget = titleWidget,
         _borderStyle = borderStyle,
@@ -123,7 +125,8 @@ class AclBuilder {
         _backgroundColor = backgroundColor,
         _titleStyle = titleStyle,
         _titlePosition = titlePosition,
-        _titleBorderAlign = titleBorderAlign {
+        _titleBorderAlign = titleBorderAlign,
+        _titleVerticalOffset = titleVerticalOffset {
     _rows.add(_currentRow);
   }
 
@@ -583,6 +586,11 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setAclTitleVerticalOffset(double offset) {
+    _titleVerticalOffset = offset;
+    return this;
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
 
   Acl build() {
@@ -599,6 +607,7 @@ class AclBuilder {
       titleStyle: _titleStyle,
       titlePosition: _titlePosition,
       titleBorderAlign: _titleBorderAlign,
+      titleVerticalOffset: _titleVerticalOffset,
       preferredContainerSize: _preferredContainerSize,
       minimumContainerSize: _minimumContainerSize,
       maximumContainerSize: _maximumContainerSize,
