@@ -603,6 +603,35 @@ class AclBuilder {
     return this;
   }
 
+  AclBuilder setAclPaddingPx(double left, double top, double right, double bottom) {
+    _padding = EdgeInsets.fromLTRB(left, top, right, bottom);
+    return this;
+  }
+
+  AclBuilder setAclPaddingTop(double value) {
+    final resolved = _padding.resolve(TextDirection.ltr);
+    _padding = EdgeInsets.fromLTRB(resolved.left, value, resolved.right, resolved.bottom);
+    return this;
+  }
+
+  AclBuilder setAclPaddingBottom(double value) {
+    final resolved = _padding.resolve(TextDirection.ltr);
+    _padding = EdgeInsets.fromLTRB(resolved.left, resolved.top, resolved.right, value);
+    return this;
+  }
+
+  AclBuilder setAclPaddingLeft(double value) {
+    final resolved = _padding.resolve(TextDirection.ltr);
+    _padding = EdgeInsets.fromLTRB(value, resolved.top, resolved.right, resolved.bottom);
+    return this;
+  }
+
+  AclBuilder setAclPaddingRight(double value) {
+    final resolved = _padding.resolve(TextDirection.ltr);
+    _padding = EdgeInsets.fromLTRB(resolved.left, resolved.top, value, resolved.bottom);
+    return this;
+  }
+
   AclBuilder setAclBackgroundColor(Color color) {
     _backgroundColor = color;
     return this;
