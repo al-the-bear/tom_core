@@ -1971,6 +1971,9 @@ class Acl extends AclLayout {
         (title != null && title!.isNotEmpty);
     if (!hasTitle) return super.build(context);
 
+    final isRtl = (direction ?? AclDirectionScope.maybeOf(context) ?? AclDirection.ltr) ==
+        AclDirection.rtl;
+
     final theme = Theme.of(context);
     final bg = backgroundColor ?? theme.scaffoldBackgroundColor;
 
@@ -2054,14 +2057,15 @@ class Acl extends AclLayout {
             parentIdPath: parentIdPath,
             groupVisibilityControllers: groupVisibilityControllers,
             variants: variants,
+            direction: direction,
           ),
         ),
         Positioned(
           top: titleY,
-          left: _left(),
-          right: _right(),
+          left: _left(isRtl),
+          right: _right(isRtl),
           child: Align(
-            alignment: _alignment(),
+            alignment: _alignment(isRtl),
             child: FractionalTranslation(
               translation: titleTranslation,
               child: titleLabel,
@@ -2094,19 +2098,29 @@ class Acl extends AclLayout {
     );
   }
 
-  Alignment _alignment() => switch (titlePosition) {
+  /// Effective title position after RTL mirroring: topLeft ↔ topRight.
+  AclTitlePosition _effectivePosition(bool isRtl) {
+    if (!isRtl) return titlePosition;
+    return switch (titlePosition) {
+      AclTitlePosition.topLeft => AclTitlePosition.topRight,
+      AclTitlePosition.topCenter => AclTitlePosition.topCenter,
+      AclTitlePosition.topRight => AclTitlePosition.topLeft,
+    };
+  }
+
+  Alignment _alignment(bool isRtl) => switch (_effectivePosition(isRtl)) {
         AclTitlePosition.topLeft => Alignment.centerLeft,
         AclTitlePosition.topCenter => Alignment.center,
         AclTitlePosition.topRight => Alignment.centerRight,
       };
 
-  double? _left() => switch (titlePosition) {
+  double? _left(bool isRtl) => switch (_effectivePosition(isRtl)) {
         AclTitlePosition.topLeft => 12,
         AclTitlePosition.topCenter => 0,
         AclTitlePosition.topRight => null,
       };
 
-  double? _right() => switch (titlePosition) {
+  double? _right(bool isRtl) => switch (_effectivePosition(isRtl)) {
         AclTitlePosition.topLeft => null,
         AclTitlePosition.topCenter => 0,
         AclTitlePosition.topRight => 12,
