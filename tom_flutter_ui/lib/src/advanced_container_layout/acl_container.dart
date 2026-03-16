@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'acl_flags.dart';
+import 'acl_device_context.dart';
 import 'acl_group_visibility.dart';
 import 'acl_responsive.dart';
 import 'acl_scope.dart';
@@ -143,8 +144,9 @@ class AclComponent {
   /// Whether this component is inside an inline variant block (see §29).
   final bool inlineVariant;
 
-  /// Width threshold for this inline variant; null = default variant (see §29).
-  final double? inlineVariantWidth;
+  /// Detector function that determines whether this variant is active (see §29).
+  /// Null for the default variant (shown when no other detector matches).
+  final AclVariantDetector? variantDetector;
 
   const AclComponent({
     required this.child,
@@ -168,7 +170,7 @@ class AclComponent {
     this.id,
     this.group,
     this.inlineVariant = false,
-    this.inlineVariantWidth,
+    this.variantDetector,
   });
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
@@ -479,47 +481,62 @@ class _AclContainerState extends State<AclContainer> {
     return result;
   }
 
-  /// Filters components within each row based on inline variant tags (§29).
-  /// Components not in any variant block are always kept. Components in a
-  /// variant block are kept only when their variant is the active one.
-  List<AclRow> _applyInlineVariants(List<AclRow> rows, double? availableWidth) {
+  /// Filters components within each row based on inline variant detectors
+  /// (§29). Components not in any variant block are always kept. Components
+  /// in a variant block are kept only when their detector is the active one.
+  List<AclRow> _applyInlineVariants(
+    List<AclRow> rows,
+    AclDeviceContext? deviceContext,
+    Acl? acl,
+    BuildContext buildContext,
+  ) {
     final result = <AclRow>[];
     for (final row in rows) {
       if (row.isGapRow) {
         result.add(row);
         continue;
       }
-      // Check if any component uses inline variants.
       final hasInline = row.components.any((c) => c.inlineVariant);
       if (!hasInline) {
         result.add(row);
         continue;
       }
-      // Determine the active inline variant for this row.
-      // Collect all distinct non-null variant widths, sort ascending.
-      final widths = <double>{};
+
+      // Collect unique detectors in declaration order (by identity).
+      final detectorOrder = <AclVariantDetector?>[];
+      final seen = <AclVariantDetector?>{};
       for (final c in row.components) {
-        if (c.inlineVariant && c.inlineVariantWidth != null) {
-          widths.add(c.inlineVariantWidth!);
+        if (!c.inlineVariant) continue;
+        if (seen.add(c.variantDetector)) {
+          detectorOrder.add(c.variantDetector);
         }
       }
-      final sorted = widths.toList()..sort();
-      // Active = narrowest width exceeding availableWidth; else default (null).
-      double? activeWidth;
-      if (availableWidth != null) {
-        for (final w in sorted) {
-          if (availableWidth < w) {
-            activeWidth = w;
+
+      // Evaluate non-default detectors in declaration order.
+      // First detector returning true wins.
+      AclVariantDetector? activeDetector;
+      bool matched = false;
+      if (deviceContext != null) {
+        for (final detector in detectorOrder) {
+          if (detector == null) continue; // skip default for now
+          if (detector(deviceContext, acl, buildContext)) {
+            activeDetector = detector;
+            matched = true;
             break;
           }
         }
       }
-      // Filter: keep non-variant components + components matching active.
+
+      // Filter: non-variant components always kept.
+      // If a detector matched: keep variant components with that detector.
+      // If no detector matched: keep default variant components (null).
       final filtered = row.components.where((c) {
         if (!c.inlineVariant) return true;
-        return c.inlineVariantWidth == activeWidth;
+        if (matched) return identical(c.variantDetector, activeDetector);
+        return c.variantDetector == null;
       }).toList();
-      if (filtered.isEmpty) continue; // skip entirely empty rows
+
+      if (filtered.isEmpty) continue;
       result.add(AclRow(
         components: filtered,
         alignment: row.alignment,
@@ -919,9 +936,24 @@ class _AclContainerState extends State<AclContainer> {
         final variantRows = _selectVariantRows(
           canExpandHorizontally ? effectiveMaxW : null,
         );
+
+        // Only resolve DeviceContext when inline variants exist (avoids
+        // unnecessary MediaQuery/Theme subscriptions).
+        final hasInlineVariants = variantRows.any(
+          (r) => !r.isGapRow && r.components.any((c) => c.inlineVariant),
+        );
+        AclDeviceContext? deviceCtx;
+        Acl? parentAcl;
+        if (hasInlineVariants && canExpandHorizontally) {
+          deviceCtx = AclDeviceContext.of(
+            context,
+            width: effectiveMaxW,
+            height: canExpandVertically ? constraints.maxHeight : null,
+          );
+          parentAcl = context.findAncestorWidgetOfExactType<Acl>();
+        }
         final inlineFilteredRows = _applyInlineVariants(
-          variantRows,
-          canExpandHorizontally ? effectiveMaxW : null,
+          variantRows, deviceCtx, parentAcl, context,
         );
         final effectiveRows = _applyRowBreakpoints(
           inlineFilteredRows,

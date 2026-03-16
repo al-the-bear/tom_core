@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'acl_container.dart';
+import 'acl_device_context.dart';
 import 'acl_flags.dart';
 import 'acl_group_visibility.dart';
 import 'acl_responsive.dart';
@@ -29,7 +30,7 @@ class _ComponentData {
   String? id;
   String? group;
   bool inlineVariant = false;
-  double? inlineVariantWidth;
+  AclVariantDetector? variantDetector;
 
   _ComponentData({
     required this.child,
@@ -62,7 +63,7 @@ class _ComponentData {
       id: id,
       group: group,
       inlineVariant: inlineVariant,
-      inlineVariantWidth: inlineVariantWidth,
+      variantDetector: variantDetector,
     );
   }
 }
@@ -138,7 +139,7 @@ class AclBuilder {
 
   // §29 Inline Component Variants
   bool _inVariantBlock = false;
-  double? _currentVariantWidth;
+  AclVariantDetector? _currentVariantDetector;
 
   AclBuilder({
     String? title,
@@ -192,7 +193,7 @@ class AclBuilder {
     // Tag with inline variant if inside a startVariant/endVariant block.
     if (_inVariantBlock) {
       _currentComponent!.inlineVariant = true;
-      _currentComponent!.inlineVariantWidth = _currentVariantWidth;
+      _currentComponent!.variantDetector = _currentVariantDetector;
     }
     if (componentKey != null) {
       _referenceKeyByObject[child] = componentKey;
@@ -746,7 +747,19 @@ class AclBuilder {
 
   // ── Inline Component Variants (§29) ────────────────────────────────────────
 
-  AclBuilder startVariant([double? width]) {
+  AclBuilder startVariant({
+    double? width,
+    double? height,
+    AclInputMode? input,
+    AclFormFactor? formFactor,
+    Orientation? orientation,
+    Set<TargetPlatform>? platforms,
+    bool? isWeb,
+    AclDensity? density,
+    TextDirection? textDirection,
+    double? minAccessibilityScale,
+    AclVariantDetector? detector,
+  }) {
     if (_inVariantBlock) {
       throw StateError(
         'AclBuilder.startVariant(): already inside a variant block. '
@@ -754,7 +767,19 @@ class AclBuilder {
       );
     }
     _inVariantBlock = true;
-    _currentVariantWidth = width;
+    _currentVariantDetector = detector ??
+        AclDeviceContext.buildConvenienceDetector(
+          width: width,
+          height: height,
+          input: input,
+          formFactor: formFactor,
+          orientation: orientation,
+          platforms: platforms,
+          isWeb: isWeb,
+          density: density,
+          textDirection: textDirection,
+          minAccessibilityScale: minAccessibilityScale,
+        );
     return this;
   }
 
@@ -766,7 +791,7 @@ class AclBuilder {
       );
     }
     _inVariantBlock = false;
-    _currentVariantWidth = null;
+    _currentVariantDetector = null;
     return this;
   }
 
