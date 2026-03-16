@@ -28,6 +28,8 @@ class _ComponentData {
   Key? componentKey;
   String? id;
   String? group;
+  bool inlineVariant = false;
+  double? inlineVariantWidth;
 
   _ComponentData({
     required this.child,
@@ -59,6 +61,8 @@ class _ComponentData {
       componentKey: componentKey,
       id: id,
       group: group,
+      inlineVariant: inlineVariant,
+      inlineVariantWidth: inlineVariantWidth,
     );
   }
 }
@@ -132,6 +136,10 @@ class AclBuilder {
   // §27 Variants
   final List<AclVariant> _variants = [];
 
+  // §29 Inline Component Variants
+  bool _inVariantBlock = false;
+  double? _currentVariantWidth;
+
   AclBuilder({
     String? title,
     Widget? titleWidget,
@@ -180,6 +188,11 @@ class AclBuilder {
     // Inherit active group from startGroup()/endGroup() range.
     if (_activeGroupName != null) {
       _currentComponent!.group = _activeGroupName;
+    }
+    // Tag with inline variant if inside a startVariant/endVariant block.
+    if (_inVariantBlock) {
+      _currentComponent!.inlineVariant = true;
+      _currentComponent!.inlineVariantWidth = _currentVariantWidth;
     }
     if (componentKey != null) {
       _referenceKeyByObject[child] = componentKey;
@@ -728,6 +741,32 @@ class AclBuilder {
       splitAfter: splitAfter,
       splitRowDist: splitRowDist,
     ));
+    return this;
+  }
+
+  // ── Inline Component Variants (§29) ────────────────────────────────────────
+
+  AclBuilder startVariant([double? width]) {
+    if (_inVariantBlock) {
+      throw StateError(
+        'AclBuilder.startVariant(): already inside a variant block. '
+        'Call endVariant() before starting a new one.',
+      );
+    }
+    _inVariantBlock = true;
+    _currentVariantWidth = width;
+    return this;
+  }
+
+  AclBuilder endVariant() {
+    if (!_inVariantBlock) {
+      throw StateError(
+        'AclBuilder.endVariant(): not inside a variant block. '
+        'Call startVariant() first.',
+      );
+    }
+    _inVariantBlock = false;
+    _currentVariantWidth = null;
     return this;
   }
 

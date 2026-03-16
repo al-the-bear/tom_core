@@ -175,6 +175,11 @@ class _AclTab extends StatelessWidget {
           description: 'Rows split into multiple rows at narrow widths',
           screen: RowBreakpointsDemo(),
         ),
+        _DemoTile(
+          title: 'Inline Component Variants',
+          description: 'Different components shown within the same row at different widths',
+          screen: InlineVariantsDemo(),
+        ),
       ],
     );
   }
@@ -3224,6 +3229,163 @@ AclBuilder()
     .append(Item4, dist: 8)
     // Split after 2nd component when width < 400
     .addRowBreakpoint(atWidth: 400, splitAfter: 2, splitRowDist: 8)
+    .build()
+'''),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inline Component Variants Demo
+// ─────────────────────────────────────────────────────────────────────────────
+class InlineVariantsDemo extends StatelessWidget {
+  const InlineVariantsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Inline variants: different components shown in the same row at different widths.',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Default: 3 coloured boxes  •  < 400px: single wide box',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 140,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.teal,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              .append(const SizedBox(width: 70, child: Text('Items:')))
+              // Default variant: three items
+              .startVariant()
+              .append(const _DemoBox('A', Colors.red), dist: 8)
+              .append(const _DemoBox('B', Colors.green), dist: 8)
+              .append(const _DemoBox('C', Colors.blue), dist: 8)
+              .endVariant()
+              // Narrow variant: one combined item
+              .startVariant(400)
+              .append(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withAlpha(50),
+                    border: Border.all(color: Colors.purple),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('A + B + C (combined)', style: TextStyle(color: Colors.purple)),
+                ),
+                dist: 8,
+              )
+              .expandX()
+              .endVariant()
+              .build(),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Adaptive form row: wide → first + last name, narrow → single full-name field.',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Default: 2 fields  •  < 500px: 1 field',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 160,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.indigo,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              // Row 1: Name — inline variants
+              .append(const SizedBox(width: 80, child: Text('Name:')))
+              .startVariant()
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'First name',
+                  ),
+                ),
+                dist: 8,
+              )
+              .expandX()
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Last name',
+                  ),
+                ),
+                dist: 8,
+              )
+              .expandX()
+              .endVariant()
+              .startVariant(500)
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Full name',
+                  ),
+                ),
+                dist: 8,
+              )
+              .expandX()
+              .endVariant()
+              // Row 2: Email — always the same
+              .newRow(dist: 8)
+              .append(const SizedBox(width: 80, child: Text('Email:')))
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Email address',
+                  ),
+                ),
+                dist: 8,
+              )
+              .expandX()
+              .build(),
+        ),
+        const SizedBox(height: 16),
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+AclBuilder()
+    .append(Text('Name:'))
+    // Wide: two fields
+    .startVariant()
+    .append(firstNameField).expandX()
+    .append(lastNameField).expandX()
+    .endVariant()
+    // Narrow (< 500px): single field
+    .startVariant(500)
+    .append(fullNameField).expandX()
+    .endVariant()
+    // Email row is always shown
+    .newRow(dist: 8)
+    .append(Text('Email:'))
+    .append(emailField).expandX()
     .build()
 '''),
       ],

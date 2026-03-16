@@ -140,6 +140,12 @@ class AclComponent {
   /// Optional group name this component belongs to (see §25).
   final String? group;
 
+  /// Whether this component is inside an inline variant block (see §29).
+  final bool inlineVariant;
+
+  /// Width threshold for this inline variant; null = default variant (see §29).
+  final double? inlineVariantWidth;
+
   const AclComponent({
     required this.child,
     this.flags = 0,
@@ -161,6 +167,8 @@ class AclComponent {
     this.componentKey,
     this.id,
     this.group,
+    this.inlineVariant = false,
+    this.inlineVariantWidth,
   });
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
@@ -467,6 +475,63 @@ class _AclContainerState extends State<AclContainer> {
           breakpoints: const [],
         ));
       }
+    }
+    return result;
+  }
+
+  /// Filters components within each row based on inline variant tags (§29).
+  /// Components not in any variant block are always kept. Components in a
+  /// variant block are kept only when their variant is the active one.
+  List<AclRow> _applyInlineVariants(List<AclRow> rows, double? availableWidth) {
+    final result = <AclRow>[];
+    for (final row in rows) {
+      if (row.isGapRow) {
+        result.add(row);
+        continue;
+      }
+      // Check if any component uses inline variants.
+      final hasInline = row.components.any((c) => c.inlineVariant);
+      if (!hasInline) {
+        result.add(row);
+        continue;
+      }
+      // Determine the active inline variant for this row.
+      // Collect all distinct non-null variant widths, sort ascending.
+      final widths = <double>{};
+      for (final c in row.components) {
+        if (c.inlineVariant && c.inlineVariantWidth != null) {
+          widths.add(c.inlineVariantWidth!);
+        }
+      }
+      final sorted = widths.toList()..sort();
+      // Active = narrowest width exceeding availableWidth; else default (null).
+      double? activeWidth;
+      if (availableWidth != null) {
+        for (final w in sorted) {
+          if (availableWidth < w) {
+            activeWidth = w;
+            break;
+          }
+        }
+      }
+      // Filter: keep non-variant components + components matching active.
+      final filtered = row.components.where((c) {
+        if (!c.inlineVariant) return true;
+        return c.inlineVariantWidth == activeWidth;
+      }).toList();
+      if (filtered.isEmpty) continue; // skip entirely empty rows
+      result.add(AclRow(
+        components: filtered,
+        alignment: row.alignment,
+        gapBefore: row.gapBefore,
+        isGapRow: row.isGapRow,
+        gapRowWeight: row.gapRowWeight,
+        separator: row.separator,
+        gapRowMinSize: row.gapRowMinSize,
+        id: row.id,
+        group: row.group,
+        breakpoints: row.breakpoints,
+      ));
     }
     return result;
   }
@@ -850,12 +915,16 @@ class _AclContainerState extends State<AclContainer> {
         final canExpandHorizontally = effectiveMaxW > 0;
         final canExpandVertically = constraints.hasBoundedHeight;
 
-        // ── Resolve effective rows (variants → breakpoints) ──────────────
+        // ── Resolve effective rows (variants → inline → breakpoints) ────
         final variantRows = _selectVariantRows(
           canExpandHorizontally ? effectiveMaxW : null,
         );
-        final effectiveRows = _applyRowBreakpoints(
+        final inlineFilteredRows = _applyInlineVariants(
           variantRows,
+          canExpandHorizontally ? effectiveMaxW : null,
+        );
+        final effectiveRows = _applyRowBreakpoints(
+          inlineFilteredRows,
           canExpandHorizontally ? effectiveMaxW : null,
         );
 
