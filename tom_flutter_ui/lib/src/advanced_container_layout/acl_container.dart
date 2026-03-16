@@ -33,6 +33,32 @@ enum AclAxisPointY { top, center, bottom }
 /// Per-component vertical placement within its row when [AclComponent.alignYToKey] is null.
 enum AclRowCrossAlignment { top, center, bottom }
 
+/// Layout direction for ACL containers (see §30).
+enum AclDirection { ltr, rtl }
+
+/// Provides an [AclDirection] to descendant [AclContainer] widgets.
+///
+/// Containers that have no explicit [AclContainer.direction] will
+/// use the direction from the nearest [AclDirectionScope] ancestor,
+/// falling back to [AclDirection.ltr] when no scope is present.
+class AclDirectionScope extends InheritedWidget {
+  final AclDirection direction;
+
+  const AclDirectionScope({
+    super.key,
+    required this.direction,
+    required super.child,
+  });
+
+  static AclDirection? maybeOf(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<AclDirectionScope>()?.direction;
+  }
+
+  @override
+  bool updateShouldNotify(AclDirectionScope oldWidget) =>
+      direction != oldWidget.direction;
+}
+
 // ── Separator types ──────────────────────────────────────────────────────────
 
 enum AclSeparatorStyle { single, doubleLine }
@@ -311,6 +337,10 @@ class AclContainer extends StatefulWidget {
   /// Responsive variants sorted by atWidth descending (see §27).
   final List<AclVariant> variants;
 
+  /// Layout direction: LTR (default) or RTL (see §30).
+  /// If null, falls back to the nearest [AclDirectionScope], then [AclDirection.ltr].
+  final AclDirection? direction;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -328,6 +358,7 @@ class AclContainer extends StatefulWidget {
     this.parentIdPath,
     this.groupVisibilityControllers = const {},
     this.variants = const [],
+    this.direction,
   });
 
   @override
@@ -1465,6 +1496,8 @@ class _AclContainerState extends State<AclContainer> {
     required bool canExpandVertically,
     double? availableWidth,
   }) {
+    final isRtl = (widget.direction ?? AclDirectionScope.maybeOf(context) ?? AclDirection.ltr) ==
+        AclDirection.rtl;
     final mainAxisAlignment = switch (row.alignment) {
       RowAlignment.left => MainAxisAlignment.start,
       RowAlignment.center => MainAxisAlignment.center,
@@ -1637,7 +1670,7 @@ class _AclContainerState extends State<AclContainer> {
         } else {
           child = Align(
             key: component.componentKey,
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             widthFactor: 1,
             heightFactor: 1,
             child: child,
@@ -1722,9 +1755,9 @@ class _AclContainerState extends State<AclContainer> {
             MainAxisAlignment.spaceBetween ||
             MainAxisAlignment.spaceAround ||
             MainAxisAlignment.spaceEvenly =>
-              Alignment.centerRight,
+              AlignmentDirectional.centerEnd,
             MainAxisAlignment.center => Alignment.center,
-            _ => Alignment.centerLeft,
+            _ => AlignmentDirectional.centerStart,
           };
 
           return widget.scrollableX
@@ -1768,6 +1801,12 @@ class _AclContainerState extends State<AclContainer> {
     if (!rowFillsWidth && canExpandHorizontally && extraLeft > 0) {
       rowWidget = ClipRect(child: rowWidget);
     }
+
+    // §30: wrap with explicit Directionality to control component flow.
+    rowWidget = Directionality(
+      textDirection: isRtl ? TextDirection.rtl : TextDirection.ltr,
+      child: rowWidget,
+    );
 
     if (hasExpandY && canExpandVertically) {
       int rowFlex = 1;
@@ -1833,6 +1872,7 @@ class AclLayout extends StatelessWidget {
   final String? parentIdPath;
   final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
   final List<AclVariant> variants;
+  final AclDirection? direction;
 
   const AclLayout({
     super.key,
@@ -1851,6 +1891,7 @@ class AclLayout extends StatelessWidget {
     this.parentIdPath,
     this.groupVisibilityControllers = const {},
     this.variants = const [],
+    this.direction,
   });
 
   @override
@@ -1871,6 +1912,7 @@ class AclLayout extends StatelessWidget {
       parentIdPath: parentIdPath,
       groupVisibilityControllers: groupVisibilityControllers,
       variants: variants,
+      direction: direction,
     );
   }
 }
@@ -1900,6 +1942,7 @@ class Acl extends AclLayout {
     super.parentIdPath,
     super.groupVisibilityControllers = const {},
     super.variants = const [],
+    super.direction,
     this.title,
     this.titleWidget,
     this.titleStyle,

@@ -242,7 +242,7 @@ class _DemoTile extends StatelessWidget {
   }
 }
 
-class DemoScaffold extends StatelessWidget {
+class DemoScaffold extends StatefulWidget {
   final String title;
   final Widget child;
   final bool fullScreen;
@@ -255,18 +255,46 @@ class DemoScaffold extends StatelessWidget {
   });
 
   @override
+  State<DemoScaffold> createState() => _DemoScaffoldState();
+}
+
+class _DemoScaffoldState extends State<DemoScaffold> {
+  AclDirection _direction = AclDirection.ltr;
+
+  @override
   Widget build(BuildContext context) {
+    final body = widget.fullScreen
+        ? widget.child
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: widget.child,
+          );
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(title),
+        title: Text(widget.title),
+        actions: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('LTR'),
+              Switch(
+                value: _direction == AclDirection.rtl,
+                onChanged: (v) => setState(() {
+                  _direction = v ? AclDirection.rtl : AclDirection.ltr;
+                }),
+              ),
+              const Text('RTL'),
+              const SizedBox(width: 8),
+            ],
+          ),
+        ],
       ),
-      body: fullScreen
-          ? child
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: child,
-            ),
+      body: AclDirectionScope(
+        direction: _direction,
+        child: body,
+      ),
     );
   }
 }

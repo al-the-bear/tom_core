@@ -141,6 +141,9 @@ class AclBuilder {
   bool _inVariantBlock = false;
   AclVariantDetector? _currentVariantDetector;
 
+  // §30 Layout Direction
+  AclDirection? _direction;
+
   AclBuilder({
     String? title,
     Widget? titleWidget,
@@ -797,6 +800,12 @@ class AclBuilder {
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
+  /// Sets the layout direction for this container (see §30).
+  AclBuilder setAclDirection(AclDirection direction) {
+    _direction = direction;
+    return this;
+  }
+
   Acl build() {
     // Sort variants by atWidth ascending so the narrowest (most specific)
     // variant matches first during selection.
@@ -825,6 +834,7 @@ class AclBuilder {
       parentIdPath: _parentIdPath,
       groupVisibilityControllers: Map.unmodifiable(_groupVisibilityControllers),
       variants: sortedVariants,
+      direction: _direction,
     );
   }
 
