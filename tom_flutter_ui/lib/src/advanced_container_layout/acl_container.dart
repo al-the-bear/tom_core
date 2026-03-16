@@ -408,8 +408,8 @@ class _AclContainerState extends State<AclContainer> {
   /// returns the default [widget.rows] if no variant matches.
   List<AclRow> _selectVariantRows(double? availableWidth) {
     if (widget.variants.isEmpty || availableWidth == null) return widget.rows;
-    // Variants sorted by atWidth descending: pick the first whose threshold
-    // exceeds available width.
+    // Variants are sorted by atWidth ascending. Pick the first (narrowest)
+    // whose threshold exceeds availableWidth — this is the most specific match.
     for (final variant in widget.variants) {
       if (availableWidth < variant.atWidth) {
         return variant.rows;

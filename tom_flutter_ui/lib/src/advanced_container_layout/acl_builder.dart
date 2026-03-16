@@ -734,9 +734,10 @@ class AclBuilder {
   // ── Build ──────────────────────────────────────────────────────────────────
 
   Acl build() {
-    // Sort variants by atWidth descending for selection.
+    // Sort variants by atWidth ascending so the narrowest (most specific)
+    // variant matches first during selection.
     final sortedVariants = List<AclVariant>.from(_variants)
-      ..sort((a, b) => b.atWidth.compareTo(a.atWidth));
+      ..sort((a, b) => a.atWidth.compareTo(b.atWidth));
 
     return Acl(
       rows: _rows.map((row) => row.toRow()).toList(),
