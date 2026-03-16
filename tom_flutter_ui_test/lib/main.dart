@@ -3216,11 +3216,11 @@ class RowBreakpointsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
-              .append(const _DemoBox('1', Colors.red))
+              .append(const _DemoBox('1', Colors.red), dist: 8)
               .append(const _DemoBox('2', Colors.green), dist: 8)
+              .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
               .append(const _DemoBox('3', Colors.blue), dist: 8)
               .append(const _DemoBox('4', Colors.purple), dist: 8)
-              .addRowBreakpoint(atWidth: 400, splitAfter: 2, splitRowDist: 8)
               .build(),
         ),
         const SizedBox(height: 24),
@@ -3244,24 +3244,23 @@ class RowBreakpointsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
-              .append(const _DemoBox('A', Colors.red))
+              .append(const _DemoBox('A', Colors.red), dist: 8)
+              .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
               .append(const _DemoBox('B', Colors.green), dist: 8)
+              .addRowBreakpoint(atWidth: 500, splitRowDist: 8)
               .append(const _DemoBox('C', Colors.blue), dist: 8)
               .append(const _DemoBox('D', Colors.purple), dist: 8)
-              .addRowBreakpoint(atWidth: 500, splitAfter: 2, splitRowDist: 8)
-              .addRowBreakpoint(atWidth: 300, splitAfter: 1, splitRowDist: 8)
               .build(),
         ),
         const SizedBox(height: 16),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
 AclBuilder()
-    .append(Item1)
+    .append(Item1, dist: 8)
     .append(Item2, dist: 8)
+    .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
     .append(Item3, dist: 8)
     .append(Item4, dist: 8)
-    // Split after 2nd component when width < 400
-    .addRowBreakpoint(atWidth: 400, splitAfter: 2, splitRowDist: 8)
     .build()
 '''),
       ],
@@ -3330,48 +3329,50 @@ class BreakpointExpansionDemo extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
           )
-              .append(a)
+              .append(a, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
+              .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
               .append(b, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
+              .addRowBreakpoint(atWidth: 500, splitRowDist: 8)
               .append(c, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
+              .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
               .append(d, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
-              .addRowBreakpoint(atWidth: 500, splitAfter: 2, splitRowDist: 8)
-              .addRowBreakpoint(atWidth: 300, splitAfter: 1, splitRowDist: 8)
               .build(),
         ),
         const SizedBox(height: 16),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
 AclBuilder()
-    .append(A)
+    .append(A, dist: 8)
     .setPSize(200, 40)
     .setMSize(60, 40)
     .expandX()
+    .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
     .append(B, dist: 8)
     .setPSize(200, 40)
     .setMSize(60, 40)
     .expandX()
+    .addRowBreakpoint(atWidth: 500, splitRowDist: 8)
     .append(C, dist: 8)
     .setPSize(200, 40)
     .setMSize(60, 40)
     .expandX()
+    .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
     .append(D, dist: 8)
     .setPSize(200, 40)
     .setMSize(60, 40)
     .expandX()
-    .addRowBreakpoint(atWidth: 500, splitAfter: 2, splitRowDist: 8)
-    .addRowBreakpoint(atWidth: 300, splitAfter: 1, splitRowDist: 8)
     .build()
 '''),
       ],

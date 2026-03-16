@@ -735,14 +735,18 @@ class AclBuilder {
 
   // ── Row Breakpoints (§28) ──────────────────────────────────────────────────
 
+  /// Adds a row breakpoint at the current position in the builder chain.
+  ///
+  /// The split index is calculated from the number of components appended so
+  /// far. Call this **between** `append()` calls to indicate where the row
+  /// should break when the container width drops below [atWidth].
   AclBuilder addRowBreakpoint({
     required double atWidth,
-    required int splitAfter,
     double splitRowDist = 0,
   }) {
     _currentRow.breakpoints.add(AclRowBreakpoint(
       atWidth: atWidth,
-      splitAfter: splitAfter,
+      splitAfter: _currentRow.components.length,
       splitRowDist: splitRowDist,
     ));
     return this;
