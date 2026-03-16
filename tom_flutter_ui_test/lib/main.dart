@@ -160,6 +160,21 @@ class _AclTab extends StatelessWidget {
           description: 'Using AclBuilder',
           screen: FluentApiDemo(),
         ),
+        _DemoTile(
+          title: 'Group Visibility Control',
+          description: 'Toggle groups via switches and input-driven callbacks',
+          screen: GroupVisibilityDemo(),
+        ),
+        _DemoTile(
+          title: 'Responsive Variants',
+          description: 'Different layouts at different container widths',
+          screen: ResponsiveVariantsDemo(),
+        ),
+        _DemoTile(
+          title: 'Row Breakpoints',
+          description: 'Rows split into multiple rows at narrow widths',
+          screen: RowBreakpointsDemo(),
+        ),
       ],
     );
   }
@@ -2835,6 +2850,381 @@ AclColumn([
     AclRowDef(children: [...], alignment: ...),
     AclRowDef(children: [...], gapBefore: 16),
 ])
+'''),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group Visibility Control Demo
+// ─────────────────────────────────────────────────────────────────────────────
+class GroupVisibilityDemo extends StatefulWidget {
+  const GroupVisibilityDemo({super.key});
+
+  @override
+  State<GroupVisibilityDemo> createState() => _GroupVisibilityDemoState();
+}
+
+class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
+  final _addressCtrl = AclBinaryVisibilityController();
+  final _notesCtrl = AclBinaryVisibilityController();
+  final _textController = TextEditingController();
+  final _textNotifier = ValueNotifier<String>('');
+  late final AclCallbackVisibilityController<String> _inputCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController.addListener(() => _textNotifier.value = _textController.text);
+    _inputCtrl = AclCallbackVisibilityController<String>(
+      valueListenable: _textNotifier,
+      modeBuilder: (text) => text.length >= 3
+          ? AclGroupVisibilityMode.visible
+          : AclGroupVisibilityMode.hidden,
+    );
+  }
+
+  @override
+  void dispose() {
+    _addressCtrl.dispose();
+    _notesCtrl.dispose();
+    _inputCtrl.dispose();
+    _textNotifier.dispose();
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Binary visibility toggle (Switch → hide/show):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Text('Show address'),
+            ValueListenableBuilder(
+              valueListenable: _addressCtrl.modeNotifier,
+              builder: (_, mode, __) => Switch(
+                value: mode == AclGroupVisibilityMode.visible,
+                onChanged: (on) => _addressCtrl.mode = on
+                    ? AclGroupVisibilityMode.visible
+                    : AclGroupVisibilityMode.hidden,
+              ),
+            ),
+            const SizedBox(width: 16),
+            const Text('Disable notes'),
+            ValueListenableBuilder(
+              valueListenable: _notesCtrl.modeNotifier,
+              builder: (_, mode, __) => Switch(
+                value: mode == AclGroupVisibilityMode.disabled,
+                onChanged: (on) => _notesCtrl.mode = on
+                    ? AclGroupVisibilityMode.disabled
+                    : AclGroupVisibilityMode.visible,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 200,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.blueGrey,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              .setGroupVisibilityController('address', _addressCtrl)
+              .setGroupVisibilityController('notes', _notesCtrl)
+              // Row 1: always visible
+              .append(const SizedBox(width: 80, child: Text('Name:')))
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Always visible',
+                  ),
+                ),
+              )
+              .expandX()
+              // Row 2: address group
+              .newRow(dist: 8)
+              .startGroup('address')
+              .append(const SizedBox(width: 80, child: Text('Address:')))
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Toggleable via switch',
+                  ),
+                ),
+              )
+              .expandX()
+              .endGroup()
+              // Row 3: notes group
+              .newRow(dist: 8)
+              .startGroup('notes')
+              .append(const SizedBox(width: 80, child: Text('Notes:')))
+              .append(
+                const TextField(
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    hintText: 'Can be disabled',
+                  ),
+                ),
+              )
+              .expandX()
+              .endGroup()
+              .build(),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Input-value-driven visibility (type 3+ chars to reveal):',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 300,
+          child: TextField(
+            controller: _textController,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+              labelText: 'Type 3+ characters to show details',
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 140,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.deepPurple,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              .setGroupVisibilityController('details', _inputCtrl)
+              .append(const Text('Summary is always shown'))
+              .expandX()
+              .newRow(dist: 8)
+              .startGroup('details')
+              .append(
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.withAlpha(25),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text('Detail section appears when input ≥ 3 chars'),
+                ),
+              )
+              .expandX()
+              .endGroup()
+              .build(),
+        ),
+        const SizedBox(height: 16),
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+final ctrl = AclBinaryVisibilityController();
+// Toggle: ctrl.mode = AclGroupVisibilityMode.hidden;
+
+AclBuilder()
+    .setGroupVisibilityController('address', ctrl)
+    .append(alwaysVisibleWidget)
+    .newRow(dist: 8)
+    .startGroup('address')
+    .append(addressWidget).expandX()
+    .endGroup()
+    .build()
+
+// Callback-based:
+final inputCtrl = AclCallbackVisibilityController<String>(
+  source: textEditingController,
+  modeBuilder: (text) => text.length >= 3
+      ? AclGroupVisibilityMode.visible
+      : AclGroupVisibilityMode.hidden,
+);
+'''),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Responsive Variants Demo
+// ─────────────────────────────────────────────────────────────────────────────
+class ResponsiveVariantsDemo extends StatelessWidget {
+  const ResponsiveVariantsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Resize the box to see the layout switch between variants:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Default: 3-column  •  < 500px: 2-column  •  < 300px: 1-column',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 200,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.teal,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              // Default layout: 3 columns
+              .append(const _DemoBox('A', Colors.red))
+              .append(const _DemoBox('B', Colors.green), dist: 8)
+              .append(const _DemoBox('C', Colors.blue), dist: 8)
+              .expandX()
+              // Tablet variant: 2 columns + 1
+              .addVariant('tablet', atWidth: 500, builder: (b) => b
+                  .append(const _DemoBox('A', Colors.red))
+                  .append(const _DemoBox('B', Colors.green), dist: 8)
+                  .expandX()
+                  .newRow(dist: 8)
+                  .append(const _DemoBox('C', Colors.blue))
+                  .expandX(),
+              )
+              // Mobile variant: single column
+              .addVariant('mobile', atWidth: 300, builder: (b) => b
+                  .append(const _DemoBox('A', Colors.red))
+                  .expandX()
+                  .newRow(dist: 8)
+                  .append(const _DemoBox('B', Colors.green))
+                  .expandX()
+                  .newRow(dist: 8)
+                  .append(const _DemoBox('C', Colors.blue))
+                  .expandX(),
+              )
+              .build(),
+        ),
+        const SizedBox(height: 16),
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+AclBuilder()
+    // Default: 3-column
+    .append(A).append(B).append(C).expandX()
+    // Tablet: 2+1
+    .addVariant('tablet', atWidth: 500, builder: (b) => b
+        .append(A).append(B).expandX()
+        .newRow(dist: 8)
+        .append(C).expandX(),
+    )
+    // Mobile: single column
+    .addVariant('mobile', atWidth: 300, builder: (b) => b
+        .append(A).expandX()
+        .newRow(dist: 8)
+        .append(B).expandX()
+        .newRow(dist: 8)
+        .append(C).expandX(),
+    )
+    .build()
+'''),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Row Breakpoints Demo
+// ─────────────────────────────────────────────────────────────────────────────
+class RowBreakpointsDemo extends StatelessWidget {
+  const RowBreakpointsDemo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Row breakpoints split a single row into multiple at narrow widths:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Resize below 400px to see the 4-item row split after item 2',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 200,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.orange,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              .append(const _DemoBox('1', Colors.red))
+              .append(const _DemoBox('2', Colors.green), dist: 8)
+              .append(const _DemoBox('3', Colors.blue), dist: 8)
+              .append(const _DemoBox('4', Colors.purple), dist: 8)
+              .addRowBreakpoint(atWidth: 400, splitAfter: 2, splitRowDist: 8)
+              .build(),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Multiple breakpoints — progressive splitting:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Default: 4 items   •  < 500px: split 2+2   •  < 300px: split 1+1+2',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        _ResizableBox(
+          initialHeight: 250,
+          child: AclBuilder(
+            borderStyle: const AclBorderStyle(
+              kind: AclBorderKind.solid,
+              color: Colors.indigo,
+              rounded: true,
+              borderRadius: 8,
+            ),
+          )
+              .append(const _DemoBox('A', Colors.red))
+              .append(const _DemoBox('B', Colors.green), dist: 8)
+              .append(const _DemoBox('C', Colors.blue), dist: 8)
+              .append(const _DemoBox('D', Colors.purple), dist: 8)
+              .addRowBreakpoint(atWidth: 500, splitAfter: 2, splitRowDist: 8)
+              .addRowBreakpoint(atWidth: 300, splitAfter: 1, splitRowDist: 8)
+              .build(),
+        ),
+        const SizedBox(height: 16),
+        const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
+        const _CodeBlock('''
+AclBuilder()
+    .append(Item1)
+    .append(Item2, dist: 8)
+    .append(Item3, dist: 8)
+    .append(Item4, dist: 8)
+    // Split after 2nd component when width < 400
+    .addRowBreakpoint(atWidth: 400, splitAfter: 2, splitRowDist: 8)
+    .build()
 '''),
       ],
     );

@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'acl_flags.dart';
+import 'acl_group_visibility.dart';
+import 'acl_responsive.dart';
+import 'acl_scope.dart';
 import 'row_alignment.dart';
 
 // ── Border enums / types ─────────────────────────────────────────────────────
@@ -131,6 +134,12 @@ class AclComponent {
   final AclRowCrossAlignment rowCrossAlignment;
   final Key? componentKey;
 
+  /// Optional identifier for this component (see §24).
+  final String? id;
+
+  /// Optional group name this component belongs to (see §25).
+  final String? group;
+
   const AclComponent({
     required this.child,
     this.flags = 0,
@@ -150,6 +159,8 @@ class AclComponent {
     this.alignYGap = 0,
     this.rowCrossAlignment = AclRowCrossAlignment.center,
     this.componentKey,
+    this.id,
+    this.group,
   });
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
@@ -182,6 +193,15 @@ class AclRow {
   /// [separator] gapRow always gets at least 9 px regardless of this value).
   final double gapRowMinSize;
 
+  /// Optional identifier for this row (see §24).
+  final String? id;
+
+  /// Optional group name this row belongs to (see §25).
+  final String? group;
+
+  /// Row breakpoints for responsive splitting (see §28).
+  final List<AclRowBreakpoint> breakpoints;
+
   const AclRow({
     required this.components,
     this.alignment = RowAlignment.left,
@@ -190,6 +210,9 @@ class AclRow {
     this.gapRowWeight = 1.0,
     this.separator,
     this.gapRowMinSize = 0,
+    this.id,
+    this.group,
+    this.breakpoints = const [],
   });
 }
 
@@ -263,6 +286,21 @@ class AclContainer extends StatefulWidget {
   /// Optional maximum container size.
   final Size? maximumContainerSize;
 
+  /// Optional identifier for this container (see §24).
+  final String? aclId;
+
+  /// Optional group name for the entire container (see §25).
+  final String? aclGroup;
+
+  /// Parent container ID for building the full ID path (see §24).
+  final String? parentIdPath;
+
+  /// Group visibility controllers keyed by group name (see §26).
+  final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
+
+  /// Responsive variants sorted by atWidth descending (see §27).
+  final List<AclVariant> variants;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -275,6 +313,11 @@ class AclContainer extends StatefulWidget {
     this.preferredContainerSize,
     this.minimumContainerSize,
     this.maximumContainerSize,
+    this.aclId,
+    this.aclGroup,
+    this.parentIdPath,
+    this.groupVisibilityControllers = const {},
+    this.variants = const [],
   });
 
   @override
@@ -295,7 +338,14 @@ class _AclContainerState extends State<AclContainer> {
   final Map<Key, Size> _naturalSizeCache = {};
 
   @override
+  void initState() {
+    super.initState();
+    _subscribeVisibilityControllers();
+  }
+
+  @override
   void dispose() {
+    _unsubscribeVisibilityControllers();
     _focusNode.dispose();
     super.dispose();
   }
@@ -303,11 +353,32 @@ class _AclContainerState extends State<AclContainer> {
   @override
   void didUpdateWidget(AclContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Re-subscribe if controllers changed.
+    if (!identical(oldWidget.groupVisibilityControllers, widget.groupVisibilityControllers)) {
+      _unsubscribeVisibilityControllers(oldWidget.groupVisibilityControllers);
+      _subscribeVisibilityControllers();
+    }
     // AclBuilder generates new GlobalKeys on every build() call. Transfer
     // cached natural sizes from old keys to new keys by structural position
     // (row index × component index) so there is no one-frame cache-miss lag
     // after a parent rebuild.
     _remapNaturalSizeCacheByPosition(oldWidget.rows, widget.rows);
+  }
+
+  void _subscribeVisibilityControllers([Map<String, AclGroupVisibilityController>? controllers]) {
+    for (final ctrl in (controllers ?? widget.groupVisibilityControllers).values) {
+      ctrl.modeNotifier.addListener(_onVisibilityChanged);
+    }
+  }
+
+  void _unsubscribeVisibilityControllers([Map<String, AclGroupVisibilityController>? controllers]) {
+    for (final ctrl in (controllers ?? widget.groupVisibilityControllers).values) {
+      ctrl.modeNotifier.removeListener(_onVisibilityChanged);
+    }
+  }
+
+  void _onVisibilityChanged() {
+    if (mounted) setState(() {});
   }
 
   void _remapNaturalSizeCacheByPosition(
@@ -331,6 +402,105 @@ class _AclContainerState extends State<AclContainer> {
     _naturalSizeCache
       ..clear()
       ..addAll(newCache);
+  }
+
+  /// Selects the appropriate variant rows based on [availableWidth], or
+  /// returns the default [widget.rows] if no variant matches.
+  List<AclRow> _selectVariantRows(double? availableWidth) {
+    if (widget.variants.isEmpty || availableWidth == null) return widget.rows;
+    // Variants sorted by atWidth descending: pick the first whose threshold
+    // exceeds available width.
+    for (final variant in widget.variants) {
+      if (availableWidth < variant.atWidth) {
+        return variant.rows;
+      }
+    }
+    return widget.rows;
+  }
+
+  /// Applies row breakpoints: splits a row into multiple rows when
+  /// [availableWidth] drops below the breakpoint threshold.
+  List<AclRow> _applyRowBreakpoints(List<AclRow> rows, double? availableWidth) {
+    if (availableWidth == null) return rows;
+    final result = <AclRow>[];
+    for (final row in rows) {
+      if (row.isGapRow || row.breakpoints.isEmpty) {
+        result.add(row);
+        continue;
+      }
+      // Collect active breakpoints (sorted smallest atWidth first).
+      final active = row.breakpoints
+          .where((bp) => availableWidth < bp.atWidth)
+          .toList()
+        ..sort((a, b) => a.splitAfter.compareTo(b.splitAfter));
+      if (active.isEmpty) {
+        result.add(row);
+        continue;
+      }
+      // Build split indices (1-based → 0-based boundary).
+      final splitIndices = <int>{};
+      for (final bp in active) {
+        splitIndices.add(bp.splitAfter.clamp(1, row.components.length));
+      }
+      final sorted = splitIndices.toList()..sort();
+      int start = 0;
+      for (int i = 0; i < sorted.length; i++) {
+        final end = sorted[i];
+        if (end <= start || end > row.components.length) continue;
+        final dist = i == 0 ? row.gapBefore : active.firstWhere((b) => b.splitAfter == end, orElse: () => active.first).splitRowDist;
+        result.add(AclRow(
+          components: row.components.sublist(start, end),
+          alignment: row.alignment,
+          gapBefore: i == 0 ? row.gapBefore : dist,
+          id: i == 0 ? row.id : null,
+          group: row.group,
+          breakpoints: const [],
+        ));
+        start = end;
+      }
+      if (start < row.components.length) {
+        result.add(AclRow(
+          components: row.components.sublist(start),
+          alignment: row.alignment,
+          gapBefore: active.last.splitRowDist,
+          group: row.group,
+          breakpoints: const [],
+        ));
+      }
+    }
+    return result;
+  }
+
+  /// Returns the visibility mode for a given group name, or [visible] if
+  /// no controller is registered.
+  AclGroupVisibilityMode _groupMode(String? groupName) {
+    if (groupName == null) return AclGroupVisibilityMode.visible;
+    final ctrl = widget.groupVisibilityControllers[groupName];
+    return ctrl?.mode ?? AclGroupVisibilityMode.visible;
+  }
+
+  /// Wraps a component with [AclScope] to provide ID/group metadata.
+  Widget _wrapWithScope(Widget child, AclComponent comp, AclRow row) {
+    final containerId = widget.aclId;
+    final parentPath = widget.parentIdPath;
+    String? fullPath;
+    if (comp.id != null) {
+      final parts = <String>[
+        ?parentPath,
+        ?containerId,
+        if (row.id != null) row.id!,
+        comp.id!,
+      ];
+      fullPath = parts.join('.');
+    }
+    return AclScope(
+      containerId: containerId,
+      componentId: comp.id,
+      rowId: row.id,
+      groupName: comp.group ?? row.group,
+      fullIdPath: fullPath,
+      child: child,
+    );
   }
 
   @override
@@ -667,11 +837,6 @@ class _AclContainerState extends State<AclContainer> {
   // ── Content building ───────────────────────────────────────────────────────
 
   Widget _buildContent(BuildContext context) {
-    final hasExpandY = widget.rows.any(
-      (row) => !row.isGapRow && row.components.any((c) => c.expandY),
-    );
-    final hasGapRows =
-        widget.rows.any((row) => row.isGapRow) && !widget.scrollableY;
     final minContW = (widget.minimumContainerSize?.width ??
             widget.preferredContainerSize?.width ??
             0.0)
@@ -684,6 +849,22 @@ class _AclContainerState extends State<AclContainer> {
         final effectiveMaxW = math.max(rawMaxW, minContW);
         final canExpandHorizontally = effectiveMaxW > 0;
         final canExpandVertically = constraints.hasBoundedHeight;
+
+        // ── Resolve effective rows (variants → breakpoints) ──────────────
+        final variantRows = _selectVariantRows(
+          canExpandHorizontally ? effectiveMaxW : null,
+        );
+        final effectiveRows = _applyRowBreakpoints(
+          variantRows,
+          canExpandHorizontally ? effectiveMaxW : null,
+        );
+
+        final hasExpandY = effectiveRows.any(
+          (row) => !row.isGapRow && row.components.any((c) => c.expandY),
+        );
+        final hasGapRows =
+            effectiveRows.any((row) => row.isGapRow) && !widget.scrollableY;
+
         final useMaxVertical =
             (hasExpandY || hasGapRows) && canExpandVertically;
         final needsHorizontalScroll =
@@ -693,18 +874,16 @@ class _AclContainerState extends State<AclContainer> {
             rawMaxW < minContW;
 
         // ── Pre-calculation loop ─────────────────────────────────────────
-        // Run iterations in pure Dart until all sizes and alignment deltas
-        // converge. The render tree is only consulted once via the
-        // _naturalSizeCache (populated by the post-frame callback).
         final rowLayouts = _runPreCalcLoop(
           effectiveMaxW: canExpandHorizontally ? effectiveMaxW : null,
+          overrideRows: effectiveRows,
         );
 
         // ── Assemble Flutter widget tree from pre-computed values ────────
         final List<Widget> rowWidgets = [];
         int contentRowIndex = 0;
 
-        for (final row in widget.rows) {
+        for (final row in effectiveRows) {
           if (row.isGapRow) {
             if (!widget.scrollableY && canExpandVertically) {
               if (!hasExpandY) {
@@ -799,9 +978,13 @@ class _AclContainerState extends State<AclContainer> {
   /// Uses only [_naturalSizeCache] as external input (no render-tree reads).
   /// Iterates up to [_maxPreCalcIterations] times until all values converge
   /// within [_geometryEpsilon].
-  List<_AclRowLayout> _runPreCalcLoop({required double? effectiveMaxW}) {
+  List<_AclRowLayout> _runPreCalcLoop({
+    required double? effectiveMaxW,
+    List<AclRow>? overrideRows,
+  }) {
+    final rows = overrideRows ?? widget.rows;
     final contentRows =
-        widget.rows.where((r) => !r.isGapRow).toList(growable: false);
+        rows.where((r) => !r.isGapRow).toList(growable: false);
 
     List<_AclRowLayout>? prev;
 
@@ -1263,6 +1446,24 @@ class _AclContainerState extends State<AclContainer> {
 
       Widget child = component.child;
 
+      // ── Group visibility ──────────────────────────────────────────────────
+      final compGroup = component.group ?? row.group;
+      final visMode = _groupMode(compGroup);
+      if (visMode == AclGroupVisibilityMode.hidden) {
+        // Hidden: zero size, skip the component entirely.
+        children.add(const SizedBox.shrink());
+        continue;
+      }
+
+      // Wrap with AclScope to provide ID/group metadata.
+      child = _wrapWithScope(child, component, row);
+      // Apply disabled treatment if needed.
+      if (visMode == AclGroupVisibilityMode.disabled) {
+        child = IgnorePointer(
+          child: Opacity(opacity: 0.4, child: child),
+        );
+      }
+
       final linkedWidth = layout.linkedWidths[componentIndex];
       final linkedHeight = layout.linkedHeights[componentIndex];
       final fittedWidth = layout.fittedWidths[componentIndex];
@@ -1526,6 +1727,11 @@ class AclLayout extends StatelessWidget {
   final Size? preferredContainerSize;
   final Size? minimumContainerSize;
   final Size? maximumContainerSize;
+  final String? aclId;
+  final String? aclGroup;
+  final String? parentIdPath;
+  final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
+  final List<AclVariant> variants;
 
   const AclLayout({
     super.key,
@@ -1539,6 +1745,11 @@ class AclLayout extends StatelessWidget {
     this.preferredContainerSize,
     this.minimumContainerSize,
     this.maximumContainerSize,
+    this.aclId,
+    this.aclGroup,
+    this.parentIdPath,
+    this.groupVisibilityControllers = const {},
+    this.variants = const [],
   });
 
   @override
@@ -1554,6 +1765,11 @@ class AclLayout extends StatelessWidget {
       preferredContainerSize: preferredContainerSize,
       minimumContainerSize: minimumContainerSize,
       maximumContainerSize: maximumContainerSize,
+      aclId: aclId,
+      aclGroup: aclGroup,
+      parentIdPath: parentIdPath,
+      groupVisibilityControllers: groupVisibilityControllers,
+      variants: variants,
     );
   }
 }
@@ -1578,6 +1794,11 @@ class Acl extends AclLayout {
     super.preferredContainerSize,
     super.minimumContainerSize,
     super.maximumContainerSize,
+    super.aclId,
+    super.aclGroup,
+    super.parentIdPath,
+    super.groupVisibilityControllers = const {},
+    super.variants = const [],
     this.title,
     this.titleWidget,
     this.titleStyle,
@@ -1684,6 +1905,11 @@ class Acl extends AclLayout {
             preferredContainerSize: preferredContainerSize,
             minimumContainerSize: minimumContainerSize,
             maximumContainerSize: maximumContainerSize,
+            aclId: aclId,
+            aclGroup: aclGroup,
+            parentIdPath: parentIdPath,
+            groupVisibilityControllers: groupVisibilityControllers,
+            variants: variants,
           ),
         ),
         Positioned(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'acl_container.dart';
 import 'acl_flags.dart';
+import 'acl_group_visibility.dart';
+import 'acl_responsive.dart';
 import 'row_alignment.dart';
 
 class _ComponentData {
@@ -24,6 +26,8 @@ class _ComponentData {
   AclRowCrossAlignment rowCrossAlignment = AclRowCrossAlignment.center;
   bool rowCrossAlignmentSet = false;
   Key? componentKey;
+  String? id;
+  String? group;
 
   _ComponentData({
     required this.child,
@@ -53,6 +57,8 @@ class _ComponentData {
       alignYGap: alignYGap,
       rowCrossAlignment: rowCrossAlignment,
       componentKey: componentKey,
+      id: id,
+      group: group,
     );
   }
 }
@@ -65,6 +71,9 @@ class _RowData {
   double gapRowWeight = 1.0;
   AclSeparator? separator;
   double gapRowMinSize = 0;
+  String? id;
+  String? group;
+  List<AclRowBreakpoint> breakpoints = [];
 
   AclRow toRow() {
     return AclRow(
@@ -75,6 +84,9 @@ class _RowData {
       gapRowWeight: gapRowWeight,
       separator: separator,
       gapRowMinSize: gapRowMinSize,
+      id: id,
+      group: group,
+      breakpoints: breakpoints,
     );
   }
 }
@@ -105,6 +117,20 @@ class AclBuilder {
   // Maps each appended widget object (by identity) to the row it was added to.
   // Used for O(1) row-constraint validation in alignX*/alignY*.
   final Map<Object, _RowData> _rowByObject = Map<Object, _RowData>.identity();
+
+  // §24 IDs
+  String? _aclId;
+  String? _parentIdPath;
+
+  // §25 Groups
+  String? _aclGroup;
+  String? _activeGroupName;
+
+  // §26 Visibility
+  final Map<String, AclGroupVisibilityController> _groupVisibilityControllers = {};
+
+  // §27 Variants
+  final List<AclVariant> _variants = [];
 
   AclBuilder({
     String? title,
@@ -151,6 +177,10 @@ class AclBuilder {
       gapBefore: dist,
       componentKey: componentKey,
     );
+    // Inherit active group from startGroup()/endGroup() range.
+    if (_activeGroupName != null) {
+      _currentComponent!.group = _activeGroupName;
+    }
     if (componentKey != null) {
       _referenceKeyByObject[child] = componentKey;
       _rowByObject[child] = _currentRow;
@@ -591,9 +621,123 @@ class AclBuilder {
     return this;
   }
 
+  // ── IDs (§24) ──────────────────────────────────────────────────────────────
+
+  AclBuilder setAclId(String id) {
+    _aclId = id;
+    return this;
+  }
+
+  AclBuilder setRowId(String id) {
+    _currentRow.id = id;
+    return this;
+  }
+
+  AclBuilder setId(String id) {
+    if (_currentComponent != null) {
+      _currentComponent!.id = id;
+    }
+    return this;
+  }
+
+  // ── Groups (§25) ───────────────────────────────────────────────────────────
+
+  AclBuilder startGroup(String name) {
+    if (_activeGroupName != null) {
+      throw UnsupportedError(
+        'AclBuilder: startGroup("$name") called while group "$_activeGroupName" '
+        'is already active. Call endGroup() first.',
+      );
+    }
+    _activeGroupName = name;
+    return this;
+  }
+
+  AclBuilder endGroup() {
+    if (_activeGroupName == null) {
+      throw UnsupportedError(
+        'AclBuilder: endGroup() called without a matching startGroup().',
+      );
+    }
+    _activeGroupName = null;
+    return this;
+  }
+
+  AclBuilder group(String name) {
+    if (_currentComponent != null) {
+      _currentComponent!.group = name;
+    }
+    return this;
+  }
+
+  AclBuilder setAclGroup(String name) {
+    _aclGroup = name;
+    return this;
+  }
+
+  AclBuilder setRowGroup(String name) {
+    _currentRow.group = name;
+    return this;
+  }
+
+  // ── Visibility (§26) ───────────────────────────────────────────────────────
+
+  AclBuilder setGroupVisibilityController(
+    String groupName,
+    AclGroupVisibilityController controller,
+  ) {
+    _groupVisibilityControllers[groupName] = controller;
+    return this;
+  }
+
+  // ── Responsive Variants (§27) ──────────────────────────────────────────────
+
+  AclBuilder addVariant(
+    String name, {
+    required double atWidth,
+    required void Function(AclBuilder) builder,
+  }) {
+    final variantBuilder = AclBuilder(
+      borderStyle: _borderStyle,
+      focusedBorderStyle: _focusedBorderStyle,
+      padding: _padding,
+      backgroundColor: _backgroundColor,
+      titleStyle: _titleStyle,
+      titlePosition: _titlePosition,
+      titleBorderAlign: _titleBorderAlign,
+      titleVerticalOffset: _titleVerticalOffset,
+    );
+    builder(variantBuilder);
+    _variants.add(AclVariant(
+      name: name,
+      atWidth: atWidth,
+      rows: variantBuilder._rows.map((r) => r.toRow()).toList(),
+    ));
+    return this;
+  }
+
+  // ── Row Breakpoints (§28) ──────────────────────────────────────────────────
+
+  AclBuilder addRowBreakpoint({
+    required double atWidth,
+    required int splitAfter,
+    double splitRowDist = 0,
+  }) {
+    _currentRow.breakpoints.add(AclRowBreakpoint(
+      atWidth: atWidth,
+      splitAfter: splitAfter,
+      splitRowDist: splitRowDist,
+    ));
+    return this;
+  }
+
   // ── Build ──────────────────────────────────────────────────────────────────
 
   Acl build() {
+    // Sort variants by atWidth descending for selection.
+    final sortedVariants = List<AclVariant>.from(_variants)
+      ..sort((a, b) => b.atWidth.compareTo(a.atWidth));
+
     return Acl(
       rows: _rows.map((row) => row.toRow()).toList(),
       borderStyle: _borderStyle,
@@ -611,6 +755,11 @@ class AclBuilder {
       preferredContainerSize: _preferredContainerSize,
       minimumContainerSize: _minimumContainerSize,
       maximumContainerSize: _maximumContainerSize,
+      aclId: _aclId,
+      aclGroup: _aclGroup,
+      parentIdPath: _parentIdPath,
+      groupVisibilityControllers: Map.unmodifiable(_groupVisibilityControllers),
+      variants: sortedVariants,
     );
   }
 
