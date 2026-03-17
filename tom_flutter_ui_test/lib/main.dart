@@ -3314,7 +3314,7 @@ class BreakpointExpansionDemo extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         const Text(
-          'Wide: 1 row  •  < 600px: 2 rows (2+2)  •  < 350px: 4 rows (1+1+1+1)',
+          'Wide: 1 row  •  < 768px: 2 rows (2+2)  •  < 400px: 4 rows (1+1+1+1)',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 8),
@@ -3329,22 +3329,22 @@ class BreakpointExpansionDemo extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
           )
-              .setAclPaddingLeft(8)
+              .setAclPaddingRight(8)
               .append(a, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
-              .addRowBreakpoint(atWidth: 350, splitRowDist: 8)
+              .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
               .append(b, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
-              .addRowBreakpoint(atWidth: 600, splitRowDist: 8)
+              .addRowBreakpoint(atWidth: 768, splitRowDist: 8)
               .append(c, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
               .expandX()
-              .addRowBreakpoint(atWidth: 350, splitRowDist: 8)
+              .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
               .append(d, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
