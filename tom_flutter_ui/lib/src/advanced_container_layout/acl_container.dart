@@ -646,11 +646,16 @@ class _AclContainerState extends State<AclContainer> {
             ? widget.focusedBorderStyle!
             : widget.borderStyle;
 
-    content = _wrapWithBorder(content, activeBorderStyle);
-
-    if (widget.padding != EdgeInsets.zero) {
+    final hasExplicitPadding = widget.padding != EdgeInsets.zero;
+    if (hasExplicitPadding) {
       content = Padding(padding: widget.padding, child: content);
     }
+
+    content = _wrapWithBorder(
+      content,
+      activeBorderStyle,
+      suppressDefaultInsets: hasExplicitPadding,
+    );
 
     return Focus(
       focusNode: _focusNode,
@@ -874,7 +879,11 @@ class _AclContainerState extends State<AclContainer> {
 
   // ── Border rendering ───────────────────────────────────────────────────────
 
-  Widget _wrapWithBorder(Widget content, AclBorderStyle style) {
+  Widget _wrapWithBorder(
+    Widget content,
+    AclBorderStyle style, {
+    bool suppressDefaultInsets = false,
+  }) {
     final hasBackground = widget.backgroundColor != null;
 
     if (!style.enabled) {
@@ -888,8 +897,9 @@ class _AclContainerState extends State<AclContainer> {
     final contentWithInsets = style.borderInsets != EdgeInsets.zero
         ? Padding(padding: style.borderInsets, child: content)
         // Default inner insets: 4 px on all sides when border is active and
-        // no explicit borderInsets were configured.
-        : style.enabled
+        // no explicit borderInsets were configured. Suppressed when the
+        // container has explicit padding (which replaces the default insets).
+        : (style.enabled && !suppressDefaultInsets)
             ? Padding(padding: const EdgeInsets.all(4), child: content)
             : content;
 
