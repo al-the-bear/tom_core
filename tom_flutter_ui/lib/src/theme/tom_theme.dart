@@ -12,10 +12,9 @@ import 'tom_readonly_style.dart';
 /// - **[readonlyStyle]** — configurable visual treatment for authorization-
 ///   readonly widgets (a Tom authorization concept, not a Material concept).
 ///
-/// For semantic style variants (primary, secondary, destructive, auxiliary),
-/// use the helper factories in [TomButtonVariants], [TomInputVariants], and
-/// [TomChipVariants]. These produce standard Flutter style objects that you
-/// pass directly to the widget's `style` / `decoration` parameter.
+/// For semantic button style variants (primary, secondary, destructive,
+/// auxiliary), use [TomButtonVariants]. It produces standard [ButtonStyle]
+/// objects that you pass directly to the widget's `style` parameter.
 ///
 /// Delivered to the widget tree via [TomThemeScope].
 ///

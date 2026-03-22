@@ -3329,7 +3329,8 @@ class BreakpointExpansionDemo extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
           )
-              .setAclPaddingLeft(16)
+              .setAclPaddingRight(8)
+              .setAclPaddingLeft(0)
               .append(a, dist: 8)
               .setPSize(200, 40)
               .setMSize(60, 40)
@@ -3355,7 +3356,7 @@ class BreakpointExpansionDemo extends StatelessWidget {
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const _CodeBlock('''
 AclBuilder(padding: EdgeInsets.all(8))
-    .setAclPaddingLeft(16)
+    .setAclPaddingRight(8)
     .append(A, dist: 8)
     .setPSize(200, 40)
     .setMSize(60, 40)
