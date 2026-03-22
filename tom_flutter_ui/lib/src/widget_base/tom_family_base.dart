@@ -1,3 +1,4 @@
+import '../theme/tom_style_variant.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';
 
@@ -6,8 +7,23 @@ import 'tom_widget_family.dart';
 /// Reports the widget's primary [family] and supports multi-family membership
 /// via [families]. Extends [TomPolicyNodeBase] so authorization is always
 /// enforced.
+///
+/// The optional [tomStyleVariant] property assigns a semantic role (primary,
+/// secondary, destructive, auxiliary) to the widget. When set, concrete
+/// subclasses resolve a style from [TomVariantMap] via [TomThemeScope].
 abstract class TomFamilyBase extends TomPolicyNodeBase {
-  const TomFamilyBase({super.key, super.tomId, super.tomGroup});
+  /// Optional semantic style variant. When set, the widget resolves a
+  /// concrete Flutter style from [TomVariantMap] in the nearest
+  /// [TomThemeScope]. If `null`, the widget uses its own [style] parameter
+  /// or falls back to Flutter's theme defaults.
+  final TomStyleVariant? tomStyleVariant;
+
+  const TomFamilyBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.tomStyleVariant,
+  });
 
   /// The primary widget family for this widget.
   TomWidgetFamily get family;
@@ -31,7 +47,12 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
 /// Button widgets trigger actions. They connect to the action system via
 /// typed [ActionTrigger] callbacks and have no direct state binding.
 abstract class TomButtonBase extends TomFamilyBase {
-  const TomButtonBase({super.key, super.tomId, super.tomGroup});
+  const TomButtonBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.button;
@@ -39,7 +60,12 @@ abstract class TomButtonBase extends TomFamilyBase {
 
 /// Base for the Input family (single-line text inputs).
 abstract class TomInputBase extends TomFamilyBase {
-  const TomInputBase({super.key, super.tomId, super.tomGroup});
+  const TomInputBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.input;
@@ -47,7 +73,12 @@ abstract class TomInputBase extends TomFamilyBase {
 
 /// Base for the Select family (dropdowns, popup menus).
 abstract class TomSelectBase extends TomFamilyBase {
-  const TomSelectBase({super.key, super.tomId, super.tomGroup});
+  const TomSelectBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.select;
@@ -55,7 +86,12 @@ abstract class TomSelectBase extends TomFamilyBase {
 
 /// Base for the Toggle family (switches, checkboxes, radios).
 abstract class TomToggleBase extends TomFamilyBase {
-  const TomToggleBase({super.key, super.tomId, super.tomGroup});
+  const TomToggleBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.toggle;
@@ -63,7 +99,12 @@ abstract class TomToggleBase extends TomFamilyBase {
 
 /// Base for the Slider family.
 abstract class TomSliderBase extends TomFamilyBase {
-  const TomSliderBase({super.key, super.tomId, super.tomGroup});
+  const TomSliderBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.slider;
@@ -71,7 +112,12 @@ abstract class TomSliderBase extends TomFamilyBase {
 
 /// Base for the Container family (structural wrapper widgets).
 abstract class TomContainerBase extends TomFamilyBase {
-  const TomContainerBase({super.key, super.tomId, super.tomGroup});
+  const TomContainerBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.container;
@@ -82,7 +128,12 @@ abstract class TomContainerBase extends TomFamilyBase {
 
 /// Base for the Dialog family.
 abstract class TomDialogBase extends TomFamilyBase {
-  const TomDialogBase({super.key, super.tomId, super.tomGroup});
+  const TomDialogBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.dialog;
@@ -90,7 +141,12 @@ abstract class TomDialogBase extends TomFamilyBase {
 
 /// Base for the Table family (data tables, paginated tables).
 abstract class TomTableBase extends TomFamilyBase {
-  const TomTableBase({super.key, super.tomId, super.tomGroup});
+  const TomTableBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.table;
@@ -98,7 +154,12 @@ abstract class TomTableBase extends TomFamilyBase {
 
 /// Base for the Label family (text, rich text, selectable text).
 abstract class TomLabelBase extends TomFamilyBase {
-  const TomLabelBase({super.key, super.tomId, super.tomGroup});
+  const TomLabelBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.label;
@@ -106,7 +167,12 @@ abstract class TomLabelBase extends TomFamilyBase {
 
 /// Base for the Image family (icons, avatars, images).
 abstract class TomImageBase extends TomFamilyBase {
-  const TomImageBase({super.key, super.tomId, super.tomGroup});
+  const TomImageBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.image;
@@ -114,7 +180,12 @@ abstract class TomImageBase extends TomFamilyBase {
 
 /// Base for the Navigation family (tab bars, drawers, rails).
 abstract class TomNavigationBase extends TomFamilyBase {
-  const TomNavigationBase({super.key, super.tomId, super.tomGroup});
+  const TomNavigationBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.navigation;
@@ -122,7 +193,12 @@ abstract class TomNavigationBase extends TomFamilyBase {
 
 /// Base for the Progress family (indicators, spinners).
 abstract class TomProgressBase extends TomFamilyBase {
-  const TomProgressBase({super.key, super.tomId, super.tomGroup});
+  const TomProgressBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.progress;
@@ -130,7 +206,12 @@ abstract class TomProgressBase extends TomFamilyBase {
 
 /// Base for the Chip family (filter, choice, action chips).
 abstract class TomChipBase extends TomFamilyBase {
-  const TomChipBase({super.key, super.tomId, super.tomGroup});
+  const TomChipBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.chip;
@@ -138,7 +219,12 @@ abstract class TomChipBase extends TomFamilyBase {
 
 /// Base for the List family (list views, list tiles).
 abstract class TomListBase extends TomFamilyBase {
-  const TomListBase({super.key, super.tomId, super.tomGroup});
+  const TomListBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.list;
@@ -146,7 +232,12 @@ abstract class TomListBase extends TomFamilyBase {
 
 /// Base for the Tree family (tree views).
 abstract class TomTreeBase extends TomFamilyBase {
-  const TomTreeBase({super.key, super.tomId, super.tomGroup});
+  const TomTreeBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.tomStyleVariant,
+  });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.tree;
