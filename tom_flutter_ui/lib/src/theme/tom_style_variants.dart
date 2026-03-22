@@ -1,0 +1,125 @@
+import 'package:flutter/material.dart';
+
+/// Convenience factories that produce standard [ButtonStyle] objects for
+/// semantic action variants (primary, secondary, destructive, auxiliary).
+///
+/// These do **not** introduce a new theming concept — they simply derive
+/// styles from the current [ColorScheme] so callers can pass them directly
+/// to a button's `style` parameter.
+///
+/// ```dart
+/// TomElevatedButton(
+///   style: TomButtonVariants.of(context).primary,
+///   onPressed: () => save(),
+///   child: Text('Save'),
+/// )
+/// ```
+class TomButtonVariants {
+  final ColorScheme _colors;
+
+  const TomButtonVariants._(this._colors);
+
+  /// Resolves variants from the nearest [Theme].
+  factory TomButtonVariants.of(BuildContext context) =>
+      TomButtonVariants._(Theme.of(context).colorScheme);
+
+  /// Resolves variants from the given [colorScheme].
+  factory TomButtonVariants.fromColorScheme(ColorScheme colorScheme) =>
+      TomButtonVariants._(colorScheme);
+
+  /// Main action — filled, prominent color.
+  ButtonStyle get primary => ElevatedButton.styleFrom(
+        backgroundColor: _colors.primary,
+        foregroundColor: _colors.onPrimary,
+      );
+
+  /// Supporting action — outlined.
+  ButtonStyle get secondary => OutlinedButton.styleFrom(
+        foregroundColor: _colors.primary,
+      );
+
+  /// Utility action — text-only, subtle.
+  ButtonStyle get auxiliary => TextButton.styleFrom(
+        foregroundColor: _colors.onSurfaceVariant,
+      );
+
+  /// Dangerous / irreversible action — error color.
+  ButtonStyle get destructive => ElevatedButton.styleFrom(
+        backgroundColor: _colors.error,
+        foregroundColor: _colors.onError,
+      );
+}
+
+/// Convenience factories that produce [InputDecoration] objects for
+/// semantic style variants.
+///
+/// ```dart
+/// TomTextField(
+///   decoration: TomInputVariants.of(context).primary,
+///   onChanged: (v) => update(v),
+/// )
+/// ```
+class TomInputVariants {
+  final ColorScheme _colors;
+
+  const TomInputVariants._(this._colors);
+
+  /// Resolves variants from the nearest [Theme].
+  factory TomInputVariants.of(BuildContext context) =>
+      TomInputVariants._(Theme.of(context).colorScheme);
+
+  /// Resolves variants from the given [colorScheme].
+  factory TomInputVariants.fromColorScheme(ColorScheme colorScheme) =>
+      TomInputVariants._(colorScheme);
+
+  /// Standard input with primary accent focus color.
+  InputDecoration get primary => InputDecoration(
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: _colors.primary, width: 2),
+        ),
+      );
+
+  /// Error-accented input for destructive / validation-critical fields.
+  InputDecoration get destructive => InputDecoration(
+        focusedBorder: UnderlineInputBorder(
+          borderSide: BorderSide(color: _colors.error, width: 2),
+        ),
+      );
+}
+
+/// Convenience factories that produce [ChipThemeData] objects for
+/// semantic style variants.
+///
+/// ```dart
+/// ChipTheme(
+///   data: TomChipVariants.of(context).primary,
+///   child: TomFilterChip(selected: true, ...),
+/// )
+/// ```
+class TomChipVariants {
+  final ColorScheme _colors;
+
+  const TomChipVariants._(this._colors);
+
+  /// Resolves variants from the nearest [Theme].
+  factory TomChipVariants.of(BuildContext context) =>
+      TomChipVariants._(Theme.of(context).colorScheme);
+
+  /// Resolves variants from the given [colorScheme].
+  factory TomChipVariants.fromColorScheme(ColorScheme colorScheme) =>
+      TomChipVariants._(colorScheme);
+
+  /// Primary chip style — filled with primary container color.
+  ChipThemeData get primary => ChipThemeData(
+        backgroundColor: _colors.primaryContainer,
+        selectedColor: _colors.primary,
+        labelStyle: TextStyle(color: _colors.onPrimaryContainer),
+      );
+
+  /// Destructive chip style — error color treatment.
+  ChipThemeData get destructive => ChipThemeData(
+        backgroundColor: _colors.errorContainer,
+        selectedColor: _colors.error,
+        labelStyle: TextStyle(color: _colors.onErrorContainer),
+      );
+}

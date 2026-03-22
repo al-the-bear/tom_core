@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [FilterChip].
@@ -37,7 +36,6 @@ class TomFilterChip extends TomChipBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     required this.selected,
     this.onSelected,
     this.avatar,
@@ -97,8 +95,6 @@ class TomFilterChip extends TomChipBase {
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
     );
 
-    final chipTheme = TomThemeScope.chipThemeFor(context, tomStyleVariant);
-    if (chipTheme != null) chip = ChipTheme(data: chipTheme, child: chip);
     return chip;
   }
 }
@@ -131,7 +127,6 @@ class TomChoiceChip extends TomChipBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     required this.selected,
     this.onSelected,
     this.avatar,
@@ -179,8 +174,6 @@ class TomChoiceChip extends TomChipBase {
       pressElevation: pressElevation,
     );
 
-    final chipTheme = TomThemeScope.chipThemeFor(context, tomStyleVariant);
-    if (chipTheme != null) chip = ChipTheme(data: chipTheme, child: chip);
     return chip;
   }
 }
@@ -211,7 +204,6 @@ class TomActionChip extends TomChipBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.onPressed,
     this.avatar,
     this.label,
@@ -256,8 +248,6 @@ class TomActionChip extends TomChipBase {
       pressElevation: pressElevation,
     );
 
-    final chipTheme = TomThemeScope.chipThemeFor(context, tomStyleVariant);
-    if (chipTheme != null) chip = ChipTheme(data: chipTheme, child: chip);
     return chip;
   }
 }

@@ -1,8 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import 'tom_readonly_style.dart';
-import 'tom_style_variant.dart';
-import 'tom_variant_map.dart';
 
 /// Tom-specific theme extensions that layer on top of Flutter's [ThemeData].
 ///
@@ -13,9 +11,11 @@ import 'tom_variant_map.dart';
 /// [TomTheme] adds only what Flutter doesn't cover:
 /// - **[readonlyStyle]** — configurable visual treatment for authorization-
 ///   readonly widgets (a Tom authorization concept, not a Material concept).
-/// - **[variantMap]** — maps semantic [TomStyleVariant] roles (primary,
-///   secondary, destructive, auxiliary) to concrete Flutter
-///   [ButtonStyle]/[InputDecoration]/[ChipThemeData] values.
+///
+/// For semantic style variants (primary, secondary, destructive, auxiliary),
+/// use the helper factories in [TomButtonVariants], [TomInputVariants], and
+/// [TomChipVariants]. These produce standard Flutter style objects that you
+/// pass directly to the widget's `style` / `decoration` parameter.
 ///
 /// Delivered to the widget tree via [TomThemeScope].
 ///
@@ -25,13 +25,6 @@ import 'tom_variant_map.dart';
 /// TomThemeScope(
 ///   theme: TomTheme(
 ///     readonlyStyle: TomReadonlyStyle(opacity: 0.5),
-///     variantMap: TomVariantMap(
-///       buttonVariants: {
-///         TomStyleVariant.primary: ElevatedButton.styleFrom(
-///           backgroundColor: colorScheme.primary,
-///         ),
-///       },
-///     ),
 ///   ),
 ///   child: MaterialApp(theme: themeData, home: MyApp()),
 /// )
@@ -43,13 +36,9 @@ class TomTheme {
   /// Global readonly style applied when no per-family override exists.
   final TomReadonlyStyle readonlyStyle;
 
-  /// Maps semantic [TomStyleVariant] values to concrete Flutter styles.
-  final TomVariantMap variantMap;
-
   const TomTheme({
     this.name = 'default',
     this.readonlyStyle = const TomReadonlyStyle(),
-    this.variantMap = const TomVariantMap(),
   });
 
   /// A sensible default theme.
@@ -59,12 +48,10 @@ class TomTheme {
   TomTheme copyWith({
     String? name,
     TomReadonlyStyle? readonlyStyle,
-    TomVariantMap? variantMap,
   }) {
     return TomTheme(
       name: name ?? this.name,
       readonlyStyle: readonlyStyle ?? this.readonlyStyle,
-      variantMap: variantMap ?? this.variantMap,
     );
   }
 }
@@ -75,30 +62,7 @@ class TomTheme {
 /// of your app, or in any subtree that needs a different Tom theme.
 ///
 /// Widgets resolve Tom-specific theming via [TomThemeScope.of] or the
-/// convenience accessors like [readonlyStyleOf] and [buttonStyleFor].
-///
-/// ## Example — full app setup
-///
-/// ```dart
-/// TomThemeScope(
-///   theme: TomTheme(
-///     readonlyStyle: TomReadonlyStyle(opacity: 0.5),
-///     variantMap: TomVariantMap(
-///       buttonVariants: {
-///         TomStyleVariant.primary: ElevatedButton.styleFrom(
-///           backgroundColor: themeData.colorScheme.primary,
-///           foregroundColor: themeData.colorScheme.onPrimary,
-///         ),
-///         TomStyleVariant.destructive: ElevatedButton.styleFrom(
-///           backgroundColor: themeData.colorScheme.error,
-///           foregroundColor: themeData.colorScheme.onError,
-///         ),
-///       },
-///     ),
-///   ),
-///   child: MaterialApp(theme: themeData, home: MyHomePage()),
-/// )
-/// ```
+/// convenience accessor [readonlyStyleOf].
 class TomThemeScope extends InheritedWidget {
   /// The theme for this scope.
   final TomTheme theme;
@@ -118,27 +82,6 @@ class TomThemeScope extends InheritedWidget {
   /// Returns the nearest [TomReadonlyStyle], or [TomReadonlyStyle.defaultStyle].
   static TomReadonlyStyle readonlyStyleOf(BuildContext context) {
     return of(context).readonlyStyle;
-  }
-
-  /// Returns the [ButtonStyle] for the given [variant], or `null` if not mapped.
-  static ButtonStyle? buttonStyleFor(
-      BuildContext context, TomStyleVariant? variant) {
-    if (variant == null) return null;
-    return of(context).variantMap.buttonStyleFor(variant);
-  }
-
-  /// Returns the [InputDecoration] for the given [variant], or `null`.
-  static InputDecoration? inputDecorationFor(
-      BuildContext context, TomStyleVariant? variant) {
-    if (variant == null) return null;
-    return of(context).variantMap.inputDecorationFor(variant);
-  }
-
-  /// Returns the [ChipThemeData] for the given [variant], or `null`.
-  static ChipThemeData? chipThemeFor(
-      BuildContext context, TomStyleVariant? variant) {
-    if (variant == null) return null;
-    return of(context).variantMap.chipThemeFor(variant);
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [TextField].
@@ -34,7 +33,6 @@ class TomTextField extends TomInputBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.controller,
     this.focusNode,
     this.decoration,
@@ -64,10 +62,8 @@ class TomTextField extends TomInputBase {
     final resolvedLabel = label ?? (tomId != null ? resolveResource(context, 'label') : null);
     final resolvedHint = hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
 
-    final variantDecoration =
-        TomThemeScope.inputDecorationFor(context, tomStyleVariant);
     final effectiveDecoration =
-        (decoration ?? variantDecoration ?? const InputDecoration()).copyWith(
+        (decoration ?? const InputDecoration()).copyWith(
       labelText: resolvedLabel,
       hintText: resolvedHint,
     );

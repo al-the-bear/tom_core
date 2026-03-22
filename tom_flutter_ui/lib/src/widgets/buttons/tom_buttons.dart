@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [ElevatedButton].
@@ -24,7 +23,6 @@ class TomElevatedButton extends TomButtonBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.onPressed,
     this.onLongPress,
     this.onHover,
@@ -42,8 +40,6 @@ class TomElevatedButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedStyle =
-        style ?? TomThemeScope.buttonStyleFor(context, tomStyleVariant);
 
     if (icon != null) {
       return ElevatedButton.icon(
@@ -51,7 +47,7 @@ class TomElevatedButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: style,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -65,7 +61,7 @@ class TomElevatedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: style,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -92,7 +88,6 @@ class TomTextButton extends TomButtonBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.onPressed,
     this.onLongPress,
     this.onHover,
@@ -110,8 +105,6 @@ class TomTextButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedStyle =
-        style ?? TomThemeScope.buttonStyleFor(context, tomStyleVariant);
 
     if (icon != null) {
       return TextButton.icon(
@@ -119,7 +112,7 @@ class TomTextButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: style,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -133,7 +126,7 @@ class TomTextButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: style,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -160,7 +153,6 @@ class TomOutlinedButton extends TomButtonBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.onPressed,
     this.onLongPress,
     this.onHover,
@@ -178,8 +170,6 @@ class TomOutlinedButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedStyle =
-        style ?? TomThemeScope.buttonStyleFor(context, tomStyleVariant);
 
     if (icon != null) {
       return OutlinedButton.icon(
@@ -187,7 +177,7 @@ class TomOutlinedButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: style,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -201,7 +191,7 @@ class TomOutlinedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: style,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -237,7 +227,6 @@ class TomIconButton extends TomButtonBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    super.tomStyleVariant,
     this.onPressed,
     this.iconSize,
     this.visualDensity,
@@ -263,8 +252,6 @@ class TomIconButton extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
-    final resolvedStyle =
-        style ?? TomThemeScope.buttonStyleFor(context, tomStyleVariant);
 
     return IconButton(
       onPressed: onPressed,
@@ -281,7 +268,7 @@ class TomIconButton extends TomButtonBase {
       disabledColor: disabledColor,
       autofocus: autofocus,
       constraints: constraints,
-      style: resolvedStyle,
+      style: style,
       isSelected: isSelected,
       selectedIcon: selectedIcon,
       icon: icon,
