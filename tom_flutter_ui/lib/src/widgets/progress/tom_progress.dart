@@ -94,3 +94,56 @@ class TomLinearProgressIndicator extends TomProgressBase {
     );
   }
 }
+
+/// Tom wrapper for [RefreshIndicator].
+///
+/// Adds ID, group, and authorization.
+class TomRefreshIndicator extends TomProgressBase {
+  final Widget child;
+  final RefreshCallback onRefresh;
+  final double displacement;
+  final double edgeOffset;
+  final Color? color;
+  final Color? backgroundColor;
+  final ScrollNotificationPredicate notificationPredicate;
+  final String? semanticsLabel;
+  final String? semanticsValue;
+  final double strokeWidth;
+  final double triggerMode;
+
+  const TomRefreshIndicator({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    required this.onRefresh,
+    this.displacement = 40.0,
+    this.edgeOffset = 0.0,
+    this.color,
+    this.backgroundColor,
+    this.notificationPredicate = defaultScrollNotificationPredicate,
+    this.semanticsLabel,
+    this.semanticsValue,
+    this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
+    this.triggerMode = 0,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        semanticsLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      displacement: displacement,
+      edgeOffset: edgeOffset,
+      color: color,
+      backgroundColor: backgroundColor,
+      notificationPredicate: notificationPredicate,
+      semanticsLabel: resolvedLabel,
+      semanticsValue: semanticsValue,
+      strokeWidth: strokeWidth,
+      child: child,
+    );
+  }
+}

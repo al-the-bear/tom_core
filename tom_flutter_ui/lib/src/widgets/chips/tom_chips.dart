@@ -251,3 +251,110 @@ class TomActionChip extends TomChipBase {
     return chip;
   }
 }
+
+/// Tom wrapper for [InputChip].
+///
+/// Adds ID, group, authorization, and resource resolution for label.
+class TomInputChip extends TomChipBase {
+  final bool selected;
+  final bool isEnabled;
+  final ValueChanged<bool>? onSelected;
+  final VoidCallback? onDeleted;
+  final VoidCallback? onPressed;
+  final Widget? avatar;
+  final Widget? label;
+  final String? labelText;
+  final TextStyle? labelStyle;
+  final EdgeInsetsGeometry? labelPadding;
+  final EdgeInsetsGeometry? padding;
+  final Widget? deleteIcon;
+  final Color? deleteIconColor;
+  final String? deleteButtonTooltipMessage;
+  final bool showCheckmark;
+  final Color? checkmarkColor;
+  final Color? selectedColor;
+  final Color? disabledColor;
+  final Color? backgroundColor;
+  final Color? selectedShadowColor;
+  final Color? shadowColor;
+  final OutlinedBorder? shape;
+  final BorderSide? side;
+  final Clip clipBehavior;
+  final VisualDensity? visualDensity;
+  final double? elevation;
+  final double? pressElevation;
+  final String? tooltip;
+
+  const TomInputChip({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.selected = false,
+    this.isEnabled = true,
+    this.onSelected,
+    this.onDeleted,
+    this.onPressed,
+    this.avatar,
+    this.label,
+    this.labelText,
+    this.labelStyle,
+    this.labelPadding,
+    this.padding,
+    this.deleteIcon,
+    this.deleteIconColor,
+    this.deleteButtonTooltipMessage,
+    this.showCheckmark = true,
+    this.checkmarkColor,
+    this.selectedColor,
+    this.disabledColor,
+    this.backgroundColor,
+    this.selectedShadowColor,
+    this.shadowColor,
+    this.shape,
+    this.side,
+    this.clipBehavior = Clip.none,
+    this.visualDensity,
+    this.elevation,
+    this.pressElevation,
+    this.tooltip,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedTooltip =
+        tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final chipLabel = label ?? Text(resolvedLabel ?? '');
+
+    return InputChip(
+      selected: selected,
+      isEnabled: isEnabled,
+      onSelected: onSelected,
+      onDeleted: onDeleted,
+      onPressed: onPressed,
+      avatar: avatar,
+      label: chipLabel,
+      labelStyle: labelStyle,
+      labelPadding: labelPadding,
+      padding: padding,
+      deleteIcon: deleteIcon,
+      deleteIconColor: deleteIconColor,
+      deleteButtonTooltipMessage: deleteButtonTooltipMessage,
+      showCheckmark: showCheckmark,
+      checkmarkColor: checkmarkColor,
+      selectedColor: selectedColor,
+      disabledColor: disabledColor,
+      backgroundColor: backgroundColor,
+      selectedShadowColor: selectedShadowColor,
+      shadowColor: shadowColor,
+      shape: shape,
+      side: side,
+      clipBehavior: clipBehavior,
+      visualDensity: visualDensity,
+      elevation: elevation,
+      pressElevation: pressElevation,
+      tooltip: resolvedTooltip,
+    );
+  }
+}

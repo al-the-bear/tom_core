@@ -229,3 +229,326 @@ class TomTabBar extends TomNavigationBase {
     );
   }
 }
+
+/// Tom wrapper for [NavigationDrawer].
+///
+/// Adds ID, group, and authorization.
+class TomNavigationDrawer extends TomNavigationBase {
+  final List<Widget> children;
+  final int? selectedIndex;
+  final ValueChanged<int>? onDestinationSelected;
+  final Color? backgroundColor;
+  final Color? shadowColor;
+  final Color? surfaceTintColor;
+  final double? elevation;
+  final Color? indicatorColor;
+  final ShapeBorder? indicatorShape;
+  final EdgeInsetsGeometry? tilePadding;
+
+  const TomNavigationDrawer({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.selectedIndex,
+    this.onDestinationSelected,
+    this.backgroundColor,
+    this.shadowColor,
+    this.surfaceTintColor,
+    this.elevation,
+    this.indicatorColor,
+    this.indicatorShape,
+    this.tilePadding,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return NavigationDrawer(
+      selectedIndex: selectedIndex,
+      onDestinationSelected: onDestinationSelected,
+      backgroundColor: backgroundColor,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      elevation: elevation,
+      indicatorColor: indicatorColor,
+      indicatorShape: indicatorShape,
+      tilePadding: tilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [Drawer].
+///
+/// Adds ID, group, and authorization.
+class TomDrawer extends TomNavigationBase {
+  final Widget? child;
+  final Color? backgroundColor;
+  final Color? shadowColor;
+  final Color? surfaceTintColor;
+  final double? elevation;
+  final ShapeBorder? shape;
+  final double? width;
+  final Clip? clipBehavior;
+  final String? semanticLabel;
+
+  const TomDrawer({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.child,
+    this.backgroundColor,
+    this.shadowColor,
+    this.surfaceTintColor,
+    this.elevation,
+    this.shape,
+    this.width,
+    this.clipBehavior,
+    this.semanticLabel,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        semanticLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+
+    return Drawer(
+      backgroundColor: backgroundColor,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      elevation: elevation,
+      shape: shape,
+      width: width,
+      clipBehavior: clipBehavior,
+      semanticLabel: resolvedLabel,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [BottomNavigationBar].
+///
+/// Adds ID, group, and authorization.
+class TomBottomNavigationBar extends TomNavigationBase {
+  final List<BottomNavigationBarItem> items;
+  final int currentIndex;
+  final ValueChanged<int>? onTap;
+  final double? elevation;
+  final BottomNavigationBarType? type;
+  final Color? fixedColor;
+  final Color? backgroundColor;
+  final double iconSize;
+  final Color? selectedItemColor;
+  final Color? unselectedItemColor;
+  final IconThemeData? selectedIconTheme;
+  final IconThemeData? unselectedIconTheme;
+  final TextStyle? selectedLabelStyle;
+  final TextStyle? unselectedLabelStyle;
+  final double? selectedFontSize;
+  final double? unselectedFontSize;
+  final bool? showSelectedLabels;
+  final bool? showUnselectedLabels;
+  final bool? enableFeedback;
+  final BottomNavigationBarLandscapeLayout? landscapeLayout;
+  final MouseCursor? mouseCursor;
+
+  const TomBottomNavigationBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.items,
+    this.currentIndex = 0,
+    this.onTap,
+    this.elevation,
+    this.type,
+    this.fixedColor,
+    this.backgroundColor,
+    this.iconSize = 24.0,
+    this.selectedItemColor,
+    this.unselectedItemColor,
+    this.selectedIconTheme,
+    this.unselectedIconTheme,
+    this.selectedLabelStyle,
+    this.unselectedLabelStyle,
+    this.selectedFontSize,
+    this.unselectedFontSize,
+    this.showSelectedLabels,
+    this.showUnselectedLabels,
+    this.enableFeedback,
+    this.landscapeLayout,
+    this.mouseCursor,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return BottomNavigationBar(
+      items: items,
+      currentIndex: currentIndex,
+      onTap: onTap,
+      elevation: elevation,
+      type: type,
+      fixedColor: fixedColor,
+      backgroundColor: backgroundColor,
+      iconSize: iconSize,
+      selectedItemColor: selectedItemColor,
+      unselectedItemColor: unselectedItemColor,
+      selectedIconTheme: selectedIconTheme,
+      unselectedIconTheme: unselectedIconTheme,
+      selectedLabelStyle: selectedLabelStyle,
+      unselectedLabelStyle: unselectedLabelStyle,
+      selectedFontSize: selectedFontSize ?? 14.0,
+      unselectedFontSize: unselectedFontSize ?? 12.0,
+      showSelectedLabels: showSelectedLabels,
+      showUnselectedLabels: showUnselectedLabels,
+      enableFeedback: enableFeedback,
+      landscapeLayout: landscapeLayout,
+      mouseCursor: mouseCursor,
+    );
+  }
+}
+
+/// Tom wrapper for [Stepper].
+///
+/// Adds ID, group, and authorization.
+class TomStepper extends TomNavigationBase {
+  final List<Step> steps;
+  final int currentStep;
+  final StepperType type;
+  final ScrollPhysics? physics;
+  final VoidCallback? onStepTapped;
+  final VoidCallback? onStepContinue;
+  final VoidCallback? onStepCancel;
+  final Widget Function(BuildContext, ControlsDetails)? controlsBuilder;
+  final double? elevation;
+  final EdgeInsetsGeometry? margin;
+  final double? connectorThickness;
+  final Color? connectorColor;
+
+  const TomStepper({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.steps,
+    this.currentStep = 0,
+    this.type = StepperType.vertical,
+    this.physics,
+    this.onStepTapped,
+    this.onStepContinue,
+    this.onStepCancel,
+    this.controlsBuilder,
+    this.elevation,
+    this.margin,
+    this.connectorThickness,
+    this.connectorColor,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Stepper(
+      steps: steps,
+      currentStep: currentStep,
+      type: type,
+      physics: physics,
+      onStepContinue: onStepContinue,
+      onStepCancel: onStepCancel,
+      controlsBuilder: controlsBuilder,
+      elevation: elevation,
+      margin: margin,
+      connectorThickness: connectorThickness,
+      connectorColor: connectorColor != null ? WidgetStatePropertyAll<Color>(connectorColor!) : null,
+    );
+  }
+}
+
+/// Tom wrapper for [TabBarView].
+///
+/// Adds ID, group, and authorization.
+class TomTabBarView extends TomNavigationBase {
+  final List<Widget> children;
+  final TabController? controller;
+  final ScrollPhysics? physics;
+  final DragStartBehavior dragStartBehavior;
+  final double viewportFraction;
+  final Clip clipBehavior;
+
+  const TomTabBarView({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.controller,
+    this.physics,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.viewportFraction = 1.0,
+    this.clipBehavior = Clip.hardEdge,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return TabBarView(
+      controller: controller,
+      physics: physics,
+      dragStartBehavior: dragStartBehavior,
+      viewportFraction: viewportFraction,
+      clipBehavior: clipBehavior,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [PageView].
+///
+/// Adds ID, group, and authorization.
+class TomPageView extends TomNavigationBase {
+  final List<Widget> children;
+  final PageController? controller;
+  final Axis scrollDirection;
+  final bool reverse;
+  final ScrollPhysics? physics;
+  final bool pageSnapping;
+  final ValueChanged<int>? onPageChanged;
+  final DragStartBehavior dragStartBehavior;
+  final bool allowImplicitScrolling;
+  final String? restorationId;
+  final Clip clipBehavior;
+  final ScrollBehavior? scrollBehavior;
+  final bool padEnds;
+
+  const TomPageView({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.controller,
+    this.scrollDirection = Axis.horizontal,
+    this.reverse = false,
+    this.physics,
+    this.pageSnapping = true,
+    this.onPageChanged,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.allowImplicitScrolling = false,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+    this.scrollBehavior,
+    this.padEnds = true,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return PageView(
+      controller: controller,
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      physics: physics,
+      pageSnapping: pageSnapping,
+      onPageChanged: onPageChanged,
+      dragStartBehavior: dragStartBehavior,
+      allowImplicitScrolling: allowImplicitScrolling,
+      restorationId: restorationId,
+      clipBehavior: clipBehavior,
+      scrollBehavior: scrollBehavior,
+      padEnds: padEnds,
+      children: children,
+    );
+  }
+}

@@ -120,3 +120,131 @@ class TomImage extends TomImageBase {
     );
   }
 }
+
+/// Tom wrapper for [CircleAvatar].
+///
+/// Adds ID, group, authorization, and resource resolution for tooltip.
+class TomCircleAvatar extends TomImageBase {
+  final Widget? child;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final ImageProvider? backgroundImage;
+  final ImageProvider? foregroundImage;
+  final ImageErrorListener? onBackgroundImageError;
+  final ImageErrorListener? onForegroundImageError;
+  final double? radius;
+  final double? minRadius;
+  final double? maxRadius;
+
+  const TomCircleAvatar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.child,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.backgroundImage,
+    this.foregroundImage,
+    this.onBackgroundImageError,
+    this.onForegroundImageError,
+    this.radius,
+    this.minRadius,
+    this.maxRadius,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CircleAvatar(
+      backgroundColor: backgroundColor,
+      foregroundColor: foregroundColor,
+      backgroundImage: backgroundImage,
+      foregroundImage: foregroundImage,
+      onBackgroundImageError: onBackgroundImageError,
+      onForegroundImageError: onForegroundImageError,
+      radius: radius,
+      minRadius: minRadius,
+      maxRadius: maxRadius,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [FadeInImage].
+///
+/// Adds ID, group, authorization, and resource resolution for alt text.
+class TomFadeInImage extends TomImageBase {
+  final ImageProvider placeholder;
+  final ImageProvider image;
+  final Duration fadeOutDuration;
+  final Curve fadeOutCurve;
+  final Duration fadeInDuration;
+  final Curve fadeInCurve;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+  final BoxFit? placeholderFit;
+  final FilterQuality filterQuality;
+  final AlignmentGeometry alignment;
+  final ImageRepeat repeat;
+  final bool matchTextDirection;
+  final bool excludeFromSemantics;
+  final String? imageSemanticLabel;
+  final Color? placeholderColor;
+  final BlendMode? placeholderColorBlendMode;
+  final ImageErrorWidgetBuilder? placeholderErrorBuilder;
+  final ImageErrorWidgetBuilder? imageErrorBuilder;
+
+  const TomFadeInImage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.placeholder,
+    required this.image,
+    this.fadeOutDuration = const Duration(milliseconds: 300),
+    this.fadeOutCurve = Curves.easeOut,
+    this.fadeInDuration = const Duration(milliseconds: 700),
+    this.fadeInCurve = Curves.easeIn,
+    this.width,
+    this.height,
+    this.fit,
+    this.placeholderFit,
+    this.filterQuality = FilterQuality.low,
+    this.alignment = Alignment.center,
+    this.repeat = ImageRepeat.noRepeat,
+    this.matchTextDirection = false,
+    this.excludeFromSemantics = false,
+    this.imageSemanticLabel,
+    this.placeholderColor,
+    this.placeholderColorBlendMode,
+    this.placeholderErrorBuilder,
+    this.imageErrorBuilder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = imageSemanticLabel ??
+        (tomId != null ? resolveResource(context, 'alt') : null);
+
+    return FadeInImage(
+      placeholder: placeholder,
+      image: image,
+      fadeOutDuration: fadeOutDuration,
+      fadeOutCurve: fadeOutCurve,
+      fadeInDuration: fadeInDuration,
+      fadeInCurve: fadeInCurve,
+      width: width,
+      height: height,
+      fit: fit,
+      placeholderFit: placeholderFit,
+      alignment: alignment,
+      repeat: repeat,
+      matchTextDirection: matchTextDirection,
+      excludeFromSemantics: excludeFromSemantics,
+      imageSemanticLabel: resolvedSemanticLabel,
+      placeholderColor: placeholderColor,
+      placeholderColorBlendMode: placeholderColorBlendMode,
+      placeholderErrorBuilder: placeholderErrorBuilder,
+      imageErrorBuilder: imageErrorBuilder,
+    );
+  }
+}

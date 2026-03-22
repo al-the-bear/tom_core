@@ -173,3 +173,150 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     );
   }
 }
+
+/// Tom wrapper for [DropdownMenu].
+///
+/// Material 3 dropdown menu with built-in search/filter.
+/// Adds ID, group, authorization, and resource resolution for label/hint.
+class TomDropdownMenu<T> extends TomSelectBase {
+  final T? initialSelection;
+  final ValueChanged<T?>? onSelected;
+  final List<DropdownMenuEntry<T>> dropdownMenuEntries;
+  final bool enabled;
+  final double? width;
+  final double? menuHeight;
+  final Widget? leadingIcon;
+  final Widget? trailingIcon;
+  final String? label;
+  final String? hintText;
+  final String? helperText;
+  final String? errorText;
+  final Widget? selectedTrailingIcon;
+  final bool enableFilter;
+  final bool enableSearch;
+  final TextStyle? textStyle;
+  final TextAlign textAlign;
+  final InputDecorationTheme? inputDecorationTheme;
+  final MenuStyle? menuStyle;
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final bool requestFocusOnTap;
+  final EdgeInsets? expandedInsets;
+  final SearchCallback<T>? searchCallback;
+
+  const TomDropdownMenu({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.initialSelection,
+    this.onSelected,
+    required this.dropdownMenuEntries,
+    this.enabled = true,
+    this.width,
+    this.menuHeight,
+    this.leadingIcon,
+    this.trailingIcon,
+    this.label,
+    this.hintText,
+    this.helperText,
+    this.errorText,
+    this.selectedTrailingIcon,
+    this.enableFilter = false,
+    this.enableSearch = true,
+    this.textStyle,
+    this.textAlign = TextAlign.start,
+    this.inputDecorationTheme,
+    this.menuStyle,
+    this.controller,
+    this.focusNode,
+    this.requestFocusOnTap = true,
+    this.expandedInsets,
+    this.searchCallback,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedHint =
+        hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+
+    return DropdownMenu<T>(
+      initialSelection: initialSelection,
+      onSelected: onSelected,
+      dropdownMenuEntries: dropdownMenuEntries,
+      enabled: enabled,
+      width: width,
+      menuHeight: menuHeight,
+      leadingIcon: leadingIcon,
+      trailingIcon: trailingIcon,
+      label: resolvedLabel != null ? Text(resolvedLabel) : null,
+      hintText: resolvedHint,
+      helperText: helperText,
+      errorText: errorText,
+      selectedTrailingIcon: selectedTrailingIcon,
+      enableFilter: enableFilter,
+      enableSearch: enableSearch,
+      textStyle: textStyle,
+      textAlign: textAlign,
+      inputDecorationTheme: inputDecorationTheme,
+      menuStyle: menuStyle,
+      controller: controller,
+      focusNode: focusNode,
+      requestFocusOnTap: requestFocusOnTap,
+      expandedInsets: expandedInsets,
+      searchCallback: searchCallback,
+    );
+  }
+}
+
+/// Tom wrapper for [MenuAnchor].
+///
+/// Anchors a menu to a child widget. Adds ID, group, authorization.
+class TomMenuAnchor extends TomSelectBase {
+  final List<Widget> menuChildren;
+  final MenuController? controller;
+  final Widget? child;
+  final FocusNode? childFocusNode;
+  final MenuStyle? style;
+  final Offset? alignmentOffset;
+  final Clip clipBehavior;
+  final VoidCallback? onOpen;
+  final VoidCallback? onClose;
+  final bool consumeOutsideTap;
+  final Widget Function(BuildContext, MenuController, Widget?)? builder;
+
+  const TomMenuAnchor({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.menuChildren,
+    this.controller,
+    this.child,
+    this.childFocusNode,
+    this.style,
+    this.alignmentOffset,
+    this.clipBehavior = Clip.none,
+    this.onOpen,
+    this.onClose,
+    this.consumeOutsideTap = false,
+    this.builder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return MenuAnchor(
+      menuChildren: menuChildren,
+      controller: controller,
+      childFocusNode: childFocusNode,
+      style: style,
+      alignmentOffset: alignmentOffset,
+      clipBehavior: clipBehavior,
+      onOpen: onOpen,
+      onClose: onClose,
+      consumeOutsideTap: consumeOutsideTap,
+      builder: builder,
+      child: child,
+    );
+  }
+}
