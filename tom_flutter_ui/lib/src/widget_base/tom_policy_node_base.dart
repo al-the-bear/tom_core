@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../resource_auth/tom_auth_state.dart';
+import '../theme/tom_theme.dart';
 import 'tom_node_base.dart';
 
 /// Authorization enforcement layer for Tom UI elements.
@@ -8,7 +9,7 @@ import 'tom_node_base.dart';
 /// Every Tom widget passes through this base class. It resolves authorization
 /// via the global [TomUIAuthorization] singleton and enforces:
 /// - **Hidden** → [SizedBox.shrink] (removed from layout).
-/// - **Readonly** → [AbsorbPointer] with reduced opacity.
+/// - **Readonly** → visual treatment from [TomReadonlyStyle] via [TomThemeScope].
 /// - **Full access** → normal rendering.
 abstract class TomPolicyNodeBase extends TomNodeBase {
   const TomPolicyNodeBase({super.key, super.tomId, super.tomGroup});
@@ -23,19 +24,27 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
     if (!authState.visible) return const SizedBox.shrink();
 
-    final content = buildContent(context);
+    if (authState.readonly) return buildReadonly(context);
 
-    if (authState.readonly) {
-      return AbsorbPointer(
-        child: Opacity(opacity: 0.6, child: content),
-      );
-    }
-
-    return content;
+    return buildContent(context);
   }
 
   /// Builds the actual widget content after authorization has been resolved.
   ///
   /// Subclasses implement this instead of [build].
   Widget buildContent(BuildContext context);
+
+  /// Builds the readonly visual treatment.
+  ///
+  /// The default implementation resolves [TomReadonlyStyle] from the
+  /// nearest [TomThemeScope] and applies it. When no theme scope exists,
+  /// [TomReadonlyStyle.defaultStyle] is used (AbsorbPointer + 0.6 opacity).
+  ///
+  /// Family base classes can override this for family-specific readonly
+  /// behavior (e.g., inputs may show a non-editable text field with a
+  /// distinct background instead of a blanket opacity reduction).
+  Widget buildReadonly(BuildContext context) {
+    final style = TomThemeScope.readonlyStyleOf(context);
+    return style.apply(buildContent(context));
+  }
 }

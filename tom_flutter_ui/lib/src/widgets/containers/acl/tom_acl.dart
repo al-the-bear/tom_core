@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import '../../../resource_auth/tom_auth_state.dart';
 import '../../../resource_auth/tom_id_prefix.dart';
 import '../../../resource_auth/tom_resources.dart';
+import '../../../theme/tom_theme.dart';
 import '../../../advanced_container_layout/acl_builder.dart';
 import '../../../advanced_container_layout/acl_container.dart';
 import '../../../advanced_container_layout/acl_group_visibility.dart';
@@ -273,7 +274,9 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// 2. Resolve title from resources if not explicitly set.
   /// 3. Build the underlying [AclBuilder].
   /// 4. Wrap in [TomNodeScope] providing the container's identity to descendants.
-  Widget build() {
+  /// The returned widget must be placed in a [BuildContext] that has a
+  /// [TomThemeScope] ancestor for readonly styling (falls back to default).
+  Widget build(BuildContext context) {
     final containerPath = TomIdPrefix.prefixed(TomIdPrefix.container, id);
 
     // Container-level authorization
@@ -294,7 +297,8 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     // Wrap in TomNodeScope for descendant resource/auth resolution
     Widget result = acl;
     if (auth.readonly) {
-      result = AbsorbPointer(child: Opacity(opacity: 0.6, child: result));
+      final style = TomThemeScope.readonlyStyleOf(context);
+      result = style.apply(result);
     }
 
     return TomNodeScope(
