@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -1103,9 +1104,7 @@ class TomSliverAppBar extends TomContainerBase {
   final double? titleSpacing;
   final double? expandedHeight;
   final double? collapsedHeight;
-  final double toolbarOpacity;
-  final double bottomOpacity;
-  final double? toolbarHeight;
+  final double toolbarHeight;
   final double? leadingWidth;
   final bool floating;
   final bool pinned;
@@ -1144,9 +1143,7 @@ class TomSliverAppBar extends TomContainerBase {
     this.titleSpacing,
     this.expandedHeight,
     this.collapsedHeight,
-    this.toolbarOpacity = 1.0,
-    this.bottomOpacity = 1.0,
-    this.toolbarHeight,
+    this.toolbarHeight = kToolbarHeight,
     this.leadingWidth,
     this.floating = false,
     this.pinned = false,
@@ -1189,8 +1186,6 @@ class TomSliverAppBar extends TomContainerBase {
       titleSpacing: titleSpacing,
       expandedHeight: expandedHeight,
       collapsedHeight: collapsedHeight,
-      toolbarOpacity: toolbarOpacity,
-      bottomOpacity: bottomOpacity,
       toolbarHeight: toolbarHeight,
       leadingWidth: leadingWidth,
       floating: floating,

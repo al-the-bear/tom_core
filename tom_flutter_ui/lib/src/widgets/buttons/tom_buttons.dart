@@ -650,3 +650,51 @@ class TomIconButton extends TomButtonBase {
     );
   }
 }
+
+/// Tom wrapper for [BackButton].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomBackButton extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  const TomBackButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.color,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return BackButton(
+      onPressed: onPressed,
+      color: color,
+    );
+  }
+}
+
+/// Tom wrapper for [CloseButton].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomCloseButton extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final Color? color;
+
+  const TomCloseButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.color,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CloseButton(
+      onPressed: onPressed,
+      color: color,
+    );
+  }
+}

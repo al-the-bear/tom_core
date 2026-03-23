@@ -248,3 +248,36 @@ class TomFadeInImage extends TomImageBase {
     );
   }
 }
+
+/// Tom wrapper for [ImageIcon].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomImageIcon extends TomImageBase {
+  final ImageProvider? image;
+  final double? size;
+  final Color? color;
+  final String? semanticLabel;
+
+  const TomImageIcon({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.image,
+    this.size,
+    this.color,
+    this.semanticLabel,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = semanticLabel ??
+        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+
+    return ImageIcon(
+      image,
+      size: size,
+      color: color,
+      semanticLabel: resolvedSemanticLabel,
+    );
+  }
+}

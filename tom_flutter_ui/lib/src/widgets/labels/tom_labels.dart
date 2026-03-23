@@ -448,3 +448,45 @@ class TomChip extends TomLabelBase {
     );
   }
 }
+
+/// Tom wrapper for [DefaultTextStyle].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomDefaultTextStyle extends TomLabelBase {
+  final TextStyle style;
+  final TextAlign? textAlign;
+  final bool softWrap;
+  final TextOverflow overflow;
+  final int? maxLines;
+  final TextWidthBasis textWidthBasis;
+  final TextHeightBehavior? textHeightBehavior;
+  final Widget child;
+
+  const TomDefaultTextStyle({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.style,
+    this.textAlign,
+    this.softWrap = true,
+    this.overflow = TextOverflow.clip,
+    this.maxLines,
+    this.textWidthBasis = TextWidthBasis.parent,
+    this.textHeightBehavior,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return DefaultTextStyle(
+      style: style,
+      textAlign: textAlign,
+      softWrap: softWrap,
+      overflow: overflow,
+      maxLines: maxLines,
+      textWidthBasis: textWidthBasis,
+      textHeightBehavior: textHeightBehavior,
+      child: child,
+    );
+  }
+}

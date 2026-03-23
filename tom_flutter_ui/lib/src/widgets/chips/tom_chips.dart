@@ -358,3 +358,113 @@ class TomInputChip extends TomChipBase {
     );
   }
 }
+
+/// Tom wrapper for [RawChip].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomRawChip extends TomChipBase {
+  final Widget? avatar;
+  final Widget label;
+  final String? labelText;
+  final TextStyle? labelStyle;
+  final EdgeInsetsGeometry? labelPadding;
+  final bool selected;
+  final bool isEnabled;
+  final ValueChanged<bool>? onSelected;
+  final Widget? deleteIcon;
+  final VoidCallback? onDeleted;
+  final Color? deleteIconColor;
+  final String? deleteButtonTooltipMessage;
+  final VoidCallback? onPressed;
+  final double? pressElevation;
+  final bool? showCheckmark;
+  final Color? checkmarkColor;
+  final OutlinedBorder? shape;
+  final BorderSide? side;
+  final Clip clipBehavior;
+  final Color? selectedColor;
+  final Color? disabledColor;
+  final Color? backgroundColor;
+  final Color? selectedShadowColor;
+  final Color? shadowColor;
+  final Color? surfaceTintColor;
+  final EdgeInsetsGeometry? padding;
+  final VisualDensity? visualDensity;
+  final MaterialTapTargetSize? materialTapTargetSize;
+  final double? elevation;
+  final String? tooltip;
+
+  const TomRawChip({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.avatar,
+    required this.label,
+    this.labelText,
+    this.labelStyle,
+    this.labelPadding,
+    this.selected = false,
+    this.isEnabled = true,
+    this.onSelected,
+    this.deleteIcon,
+    this.onDeleted,
+    this.deleteIconColor,
+    this.deleteButtonTooltipMessage,
+    this.onPressed,
+    this.pressElevation,
+    this.showCheckmark,
+    this.checkmarkColor,
+    this.shape,
+    this.side,
+    this.clipBehavior = Clip.none,
+    this.selectedColor,
+    this.disabledColor,
+    this.backgroundColor,
+    this.selectedShadowColor,
+    this.shadowColor,
+    this.surfaceTintColor,
+    this.padding,
+    this.visualDensity,
+    this.materialTapTargetSize,
+    this.elevation,
+    this.tooltip,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedTooltip =
+        tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+
+    return RawChip(
+      avatar: avatar,
+      label: label,
+      labelStyle: labelStyle,
+      labelPadding: labelPadding,
+      selected: selected,
+      isEnabled: isEnabled,
+      onSelected: onSelected,
+      deleteIcon: deleteIcon,
+      onDeleted: onDeleted,
+      deleteIconColor: deleteIconColor,
+      deleteButtonTooltipMessage: deleteButtonTooltipMessage,
+      onPressed: onPressed,
+      pressElevation: pressElevation,
+      showCheckmark: showCheckmark,
+      checkmarkColor: checkmarkColor,
+      shape: shape,
+      side: side,
+      clipBehavior: clipBehavior,
+      selectedColor: selectedColor,
+      disabledColor: disabledColor,
+      backgroundColor: backgroundColor,
+      selectedShadowColor: selectedShadowColor,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      padding: padding,
+      visualDensity: visualDensity,
+      materialTapTargetSize: materialTapTargetSize,
+      elevation: elevation,
+      tooltip: resolvedTooltip,
+    );
+  }
+}

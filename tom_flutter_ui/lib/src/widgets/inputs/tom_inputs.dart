@@ -327,3 +327,85 @@ class TomAutocomplete<T extends Object> extends TomInputBase {
     );
   }
 }
+
+/// Tom wrapper for [SearchAnchor].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomSearchAnchor extends TomInputBase {
+  final bool isFullScreen;
+  final SearchController? searchController;
+  final SearchAnchorChildBuilder? builder;
+  final SuggestionsBuilder suggestionsBuilder;
+  final Widget? viewLeading;
+  final List<Widget>? viewTrailing;
+  final String? viewHintText;
+  final Color? viewBackgroundColor;
+  final double? viewElevation;
+  final Color? viewSurfaceTintColor;
+  final BorderSide? viewSide;
+  final OutlinedBorder? viewShape;
+  final TextStyle? headerTextStyle;
+  final TextStyle? headerHintStyle;
+  final Color? dividerColor;
+  final BoxConstraints? viewConstraints;
+  final TextCapitalization? textCapitalization;
+  final TextInputAction? viewOnSubmitted;
+
+  const TomSearchAnchor({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.isFullScreen = false,
+    this.searchController,
+    this.builder,
+    required this.suggestionsBuilder,
+    this.viewLeading,
+    this.viewTrailing,
+    this.viewHintText,
+    this.viewBackgroundColor,
+    this.viewElevation,
+    this.viewSurfaceTintColor,
+    this.viewSide,
+    this.viewShape,
+    this.headerTextStyle,
+    this.headerHintStyle,
+    this.dividerColor,
+    this.viewConstraints,
+    this.textCapitalization,
+    this.viewOnSubmitted,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedHint =
+        viewHintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+
+    return SearchAnchor(
+      isFullScreen: isFullScreen,
+      searchController: searchController,
+      builder: builder ??
+          (BuildContext context, SearchController controller) {
+            return SearchBar(
+              controller: controller,
+              hintText: resolvedHint,
+              onTap: () => controller.openView(),
+              onChanged: (_) => controller.openView(),
+            );
+          },
+      suggestionsBuilder: suggestionsBuilder,
+      viewLeading: viewLeading,
+      viewTrailing: viewTrailing,
+      viewHintText: resolvedHint,
+      viewBackgroundColor: viewBackgroundColor,
+      viewElevation: viewElevation,
+      viewSurfaceTintColor: viewSurfaceTintColor,
+      viewSide: viewSide,
+      viewShape: viewShape,
+      headerTextStyle: headerTextStyle,
+      headerHintStyle: headerHintStyle,
+      dividerColor: dividerColor,
+      viewConstraints: viewConstraints,
+      textCapitalization: textCapitalization,
+    );
+  }
+}

@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
 import '../resource_auth/tom_auth_state.dart';
-import '../theme/tom_theme.dart';
 import 'tom_node_base.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';

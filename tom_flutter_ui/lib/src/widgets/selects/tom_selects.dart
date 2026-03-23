@@ -320,3 +320,112 @@ class TomMenuAnchor extends TomSelectBase {
     );
   }
 }
+
+/// Tom wrapper for [DropdownButtonFormField].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomDropdownButtonFormField<T> extends TomSelectBase {
+  final List<DropdownMenuItem<T>>? items;
+  final T? value;
+  final ValueChanged<T?>? onChanged;
+  final VoidCallback? onTap;
+  final InputDecoration? decoration;
+  final Widget? hint;
+  final Widget? disabledHint;
+  final int elevation;
+  final TextStyle? style;
+  final Widget? icon;
+  final Color? iconDisabledColor;
+  final Color? iconEnabledColor;
+  final double iconSize;
+  final bool isDense;
+  final bool isExpanded;
+  final double? itemHeight;
+  final Color? focusColor;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final Color? dropdownColor;
+  final EdgeInsetsGeometry? padding;
+  final double? menuMaxHeight;
+  final bool? enableFeedback;
+  final AlignmentGeometry alignment;
+  final BorderRadius? borderRadius;
+  final FormFieldSetter<T>? onSaved;
+  final FormFieldValidator<T>? validator;
+  final AutovalidateMode? autovalidateMode;
+
+  const TomDropdownButtonFormField({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.items,
+    this.value,
+    this.onChanged,
+    this.onTap,
+    this.decoration,
+    this.hint,
+    this.disabledHint,
+    this.elevation = 8,
+    this.style,
+    this.icon,
+    this.iconDisabledColor,
+    this.iconEnabledColor,
+    this.iconSize = 24.0,
+    this.isDense = true,
+    this.isExpanded = false,
+    this.itemHeight,
+    this.focusColor,
+    this.focusNode,
+    this.autofocus = false,
+    this.dropdownColor,
+    this.padding,
+    this.menuMaxHeight,
+    this.enableFeedback,
+    this.alignment = AlignmentDirectional.centerStart,
+    this.borderRadius,
+    this.onSaved,
+    this.validator,
+    this.autovalidateMode,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        tomId != null ? resolveResource(context, 'label') : null;
+    final effectiveDecoration = decoration ??
+        (resolvedLabel != null
+            ? InputDecoration(labelText: resolvedLabel)
+            : const InputDecoration());
+
+    return DropdownButtonFormField<T>(
+      items: items,
+      value: value,
+      onChanged: onChanged,
+      onTap: onTap,
+      decoration: effectiveDecoration,
+      hint: hint,
+      disabledHint: disabledHint,
+      elevation: elevation,
+      style: style,
+      icon: icon,
+      iconDisabledColor: iconDisabledColor,
+      iconEnabledColor: iconEnabledColor,
+      iconSize: iconSize,
+      isDense: isDense,
+      isExpanded: isExpanded,
+      itemHeight: itemHeight,
+      focusColor: focusColor,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      dropdownColor: dropdownColor,
+      padding: padding,
+      menuMaxHeight: menuMaxHeight,
+      enableFeedback: enableFeedback,
+      alignment: alignment,
+      borderRadius: borderRadius,
+      onSaved: onSaved,
+      validator: validator,
+      autovalidateMode: autovalidateMode,
+    );
+  }
+}
