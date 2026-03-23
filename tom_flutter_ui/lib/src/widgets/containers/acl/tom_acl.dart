@@ -274,6 +274,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// 2. Resolve title from resources if not explicitly set.
   /// 3. Build the underlying [AclBuilder].
   /// 4. Wrap in [TomNodeScope] providing the container's identity to descendants.
+  ///
+  /// ACL containers with IDs act as implicit group scopes — any widget inside
+  /// can use this container's ID as part of their canonical path.
+  ///
   /// The returned widget must be placed in a [BuildContext] that has a
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
   Widget build(BuildContext context) {
@@ -295,15 +299,16 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     final acl = _builder.build();
 
     // Wrap in TomNodeScope for descendant resource/auth resolution
+    // ACL containers with IDs are implicit group scopes
     Widget result = acl;
     if (auth.readonly) {
       final style = TomThemeScope.readonlyStyleOf(context);
       result = style.apply(result);
     }
 
-    return TomNodeScope(
-      fullIdPath: containerPath,
-      groupName: null,
+    return TomNodeScope.extend(
+      context,
+      containerId: id,
       child: result,
     );
   }

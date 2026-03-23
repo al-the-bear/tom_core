@@ -3,6 +3,7 @@ export 'chips/tom_chips.dart';
 export 'containers/acl/tom_acl.dart';
 export 'containers/tom_containers.dart';
 export 'dialogs/tom_dialogs.dart';
+export 'extended/extended.dart';
 export 'images/tom_images.dart';
 export 'inputs/tom_inputs.dart';
 export 'labels/tom_labels.dart';

@@ -66,16 +66,99 @@ abstract class TomNodeBase extends StatelessWidget {
 }
 
 /// InheritedWidget providing the current node's identity context to descendants.
+///
+/// Propagates route, container, group, and form IDs down the widget tree.
+/// Each ID segment is optional and contributes to the canonical path.
+///
+/// Canonical path format:
+/// ```
+/// r-<route>.c-<container>.g-<group>.f-<form>.w-<widget>
+/// ```
 class TomNodeScope extends InheritedWidget {
+  /// The route ID (without prefix).
+  final String? routeId;
+
+  /// The container ID (without prefix).
+  final String? containerId;
+
+  /// The group ID (without prefix).
+  final String? groupId;
+
+  /// The form ID (without prefix).
+  final String? formId;
+
+  /// Legacy: full pre-computed ID path (for backwards compatibility).
   final String? fullIdPath;
-  final String? groupName;
 
   const TomNodeScope({
     super.key,
     required super.child,
+    this.routeId,
+    this.containerId,
+    this.groupId,
+    this.formId,
     this.fullIdPath,
-    this.groupName,
   });
+
+  /// Creates a scope that extends the parent scope with additional IDs.
+  factory TomNodeScope.extend(
+    BuildContext context, {
+    Key? key,
+    required Widget child,
+    String? routeId,
+    String? containerId,
+    String? groupId,
+    String? formId,
+  }) {
+    final parent = TomNodeScope.of(context);
+    return TomNodeScope(
+      key: key,
+      routeId: routeId ?? parent?.routeId,
+      containerId: containerId ?? parent?.containerId,
+      groupId: groupId ?? parent?.groupId,
+      formId: formId ?? parent?.formId,
+      child: child,
+    );
+  }
+
+  /// Appends a widget ID to create the canonical path.
+  String appendWidget(String widgetId) {
+    final parts = <String>[];
+    if (routeId != null) parts.add('r-$routeId');
+    if (containerId != null) parts.add('c-$containerId');
+    if (groupId != null) parts.add('g-$groupId');
+    if (formId != null) parts.add('f-$formId');
+    parts.add('w-$widgetId');
+    return parts.join('.');
+  }
+
+  /// Appends a group ID to create the canonical group path.
+  String appendGroup(String gId) {
+    final parts = <String>[];
+    if (routeId != null) parts.add('r-$routeId');
+    if (containerId != null) parts.add('c-$containerId');
+    parts.add('g-$gId');
+    return parts.join('.');
+  }
+
+  /// Appends a container ID to create the canonical container path.
+  String appendContainer(String cId) {
+    final parts = <String>[];
+    if (routeId != null) parts.add('r-$routeId');
+    if (containerId != null) parts.add('c-$containerId');
+    parts.add('c-$cId');
+    return parts.join('.');
+  }
+
+  /// Appends a form ID to create the canonical form path.
+  String appendForm(String fId) {
+    final parts = <String>[];
+    if (routeId != null) parts.add('r-$routeId');
+    if (containerId != null) parts.add('c-$containerId');
+    if (groupId != null) parts.add('g-$groupId');
+    parts.add('f-$fId');
+    return parts.join('.');
+  }
 
   static TomNodeScope? of(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<TomNodeScope>();
@@ -83,7 +166,11 @@ class TomNodeScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(TomNodeScope oldWidget) {
-    return fullIdPath != oldWidget.fullIdPath ||
-        groupName != oldWidget.groupName;
+    return routeId != oldWidget.routeId ||
+        containerId != oldWidget.containerId ||
+        groupId != oldWidget.groupId ||
+        formId != oldWidget.formId ||
+        fullIdPath != oldWidget.fullIdPath;
   }
 }
+

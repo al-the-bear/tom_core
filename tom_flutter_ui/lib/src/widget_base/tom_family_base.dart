@@ -132,9 +132,10 @@ abstract class TomContainerBase extends TomFamilyBase {
     // Containers propagate their ID to descendants so child widgets
     // can build their full canonical path (e.g., c-panel.w-field).
     if (tomId != null) {
-      return TomNodeScope(
-        fullIdPath: resourceKeyPath,
-        groupName: tomGroup,
+      return TomNodeScope.extend(
+        context,
+        containerId: tomId,
+        groupId: tomGroup,
         child: content,
       );
     }
