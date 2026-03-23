@@ -1,3 +1,8 @@
+import 'package:flutter/widgets.dart';
+
+import '../resource_auth/tom_auth_state.dart';
+import '../theme/tom_theme.dart';
+import 'tom_node_base.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';
 
@@ -90,6 +95,11 @@ abstract class TomSliderBase extends TomFamilyBase {
 }
 
 /// Base for the Container family (structural wrapper widgets).
+///
+/// Containers propagate their ID to descendants via [TomNodeScope],
+/// enabling child widgets to resolve their full canonical path
+/// (e.g., `c-shipping.w-street`). This is the key mechanism that
+/// allows authorization and resource lookup to work hierarchically.
 abstract class TomContainerBase extends TomFamilyBase {
   const TomContainerBase({
     super.key,
@@ -102,6 +112,35 @@ abstract class TomContainerBase extends TomFamilyBase {
 
   @override
   String get idPrefix => 'c-';
+
+  @override
+  Widget build(BuildContext context) {
+    final resourceKeyPath = resolveResourceBasePath(context);
+
+    final authState = resourceKeyPath != null
+        ? TomUIAuthorization.resolveAuth(resourceKeyPath)
+        : TomAuthState.fullAccess;
+
+    if (!authState.visible) return const SizedBox.shrink();
+
+    Widget content;
+    if (authState.readonly) {
+      content = buildReadonly(context);
+    } else {
+      content = buildContent(context);
+    }
+
+    // Containers propagate their ID to descendants so child widgets
+    // can build their full canonical path (e.g., c-panel.w-field).
+    if (tomId != null) {
+      return TomNodeScope(
+        fullIdPath: resourceKeyPath,
+        groupName: tomGroup,
+        child: content,
+      );
+    }
+    return content;
+  }
 }
 
 /// Base for the Dialog family.
