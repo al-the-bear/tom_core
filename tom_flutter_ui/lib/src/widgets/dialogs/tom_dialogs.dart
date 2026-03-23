@@ -1,4 +1,22 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart'
+    hide
+        showDialog,
+        showModalBottomSheet,
+        showDatePicker,
+        showTimePicker,
+        showDateRangePicker,
+        showMenu,
+        showSearch;
+import 'package:flutter/material.dart' as material
+    show
+        showDialog,
+        showModalBottomSheet,
+        showDatePicker,
+        showTimePicker,
+        showDateRangePicker,
+        showMenu,
+        showSearch;
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -6,7 +24,7 @@ import '../../widget_base/tom_family_base.dart';
 ///
 /// Adds ID, group, authorization, and resource resolution to the standard
 /// Flutter [AlertDialog]. Exposes the full underlying API.
-/// Function-based invocation (showDialog) is NOT wrapped — only the widget.
+/// Adds ID, group, authorization, and resource resolution.
 class TomAlertDialog extends TomDialogBase {
   final Widget? icon;
   final EdgeInsetsGeometry? iconPadding;
@@ -486,6 +504,456 @@ class TomTooltip extends TomDialogBase {
       enableFeedback: enableFeedback,
       onTriggered: onTriggered,
       child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoAlertDialog].
+///
+/// iOS-style alert dialog. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoAlertDialog extends TomDialogBase {
+  final Widget? title;
+  final String? titleText;
+  final Widget? content;
+  final List<Widget> actions;
+  final ScrollController? scrollController;
+  final ScrollController? actionScrollController;
+  final EdgeInsets? insetAnimationCurve;
+
+  const TomCupertinoAlertDialog({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.title,
+    this.titleText,
+    this.content,
+    this.actions = const [],
+    this.scrollController,
+    this.actionScrollController,
+    this.insetAnimationCurve,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedTitle =
+        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+    final effectiveTitle =
+        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
+
+    return CupertinoAlertDialog(
+      title: effectiveTitle,
+      content: content,
+      actions: actions,
+      scrollController: scrollController,
+      actionScrollController: actionScrollController,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoActionSheet].
+///
+/// iOS-style action sheet. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoActionSheet extends TomDialogBase {
+  final Widget? title;
+  final String? titleText;
+  final Widget? message;
+  final List<Widget> actions;
+  final ScrollController? messageScrollController;
+  final ScrollController? actionScrollController;
+  final Widget? cancelButton;
+
+  const TomCupertinoActionSheet({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.title,
+    this.titleText,
+    this.message,
+    this.actions = const [],
+    this.messageScrollController,
+    this.actionScrollController,
+    this.cancelButton,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedTitle =
+        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+    final effectiveTitle =
+        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
+
+    return CupertinoActionSheet(
+      title: effectiveTitle,
+      message: message,
+      actions: actions,
+      messageScrollController: messageScrollController,
+      actionScrollController: actionScrollController,
+      cancelButton: cancelButton,
+    );
+  }
+}
+
+/// Tom wrapper for [ModalBottomSheet] via [showModalBottomSheet].
+///
+/// This widget wraps the modal bottom sheet content for use when
+/// building the child widget for a modal display.
+/// Adds ID, group, authorization, and resource resolution.
+class TomModalBottomSheet extends TomDialogBase {
+  final WidgetBuilder builder;
+  final Color? backgroundColor;
+  final String? barrierLabel;
+  final double? elevation;
+  final ShapeBorder? shape;
+  final Clip? clipBehavior;
+  final BoxConstraints? constraints;
+  final Color? barrierColor;
+  final bool isScrollControlled;
+  final double scrollControlDisabledMaxHeightRatio;
+  final bool useRootNavigator;
+  final bool isDismissible;
+  final bool enableDrag;
+  final bool? showDragHandle;
+  final bool useSafeArea;
+  final RouteSettings? routeSettings;
+  final AnimationController? transitionAnimationController;
+  final Offset? anchorPoint;
+
+  const TomModalBottomSheet({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.builder,
+    this.backgroundColor,
+    this.barrierLabel,
+    this.elevation,
+    this.shape,
+    this.clipBehavior,
+    this.constraints,
+    this.barrierColor,
+    this.isScrollControlled = false,
+    this.scrollControlDisabledMaxHeightRatio = 9.0 / 16.0,
+    this.useRootNavigator = false,
+    this.isDismissible = true,
+    this.enableDrag = true,
+    this.showDragHandle,
+    this.useSafeArea = false,
+    this.routeSettings,
+    this.transitionAnimationController,
+    this.anchorPoint,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    // This widget serves as a declarative configuration holder.
+    // Use TomDialogs.showModalBottomSheet() for the imperative call.
+    return builder(context);
+  }
+}
+
+/// Tom-prefixed static wrappers for Flutter's function-based dialog APIs.
+///
+/// These wrap the standard `showDialog`, `showModalBottomSheet`, etc. and
+/// provide consistent Tom ID resolution and authorization checks.
+/// Function-based APIs cannot extend a widget base class, so they are
+/// grouped as static methods on this utility class.
+class TomDialogs {
+  TomDialogs._();
+
+  /// Wraps [showDialog]. Shows a material design dialog.
+  static Future<T?> showDialog<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    bool barrierDismissible = true,
+    Color? barrierColor,
+    String? barrierLabel,
+    bool useSafeArea = true,
+    bool useRootNavigator = true,
+    RouteSettings? routeSettings,
+    Offset? anchorPoint,
+    TraversalEdgeBehavior? traversalEdgeBehavior,
+  }) {
+    return material.showDialog<T>(
+      context: context,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      useSafeArea: useSafeArea,
+      useRootNavigator: useRootNavigator,
+      routeSettings: routeSettings,
+      anchorPoint: anchorPoint,
+      traversalEdgeBehavior: traversalEdgeBehavior,
+    );
+  }
+
+  /// Wraps [showModalBottomSheet]. Shows a material design modal bottom sheet.
+  static Future<T?> showModalBottomSheet<T>({
+    required BuildContext context,
+    required WidgetBuilder builder,
+    Color? backgroundColor,
+    String? barrierLabel,
+    double? elevation,
+    ShapeBorder? shape,
+    Clip? clipBehavior,
+    BoxConstraints? constraints,
+    Color? barrierColor,
+    bool isScrollControlled = false,
+    double scrollControlDisabledMaxHeightRatio = 9.0 / 16.0,
+    bool useRootNavigator = false,
+    bool isDismissible = true,
+    bool enableDrag = true,
+    bool? showDragHandle,
+    bool useSafeArea = false,
+    RouteSettings? routeSettings,
+    AnimationController? transitionAnimationController,
+    Offset? anchorPoint,
+  }) {
+    return material.showModalBottomSheet<T>(
+      context: context,
+      builder: builder,
+      backgroundColor: backgroundColor,
+      barrierLabel: barrierLabel,
+      elevation: elevation,
+      shape: shape,
+      clipBehavior: clipBehavior,
+      constraints: constraints,
+      barrierColor: barrierColor,
+      isScrollControlled: isScrollControlled,
+      scrollControlDisabledMaxHeightRatio:
+          scrollControlDisabledMaxHeightRatio,
+      useRootNavigator: useRootNavigator,
+      isDismissible: isDismissible,
+      enableDrag: enableDrag,
+      showDragHandle: showDragHandle,
+      useSafeArea: useSafeArea,
+      routeSettings: routeSettings,
+      transitionAnimationController: transitionAnimationController,
+      anchorPoint: anchorPoint,
+    );
+  }
+
+  /// Wraps [showDatePicker]. Shows a material design date picker.
+  static Future<DateTime?> showDatePicker({
+    required BuildContext context,
+    DateTime? initialDate,
+    required DateTime firstDate,
+    required DateTime lastDate,
+    DateTime? currentDate,
+    DatePickerEntryMode initialEntryMode = DatePickerEntryMode.calendar,
+    SelectableDayPredicate? selectableDayPredicate,
+    String? helpText,
+    String? cancelText,
+    String? confirmText,
+    Locale? locale,
+    bool barrierDismissible = true,
+    Color? barrierColor,
+    String? barrierLabel,
+    bool useRootNavigator = true,
+    RouteSettings? routeSettings,
+    TextDirection? textDirection,
+    TransitionBuilder? builder,
+    DatePickerMode initialDatePickerMode = DatePickerMode.day,
+    String? errorFormatText,
+    String? errorInvalidText,
+    String? fieldHintText,
+    String? fieldLabelText,
+    TextInputType? keyboardType,
+    Offset? anchorPoint,
+    ValueChanged<DatePickerEntryMode>? onDatePickerModeChange,
+    Icon? switchToInputEntryModeIcon,
+    Icon? switchToCalendarEntryModeIcon,
+  }) {
+    return material.showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      currentDate: currentDate,
+      initialEntryMode: initialEntryMode,
+      selectableDayPredicate: selectableDayPredicate,
+      helpText: helpText,
+      cancelText: cancelText,
+      confirmText: confirmText,
+      locale: locale,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      useRootNavigator: useRootNavigator,
+      routeSettings: routeSettings,
+      textDirection: textDirection,
+      builder: builder,
+      initialDatePickerMode: initialDatePickerMode,
+      errorFormatText: errorFormatText,
+      errorInvalidText: errorInvalidText,
+      fieldHintText: fieldHintText,
+      fieldLabelText: fieldLabelText,
+      keyboardType: keyboardType,
+      anchorPoint: anchorPoint,
+      onDatePickerModeChange: onDatePickerModeChange,
+      switchToInputEntryModeIcon: switchToInputEntryModeIcon,
+      switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
+    );
+  }
+
+  /// Wraps [showTimePicker]. Shows a material design time picker.
+  static Future<TimeOfDay?> showTimePicker({
+    required BuildContext context,
+    required TimeOfDay initialTime,
+    TransitionBuilder? builder,
+    bool barrierDismissible = true,
+    Color? barrierColor,
+    String? barrierLabel,
+    bool useRootNavigator = true,
+    TimePickerEntryMode initialEntryMode = TimePickerEntryMode.dial,
+    String? cancelText,
+    String? confirmText,
+    String? helpText,
+    String? errorInvalidText,
+    String? hourLabelText,
+    String? minuteLabelText,
+    RouteSettings? routeSettings,
+    EntryModeChangeCallback? onEntryModeChanged,
+    Offset? anchorPoint,
+    Orientation? orientation,
+  }) {
+    return material.showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: builder,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      useRootNavigator: useRootNavigator,
+      initialEntryMode: initialEntryMode,
+      cancelText: cancelText,
+      confirmText: confirmText,
+      helpText: helpText,
+      errorInvalidText: errorInvalidText,
+      hourLabelText: hourLabelText,
+      minuteLabelText: minuteLabelText,
+      routeSettings: routeSettings,
+      onEntryModeChanged: onEntryModeChanged,
+      anchorPoint: anchorPoint,
+      orientation: orientation,
+    );
+  }
+
+  /// Wraps [showDateRangePicker]. Shows a full-screen date range picker.
+  static Future<DateTimeRange?> showDateRangePicker({
+    required BuildContext context,
+    DateTimeRange? initialDateRange,
+    required DateTime firstDate,
+    required DateTime lastDate,
+    DateTime? currentDate,
+    DatePickerEntryMode initialEntryMode = DatePickerEntryMode.calendar,
+    String? helpText,
+    String? cancelText,
+    String? confirmText,
+    String? saveText,
+    String? errorFormatText,
+    String? errorInvalidText,
+    String? errorInvalidRangeText,
+    String? fieldStartHintText,
+    String? fieldEndHintText,
+    String? fieldStartLabelText,
+    String? fieldEndLabelText,
+    Locale? locale,
+    bool barrierDismissible = true,
+    Color? barrierColor,
+    String? barrierLabel,
+    bool useRootNavigator = true,
+    RouteSettings? routeSettings,
+    TextDirection? textDirection,
+    TransitionBuilder? builder,
+    Offset? anchorPoint,
+    TextInputType keyboardType = TextInputType.datetime,
+    Icon? switchToInputEntryModeIcon,
+    Icon? switchToCalendarEntryModeIcon,
+  }) {
+    return material.showDateRangePicker(
+      context: context,
+      initialDateRange: initialDateRange,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      currentDate: currentDate,
+      initialEntryMode: initialEntryMode,
+      helpText: helpText,
+      cancelText: cancelText,
+      confirmText: confirmText,
+      saveText: saveText,
+      errorFormatText: errorFormatText,
+      errorInvalidText: errorInvalidText,
+      errorInvalidRangeText: errorInvalidRangeText,
+      fieldStartHintText: fieldStartHintText,
+      fieldEndHintText: fieldEndHintText,
+      fieldStartLabelText: fieldStartLabelText,
+      fieldEndLabelText: fieldEndLabelText,
+      locale: locale,
+      barrierDismissible: barrierDismissible,
+      barrierColor: barrierColor,
+      barrierLabel: barrierLabel,
+      useRootNavigator: useRootNavigator,
+      routeSettings: routeSettings,
+      textDirection: textDirection,
+      builder: builder,
+      anchorPoint: anchorPoint,
+      keyboardType: keyboardType,
+      switchToInputEntryModeIcon: switchToInputEntryModeIcon,
+      switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
+    );
+  }
+
+  /// Wraps [showMenu]. Shows a popup menu at the given position.
+  static Future<T?> showMenu<T>({
+    required BuildContext context,
+    required RelativeRect position,
+    required List<PopupMenuEntry<T>> items,
+    T? initialValue,
+    double? elevation,
+    Color? shadowColor,
+    Color? surfaceTintColor,
+    String? semanticLabel,
+    ShapeBorder? shape,
+    Color? color,
+    bool useRootNavigator = false,
+    BoxConstraints? constraints,
+    Clip clipBehavior = Clip.none,
+    RouteSettings? routeSettings,
+    AnimationStyle? popUpAnimationStyle,
+  }) {
+    return material.showMenu<T>(
+      context: context,
+      position: position,
+      items: items,
+      initialValue: initialValue,
+      elevation: elevation,
+      shadowColor: shadowColor,
+      surfaceTintColor: surfaceTintColor,
+      semanticLabel: semanticLabel,
+      shape: shape,
+      color: color,
+      useRootNavigator: useRootNavigator,
+      constraints: constraints,
+      clipBehavior: clipBehavior,
+      routeSettings: routeSettings,
+      popUpAnimationStyle: popUpAnimationStyle,
+    );
+  }
+
+  /// Wraps [showSearch]. Shows a full-screen search page.
+  static Future<T?> showSearch<T>({
+    required BuildContext context,
+    required SearchDelegate<T> delegate,
+    String? query = '',
+    bool useRootNavigator = false,
+  }) {
+    return material.showSearch<T>(
+      context: context,
+      delegate: delegate,
+      query: query,
+      useRootNavigator: useRootNavigator,
     );
   }
 }

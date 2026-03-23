@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
@@ -278,6 +280,297 @@ class TomImageIcon extends TomImageBase {
       size: size,
       color: color,
       semanticLabel: resolvedSemanticLabel,
+    );
+  }
+}
+
+/// Tom wrapper for [Ink.image].
+///
+/// Paints an image on a [Material] widget with ink splash support.
+/// Adds ID, group, authorization, and resource resolution.
+class TomInkImage extends TomImageBase {
+  final EdgeInsetsGeometry? padding;
+  final ImageProvider image;
+  final ColorFilter? colorFilter;
+  final BoxFit? fit;
+  final AlignmentGeometry alignment;
+  final Rect? centerSlice;
+  final ImageRepeat repeat;
+  final double? width;
+  final double? height;
+  final Widget? child;
+
+  const TomInkImage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.padding,
+    required this.image,
+    this.colorFilter,
+    this.fit,
+    this.alignment = Alignment.center,
+    this.centerSlice,
+    this.repeat = ImageRepeat.noRepeat,
+    this.width,
+    this.height,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Ink.image(
+      padding: padding,
+      image: image,
+      colorFilter: colorFilter,
+      fit: fit,
+      alignment: alignment,
+      centerSlice: centerSlice,
+      repeat: repeat,
+      width: width,
+      height: height,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [Image] that uses [NetworkImage] as its provider.
+///
+/// Convenience widget for displaying a network image.
+/// Adds ID, group, authorization, and resource resolution.
+class TomNetworkImage extends TomImageBase {
+  final String src;
+  final double scale;
+  final Map<String, String>? headers;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+  final AlignmentGeometry alignment;
+  final ImageRepeat repeat;
+  final Rect? centerSlice;
+  final bool matchTextDirection;
+  final bool gaplessPlayback;
+  final FilterQuality filterQuality;
+  final bool isAntiAlias;
+  final Color? color;
+  final BlendMode? colorBlendMode;
+  final String? semanticLabel;
+  final bool excludeFromSemantics;
+  final ImageFrameBuilder? frameBuilder;
+  final ImageLoadingBuilder? loadingBuilder;
+  final ImageErrorWidgetBuilder? errorBuilder;
+
+  const TomNetworkImage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.src,
+    this.scale = 1.0,
+    this.headers,
+    this.width,
+    this.height,
+    this.fit,
+    this.alignment = Alignment.center,
+    this.repeat = ImageRepeat.noRepeat,
+    this.centerSlice,
+    this.matchTextDirection = false,
+    this.gaplessPlayback = false,
+    this.filterQuality = FilterQuality.low,
+    this.isAntiAlias = false,
+    this.color,
+    this.colorBlendMode,
+    this.semanticLabel,
+    this.excludeFromSemantics = false,
+    this.frameBuilder,
+    this.loadingBuilder,
+    this.errorBuilder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = semanticLabel ??
+        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+
+    return Image.network(
+      src,
+      scale: scale,
+      headers: headers,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      repeat: repeat,
+      centerSlice: centerSlice,
+      matchTextDirection: matchTextDirection,
+      gaplessPlayback: gaplessPlayback,
+      filterQuality: filterQuality,
+      isAntiAlias: isAntiAlias,
+      color: color,
+      colorBlendMode: colorBlendMode,
+      semanticLabel: resolvedSemanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
+      frameBuilder: frameBuilder,
+      loadingBuilder: loadingBuilder,
+      errorBuilder: errorBuilder,
+    );
+  }
+}
+
+/// Tom wrapper for [Image] that uses [AssetImage] as its provider.
+///
+/// Convenience widget for displaying an asset image.
+/// Adds ID, group, authorization, and resource resolution.
+class TomAssetImage extends TomImageBase {
+  final String name;
+  final AssetBundle? bundle;
+  final String? package;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+  final AlignmentGeometry alignment;
+  final ImageRepeat repeat;
+  final Rect? centerSlice;
+  final bool matchTextDirection;
+  final bool gaplessPlayback;
+  final FilterQuality filterQuality;
+  final bool isAntiAlias;
+  final Color? color;
+  final BlendMode? colorBlendMode;
+  final String? semanticLabel;
+  final bool excludeFromSemantics;
+  final ImageFrameBuilder? frameBuilder;
+  final ImageErrorWidgetBuilder? errorBuilder;
+  final int? cacheWidth;
+  final int? cacheHeight;
+
+  const TomAssetImage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.name,
+    this.bundle,
+    this.package,
+    this.width,
+    this.height,
+    this.fit,
+    this.alignment = Alignment.center,
+    this.repeat = ImageRepeat.noRepeat,
+    this.centerSlice,
+    this.matchTextDirection = false,
+    this.gaplessPlayback = false,
+    this.filterQuality = FilterQuality.low,
+    this.isAntiAlias = false,
+    this.color,
+    this.colorBlendMode,
+    this.semanticLabel,
+    this.excludeFromSemantics = false,
+    this.frameBuilder,
+    this.errorBuilder,
+    this.cacheWidth,
+    this.cacheHeight,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = semanticLabel ??
+        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+
+    return Image.asset(
+      name,
+      bundle: bundle,
+      package: package,
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      repeat: repeat,
+      centerSlice: centerSlice,
+      matchTextDirection: matchTextDirection,
+      gaplessPlayback: gaplessPlayback,
+      filterQuality: filterQuality,
+      isAntiAlias: isAntiAlias,
+      color: color,
+      colorBlendMode: colorBlendMode,
+      semanticLabel: resolvedSemanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
+      frameBuilder: frameBuilder,
+      errorBuilder: errorBuilder,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
+    );
+  }
+}
+
+/// Tom wrapper for [Image] that uses [FileImage] as its provider.
+///
+/// Convenience widget for displaying a file-based image.
+/// Adds ID, group, authorization, and resource resolution.
+class TomFileImage extends TomImageBase {
+  final String filePath;
+  final double scale;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+  final AlignmentGeometry alignment;
+  final ImageRepeat repeat;
+  final Rect? centerSlice;
+  final bool matchTextDirection;
+  final bool gaplessPlayback;
+  final FilterQuality filterQuality;
+  final bool isAntiAlias;
+  final Color? color;
+  final BlendMode? colorBlendMode;
+  final String? semanticLabel;
+  final bool excludeFromSemantics;
+  final ImageFrameBuilder? frameBuilder;
+  final ImageErrorWidgetBuilder? errorBuilder;
+
+  const TomFileImage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.filePath,
+    this.scale = 1.0,
+    this.width,
+    this.height,
+    this.fit,
+    this.alignment = Alignment.center,
+    this.repeat = ImageRepeat.noRepeat,
+    this.centerSlice,
+    this.matchTextDirection = false,
+    this.gaplessPlayback = false,
+    this.filterQuality = FilterQuality.low,
+    this.isAntiAlias = false,
+    this.color,
+    this.colorBlendMode,
+    this.semanticLabel,
+    this.excludeFromSemantics = false,
+    this.frameBuilder,
+    this.errorBuilder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = semanticLabel ??
+        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+
+    return Image(
+      image: FileImage(File(filePath), scale: scale),
+      width: width,
+      height: height,
+      fit: fit,
+      alignment: alignment,
+      repeat: repeat,
+      centerSlice: centerSlice,
+      matchTextDirection: matchTextDirection,
+      gaplessPlayback: gaplessPlayback,
+      filterQuality: filterQuality,
+      isAntiAlias: isAntiAlias,
+      color: color,
+      colorBlendMode: colorBlendMode,
+      semanticLabel: resolvedSemanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
+      frameBuilder: frameBuilder,
+      errorBuilder: errorBuilder,
     );
   }
 }

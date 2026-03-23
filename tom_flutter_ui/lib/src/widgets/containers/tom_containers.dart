@@ -1347,3 +1347,77 @@ class TomCustomScrollView extends TomContainerBase {
     );
   }
 }
+
+/// Tom wrapper for [ExpansionPanelList].
+///
+/// Adds ID, group, authorization, and resource resolution.
+class TomExpansionPanelList extends TomContainerBase {
+  final List<ExpansionPanel> children;
+  final ExpansionPanelCallback? expansionCallback;
+  final Duration animationDuration;
+  final EdgeInsets expandedHeaderPadding;
+  final Color? dividerColor;
+  final double elevation;
+
+  const TomExpansionPanelList({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.children = const [],
+    this.expansionCallback,
+    this.animationDuration = kThemeAnimationDuration,
+    this.expandedHeaderPadding = const EdgeInsets.symmetric(vertical: 16.0),
+    this.dividerColor,
+    this.elevation = 2,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ExpansionPanelList(
+      children: children,
+      expansionCallback: expansionCallback,
+      animationDuration: animationDuration,
+      expandedHeaderPadding: expandedHeaderPadding,
+      dividerColor: dividerColor,
+      elevation: elevation,
+    );
+  }
+}
+
+/// Tom wrapper for [Ink].
+///
+/// A convenience widget for drawing images and other decorations on
+/// [Material] widgets, so that [InkWell] and [InkResponse] splashes
+/// render correctly. Adds ID, group, authorization, and resource resolution.
+class TomInk extends TomContainerBase {
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+  final Decoration? decoration;
+  final double? width;
+  final double? height;
+  final Widget? child;
+
+  const TomInk({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.padding,
+    this.color,
+    this.decoration,
+    this.width,
+    this.height,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Ink(
+      padding: padding,
+      color: color,
+      decoration: decoration,
+      width: width,
+      height: height,
+      child: child,
+    );
+  }
+}

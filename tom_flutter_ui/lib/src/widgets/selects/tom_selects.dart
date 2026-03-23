@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
@@ -426,6 +427,51 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       onSaved: onSaved,
       validator: validator,
       autovalidateMode: autovalidateMode,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoSlidingSegmentedControl].
+///
+/// iOS 13-style sliding segmented control. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoSlidingSegmentedControl<T extends Object>
+    extends TomSelectBase {
+  final Map<T, Widget> children;
+  final T? groupValue;
+  final ValueChanged<T?> onValueChanged;
+  final Color? thumbColor;
+  final EdgeInsetsGeometry padding;
+  final Color? backgroundColor;
+
+  const TomCupertinoSlidingSegmentedControl({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    required this.groupValue,
+    required this.onValueChanged,
+    this.thumbColor,
+    this.padding = const EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+    this.backgroundColor,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final effectiveBg = backgroundColor ??
+        CupertinoDynamicColor.resolve(
+          CupertinoColors.tertiarySystemFill, context);
+    final effectiveThumb = thumbColor ??
+        CupertinoDynamicColor.resolve(
+          CupertinoColors.white, context);
+
+    return CupertinoSlidingSegmentedControl<T>(
+      children: children,
+      groupValue: groupValue,
+      onValueChanged: onValueChanged,
+      thumbColor: effectiveThumb,
+      padding: padding,
+      backgroundColor: effectiveBg,
     );
   }
 }

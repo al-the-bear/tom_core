@@ -698,3 +698,57 @@ class TomCloseButton extends TomButtonBase {
     );
   }
 }
+
+/// Tom wrapper for [DropdownMenuEntry] used as an action button.
+///
+/// Wraps a single dropdown menu entry for use within a [TomDropdownMenu].
+/// Adds ID, group, authorization, and resource resolution for the label.
+class TomDropdownMenuEntry<T> extends TomButtonBase {
+  final T value;
+  final String? label;
+  final Widget? leadingIcon;
+  final Widget? trailingIcon;
+  final bool enabled;
+  final ButtonStyle? style;
+  final Widget? labelWidget;
+
+  const TomDropdownMenuEntry({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.value,
+    this.label,
+    this.leadingIcon,
+    this.trailingIcon,
+    this.enabled = true,
+    this.style,
+    this.labelWidget,
+  });
+
+  /// Creates the underlying [DropdownMenuEntry] for use in a [DropdownMenu].
+  DropdownMenuEntry<T> toEntry(BuildContext context) {
+    final resolvedLabel =
+        label ?? (tomId != null ? resolveResource(context, 'label') : null) ?? '';
+
+    return DropdownMenuEntry<T>(
+      value: value,
+      label: resolvedLabel,
+      leadingIcon: leadingIcon,
+      trailingIcon: trailingIcon,
+      enabled: enabled,
+      style: style,
+      labelWidget: labelWidget,
+    );
+  }
+
+  @override
+  Widget buildContent(BuildContext context) {
+    // DropdownMenuEntry is not a widget itself — it is used as data within
+    // DropdownMenu. This buildContent returns a placeholder that renders
+    // the label for preview/accessibility purposes.
+    final resolvedLabel =
+        label ?? (tomId != null ? resolveResource(context, 'label') : null) ?? '';
+
+    return Text(resolvedLabel);
+  }
+}

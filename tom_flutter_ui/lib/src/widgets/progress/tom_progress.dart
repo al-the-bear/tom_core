@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
@@ -100,7 +101,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
 /// Adds ID, group, and authorization.
 class TomRefreshIndicator extends TomProgressBase {
   final Widget child;
-  final RefreshCallback onRefresh;
+  final Future<void> Function() onRefresh;
   final double displacement;
   final double edgeOffset;
   final Color? color;
@@ -144,6 +145,34 @@ class TomRefreshIndicator extends TomProgressBase {
       semanticsValue: semanticsValue,
       strokeWidth: strokeWidth,
       child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoActivityIndicator].
+///
+/// iOS-style activity spinner. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoActivityIndicator extends TomProgressBase {
+  final bool animating;
+  final double radius;
+  final Color? color;
+
+  const TomCupertinoActivityIndicator({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.animating = true,
+    this.radius = 10.0,
+    this.color,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoActivityIndicator(
+      animating: animating,
+      radius: radius,
+      color: color,
     );
   }
 }

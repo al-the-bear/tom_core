@@ -13,3 +13,4 @@ export 'selects/tom_selects.dart';
 export 'sliders/tom_sliders.dart';
 export 'tables/tom_tables.dart';
 export 'toggles/tom_toggles.dart';
+export 'trees/tom_trees.dart';

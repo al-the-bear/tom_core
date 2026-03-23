@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/material.dart';import 'package:flutter/cupertino.dart';import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -242,6 +241,55 @@ class TomListWheelScrollView extends TomListBase {
       restorationId: restorationId,
       scrollBehavior: scrollBehavior,
       childDelegate: childDelegate,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoListTile].
+///
+/// iOS-style list tile. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoListTile extends TomListBase {
+  final Widget title;
+  final Widget? subtitle;
+  final Widget? additionalInfo;
+  final Widget? leading;
+  final Widget? trailing;
+  final VoidCallback? onTap;
+  final Color? backgroundColor;
+  final EdgeInsetsGeometry? padding;
+  final double? leadingSize;
+  final double? leadingToTitle;
+
+  const TomCupertinoListTile({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.title,
+    this.subtitle,
+    this.additionalInfo,
+    this.leading,
+    this.trailing,
+    this.onTap,
+    this.backgroundColor,
+    this.padding,
+    this.leadingSize,
+    this.leadingToTitle,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoListTile(
+      title: title,
+      subtitle: subtitle,
+      additionalInfo: additionalInfo,
+      leading: leading,
+      trailing: trailing,
+      onTap: onTap,
+      backgroundColor: backgroundColor,
+      padding: padding,
+      leadingSize: leadingSize ?? 28.0,
+      leadingToTitle: leadingToTitle ?? 12.0,
     );
   }
 }

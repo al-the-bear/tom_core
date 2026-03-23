@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -550,5 +551,154 @@ class TomPageView extends TomNavigationBase {
       padEnds: padEnds,
       children: children,
     );
+  }
+}
+
+/// Tom wrapper for [CupertinoTabBar].
+///
+/// iOS-style bottom tab bar. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoTabBar extends TomNavigationBase {
+  final List<BottomNavigationBarItem> items;
+  final ValueChanged<int>? onTap;
+  final int currentIndex;
+  final Color? backgroundColor;
+  final Color? activeColor;
+  final Color inactiveColor;
+  final double iconSize;
+  final double height;
+  final Border? border;
+
+  const TomCupertinoTabBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.items,
+    this.onTap,
+    this.currentIndex = 0,
+    this.backgroundColor,
+    this.activeColor,
+    this.inactiveColor = CupertinoColors.inactiveGray,
+    this.iconSize = 30.0,
+    this.height = 50.0,
+    this.border,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoTabBar(
+      items: items,
+      onTap: onTap,
+      currentIndex: currentIndex,
+      backgroundColor: backgroundColor,
+      activeColor: activeColor,
+      inactiveColor: inactiveColor,
+      iconSize: iconSize,
+      height: height,
+      border: border,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoNavigationBar].
+///
+/// iOS-style navigation bar. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoNavigationBar extends TomNavigationBase {
+  final Widget? leading;
+  final bool automaticallyImplyLeading;
+  final bool automaticallyImplyMiddle;
+  final String? previousPageTitle;
+  final Widget? middle;
+  final Widget? trailing;
+  final Color? backgroundColor;
+  final Brightness? brightness;
+  final EdgeInsetsDirectional? padding;
+  final Border? border;
+  final bool transitionBetweenRoutes;
+  final Object? heroTag;
+
+  const TomCupertinoNavigationBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.leading,
+    this.automaticallyImplyLeading = true,
+    this.automaticallyImplyMiddle = true,
+    this.previousPageTitle,
+    this.middle,
+    this.trailing,
+    this.backgroundColor,
+    this.brightness,
+    this.padding,
+    this.border,
+    this.transitionBetweenRoutes = true,
+    this.heroTag,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoNavigationBar(
+      leading: leading,
+      automaticallyImplyLeading: automaticallyImplyLeading,
+      automaticallyImplyMiddle: automaticallyImplyMiddle,
+      previousPageTitle: previousPageTitle,
+      middle: middle,
+      trailing: trailing,
+      backgroundColor: backgroundColor,
+      brightness: brightness,
+      padding: padding,
+      border: border,
+      transitionBetweenRoutes: transitionBetweenRoutes,
+      heroTag: heroTag ?? _defaultHeroTag,
+    );
+  }
+}
+
+const _defaultHeroTag = 'tom_cupertino_nav_bar';
+
+/// Tom wrapper for a custom Breadcrumb navigation widget.
+///
+/// A simple horizontal breadcrumb trail. Adds ID, group, authorization,
+/// and resource resolution.
+class TomBreadcrumb extends TomNavigationBase {
+  final List<Widget> items;
+  final Widget separator;
+  final MainAxisAlignment mainAxisAlignment;
+  final CrossAxisAlignment crossAxisAlignment;
+  final EdgeInsetsGeometry? padding;
+
+  const TomBreadcrumb({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.items,
+    this.separator = const Text(' / '),
+    this.mainAxisAlignment = MainAxisAlignment.start,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    this.padding,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final breadcrumbChildren = <Widget>[];
+    for (var i = 0; i < items.length; i++) {
+      breadcrumbChildren.add(items[i]);
+      if (i < items.length - 1) {
+        breadcrumbChildren.add(separator);
+      }
+    }
+
+    final row = Row(
+      mainAxisAlignment: mainAxisAlignment,
+      crossAxisAlignment: crossAxisAlignment,
+      mainAxisSize: MainAxisSize.min,
+      children: breadcrumbChildren,
+    );
+
+    if (padding != null) {
+      return Padding(padding: padding!, child: row);
+    }
+    return row;
   }
 }

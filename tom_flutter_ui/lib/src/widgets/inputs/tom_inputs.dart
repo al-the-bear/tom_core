@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
@@ -406,6 +407,242 @@ class TomSearchAnchor extends TomInputBase {
       dividerColor: dividerColor,
       viewConstraints: viewConstraints,
       textCapitalization: textCapitalization,
+    );
+  }
+}
+
+/// Tom wrapper for [EditableText].
+///
+/// Low-level text editing widget. Adds ID, group, authorization,
+/// and resource resolution.
+class TomEditableText extends TomInputBase {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final bool readOnly;
+  final String obscuringCharacter;
+  final bool obscureText;
+  final bool autocorrect;
+  final TextStyle style;
+  final StrutStyle? strutStyle;
+  final Color cursorColor;
+  final Color? backgroundCursorColor;
+  final int? maxLines;
+  final int? minLines;
+  final bool expands;
+  final bool autofocus;
+  final Color? selectionColor;
+  final TextSelectionControls? selectionControls;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final TextAlign textAlign;
+  final TextDirection? textDirection;
+  final TextScaler? textScaler;
+  final bool showCursor;
+  final bool showSelectionHandles;
+  final double cursorWidth;
+  final double? cursorHeight;
+  final Radius? cursorRadius;
+  final Offset? cursorOffset;
+  final ScrollPhysics? scrollPhysics;
+  final ScrollController? scrollController;
+  final SelectionChangedCallback? onSelectionChanged;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback? onEditingComplete;
+  final ValueChanged<String>? onSubmitted;
+  final bool rendererIgnoresPointer;
+  final bool enableInteractiveSelection;
+  final Clip clipBehavior;
+
+  const TomEditableText({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.controller,
+    required this.focusNode,
+    this.readOnly = false,
+    this.obscuringCharacter = '•',
+    this.obscureText = false,
+    this.autocorrect = true,
+    required this.style,
+    this.strutStyle,
+    required this.cursorColor,
+    this.backgroundCursorColor,
+    this.maxLines = 1,
+    this.minLines,
+    this.expands = false,
+    this.autofocus = false,
+    this.selectionColor,
+    this.selectionControls,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.textScaler,
+    this.showCursor = true,
+    this.showSelectionHandles = false,
+    this.cursorWidth = 2.0,
+    this.cursorHeight,
+    this.cursorRadius,
+    this.cursorOffset,
+    this.scrollPhysics,
+    this.scrollController,
+    this.onSelectionChanged,
+    this.onChanged,
+    this.onEditingComplete,
+    this.onSubmitted,
+    this.rendererIgnoresPointer = false,
+    this.enableInteractiveSelection = true,
+    this.clipBehavior = Clip.hardEdge,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return EditableText(
+      controller: controller,
+      focusNode: focusNode,
+      readOnly: readOnly,
+      obscuringCharacter: obscuringCharacter,
+      obscureText: obscureText,
+      autocorrect: autocorrect,
+      style: style,
+      strutStyle: strutStyle,
+      cursorColor: cursorColor,
+      backgroundCursorColor: backgroundCursorColor ?? Colors.grey,
+      maxLines: maxLines,
+      minLines: minLines,
+      expands: expands,
+      autofocus: autofocus,
+      selectionColor: selectionColor,
+      selectionControls: selectionControls,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      textCapitalization: textCapitalization,
+      textAlign: textAlign,
+      textDirection: textDirection,
+      textScaler: textScaler,
+      showCursor: showCursor,
+      showSelectionHandles: showSelectionHandles,
+      cursorWidth: cursorWidth,
+      cursorHeight: cursorHeight,
+      cursorRadius: cursorRadius,
+      cursorOffset: cursorOffset,
+      scrollPhysics: scrollPhysics,
+      scrollController: scrollController,
+      onSelectionChanged: onSelectionChanged,
+      onChanged: onChanged,
+      onEditingComplete: onEditingComplete,
+      onSubmitted: onSubmitted,
+      rendererIgnoresPointer: rendererIgnoresPointer,
+      enableInteractiveSelection: enableInteractiveSelection,
+      clipBehavior: clipBehavior,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoTextField].
+///
+/// iOS-style text field. Adds ID, group, authorization,
+/// and resource resolution for placeholder/prefix.
+class TomCupertinoTextField extends TomInputBase {
+  final TextEditingController? controller;
+  final FocusNode? focusNode;
+  final BoxDecoration? decoration;
+  final EdgeInsetsGeometry padding;
+  final String? placeholder;
+  final TextStyle? placeholderStyle;
+  final Widget? prefix;
+  final OverlayVisibilityMode prefixMode;
+  final Widget? suffix;
+  final OverlayVisibilityMode suffixMode;
+  final OverlayVisibilityMode clearButtonMode;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final TextStyle? style;
+  final TextAlign textAlign;
+  final TextDirection? textDirection;
+  final bool autofocus;
+  final bool obscureText;
+  final bool autocorrect;
+  final int? maxLines;
+  final int? minLines;
+  final int? maxLength;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback? onEditingComplete;
+  final ValueChanged<String>? onSubmitted;
+  final bool enabled;
+  final bool readOnly;
+
+  const TomCupertinoTextField({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.controller,
+    this.focusNode,
+    this.decoration,
+    this.padding = const EdgeInsets.all(7.0),
+    this.placeholder,
+    this.placeholderStyle,
+    this.prefix,
+    this.prefixMode = OverlayVisibilityMode.always,
+    this.suffix,
+    this.suffixMode = OverlayVisibilityMode.editing,
+    this.clearButtonMode = OverlayVisibilityMode.never,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.style,
+    this.textAlign = TextAlign.start,
+    this.textDirection,
+    this.autofocus = false,
+    this.obscureText = false,
+    this.autocorrect = true,
+    this.maxLines = 1,
+    this.minLines,
+    this.maxLength,
+    this.onChanged,
+    this.onEditingComplete,
+    this.onSubmitted,
+    this.enabled = true,
+    this.readOnly = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedPlaceholder =
+        placeholder ?? (tomId != null ? resolveResource(context, 'hint') : null);
+
+    return CupertinoTextField(
+      controller: controller,
+      focusNode: focusNode,
+      decoration: decoration,
+      padding: padding,
+      placeholder: resolvedPlaceholder,
+      placeholderStyle: placeholderStyle,
+      prefix: prefix,
+      prefixMode: prefixMode,
+      suffix: suffix,
+      suffixMode: suffixMode,
+      clearButtonMode: clearButtonMode,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      textCapitalization: textCapitalization,
+      style: style,
+      textAlign: textAlign,
+      textDirection: textDirection,
+      autofocus: autofocus,
+      obscureText: obscureText,
+      autocorrect: autocorrect,
+      maxLines: maxLines,
+      minLines: minLines,
+      maxLength: maxLength,
+      onChanged: onChanged,
+      onEditingComplete: onEditingComplete,
+      onSubmitted: onSubmitted,
+      enabled: enabled,
+      readOnly: readOnly,
     );
   }
 }

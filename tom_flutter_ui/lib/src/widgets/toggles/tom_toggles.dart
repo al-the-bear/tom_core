@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
@@ -544,6 +545,61 @@ class TomToggleButtons extends TomToggleBase {
       constraints: constraints,
       textStyle: textStyle,
       children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoSwitch].
+///
+/// iOS-style toggle switch. Adds ID, group, authorization,
+/// and resource resolution.
+class TomCupertinoSwitch extends TomToggleBase {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final Color? activeTrackColor;
+  final Color? thumbColor;
+  final Color? trackColor;
+  final DragStartBehavior dragStartBehavior;
+  final bool applyTheme;
+  final Color? focusColor;
+  final Color? onLabelColor;
+  final Color? offLabelColor;
+  final FocusNode? focusNode;
+  final bool autofocus;
+
+  const TomCupertinoSwitch({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.value,
+    required this.onChanged,
+    this.activeTrackColor,
+    this.thumbColor,
+    this.trackColor,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.applyTheme = false,
+    this.focusColor,
+    this.onLabelColor,
+    this.offLabelColor,
+    this.focusNode,
+    this.autofocus = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoSwitch(
+      value: value,
+      onChanged: onChanged,
+      activeTrackColor: activeTrackColor,
+      thumbColor: thumbColor,
+      trackColor: trackColor,
+      dragStartBehavior: dragStartBehavior,
+      applyTheme: applyTheme,
+      focusColor: focusColor,
+      onLabelColor: onLabelColor,
+      offLabelColor: offLabelColor,
+      focusNode: focusNode,
+      autofocus: autofocus,
     );
   }
 }
