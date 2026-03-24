@@ -250,3 +250,63 @@ abstract class TomTreeBase extends TomFamilyBase {
   @override
   TomWidgetFamily get family => TomWidgetFamily.tree;
 }
+
+/// Base for the Sliver family (sliver-based scrolling widgets).
+abstract class TomSliverBase extends TomFamilyBase {
+  const TomSliverBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+  });
+
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.sliver;
+}
+
+/// Base for the Animated family (implicit animations).
+abstract class TomAnimatedBase extends TomFamilyBase {
+  const TomAnimatedBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+  });
+
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.animated;
+}
+
+/// Base for the Effect family (visual effects, filters, backdrops).
+abstract class TomEffectBase extends TomFamilyBase {
+  const TomEffectBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+  });
+
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.effect;
+}
+
+/// Base for the Interaction family (gesture detectors, drag targets).
+abstract class TomInteractionBase extends TomFamilyBase {
+  const TomInteractionBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+  });
+
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.interaction;
+}
+
+/// Base for the Builder family (stream, future, value listenable builders).
+abstract class TomBuilderBase extends TomFamilyBase {
+  const TomBuilderBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+  });
+
+  @override
+  TomWidgetFamily get family => TomWidgetFamily.builder;
+}

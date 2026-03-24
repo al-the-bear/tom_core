@@ -957,3 +957,354 @@ class TomDialogs {
     );
   }
 }
+
+// ============================================================================
+// Section II: Extended Dialog Widgets
+// ============================================================================
+
+/// Tom wrapper for [AboutDialog].
+///
+/// App About dialog. Auth on about access; resources for app strings.
+class TomAboutDialog extends TomDialogBase {
+  final String? applicationName;
+  final String? applicationVersion;
+  final Widget? applicationIcon;
+  final String? applicationLegalese;
+  final List<Widget>? children;
+
+  const TomAboutDialog({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.applicationName,
+    this.applicationVersion,
+    this.applicationIcon,
+    this.applicationLegalese,
+    this.children,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return AboutDialog(
+      applicationName: applicationName ??
+          (tomId != null ? resolveResource(context, 'applicationName') : null),
+      applicationVersion: applicationVersion ??
+          (tomId != null
+              ? resolveResource(context, 'applicationVersion')
+              : null),
+      applicationIcon: applicationIcon,
+      applicationLegalese: applicationLegalese ??
+          (tomId != null
+              ? resolveResource(context, 'applicationLegalese')
+              : null),
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoContextMenu].
+///
+/// Long-press context menu. Auth controls context menu access.
+class TomCupertinoContextMenu extends TomDialogBase {
+  final Widget child;
+  final List<Widget> actions;
+  final bool enableHapticFeedback;
+
+  const TomCupertinoContextMenu({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    required this.actions,
+    this.enableHapticFeedback = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoContextMenu(
+      actions: actions,
+      enableHapticFeedback: enableHapticFeedback,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [DatePickerDialog].
+///
+/// Date picker dialog. Auth for readonly; resources for text strings.
+class TomDatePickerDialog extends TomDialogBase {
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final DateTime? currentDate;
+  final DatePickerEntryMode initialEntryMode;
+  final SelectableDayPredicate? selectableDayPredicate;
+  final String? cancelText;
+  final String? confirmText;
+  final String? helpText;
+  final DatePickerMode initialCalendarMode;
+  final String? errorFormatText;
+  final String? errorInvalidText;
+  final String? fieldHintText;
+  final String? fieldLabelText;
+  final TextInputType? keyboardType;
+  final Icon? switchToInputEntryModeIcon;
+  final Icon? switchToCalendarEntryModeIcon;
+
+  const TomDatePickerDialog({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    this.currentDate,
+    this.initialEntryMode = DatePickerEntryMode.calendar,
+    this.selectableDayPredicate,
+    this.cancelText,
+    this.confirmText,
+    this.helpText,
+    this.initialCalendarMode = DatePickerMode.day,
+    this.errorFormatText,
+    this.errorInvalidText,
+    this.fieldHintText,
+    this.fieldLabelText,
+    this.keyboardType,
+    this.switchToInputEntryModeIcon,
+    this.switchToCalendarEntryModeIcon,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return DatePickerDialog(
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      currentDate: currentDate,
+      initialEntryMode: initialEntryMode,
+      selectableDayPredicate: selectableDayPredicate,
+      cancelText:
+          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+      confirmText:
+          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+      helpText:
+          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+      initialCalendarMode: initialCalendarMode,
+      errorFormatText: errorFormatText ??
+          (tomId != null ? resolveResource(context, 'errorFormat') : null),
+      errorInvalidText: errorInvalidText ??
+          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+      fieldHintText: fieldHintText ??
+          (tomId != null ? resolveResource(context, 'fieldHint') : null),
+      fieldLabelText: fieldLabelText ??
+          (tomId != null ? resolveResource(context, 'fieldLabel') : null),
+      keyboardType: keyboardType,
+      switchToInputEntryModeIcon: switchToInputEntryModeIcon,
+      switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
+    );
+  }
+}
+
+/// Tom wrapper for [DateRangePickerDialog].
+///
+/// Date range picker dialog. Auth for readonly; resources for text strings.
+class TomDateRangePickerDialog extends TomDialogBase {
+  final DateTimeRange? initialDateRange;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final DateTime? currentDate;
+  final DatePickerEntryMode initialEntryMode;
+  final String? helpText;
+  final String? cancelText;
+  final String? confirmText;
+  final String? saveText;
+  final String? errorFormatText;
+  final String? errorInvalidText;
+  final String? errorInvalidRangeText;
+  final String? fieldStartHintText;
+  final String? fieldEndHintText;
+  final String? fieldStartLabelText;
+  final String? fieldEndLabelText;
+  final TextInputType keyboardType;
+  final Icon? switchToInputEntryModeIcon;
+  final Icon? switchToCalendarEntryModeIcon;
+
+  const TomDateRangePickerDialog({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.initialDateRange,
+    required this.firstDate,
+    required this.lastDate,
+    this.currentDate,
+    this.initialEntryMode = DatePickerEntryMode.calendar,
+    this.helpText,
+    this.cancelText,
+    this.confirmText,
+    this.saveText,
+    this.errorFormatText,
+    this.errorInvalidText,
+    this.errorInvalidRangeText,
+    this.fieldStartHintText,
+    this.fieldEndHintText,
+    this.fieldStartLabelText,
+    this.fieldEndLabelText,
+    this.keyboardType = TextInputType.datetime,
+    this.switchToInputEntryModeIcon,
+    this.switchToCalendarEntryModeIcon,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return DateRangePickerDialog(
+      initialDateRange: initialDateRange,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      currentDate: currentDate,
+      initialEntryMode: initialEntryMode,
+      helpText:
+          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+      cancelText:
+          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+      confirmText:
+          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+      saveText:
+          saveText ?? (tomId != null ? resolveResource(context, 'save') : null),
+      errorFormatText: errorFormatText ??
+          (tomId != null ? resolveResource(context, 'errorFormat') : null),
+      errorInvalidText: errorInvalidText ??
+          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+      errorInvalidRangeText: errorInvalidRangeText ??
+          (tomId != null ? resolveResource(context, 'errorInvalidRange') : null),
+      fieldStartHintText: fieldStartHintText ??
+          (tomId != null ? resolveResource(context, 'fieldStartHint') : null),
+      fieldEndHintText: fieldEndHintText ??
+          (tomId != null ? resolveResource(context, 'fieldEndHint') : null),
+      fieldStartLabelText: fieldStartLabelText ??
+          (tomId != null ? resolveResource(context, 'fieldStartLabel') : null),
+      fieldEndLabelText: fieldEndLabelText ??
+          (tomId != null ? resolveResource(context, 'fieldEndLabel') : null),
+      keyboardType: keyboardType,
+      switchToInputEntryModeIcon: switchToInputEntryModeIcon,
+      switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
+    );
+  }
+}
+
+/// Tom wrapper for [TimePickerDialog].
+///
+/// Time picker dialog. Auth for readonly; resources for text strings.
+class TomTimePickerDialog extends TomDialogBase {
+  final TimeOfDay initialTime;
+  final String? cancelText;
+  final String? confirmText;
+  final String? helpText;
+  final String? errorInvalidText;
+  final String? hourLabelText;
+  final String? minuteLabelText;
+  final TimePickerEntryMode initialEntryMode;
+  final Orientation? orientation;
+  final EntryModeChangeCallback? onEntryModeChanged;
+
+  const TomTimePickerDialog({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.initialTime,
+    this.cancelText,
+    this.confirmText,
+    this.helpText,
+    this.errorInvalidText,
+    this.hourLabelText,
+    this.minuteLabelText,
+    this.initialEntryMode = TimePickerEntryMode.dial,
+    this.orientation,
+    this.onEntryModeChanged,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return TimePickerDialog(
+      initialTime: initialTime,
+      cancelText:
+          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+      confirmText:
+          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+      helpText:
+          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+      errorInvalidText: errorInvalidText ??
+          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+      hourLabelText: hourLabelText ??
+          (tomId != null ? resolveResource(context, 'hourLabel') : null),
+      minuteLabelText: minuteLabelText ??
+          (tomId != null ? resolveResource(context, 'minuteLabel') : null),
+      initialEntryMode: initialEntryMode,
+      orientation: orientation,
+      onEntryModeChanged: onEntryModeChanged,
+    );
+  }
+}
+
+/// Tom wrapper for [SimpleDialogOption].
+///
+/// Option item within SimpleDialog. Auth controls which options appear.
+class TomSimpleDialogOption extends TomDialogBase {
+  final VoidCallback? onPressed;
+  final EdgeInsets? padding;
+  final Widget? child;
+
+  const TomSimpleDialogOption({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.padding,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return SimpleDialogOption(
+      onPressed: onPressed,
+      padding: padding,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [LicensePage].
+///
+/// License listing page. Auth on access; resources for app strings.
+class TomLicensePage extends TomDialogBase {
+  final String? applicationName;
+  final String? applicationVersion;
+  final Widget? applicationIcon;
+  final String? applicationLegalese;
+
+  const TomLicensePage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.applicationName,
+    this.applicationVersion,
+    this.applicationIcon,
+    this.applicationLegalese,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return LicensePage(
+      applicationName: applicationName ??
+          (tomId != null ? resolveResource(context, 'applicationName') : null),
+      applicationVersion: applicationVersion ??
+          (tomId != null
+              ? resolveResource(context, 'applicationVersion')
+              : null),
+      applicationIcon: applicationIcon,
+      applicationLegalese: applicationLegalese ??
+          (tomId != null
+              ? resolveResource(context, 'applicationLegalese')
+              : null),
+    );
+  }
+}

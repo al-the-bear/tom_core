@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [Card].
@@ -1060,23 +1062,6 @@ class TomClipRect extends TomContainerBase {
   }
 }
 
-/// Tom wrapper for [Spacer].
-class TomSpacer extends TomContainerBase {
-  final int flex;
-
-  const TomSpacer({
-    super.key,
-    super.tomId,
-    super.tomGroup,
-    this.flex = 1,
-  });
-
-  @override
-  Widget buildContent(BuildContext context) {
-    return Spacer(flex: flex);
-  }
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 // Sliver containers
 // ────────────────────────────────────────────────────────────────────────────
@@ -1420,4 +1405,1562 @@ class TomInk extends TomContainerBase {
       child: child,
     );
   }
+}
+
+// ============================================================================
+// EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
+// These preserve type identity for Flutter's runtime `is`-checks.
+// ============================================================================
+
+/// Tom widget that EXTENDS [Expanded] with authorization.
+///
+/// This widget IS an [Expanded] (and IS a [Flexible]) — it passes `is Expanded`
+/// and `is Flexible` checks for use in [Row], [Column], and [Flex].
+///
+/// **ParentDataWidget pattern:**
+/// - ParentDataWidgets have no `build()` method — they apply parent data
+/// - The mixin adds `tomId` for identification
+/// - Visibility is controlled by the **parent container** filtering its children
+///
+/// ```dart
+/// TomRow(
+///   tomId: 'mainRow',
+///   children: [
+///     TomExpanded(tomId: 'content', child: ContentWidget()),
+///     TomExpanded(tomId: 'sidebar', child: SidebarWidget()),
+///   ],
+/// )
+/// ```
+class TomExpanded extends Expanded with TomWidgetMixin {
+  /// Creates a Tom Expanded widget.
+  const TomExpanded({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.flex,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+/// Tom widget that EXTENDS [Flexible] with authorization.
+///
+/// This widget IS a [Flexible] — it passes `is Flexible` checks.
+///
+/// ```dart
+/// TomRow(
+///   tomId: 'flexRow',
+///   children: [
+///     TomFlexible(tomId: 'flex1', flex: 2, child: Widget1()),
+///     TomFlexible(tomId: 'flex2', flex: 1, child: Widget2()),
+///   ],
+/// )
+/// ```
+class TomFlexible extends Flexible with TomWidgetMixin {
+  /// Creates a Tom Flexible widget.
+  const TomFlexible({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.flex,
+    super.fit,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+/// Tom widget that EXTENDS [Spacer] with authorization.
+///
+/// This widget IS a [Spacer] — it passes `is Spacer` checks.
+/// Spacer creates empty space in a Flex layout.
+///
+/// ```dart
+/// Row(children: [
+///   Text('Left'),
+///   TomSpacer(tomId: 'spacer1'),
+///   Text('Right'),
+/// ])
+/// ```
+class TomSpacer extends Spacer with TomWidgetMixin {
+  /// Creates a Tom Spacer widget.
+  const TomSpacer({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.flex,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+/// Tom widget that EXTENDS [Positioned] with authorization.
+///
+/// This widget IS a [Positioned] — it passes `is Positioned` checks for use
+/// in [Stack].
+///
+/// ```dart
+/// TomStack(
+///   tomId: 'overlayStack',
+///   children: [
+///     TomPositioned(tomId: 'badge', top: 0, right: 0, child: Badge()),
+///   ],
+/// )
+/// ```
+class TomPositioned extends Positioned with TomWidgetMixin {
+  /// Creates a Tom Positioned widget.
+  const TomPositioned({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.left,
+    super.top,
+    super.right,
+    super.bottom,
+    super.width,
+    super.height,
+    required super.child,
+  });
+
+  /// Creates a Tom Positioned widget that fills the Stack.
+  const TomPositioned.fill({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.left = 0.0,
+    super.top = 0.0,
+    super.right = 0.0,
+    super.bottom = 0.0,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+/// Tom widget that EXTENDS [PositionedDirectional] with authorization.
+///
+/// This widget IS a [Positioned] — RTL-aware positioning in [Stack].
+class TomPositionedDirectional extends PositionedDirectional
+    with TomWidgetMixin {
+  /// Creates a Tom PositionedDirectional widget.
+  const TomPositionedDirectional({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.start,
+    super.top,
+    super.end,
+    super.bottom,
+    super.width,
+    super.height,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+/// Tom widget that EXTENDS [TableCell] with authorization.
+///
+/// This widget IS a [TableCell] — used in [Table] with vertical alignment.
+class TomTableCell extends TableCell with TomWidgetMixin {
+  /// Creates a Tom TableCell widget.
+  const TomTableCell({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.verticalAlignment,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+}
+
+// ============================================================================
+// Section II Containers — Layout widgets, Cupertino scaffolds, effects
+// ============================================================================
+
+/// Tom wrapper for [SafeArea].
+///
+/// Insets child to avoid system intrusions. Auth can hide safe-area content.
+class TomSafeArea extends TomContainerBase {
+  final bool left;
+  final bool top;
+  final bool right;
+  final bool bottom;
+  final EdgeInsets minimum;
+  final bool maintainBottomViewPadding;
+  final Widget child;
+
+  const TomSafeArea({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.left = true,
+    this.top = true,
+    this.right = true,
+    this.bottom = true,
+    this.minimum = EdgeInsets.zero,
+    this.maintainBottomViewPadding = false,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return SafeArea(
+      left: left,
+      top: top,
+      right: right,
+      bottom: bottom,
+      minimum: minimum,
+      maintainBottomViewPadding: maintainBottomViewPadding,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [SingleChildScrollView].
+///
+/// Scrollable container for a single child. Auth on scrollable content.
+class TomSingleChildScrollView extends TomContainerBase {
+  final Axis scrollDirection;
+  final bool reverse;
+  final EdgeInsetsGeometry? padding;
+  final ScrollPhysics? physics;
+  final ScrollController? controller;
+  final Widget? child;
+  final DragStartBehavior dragStartBehavior;
+  final Clip clipBehavior;
+  final String? restorationId;
+  final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
+
+  const TomSingleChildScrollView({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.padding,
+    this.physics,
+    this.controller,
+    this.child,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.clipBehavior = Clip.hardEdge,
+    this.restorationId,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      padding: padding,
+      physics: physics,
+      controller: controller,
+      dragStartBehavior: dragStartBehavior,
+      clipBehavior: clipBehavior,
+      restorationId: restorationId,
+      keyboardDismissBehavior: keyboardDismissBehavior,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CarouselView].
+///
+/// Horizontal carousel/slider. Auth on carousel sections.
+class TomCarouselView extends TomContainerBase {
+  final List<Widget> children;
+  final EdgeInsets? padding;
+  final Color? backgroundColor;
+  final double? elevation;
+  final ShapeBorder? shape;
+  final Clip? overlayColor;
+  final double? itemExtent;
+  final double shrinkExtent;
+  final CarouselController? controller;
+  final Axis scrollDirection;
+  final bool reverse;
+  final ValueChanged<int>? onTap;
+
+  const TomCarouselView({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.padding,
+    this.backgroundColor,
+    this.elevation,
+    this.shape,
+    this.overlayColor,
+    this.itemExtent,
+    this.shrinkExtent = 0.0,
+    this.controller,
+    this.scrollDirection = Axis.horizontal,
+    this.reverse = false,
+    this.onTap,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CarouselView(
+      padding: padding,
+      backgroundColor: backgroundColor,
+      elevation: elevation,
+      shape: shape,
+      itemExtent: itemExtent ?? 200.0,
+      shrinkExtent: shrinkExtent,
+      controller: controller,
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      onTap: onTap,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [Visibility].
+///
+/// Logical visibility control. Natural fit for auth show/hide.
+class TomVisibility extends TomContainerBase {
+  final Widget child;
+  final Widget replacement;
+  final bool visible;
+  final bool maintainState;
+  final bool maintainAnimation;
+  final bool maintainSize;
+  final bool maintainSemantics;
+  final bool maintainInteractivity;
+
+  const TomVisibility({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    this.replacement = const SizedBox.shrink(),
+    this.visible = true,
+    this.maintainState = false,
+    this.maintainAnimation = false,
+    this.maintainSize = false,
+    this.maintainSemantics = false,
+    this.maintainInteractivity = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Visibility(
+      replacement: replacement,
+      visible: visible,
+      maintainState: maintainState,
+      maintainAnimation: maintainAnimation,
+      maintainSize: maintainSize,
+      maintainSemantics: maintainSemantics,
+      maintainInteractivity: maintainInteractivity,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [Offstage].
+///
+/// Keeps widget in tree but hidden. Natural auth fit.
+class TomOffstage extends TomContainerBase {
+  final bool offstage;
+  final Widget? child;
+
+  const TomOffstage({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.offstage = true,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Offstage(
+      offstage: offstage,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoPageScaffold].
+///
+/// Cupertino page scaffold. Auth on page regions.
+class TomCupertinoPageScaffold extends TomContainerBase {
+  final ObstructingPreferredSizeWidget? navigationBar;
+  final Color? backgroundColor;
+  final bool resizeToAvoidBottomInset;
+  final Widget child;
+
+  const TomCupertinoPageScaffold({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.navigationBar,
+    this.backgroundColor,
+    this.resizeToAvoidBottomInset = true,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoPageScaffold(
+      navigationBar: navigationBar,
+      backgroundColor: backgroundColor,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoTabScaffold].
+///
+/// Cupertino tab scaffold. Auth can control tab access.
+class TomCupertinoTabScaffold extends TomContainerBase {
+  final CupertinoTabBar tabBar;
+  final IndexedWidgetBuilder tabBuilder;
+  final CupertinoTabController? controller;
+  final Color? backgroundColor;
+  final bool resizeToAvoidBottomInset;
+  final String? restorationId;
+
+  const TomCupertinoTabScaffold({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.tabBar,
+    required this.tabBuilder,
+    this.controller,
+    this.backgroundColor,
+    this.resizeToAvoidBottomInset = true,
+    this.restorationId,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoTabScaffold(
+      tabBar: tabBar,
+      tabBuilder: tabBuilder,
+      controller: controller,
+      backgroundColor: backgroundColor,
+      resizeToAvoidBottomInset: resizeToAvoidBottomInset,
+      restorationId: restorationId,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoFormRow].
+///
+/// Cupertino form layout row. Auth on form field regions.
+class TomCupertinoFormRow extends TomContainerBase {
+  final Widget child;
+  final Widget? prefix;
+  final EdgeInsetsGeometry? padding;
+  final Widget? helper;
+  final Widget? error;
+
+  const TomCupertinoFormRow({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    this.prefix,
+    this.padding,
+    this.helper,
+    this.error,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoFormRow(
+      prefix: prefix,
+      padding: padding,
+      helper: helper,
+      error: error,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoFormSection].
+///
+/// Cupertino form section. Auth can hide entire form sections.
+class TomCupertinoFormSection extends TomContainerBase {
+  final List<Widget> children;
+  final Widget? header;
+  final Widget? footer;
+  final EdgeInsetsGeometry margin;
+  final Color? backgroundColor;
+  final BoxDecoration? decoration;
+  final Clip clipBehavior;
+  final bool insetGrouped;
+
+  const TomCupertinoFormSection({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.header,
+    this.footer,
+    this.margin = EdgeInsets.zero,
+    this.backgroundColor,
+    this.decoration,
+    this.clipBehavior = Clip.none,
+    this.insetGrouped = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedBgColor = backgroundColor ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
+    if (insetGrouped) {
+      return CupertinoFormSection.insetGrouped(
+        header: header,
+        footer: footer,
+        margin: margin,
+        backgroundColor: resolvedBgColor,
+        decoration: decoration,
+        clipBehavior: clipBehavior,
+        children: children,
+      );
+    }
+    return CupertinoFormSection(
+      header: header,
+      footer: footer,
+      margin: margin,
+      backgroundColor: resolvedBgColor,
+      decoration: decoration,
+      clipBehavior: clipBehavior,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [NestedScrollView].
+///
+/// Scroll coordination between header slivers and body. Auth on content.
+class TomNestedScrollView extends TomContainerBase {
+  final ScrollController? controller;
+  final Axis scrollDirection;
+  final bool reverse;
+  final ScrollPhysics? physics;
+  final NestedScrollViewHeaderSliversBuilder headerSliverBuilder;
+  final Widget body;
+  final DragStartBehavior dragStartBehavior;
+  final bool floatHeaderSlivers;
+  final Clip clipBehavior;
+  final String? restorationId;
+  final ScrollBehavior? scrollBehavior;
+
+  const TomNestedScrollView({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.controller,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.physics,
+    required this.headerSliverBuilder,
+    required this.body,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.floatHeaderSlivers = false,
+    this.clipBehavior = Clip.hardEdge,
+    this.restorationId,
+    this.scrollBehavior,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return NestedScrollView(
+      controller: controller,
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      physics: physics,
+      headerSliverBuilder: headerSliverBuilder,
+      body: body,
+      dragStartBehavior: dragStartBehavior,
+      floatHeaderSlivers: floatHeaderSlivers,
+      clipBehavior: clipBehavior,
+      restorationId: restorationId,
+      scrollBehavior: scrollBehavior,
+    );
+  }
+}
+
+/// Tom wrapper for [Scrollbar].
+///
+/// Visual scroll position indicator. Auth on scrollbar visibility.
+class TomScrollbar extends TomContainerBase {
+  final Widget child;
+  final ScrollController? controller;
+  final bool? thumbVisibility;
+  final bool? trackVisibility;
+  final double? thickness;
+  final Radius? radius;
+  final ScrollNotificationPredicate? notificationPredicate;
+  final bool? interactive;
+  final ScrollbarOrientation? scrollbarOrientation;
+
+  const TomScrollbar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    this.controller,
+    this.thumbVisibility,
+    this.trackVisibility,
+    this.thickness,
+    this.radius,
+    this.notificationPredicate,
+    this.interactive,
+    this.scrollbarOrientation,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Scrollbar(
+      controller: controller,
+      thumbVisibility: thumbVisibility,
+      trackVisibility: trackVisibility,
+      thickness: thickness,
+      radius: radius,
+      notificationPredicate: notificationPredicate,
+      interactive: interactive,
+      scrollbarOrientation: scrollbarOrientation,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoScrollbar].
+///
+/// Cupertino-styled scrollbar. Auth on scrollbar visibility.
+class TomCupertinoScrollbar extends TomContainerBase {
+  final Widget child;
+  final ScrollController? controller;
+  final bool? thumbVisibility;
+  final double thickness;
+  final double thicknessWhileDragging;
+  final Radius radius;
+  final Radius radiusWhileDragging;
+  final ScrollNotificationPredicate? notificationPredicate;
+
+  const TomCupertinoScrollbar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    this.controller,
+    this.thumbVisibility,
+    this.thickness = CupertinoScrollbar.defaultThickness,
+    this.thicknessWhileDragging = CupertinoScrollbar.defaultThicknessWhileDragging,
+    this.radius = CupertinoScrollbar.defaultRadius,
+    this.radiusWhileDragging = CupertinoScrollbar.defaultRadiusWhileDragging,
+    this.notificationPredicate,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoScrollbar(
+      controller: controller,
+      thumbVisibility: thumbVisibility,
+      thickness: thickness,
+      thicknessWhileDragging: thicknessWhileDragging,
+      radius: radius,
+      radiusWhileDragging: radiusWhileDragging,
+      notificationPredicate: notificationPredicate,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [DraggableScrollableSheet].
+///
+/// Bottom sheet with drag-to-expand. Auth controls sheet access.
+class TomDraggableScrollableSheet extends TomContainerBase {
+  final double initialChildSize;
+  final double minChildSize;
+  final double maxChildSize;
+  final bool expand;
+  final bool snap;
+  final List<double>? snapSizes;
+  final double? snapAnimationDuration;
+  final DraggableScrollableController? controller;
+  final bool shouldCloseOnMinExtent;
+  final ScrollableWidgetBuilder builder;
+
+  const TomDraggableScrollableSheet({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.initialChildSize = 0.5,
+    this.minChildSize = 0.25,
+    this.maxChildSize = 1.0,
+    this.expand = true,
+    this.snap = false,
+    this.snapSizes,
+    this.snapAnimationDuration,
+    this.controller,
+    this.shouldCloseOnMinExtent = true,
+    required this.builder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: initialChildSize,
+      minChildSize: minChildSize,
+      maxChildSize: maxChildSize,
+      expand: expand,
+      snap: snap,
+      snapSizes: snapSizes,
+      controller: controller,
+      shouldCloseOnMinExtent: shouldCloseOnMinExtent,
+      builder: builder,
+    );
+  }
+}
+
+/// Tom wrapper for [InteractiveViewer].
+///
+/// Pan/zoom viewport for child content. Auth can restrict zoom/pan.
+class TomInteractiveViewer extends TomContainerBase {
+  final Clip clipBehavior;
+  final PanAxis panAxis;
+  final EdgeInsets boundaryMargin;
+  final bool constrained;
+  final double maxScale;
+  final double minScale;
+  final double interactionEndFrictionCoefficient;
+  final GestureScaleEndCallback? onInteractionEnd;
+  final GestureScaleStartCallback? onInteractionStart;
+  final GestureScaleUpdateCallback? onInteractionUpdate;
+  final bool panEnabled;
+  final bool scaleEnabled;
+  final double scaleFactor;
+  final TransformationController? transformationController;
+  final Alignment alignment;
+  final Widget child;
+
+  const TomInteractiveViewer({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.clipBehavior = Clip.hardEdge,
+    this.panAxis = PanAxis.free,
+    this.boundaryMargin = EdgeInsets.zero,
+    this.constrained = true,
+    this.maxScale = 2.5,
+    this.minScale = 0.8,
+    this.interactionEndFrictionCoefficient = 0.0000135,
+    this.onInteractionEnd,
+    this.onInteractionStart,
+    this.onInteractionUpdate,
+    this.panEnabled = true,
+    this.scaleEnabled = true,
+    this.scaleFactor = kDefaultMouseScrollToScaleFactor,
+    this.transformationController,
+    this.alignment = Alignment.topLeft,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return InteractiveViewer(
+      clipBehavior: clipBehavior,
+      panAxis: panAxis,
+      boundaryMargin: boundaryMargin,
+      constrained: constrained,
+      maxScale: maxScale,
+      minScale: minScale,
+      interactionEndFrictionCoefficient: interactionEndFrictionCoefficient,
+      onInteractionEnd: onInteractionEnd,
+      onInteractionStart: onInteractionStart,
+      onInteractionUpdate: onInteractionUpdate,
+      panEnabled: panEnabled,
+      scaleEnabled: scaleEnabled,
+      scaleFactor: scaleFactor,
+      transformationController: transformationController,
+      alignment: alignment,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ClipPath].
+///
+/// Clips child to arbitrary path. Auth on clipped content.
+class TomClipPath extends TomContainerBase {
+  final CustomClipper<Path>? clipper;
+  final Clip clipBehavior;
+  final Widget? child;
+
+  const TomClipPath({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.clipper,
+    this.clipBehavior = Clip.antiAlias,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ClipPath(
+      clipper: clipper,
+      clipBehavior: clipBehavior,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ColoredBox].
+///
+/// Single solid-color background with child. Auth on content.
+class TomColoredBox extends TomContainerBase {
+  final Color color;
+  final Widget? child;
+
+  const TomColoredBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.color,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ColoredBox(
+      color: color,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [Opacity].
+///
+/// Visual opacity 0.0–1.0. Auth on content.
+class TomOpacity extends TomContainerBase {
+  final double opacity;
+  final bool alwaysIncludeSemantics;
+  final Widget? child;
+
+  const TomOpacity({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.opacity,
+    this.alwaysIncludeSemantics = false,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Opacity(
+      opacity: opacity,
+      alwaysIncludeSemantics: alwaysIncludeSemantics,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [Transform].
+///
+/// 2D/3D matrix transform with child. Auth on transformed content.
+class TomTransform extends TomContainerBase {
+  final Matrix4 transform;
+  final Offset? origin;
+  final AlignmentGeometry? alignment;
+  final bool transformHitTests;
+  final FilterQuality? filterQuality;
+  final Widget? child;
+
+  const TomTransform({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.transform,
+    this.origin,
+    this.alignment,
+    this.transformHitTests = true,
+    this.filterQuality,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Transform(
+      transform: transform,
+      origin: origin,
+      alignment: alignment,
+      transformHitTests: transformHitTests,
+      filterQuality: filterQuality,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [RotatedBox].
+///
+/// Quarter-turn rotation with child. Auth on rotated content.
+class TomRotatedBox extends TomContainerBase {
+  final int quarterTurns;
+  final Widget? child;
+
+  const TomRotatedBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.quarterTurns,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return RotatedBox(
+      quarterTurns: quarterTurns,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [OverflowBar].
+///
+/// Wrapping row that overflows to column (ButtonBar replacement). Auth on children.
+class TomOverflowBar extends TomContainerBase {
+  final double spacing;
+  final MainAxisAlignment? alignment;
+  final double overflowSpacing;
+  final OverflowBarAlignment overflowAlignment;
+  final VerticalDirection overflowDirection;
+  final TextDirection? textDirection;
+  final List<Widget> children;
+
+  const TomOverflowBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.spacing = 0.0,
+    this.alignment,
+    this.overflowSpacing = 0.0,
+    this.overflowAlignment = OverflowBarAlignment.start,
+    this.overflowDirection = VerticalDirection.down,
+    this.textDirection,
+    this.children = const <Widget>[],
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return OverflowBar(
+      spacing: spacing,
+      alignment: alignment,
+      overflowSpacing: overflowSpacing,
+      overflowAlignment: overflowAlignment,
+      overflowDirection: overflowDirection,
+      textDirection: textDirection,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [OverflowBox].
+///
+/// Allows child to exceed parent constraints. Auth on content.
+class TomOverflowBox extends TomContainerBase {
+  final AlignmentGeometry alignment;
+  final double? minWidth;
+  final double? maxWidth;
+  final double? minHeight;
+  final double? maxHeight;
+  final OverflowBoxFit fit;
+  final Widget? child;
+
+  const TomOverflowBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.alignment = Alignment.center,
+    this.minWidth,
+    this.maxWidth,
+    this.minHeight,
+    this.maxHeight,
+    this.fit = OverflowBoxFit.max,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return OverflowBox(
+      alignment: alignment,
+      minWidth: minWidth,
+      maxWidth: maxWidth,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
+      fit: fit,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [SizedOverflowBox].
+///
+/// Fixed size with unconstrained child. Auth on content.
+class TomSizedOverflowBox extends TomContainerBase {
+  final Size size;
+  final AlignmentGeometry alignment;
+  final Widget? child;
+
+  const TomSizedOverflowBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.size,
+    this.alignment = Alignment.center,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return SizedOverflowBox(
+      size: size,
+      alignment: alignment,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [UnconstrainedBox].
+///
+/// Removes parent constraints from child. Auth on content.
+class TomUnconstrainedBox extends TomContainerBase {
+  final TextDirection? textDirection;
+  final AlignmentGeometry alignment;
+  final Axis? constrainedAxis;
+  final Clip clipBehavior;
+  final Widget? child;
+
+  const TomUnconstrainedBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.textDirection,
+    this.alignment = Alignment.center,
+    this.constrainedAxis,
+    this.clipBehavior = Clip.none,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return UnconstrainedBox(
+      textDirection: textDirection,
+      alignment: alignment,
+      constrainedAxis: constrainedAxis,
+      clipBehavior: clipBehavior,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ConstraintsTransformBox].
+///
+/// Transforms incoming constraints. Auth on content.
+class TomConstraintsTransformBox extends TomContainerBase {
+  final TextDirection? textDirection;
+  final AlignmentGeometry alignment;
+  final BoxConstraintsTransform constraintsTransform;
+  final Clip clipBehavior;
+  final String debugTransformType;
+  final Widget? child;
+
+  const TomConstraintsTransformBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.textDirection,
+    this.alignment = Alignment.center,
+    required this.constraintsTransform,
+    this.clipBehavior = Clip.none,
+    this.debugTransformType = '',
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ConstraintsTransformBox(
+      textDirection: textDirection,
+      alignment: alignment,
+      constraintsTransform: constraintsTransform,
+      clipBehavior: clipBehavior,
+      debugTransformType: debugTransformType,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [LimitedBox].
+///
+/// Limits child size when unconstrained. Auth on content.
+class TomLimitedBox extends TomContainerBase {
+  final double maxWidth;
+  final double maxHeight;
+  final Widget? child;
+
+  const TomLimitedBox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.maxWidth = double.infinity,
+    this.maxHeight = double.infinity,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return LimitedBox(
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [Baseline].
+///
+/// Aligns child by text baseline. Auth on content.
+class TomBaseline extends TomContainerBase {
+  final double baseline;
+  final TextBaseline baselineType;
+  final Widget? child;
+
+  const TomBaseline({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.baseline,
+    required this.baselineType,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Baseline(
+      baseline: baseline,
+      baselineType: baselineType,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ListBody].
+///
+/// Linear layout for dialog body lists. Auth on list content.
+class TomListBody extends TomContainerBase {
+  final Axis mainAxis;
+  final bool reverse;
+  final List<Widget> children;
+
+  const TomListBody({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.mainAxis = Axis.vertical,
+    this.reverse = false,
+    this.children = const <Widget>[],
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ListBody(
+      mainAxis: mainAxis,
+      reverse: reverse,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [Flow].
+///
+/// Delegate-based custom flow layout. Auth on flow children.
+class TomFlow extends TomContainerBase {
+  final FlowDelegate delegate;
+  final Clip clipBehavior;
+  final List<Widget> children;
+
+  const TomFlow({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.delegate,
+    this.clipBehavior = Clip.hardEdge,
+    this.children = const <Widget>[],
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Flow(
+      delegate: delegate,
+      clipBehavior: clipBehavior,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CustomMultiChildLayout].
+///
+/// Delegate-based positioned layout. Auth on positioned children.
+class TomCustomMultiChildLayout extends TomContainerBase {
+  final MultiChildLayoutDelegate delegate;
+  final List<Widget> children;
+
+  const TomCustomMultiChildLayout({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.delegate,
+    this.children = const <Widget>[],
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CustomMultiChildLayout(
+      delegate: delegate,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CustomSingleChildLayout].
+///
+/// Delegate-based single-child layout. Auth on content.
+class TomCustomSingleChildLayout extends TomContainerBase {
+  final SingleChildLayoutDelegate delegate;
+  final Widget? child;
+
+  const TomCustomSingleChildLayout({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.delegate,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CustomSingleChildLayout(
+      delegate: delegate,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CustomPaint].
+///
+/// Custom painting with optional child. Auth on painted content.
+class TomCustomPaint extends TomContainerBase {
+  final CustomPainter? painter;
+  final CustomPainter? foregroundPainter;
+  final Size size;
+  final bool isComplex;
+  final bool willChange;
+  final Widget? child;
+
+  const TomCustomPaint({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.painter,
+    this.foregroundPainter,
+    this.size = Size.zero,
+    this.isComplex = false,
+    this.willChange = false,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CustomPaint(
+      painter: painter,
+      foregroundPainter: foregroundPainter,
+      size: size,
+      isComplex: isComplex,
+      willChange: willChange,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [PhysicalModel].
+///
+/// Box with shadow/elevation and child. Auth on elevated content.
+class TomPhysicalModel extends TomContainerBase {
+  final BoxShape shape;
+  final Clip clipBehavior;
+  final BorderRadius? borderRadius;
+  final double elevation;
+  final Color color;
+  final Color shadowColor;
+  final Widget? child;
+
+  const TomPhysicalModel({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.shape = BoxShape.rectangle,
+    this.clipBehavior = Clip.none,
+    this.borderRadius,
+    this.elevation = 0.0,
+    required this.color,
+    this.shadowColor = const Color(0xFF000000),
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return PhysicalModel(
+      shape: shape,
+      clipBehavior: clipBehavior,
+      borderRadius: borderRadius,
+      elevation: elevation,
+      color: color,
+      shadowColor: shadowColor,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [PhysicalShape].
+///
+/// Custom-shaped shadow/elevation with child. Auth on shaped content.
+class TomPhysicalShape extends TomContainerBase {
+  final CustomClipper<Path> clipper;
+  final Clip clipBehavior;
+  final double elevation;
+  final Color color;
+  final Color shadowColor;
+  final Widget? child;
+
+  const TomPhysicalShape({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.clipper,
+    this.clipBehavior = Clip.none,
+    this.elevation = 0.0,
+    required this.color,
+    this.shadowColor = const Color(0xFF000000),
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return PhysicalShape(
+      clipper: clipper,
+      clipBehavior: clipBehavior,
+      elevation: elevation,
+      color: color,
+      shadowColor: shadowColor,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [FractionalTranslation].
+///
+/// Fractional offset translation with child. Auth on translated content.
+class TomFractionalTranslation extends TomContainerBase {
+  final Offset translation;
+  final bool transformHitTests;
+  final Widget? child;
+
+  const TomFractionalTranslation({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.translation,
+    this.transformHitTests = true,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return FractionalTranslation(
+      translation: translation,
+      transformHitTests: transformHitTests,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [GridTile].
+///
+/// Cell container for GridView items with header/footer. Auth on tile content.
+class TomGridTile extends TomContainerBase {
+  final Widget? header;
+  final Widget? footer;
+  final Widget child;
+
+  const TomGridTile({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.header,
+    this.footer,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return GridTile(
+      header: header,
+      footer: footer,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [GridTileBar].
+///
+/// Header/footer bar inside GridTile. Auth on bar content.
+class TomGridTileBar extends TomContainerBase {
+  final Color? backgroundColor;
+  final Widget? leading;
+  final Widget? title;
+  final Widget? subtitle;
+  final Widget? trailing;
+
+  const TomGridTileBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.backgroundColor,
+    this.leading,
+    this.title,
+    this.subtitle,
+    this.trailing,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return GridTileBar(
+      backgroundColor: backgroundColor,
+      leading: leading,
+      title: title,
+      subtitle: subtitle,
+      trailing: trailing,
+    );
+  }
+}
+
+// ============================================================================
+// Section II: Extended Container Widgets (continued)
+// ============================================================================
+
+/// Tom wrapper for [CupertinoExpansionTile].
+///
+/// Cupertino-styled expansion tile. Auth on expand access.
+class TomCupertinoExpansionTile extends TomContainerBase {
+  final Widget title;
+  final Widget child;
+  final ExpansibleController? controller;
+  final ExpansionTileTransitionMode transitionMode;
+
+  const TomCupertinoExpansionTile({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.title,
+    required this.child,
+    this.controller,
+    this.transitionMode = ExpansionTileTransitionMode.fade,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoExpansionTile(
+      title: title,
+      controller: controller,
+      transitionMode: transitionMode,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ClipRSuperellipse].
+///
+/// Clips child to superellipse (squircle) shape. Auth on clipped content.
+class TomClipRSuperellipse extends TomContainerBase {
+  final BorderRadiusGeometry borderRadius;
+  final Clip clipBehavior;
+  final Widget? child;
+
+  const TomClipRSuperellipse({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.borderRadius = BorderRadius.zero,
+    this.clipBehavior = Clip.antiAlias,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ClipRSuperellipse(
+      borderRadius: borderRadius,
+      clipBehavior: clipBehavior,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoTabView] (extension pattern).
+///
+/// Tab content view inside CupertinoTabScaffold. Auth on tab content.
+class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  TomCupertinoTabView({
+    super.key,
+    required this.tomId,
+    this.tomGroup,
+    super.builder,
+    super.navigatorKey,
+    super.defaultTitle,
+    super.routes,
+    super.onGenerateRoute,
+    super.onUnknownRoute,
+    super.navigatorObservers,
+    super.restorationScopeId,
+  });
 }

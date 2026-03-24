@@ -1,6 +1,7 @@
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [CircularProgressIndicator].
@@ -175,4 +176,100 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
       color: color,
     );
   }
+}
+
+// =============================================================================
+// Section II: Additional Progress Widgets
+// =============================================================================
+
+/// Tom wrapper for [CupertinoActivityIndicator.partiallyRevealed].
+///
+/// Linear Cupertino progress indicator. Auth on progress display.
+class TomCupertinoLinearActivityIndicator extends TomProgressBase {
+  final double value;
+  final Color? color;
+  final double trackHeight;
+  final EdgeInsetsGeometry padding;
+
+  const TomCupertinoLinearActivityIndicator({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.value = 0.0,
+    this.color,
+    this.trackHeight = 4.0,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    // CupertinoActivityIndicator doesn't have a linear variant by default.
+    // Using MaterialLinearProgressIndicator with Cupertino styling.
+    return Padding(
+      padding: padding,
+      child: LinearProgressIndicator(
+        value: value,
+        color: color ?? CupertinoTheme.of(context).primaryColor,
+        minHeight: trackHeight,
+        backgroundColor: CupertinoColors.systemGrey5.resolveFrom(context),
+      ),
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoSliverRefreshControl].
+///
+/// Pull-to-refresh for Cupertino scroll views. Auth can disable refresh.
+class TomCupertinoSliverRefreshControl extends TomProgressBase {
+  final double refreshTriggerPullDistance;
+  final double refreshIndicatorExtent;
+  final RefreshControlIndicatorBuilder? builder;
+  final RefreshCallback? onRefresh;
+
+  const TomCupertinoSliverRefreshControl({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.refreshTriggerPullDistance = 100.0,
+    this.refreshIndicatorExtent = 60.0,
+    this.builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
+    this.onRefresh,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoSliverRefreshControl(
+      refreshTriggerPullDistance: refreshTriggerPullDistance,
+      refreshIndicatorExtent: refreshIndicatorExtent,
+      builder: builder,
+      onRefresh: onRefresh,
+    );
+  }
+}
+
+/// Tom wrapper for [RefreshProgressIndicator].
+///
+/// Circular indicator used by RefreshIndicator. Auth controls refresh progress.
+/// Uses extension pattern because parent may check `is CircularProgressIndicator`.
+class TomRefreshProgressIndicator extends RefreshProgressIndicator
+    with TomWidgetMixin {
+  @override
+  final String tomId;
+  @override
+  final String? tomGroup;
+
+  const TomRefreshProgressIndicator({
+    super.key,
+    required this.tomId,
+    this.tomGroup,
+    super.value,
+    super.backgroundColor,
+    super.color,
+    super.valueColor,
+    super.strokeWidth,
+    super.strokeAlign,
+    super.semanticsLabel,
+    super.semanticsValue,
+    super.strokeCap,
+  });
 }

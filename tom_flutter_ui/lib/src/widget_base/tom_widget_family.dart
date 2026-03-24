@@ -19,6 +19,11 @@ enum TomWidgetFamily {
   chip,
   list,
   tree,
+  sliver,
+  animated,
+  effect,
+  interaction,
+  builder,
 
   // Tom Form Component families (custom, richer than Flutter equivalents)
   formField,

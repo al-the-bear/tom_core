@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [NavigationRail].
@@ -700,5 +701,389 @@ class TomBreadcrumb extends TomNavigationBase {
       return Padding(padding: padding!, child: row);
     }
     return row;
+  }
+}
+
+// ============================================================================
+// EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
+// ============================================================================
+
+/// Tom widget that EXTENDS [Tab] with authorization and resources.
+///
+/// This widget IS a [Tab] — it passes `is Tab` checks and fits in `List<Tab>`.
+///
+/// **StatelessWidget pattern:**
+/// - Override `build()`, check visibility, apply readonly, delegate to super
+///
+/// ```dart
+/// TabBar(
+///   tabs: [
+///     TomTab(tomId: 'home', text: 'Home'),
+///     TomTab(tomId: 'settings', text: 'Settings'),
+///   ],
+/// )
+/// ```
+class TomTab extends Tab with TomWidgetMixin {
+  /// Creates a Tom Tab.
+  ///
+  /// Requires [tomId] for authorization and resource resolution.
+  /// At least one of [text], [icon], or [child] must be non-null.
+  const TomTab({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.text,
+    super.icon,
+    super.iconMargin,
+    super.height,
+    super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = checkHidden(context);
+    if (hidden != null) return hidden;
+    return applyReadonly(context, super.build(context));
+  }
+}
+
+/// Tom widget that EXTENDS [NavigationDestination] with authorization and resources.
+///
+/// This widget IS a [NavigationDestination] — it passes `is NavigationDestination`
+/// checks and fits in `List<Widget>` for NavigationBar.
+///
+/// ```dart
+/// NavigationBar(
+///   destinations: [
+///     TomNavigationDestination(tomId: 'home', icon: Icon(Icons.home), label: 'Home'),
+///     TomNavigationDestination(tomId: 'settings', icon: Icon(Icons.settings), label: 'Settings'),
+///   ],
+/// )
+/// ```
+class TomNavigationDestination extends NavigationDestination
+    with TomWidgetMixin {
+  /// Creates a Tom NavigationDestination.
+  const TomNavigationDestination({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    required super.icon,
+    super.selectedIcon,
+    required super.label,
+    super.tooltip,
+    super.enabled,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = checkHidden(context);
+    if (hidden != null) return hidden;
+    return applyReadonly(context, super.build(context));
+  }
+}
+
+/// Tom widget that EXTENDS [NavigationDrawerDestination] with authorization.
+///
+/// This widget IS a [NavigationDrawerDestination] — passes runtime checks
+/// in [NavigationDrawer].
+///
+/// ```dart
+/// NavigationDrawer(
+///   children: [
+///     TomNavigationDrawerDestination(tomId: 'home', icon: Icon(Icons.home), label: Text('Home')),
+///   ],
+/// )
+/// ```
+class TomNavigationDrawerDestination extends NavigationDrawerDestination
+    with TomWidgetMixin {
+  /// Creates a Tom NavigationDrawerDestination.
+  const TomNavigationDrawerDestination({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    required super.icon,
+    super.selectedIcon,
+    required super.label,
+    super.backgroundColor,
+    super.enabled,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = checkHidden(context);
+    if (hidden != null) return hidden;
+    return applyReadonly(context, super.build(context));
+  }
+}
+
+// ============================================================================
+// Section II: Extended Navigation Widgets
+// ============================================================================
+
+/// Tom wrapper for [CupertinoSliverNavigationBar].
+///
+/// Cupertino large-title scrollable nav bar. Auth on nav regions.
+class TomCupertinoSliverNavigationBar extends TomNavigationBase {
+  final Widget? largeTitle;
+  final Widget? leading;
+  final bool automaticallyImplyLeading;
+  final bool automaticallyImplyTitle;
+  final String? previousPageTitle;
+  final Widget? middle;
+  final Widget? trailing;
+  final Color? backgroundColor;
+  final Brightness? brightness;
+  final EdgeInsetsDirectional? padding;
+  final Border? border;
+  final bool transitionBetweenRoutes;
+  final Object heroTag;
+  final bool stretch;
+  final bool alwaysShowMiddle;
+
+  const TomCupertinoSliverNavigationBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.largeTitle,
+    this.leading,
+    this.automaticallyImplyLeading = true,
+    this.automaticallyImplyTitle = true,
+    this.previousPageTitle,
+    this.middle,
+    this.trailing,
+    this.backgroundColor,
+    this.brightness,
+    this.padding,
+    this.border,
+    this.transitionBetweenRoutes = true,
+    this.heroTag = _defaultHeroTag,
+    this.stretch = false,
+    this.alwaysShowMiddle = true,
+  });
+
+  static const Object _defaultHeroTag = 'TomCupertinoSliverNavigationBar';
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoSliverNavigationBar(
+      largeTitle: largeTitle,
+      leading: leading,
+      automaticallyImplyLeading: automaticallyImplyLeading,
+      automaticallyImplyTitle: automaticallyImplyTitle,
+      previousPageTitle: previousPageTitle,
+      middle: middle,
+      trailing: trailing,
+      backgroundColor: backgroundColor,
+      brightness: brightness,
+      padding: padding,
+      border: border,
+      transitionBetweenRoutes: transitionBetweenRoutes,
+      heroTag: heroTag,
+      stretch: stretch,
+      alwaysShowMiddle: alwaysShowMiddle,
+    );
+  }
+}
+
+/// Tom wrapper for [FlexibleSpaceBar].
+///
+/// Flexible space content for SliverAppBar. Auth on flex space content.
+class TomFlexibleSpaceBar extends TomNavigationBase {
+  final Widget? title;
+  final Widget? background;
+  final bool centerTitle;
+  final EdgeInsetsGeometry? titlePadding;
+  final CollapseMode collapseMode;
+  final List<StretchMode> stretchModes;
+  final double expandedTitleScale;
+
+  const TomFlexibleSpaceBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.title,
+    this.background,
+    this.centerTitle = true,
+    this.titlePadding,
+    this.collapseMode = CollapseMode.parallax,
+    this.stretchModes = const <StretchMode>[StretchMode.zoomBackground],
+    this.expandedTitleScale = 1.5,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return FlexibleSpaceBar(
+      title: title,
+      background: background,
+      centerTitle: centerTitle,
+      titlePadding: titlePadding,
+      collapseMode: collapseMode,
+      stretchModes: stretchModes,
+      expandedTitleScale: expandedTitleScale,
+    );
+  }
+}
+
+/// Tom wrapper for [DrawerHeader].
+///
+/// Header area of a Drawer. Auth on header content.
+class TomDrawerHeader extends TomNavigationBase {
+  final Decoration? decoration;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final Duration duration;
+  final Curve curve;
+  final Widget? child;
+
+  const TomDrawerHeader({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.decoration,
+    this.padding = const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
+    this.margin = const EdgeInsets.only(bottom: 8.0),
+    this.duration = const Duration(milliseconds: 250),
+    this.curve = Curves.fastOutSlowIn,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return DrawerHeader(
+      decoration: decoration,
+      padding: padding,
+      margin: margin,
+      duration: duration,
+      curve: curve,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [UserAccountsDrawerHeader].
+///
+/// User account header in Drawer. Auth on user info display.
+class TomUserAccountsDrawerHeader extends TomNavigationBase {
+  final Decoration? decoration;
+  final EdgeInsetsGeometry? margin;
+  final Widget? currentAccountPicture;
+  final List<Widget>? otherAccountsPictures;
+  final Size currentAccountPictureSize;
+  final Size otherAccountsPicturesSize;
+  final Widget? accountName;
+  final Widget? accountEmail;
+  final VoidCallback? onDetailsPressed;
+  final Color arrowColor;
+
+  const TomUserAccountsDrawerHeader({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.decoration,
+    this.margin = const EdgeInsets.only(bottom: 8.0),
+    this.currentAccountPicture,
+    this.otherAccountsPictures,
+    this.currentAccountPictureSize = const Size.square(72.0),
+    this.otherAccountsPicturesSize = const Size.square(40.0),
+    this.accountName,
+    this.accountEmail,
+    this.onDetailsPressed,
+    this.arrowColor = Colors.white,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return UserAccountsDrawerHeader(
+      decoration: decoration,
+      margin: margin,
+      currentAccountPicture: currentAccountPicture,
+      otherAccountsPictures: otherAccountsPictures,
+      currentAccountPictureSize: currentAccountPictureSize,
+      otherAccountsPicturesSize: otherAccountsPicturesSize,
+      accountName: accountName,
+      accountEmail: accountEmail,
+      onDetailsPressed: onDetailsPressed,
+      arrowColor: arrowColor,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoNavigationBarBackButton].
+///
+/// Back button inside CupertinoNavigationBar. Auth can hide back navigation.
+class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
+  final Color? color;
+  final String? previousPageTitle;
+  final VoidCallback? onPressed;
+
+  const TomCupertinoNavigationBarBackButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.color,
+    this.previousPageTitle,
+    this.onPressed,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedTitle = previousPageTitle ??
+        (tomId != null ? resolveResource(context, 'previousPageTitle') : null);
+    return CupertinoNavigationBarBackButton(
+      color: color,
+      previousPageTitle: resolvedTitle,
+      onPressed: onPressed,
+    );
+  }
+}
+
+/// Tom wrapper for [TabPageSelector].
+///
+/// Dot indicator showing current tab page. Auth can hide page indicator.
+class TomTabPageSelector extends TomNavigationBase {
+  final TabController? controller;
+  final double indicatorSize;
+  final Color? color;
+  final Color? selectedColor;
+  final BorderStyle? borderStyle;
+
+  const TomTabPageSelector({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.controller,
+    this.indicatorSize = 12.0,
+    this.color,
+    this.selectedColor,
+    this.borderStyle,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return TabPageSelector(
+      controller: controller,
+      indicatorSize: indicatorSize,
+      color: color,
+      selectedColor: selectedColor,
+      borderStyle: borderStyle,
+    );
   }
 }

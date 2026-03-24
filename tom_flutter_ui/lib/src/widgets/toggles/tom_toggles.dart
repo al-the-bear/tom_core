@@ -603,3 +603,115 @@ class TomCupertinoSwitch extends TomToggleBase {
     );
   }
 }
+
+// ============================================================================
+// Section II Toggles — Cupertino checkbox and radio
+// ============================================================================
+
+/// Tom wrapper for [CupertinoCheckbox].
+///
+/// Cupertino-styled checkbox. Auth for readonly/hidden.
+class TomCupertinoCheckbox extends TomToggleBase {
+  final bool? value;
+  final ValueChanged<bool?>? onChanged;
+  final Color? activeColor;
+  final Color? inactiveColor;
+  final Color? checkColor;
+  final bool tristate;
+  final Color? focusColor;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final BorderSide? side;
+  final OutlinedBorder? shape;
+  final String? semanticLabel;
+
+  const TomCupertinoCheckbox({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.value,
+    this.onChanged,
+    this.activeColor,
+    this.inactiveColor,
+    this.checkColor,
+    this.tristate = false,
+    this.focusColor,
+    this.focusNode,
+    this.autofocus = false,
+    this.side,
+    this.shape,
+    this.semanticLabel,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoCheckbox(
+      value: value,
+      onChanged: onChanged,
+      activeColor: activeColor,
+      inactiveColor: inactiveColor,
+      checkColor: checkColor,
+      tristate: tristate,
+      focusColor: focusColor,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      side: side,
+      shape: shape,
+      semanticLabel: semanticLabel,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoRadio].
+///
+/// Cupertino-styled radio button. Auth for readonly/hidden.
+class TomCupertinoRadio<T> extends TomToggleBase {
+  final T value;
+  final T? groupValue;
+  final ValueChanged<T?>? onChanged;
+  final MouseCursor? mouseCursor;
+  final bool toggleable;
+  final Color? activeColor;
+  final Color? inactiveColor;
+  final Color? fillColor;
+  final Color? focusColor;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool useCheckmarkStyle;
+
+  const TomCupertinoRadio({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.value,
+    required this.groupValue,
+    this.onChanged,
+    this.mouseCursor,
+    this.toggleable = false,
+    this.activeColor,
+    this.inactiveColor,
+    this.fillColor,
+    this.focusColor,
+    this.focusNode,
+    this.autofocus = false,
+    this.useCheckmarkStyle = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoRadio<T>(
+      value: value,
+      groupValue: groupValue,
+      onChanged: onChanged,
+      mouseCursor: mouseCursor,
+      toggleable: toggleable,
+      activeColor: activeColor,
+      inactiveColor: inactiveColor,
+      fillColor: fillColor,
+      focusColor: focusColor,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      useCheckmarkStyle: useCheckmarkStyle,
+    );
+  }
+}

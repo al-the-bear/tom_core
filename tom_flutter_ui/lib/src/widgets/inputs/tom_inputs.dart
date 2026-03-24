@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -643,6 +645,668 @@ class TomCupertinoTextField extends TomInputBase {
       onSubmitted: onSubmitted,
       enabled: enabled,
       readOnly: readOnly,
+    );
+  }
+}
+
+// ============================================================================
+// Section II Inputs — Date/Time pickers, Form, Cupertino form fields
+// ============================================================================
+
+/// Tom wrapper for [CalendarDatePicker].
+///
+/// Inline calendar date selector. Auth makes it readonly or hidden.
+class TomCalendarDatePicker extends TomInputBase {
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final ValueChanged<DateTime> onDateChanged;
+  final DateTime? currentDate;
+  final SelectableDayPredicate? selectableDayPredicate;
+
+  const TomCalendarDatePicker({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    required this.onDateChanged,
+    this.currentDate,
+    this.selectableDayPredicate,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CalendarDatePicker(
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      onDateChanged: onDateChanged,
+      currentDate: currentDate,
+      selectableDayPredicate: selectableDayPredicate,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoDatePicker].
+///
+/// Cupertino date wheel picker. Auth for readonly/hidden.
+class TomCupertinoDatePicker extends TomInputBase {
+  final CupertinoDatePickerMode mode;
+  final ValueChanged<DateTime> onDateTimeChanged;
+  final DateTime? initialDateTime;
+  final DateTime? minimumDate;
+  final DateTime? maximumDate;
+  final int minimumYear;
+  final int? maximumYear;
+  final int minuteInterval;
+  final bool use24hFormat;
+  final Color? backgroundColor;
+  final bool showDayOfWeek;
+  final double itemExtent;
+
+  const TomCupertinoDatePicker({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.mode = CupertinoDatePickerMode.dateAndTime,
+    required this.onDateTimeChanged,
+    this.initialDateTime,
+    this.minimumDate,
+    this.maximumDate,
+    this.minimumYear = 1,
+    this.maximumYear,
+    this.minuteInterval = 1,
+    this.use24hFormat = false,
+    this.backgroundColor,
+    this.showDayOfWeek = false,
+    this.itemExtent = 32.0,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoDatePicker(
+      mode: mode,
+      onDateTimeChanged: onDateTimeChanged,
+      initialDateTime: initialDateTime,
+      minimumDate: minimumDate,
+      maximumDate: maximumDate,
+      minimumYear: minimumYear,
+      maximumYear: maximumYear,
+      minuteInterval: minuteInterval,
+      use24hFormat: use24hFormat,
+      backgroundColor: backgroundColor,
+      showDayOfWeek: showDayOfWeek,
+      itemExtent: itemExtent,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoSearchTextField].
+///
+/// Cupertino search input. Auth can restrict search; resource for placeholder.
+class TomCupertinoSearchTextField extends TomInputBase {
+  final TextEditingController? controller;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final VoidCallback? onSuffixTap;
+  final TextStyle? style;
+  final String? placeholder;
+  final TextStyle? placeholderStyle;
+  final BoxDecoration? decoration;
+  final Color? backgroundColor;
+  final BorderRadius? borderRadius;
+  final EdgeInsetsGeometry padding;
+  final Color itemColor;
+  final double itemSize;
+  final Widget prefixIcon;
+  final Icon suffixIcon;
+  final OverlayVisibilityMode suffixMode;
+  final String? restorationId;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final bool autocorrect;
+  final bool enabled;
+  final SmartQuotesType? smartQuotesType;
+  final SmartDashesType? smartDashesType;
+
+  const TomCupertinoSearchTextField({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.controller,
+    this.onChanged,
+    this.onSubmitted,
+    this.onSuffixTap,
+    this.style,
+    this.placeholder,
+    this.placeholderStyle,
+    this.decoration,
+    this.backgroundColor,
+    this.borderRadius,
+    this.padding = const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
+    this.itemColor = CupertinoColors.secondaryLabel,
+    this.itemSize = 20.0,
+    this.prefixIcon = const Icon(CupertinoIcons.search),
+    this.suffixIcon = const Icon(CupertinoIcons.xmark_circle_fill),
+    this.suffixMode = OverlayVisibilityMode.editing,
+    this.restorationId,
+    this.focusNode,
+    this.autofocus = false,
+    this.autocorrect = true,
+    this.enabled = true,
+    this.smartQuotesType,
+    this.smartDashesType,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedPlaceholder = placeholder ?? resolveResource(context, 'hint');
+
+    return CupertinoSearchTextField(
+      controller: controller,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      onSuffixTap: onSuffixTap,
+      style: style,
+      placeholder: resolvedPlaceholder,
+      placeholderStyle: placeholderStyle,
+      decoration: decoration,
+      backgroundColor: backgroundColor,
+      borderRadius: borderRadius,
+      padding: padding,
+      itemColor: itemColor,
+      itemSize: itemSize,
+      prefixIcon: prefixIcon,
+      suffixIcon: suffixIcon,
+      suffixMode: suffixMode,
+      restorationId: restorationId,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      autocorrect: autocorrect,
+      enabled: enabled,
+      smartQuotesType: smartQuotesType,
+      smartDashesType: smartDashesType,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoTimerPicker].
+///
+/// Duration/timer picker wheel. Auth for readonly/hidden.
+class TomCupertinoTimerPicker extends TomInputBase {
+  final CupertinoTimerPickerMode mode;
+  final Duration initialTimerDuration;
+  final int minuteInterval;
+  final int secondInterval;
+  final AlignmentGeometry alignment;
+  final Color? backgroundColor;
+  final double itemExtent;
+  final ValueChanged<Duration> onTimerDurationChanged;
+
+  const TomCupertinoTimerPicker({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.mode = CupertinoTimerPickerMode.hms,
+    this.initialTimerDuration = Duration.zero,
+    this.minuteInterval = 1,
+    this.secondInterval = 1,
+    this.alignment = Alignment.center,
+    this.backgroundColor,
+    this.itemExtent = 32.0,
+    required this.onTimerDurationChanged,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoTimerPicker(
+      mode: mode,
+      initialTimerDuration: initialTimerDuration,
+      minuteInterval: minuteInterval,
+      secondInterval: secondInterval,
+      alignment: alignment,
+      backgroundColor: backgroundColor,
+      itemExtent: itemExtent,
+      onTimerDurationChanged: onTimerDurationChanged,
+    );
+  }
+}
+
+/// Tom wrapper for [Form].
+///
+/// Form container managing validation state. Auth can hide entire form sections.
+class TomForm extends TomInputBase {
+  final Widget child;
+  final AutovalidateMode? autovalidateMode;
+  final VoidCallback? onChanged;
+  final bool? canPop;
+  final PopInvokedWithResultCallback<Object?>? onPopInvokedWithResult;
+
+  const TomForm({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.child,
+    this.autovalidateMode,
+    this.onChanged,
+    this.canPop,
+    this.onPopInvokedWithResult,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return Form(
+      autovalidateMode: autovalidateMode,
+      onChanged: onChanged,
+      canPop: canPop,
+      onPopInvokedWithResult: onPopInvokedWithResult,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [InputDatePickerFormField].
+///
+/// Text-based date entry with format validation. Auth for readonly/hidden.
+class TomInputDatePickerFormField extends TomInputBase {
+  final DateTime initialDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final ValueChanged<DateTime>? onDateSubmitted;
+  final ValueChanged<DateTime>? onDateSaved;
+  final SelectableDayPredicate? selectableDayPredicate;
+  final String? errorFormatText;
+  final String? errorInvalidText;
+  final String? fieldHintText;
+  final String? fieldLabelText;
+  final TextInputType keyboardType;
+  final bool autofocus;
+  final bool acceptEmptyDate;
+  final FocusNode? focusNode;
+
+  const TomInputDatePickerFormField({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.initialDate,
+    required this.firstDate,
+    required this.lastDate,
+    this.onDateSubmitted,
+    this.onDateSaved,
+    this.selectableDayPredicate,
+    this.errorFormatText,
+    this.errorInvalidText,
+    this.fieldHintText,
+    this.fieldLabelText,
+    this.keyboardType = TextInputType.datetime,
+    this.autofocus = false,
+    this.acceptEmptyDate = false,
+    this.focusNode,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabelText = fieldLabelText ?? resolveResource(context, 'label');
+    final resolvedHintText = fieldHintText ?? resolveResource(context, 'hint');
+    final resolvedErrorFormat = errorFormatText ?? resolveResource(context, 'errorFormat');
+    final resolvedErrorInvalid = errorInvalidText ?? resolveResource(context, 'errorInvalid');
+
+    return InputDatePickerFormField(
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      onDateSubmitted: onDateSubmitted,
+      onDateSaved: onDateSaved,
+      selectableDayPredicate: selectableDayPredicate,
+      errorFormatText: resolvedErrorFormat,
+      errorInvalidText: resolvedErrorInvalid,
+      fieldHintText: resolvedHintText,
+      fieldLabelText: resolvedLabelText,
+      keyboardType: keyboardType,
+      autofocus: autofocus,
+      acceptEmptyDate: acceptEmptyDate,
+      focusNode: focusNode,
+    );
+  }
+}
+
+/// Tom wrapper for [YearPicker].
+///
+/// Year selection widget. Auth for readonly/hidden.
+class TomYearPicker extends TomInputBase {
+  final DateTime currentDate;
+  final DateTime firstDate;
+  final DateTime lastDate;
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onChanged;
+  final DragStartBehavior dragStartBehavior;
+
+  const TomYearPicker({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.currentDate,
+    required this.firstDate,
+    required this.lastDate,
+    required this.selectedDate,
+    required this.onChanged,
+    this.dragStartBehavior = DragStartBehavior.start,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return YearPicker(
+      currentDate: currentDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+      selectedDate: selectedDate,
+      onChanged: onChanged,
+      dragStartBehavior: dragStartBehavior,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoTextFormFieldRow].
+///
+/// Cupertino form row containing a text field with Form integration.
+/// Auth for readonly/hidden; resources for placeholder.
+class TomCupertinoTextFormFieldRow extends TomInputBase {
+  final Widget? prefix;
+  final EdgeInsetsGeometry? padding;
+  final TextEditingController? controller;
+  final String? initialValue;
+  final FocusNode? focusNode;
+  final BoxDecoration? decoration;
+  final TextInputType? keyboardType;
+  final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
+  final TextStyle? style;
+  final StrutStyle? strutStyle;
+  final TextDirection? textDirection;
+  final TextAlign textAlign;
+  final TextAlignVertical? textAlignVertical;
+  final bool autofocus;
+  final bool readOnly;
+  final bool? showCursor;
+  final String obscuringCharacter;
+  final bool obscureText;
+  final bool autocorrect;
+  final SmartDashesType? smartDashesType;
+  final SmartQuotesType? smartQuotesType;
+  final bool enableSuggestions;
+  final int? maxLines;
+  final int? minLines;
+  final bool expands;
+  final int? maxLength;
+  final ValueChanged<String>? onChanged;
+  final GestureTapCallback? onTap;
+  final VoidCallback? onEditingComplete;
+  final ValueChanged<String>? onFieldSubmitted;
+  final FormFieldSetter<String>? onSaved;
+  final FormFieldValidator<String>? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final bool? enabled;
+  final double cursorWidth;
+  final double? cursorHeight;
+  final Color? cursorColor;
+  final Brightness? keyboardAppearance;
+  final EdgeInsets scrollPadding;
+  final bool enableInteractiveSelection;
+  final TextSelectionControls? selectionControls;
+  final ScrollPhysics? scrollPhysics;
+  final Iterable<String>? autofillHints;
+  final AutovalidateMode autovalidateMode;
+  final String? placeholder;
+  final TextStyle? placeholderStyle;
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+  final SpellCheckConfiguration? spellCheckConfiguration;
+  final String? restorationId;
+
+  const TomCupertinoTextFormFieldRow({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.prefix,
+    this.padding,
+    this.controller,
+    this.initialValue,
+    this.focusNode,
+    this.decoration,
+    this.keyboardType,
+    this.textCapitalization = TextCapitalization.none,
+    this.textInputAction,
+    this.style,
+    this.strutStyle,
+    this.textDirection,
+    this.textAlign = TextAlign.start,
+    this.textAlignVertical,
+    this.autofocus = false,
+    this.readOnly = false,
+    this.showCursor,
+    this.obscuringCharacter = '•',
+    this.obscureText = false,
+    this.autocorrect = true,
+    this.smartDashesType,
+    this.smartQuotesType,
+    this.enableSuggestions = true,
+    this.maxLines = 1,
+    this.minLines,
+    this.expands = false,
+    this.maxLength,
+    this.onChanged,
+    this.onTap,
+    this.onEditingComplete,
+    this.onFieldSubmitted,
+    this.onSaved,
+    this.validator,
+    this.inputFormatters,
+    this.enabled,
+    this.cursorWidth = 2.0,
+    this.cursorHeight,
+    this.cursorColor,
+    this.keyboardAppearance,
+    this.scrollPadding = const EdgeInsets.all(20.0),
+    this.enableInteractiveSelection = true,
+    this.selectionControls,
+    this.scrollPhysics,
+    this.autofillHints,
+    this.autovalidateMode = AutovalidateMode.disabled,
+    this.placeholder,
+    this.placeholderStyle,
+    this.contextMenuBuilder,
+    this.spellCheckConfiguration,
+    this.restorationId,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedPlaceholder =
+        placeholder ?? (tomId != null ? resolveResource(context, 'hint') : null);
+
+    return CupertinoTextFormFieldRow(
+      prefix: prefix,
+      padding: padding,
+      controller: controller,
+      initialValue: initialValue,
+      focusNode: focusNode,
+      decoration: decoration,
+      keyboardType: keyboardType,
+      textCapitalization: textCapitalization,
+      textInputAction: textInputAction,
+      style: style,
+      strutStyle: strutStyle,
+      textDirection: textDirection,
+      textAlign: textAlign,
+      textAlignVertical: textAlignVertical,
+      autofocus: autofocus,
+      readOnly: readOnly,
+      showCursor: showCursor,
+      obscuringCharacter: obscuringCharacter,
+      obscureText: obscureText,
+      autocorrect: autocorrect,
+      smartDashesType: smartDashesType,
+      smartQuotesType: smartQuotesType,
+      enableSuggestions: enableSuggestions,
+      maxLines: maxLines,
+      minLines: minLines,
+      expands: expands,
+      maxLength: maxLength,
+      onChanged: onChanged,
+      onTap: onTap,
+      onEditingComplete: onEditingComplete,
+      onFieldSubmitted: onFieldSubmitted,
+      onSaved: onSaved,
+      validator: validator,
+      inputFormatters: inputFormatters,
+      enabled: enabled,
+      cursorWidth: cursorWidth,
+      cursorHeight: cursorHeight,
+      cursorColor: cursorColor,
+      keyboardAppearance: keyboardAppearance,
+      scrollPadding: scrollPadding,
+      enableInteractiveSelection: enableInteractiveSelection,
+      selectionControls: selectionControls,
+      scrollPhysics: scrollPhysics,
+      autofillHints: autofillHints,
+      autovalidateMode: autovalidateMode,
+      placeholder: resolvedPlaceholder,
+      placeholderStyle: placeholderStyle,
+      contextMenuBuilder: contextMenuBuilder,
+      spellCheckConfiguration: spellCheckConfiguration,
+      restorationId: restorationId,
+    );
+  }
+}
+
+/// Tom wrapper for [DropdownMenuFormField].
+///
+/// DropdownMenu with Form integration. Auth for readonly;
+/// resources for label/hint/helper/error texts.
+class TomDropdownMenuFormField<T> extends TomInputBase {
+  final bool enabled;
+  final double? width;
+  final double? menuHeight;
+  final Widget? leadingIcon;
+  final Widget? trailingIcon;
+  final String? label;
+  final String? hintText;
+  final String? helperText;
+  final Widget? selectedTrailingIcon;
+  final bool enableFilter;
+  final bool enableSearch;
+  final TextInputType? keyboardType;
+  final TextStyle? textStyle;
+  final TextAlign textAlign;
+  final Object? inputDecorationTheme;
+  final MenuStyle? menuStyle;
+  final TextEditingController? controller;
+  final T? initialSelection;
+  final ValueChanged<T?>? onSelected;
+  final FocusNode? focusNode;
+  final bool? requestFocusOnTap;
+  final EdgeInsetsGeometry? expandedInsets;
+  final Offset? alignmentOffset;
+  final FilterCallback<T>? filterCallback;
+  final SearchCallback<T>? searchCallback;
+  final List<DropdownMenuEntry<T>> dropdownMenuEntries;
+  final List<TextInputFormatter>? inputFormatters;
+  final DropdownMenuCloseBehavior closeBehavior;
+  final int maxLines;
+  final TextInputAction? textInputAction;
+  final String? restorationId;
+  final FormFieldSetter<T>? onSaved;
+  final AutovalidateMode autovalidateMode;
+  final FormFieldValidator<T>? validator;
+  final String? forceErrorText;
+
+  const TomDropdownMenuFormField({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.enabled = true,
+    this.width,
+    this.menuHeight,
+    this.leadingIcon,
+    this.trailingIcon,
+    this.label,
+    this.hintText,
+    this.helperText,
+    this.selectedTrailingIcon,
+    this.enableFilter = false,
+    this.enableSearch = true,
+    this.keyboardType,
+    this.textStyle,
+    this.textAlign = TextAlign.start,
+    this.inputDecorationTheme,
+    this.menuStyle,
+    this.controller,
+    this.initialSelection,
+    this.onSelected,
+    this.focusNode,
+    this.requestFocusOnTap,
+    this.expandedInsets,
+    this.alignmentOffset,
+    this.filterCallback,
+    this.searchCallback,
+    required this.dropdownMenuEntries,
+    this.inputFormatters,
+    this.closeBehavior = DropdownMenuCloseBehavior.all,
+    this.maxLines = 1,
+    this.textInputAction,
+    this.restorationId,
+    this.onSaved,
+    this.autovalidateMode = AutovalidateMode.disabled,
+    this.validator,
+    this.forceErrorText,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel =
+        label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedHint =
+        hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+    final resolvedHelper =
+        helperText ?? (tomId != null ? resolveResource(context, 'helper') : null);
+
+    return DropdownMenuFormField<T>(
+      enabled: enabled,
+      width: width,
+      menuHeight: menuHeight,
+      leadingIcon: leadingIcon,
+      trailingIcon: trailingIcon,
+      label: resolvedLabel != null ? Text(resolvedLabel) : null,
+      hintText: resolvedHint,
+      helperText: resolvedHelper,
+      selectedTrailingIcon: selectedTrailingIcon,
+      enableFilter: enableFilter,
+      enableSearch: enableSearch,
+      keyboardType: keyboardType,
+      textStyle: textStyle,
+      textAlign: textAlign,
+      inputDecorationTheme: inputDecorationTheme,
+      menuStyle: menuStyle,
+      controller: controller,
+      initialSelection: initialSelection,
+      onSelected: onSelected,
+      focusNode: focusNode,
+      requestFocusOnTap: requestFocusOnTap,
+      expandedInsets: expandedInsets,
+      alignmentOffset: alignmentOffset,
+      filterCallback: filterCallback,
+      searchCallback: searchCallback,
+      dropdownMenuEntries: dropdownMenuEntries,
+      inputFormatters: inputFormatters,
+      closeBehavior: closeBehavior,
+      maxLines: maxLines,
+      textInputAction: textInputAction,
+      restorationId: restorationId,
+      onSaved: onSaved,
+      autovalidateMode: autovalidateMode,
+      validator: validator,
+      forceErrorText: forceErrorText,
     );
   }
 }

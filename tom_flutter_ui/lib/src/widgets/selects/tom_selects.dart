@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [DropdownButton].
@@ -472,6 +473,283 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
       thumbColor: effectiveThumb,
       padding: padding,
       backgroundColor: effectiveBg,
+    );
+  }
+}
+
+// ============================================================================
+// EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
+// These preserve type identity for Flutter's runtime `is`-checks.
+// ============================================================================
+
+/// Tom widget that EXTENDS [PopupMenuItem] with authorization and resources.
+///
+/// This widget IS a [PopupMenuItem] — it passes `is PopupMenuItem` checks
+/// and `is PopupMenuEntry` checks for use in [showMenu] and [PopupMenuButton].
+///
+/// **StatefulWidget pattern:**
+/// - Widget has the mixin and `tomId`
+/// - State overrides `build()` and accesses mixin methods through `widget`
+///
+/// ```dart
+/// PopupMenuButton<String>(
+///   itemBuilder: (context) => [
+///     TomPopupMenuItem<String>(tomId: 'edit', value: 'edit', child: Text('Edit')),
+///     TomPopupMenuItem<String>(tomId: 'delete', value: 'delete', child: Text('Delete')),
+///   ],
+/// )
+/// ```
+class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
+  /// Creates a Tom PopupMenuItem.
+  const TomPopupMenuItem({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.value,
+    super.onTap,
+    super.enabled,
+    super.height,
+    super.padding,
+    super.textStyle,
+    super.labelTextStyle,
+    super.mouseCursor,
+    required super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  PopupMenuItemState<T, TomPopupMenuItem<T>> createState() =>
+      _TomPopupMenuItemState<T>();
+}
+
+class _TomPopupMenuItemState<T>
+    extends PopupMenuItemState<T, TomPopupMenuItem<T>> {
+  @override
+  void initState() {
+    super.initState();
+    widget.registerWithGroup();
+  }
+
+  @override
+  void dispose() {
+    widget.unregisterFromGroup();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = widget.checkHidden(context);
+    if (hidden != null) return hidden;
+    return widget.applyReadonly(context, super.build(context));
+  }
+}
+
+/// Tom widget that EXTENDS [PopupMenuDivider] with authorization.
+///
+/// This widget IS a [PopupMenuDivider] — passes `is PopupMenuEntry` checks.
+///
+/// Typically controlled via group authorization with adjacent menu items.
+class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
+  /// Creates a Tom PopupMenuDivider.
+  const TomPopupMenuDivider({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.height,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  State<PopupMenuDivider> createState() => _TomPopupMenuDividerState();
+}
+
+class _TomPopupMenuDividerState extends State<TomPopupMenuDivider> {
+  @override
+  void initState() {
+    super.initState();
+    (widget as TomWidgetMixin).registerWithGroup();
+  }
+
+  @override
+  void dispose() {
+    (widget as TomWidgetMixin).unregisterFromGroup();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final widgetMixin = widget as TomWidgetMixin;
+    final hidden = widgetMixin.checkHidden(context);
+    if (hidden != null) return hidden;
+    return const Divider(height: 1.0, thickness: 0.0);
+  }
+}
+
+/// Tom widget that EXTENDS [CheckedPopupMenuItem] with authorization.
+///
+/// This widget IS a [CheckedPopupMenuItem] — it passes `is PopupMenuEntry` checks.
+///
+/// ```dart
+/// PopupMenuButton<String>(
+///   itemBuilder: (context) => [
+///     TomCheckedPopupMenuItem<String>(tomId: 'opt1', value: 'opt1', child: Text('Option 1')),
+///   ],
+/// )
+/// ```
+class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
+    with TomWidgetMixin {
+  /// Creates a Tom CheckedPopupMenuItem.
+  const TomCheckedPopupMenuItem({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.value,
+    super.checked,
+    super.enabled,
+    super.padding,
+    super.height,
+    super.labelTextStyle,
+    super.mouseCursor,
+    super.child,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
+
+  @override
+  PopupMenuItemState<T, CheckedPopupMenuItem<T>> createState() =>
+      _TomCheckedPopupMenuItemState<T>();
+}
+
+class _TomCheckedPopupMenuItemState<T>
+    extends PopupMenuItemState<T, CheckedPopupMenuItem<T>> {
+  @override
+  void initState() {
+    super.initState();
+    (widget as TomWidgetMixin).registerWithGroup();
+  }
+
+  @override
+  void dispose() {
+    (widget as TomWidgetMixin).unregisterFromGroup();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final widgetMixin = widget as TomWidgetMixin;
+    final hidden = widgetMixin.checkHidden(context);
+    if (hidden != null) return hidden;
+    return widgetMixin.applyReadonly(context, super.build(context));
+  }
+}
+
+// ============================================================================
+// Section II Selects — Cupertino pickers, additional select widgets
+// ============================================================================
+
+/// Tom wrapper for [CupertinoPicker].
+///
+/// Cupertino scroll wheel picker. Auth controls selection access.
+class TomCupertinoPicker extends TomSelectBase {
+  final double diameterRatio;
+  final Color? backgroundColor;
+  final double offAxisFraction;
+  final bool useMagnifier;
+  final double magnification;
+  final double squeeze;
+  final double itemExtent;
+  final ValueChanged<int> onSelectedItemChanged;
+  final List<Widget> children;
+  final Widget? selectionOverlay;
+  final bool looping;
+
+  const TomCupertinoPicker({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.diameterRatio = 1.07,
+    this.backgroundColor,
+    this.offAxisFraction = 0.0,
+    this.useMagnifier = false,
+    this.magnification = 1.0,
+    this.squeeze = 1.45,
+    required this.itemExtent,
+    required this.onSelectedItemChanged,
+    required this.children,
+    this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
+    this.looping = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoPicker(
+      diameterRatio: diameterRatio,
+      backgroundColor: backgroundColor,
+      offAxisFraction: offAxisFraction,
+      useMagnifier: useMagnifier,
+      magnification: magnification,
+      squeeze: squeeze,
+      itemExtent: itemExtent,
+      onSelectedItemChanged: onSelectedItemChanged,
+      selectionOverlay: selectionOverlay,
+      looping: looping,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoSegmentedControl].
+///
+/// Classic (pre-sliding) Cupertino segmented control. Auth per segment.
+class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
+  final Map<T, Widget> children;
+  final T? groupValue;
+  final ValueChanged<T> onValueChanged;
+  final Color? unselectedColor;
+  final Color? selectedColor;
+  final Color? borderColor;
+  final Color? pressedColor;
+  final EdgeInsetsGeometry? padding;
+
+  const TomCupertinoSegmentedControl({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.groupValue,
+    required this.onValueChanged,
+    this.unselectedColor,
+    this.selectedColor,
+    this.borderColor,
+    this.pressedColor,
+    this.padding,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoSegmentedControl<T>(
+      children: children,
+      groupValue: groupValue,
+      onValueChanged: onValueChanged,
+      unselectedColor: unselectedColor,
+      selectedColor: selectedColor,
+      borderColor: borderColor,
+      pressedColor: pressedColor,
+      padding: padding,
     );
   }
 }

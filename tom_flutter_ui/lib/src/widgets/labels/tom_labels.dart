@@ -490,3 +490,160 @@ class TomDefaultTextStyle extends TomLabelBase {
     );
   }
 }
+
+// ============================================================================
+// Section II: Extended Label Widgets
+// ============================================================================
+
+/// Tom wrapper for [AboutListTile].
+///
+/// List tile that opens About dialog. Auth on about access; resources for strings.
+class TomAboutListTile extends TomLabelBase {
+  final Widget? icon;
+  final Widget? child;
+  final String? applicationName;
+  final String? applicationVersion;
+  final Widget? applicationIcon;
+  final String? applicationLegalese;
+  final List<Widget>? aboutBoxChildren;
+  final bool dense;
+
+  const TomAboutListTile({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.icon,
+    this.child,
+    this.applicationName,
+    this.applicationVersion,
+    this.applicationIcon,
+    this.applicationLegalese,
+    this.aboutBoxChildren,
+    this.dense = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return AboutListTile(
+      icon: icon,
+      applicationName: applicationName ??
+          (tomId != null ? resolveResource(context, 'applicationName') : null),
+      applicationVersion: applicationVersion ??
+          (tomId != null
+              ? resolveResource(context, 'applicationVersion')
+              : null),
+      applicationIcon: applicationIcon,
+      applicationLegalese: applicationLegalese ??
+          (tomId != null
+              ? resolveResource(context, 'applicationLegalese')
+              : null),
+      aboutBoxChildren: aboutBoxChildren,
+      dense: dense,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [VerticalDivider].
+///
+/// Vertical separator line. Auth-based visibility to avoid orphan dividers.
+class TomVerticalDivider extends TomLabelBase {
+  final double? width;
+  final double? thickness;
+  final double? indent;
+  final double? endIndent;
+  final Color? color;
+
+  const TomVerticalDivider({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.width,
+    this.thickness,
+    this.indent,
+    this.endIndent,
+    this.color,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return VerticalDivider(
+      width: width,
+      thickness: thickness,
+      indent: indent,
+      endIndent: endIndent,
+      color: color,
+    );
+  }
+}
+
+/// Tom wrapper for [MenuAcceleratorLabel].
+///
+/// Keyboard accelerator underline display. Auth controls visibility; resource for label.
+class TomMenuAcceleratorLabel extends TomLabelBase {
+  final String label;
+  final MenuAcceleratorChildBuilder? builder;
+
+  const TomMenuAcceleratorLabel({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.label,
+    this.builder,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel = tomId != null ? resolveResource(context, 'label') : label;
+    return MenuAcceleratorLabel(
+      resolvedLabel,
+      builder: builder ?? MenuAcceleratorLabel.defaultLabelBuilder,
+    );
+  }
+}
+
+/// Tom wrapper for [Banner].
+///
+/// Diagonal banner overlay with child. Auth on banner display; resource for message.
+class TomBanner extends TomLabelBase {
+  final Widget? child;
+  final String message;
+  final TextDirection? textDirection;
+  final BannerLocation location;
+  final TextStyle textStyle;
+  final Color color;
+
+  const TomBanner({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.child,
+    required this.message,
+    this.textDirection,
+    required this.location,
+    this.textStyle = _kTextStyle,
+    this.color = _kColor,
+  });
+
+  static const Color _kColor = Color(0xA0B71C1C);
+  static const TextStyle _kTextStyle = TextStyle(
+    color: Color(0xFFFFFFFF),
+    fontSize: 12.0 * 0.85,
+    fontWeight: FontWeight.w900,
+    height: 1.0,
+  );
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedMessage =
+        tomId != null ? resolveResource(context, 'message') : message;
+    return Banner(
+      message: resolvedMessage,
+      textDirection: textDirection,
+      location: location,
+      textStyle: textStyle,
+      color: color,
+      child: child,
+    );
+  }
+}

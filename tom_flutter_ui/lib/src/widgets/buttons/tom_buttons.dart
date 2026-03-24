@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [ElevatedButton].
@@ -751,4 +753,543 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
 
     return Text(resolvedLabel);
   }
+}
+
+// ============================================================================
+// Section II Buttons — Cupertino and additional Material buttons
+// ============================================================================
+
+/// Tom wrapper for [CupertinoButton].
+///
+/// Cupertino parity with ElevatedButton — primary Cupertino button style.
+class TomCupertinoButton extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final Widget? child;
+  final String? label;
+  final EdgeInsetsGeometry? padding;
+  final Color? color;
+  final Color disabledColor;
+  // ignore: deprecated_member_use - minSize is deprecated but minimumSize requires Size? not double?
+  final double? minSize;
+  final double? pressedOpacity;
+  final BorderRadius? borderRadius;
+  final AlignmentGeometry alignment;
+  final bool filled;
+
+  const TomCupertinoButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.child,
+    this.label,
+    this.padding,
+    this.color,
+    this.disabledColor = CupertinoColors.quaternarySystemFill,
+    this.minSize = kMinInteractiveDimensionCupertino,
+    this.pressedOpacity = 0.4,
+    this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
+    this.alignment = Alignment.center,
+    this.filled = false,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final buttonChild = child ?? Text(resolvedLabel);
+
+    if (filled) {
+      return CupertinoButton.filled(
+        onPressed: onPressed,
+        padding: padding,
+        disabledColor: disabledColor,
+        // ignore: deprecated_member_use
+        minSize: minSize,
+        pressedOpacity: pressedOpacity,
+        borderRadius: borderRadius,
+        alignment: alignment,
+        child: buttonChild,
+      );
+    }
+
+    return CupertinoButton(
+      onPressed: onPressed,
+      padding: padding,
+      color: color,
+      disabledColor: disabledColor,
+      // ignore: deprecated_member_use
+      minSize: minSize,
+      pressedOpacity: pressedOpacity,
+      borderRadius: borderRadius,
+      alignment: alignment,
+      child: buttonChild,
+    );
+  }
+}
+
+/// Tom wrapper for [CheckboxMenuButton].
+///
+/// Menu item with checkbox toggle. Auth controls which menu options are visible.
+class TomCheckboxMenuButton extends TomButtonBase {
+  final bool? value;
+  final ValueChanged<bool?>? onChanged;
+  final bool tristate;
+  final bool isError;
+  final VoidCallback? onHover;
+  final VoidCallback? onFocusChange;
+  final FocusNode? focusNode;
+  final MenuSerializableShortcut? shortcut;
+  final Widget? child;
+  final String? label;
+
+  const TomCheckboxMenuButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.value,
+    this.onChanged,
+    this.tristate = false,
+    this.isError = false,
+    this.onHover,
+    this.onFocusChange,
+    this.focusNode,
+    this.shortcut,
+    this.child,
+    this.label,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final buttonChild = child ?? Text(resolvedLabel);
+
+    return CheckboxMenuButton(
+      value: value,
+      onChanged: onChanged,
+      tristate: tristate,
+      isError: isError,
+      focusNode: focusNode,
+      shortcut: shortcut,
+      child: buttonChild,
+    );
+  }
+}
+
+/// Tom wrapper for [RadioMenuButton].
+///
+/// Menu item with radio selection. Auth controls which menu options are visible.
+class TomRadioMenuButton<T> extends TomButtonBase {
+  final T value;
+  final T? groupValue;
+  final ValueChanged<T?>? onChanged;
+  final bool toggleable;
+  final VoidCallback? onHover;
+  final VoidCallback? onFocusChange;
+  final FocusNode? focusNode;
+  final MenuSerializableShortcut? shortcut;
+  final Widget? child;
+  final String? label;
+
+  const TomRadioMenuButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.value,
+    this.groupValue,
+    this.onChanged,
+    this.toggleable = false,
+    this.onHover,
+    this.onFocusChange,
+    this.focusNode,
+    this.shortcut,
+    this.child,
+    this.label,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final buttonChild = child ?? Text(resolvedLabel);
+
+    return RadioMenuButton<T>(
+      value: value,
+      groupValue: groupValue,
+      onChanged: onChanged,
+      toggleable: toggleable,
+      focusNode: focusNode,
+      shortcut: shortcut,
+      child: buttonChild,
+    );
+  }
+}
+
+/// Tom wrapper for [MenuBar].
+///
+/// Top-level menu bar container. Auth can hide entire menu bar sections.
+class TomMenuBar extends TomButtonBase {
+  final List<Widget> children;
+  final MenuStyle? style;
+  final Clip clipBehavior;
+
+  const TomMenuBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.style,
+    this.clipBehavior = Clip.none,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return MenuBar(
+      style: style,
+      clipBehavior: clipBehavior,
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoActionSheetAction].
+///
+/// Individual action inside CupertinoActionSheet. Per-action auth support.
+class TomCupertinoActionSheetAction extends TomButtonBase {
+  final VoidCallback onPressed;
+  final bool isDefaultAction;
+  final bool isDestructiveAction;
+  final Widget child;
+
+  const TomCupertinoActionSheetAction({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.onPressed,
+    this.isDefaultAction = false,
+    this.isDestructiveAction = false,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoActionSheetAction(
+      onPressed: onPressed,
+      isDefaultAction: isDefaultAction,
+      isDestructiveAction: isDestructiveAction,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoDialogAction].
+///
+/// Individual button inside CupertinoAlertDialog. Per-action auth support.
+class TomCupertinoDialogAction extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final bool isDefaultAction;
+  final bool isDestructiveAction;
+  final TextStyle? textStyle;
+  final Widget child;
+
+  const TomCupertinoDialogAction({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.isDefaultAction = false,
+    this.isDestructiveAction = false,
+    this.textStyle,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoDialogAction(
+      onPressed: onPressed,
+      isDefaultAction: isDefaultAction,
+      isDestructiveAction: isDestructiveAction,
+      textStyle: textStyle,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [CupertinoContextMenuAction].
+///
+/// Individual action inside CupertinoContextMenu. Per-action auth support.
+class TomCupertinoContextMenuAction extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final bool isDefaultAction;
+  final bool isDestructiveAction;
+  final IconData? trailingIcon;
+  final Widget child;
+
+  const TomCupertinoContextMenuAction({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.isDefaultAction = false,
+    this.isDestructiveAction = false,
+    this.trailingIcon,
+    required this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoContextMenuAction(
+      onPressed: onPressed,
+      isDefaultAction: isDefaultAction,
+      isDestructiveAction: isDestructiveAction,
+      trailingIcon: trailingIcon,
+      child: child,
+    );
+  }
+}
+
+/// Tom wrapper for [ExpandIcon].
+///
+/// Animated expand/collapse chevron. Auth can hide expand capability.
+class TomExpandIcon extends TomButtonBase {
+  final bool isExpanded;
+  final ValueChanged<bool>? onPressed;
+  final double size;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
+  final Color? disabledColor;
+  final Color? expandedColor;
+  final String? semanticLabel;
+
+  const TomExpandIcon({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.isExpanded = false,
+    required this.onPressed,
+    this.size = 24.0,
+    this.padding = const EdgeInsets.all(8.0),
+    this.color,
+    this.disabledColor,
+    this.expandedColor,
+    this.semanticLabel,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ExpandIcon(
+      isExpanded: isExpanded,
+      onPressed: onPressed,
+      size: size,
+      padding: padding,
+      color: color,
+      disabledColor: disabledColor,
+      expandedColor: expandedColor,
+    );
+  }
+}
+
+// ============================================================================
+// DEPRECATED BUTTONS — Wrapped for migration support
+// ============================================================================
+
+/// Tom wrapper for [MaterialButton].
+///
+/// **Deprecated** — use TomElevatedButton, TomTextButton, or TomOutlinedButton.
+/// Wrapped for migration of existing codebases.
+@Deprecated('Use TomElevatedButton, TomTextButton, or TomOutlinedButton instead')
+class TomMaterialButton extends TomButtonBase {
+  final VoidCallback? onPressed;
+  final VoidCallback? onLongPress;
+  final ValueChanged<bool>? onHighlightChanged;
+  final MouseCursor? mouseCursor;
+  final ButtonTextTheme? textTheme;
+  final Color? textColor;
+  final Color? disabledTextColor;
+  final Color? color;
+  final Color? disabledColor;
+  final Color? focusColor;
+  final Color? hoverColor;
+  final Color? highlightColor;
+  final Color? splashColor;
+  final Brightness? colorBrightness;
+  final double? elevation;
+  final double? focusElevation;
+  final double? hoverElevation;
+  final double? highlightElevation;
+  final double? disabledElevation;
+  final EdgeInsetsGeometry? padding;
+  final VisualDensity? visualDensity;
+  final ShapeBorder? shape;
+  final Clip clipBehavior;
+  final FocusNode? focusNode;
+  final bool autofocus;
+  final Duration? animationDuration;
+  final double? minWidth;
+  final double? height;
+  final bool enableFeedback;
+  final Widget? child;
+  final String? label;
+
+  const TomMaterialButton({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.onLongPress,
+    this.onHighlightChanged,
+    this.mouseCursor,
+    this.textTheme,
+    this.textColor,
+    this.disabledTextColor,
+    this.color,
+    this.disabledColor,
+    this.focusColor,
+    this.hoverColor,
+    this.highlightColor,
+    this.splashColor,
+    this.colorBrightness,
+    this.elevation,
+    this.focusElevation,
+    this.hoverElevation,
+    this.highlightElevation,
+    this.disabledElevation,
+    this.padding,
+    this.visualDensity,
+    this.shape,
+    this.clipBehavior = Clip.none,
+    this.focusNode,
+    this.autofocus = false,
+    this.animationDuration,
+    this.minWidth,
+    this.height,
+    this.enableFeedback = true,
+    this.child,
+    this.label,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final buttonChild = child ?? Text(resolvedLabel);
+
+    // ignore: deprecated_member_use
+    return MaterialButton(
+      onPressed: onPressed,
+      onLongPress: onLongPress,
+      onHighlightChanged: onHighlightChanged,
+      mouseCursor: mouseCursor,
+      textTheme: textTheme,
+      textColor: textColor,
+      disabledTextColor: disabledTextColor,
+      color: color,
+      disabledColor: disabledColor,
+      focusColor: focusColor,
+      hoverColor: hoverColor,
+      highlightColor: highlightColor,
+      splashColor: splashColor,
+      colorBrightness: colorBrightness,
+      elevation: elevation,
+      focusElevation: focusElevation,
+      hoverElevation: hoverElevation,
+      highlightElevation: highlightElevation,
+      disabledElevation: disabledElevation,
+      padding: padding,
+      visualDensity: visualDensity,
+      shape: shape,
+      clipBehavior: clipBehavior,
+      focusNode: focusNode,
+      autofocus: autofocus,
+      animationDuration: animationDuration,
+      minWidth: minWidth,
+      height: height,
+      enableFeedback: enableFeedback,
+      child: buttonChild,
+    );
+  }
+}
+
+/// Tom wrapper for [ButtonBar].
+///
+/// **Deprecated** — use TomOverflowBar instead.
+/// Wrapped for migration of existing codebases.
+@Deprecated('Use TomOverflowBar instead')
+class TomButtonBar extends TomButtonBase {
+  final List<Widget> children;
+  final MainAxisAlignment? alignment;
+  final MainAxisSize? mainAxisSize;
+  final ButtonTextTheme? buttonTextTheme;
+  final double? buttonMinWidth;
+  final double? buttonHeight;
+  final EdgeInsetsGeometry? buttonPadding;
+  final bool? buttonAlignedDropdown;
+  final ButtonBarLayoutBehavior? layoutBehavior;
+  final VerticalDirection? overflowDirection;
+  final double? overflowButtonSpacing;
+
+  const TomButtonBar({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.children,
+    this.alignment,
+    this.mainAxisSize,
+    this.buttonTextTheme,
+    this.buttonMinWidth,
+    this.buttonHeight,
+    this.buttonPadding,
+    this.buttonAlignedDropdown,
+    this.layoutBehavior,
+    this.overflowDirection,
+    this.overflowButtonSpacing,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    // ignore: deprecated_member_use
+    return ButtonBar(
+      alignment: alignment,
+      mainAxisSize: mainAxisSize,
+      buttonTextTheme: buttonTextTheme,
+      buttonMinWidth: buttonMinWidth,
+      buttonHeight: buttonHeight,
+      buttonPadding: buttonPadding,
+      buttonAlignedDropdown: buttonAlignedDropdown,
+      layoutBehavior: layoutBehavior,
+      overflowDirection: overflowDirection,
+      overflowButtonSpacing: overflowButtonSpacing,
+      children: children,
+    );
+  }
+}
+
+// ============================================================================
+// EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
+// ============================================================================
+
+/// Tom widget that EXTENDS [SnackBarAction] with authorization.
+///
+/// This widget IS a [SnackBarAction] — fits in `SnackBar(action:)`.
+///
+/// ```dart
+/// SnackBar(
+///   content: Text('Message'),
+///   action: TomSnackBarAction(tomId: 'undo', label: 'Undo', onPressed: () {}),
+/// )
+/// ```
+class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
+  /// Creates a Tom SnackBarAction.
+  TomSnackBarAction({
+    required this.tomId,
+    this.tomGroup,
+    super.key,
+    super.textColor,
+    super.disabledTextColor,
+    required super.label,
+    required super.onPressed,
+  });
+
+  @override
+  final String tomId;
+
+  @override
+  final String? tomGroup;
 }

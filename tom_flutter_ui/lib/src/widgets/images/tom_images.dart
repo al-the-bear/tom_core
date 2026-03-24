@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -571,6 +572,75 @@ class TomFileImage extends TomImageBase {
       excludeFromSemantics: excludeFromSemantics,
       frameBuilder: frameBuilder,
       errorBuilder: errorBuilder,
+    );
+  }
+}
+
+// ============================================================================
+// Section II: Extended Image Widgets
+// ============================================================================
+
+/// Tom wrapper for [AnimatedIcon].
+///
+/// Animated material icon transitions. Auth on icon visibility.
+class TomAnimatedIcon extends TomImageBase {
+  final AnimatedIconData icon;
+  final Animation<double> progress;
+  final Color? color;
+  final double? size;
+  final String? semanticLabel;
+  final TextDirection? textDirection;
+
+  const TomAnimatedIcon({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.icon,
+    required this.progress,
+    this.color,
+    this.size,
+    this.semanticLabel,
+    this.textDirection,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedSemanticLabel = semanticLabel ??
+        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+    return AnimatedIcon(
+      icon: icon,
+      progress: progress,
+      color: color,
+      size: size,
+      semanticLabel: resolvedSemanticLabel,
+      textDirection: textDirection,
+    );
+  }
+}
+
+/// Tom wrapper for [ImageFiltered].
+///
+/// Applies ImageFilter (blur, matrix) to child. Auth on filtered content.
+class TomImageFiltered extends TomImageBase {
+  final ImageFilter imageFilter;
+  final bool enabled;
+  final Widget? child;
+
+  const TomImageFiltered({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.imageFilter,
+    this.enabled = true,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ImageFiltered(
+      imageFilter: imageFilter,
+      enabled: enabled,
+      child: child,
     );
   }
 }

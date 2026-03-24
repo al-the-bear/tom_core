@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -128,6 +129,59 @@ class _TomTreeNodeWidgetState extends State<_TomTreeNodeWidget> {
               indentation: widget.indentation,
             ),
       ],
+    );
+  }
+}
+
+// =============================================================================
+// Section II: Additional Tree Widgets
+// =============================================================================
+
+/// Tom wrapper for [TreeSliver].
+///
+/// High-performance sliver-based tree with lazy loading. Auth per tree node;
+/// modern tree for large datasets.
+class TomTreeSliver<T> extends TomTreeBase {
+  final List<TreeSliverNode<T>> tree;
+  final TreeSliverNodeBuilder treeNodeBuilder;
+  final TreeSliverRowExtentBuilder treeRowExtentBuilder;
+  final TreeSliverController? controller;
+  final TreeSliverNodeCallback? onNodeToggle;
+  final AnimationStyle? toggleAnimationStyle;
+  final TreeSliverIndentationType indentation;
+  final bool addAutomaticKeepAlives;
+  final bool addRepaintBoundaries;
+  final bool addSemanticIndexes;
+
+  const TomTreeSliver({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.tree,
+    this.treeNodeBuilder = TreeSliver.defaultTreeNodeBuilder,
+    this.treeRowExtentBuilder = TreeSliver.defaultTreeRowExtentBuilder,
+    this.controller,
+    this.onNodeToggle,
+    this.toggleAnimationStyle,
+    this.indentation = TreeSliverIndentationType.standard,
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return TreeSliver<T>(
+      tree: tree,
+      treeNodeBuilder: treeNodeBuilder,
+      treeRowExtentBuilder: treeRowExtentBuilder,
+      controller: controller,
+      onNodeToggle: onNodeToggle,
+      toggleAnimationStyle: toggleAnimationStyle,
+      indentation: indentation,
+      addAutomaticKeepAlives: addAutomaticKeepAlives,
+      addRepaintBoundaries: addRepaintBoundaries,
+      addSemanticIndexes: addSemanticIndexes,
     );
   }
 }

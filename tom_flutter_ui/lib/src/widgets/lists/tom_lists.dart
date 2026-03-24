@@ -293,3 +293,189 @@ class TomCupertinoListTile extends TomListBase {
     );
   }
 }
+
+// =============================================================================
+// Section II: Additional List Widgets
+// =============================================================================
+
+/// Tom wrapper for [CupertinoListSection].
+///
+/// Cupertino grouped list section. Auth on section visibility; resources for header/footer.
+class TomCupertinoListSection extends TomListBase {
+  final List<Widget> children;
+  final Widget? header;
+  final Widget? footer;
+  final EdgeInsetsGeometry? margin;
+  final Color? backgroundColor;
+  final CupertinoListSectionType type;
+  final Clip clipBehavior;
+  final double? topMargin;
+  final bool hasLeading;
+  final Color? dividerMargin;
+  final double additionalDividerMargin;
+  final Widget? decoration;
+  final Widget? separatorColor;
+
+  const TomCupertinoListSection({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.children = const <Widget>[],
+    this.header,
+    this.footer,
+    this.margin,
+    this.backgroundColor,
+    this.type = CupertinoListSectionType.base,
+    this.clipBehavior = Clip.hardEdge,
+    this.topMargin,
+    this.hasLeading = true,
+    this.dividerMargin,
+    this.additionalDividerMargin = 0.0,
+    this.decoration,
+    this.separatorColor,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return CupertinoListSection(
+      header: header,
+      footer: footer,
+      backgroundColor: backgroundColor ?? CupertinoColors.systemBackground,
+      clipBehavior: clipBehavior,
+      topMargin: topMargin,
+      hasLeading: hasLeading,
+      additionalDividerMargin: additionalDividerMargin,
+      margin: margin ?? const EdgeInsets.only(bottom: 8.0),
+      children: children,
+    );
+  }
+}
+
+/// Tom wrapper for [ReorderableList].
+///
+/// Reorderable list implementation. Auth on list content and reorder capability.
+class TomReorderableList extends TomListBase {
+  final SliverChildDelegate childrenDelegate;
+  final ReorderCallback onReorder;
+  final void Function(int)? onReorderStart;
+  final void Function(int)? onReorderEnd;
+  final double? itemExtent;
+  final ItemExtentBuilder? itemExtentBuilder;
+  final Widget? prototypeItem;
+  final ReorderItemProxyDecorator? proxyDecorator;
+  final Axis scrollDirection;
+  final bool reverse;
+  final ScrollController? controller;
+  final bool? primary;
+  final ScrollPhysics? physics;
+  final bool shrinkWrap;
+  final EdgeInsetsGeometry? padding;
+  final Clip clipBehavior;
+  final double anchor;
+  final double? cacheExtent;
+  final DragStartBehavior dragStartBehavior;
+  final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
+  final String? restorationId;
+
+  const TomReorderableList({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.childrenDelegate,
+    required this.onReorder,
+    this.onReorderStart,
+    this.onReorderEnd,
+    this.itemExtent,
+    this.itemExtentBuilder,
+    this.prototypeItem,
+    this.proxyDecorator,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.shrinkWrap = false,
+    this.padding,
+    this.clipBehavior = Clip.hardEdge,
+    this.anchor = 0.0,
+    this.cacheExtent,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return ReorderableList(
+      itemBuilder: (context, index) {
+        return (childrenDelegate as SliverChildBuilderDelegate).builder(context, index)!;
+      },
+      itemCount: (childrenDelegate as SliverChildBuilderDelegate).childCount ?? 0,
+      onReorder: onReorder,
+      onReorderStart: onReorderStart,
+      onReorderEnd: onReorderEnd,
+      itemExtent: itemExtent,
+      itemExtentBuilder: itemExtentBuilder,
+      prototypeItem: prototypeItem,
+      proxyDecorator: proxyDecorator,
+      scrollDirection: scrollDirection,
+      reverse: reverse,
+      controller: controller,
+      primary: primary,
+      physics: physics,
+      shrinkWrap: shrinkWrap,
+      padding: padding,
+      clipBehavior: clipBehavior,
+      anchor: anchor,
+      cacheExtent: cacheExtent,
+      dragStartBehavior: dragStartBehavior,
+      keyboardDismissBehavior: keyboardDismissBehavior,
+      restorationId: restorationId,
+    );
+  }
+}
+
+/// Tom wrapper for [SliverReorderableList].
+///
+/// Sliver variant of ReorderableList. Auth on list content and reorder capability.
+class TomSliverReorderableList extends TomListBase {
+  final Widget Function(BuildContext, int) itemBuilder;
+  final int itemCount;
+  final ReorderCallback onReorder;
+  final void Function(int)? onReorderStart;
+  final void Function(int)? onReorderEnd;
+  final double? itemExtent;
+  final ItemExtentBuilder? itemExtentBuilder;
+  final Widget? prototypeItem;
+  final ReorderItemProxyDecorator? proxyDecorator;
+
+  const TomSliverReorderableList({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.itemBuilder,
+    required this.itemCount,
+    required this.onReorder,
+    this.onReorderStart,
+    this.onReorderEnd,
+    this.itemExtent,
+    this.itemExtentBuilder,
+    this.prototypeItem,
+    this.proxyDecorator,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return SliverReorderableList(
+      itemBuilder: itemBuilder,
+      itemCount: itemCount,
+      onReorder: onReorder,
+      onReorderStart: onReorderStart,
+      onReorderEnd: onReorderEnd,
+      itemExtent: itemExtent,
+      itemExtentBuilder: itemExtentBuilder,
+      prototypeItem: prototypeItem,
+      proxyDecorator: proxyDecorator,
+    );
+  }
+}
