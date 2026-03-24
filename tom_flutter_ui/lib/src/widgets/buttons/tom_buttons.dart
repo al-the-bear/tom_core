@@ -297,6 +297,9 @@ class TomFilledButton extends TomButtonBase {
   }
 }
 
+/// Variant type for [TomFloatingActionButton].
+enum _FABVariant { regular, small, large, extended }
+
 /// Tom wrapper for [FloatingActionButton].
 class TomFloatingActionButton extends TomButtonBase {
   final VoidCallback? onPressed;
@@ -319,7 +322,9 @@ class TomFloatingActionButton extends TomButtonBase {
   final bool? isExtended;
   final bool mini;
   final Widget? icon;
+  final Widget? extendedIconLabelChild;
   final String? label;
+  final _FABVariant _variant;
 
   const TomFloatingActionButton({
     super.key,
@@ -346,79 +351,238 @@ class TomFloatingActionButton extends TomButtonBase {
     this.mini = false,
     this.icon,
     this.label,
-  });
+  })  : _variant = _FABVariant.regular,
+        extendedIconLabelChild = null;
+
+  /// Creates a small floating action button.
+  const TomFloatingActionButton.small({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.child,
+    this.tooltip,
+    this.foregroundColor,
+    this.backgroundColor,
+    this.focusColor,
+    this.hoverColor,
+    this.splashColor,
+    this.elevation,
+    this.focusElevation,
+    this.hoverElevation,
+    this.highlightElevation,
+    this.disabledElevation,
+    this.shape,
+    this.clipBehavior = Clip.none,
+    this.autofocus = false,
+    this.focusNode,
+  })  : _variant = _FABVariant.small,
+        isExtended = null,
+        mini = false,
+        icon = null,
+        label = null,
+        extendedIconLabelChild = null;
+
+  /// Creates a large floating action button.
+  const TomFloatingActionButton.large({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.child,
+    this.tooltip,
+    this.foregroundColor,
+    this.backgroundColor,
+    this.focusColor,
+    this.hoverColor,
+    this.splashColor,
+    this.elevation,
+    this.focusElevation,
+    this.hoverElevation,
+    this.highlightElevation,
+    this.disabledElevation,
+    this.shape,
+    this.clipBehavior = Clip.none,
+    this.autofocus = false,
+    this.focusNode,
+  })  : _variant = _FABVariant.large,
+        isExtended = null,
+        mini = false,
+        icon = null,
+        label = null,
+        extendedIconLabelChild = null;
+
+  /// Creates an extended floating action button with icon and label.
+  const TomFloatingActionButton.extended({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    required this.label,
+    this.icon,
+    this.tooltip,
+    this.foregroundColor,
+    this.backgroundColor,
+    this.focusColor,
+    this.hoverColor,
+    this.splashColor,
+    this.elevation,
+    this.focusElevation,
+    this.hoverElevation,
+    this.highlightElevation,
+    this.disabledElevation,
+    this.shape,
+    this.clipBehavior = Clip.none,
+    this.autofocus = false,
+    this.focusNode,
+    this.isExtended,
+    this.extendedIconLabelChild,
+  })  : _variant = _FABVariant.extended,
+        child = null,
+        mini = false;
 
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTooltip =
         tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final resolvedLabel = label ?? (tomId != null ? resolveResource(context, 'label') : null);
 
-    if (icon != null && label != null) {
-      return FloatingActionButton.extended(
-        onPressed: onPressed,
-        tooltip: resolvedTooltip,
-        foregroundColor: foregroundColor,
-        backgroundColor: backgroundColor,
-        focusColor: focusColor,
-        hoverColor: hoverColor,
-        splashColor: splashColor,
-        elevation: elevation,
-        focusElevation: focusElevation,
-        hoverElevation: hoverElevation,
-        highlightElevation: highlightElevation,
-        disabledElevation: disabledElevation,
-        shape: shape,
-        clipBehavior: clipBehavior,
-        autofocus: autofocus,
-        focusNode: focusNode,
-        isExtended: isExtended ?? true,
-        icon: icon,
-        label: Text(label!),
-      );
+    switch (_variant) {
+      case _FABVariant.extended:
+        return FloatingActionButton.extended(
+          onPressed: onPressed,
+          tooltip: resolvedTooltip,
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          splashColor: splashColor,
+          elevation: elevation,
+          focusElevation: focusElevation,
+          hoverElevation: hoverElevation,
+          highlightElevation: highlightElevation,
+          disabledElevation: disabledElevation,
+          shape: shape,
+          clipBehavior: clipBehavior,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          isExtended: isExtended ?? true,
+          icon: icon,
+          label: extendedIconLabelChild ?? Text(resolvedLabel ?? ''),
+        );
+
+      case _FABVariant.small:
+        return FloatingActionButton.small(
+          onPressed: onPressed,
+          tooltip: resolvedTooltip,
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          splashColor: splashColor,
+          elevation: elevation,
+          focusElevation: focusElevation,
+          hoverElevation: hoverElevation,
+          highlightElevation: highlightElevation,
+          disabledElevation: disabledElevation,
+          shape: shape,
+          clipBehavior: clipBehavior,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          child: child,
+        );
+
+      case _FABVariant.large:
+        return FloatingActionButton.large(
+          onPressed: onPressed,
+          tooltip: resolvedTooltip,
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          splashColor: splashColor,
+          elevation: elevation,
+          focusElevation: focusElevation,
+          hoverElevation: hoverElevation,
+          highlightElevation: highlightElevation,
+          disabledElevation: disabledElevation,
+          shape: shape,
+          clipBehavior: clipBehavior,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          child: child,
+        );
+
+      case _FABVariant.regular:
+        // Legacy behavior: if icon and label are both provided, use extended
+        if (icon != null && resolvedLabel != null) {
+          return FloatingActionButton.extended(
+            onPressed: onPressed,
+            tooltip: resolvedTooltip,
+            foregroundColor: foregroundColor,
+            backgroundColor: backgroundColor,
+            focusColor: focusColor,
+            hoverColor: hoverColor,
+            splashColor: splashColor,
+            elevation: elevation,
+            focusElevation: focusElevation,
+            hoverElevation: hoverElevation,
+            highlightElevation: highlightElevation,
+            disabledElevation: disabledElevation,
+            shape: shape,
+            clipBehavior: clipBehavior,
+            autofocus: autofocus,
+            focusNode: focusNode,
+            isExtended: isExtended ?? true,
+            icon: icon,
+            label: Text(resolvedLabel),
+          );
+        }
+
+        // Legacy behavior: if mini is true, use small
+        if (mini) {
+          return FloatingActionButton.small(
+            onPressed: onPressed,
+            tooltip: resolvedTooltip,
+            foregroundColor: foregroundColor,
+            backgroundColor: backgroundColor,
+            focusColor: focusColor,
+            hoverColor: hoverColor,
+            splashColor: splashColor,
+            elevation: elevation,
+            focusElevation: focusElevation,
+            hoverElevation: hoverElevation,
+            highlightElevation: highlightElevation,
+            disabledElevation: disabledElevation,
+            shape: shape,
+            clipBehavior: clipBehavior,
+            autofocus: autofocus,
+            focusNode: focusNode,
+            child: child,
+          );
+        }
+
+        return FloatingActionButton(
+          onPressed: onPressed,
+          tooltip: resolvedTooltip,
+          foregroundColor: foregroundColor,
+          backgroundColor: backgroundColor,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          splashColor: splashColor,
+          elevation: elevation,
+          focusElevation: focusElevation,
+          hoverElevation: hoverElevation,
+          highlightElevation: highlightElevation,
+          disabledElevation: disabledElevation,
+          shape: shape,
+          clipBehavior: clipBehavior,
+          autofocus: autofocus,
+          focusNode: focusNode,
+          mini: mini,
+          child: child,
+        );
     }
-
-    if (mini) {
-      return FloatingActionButton.small(
-        onPressed: onPressed,
-        tooltip: resolvedTooltip,
-        foregroundColor: foregroundColor,
-        backgroundColor: backgroundColor,
-        focusColor: focusColor,
-        hoverColor: hoverColor,
-        splashColor: splashColor,
-        elevation: elevation,
-        focusElevation: focusElevation,
-        hoverElevation: hoverElevation,
-        highlightElevation: highlightElevation,
-        disabledElevation: disabledElevation,
-        shape: shape,
-        clipBehavior: clipBehavior,
-        autofocus: autofocus,
-        focusNode: focusNode,
-        child: child,
-      );
-    }
-
-    return FloatingActionButton(
-      onPressed: onPressed,
-      tooltip: resolvedTooltip,
-      foregroundColor: foregroundColor,
-      backgroundColor: backgroundColor,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
-      splashColor: splashColor,
-      elevation: elevation,
-      focusElevation: focusElevation,
-      hoverElevation: hoverElevation,
-      highlightElevation: highlightElevation,
-      disabledElevation: disabledElevation,
-      shape: shape,
-      clipBehavior: clipBehavior,
-      autofocus: autofocus,
-      focusNode: focusNode,
-      mini: mini,
-      child: child,
-    );
   }
 }
 
@@ -575,6 +739,9 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
   }
 }
 
+/// Variant type for [TomIconButton].
+enum _IconButtonVariant { regular, filled, filledTonal, outlined }
+
 /// Tom wrapper for [IconButton].
 class TomIconButton extends TomButtonBase {
   final VoidCallback? onPressed;
@@ -597,6 +764,7 @@ class TomIconButton extends TomButtonBase {
   final Widget icon;
   final String? tooltip;
   final FocusNode? focusNode;
+  final _IconButtonVariant _variant;
 
   const TomIconButton({
     super.key,
@@ -622,34 +790,190 @@ class TomIconButton extends TomButtonBase {
     required this.icon,
     this.tooltip,
     this.focusNode,
-  });
+  }) : _variant = _IconButtonVariant.regular;
+
+  /// Creates a filled icon button.
+  const TomIconButton.filled({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.iconSize,
+    this.visualDensity,
+    this.padding,
+    this.alignment,
+    this.splashRadius,
+    this.color,
+    this.focusColor,
+    this.hoverColor,
+    this.highlightColor,
+    this.splashColor,
+    this.disabledColor,
+    this.autofocus = false,
+    this.constraints,
+    this.style,
+    this.isSelected,
+    this.selectedIcon,
+    required this.icon,
+    this.tooltip,
+    this.focusNode,
+  }) : _variant = _IconButtonVariant.filled;
+
+  /// Creates a filled tonal icon button.
+  const TomIconButton.filledTonal({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.iconSize,
+    this.visualDensity,
+    this.padding,
+    this.alignment,
+    this.splashRadius,
+    this.color,
+    this.focusColor,
+    this.hoverColor,
+    this.highlightColor,
+    this.splashColor,
+    this.disabledColor,
+    this.autofocus = false,
+    this.constraints,
+    this.style,
+    this.isSelected,
+    this.selectedIcon,
+    required this.icon,
+    this.tooltip,
+    this.focusNode,
+  }) : _variant = _IconButtonVariant.filledTonal;
+
+  /// Creates an outlined icon button.
+  const TomIconButton.outlined({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.onPressed,
+    this.iconSize,
+    this.visualDensity,
+    this.padding,
+    this.alignment,
+    this.splashRadius,
+    this.color,
+    this.focusColor,
+    this.hoverColor,
+    this.highlightColor,
+    this.splashColor,
+    this.disabledColor,
+    this.autofocus = false,
+    this.constraints,
+    this.style,
+    this.isSelected,
+    this.selectedIcon,
+    required this.icon,
+    this.tooltip,
+    this.focusNode,
+  }) : _variant = _IconButtonVariant.outlined;
 
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
 
-    return IconButton(
-      onPressed: onPressed,
-      iconSize: iconSize,
-      visualDensity: visualDensity,
-      padding: padding,
-      alignment: alignment ?? Alignment.center,
-      splashRadius: splashRadius,
-      color: color,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
-      highlightColor: highlightColor,
-      splashColor: splashColor,
-      disabledColor: disabledColor,
-      autofocus: autofocus,
-      constraints: constraints,
-      style: style,
-      isSelected: isSelected,
-      selectedIcon: selectedIcon,
-      icon: icon,
-      tooltip: resolvedTooltip,
-      focusNode: focusNode,
-    );
+    switch (_variant) {
+      case _IconButtonVariant.filled:
+        return IconButton.filled(
+          onPressed: onPressed,
+          iconSize: iconSize,
+          visualDensity: visualDensity,
+          padding: padding,
+          alignment: alignment ?? Alignment.center,
+          splashRadius: splashRadius,
+          color: color,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          highlightColor: highlightColor,
+          splashColor: splashColor,
+          disabledColor: disabledColor,
+          autofocus: autofocus,
+          constraints: constraints,
+          style: style,
+          isSelected: isSelected,
+          selectedIcon: selectedIcon,
+          icon: icon,
+          tooltip: resolvedTooltip,
+          focusNode: focusNode,
+        );
+
+      case _IconButtonVariant.filledTonal:
+        return IconButton.filledTonal(
+          onPressed: onPressed,
+          iconSize: iconSize,
+          visualDensity: visualDensity,
+          padding: padding,
+          alignment: alignment ?? Alignment.center,
+          splashRadius: splashRadius,
+          color: color,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          highlightColor: highlightColor,
+          splashColor: splashColor,
+          disabledColor: disabledColor,
+          autofocus: autofocus,
+          constraints: constraints,
+          style: style,
+          isSelected: isSelected,
+          selectedIcon: selectedIcon,
+          icon: icon,
+          tooltip: resolvedTooltip,
+          focusNode: focusNode,
+        );
+
+      case _IconButtonVariant.outlined:
+        return IconButton.outlined(
+          onPressed: onPressed,
+          iconSize: iconSize,
+          visualDensity: visualDensity,
+          padding: padding,
+          alignment: alignment ?? Alignment.center,
+          splashRadius: splashRadius,
+          color: color,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          highlightColor: highlightColor,
+          splashColor: splashColor,
+          disabledColor: disabledColor,
+          autofocus: autofocus,
+          constraints: constraints,
+          style: style,
+          isSelected: isSelected,
+          selectedIcon: selectedIcon,
+          icon: icon,
+          tooltip: resolvedTooltip,
+          focusNode: focusNode,
+        );
+
+      case _IconButtonVariant.regular:
+        return IconButton(
+          onPressed: onPressed,
+          iconSize: iconSize,
+          visualDensity: visualDensity,
+          padding: padding,
+          alignment: alignment ?? Alignment.center,
+          splashRadius: splashRadius,
+          color: color,
+          focusColor: focusColor,
+          hoverColor: hoverColor,
+          highlightColor: highlightColor,
+          splashColor: splashColor,
+          disabledColor: disabledColor,
+          autofocus: autofocus,
+          constraints: constraints,
+          style: style,
+          isSelected: isSelected,
+          selectedIcon: selectedIcon,
+          icon: icon,
+          tooltip: resolvedTooltip,
+          focusNode: focusNode,
+        );
+    }
   }
 }
 
