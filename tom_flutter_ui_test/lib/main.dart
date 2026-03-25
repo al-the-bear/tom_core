@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
+import 'demo_resources.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
 import 'widget_demos/demo_03_selection.dart';
@@ -33,6 +34,8 @@ import 'widget_demos/demo_19_effects.dart';
 import 'widget_demos/demo_20_interactions.dart';
 
 void main() {
+  // Initialize Tom UI resource and icon adapters
+  initializeDemoResources();
   runApp(const TomFlutterUiTestApp());
 }
 

@@ -1434,7 +1434,7 @@ class TomInk extends TomContainerBase {
 class TomExpanded extends Expanded with TomWidgetMixin {
   /// Creates a Tom Expanded widget.
   const TomExpanded({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.flex,
@@ -1442,7 +1442,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -1464,7 +1464,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
 class TomFlexible extends Flexible with TomWidgetMixin {
   /// Creates a Tom Flexible widget.
   const TomFlexible({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.flex,
@@ -1473,7 +1473,7 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -1494,14 +1494,14 @@ class TomFlexible extends Flexible with TomWidgetMixin {
 class TomSpacer extends Spacer with TomWidgetMixin {
   /// Creates a Tom Spacer widget.
   const TomSpacer({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.flex,
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -1523,7 +1523,7 @@ class TomSpacer extends Spacer with TomWidgetMixin {
 class TomPositioned extends Positioned with TomWidgetMixin {
   /// Creates a Tom Positioned widget.
   const TomPositioned({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.left,
@@ -1537,7 +1537,7 @@ class TomPositioned extends Positioned with TomWidgetMixin {
 
   /// Creates a Tom Positioned widget that fills the Stack.
   const TomPositioned.fill({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.left = 0.0,
@@ -1548,7 +1548,7 @@ class TomPositioned extends Positioned with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -1561,7 +1561,7 @@ class TomPositionedDirectional extends PositionedDirectional
     with TomWidgetMixin {
   /// Creates a Tom PositionedDirectional widget.
   const TomPositionedDirectional({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.start,
@@ -1574,7 +1574,7 @@ class TomPositionedDirectional extends PositionedDirectional
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -1586,7 +1586,7 @@ class TomPositionedDirectional extends PositionedDirectional
 class TomTableCell extends TableCell with TomWidgetMixin {
   /// Creates a Tom TableCell widget.
   const TomTableCell({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.verticalAlignment,
@@ -1594,7 +1594,7 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -2945,14 +2945,14 @@ class TomClipRSuperellipse extends TomContainerBase {
 /// Tab content view inside CupertinoTabScaffold. Auth on tab content.
 class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
 
   TomCupertinoTabView({
     super.key,
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.builder,
     super.navigatorKey,

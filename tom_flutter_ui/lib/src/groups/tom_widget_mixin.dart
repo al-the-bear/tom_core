@@ -37,7 +37,8 @@ mixin TomWidgetMixin on Widget {
   /// The local widget ID (without prefix).
   ///
   /// This is combined with parent scope IDs to create the canonical path.
-  String get tomId;
+  /// Can be null for drop-in Flutter compatibility.
+  String? get tomId;
 
   /// Optional group membership (zero or one group).
   ///
@@ -47,22 +48,28 @@ mixin TomWidgetMixin on Widget {
   /// Resolves the full canonical path including route/container/group prefix.
   ///
   /// Uses [TomNodeScope] from the widget tree to build the path.
-  String resolveFullPath(BuildContext context) {
+  /// Returns null if tomId is null.
+  String? resolveFullPath(BuildContext context) {
+    if (tomId == null) return null;
     final scope = TomNodeScope.of(context);
-    return scope?.appendWidget(tomId) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId);
+    return scope?.appendWidget(tomId!) ??
+        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
   }
 
   /// Gets authorization state for this widget.
   TomAuthState getAuth(BuildContext context) {
-    return TomUIAuthorization.resolveAuth(resolveFullPath(context));
+    final path = resolveFullPath(context);
+    if (path == null) return TomAuthState.fullAccess;
+    return TomUIAuthorization.resolveAuth(path);
   }
 
   /// Gets a text resource for this widget.
   ///
   /// Resolves `<canonical-path>.<suffix>` from [TomUIResources].
   String getText(BuildContext context, String suffix) {
-    return TomUIResources.resolveText(resolveFullPath(context), suffix);
+    final path = resolveFullPath(context);
+    if (path == null) return '';
+    return TomUIResources.resolveText(path, suffix);
   }
 
   /// Returns `SizedBox.shrink()` if authorization says hidden, `null` otherwise.

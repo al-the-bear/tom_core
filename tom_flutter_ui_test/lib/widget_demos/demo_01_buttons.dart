@@ -24,7 +24,7 @@ class ButtonsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: const [
         _SectionHeader(
@@ -32,67 +32,67 @@ class ButtonsDemo extends StatelessWidget {
           subtitle: 'Primary action buttons with elevation and shadow',
         ),
         _TomElevatedButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomFilledButton',
           subtitle: 'High-emphasis buttons with filled background (M3)',
         ),
         _TomFilledButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomOutlinedButton',
           subtitle: 'Medium-emphasis buttons with outline border',
         ),
         _TomOutlinedButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomTextButton',
           subtitle: 'Low-emphasis buttons for less prominent actions',
         ),
         _TomTextButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomIconButton',
           subtitle: 'Buttons that display a single icon',
         ),
         _TomIconButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomFloatingActionButton',
           subtitle: 'Circular floating buttons for primary actions',
         ),
         _TomFloatingActionButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomSegmentedButton',
           subtitle: 'Multi-segment toggle buttons (M3)',
         ),
         _TomSegmentedButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomMenuAnchor & TomMenuItemButton',
           subtitle: 'Button-triggered menus with nested items',
         ),
         _TomMenuSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomPopupMenuButton',
           subtitle: 'Buttons that show a popup menu',
         ),
         _TomPopupMenuButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'TomBackButton & TomCloseButton',
           subtitle: 'Specialized navigation buttons',
         ),
         _TomNavigationButtonsSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Group-based Visibility',
           subtitle: 'Control button visibility via tomGroup and TomGroupScope',
         ),
         _GroupVisibilitySection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -114,15 +114,13 @@ class _SectionHeader extends StatelessWidget {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TomText(
-          text: title,
+        TomText(title,
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
           ),
         ),
         const TomSizedBox(height: 4),
-        TomText(
-          text: subtitle,
+        TomText(subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -148,15 +146,13 @@ Widget _buildDemoCard(String title, String description, Widget child) {
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(
-                text: title,
+              TomText(title,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
               const TomSizedBox(height: 4),
-              TomText(
-                text: description,
+              TomText(description,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -192,7 +188,7 @@ class _TomElevatedButtonSection extends StatelessWidget {
               TomElevatedButton(
                 tomId: 'demo.elevated.basic',
                 onPressed: () {},
-                child: const TomText(text: 'Basic'),
+                child: const TomText('Basic'),
               ),
               TomElevatedButton(
                 tomId: 'demo.elevated.label',
@@ -202,7 +198,7 @@ class _TomElevatedButtonSection extends StatelessWidget {
               TomElevatedButton(
                 tomId: 'demo.elevated.disabled',
                 onPressed: null,
-                child: const TomText(text: 'Disabled'),
+                child: const TomText('Disabled'),
               ),
             ],
           ),
@@ -217,20 +213,20 @@ class _TomElevatedButtonSection extends StatelessWidget {
               TomElevatedButton(
                 tomId: 'demo.elevated.icon.save',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.save),
-                child: const TomText(text: 'Save'),
+                icon: const TomIcon(Icons.save),
+                child: const TomText('Save'),
               ),
               TomElevatedButton(
                 tomId: 'demo.elevated.icon.send',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.send),
+                icon: const TomIcon(Icons.send),
                 label: 'Send',
               ),
               TomElevatedButton(
                 tomId: 'demo.elevated.icon.download',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.download),
-                child: const TomText(text: 'Download'),
+                icon: const TomIcon(Icons.download),
+                child: const TomText('Download'),
               ),
             ],
           ),
@@ -249,8 +245,8 @@ class _TomElevatedButtonSection extends StatelessWidget {
                   backgroundColor: Theme.of(context).colorScheme.error,
                   foregroundColor: Theme.of(context).colorScheme.onError,
                 ),
-                icon: const TomIcon(icon: Icons.delete),
-                child: const TomText(text: 'Delete'),
+                icon: const TomIcon(Icons.delete),
+                child: const TomText('Delete'),
               ),
               TomElevatedButton(
                 tomId: 'demo.elevated.style.rounded',
@@ -262,7 +258,7 @@ class _TomElevatedButtonSection extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 ),
-                child: const TomText(text: 'Rounded'),
+                child: const TomText('Rounded'),
               ),
               TomElevatedButton(
                 tomId: 'demo.elevated.style.large',
@@ -272,7 +268,7 @@ class _TomElevatedButtonSection extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
                   textStyle: const TextStyle(fontSize: 18),
                 ),
-                child: const TomText(text: 'Large'),
+                child: const TomText('Large'),
               ),
             ],
           ),
@@ -303,7 +299,7 @@ class _TomFilledButtonSection extends StatelessWidget {
               TomFilledButton(
                 tomId: 'demo.filled.basic',
                 onPressed: () {},
-                child: const TomText(text: 'Filled'),
+                child: const TomText('Filled'),
               ),
               TomFilledButton(
                 tomId: 'demo.filled.label',
@@ -313,7 +309,7 @@ class _TomFilledButtonSection extends StatelessWidget {
               TomFilledButton(
                 tomId: 'demo.filled.disabled',
                 onPressed: null,
-                child: const TomText(text: 'Disabled'),
+                child: const TomText('Disabled'),
               ),
             ],
           ),
@@ -329,20 +325,20 @@ class _TomFilledButtonSection extends StatelessWidget {
                 tomId: 'demo.filled.tonal',
                 tonal: true,
                 onPressed: () {},
-                child: const TomText(text: 'Tonal'),
+                child: const TomText('Tonal'),
               ),
               TomFilledButton(
                 tomId: 'demo.filled.tonal.icon',
                 tonal: true,
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.settings),
-                child: const TomText(text: 'Settings'),
+                icon: const TomIcon(Icons.settings),
+                child: const TomText('Settings'),
               ),
               TomFilledButton(
                 tomId: 'demo.filled.tonal.disabled',
                 tonal: true,
                 onPressed: null,
-                child: const TomText(text: 'Disabled Tonal'),
+                child: const TomText('Disabled Tonal'),
               ),
             ],
           ),
@@ -357,13 +353,13 @@ class _TomFilledButtonSection extends StatelessWidget {
               TomFilledButton(
                 tomId: 'demo.filled.icon.add',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.add),
-                child: const TomText(text: 'Add'),
+                icon: const TomIcon(Icons.add),
+                child: const TomText('Add'),
               ),
               TomFilledButton(
                 tomId: 'demo.filled.icon.share',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.share),
+                icon: const TomIcon(Icons.share),
                 label: 'Share',
               ),
             ],
@@ -395,7 +391,7 @@ class _TomOutlinedButtonSection extends StatelessWidget {
               TomOutlinedButton(
                 tomId: 'demo.outlined.basic',
                 onPressed: () {},
-                child: const TomText(text: 'Outlined'),
+                child: const TomText('Outlined'),
               ),
               TomOutlinedButton(
                 tomId: 'demo.outlined.label',
@@ -405,7 +401,7 @@ class _TomOutlinedButtonSection extends StatelessWidget {
               TomOutlinedButton(
                 tomId: 'demo.outlined.disabled',
                 onPressed: null,
-                child: const TomText(text: 'Disabled'),
+                child: const TomText('Disabled'),
               ),
             ],
           ),
@@ -420,13 +416,13 @@ class _TomOutlinedButtonSection extends StatelessWidget {
               TomOutlinedButton(
                 tomId: 'demo.outlined.icon.edit',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.edit),
-                child: const TomText(text: 'Edit'),
+                icon: const TomIcon(Icons.edit),
+                child: const TomText('Edit'),
               ),
               TomOutlinedButton(
                 tomId: 'demo.outlined.icon.cancel',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.cancel),
+                icon: const TomIcon(Icons.cancel),
                 label: 'Cancel',
               ),
             ],
@@ -448,7 +444,7 @@ class _TomOutlinedButtonSection extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                child: const TomText(text: 'Thick Border'),
+                child: const TomText('Thick Border'),
               ),
               TomOutlinedButton(
                 tomId: 'demo.outlined.style.dashed',
@@ -461,7 +457,7 @@ class _TomOutlinedButtonSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const TomText(text: 'Secondary'),
+                child: const TomText('Secondary'),
               ),
             ],
           ),
@@ -492,7 +488,7 @@ class _TomTextButtonSection extends StatelessWidget {
               TomTextButton(
                 tomId: 'demo.text.basic',
                 onPressed: () {},
-                child: const TomText(text: 'Text Button'),
+                child: const TomText('Text Button'),
               ),
               TomTextButton(
                 tomId: 'demo.text.label',
@@ -502,7 +498,7 @@ class _TomTextButtonSection extends StatelessWidget {
               TomTextButton(
                 tomId: 'demo.text.disabled',
                 onPressed: null,
-                child: const TomText(text: 'Disabled'),
+                child: const TomText('Disabled'),
               ),
             ],
           ),
@@ -517,13 +513,13 @@ class _TomTextButtonSection extends StatelessWidget {
               TomTextButton(
                 tomId: 'demo.text.icon.link',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.link),
-                child: const TomText(text: 'Link'),
+                icon: const TomIcon(Icons.link),
+                child: const TomText('Link'),
               ),
               TomTextButton(
                 tomId: 'demo.text.icon.more',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.more_horiz),
+                icon: const TomIcon(Icons.more_horiz),
                 label: 'More',
               ),
             ],
@@ -538,13 +534,13 @@ class _TomTextButtonSection extends StatelessWidget {
               TomTextButton(
                 tomId: 'demo.text.dialog.cancel',
                 onPressed: () {},
-                child: const TomText(text: 'Cancel'),
+                child: const TomText('Cancel'),
               ),
               const TomSizedBox(width: 8),
               TomTextButton(
                 tomId: 'demo.text.dialog.ok',
                 onPressed: () {},
-                child: const TomText(text: 'OK'),
+                child: const TomText('OK'),
               ),
             ],
           ),
@@ -575,25 +571,25 @@ class _TomIconButtonSection extends StatelessWidget {
               TomIconButton(
                 tomId: 'demo.icon.favorite',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.favorite),
+                icon: const TomIcon(Icons.favorite),
                 tooltip: 'Favorite',
               ),
               TomIconButton(
                 tomId: 'demo.icon.share',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.share),
+                icon: const TomIcon(Icons.share),
                 tooltip: 'Share',
               ),
               TomIconButton(
                 tomId: 'demo.icon.more',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.more_vert),
+                icon: const TomIcon(Icons.more_vert),
                 tooltip: 'More options',
               ),
               TomIconButton(
                 tomId: 'demo.icon.disabled',
                 onPressed: null,
-                icon: const TomIcon(icon: Icons.delete),
+                icon: const TomIcon(Icons.delete),
                 tooltip: 'Delete (disabled)',
               ),
             ],
@@ -609,19 +605,19 @@ class _TomIconButtonSection extends StatelessWidget {
               TomIconButton.filled(
                 tomId: 'demo.icon.filled',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.add),
+                icon: const TomIcon(Icons.add),
                 tooltip: 'Add (filled)',
               ),
               TomIconButton.filledTonal(
                 tomId: 'demo.icon.tonal',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.edit),
+                icon: const TomIcon(Icons.edit),
                 tooltip: 'Edit (tonal)',
               ),
               TomIconButton.outlined(
                 tomId: 'demo.icon.outlined',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.search),
+                icon: const TomIcon(Icons.search),
                 tooltip: 'Search (outlined)',
               ),
             ],
@@ -639,28 +635,28 @@ class _TomIconButtonSection extends StatelessWidget {
                 tomId: 'demo.icon.small',
                 onPressed: () {},
                 iconSize: 18,
-                icon: const TomIcon(icon: Icons.star),
+                icon: const TomIcon(Icons.star),
                 tooltip: 'Small',
               ),
               TomIconButton(
                 tomId: 'demo.icon.medium',
                 onPressed: () {},
                 iconSize: 24,
-                icon: const TomIcon(icon: Icons.star),
+                icon: const TomIcon(Icons.star),
                 tooltip: 'Medium',
               ),
               TomIconButton(
                 tomId: 'demo.icon.large',
                 onPressed: () {},
                 iconSize: 32,
-                icon: const TomIcon(icon: Icons.star),
+                icon: const TomIcon(Icons.star),
                 tooltip: 'Large',
               ),
               TomIconButton(
                 tomId: 'demo.icon.xlarge',
                 onPressed: () {},
                 iconSize: 48,
-                icon: const TomIcon(icon: Icons.star),
+                icon: const TomIcon(Icons.star),
                 tooltip: 'Extra Large',
               ),
             ],
@@ -694,19 +690,19 @@ class _TomFloatingActionButtonSection extends StatelessWidget {
                 tomId: 'demo.fab.basic',
                 onPressed: () {},
                 tooltip: 'Add',
-                child: const TomIcon(icon: Icons.add),
+                child: const TomIcon(Icons.add),
               ),
               TomFloatingActionButton.small(
                 tomId: 'demo.fab.small',
                 onPressed: () {},
                 tooltip: 'Small FAB',
-                child: const TomIcon(icon: Icons.edit),
+                child: const TomIcon(Icons.edit),
               ),
               TomFloatingActionButton.large(
                 tomId: 'demo.fab.large',
                 onPressed: () {},
                 tooltip: 'Large FAB',
-                child: const TomIcon(icon: Icons.camera_alt),
+                child: const TomIcon(Icons.camera_alt),
               ),
             ],
           ),
@@ -721,13 +717,13 @@ class _TomFloatingActionButtonSection extends StatelessWidget {
               TomFloatingActionButton.extended(
                 tomId: 'demo.fab.extended.compose',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.edit),
+                icon: const TomIcon(Icons.edit),
                 label: 'Compose',
               ),
               TomFloatingActionButton.extended(
                 tomId: 'demo.fab.extended.add',
                 onPressed: () {},
-                icon: const TomIcon(icon: Icons.add),
+                icon: const TomIcon(Icons.add),
                 label: 'Create New',
               ),
             ],
@@ -746,7 +742,7 @@ class _TomFloatingActionButtonSection extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.tertiary,
                 foregroundColor: Theme.of(context).colorScheme.onTertiary,
                 tooltip: 'Tertiary color',
-                child: const TomIcon(icon: Icons.star),
+                child: const TomIcon(Icons.star),
               ),
               TomFloatingActionButton(
                 tomId: 'demo.fab.color.error',
@@ -754,7 +750,7 @@ class _TomFloatingActionButtonSection extends StatelessWidget {
                 backgroundColor: Theme.of(context).colorScheme.error,
                 foregroundColor: Theme.of(context).colorScheme.onError,
                 tooltip: 'Error color',
-                child: const TomIcon(icon: Icons.delete),
+                child: const TomIcon(Icons.delete),
               ),
             ],
           ),
@@ -793,18 +789,18 @@ class _TomSegmentedButtonSectionState
             segments: const [
               ButtonSegment(
                 value: 'day',
-                icon: TomIcon(icon: Icons.calendar_view_day),
-                label: TomText(text: 'Day'),
+                icon: TomIcon(Icons.calendar_view_day),
+                label: TomText('Day'),
               ),
               ButtonSegment(
                 value: 'week',
-                icon: TomIcon(icon: Icons.calendar_view_week),
-                label: TomText(text: 'Week'),
+                icon: TomIcon(Icons.calendar_view_week),
+                label: TomText('Week'),
               ),
               ButtonSegment(
                 value: 'month',
-                icon: TomIcon(icon: Icons.calendar_view_month),
-                label: TomText(text: 'Month'),
+                icon: TomIcon(Icons.calendar_view_month),
+                label: TomText('Month'),
               ),
             ],
             selected: _singleSelection,
@@ -822,18 +818,18 @@ class _TomSegmentedButtonSectionState
             segments: const [
               ButtonSegment(
                 value: 'bold',
-                icon: TomIcon(icon: Icons.format_bold),
-                label: TomText(text: 'Bold'),
+                icon: TomIcon(Icons.format_bold),
+                label: TomText('Bold'),
               ),
               ButtonSegment(
                 value: 'italic',
-                icon: TomIcon(icon: Icons.format_italic),
-                label: TomText(text: 'Italic'),
+                icon: TomIcon(Icons.format_italic),
+                label: TomText('Italic'),
               ),
               ButtonSegment(
                 value: 'underline',
-                icon: TomIcon(icon: Icons.format_underline),
-                label: TomText(text: 'Underline'),
+                icon: TomIcon(Icons.format_underline),
+                label: TomText('Underline'),
               ),
             ],
             selected: _multiSelection,
@@ -852,15 +848,15 @@ class _TomSegmentedButtonSectionState
             segments: const [
               ButtonSegment(
                 value: 'list',
-                icon: TomIcon(icon: Icons.view_list),
+                icon: TomIcon(Icons.view_list),
               ),
               ButtonSegment(
                 value: 'grid',
-                icon: TomIcon(icon: Icons.grid_view),
+                icon: TomIcon(Icons.grid_view),
               ),
               ButtonSegment(
                 value: 'module',
-                icon: TomIcon(icon: Icons.view_module),
+                icon: TomIcon(Icons.view_module),
               ),
             ],
             selected: const {'list'},
@@ -892,27 +888,27 @@ class _TomMenuSection extends StatelessWidget {
               TomMenuItemButton(
                 tomId: 'demo.menu.item.cut',
                 onPressed: () {},
-                leadingIcon: const TomIcon(icon: Icons.cut),
-                child: const TomText(text: 'Cut'),
+                leadingIcon: const TomIcon(Icons.cut),
+                child: const TomText('Cut'),
               ),
               TomMenuItemButton(
                 tomId: 'demo.menu.item.copy',
                 onPressed: () {},
-                leadingIcon: const TomIcon(icon: Icons.copy),
-                child: const TomText(text: 'Copy'),
+                leadingIcon: const TomIcon(Icons.copy),
+                child: const TomText('Copy'),
               ),
               TomMenuItemButton(
                 tomId: 'demo.menu.item.paste',
                 onPressed: () {},
-                leadingIcon: const TomIcon(icon: Icons.paste),
-                child: const TomText(text: 'Paste'),
+                leadingIcon: const TomIcon(Icons.paste),
+                child: const TomText('Paste'),
               ),
               const TomDivider(),
               TomMenuItemButton(
                 tomId: 'demo.menu.item.selectall',
                 onPressed: () {},
-                leadingIcon: const TomIcon(icon: Icons.select_all),
-                child: const TomText(text: 'Select All'),
+                leadingIcon: const TomIcon(Icons.select_all),
+                child: const TomText('Select All'),
               ),
             ],
             builder: (context, controller, child) {
@@ -925,8 +921,8 @@ class _TomMenuSection extends StatelessWidget {
                     controller.open();
                   }
                 },
-                icon: const TomIcon(icon: Icons.menu),
-                child: const TomText(text: 'Open Menu'),
+                icon: const TomIcon(Icons.menu),
+                child: const TomText('Open Menu'),
               );
             },
           ),
@@ -940,47 +936,47 @@ class _TomMenuSection extends StatelessWidget {
               TomMenuItemButton(
                 tomId: 'demo.submenu.new',
                 onPressed: () {},
-                leadingIcon: const TomIcon(icon: Icons.add),
-                child: const TomText(text: 'New'),
+                leadingIcon: const TomIcon(Icons.add),
+                child: const TomText('New'),
               ),
               TomSubmenuButton(
                 tomId: 'demo.submenu.open',
-                leadingIcon: const TomIcon(icon: Icons.folder_open),
+                leadingIcon: const TomIcon(Icons.folder_open),
                 menuChildren: [
                   TomMenuItemButton(
                     tomId: 'demo.submenu.open.recent',
                     onPressed: () {},
-                    child: const TomText(text: 'Recent Files'),
+                    child: const TomText('Recent Files'),
                   ),
                   TomMenuItemButton(
                     tomId: 'demo.submenu.open.browse',
                     onPressed: () {},
-                    child: const TomText(text: 'Browse...'),
+                    child: const TomText('Browse...'),
                   ),
                 ],
-                child: const TomText(text: 'Open'),
+                child: const TomText('Open'),
               ),
               TomSubmenuButton(
                 tomId: 'demo.submenu.export',
-                leadingIcon: const TomIcon(icon: Icons.ios_share),
+                leadingIcon: const TomIcon(Icons.ios_share),
                 menuChildren: [
                   TomMenuItemButton(
                     tomId: 'demo.submenu.export.pdf',
                     onPressed: () {},
-                    child: const TomText(text: 'Export as PDF'),
+                    child: const TomText('Export as PDF'),
                   ),
                   TomMenuItemButton(
                     tomId: 'demo.submenu.export.csv',
                     onPressed: () {},
-                    child: const TomText(text: 'Export as CSV'),
+                    child: const TomText('Export as CSV'),
                   ),
                   TomMenuItemButton(
                     tomId: 'demo.submenu.export.json',
                     onPressed: () {},
-                    child: const TomText(text: 'Export as JSON'),
+                    child: const TomText('Export as JSON'),
                   ),
                 ],
-                child: const TomText(text: 'Export'),
+                child: const TomText('Export'),
               ),
             ],
             builder: (context, controller, child) {
@@ -993,8 +989,8 @@ class _TomMenuSection extends StatelessWidget {
                     controller.open();
                   }
                 },
-                icon: const TomIcon(icon: Icons.menu_open),
-                child: const TomText(text: 'File Menu'),
+                icon: const TomIcon(Icons.menu_open),
+                child: const TomText('File Menu'),
               );
             },
           ),
@@ -1022,24 +1018,24 @@ class _TomPopupMenuButtonSection extends StatelessWidget {
             tomId: 'demo.popup.basic',
             onSelected: (value) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Selected: $value')),
+                TomSnackBar(content: TomText('Selected: $value')),
               );
             },
             itemBuilder: (context) => [
               TomPopupMenuItem<String>(
                 tomId: 'demo.popup.item.view',
                 value: 'view',
-                child: const TomText(text: 'View'),
+                child: const TomText('View'),
               ),
               TomPopupMenuItem<String>(
                 tomId: 'demo.popup.item.edit',
                 value: 'edit',
-                child: const TomText(text: 'Edit'),
+                child: const TomText('Edit'),
               ),
               TomPopupMenuItem<String>(
                 tomId: 'demo.popup.item.delete',
                 value: 'delete',
-                child: const TomText(text: 'Delete'),
+                child: const TomText('Delete'),
               ),
             ],
           ),
@@ -1049,7 +1045,7 @@ class _TomPopupMenuButtonSection extends StatelessWidget {
           'TomPopupMenuButton with icons and TomPopupMenuDivider.',
           TomPopupMenuButton<String>(
             tomId: 'demo.popup.icons',
-            icon: const TomIcon(icon: Icons.more_vert),
+            icon: const TomIcon(Icons.more_vert),
             onSelected: (value) {},
             itemBuilder: (context) => [
               TomPopupMenuItem<String>(
@@ -1057,9 +1053,9 @@ class _TomPopupMenuButtonSection extends StatelessWidget {
                 value: 'share',
                 child: const TomRow(
                   children: [
-                    TomIcon(icon: Icons.share, size: 20),
+                    TomIcon(Icons.share, size: 20),
                     TomSizedBox(width: 12),
-                    TomText(text: 'Share'),
+                    TomText('Share'),
                   ],
                 ),
               ),
@@ -1068,9 +1064,9 @@ class _TomPopupMenuButtonSection extends StatelessWidget {
                 value: 'link',
                 child: const TomRow(
                   children: [
-                    TomIcon(icon: Icons.link, size: 20),
+                    TomIcon(Icons.link, size: 20),
                     TomSizedBox(width: 12),
-                    TomText(text: 'Copy Link'),
+                    TomText('Copy Link'),
                   ],
                 ),
               ),
@@ -1080,10 +1076,10 @@ class _TomPopupMenuButtonSection extends StatelessWidget {
                 value: 'report',
                 child: TomRow(
                   children: [
-                    TomIcon(icon: Icons.flag, size: 20, color: Colors.red.shade700),
+                    TomIcon(Icons.flag, size: 20, color: Colors.red.shade700),
                     const TomSizedBox(width: 12),
-                    TomText(
-                      text: 'Report',
+                    TomText('Report',
+                      
                       style: TextStyle(color: Colors.red.shade700),
                     ),
                   ],
@@ -1119,10 +1115,10 @@ class _CheckedPopupMenuDemoState extends State<_CheckedPopupMenuDemo> {
       child: const TomRow(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TomIcon(icon: Icons.filter_list),
+          TomIcon(Icons.filter_list),
           TomSizedBox(width: 8),
-          TomText(text: 'Filter'),
-          TomIcon(icon: Icons.arrow_drop_down),
+          TomText('Filter'),
+          TomIcon(Icons.arrow_drop_down),
         ],
       ),
       itemBuilder: (context) => [
@@ -1130,19 +1126,19 @@ class _CheckedPopupMenuDemoState extends State<_CheckedPopupMenuDemo> {
           tomId: 'demo.popup.checked.images',
           value: 'images',
           checked: _showImages,
-          child: const TomText(text: 'Images'),
+          child: const TomText('Images'),
         ),
         TomCheckedPopupMenuItem<String>(
           tomId: 'demo.popup.checked.videos',
           value: 'videos',
           checked: _showVideos,
-          child: const TomText(text: 'Videos'),
+          child: const TomText('Videos'),
         ),
         TomCheckedPopupMenuItem<String>(
           tomId: 'demo.popup.checked.documents',
           value: 'documents',
           checked: _showDocuments,
-          child: const TomText(text: 'Documents'),
+          child: const TomText('Documents'),
         ),
       ],
       onSelected: (value) {
@@ -1181,12 +1177,12 @@ class _TomNavigationButtonsSection extends StatelessWidget {
                 tomId: 'demo.back.default',
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Back pressed')),
+                    TomSnackBar(content: TomText('Back pressed')),
                   );
                 },
               ),
               const TomSizedBox(width: 16),
-              const TomText(text: '← TomBackButton triggers navigation'),
+              const TomText('← TomBackButton triggers navigation'),
             ],
           ),
         ),
@@ -1199,12 +1195,12 @@ class _TomNavigationButtonsSection extends StatelessWidget {
                 tomId: 'demo.close.default',
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Close pressed')),
+                    TomSnackBar(content: TomText('Close pressed')),
                   );
                 },
               ),
               const TomSizedBox(width: 16),
-              const TomText(text: '← TomCloseButton for dismissing content'),
+              const TomText('← TomCloseButton for dismissing content'),
             ],
           ),
         ),
@@ -1229,11 +1225,11 @@ class _TomNavigationButtonsSection extends StatelessWidget {
                     const TomSizedBox(width: 8),
                     TomExpanded(
                       tomId: 'demo.context.detail.label',
-                      child: TomText(text: 'Detail Page'),
+                      child: TomText('Detail Page'),
                     ),
                     TomIconButton(
                       tomId: 'demo.context.more',
-                      icon: const TomIcon(icon: Icons.more_vert),
+                      icon: const TomIcon(Icons.more_vert),
                       onPressed: () {},
                     ),
                   ],
@@ -1254,8 +1250,8 @@ class _TomNavigationButtonsSection extends StatelessWidget {
                       children: [
                         TomExpanded(
                           tomId: 'demo.context.settings.label',
-                          child: TomText(
-                            text: 'Settings',
+                          child: TomText('Settings',
+                            
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
@@ -1269,7 +1265,7 @@ class _TomNavigationButtonsSection extends StatelessWidget {
                       ],
                     ),
                     const TomSizedBox(height: 8),
-                    const TomText(text: 'Dialog or panel content goes here...'),
+                    const TomText('Dialog or panel content goes here...'),
                   ],
                 ),
               ),
@@ -1299,7 +1295,7 @@ class _GroupVisibilitySection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const TomText(
-                text: 'Buttons can specify a tomGroup for authorization control. '
+                'Buttons can specify a tomGroup for authorization control. '
                     'When wrapped in TomGroupScope, visibility is managed by the auth system.',
                 style: TextStyle(fontStyle: FontStyle.italic),
               ),
@@ -1320,15 +1316,15 @@ class _GroupVisibilitySection extends StatelessWidget {
                       foregroundColor:
                           Theme.of(context).colorScheme.onError,
                     ),
-                    icon: const TomIcon(icon: Icons.delete_forever),
-                    child: const TomText(text: 'Delete All (admin)'),
+                    icon: const TomIcon(Icons.delete_forever),
+                    child: const TomText('Delete All (admin)'),
                   ),
                   TomElevatedButton(
                     tomId: 'demo.group.btn.settings',
                     tomGroup: 'admin',
                     onPressed: () {},
-                    icon: const TomIcon(icon: Icons.admin_panel_settings),
-                    child: const TomText(text: 'Admin Settings'),
+                    icon: const TomIcon(Icons.admin_panel_settings),
+                    child: const TomText('Admin Settings'),
                   ),
 
                   // Editor buttons
@@ -1336,15 +1332,15 @@ class _GroupVisibilitySection extends StatelessWidget {
                     tomId: 'demo.group.btn.edit',
                     tomGroup: 'editor',
                     onPressed: () {},
-                    icon: const TomIcon(icon: Icons.edit),
-                    child: const TomText(text: 'Edit (editor)'),
+                    icon: const TomIcon(Icons.edit),
+                    child: const TomText('Edit (editor)'),
                   ),
                   TomFilledButton(
                     tomId: 'demo.group.btn.publish',
                     tomGroup: 'editor',
                     onPressed: () {},
-                    icon: const TomIcon(icon: Icons.publish),
-                    child: const TomText(text: 'Publish (editor)'),
+                    icon: const TomIcon(Icons.publish),
+                    child: const TomText('Publish (editor)'),
                   ),
 
                   // Viewer buttons
@@ -1352,15 +1348,15 @@ class _GroupVisibilitySection extends StatelessWidget {
                     tomId: 'demo.group.btn.view',
                     tomGroup: 'viewer',
                     onPressed: () {},
-                    icon: const TomIcon(icon: Icons.visibility),
-                    child: const TomText(text: 'View (viewer)'),
+                    icon: const TomIcon(Icons.visibility),
+                    child: const TomText('View (viewer)'),
                   ),
                   TomOutlinedButton(
                     tomId: 'demo.group.btn.download',
                     tomGroup: 'viewer',
                     onPressed: () {},
-                    icon: const TomIcon(icon: Icons.download),
-                    child: const TomText(text: 'Download (viewer)'),
+                    icon: const TomIcon(Icons.download),
+                    child: const TomText('Download (viewer)'),
                   ),
                 ],
               ),
@@ -1383,11 +1379,11 @@ class _GroupVisibilitySection extends StatelessWidget {
                 child: TomRow(
                   children: [
                     TomIcon(
-                      icon: Icons.info,
+                      Icons.info,
                       color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                     const TomSizedBox(width: 12),
-                    Expanded(
+                    TomExpanded(
                       child: Text(
                         'Buttons use tomGroup to specify their required '
                         'permission group. TomGroupScope defines group boundaries '

@@ -14,7 +14,7 @@ class TogglesDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -22,43 +22,43 @@ class TogglesDemo extends StatelessWidget {
           subtitle: 'Binary toggle controls for on/off states',
         ),
         _SwitchSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Checkbox',
           subtitle: 'Selection controls for multiple options',
         ),
         _CheckboxSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Radio',
           subtitle: 'Single selection from mutually exclusive options',
         ),
         _RadioSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'SegmentedButton',
           subtitle: 'Horizontal selection of related options',
         ),
         _SegmentedButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'ToggleButtons',
           subtitle: 'Classic toggle buttons in a row',
         ),
         _ToggleButtonsSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Custom Toggles',
           subtitle: 'Building custom toggle components',
         ),
         _CustomTogglesSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Settings Examples',
           subtitle: 'Real-world toggle patterns',
         ),
         _SettingsExamplesSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -77,9 +77,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -89,15 +89,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -136,9 +136,9 @@ class _DemoCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -148,7 +148,7 @@ class _DemoCard extends StatelessWidget {
               ),
             ),
             if (description != null) ...[
-              const SizedBox(height: 4),
+              const TomSizedBox(height: 4),
               Text(
                 description!,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -156,10 +156,10 @@ class _DemoCard extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
             if (code != null) ...[
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               _CodeSnippet(code: code!),
             ],
           ],
@@ -188,30 +188,30 @@ class _CodeSnippetState extends State<_CodeSnippet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           borderRadius: BorderRadius.circular(4),
-          child: Padding(
+          child: TomPadding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
+            child: TomRow(
               children: [
-                Icon(
+                TomIcon(
                   _expanded ? Icons.code_off : Icons.code,
                   size: 16,
                   color: theme.colorScheme.primary,
                 ),
-                const SizedBox(width: 8),
+                const TomSizedBox(width: 8),
                 Text(
                   _expanded ? 'Hide code' : 'Show code',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const Spacer(),
-                Icon(
+                const TomSpacer(),
+                TomIcon(
                   _expanded ? Icons.expand_less : Icons.expand_more,
                   size: 20,
                   color: theme.colorScheme.outline,
@@ -221,8 +221,8 @@ class _CodeSnippetState extends State<_CodeSnippet> {
           ),
         ),
         if (_expanded) ...[
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -263,23 +263,25 @@ class _SwitchSectionState extends State<_SwitchSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Basic Switch',
           description: 'Simple on/off toggle with state display.',
-          child: Row(
+          child: TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Notifications: ${_switch1 ? "ON" : "OFF"}'),
-              Switch(
+              TomSwitch(
+                tomId: 'demo.toggle.switch.basic',
                 value: _switch1,
                 onChanged: (value) => setState(() => _switch1 = value),
               ),
             ],
           ),
           code: '''
-Switch(
+TomSwitch(
+  tomId: 'app.settings.notifications',
   value: _isEnabled,
   onChanged: (value) => setState(() => _isEnabled = value),
 )''',
@@ -287,47 +289,50 @@ Switch(
         _DemoCard(
           title: 'SwitchListTile',
           description: 'Switch integrated with ListTile for settings UI.',
-          child: Column(
+          child: TomColumn(
             children: [
-              SwitchListTile(
+              TomSwitchListTile(
+                tomId: 'demo.toggle.switchlist.darkmode',
                 title: const Text('Dark Mode'),
                 subtitle: const Text('Use dark theme'),
                 value: _switch2,
                 onChanged: (value) => setState(() => _switch2 = value),
-                secondary: Icon(
+                secondary: TomIcon(
                   _switch2 ? Icons.dark_mode : Icons.light_mode,
                   color: _switch2 ? Colors.indigo : Colors.orange,
                 ),
               ),
-              const Divider(),
-              SwitchListTile(
+              const TomDivider(),
+              TomSwitchListTile(
+                tomId: 'demo.toggle.switchlist.airplane',
                 title: const Text('Airplane Mode'),
                 subtitle: const Text('Disable all wireless connections'),
                 value: _switch3,
                 onChanged: (value) => setState(() => _switch3 = value),
-                secondary: Icon(
+                secondary: TomIcon(
                   _switch3 ? Icons.airplanemode_active : Icons.airplanemode_inactive,
                 ),
               ),
             ],
           ),
           code: '''
-SwitchListTile(
+TomSwitchListTile(
   title: Text('Dark Mode'),
   subtitle: Text('Use dark theme'),
   value: _darkMode,
   onChanged: (value) => setState(() => _darkMode = value),
-  secondary: Icon(Icons.dark_mode),
+  secondary: TomIcon(Icons.dark_mode),
 )''',
         ),
         _DemoCard(
           title: 'Switch with Thumb Icon',
           description: 'Material 3 switch with icon in thumb.',
-          child: Row(
+          child: TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Wi-Fi'),
-              Switch(
+              TomSwitch(
+                tomId: 'demo.toggle.switch.wifi',
                 value: _switchWithIcon,
                 onChanged: (value) => setState(() => _switchWithIcon = value),
                 thumbIcon: WidgetStateProperty.resolveWith((states) {
@@ -340,14 +345,15 @@ SwitchListTile(
             ],
           ),
           code: '''
-Switch(
+TomSwitch(
+  tomId: 'app.settings.wifi',
   value: _wifiEnabled,
   onChanged: (value) => setState(() => _wifiEnabled = value),
   thumbIcon: WidgetStateProperty.resolveWith((states) {
     if (states.contains(WidgetState.selected)) {
-      return Icon(Icons.wifi, size: 16);
+      return TomIcon(Icons.wifi, size: 16);
     }
-    return Icon(Icons.wifi_off, size: 16);
+    return TomIcon(Icons.wifi_off, size: 16);
   }),
 )''',
         ),
@@ -372,11 +378,11 @@ class _SwitchStylesDemoState extends State<_SwitchStylesDemo> {
     return _DemoCard(
       title: 'Switch Styling',
       description: 'Custom colors and track overlay.',
-      child: Column(
+      child: TomColumn(
         children: [
           // Default
           _buildSwitchRow('Default', 0, null),
-          const SizedBox(height: 8),
+          const TomSizedBox(height: 8),
           // Custom active color
           _buildSwitchRow(
             'Custom Active',
@@ -394,7 +400,7 @@ class _SwitchStylesDemoState extends State<_SwitchStylesDemo> {
               }),
             ),
           ),
-          const SizedBox(height: 8),
+          const TomSizedBox(height: 8),
           // Purple theme
           _buildSwitchRow(
             'Purple Theme',
@@ -412,7 +418,7 @@ class _SwitchStylesDemoState extends State<_SwitchStylesDemo> {
               }),
             ),
           ),
-          const SizedBox(height: 8),
+          const TomSizedBox(height: 8),
           // Orange theme
           _buildSwitchRow(
             'Orange Theme',
@@ -436,12 +442,12 @@ class _SwitchStylesDemoState extends State<_SwitchStylesDemo> {
   }
 
   Widget _buildSwitchRow(String label, int index, SwitchThemeData? theme) {
-    final switchWidget = Switch(
+    final switchWidget = TomSwitch(
       value: _switches[index],
       onChanged: (value) => setState(() => _switches[index] = value),
     );
 
-    return Row(
+    return TomRow(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label),
@@ -473,14 +479,15 @@ class _CheckboxSectionState extends State<_CheckboxSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Basic Checkbox',
           description: 'Simple checkbox with state display.',
-          child: Row(
+          child: TomRow(
             children: [
-              Checkbox(
+              TomCheckbox(
+                tomId: 'demo.toggle.checkbox.terms',
                 value: _check1,
                 onChanged: (value) => setState(() => _check1 = value ?? false),
               ),
@@ -488,7 +495,8 @@ class _CheckboxSectionState extends State<_CheckboxSection> {
             ],
           ),
           code: '''
-Checkbox(
+TomCheckbox(
+  tomId: 'app.form.terms',
   value: _isChecked,
   onChanged: (value) => setState(() => _isChecked = value ?? false),
 )''',
@@ -496,36 +504,39 @@ Checkbox(
         _DemoCard(
           title: 'CheckboxListTile',
           description: 'Checkbox integrated with ListTile.',
-          child: Column(
+          child: TomColumn(
             children: [
-              CheckboxListTile(
+              TomCheckboxListTile(
+                tomId: 'demo.toggle.checkboxlist.email',
                 title: const Text('Email notifications'),
                 subtitle: const Text('Receive updates via email'),
                 value: _check2,
                 onChanged: (value) => setState(() => _check2 = value ?? false),
-                secondary: const Icon(Icons.email),
+                secondary: const TomIcon(Icons.email),
               ),
               ..._buildTodoItems(),
             ],
           ),
           code: '''
-CheckboxListTile(
+TomCheckboxListTile(
+  tomId: 'app.settings.email_notifications',
   title: Text('Email notifications'),
   subtitle: Text('Receive updates via email'),
   value: _emailNotifications,
   onChanged: (value) => setState(() => _emailNotifications = value),
-  secondary: Icon(Icons.email),
+  secondary: TomIcon(Icons.email),
 )''',
         ),
         _DemoCard(
           title: 'Tristate Checkbox',
           description: 'Three-state checkbox with null representing mixed state.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              TomRow(
                 children: [
-                  Checkbox(
+                  TomCheckbox(
+                    tomId: 'demo.toggle.checkbox.tristate',
                     tristate: true,
                     value: _tristate,
                     onChanged: (value) => setState(() => _tristate = value),
@@ -533,7 +544,7 @@ CheckboxListTile(
                   Text(_getTriStateLabel()),
                 ],
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               const Text(
                 'Use case: Select all / mixed selection parent checkbox',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
@@ -541,7 +552,8 @@ CheckboxListTile(
             ],
           ),
           code: '''
-Checkbox(
+TomCheckbox(
+  tomId: 'app.form.select_all',
   tristate: true,
   value: _tristate, // true, false, or null
   onChanged: (value) => setState(() => _tristate = value),
@@ -555,7 +567,7 @@ Checkbox(
   List<Widget> _buildTodoItems() {
     final items = ['Buy groceries', 'Call mom', 'Finish project', 'Exercise'];
     return List.generate(items.length, (index) {
-      return CheckboxListTile(
+      return TomCheckboxListTile(
         title: Text(
           items[index],
           style: TextStyle(
@@ -595,7 +607,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
     return _DemoCard(
       title: 'Checkbox Styling',
       description: 'Custom colors, shapes, and sizes.',
-      child: Wrap(
+      child: TomWrap(
         spacing: 16,
         runSpacing: 16,
         children: [
@@ -605,7 +617,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
           _buildCheckbox(
             'Green',
             1,
-            Checkbox(
+            TomCheckbox(
               value: _checks[1],
               onChanged: (v) => setState(() => _checks[1] = v!),
               activeColor: Colors.green,
@@ -616,7 +628,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
           _buildCheckbox(
             'Rounded',
             2,
-            Checkbox(
+            TomCheckbox(
               value: _checks[2],
               onChanged: (v) => setState(() => _checks[2] = v!),
               shape: RoundedRectangleBorder(
@@ -628,7 +640,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
           _buildCheckbox(
             'Circle',
             3,
-            Checkbox(
+            TomCheckbox(
               value: _checks[3],
               onChanged: (v) => setState(() => _checks[3] = v!),
               shape: const CircleBorder(),
@@ -638,7 +650,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
           _buildCheckbox(
             'Disabled',
             4,
-            Checkbox(
+            TomCheckbox(
               value: _checks[4],
               onChanged: null,
             ),
@@ -649,9 +661,9 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
   }
 
   Widget _buildCheckbox(String label, int index, Widget? custom) {
-    return Column(
+    return TomColumn(
       children: [
-        custom ?? Checkbox(
+        custom ?? TomCheckbox(
           value: _checks[index],
           onChanged: (v) => setState(() => _checks[index] = v!),
         ),
@@ -679,30 +691,33 @@ class _RadioSectionState extends State<_RadioSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Basic Radio',
           description: 'Simple radio button group.',
-          child: Column(
+          child: TomColumn(
             children: [
-              Row(
+              TomRow(
                 children: [
-                  Radio<int>(
+                  TomRadio<int>(
+                    tomId: 'demo.toggle.radio.opt1',
                     value: 1,
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
                   ),
                   const Text('Option 1'),
-                  const SizedBox(width: 16),
-                  Radio<int>(
+                  const TomSizedBox(width: 16),
+                  TomRadio<int>(
+                    tomId: 'demo.toggle.radio.opt2',
                     value: 2,
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
                   ),
                   const Text('Option 2'),
-                  const SizedBox(width: 16),
-                  Radio<int>(
+                  const TomSizedBox(width: 16),
+                  TomRadio<int>(
+                    tomId: 'demo.toggle.radio.opt3',
                     value: 3,
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
@@ -710,7 +725,7 @@ class _RadioSectionState extends State<_RadioSection> {
                   const Text('Option 3'),
                 ],
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               Text(
                 'Selected: Option $_radioValue',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -718,7 +733,8 @@ class _RadioSectionState extends State<_RadioSection> {
             ],
           ),
           code: '''
-Radio<int>(
+TomRadio<int>(
+  tomId: 'app.form.option_1',
   value: 1,
   groupValue: _selectedValue,
   onChanged: (value) => setState(() => _selectedValue = value),
@@ -727,55 +743,59 @@ Radio<int>(
         _DemoCard(
           title: 'RadioListTile',
           description: 'Radio buttons with titles and subtitles.',
-          child: Column(
+          child: TomColumn(
             children: [
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.toggle.radiolist.basic',
                 title: const Text('Basic Plan'),
                 subtitle: const Text('\$9.99/month'),
                 value: 'basic',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
-                secondary: const Icon(Icons.star_border),
+                secondary: const TomIcon(Icons.star_border),
               ),
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.toggle.radiolist.pro',
                 title: const Text('Pro Plan'),
                 subtitle: const Text('\$19.99/month'),
                 value: 'pro',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
-                secondary: const Icon(Icons.star_half),
+                secondary: const TomIcon(Icons.star_half),
               ),
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.toggle.radiolist.enterprise',
                 title: const Text('Enterprise Plan'),
                 subtitle: const Text('\$49.99/month'),
                 value: 'enterprise',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
-                secondary: const Icon(Icons.star),
+                secondary: const TomIcon(Icons.star),
               ),
             ],
           ),
           code: '''
-RadioListTile<String>(
+TomRadioListTile<String>(
+  tomId: 'app.plan.basic',
   title: Text('Basic Plan'),
   subtitle: Text('\\\$9.99/month'),
   value: 'basic',
   groupValue: _selectedPlan,
   onChanged: (value) => setState(() => _selectedPlan = value),
-  secondary: Icon(Icons.star_border),
+  secondary: TomIcon(Icons.star_border),
 )''',
         ),
         _DemoCard(
           title: 'Custom Radio Design',
           description: 'Card-based radio selection.',
-          child: Row(
+          child: TomRow(
             children:
                 ['card', 'paypal', 'crypto'].map((payment) {
                   final isSelected = _selectedPayment == payment;
-                  return Expanded(
+                  return TomExpanded(
                     child: GestureDetector(
                       onTap: () => setState(() => _selectedPayment = payment),
-                      child: Container(
+                      child: TomContainer(
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -794,16 +814,16 @@ RadioListTile<String>(
                                   ).colorScheme.primary.withValues(alpha: 0.1)
                                   : null,
                         ),
-                        child: Column(
+                        child: TomColumn(
                           children: [
-                            Icon(
-                              _getPaymentIcon(payment),
+                            TomIcon(
+                  _getPaymentIcon(payment),
                               color:
                                   isSelected
                                       ? Theme.of(context).colorScheme.primary
                                       : Colors.grey,
                             ),
-                            const SizedBox(height: 4),
+                            const TomSizedBox(height: 4),
                             Text(
                               _getPaymentLabel(payment),
                               style: TextStyle(
@@ -862,28 +882,29 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Single Selection',
           description: 'Choose one option from the segment.',
-          child: Column(
+          child: TomColumn(
             children: [
-              SegmentedButton<String>(
+              TomSegmentedButton<String>(
+                tomId: 'demo.toggle.segment.viewmode',
                 segments: const [
                   ButtonSegment(
                     value: 'list',
-                    icon: Icon(Icons.list),
+                    icon: TomIcon(Icons.list),
                     label: Text('List'),
                   ),
                   ButtonSegment(
                     value: 'grid',
-                    icon: Icon(Icons.grid_view),
+                    icon: TomIcon(Icons.grid_view),
                     label: Text('Grid'),
                   ),
                   ButtonSegment(
                     value: 'table',
-                    icon: Icon(Icons.table_chart),
+                    icon: TomIcon(Icons.table_chart),
                     label: Text('Table'),
                   ),
                 ],
@@ -892,7 +913,7 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
                   setState(() => _viewMode = selection.first);
                 },
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'View mode: ${_viewMode.toUpperCase()}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -900,10 +921,11 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
             ],
           ),
           code: '''
-SegmentedButton<String>(
+TomSegmentedButton<String>(
+  tomId: 'app.view.mode',
   segments: [
-    ButtonSegment(value: 'list', icon: Icon(Icons.list), label: Text('List')),
-    ButtonSegment(value: 'grid', icon: Icon(Icons.grid_view), label: Text('Grid')),
+    ButtonSegment(value: 'list', icon: TomIcon(Icons.list), label: Text('List')),
+    ButtonSegment(value: 'grid', icon: TomIcon(Icons.grid_view), label: Text('Grid')),
   ],
   selected: {_viewMode},
   onSelectionChanged: (selection) {
@@ -914,9 +936,10 @@ SegmentedButton<String>(
         _DemoCard(
           title: 'Multi Selection',
           description: 'Select multiple options from the segment.',
-          child: Column(
+          child: TomColumn(
             children: [
-              SegmentedButton<String>(
+              TomSegmentedButton<String>(
+                tomId: 'demo.toggle.segment.days',
                 segments: const [
                   ButtonSegment(value: 'Mon', label: Text('M')),
                   ButtonSegment(value: 'Tue', label: Text('T')),
@@ -933,7 +956,7 @@ SegmentedButton<String>(
                 multiSelectionEnabled: true,
                 emptySelectionAllowed: true,
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'Selected: ${_selectedDays.isEmpty ? "None" : _selectedDays.join(", ")}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -944,7 +967,8 @@ SegmentedButton<String>(
         _DemoCard(
           title: 'Styled Segments',
           description: 'Customized appearance for segments.',
-          child: SegmentedButton<String>(
+          child: TomSegmentedButton<String>(
+            tomId: 'demo.toggle.segment.size',
             segments: const [
               ButtonSegment(value: 'XS', label: Text('XS')),
               ButtonSegment(value: 'S', label: Text('S')),
@@ -995,12 +1019,13 @@ class _ToggleButtonsSectionState extends State<_ToggleButtonsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Basic ToggleButtons',
           description: 'Single selection toggle buttons.',
-          child: ToggleButtons(
+          child: TomToggleButtons(
+            tomId: 'demo.toggle.togglebtn.align',
             isSelected: _isSelected1,
             onPressed: (index) {
               setState(() {
@@ -1010,13 +1035,14 @@ class _ToggleButtonsSectionState extends State<_ToggleButtonsSection> {
               });
             },
             children: [
-              Icon(Icons.format_align_left),
-              Icon(Icons.format_align_center),
-              Icon(Icons.format_align_right),
+              TomIcon(Icons.format_align_left),
+              TomIcon(Icons.format_align_center),
+              TomIcon(Icons.format_align_right),
             ],
           ),
           code: '''
-ToggleButtons(
+TomToggleButtons(
+  tomId: 'app.format.align',
   isSelected: _isSelected,
   onPressed: (index) {
     setState(() {
@@ -1026,34 +1052,35 @@ ToggleButtons(
     });
   },
   children: [
-    Icon(Icons.format_align_left),
-    Icon(Icons.format_align_center),
-    Icon(Icons.format_align_right),
+    TomIcon(Icons.format_align_left),
+    TomIcon(Icons.format_align_center),
+    TomIcon(Icons.format_align_right),
   ],
 )''',
         ),
         _DemoCard(
           title: 'Multi-Select ToggleButtons',
           description: 'Allow multiple selections.',
-          child: ToggleButtons(
+          child: TomToggleButtons(
+            tomId: 'demo.toggle.togglebtn.style',
             isSelected: _isSelected2,
             onPressed: (index) {
               setState(() => _isSelected2[index] = !_isSelected2[index]);
             },
             children: [
-              Padding(
+              TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('Bold'),
               ),
-              Padding(
+              TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('Italic'),
               ),
-              Padding(
+              TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('Underline'),
               ),
-              Padding(
+              TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Text('Strike'),
               ),
@@ -1063,7 +1090,8 @@ ToggleButtons(
         _DemoCard(
           title: 'Styled ToggleButtons',
           description: 'Custom colors and border radius.',
-          child: ToggleButtons(
+          child: TomToggleButtons(
+            tomId: 'demo.toggle.togglebtn.period',
             isSelected: _isSelected3,
             onPressed: (index) {
               setState(() {
@@ -1108,7 +1136,7 @@ class _CustomTogglesSectionState extends State<_CustomTogglesSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Animated Toggle',
@@ -1129,15 +1157,15 @@ class _CustomTogglesSectionState extends State<_CustomTogglesSection> {
                 curve: Curves.easeInOut,
                 alignment:
                     _customToggle1 ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
+                child: TomContainer(
                   width: 32,
                   height: 32,
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white,
                   ),
-                  child: Icon(
-                    _customToggle1 ? Icons.check : Icons.close,
+                  child: TomIcon(
+                  _customToggle1 ? Icons.check : Icons.close,
                     color: _customToggle1 ? Colors.green : Colors.grey,
                     size: 18,
                   ),
@@ -1158,7 +1186,7 @@ GestureDetector(
     ),
     child: AnimatedAlign(
       alignment: _isOn ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
+      child: TomContainer(
         width: 32,
         height: 32,
         decoration: BoxDecoration(
@@ -1173,11 +1201,11 @@ GestureDetector(
         _DemoCard(
           title: 'Icon Toggle',
           description: 'Toggle between two icons.',
-          child: Row(
+          child: TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text('Favorite:'),
-              const SizedBox(width: 16),
+              const TomSizedBox(width: 16),
               IconButton(
                 onPressed: () =>
                     setState(() => _customToggle2 = !_customToggle2),
@@ -1186,8 +1214,8 @@ GestureDetector(
                   transitionBuilder: (child, animation) {
                     return ScaleTransition(scale: animation, child: child);
                   },
-                  child: Icon(
-                    _customToggle2 ? Icons.favorite : Icons.favorite_border,
+                  child: TomIcon(
+                  _customToggle2 ? Icons.favorite : Icons.favorite_border,
                     key: ValueKey(_customToggle2),
                     color: _customToggle2 ? Colors.red : Colors.grey,
                     size: 32,
@@ -1200,7 +1228,7 @@ GestureDetector(
         _DemoCard(
           title: 'Thumbs Rating',
           description: 'Three-state toggle for like/neutral/dislike.',
-          child: Row(
+          child: TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
@@ -1209,7 +1237,7 @@ GestureDetector(
                     _thumbsRating = _thumbsRating == -1 ? 0 : -1;
                   });
                 },
-                icon: Icon(
+                icon: TomIcon(
                   _thumbsRating == -1
                       ? Icons.thumb_down
                       : Icons.thumb_down_outlined,
@@ -1217,14 +1245,14 @@ GestureDetector(
                   size: 28,
                 ),
               ),
-              const SizedBox(width: 32),
+              const TomSizedBox(width: 32),
               IconButton(
                 onPressed: () {
                   setState(() {
                     _thumbsRating = _thumbsRating == 1 ? 0 : 1;
                   });
                 },
-                icon: Icon(
+                icon: TomIcon(
                   _thumbsRating == 1 ? Icons.thumb_up : Icons.thumb_up_outlined,
                   color: _thumbsRating == 1 ? Colors.green : Colors.grey,
                   size: 28,
@@ -1267,33 +1295,36 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Notification Settings',
           description: 'Grouped switches for notification preferences.',
-          child: Column(
+          child: TomColumn(
             children: [
-              SwitchListTile(
+              TomSwitchListTile(
+                tomId: 'demo.settings.notify.push',
                 title: const Text('Push Notifications'),
                 subtitle: const Text('Receive instant notifications'),
                 value: _pushEnabled,
                 onChanged: (v) => setState(() => _pushEnabled = v),
-                secondary: const Icon(Icons.notifications),
+                secondary: const TomIcon(Icons.notifications),
               ),
-              SwitchListTile(
+              TomSwitchListTile(
+                tomId: 'demo.settings.notify.email',
                 title: const Text('Email Updates'),
                 subtitle: const Text('Weekly digest and important updates'),
                 value: _emailEnabled,
                 onChanged: (v) => setState(() => _emailEnabled = v),
-                secondary: const Icon(Icons.email),
+                secondary: const TomIcon(Icons.email),
               ),
-              SwitchListTile(
+              TomSwitchListTile(
+                tomId: 'demo.settings.notify.sms',
                 title: const Text('SMS Alerts'),
                 subtitle: const Text('Critical alerts via SMS'),
                 value: _smsEnabled,
                 onChanged: (v) => setState(() => _smsEnabled = v),
-                secondary: const Icon(Icons.sms),
+                secondary: const TomIcon(Icons.sms),
               ),
             ],
           ),
@@ -1301,46 +1332,51 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
         _DemoCard(
           title: 'Privacy Settings',
           description: 'Radio and switch combination for privacy.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Profile Visibility',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.settings.privacy.public',
                 title: const Text('Public'),
                 subtitle: const Text('Anyone can see your profile'),
                 value: 'public',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.settings.privacy.friends',
                 title: const Text('Friends Only'),
                 subtitle: const Text('Only friends can see your profile'),
                 value: 'friends',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
-              RadioListTile<String>(
+              TomRadioListTile<String>(
+                tomId: 'demo.settings.privacy.private',
                 title: const Text('Private'),
                 subtitle: const Text('No one can see your profile'),
                 value: 'private',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
-              const Divider(),
-              SwitchListTile(
+              const TomDivider(),
+              TomSwitchListTile(
+                tomId: 'demo.settings.privacy.location',
                 title: const Text('Location Services'),
                 value: _locationEnabled,
                 onChanged: (v) => setState(() => _locationEnabled = v),
-                secondary: const Icon(Icons.location_on),
+                secondary: const TomIcon(Icons.location_on),
               ),
-              SwitchListTile(
+              TomSwitchListTile(
+                tomId: 'demo.settings.privacy.analytics',
                 title: const Text('Usage Analytics'),
                 value: _analyticsEnabled,
                 onChanged: (v) => setState(() => _analyticsEnabled = v),
-                secondary: const Icon(Icons.analytics),
+                secondary: const TomIcon(Icons.analytics),
               ),
             ],
           ),
@@ -1348,29 +1384,30 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
         _DemoCard(
           title: 'Appearance Settings',
           description: 'Theme selection with segmented button.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Theme',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
+              const TomSizedBox(height: 8),
+              TomSegmentedButton<String>(
+                tomId: 'demo.settings.appearance.theme',
                 segments: const [
                   ButtonSegment(
                     value: 'light',
-                    icon: Icon(Icons.light_mode),
+                    icon: TomIcon(Icons.light_mode),
                     label: Text('Light'),
                   ),
                   ButtonSegment(
                     value: 'dark',
-                    icon: Icon(Icons.dark_mode),
+                    icon: TomIcon(Icons.dark_mode),
                     label: Text('Dark'),
                   ),
                   ButtonSegment(
                     value: 'system',
-                    icon: Icon(Icons.settings_brightness),
+                    icon: TomIcon(Icons.settings_brightness),
                     label: Text('System'),
                   ),
                 ],
@@ -1379,15 +1416,15 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                   setState(() => _theme = selection.first);
                 },
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               const Text(
                 'Font Size',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              Row(
+              TomRow(
                 children: [
-                  const Icon(Icons.text_decrease, size: 20),
-                  Expanded(
+                  const TomIcon(Icons.text_decrease, size: 20),
+                  TomExpanded(
                     child: Slider(
                       value: _fontSize,
                       min: 0.8,
@@ -1397,10 +1434,10 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                       onChanged: (v) => setState(() => _fontSize = v),
                     ),
                   ),
-                  const Icon(Icons.text_increase, size: 20),
+                  const TomIcon(Icons.text_increase, size: 20),
                 ],
               ),
-              Center(
+              TomCenter(
                 child: Text(
                   'Preview Text',
                   style: TextStyle(fontSize: 16 * _fontSize),

@@ -3,12 +3,30 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../resource_auth/tom_icons.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [Icon].
 ///
-/// Adds ID, group, authorization, and resource resolution for tooltip/alt.
+/// Adds ID, group, authorization, and resource resolution for icon and alt.
+///
+/// Drop-in replacement for Flutter's [Icon] widget:
+/// ```dart
+/// TomIcon(Icons.save)           // Same as Icon(Icons.save)
+/// TomIcon(Icons.save, size: 24) // Same as Icon(Icons.save, size: 24)
+/// ```
+///
+/// When icon is not provided, resolves via resource lookup:
+/// 1. Gets icon name from resources using suffix 'icon'
+/// 2. Looks up [IconData] from [TomUIIcons] provider
+///
+/// Example resource entry:
+/// ```yaml
+/// w-saveButton.icon: "save"
+/// w-saveButton.alt: "Save the document"
+/// ```
 class TomIcon extends TomImageBase {
+  /// The icon to display.
   final IconData? icon;
   final double? size;
   final double? fill;
@@ -21,11 +39,17 @@ class TomIcon extends TomImageBase {
   final TextDirection? textDirection;
   final bool? applyTextScaling;
 
-  const TomIcon({
+  /// Creates a TomIcon widget.
+  ///
+  /// Use positional [icon] for Flutter API compatibility:
+  /// ```dart
+  /// TomIcon(Icons.save)  // Same as Icon(Icons.save)
+  /// ```
+  const TomIcon(
+    this.icon, {
     super.key,
     super.tomId,
     super.tomGroup,
-    this.icon,
     this.size,
     this.fill,
     this.weight,
@@ -40,11 +64,13 @@ class TomIcon extends TomImageBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Resolve icon: use provided icon, or look up from resources
+    final resolvedIcon = icon ?? _resolveIconFromResources(context);
     final resolvedSemanticLabel =
         semanticLabel ?? (tomId != null ? resolveResource(context, 'alt') : null);
 
     return Icon(
-      icon,
+      resolvedIcon,
       size: size,
       fill: fill,
       weight: weight,
@@ -56,6 +82,19 @@ class TomIcon extends TomImageBase {
       textDirection: textDirection,
       applyTextScaling: applyTextScaling,
     );
+  }
+
+  /// Resolves icon from resources + icon provider.
+  ///
+  /// Returns `null` if tomId is not set or icon cannot be resolved.
+  IconData? _resolveIconFromResources(BuildContext context) {
+    if (tomId == null) return null;
+    // Get icon name from resources (e.g., "save", "delete")
+    final iconName = resolveResource(context, 'icon');
+    // Skip if it returns the key itself (no resource found)
+    if (iconName.endsWith('.icon')) return null;
+    // Look up IconData from icon provider
+    return TomUIIcons.resolveIcon(iconName);
   }
 }
 

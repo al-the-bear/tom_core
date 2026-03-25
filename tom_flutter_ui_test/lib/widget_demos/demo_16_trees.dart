@@ -13,7 +13,7 @@ class TreesDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -21,31 +21,31 @@ class TreesDemo extends StatelessWidget {
           subtitle: 'Simple hierarchical list',
         ),
         _BasicTreeSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'File Explorer Tree',
           subtitle: 'Folder and file structure',
         ),
         _FileExplorerSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Selectable Tree',
           subtitle: 'Tree with selection support',
         ),
         _SelectableTreeSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Checkbox Tree',
           subtitle: 'Tree with checkboxes',
         ),
         _CheckboxTreeSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Custom Tree Node',
           subtitle: 'Tree with custom styling',
         ),
         _CustomTreeSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -64,9 +64,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -76,15 +76,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -189,10 +189,10 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(8),
-        child: Column(
+        child: TomColumn(
           children: _nodes.map((node) => _buildNode(node, 0)).toList(),
         ),
       ),
@@ -201,7 +201,7 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
 
   Widget _buildNode(TreeNode node, int level) {
     final hasChildren = node.children.isNotEmpty;
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
@@ -209,14 +209,14 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
               ? () => setState(() => node.isExpanded = !node.isExpanded)
               : null,
           borderRadius: BorderRadius.circular(4),
-          child: Padding(
+          child: TomPadding(
             padding: EdgeInsets.only(left: level * 24.0),
-            child: Row(
+            child: TomRow(
               children: [
-                SizedBox(
+                TomSizedBox(
                   width: 24,
                   child: hasChildren
-                      ? Icon(
+                      ? TomIcon(
                           node.isExpanded
                               ? Icons.expand_more
                               : Icons.chevron_right,
@@ -225,11 +225,11 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
                       : null,
                 ),
                 if (node.icon != null) ...[
-                  Icon(node.icon, size: 20),
-                  const SizedBox(width: 8),
+                  TomIcon(node.icon, size: 20),
+                  const TomSizedBox(width: 8),
                 ],
-                Expanded(
-                  child: Padding(
+                TomExpanded(
+                  child: TomPadding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(node.title),
                   ),
@@ -307,17 +307,17 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Container(
+    return TomCard(
+      child: TomContainer(
         decoration: BoxDecoration(
           color: Colors.grey.shade900,
           borderRadius: BorderRadius.circular(8),
         ),
         padding: const EdgeInsets.all(12),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            TomRow(
               children: [
                 Text(
                   'EXPLORER',
@@ -328,11 +328,11 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
                     letterSpacing: 1,
                   ),
                 ),
-                const Spacer(),
-                Icon(Icons.more_horiz, color: Colors.grey.shade500, size: 16),
+                const TomSpacer(),
+                TomIcon(Icons.more_horiz, color: Colors.grey.shade500, size: 16),
               ],
             ),
-            const SizedBox(height: 8),
+            const TomSizedBox(height: 8),
             ..._files.map((file) => _buildFileNode(file, 0)),
           ],
         ),
@@ -342,31 +342,31 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
 
   Widget _buildFileNode(_FileNode file, int level) {
     final isDir = file.isDirectory;
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: isDir
               ? () => setState(() => file.isExpanded = !file.isExpanded)
               : null,
-          child: Padding(
+          child: TomPadding(
             padding: EdgeInsets.only(left: level * 16.0, top: 2, bottom: 2),
-            child: Row(
+            child: TomRow(
               children: [
                 if (isDir)
-                  Icon(
+                  TomIcon(
                     file.isExpanded ? Icons.expand_more : Icons.chevron_right,
                     size: 16,
                     color: Colors.grey.shade400,
                   )
                 else
-                  const SizedBox(width: 16),
-                Icon(
+                  const TomSizedBox(width: 16),
+                TomIcon(
                   _getFileIcon(file),
                   size: 16,
                   color: _getFileColor(file),
                 ),
-                const SizedBox(width: 6),
+                const TomSizedBox(width: 6),
                 Text(
                   file.name,
                   style: TextStyle(
@@ -476,14 +476,14 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(8),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_selectedId != null)
-              Padding(
+              TomPadding(
                 padding: const EdgeInsets.all(8.0),
                 child: Text(
                   'Selected: $_selectedId',
@@ -500,10 +500,10 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
   Widget _buildNode(TreeNode node, int level) {
     final hasChildren = node.children.isNotEmpty;
     final isSelected = _selectedId == node.id;
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
+        TomContainer(
           margin: EdgeInsets.only(left: level * 24.0),
           decoration: BoxDecoration(
             color: isSelected ? Colors.blue.shade50 : null,
@@ -517,14 +517,14 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
               setState(() => _selectedId = node.id);
             },
             borderRadius: BorderRadius.circular(4),
-            child: Padding(
+            child: TomPadding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Row(
+              child: TomRow(
                 children: [
-                  SizedBox(
+                  TomSizedBox(
                     width: 24,
                     child: hasChildren
-                        ? Icon(
+                        ? TomIcon(
                             node.isExpanded
                                 ? Icons.expand_more
                                 : Icons.chevron_right,
@@ -534,14 +534,14 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
                         : null,
                   ),
                   if (node.icon != null) ...[
-                    Icon(
+                    TomIcon(
                       node.icon,
                       size: 20,
                       color: isSelected ? Colors.blue : null,
                     ),
-                    const SizedBox(width: 8),
+                    const TomSizedBox(width: 8),
                   ],
-                  Expanded(
+                  TomExpanded(
                     child: Text(
                       node.title,
                       style: TextStyle(
@@ -617,10 +617,10 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(8),
-        child: Column(
+        child: TomColumn(
           children: _nodes.map((node) => _buildNode(node, 0)).toList(),
         ),
       ),
@@ -631,20 +631,20 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
     final hasChildren = node.children.isNotEmpty;
     final checkState = _getCheckState(node);
 
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
+        TomPadding(
           padding: EdgeInsets.only(left: level * 24.0),
-          child: Row(
+          child: TomRow(
             children: [
-              SizedBox(
+              TomSizedBox(
                 width: 24,
                 child: hasChildren
                     ? GestureDetector(
                         onTap: () =>
                             setState(() => node.isExpanded = !node.isExpanded),
-                        child: Icon(
+                        child: TomIcon(
                           node.isExpanded
                               ? Icons.expand_more
                               : Icons.chevron_right,
@@ -664,14 +664,14 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
                   setState(() => _setChecked(node, value ?? false));
                 },
               ),
-              Expanded(
+              TomExpanded(
                 child: GestureDetector(
                   onTap: () {
                     if (hasChildren) {
                       setState(() => node.isExpanded = !node.isExpanded);
                     }
                   },
-                  child: Padding(
+                  child: TomPadding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
                       node.title,
@@ -789,10 +789,10 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -802,7 +802,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                 color: Colors.grey.shade700,
               ),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             ..._nodes.map((node) => _buildNode(node, 0)),
           ],
         ),
@@ -812,19 +812,19 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
 
   Widget _buildNode(_OrgNode node, int level) {
     final hasChildren = node.children.isNotEmpty;
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        TomRow(
           children: [
             ...List.generate(level, (i) => _buildConnector(i == level - 1)),
-            Expanded(
+            TomExpanded(
               child: InkWell(
                 onTap: hasChildren
                     ? () => setState(() => node.isExpanded = !node.isExpanded)
                     : null,
                 borderRadius: BorderRadius.circular(8),
-                child: Container(
+                child: TomContainer(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -837,7 +837,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: node.color.withValues(alpha: 0.3)),
                   ),
-                  child: Row(
+                  child: TomRow(
                     children: [
                       CircleAvatar(
                         backgroundColor: node.color,
@@ -850,9 +850,9 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
+                      const TomSizedBox(width: 12),
+                      TomExpanded(
+                        child: TomColumn(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
@@ -870,7 +870,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                         ),
                       ),
                       if (hasChildren)
-                        Icon(
+                        TomIcon(
                           node.isExpanded
                               ? Icons.expand_less
                               : Icons.expand_more,
@@ -890,11 +890,11 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
   }
 
   Widget _buildConnector(bool isLast) {
-    return Container(
+    return TomContainer(
       width: 32,
       height: 48,
       alignment: Alignment.centerLeft,
-      child: Container(
+      child: TomContainer(
         width: 16,
         height: 1,
         color: Colors.grey.shade300,

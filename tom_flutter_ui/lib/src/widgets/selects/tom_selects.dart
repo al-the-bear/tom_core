@@ -502,7 +502,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
 class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   /// Creates a Tom PopupMenuItem.
   const TomPopupMenuItem({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.value,
@@ -517,7 +517,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -557,14 +557,14 @@ class _TomPopupMenuItemState<T>
 class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   /// Creates a Tom PopupMenuDivider.
   const TomPopupMenuDivider({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.height,
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -610,7 +610,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     with TomWidgetMixin {
   /// Creates a Tom CheckedPopupMenuItem.
   const TomCheckedPopupMenuItem({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.value,
@@ -624,7 +624,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;

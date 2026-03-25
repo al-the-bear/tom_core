@@ -14,7 +14,7 @@ class AnimatedDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -22,31 +22,31 @@ class AnimatedDemo extends StatelessWidget {
           subtitle: 'Implicit container animations',
         ),
         _AnimatedContainerSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'AnimatedSwitcher',
           subtitle: 'Widget transition animations',
         ),
         _AnimatedSwitcherSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Animated Properties',
           subtitle: 'Individual property animations',
         ),
         _AnimatedPropertiesSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Animated List',
           subtitle: 'List insert/remove animations',
         ),
         _AnimatedListSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Explicit Animations',
           subtitle: 'AnimationController-based',
         ),
         _ExplicitAnimationSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -65,9 +65,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -77,15 +77,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -129,7 +129,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Size Animation',
@@ -145,8 +145,8 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                 color: Colors.blue,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Center(
-                child: Icon(
+              child: TomCenter(
+                child: TomIcon(
                   _expanded ? Icons.compress : Icons.expand,
                   color: Colors.white,
                   size: _expanded ? 48 : 24,
@@ -170,7 +170,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                 color: _colors[_colorIndex],
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
+              child: const TomCenter(
                 child: Text(
                   'Tap me',
                   style: TextStyle(
@@ -186,7 +186,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
         _buildDemoCard(
           'Border Radius Animation',
           'Use slider to change.',
-          Column(
+          TomColumn(
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -197,7 +197,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                   borderRadius: BorderRadius.circular(_borderRadius),
                 ),
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               Slider(
                 value: _borderRadius,
                 min: 0,
@@ -212,24 +212,24 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -264,14 +264,14 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Counter Animation',
           'Tap to increment.',
           GestureDetector(
             onTap: () => setState(() => _count++),
-            child: Container(
+            child: TomContainer(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
@@ -302,7 +302,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
           GestureDetector(
             onTap: () =>
                 setState(() => _iconIndex = (_iconIndex + 1) % _icons.length),
-            child: Container(
+            child: TomContainer(
               width: 80,
               height: 80,
               decoration: BoxDecoration(
@@ -317,7 +317,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                     child: FadeTransition(opacity: animation, child: child),
                   );
                 },
-                child: Icon(
+                child: TomIcon(
                   _icons[_iconIndex],
                   key: ValueKey(_iconIndex),
                   size: 40,
@@ -335,7 +335,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: _showFirst
-                  ? Container(
+                  ? TomContainer(
                       key: const ValueKey('first'),
                       width: 150,
                       height: 80,
@@ -343,14 +343,14 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         color: Colors.blue,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Center(
+                      child: const TomCenter(
                         child: Text(
                           'First',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
                       ),
                     )
-                  : Container(
+                  : TomContainer(
                       key: const ValueKey('second'),
                       width: 150,
                       height: 80,
@@ -358,7 +358,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         color: Colors.green,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Center(
+                      child: const TomCenter(
                         child: Text(
                           'Second',
                           style: TextStyle(color: Colors.white, fontSize: 20),
@@ -373,24 +373,24 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -419,35 +419,35 @@ class _AnimatedPropertiesSectionState
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'AnimatedOpacity',
           'Tap buttons to fade.',
-          Column(
+          TomColumn(
             children: [
               AnimatedOpacity(
                 opacity: _opacity,
                 duration: const Duration(milliseconds: 400),
-                child: Container(
+                child: TomContainer(
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
                     color: Colors.red,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.visibility, color: Colors.white),
+                  child: const TomIcon(Icons.visibility, color: Colors.white),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(
+              const TomSizedBox(height: 16),
+              TomRow(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   FilledButton(
                     onPressed: () => setState(() => _opacity = 0.0),
                     child: const Text('Hide'),
                   ),
-                  const SizedBox(width: 8),
+                  const TomSizedBox(width: 8),
                   FilledButton(
                     onPressed: () => setState(() => _opacity = 1.0),
                     child: const Text('Show'),
@@ -463,17 +463,17 @@ class _AnimatedPropertiesSectionState
           GestureDetector(
             onTap: () => setState(
                 () => _padding = _padding == 8.0 ? 32.0 : 8.0),
-            child: Container(
+            child: TomContainer(
               color: Colors.green.shade100,
               child: AnimatedPadding(
                 padding: EdgeInsets.all(_padding),
                 duration: const Duration(milliseconds: 400),
                 curve: Curves.easeInOut,
-                child: Container(
+                child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.green,
-                  child: const Center(
+                  child: const TomCenter(
                     child: Text(
                       'Tap',
                       style: TextStyle(color: Colors.white),
@@ -492,14 +492,14 @@ class _AnimatedPropertiesSectionState
             child: AnimatedRotation(
               turns: _rotation,
               duration: const Duration(milliseconds: 400),
-              child: Container(
+              child: TomContainer(
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
                   color: Colors.purple,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.refresh, color: Colors.white, size: 32),
+                child: const TomIcon(Icons.refresh, color: Colors.white, size: 32),
               ),
             ),
           ),
@@ -521,7 +521,7 @@ class _AnimatedPropertiesSectionState
                 _alignment = alignments[(currentIndex + 1) % alignments.length];
               });
             },
-            child: Container(
+            child: TomContainer(
               height: 120,
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
@@ -531,7 +531,7 @@ class _AnimatedPropertiesSectionState
                 alignment: _alignment,
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.easeInOut,
-                child: Container(
+                child: TomContainer(
                   width: 40,
                   height: 40,
                   decoration: const BoxDecoration(
@@ -548,24 +548,24 @@ class _AnimatedPropertiesSectionState
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -609,13 +609,13 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
       sizeFactor: animation,
       child: FadeTransition(
         opacity: animation,
-        child: Card(
+        child: TomCard(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: const Icon(Icons.star),
+            leading: const TomIcon(Icons.star),
             title: Text(item),
             trailing: IconButton(
-              icon: const Icon(Icons.delete),
+              icon: const TomIcon(Icons.delete),
               onPressed: () {
                 final index = _items.indexOf(item);
                 if (index != -1) _removeItem(index);
@@ -629,13 +629,13 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            TomRow(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
@@ -644,12 +644,12 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
                 ),
                 FilledButton.icon(
                   onPressed: _addItem,
-                  icon: const Icon(Icons.add),
+                  icon: const TomIcon(Icons.add),
                   label: const Text('Add'),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             AnimatedList(
               key: _listKey,
               shrinkWrap: true,
@@ -675,12 +675,12 @@ class _ExplicitAnimationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       children: [
         _PulseAnimation(),
-        SizedBox(height: 16),
+        TomSizedBox(height: 16),
         _SpinAnimation(),
-        SizedBox(height: 16),
+        TomSizedBox(height: 16),
         _BounceAnimation(),
       ],
     );
@@ -719,28 +719,28 @@ class _PulseAnimationState extends State<_PulseAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Pulse Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 16),
-            Center(
+            const TomSizedBox(height: 16),
+            TomCenter(
               child: ScaleTransition(
                 scale: _animation,
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   decoration: const BoxDecoration(
                     color: Colors.red,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.favorite, color: Colors.white),
+                  child: const TomIcon(Icons.favorite, color: Colors.white),
                 ),
               ),
             ),
@@ -779,18 +779,18 @@ class _SpinAnimationState extends State<_SpinAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Spin Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 16),
-            Center(
+            const TomSizedBox(height: 16),
+            TomCenter(
               child: AnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
@@ -799,14 +799,14 @@ class _SpinAnimationState extends State<_SpinAnimation>
                     child: child,
                   );
                 },
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
                     color: Colors.blue,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.settings, color: Colors.white),
+                  child: const TomIcon(Icons.settings, color: Colors.white),
                 ),
               ),
             ),
@@ -849,20 +849,20 @@ class _BounceAnimationState extends State<_BounceAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Bounce Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 16),
-            SizedBox(
+            const TomSizedBox(height: 16),
+            TomSizedBox(
               height: 80,
-              child: Center(
+              child: TomCenter(
                 child: AnimatedBuilder(
                   animation: _animation,
                   builder: (context, child) {
@@ -871,14 +871,14 @@ class _BounceAnimationState extends State<_BounceAnimation>
                       child: child,
                     );
                   },
-                  child: Container(
+                  child: TomContainer(
                     width: 50,
                     height: 50,
                     decoration: const BoxDecoration(
                       color: Colors.green,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
+                    child: const TomIcon(
                       Icons.arrow_upward,
                       color: Colors.white,
                     ),

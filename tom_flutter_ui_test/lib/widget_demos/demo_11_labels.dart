@@ -14,7 +14,7 @@ class LabelsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -22,43 +22,43 @@ class LabelsDemo extends StatelessWidget {
           subtitle: 'Basic text display',
         ),
         _TextSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Text Styles',
           subtitle: 'Typography and styling options',
         ),
         _TextStylesSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'RichText',
           subtitle: 'Text with multiple styles',
         ),
         _RichTextSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'SelectableText',
           subtitle: 'Text that can be selected',
         ),
         _SelectableTextSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Badge',
           subtitle: 'Notification badges',
         ),
         _BadgeSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Text Effects',
           subtitle: 'Decorations and effects',
         ),
         _TextEffectsSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Practical Examples',
           subtitle: 'Common text patterns',
         ),
         _PracticalExamplesSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -77,9 +77,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -89,15 +89,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -123,16 +123,16 @@ class _TextSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Basic Text',
           'Simple text display.',
-          const Column(
+          const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('This is basic text'),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'This is text with maxLines and overflow.',
                 maxLines: 1,
@@ -144,14 +144,14 @@ class _TextSection extends StatelessWidget {
         _buildDemoCard(
           'Text Overflow',
           'Different overflow behaviors.',
-          Column(
+          TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'TextOverflow.clip:',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              Container(
+              TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
                 child: const Text(
@@ -160,12 +160,12 @@ class _TextSection extends StatelessWidget {
                   maxLines: 1,
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               const Text(
                 'TextOverflow.fade:',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              Container(
+              TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
                 child: const Text(
@@ -175,12 +175,12 @@ class _TextSection extends StatelessWidget {
                   softWrap: false,
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               const Text(
                 'TextOverflow.ellipsis:',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              Container(
+              TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
                 child: const Text(
@@ -189,12 +189,12 @@ class _TextSection extends StatelessWidget {
                   maxLines: 1,
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               const Text(
                 'TextOverflow.visible:',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
-              Container(
+              TomContainer(
                 width: 200,
                 height: 30,
                 color: Colors.grey.shade100,
@@ -211,7 +211,7 @@ class _TextSection extends StatelessWidget {
         _buildDemoCard(
           'Text Alignment',
           'Different text alignments.',
-          Column(
+          TomColumn(
             children:
                 [
                   ('left', TextAlign.left),
@@ -219,7 +219,7 @@ class _TextSection extends StatelessWidget {
                   ('right', TextAlign.right),
                   ('justify', TextAlign.justify),
                 ].map((align) {
-                  return Container(
+                  return TomContainer(
                     width: double.infinity,
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(8),
@@ -237,23 +237,23 @@ class _TextSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -271,12 +271,12 @@ class _TextStylesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Typography Scale',
           'Material 3 typography styles.',
-          Column(
+          TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -291,7 +291,7 @@ class _TextStylesSection extends StatelessWidget {
                 'Display Small',
                 style: Theme.of(context).textTheme.displaySmall,
               ),
-              const Divider(),
+              const TomDivider(),
               Text(
                 'Headline Large',
                 style: Theme.of(context).textTheme.headlineLarge,
@@ -304,18 +304,18 @@ class _TextStylesSection extends StatelessWidget {
                 'Headline Small',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const Divider(),
+              const TomDivider(),
               Text('Title Large', style: Theme.of(context).textTheme.titleLarge),
               Text(
                 'Title Medium',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Text('Title Small', style: Theme.of(context).textTheme.titleSmall),
-              const Divider(),
+              const TomDivider(),
               Text('Body Large', style: Theme.of(context).textTheme.bodyLarge),
               Text('Body Medium', style: Theme.of(context).textTheme.bodyMedium),
               Text('Body Small', style: Theme.of(context).textTheme.bodySmall),
-              const Divider(),
+              const TomDivider(),
               Text('Label Large', style: Theme.of(context).textTheme.labelLarge),
               Text(
                 'Label Medium',
@@ -328,7 +328,7 @@ class _TextStylesSection extends StatelessWidget {
         _buildDemoCard(
           'Font Weight',
           'Different font weights.',
-          Wrap(
+          TomWrap(
             spacing: 16,
             runSpacing: 8,
             children: [
@@ -347,7 +347,7 @@ class _TextStylesSection extends StatelessWidget {
         _buildDemoCard(
           'Font Style & Colors',
           'Italic and colored text.',
-          const Column(
+          const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -358,7 +358,7 @@ class _TextStylesSection extends StatelessWidget {
                 'Italic Style',
                 style: TextStyle(fontStyle: FontStyle.italic),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'Primary Color',
                 style: TextStyle(color: Colors.blue, fontSize: 16),
@@ -381,7 +381,7 @@ class _TextStylesSection extends StatelessWidget {
         _buildDemoCard(
           'Letter & Word Spacing',
           'Custom spacing between letters and words.',
-          const Column(
+          const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('Normal spacing'),
@@ -393,7 +393,7 @@ class _TextStylesSection extends StatelessWidget {
                 'Letter spacing 4.0',
                 style: TextStyle(letterSpacing: 4.0),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text('Word spacing normal'),
               Text(
                 'Word spacing 10.0',
@@ -411,23 +411,23 @@ class _TextStylesSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -445,7 +445,7 @@ class _RichTextSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Basic RichText',
@@ -521,7 +521,7 @@ class _RichTextSection extends StatelessWidget {
                           TapGestureRecognizer()
                             ..onTap = () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                TomSnackBar(
                                   content: Text('Terms of Service tapped'),
                                 ),
                               );
@@ -538,7 +538,7 @@ class _RichTextSection extends StatelessWidget {
                           TapGestureRecognizer()
                             ..onTap = () {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                TomSnackBar(
                                   content: Text('Privacy Policy tapped'),
                                 ),
                               );
@@ -559,19 +559,19 @@ class _RichTextSection extends StatelessWidget {
               children: [
                 TextSpan(text: 'Rating: '),
                 WidgetSpan(
-                  child: Icon(Icons.star, color: Colors.amber, size: 18),
+                  child: TomIcon(Icons.star, color: Colors.amber, size: 18),
                 ),
                 WidgetSpan(
-                  child: Icon(Icons.star, color: Colors.amber, size: 18),
+                  child: TomIcon(Icons.star, color: Colors.amber, size: 18),
                 ),
                 WidgetSpan(
-                  child: Icon(Icons.star, color: Colors.amber, size: 18),
+                  child: TomIcon(Icons.star, color: Colors.amber, size: 18),
                 ),
                 WidgetSpan(
-                  child: Icon(Icons.star, color: Colors.amber, size: 18),
+                  child: TomIcon(Icons.star, color: Colors.amber, size: 18),
                 ),
                 WidgetSpan(
-                  child: Icon(Icons.star_half, color: Colors.amber, size: 18),
+                  child: TomIcon(Icons.star_half, color: Colors.amber, size: 18),
                 ),
                 TextSpan(text: ' (4.5)'),
               ],
@@ -583,23 +583,23 @@ class _RichTextSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -617,7 +617,7 @@ class _SelectableTextSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Basic SelectableText',
@@ -667,7 +667,7 @@ class _SelectableTextSection extends StatelessWidget {
                     label: 'Custom Action',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Custom action!')),
+                        TomSnackBar(content: Text('Custom action!')),
                       );
                     },
                   ),
@@ -681,23 +681,23 @@ class _SelectableTextSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -715,32 +715,32 @@ class _BadgeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Basic Badge',
           'Simple notification badges.',
-          Wrap(
+          TomWrap(
             spacing: 24,
             runSpacing: 16,
             children: [
-              Badge(
+              TomBadge(
                 label: const Text('3'),
                 child: IconButton(
-                  icon: const Icon(Icons.mail),
+                  icon: const TomIcon(Icons.mail),
                   onPressed: () {},
                 ),
               ),
-              Badge(
+              TomBadge(
                 label: const Text('99+'),
                 child: IconButton(
-                  icon: const Icon(Icons.notifications),
+                  icon: const TomIcon(Icons.notifications),
                   onPressed: () {},
                 ),
               ),
-              const Badge(
+              const TomBadge(
                 label: Text('New'),
-                child: Icon(Icons.star, size: 32),
+                child: TomIcon(Icons.star, size: 32),
               ),
             ],
           ),
@@ -748,18 +748,18 @@ class _BadgeSection extends StatelessWidget {
         _buildDemoCard(
           'Badge Without Label',
           'Small dot badge indicator.',
-          Wrap(
+          TomWrap(
             spacing: 24,
             runSpacing: 16,
             children: [
-              Badge(
+              TomBadge(
                 smallSize: 8,
                 child: IconButton(
-                  icon: const Icon(Icons.chat),
+                  icon: const TomIcon(Icons.chat),
                   onPressed: () {},
                 ),
               ),
-              const Badge(
+              const TomBadge(
                 smallSize: 10,
                 child: CircleAvatar(
                   child: Text('JD'),
@@ -771,24 +771,24 @@ class _BadgeSection extends StatelessWidget {
         _buildDemoCard(
           'Colored Badges',
           'Badges with different colors.',
-          Wrap(
+          TomWrap(
             spacing: 24,
             runSpacing: 16,
             children: [
-              Badge(
+              TomBadge(
                 label: const Text('5'),
                 backgroundColor: Colors.red,
-                child: const Icon(Icons.inbox, size: 32),
+                child: const TomIcon(Icons.inbox, size: 32),
               ),
-              Badge(
+              TomBadge(
                 label: const Text('12'),
                 backgroundColor: Colors.green,
-                child: const Icon(Icons.check_circle, size: 32),
+                child: const TomIcon(Icons.check_circle, size: 32),
               ),
-              Badge(
+              TomBadge(
                 label: const Text('!'),
                 backgroundColor: Colors.orange,
-                child: const Icon(Icons.warning, size: 32),
+                child: const TomIcon(Icons.warning, size: 32),
               ),
             ],
           ),
@@ -796,41 +796,41 @@ class _BadgeSection extends StatelessWidget {
         _buildDemoCard(
           'Badge Alignment',
           'Different badge positions.',
-          Wrap(
+          TomWrap(
             spacing: 32,
             runSpacing: 16,
             children: [
-              Badge(
+              TomBadge(
                 alignment: Alignment.topRight,
                 label: const Text('TR'),
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   color: Colors.grey.shade200,
                 ),
               ),
-              Badge(
+              TomBadge(
                 alignment: Alignment.topLeft,
                 label: const Text('TL'),
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   color: Colors.grey.shade200,
                 ),
               ),
-              Badge(
+              TomBadge(
                 alignment: Alignment.bottomRight,
                 label: const Text('BR'),
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   color: Colors.grey.shade200,
                 ),
               ),
-              Badge(
+              TomBadge(
                 alignment: Alignment.bottomLeft,
                 label: const Text('BL'),
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   color: Colors.grey.shade200,
@@ -844,23 +844,23 @@ class _BadgeSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -878,12 +878,12 @@ class _TextEffectsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Text Decoration',
           'Underline, overline, and strikethrough.',
-          Column(
+          TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
@@ -893,7 +893,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               const Text(
                 'Overline text',
                 style: TextStyle(
@@ -901,7 +901,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               const Text(
                 'Line-through text',
                 style: TextStyle(
@@ -909,7 +909,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               Text(
                 'Combined decorations',
                 style: TextStyle(
@@ -926,7 +926,7 @@ class _TextEffectsSection extends StatelessWidget {
         _buildDemoCard(
           'Decoration Styles',
           'Different line styles.',
-          const Column(
+          const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -937,7 +937,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'Double underline',
                 style: TextStyle(
@@ -946,7 +946,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'Dotted underline',
                 style: TextStyle(
@@ -955,7 +955,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'Dashed underline',
                 style: TextStyle(
@@ -964,7 +964,7 @@ class _TextEffectsSection extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              SizedBox(height: 8),
+              TomSizedBox(height: 8),
               Text(
                 'Wavy underline',
                 style: TextStyle(
@@ -980,7 +980,7 @@ class _TextEffectsSection extends StatelessWidget {
         _buildDemoCard(
           'Text Shadow',
           'Adding shadows to text.',
-          Column(
+          TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
@@ -997,7 +997,7 @@ class _TextEffectsSection extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'Multiple shadows',
                 style: TextStyle(
@@ -1017,7 +1017,7 @@ class _TextEffectsSection extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'Glow effect',
                 style: TextStyle(
@@ -1044,23 +1044,23 @@ class _TextEffectsSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -1078,12 +1078,12 @@ class _PracticalExamplesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Price Display',
           'Formatted price with sale indicator.',
-          Row(
+          TomRow(
             children: [
               const Text(
                 '\$29.99',
@@ -1093,7 +1093,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                   color: Colors.grey,
                 ),
               ),
-              const SizedBox(width: 8),
+              const TomSizedBox(width: 8),
               const Text(
                 '\$19.99',
                 style: TextStyle(
@@ -1102,8 +1102,8 @@ class _PracticalExamplesSection extends StatelessWidget {
                   color: Colors.green,
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
+              const TomSizedBox(width: 8),
+              TomContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.red,
@@ -1124,21 +1124,21 @@ class _PracticalExamplesSection extends StatelessWidget {
         _buildDemoCard(
           'Username with Badge',
           'User display with status indicator.',
-          const Row(
+          const TomRow(
             children: [
               CircleAvatar(child: Text('JD')),
-              SizedBox(width: 12),
-              Column(
+              TomSizedBox(width: 12),
+              TomColumn(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  TomRow(
                     children: [
                       Text(
                         'John Doe',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.verified, size: 16, color: Colors.blue),
+                      TomSizedBox(width: 8),
+                      TomIcon(Icons.verified, size: 16, color: Colors.blue),
                     ],
                   ),
                   Text(
@@ -1182,29 +1182,29 @@ class _PracticalExamplesSection extends StatelessWidget {
         _buildDemoCard(
           'Time Ago',
           'Relative time display patterns.',
-          const Column(
+          const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              TomRow(
                 children: [
-                  Icon(Icons.schedule, size: 14, color: Colors.grey),
-                  SizedBox(width: 4),
+                  TomIcon(Icons.schedule, size: 14, color: Colors.grey),
+                  TomSizedBox(width: 4),
                   Text('2 minutes ago', style: TextStyle(color: Colors.grey)),
                 ],
               ),
-              SizedBox(height: 8),
-              Row(
+              TomSizedBox(height: 8),
+              TomRow(
                 children: [
-                  Icon(Icons.schedule, size: 14, color: Colors.grey),
-                  SizedBox(width: 4),
+                  TomIcon(Icons.schedule, size: 14, color: Colors.grey),
+                  TomSizedBox(width: 4),
                   Text('Yesterday at 3:45 PM', style: TextStyle(color: Colors.grey)),
                 ],
               ),
-              SizedBox(height: 8),
-              Row(
+              TomSizedBox(height: 8),
+              TomRow(
                 children: [
-                  Icon(Icons.schedule, size: 14, color: Colors.grey),
-                  SizedBox(width: 4),
+                  TomIcon(Icons.schedule, size: 14, color: Colors.grey),
+                  TomSizedBox(width: 4),
                   Text('Dec 25, 2024', style: TextStyle(color: Colors.grey)),
                 ],
               ),
@@ -1216,23 +1216,23 @@ class _PracticalExamplesSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),

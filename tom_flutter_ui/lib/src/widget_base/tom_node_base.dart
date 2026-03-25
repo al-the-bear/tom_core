@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../resource_auth/tom_icons.dart';
 import '../resource_auth/tom_id_prefix.dart';
 import '../resource_auth/tom_resources.dart';
 
@@ -54,6 +55,30 @@ abstract class TomNodeBase extends StatelessWidget {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return suffix;
     return TomUIResources.resolveText(basePath, suffix);
+  }
+
+  /// Resolves an icon from resources relative to this node's base path.
+  ///
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No icon resource exists for this node
+  /// - The icon name cannot be resolved to an [IconData]
+  ///
+  /// The icon is resolved in two steps:
+  /// 1. Get icon name from resources (using suffix 'icon')
+  /// 2. Look up [IconData] from [TomUIIcons] provider
+  IconData? resolveIcon(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+
+    // Get icon name from resources
+    final iconName = TomUIResources.resolveText(basePath, 'icon');
+
+    // Skip if it returns the key itself (no resource found)
+    if (iconName.endsWith('.icon')) return null;
+
+    // Look up IconData from icon provider
+    return TomUIIcons.resolveIcon(iconName);
   }
 
   /// Debug description for this node.

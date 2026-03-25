@@ -18,6 +18,7 @@ import 'package:flutter/material.dart' as material
         showMenu,
         showSearch;
 
+import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [AlertDialog].
@@ -295,73 +296,39 @@ class TomBottomSheet extends TomDialogBase {
 /// Tom wrapper for [SnackBar].
 ///
 /// Adds ID, group, authorization, and resource resolution.
-class TomSnackBar extends TomDialogBase {
-  final Widget content;
-  final Color? backgroundColor;
-  final double? elevation;
-  final EdgeInsetsGeometry? margin;
-  final EdgeInsetsGeometry? padding;
-  final double? width;
-  final ShapeBorder? shape;
-  final HitTestBehavior? hitTestBehavior;
-  final SnackBarBehavior? behavior;
-  final SnackBarAction? action;
-  final double? actionOverflowThreshold;
-  final bool? showCloseIcon;
-  final Color? closeIconColor;
-  final Duration duration;
-  final Animation<double>? animation;
-  final VoidCallback? onVisible;
-  final DismissDirection dismissDirection;
-  final Clip clipBehavior;
-
-  const TomSnackBar({
+class TomSnackBar extends SnackBar with TomWidgetMixin {
+  /// Creates a Tom SnackBar that extends SnackBar directly.
+  ///
+  /// Can be used with ScaffoldMessenger.showSnackBar().
+  TomSnackBar({
+    this.tomId,
+    this.tomGroup,
     super.key,
-    super.tomId,
-    super.tomGroup,
-    required this.content,
-    this.backgroundColor,
-    this.elevation,
-    this.margin,
-    this.padding,
-    this.width,
-    this.shape,
-    this.hitTestBehavior,
-    this.behavior,
-    this.action,
-    this.actionOverflowThreshold,
-    this.showCloseIcon,
-    this.closeIconColor,
-    this.duration = const Duration(milliseconds: 4000),
-    this.animation,
-    this.onVisible,
-    this.dismissDirection = DismissDirection.down,
-    this.clipBehavior = Clip.hardEdge,
+    required super.content,
+    super.backgroundColor,
+    super.elevation,
+    super.margin,
+    super.padding,
+    super.width,
+    super.shape,
+    super.hitTestBehavior,
+    super.behavior,
+    super.action,
+    super.actionOverflowThreshold,
+    super.showCloseIcon,
+    super.closeIconColor,
+    super.duration = const Duration(milliseconds: 4000),
+    super.animation,
+    super.onVisible,
+    super.dismissDirection = DismissDirection.down,
+    super.clipBehavior = Clip.hardEdge,
   });
 
   @override
-  Widget buildContent(BuildContext context) {
-    return SnackBar(
-      content: content,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      margin: margin,
-      padding: padding,
-      width: width,
-      shape: shape,
-      hitTestBehavior: hitTestBehavior,
-      behavior: behavior,
-      action: action,
-      actionOverflowThreshold: actionOverflowThreshold,
-      showCloseIcon: showCloseIcon,
-      closeIconColor: closeIconColor,
-      duration: duration,
-      animation: animation,
-      onVisible: onVisible,
-      dismissDirection: dismissDirection,
-      clipBehavior: clipBehavior,
-    );
-  }
+  final String? tomId;
+
+  @override
+  final String? tomGroup;
 }
 
 /// Tom wrapper for [MaterialBanner].

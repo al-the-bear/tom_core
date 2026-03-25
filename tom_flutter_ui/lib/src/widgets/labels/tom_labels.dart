@@ -6,8 +6,13 @@ import '../../widget_base/tom_family_base.dart';
 
 /// Tom wrapper for [Text].
 ///
-/// Resolves the text string from resources when [text] is not provided.
+/// Provides both positional [data] parameter (matching Flutter's Text API)
+/// and optional resource resolution when neither [data] nor [text] is provided.
 class TomText extends TomLabelBase {
+  /// The text to display (positional parameter for Flutter API compatibility).
+  final String? data;
+
+  /// Alternative named text parameter for resource-based resolution.
   final String? text;
   final TextStyle? style;
   final StrutStyle? strutStyle;
@@ -21,7 +26,19 @@ class TomText extends TomLabelBase {
   final TextWidthBasis? textWidthBasis;
   final TextHeightBehavior? textHeightBehavior;
 
-  const TomText({
+  /// Creates a TomText widget.
+  ///
+  /// Use the positional [data] parameter for Flutter API compatibility:
+  /// ```dart
+  /// TomText('Hello')  // Same as Text('Hello')
+  /// ```
+  ///
+  /// Or use named parameters for resource resolution:
+  /// ```dart
+  /// TomText(tomId: 'app.greeting')  // Resolves from resources
+  /// ```
+  const TomText(
+    String? this.data, {
     super.key,
     super.tomId,
     super.tomGroup,
@@ -41,7 +58,7 @@ class TomText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResource(context, 'label');
+    final resolvedText = data ?? text ?? resolveResource(context, 'label');
 
     return Text(
       resolvedText,

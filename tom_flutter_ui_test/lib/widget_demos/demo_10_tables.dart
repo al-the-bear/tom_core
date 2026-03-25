@@ -13,7 +13,7 @@ class TablesDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -21,37 +21,37 @@ class TablesDemo extends StatelessWidget {
           subtitle: 'Material design data tables',
         ),
         _DataTableSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Sortable DataTable',
           subtitle: 'Tables with column sorting',
         ),
         _SortableDataTableSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Selectable DataTable',
           subtitle: 'Tables with row selection',
         ),
         _SelectableDataTableSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'PaginatedDataTable',
           subtitle: 'Tables with pagination',
         ),
         _PaginatedDataTableSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Table Widget',
           subtitle: 'Low-level table layout',
         ),
         _TableWidgetSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Styled Tables',
           subtitle: 'Custom table styling',
         ),
         _StyledTablesSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -70,9 +70,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -82,15 +82,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -116,25 +116,25 @@ class _DataTableSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Basic DataTable',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             const Text(
               'Standard data table with columns and rows.',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: DataTable(
+              child: TomDataTable(
                 columns: const [
                   DataColumn(label: Text('ID')),
                   DataColumn(label: Text('Name')),
@@ -220,20 +220,20 @@ class _SortableDataTableSectionState extends State<_SortableDataTableSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Click column headers to sort',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: DataTable(
+              child: TomDataTable(
                 sortColumnIndex: _sortColumnIndex,
                 sortAscending: _sortAscending,
                 columns: [
@@ -304,31 +304,31 @@ class _SelectableDataTableSectionState
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            TomRow(
               children: [
                 Text(
                   '${_selectedIds.length} selected',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
-                const Spacer(),
+                const TomSpacer(),
                 if (_selectedIds.isNotEmpty)
                   TextButton.icon(
                     onPressed: () => setState(() => _selectedIds.clear()),
-                    icon: const Icon(Icons.clear, size: 16),
+                    icon: const TomIcon(Icons.clear, size: 16),
                     label: const Text('Clear'),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: DataTable(
+              child: TomDataTable(
                 showCheckboxColumn: true,
                 columns: const [
                   DataColumn(label: Text('Product')),
@@ -355,15 +355,15 @@ class _SelectableDataTableSectionState
                           DataCell(Text('\$${item['price']}')),
                           DataCell(Text('${item['stock']}')),
                           DataCell(
-                            Row(
+                            TomRow(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.edit, size: 18),
+                                  icon: const TomIcon(Icons.edit, size: 18),
                                   onPressed: () {},
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete, size: 18),
+                                  icon: const TomIcon(Icons.delete, size: 18),
                                   onPressed: () {},
                                 ),
                               ],
@@ -399,25 +399,25 @@ class _PaginatedDataTableSectionState
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: SizedBox(
+              child: TomSizedBox(
                 width: 600,
-                child: PaginatedDataTable(
+                child: TomPaginatedDataTable(
                   header: const Text('Orders'),
                   actions: [
                     IconButton(
-                      icon: const Icon(Icons.refresh),
+                      icon: const TomIcon(Icons.refresh),
                       onPressed: () {},
                     ),
                     IconButton(
-                      icon: const Icon(Icons.download),
+                      icon: const TomIcon(Icons.download),
                       onPressed: () {},
                     ),
                   ],
@@ -520,7 +520,7 @@ class _TableWidgetSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Basic Table',
@@ -536,7 +536,7 @@ class _TableWidgetSection extends StatelessWidget {
               TableRow(
                 decoration: BoxDecoration(color: Colors.grey),
                 children: [
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Header 1',
@@ -546,7 +546,7 @@ class _TableWidgetSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Header 2',
@@ -556,7 +556,7 @@ class _TableWidgetSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Header 3',
@@ -570,22 +570,22 @@ class _TableWidgetSection extends StatelessWidget {
               ),
               TableRow(
                 children: [
-                  Padding(padding: EdgeInsets.all(8), child: Text('Row 1')),
-                  Padding(
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Row 1')),
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text('Extended content for row 1'),
                   ),
-                  Padding(padding: EdgeInsets.all(8), child: Text('Value 1')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Value 1')),
                 ],
               ),
               TableRow(
                 children: [
-                  Padding(padding: EdgeInsets.all(8), child: Text('Row 2')),
-                  Padding(
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Row 2')),
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text('Data for row 2'),
                   ),
-                  Padding(padding: EdgeInsets.all(8), child: Text('Value 2')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Value 2')),
                 ],
               ),
             ],
@@ -608,28 +608,28 @@ class _TableWidgetSection extends StatelessWidget {
                   color: Theme.of(context).colorScheme.primaryContainer,
                 ),
                 children: [
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Fixed\n80px',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Flex (2)',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Flex (1)',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  Padding(
+                  TomPadding(
                     padding: EdgeInsets.all(8),
                     child: Text(
                       'Intrinsic',
@@ -640,10 +640,10 @@ class _TableWidgetSection extends StatelessWidget {
               ),
               const TableRow(
                 children: [
-                  Padding(padding: EdgeInsets.all(8), child: Text('A')),
-                  Padding(padding: EdgeInsets.all(8), child: Text('Takes 2x space')),
-                  Padding(padding: EdgeInsets.all(8), child: Text('1x space')),
-                  Padding(padding: EdgeInsets.all(8), child: Text('Fits content')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('A')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Takes 2x space')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('1x space')),
+                  TomPadding(padding: EdgeInsets.all(8), child: Text('Fits content')),
                 ],
               ),
             ],
@@ -654,23 +654,23 @@ class _TableWidgetSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             child,
           ],
         ),
@@ -688,12 +688,12 @@ class _StyledTablesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Striped Table',
           'Alternating row colors.',
-          DataTable(
+          TomDataTable(
             headingRowColor: WidgetStateProperty.all(
               Theme.of(context).colorScheme.primaryContainer,
             ),
@@ -724,7 +724,7 @@ class _StyledTablesSection extends StatelessWidget {
         _buildDemoCard(
           'Hoverable Table',
           'Rows highlight on hover.',
-          DataTable(
+          TomDataTable(
             columns: const [
               DataColumn(label: Text('Item')),
               DataColumn(label: Text('Quantity'), numeric: true),
@@ -762,7 +762,7 @@ class _StyledTablesSection extends StatelessWidget {
                 headingRowHeight: 40,
               ),
             ),
-            child: DataTable(
+            child: TomDataTable(
               columns: const [
                 DataColumn(label: Text('Code')),
                 DataColumn(label: Text('Item')),
@@ -785,23 +785,23 @@ class _StyledTablesSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 12),
+            const TomSizedBox(height: 12),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: child,

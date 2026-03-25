@@ -254,13 +254,13 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
 class TomRefreshProgressIndicator extends RefreshProgressIndicator
     with TomWidgetMixin {
   @override
-  final String tomId;
+  final String? tomId;
   @override
   final String? tomGroup;
 
   const TomRefreshProgressIndicator({
     super.key,
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.value,
     super.backgroundColor,

@@ -15,7 +15,7 @@ class EffectsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -23,31 +23,31 @@ class EffectsDemo extends StatelessWidget {
           subtitle: 'Blur and filter effects',
         ),
         _BackdropFilterSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'ShaderMask',
           subtitle: 'Gradient masking effects',
         ),
         _ShaderMaskSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'ClipPath',
           subtitle: 'Custom clipping shapes',
         ),
         _ClipPathSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Opacity & Blend',
           subtitle: 'Opacity and color blend modes',
         ),
         _OpacitySection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Shadows & Elevation',
           subtitle: 'Shadow effects',
         ),
         _ShadowSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -66,9 +66,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -78,15 +78,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -112,15 +112,15 @@ class _BackdropFilterSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Blur Effect',
           'Gaussian blur over background.',
-          Stack(
+          TomStack(
             alignment: Alignment.center,
             children: [
-              Container(
+              TomContainer(
                 height: 200,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
@@ -134,7 +134,7 @@ class _BackdropFilterSection extends StatelessWidget {
                     crossAxisCount: 5,
                   ),
                   itemCount: 25,
-                  itemBuilder: (context, index) => Container(
+                  itemBuilder: (context, index) => TomContainer(
                     margin: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.3),
@@ -147,7 +147,7 @@ class _BackdropFilterSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                  child: Container(
+                  child: TomContainer(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
                       vertical: 16,
@@ -176,7 +176,7 @@ class _BackdropFilterSection extends StatelessWidget {
         _buildDemoCard(
           'Blur Levels',
           'Different blur intensities.',
-          Container(
+          TomContainer(
             height: 150,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -187,7 +187,7 @@ class _BackdropFilterSection extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
-            child: Row(
+            child: TomRow(
               children: [
                 _blurSection('None', 0),
                 _blurSection('Light', 3),
@@ -202,13 +202,13 @@ class _BackdropFilterSection extends StatelessWidget {
   }
 
   Widget _blurSection(String label, double sigma) {
-    return Expanded(
+    return TomExpanded(
       child: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
-          child: Container(
+          child: TomContainer(
             color: Colors.black.withValues(alpha: 0.1),
-            child: Center(
+            child: TomCenter(
               child: Text(
                 label,
                 style: const TextStyle(
@@ -225,23 +225,23 @@ class _BackdropFilterSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),
@@ -259,7 +259,7 @@ class _ShaderMaskSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Gradient Text',
@@ -281,26 +281,26 @@ class _ShaderMaskSection extends StatelessWidget {
         _buildDemoCard(
           'Gradient Icon',
           'Icon with gradient fill.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.red, Colors.orange],
                 ).createShader(bounds),
-                child: const Icon(Icons.favorite, size: 48, color: Colors.white),
+                child: const TomIcon(Icons.favorite, size: 48, color: Colors.white),
               ),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.green, Colors.teal],
                 ).createShader(bounds),
-                child: const Icon(Icons.eco, size: 48, color: Colors.white),
+                child: const TomIcon(Icons.eco, size: 48, color: Colors.white),
               ),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.blue, Colors.purple],
                 ).createShader(bounds),
-                child: const Icon(Icons.water_drop, size: 48, color: Colors.white),
+                child: const TomIcon(Icons.water_drop, size: 48, color: Colors.white),
               ),
             ],
           ),
@@ -319,7 +319,7 @@ class _ShaderMaskSection extends StatelessWidget {
               stops: const [0.0, 0.1, 0.9, 1.0],
             ).createShader(bounds),
             blendMode: BlendMode.dstIn,
-            child: Container(
+            child: TomContainer(
               height: 100,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
@@ -327,7 +327,7 @@ class _ShaderMaskSection extends StatelessWidget {
                   colors: [Colors.blue, Colors.purple],
                 ),
               ),
-              child: const Center(
+              child: const TomCenter(
                 child: Text(
                   'Faded Edges',
                   style: TextStyle(
@@ -345,24 +345,24 @@ class _ShaderMaskSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -379,21 +379,21 @@ class _ClipPathSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Wave Clip',
           'Wavy bottom edge.',
           ClipPath(
             clipper: _WaveClipper(),
-            child: Container(
+            child: TomContainer(
               height: 120,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.blue, Colors.purple],
                 ),
               ),
-              child: const Center(
+              child: const TomCenter(
                 child: Text(
                   'Wave',
                   style: TextStyle(
@@ -411,14 +411,14 @@ class _ClipPathSection extends StatelessWidget {
           'Triangular corners.',
           ClipPath(
             clipper: _TriangleClipper(),
-            child: Container(
+            child: TomContainer(
               height: 100,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.orange, Colors.red],
                 ),
               ),
-              child: const Center(
+              child: const TomCenter(
                 child: Text(
                   'Triangle',
                   style: TextStyle(
@@ -434,37 +434,37 @@ class _ClipPathSection extends StatelessWidget {
         _buildDemoCard(
           'Shapes',
           'Various clipping shapes.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ClipOval(
-                child: Container(
+                child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.teal,
-                  child: const Center(
+                  child: const TomCenter(
                     child: Text('Oval', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
-                child: Container(
+                child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.purple,
-                  child: const Center(
+                  child: const TomCenter(
                     child: Text('Round', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
               ClipPath(
                 clipper: _HexagonClipper(),
-                child: Container(
+                child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.indigo,
-                  child: const Center(
+                  child: const TomCenter(
                     child: Text('Hex', style: TextStyle(color: Colors.white)),
                   ),
                 ),
@@ -477,23 +477,23 @@ class _ClipPathSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),
@@ -564,12 +564,12 @@ class _OpacitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Opacity Levels',
           'Different opacity values.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _opacityBox(1.0),
@@ -582,7 +582,7 @@ class _OpacitySection extends StatelessWidget {
         _buildDemoCard(
           'Color Blend Modes',
           'Different blend effects.',
-          Wrap(
+          TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
@@ -600,11 +600,11 @@ class _OpacitySection extends StatelessWidget {
   }
 
   Widget _opacityBox(double opacity) {
-    return Column(
+    return TomColumn(
       children: [
         Opacity(
           opacity: opacity,
-          child: Container(
+          child: TomContainer(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
@@ -613,16 +613,16 @@ class _OpacitySection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const TomSizedBox(height: 4),
         Text('${(opacity * 100).toInt()}%'),
       ],
     );
   }
 
   Widget _blendBox(String label, BlendMode mode) {
-    return Column(
+    return TomColumn(
       children: [
-        Container(
+        TomContainer(
           width: 80,
           height: 60,
           decoration: BoxDecoration(
@@ -633,7 +633,7 @@ class _OpacitySection extends StatelessWidget {
           ),
           child: ColorFiltered(
             colorFilter: ColorFilter.mode(Colors.yellow, mode),
-            child: Container(
+            child: TomContainer(
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
@@ -641,30 +641,30 @@ class _OpacitySection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const TomSizedBox(height: 4),
         Text(label, style: const TextStyle(fontSize: 10)),
       ],
     );
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),
@@ -682,12 +682,12 @@ class _ShadowSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Elevation Levels',
           'Material elevation shadows.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _elevationCard(0),
@@ -700,7 +700,7 @@ class _ShadowSection extends StatelessWidget {
         _buildDemoCard(
           'Box Shadows',
           'Custom shadow decorations.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _shadowBox(
@@ -739,7 +739,7 @@ class _ShadowSection extends StatelessWidget {
         _buildDemoCard(
           'Multi Shadow',
           'Multiple layered shadows.',
-          Container(
+          TomContainer(
             width: 120,
             height: 80,
             decoration: BoxDecoration(
@@ -758,7 +758,7 @@ class _ShadowSection extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Center(
+            child: const TomCenter(
               child: Text(
                 'Multi',
                 style: TextStyle(fontWeight: FontWeight.bold),
@@ -771,19 +771,19 @@ class _ShadowSection extends StatelessWidget {
   }
 
   Widget _elevationCard(double elevation) {
-    return Column(
+    return TomColumn(
       children: [
         Material(
           elevation: elevation,
           borderRadius: BorderRadius.circular(8),
-          child: Container(
+          child: TomContainer(
             width: 60,
             height: 60,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
+            child: TomCenter(
               child: Text(
                 '${elevation.toInt()}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -791,16 +791,16 @@ class _ShadowSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        const TomSizedBox(height: 8),
         Text('E${elevation.toInt()}'),
       ],
     );
   }
 
   Widget _shadowBox(String label, List<BoxShadow> shadows) {
-    return Column(
+    return TomColumn(
       children: [
-        Container(
+        TomContainer(
           width: 70,
           height: 60,
           decoration: BoxDecoration(
@@ -809,31 +809,31 @@ class _ShadowSection extends StatelessWidget {
             boxShadow: shadows,
           ),
         ),
-        const SizedBox(height: 8),
+        const TomSizedBox(height: 8),
         Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),

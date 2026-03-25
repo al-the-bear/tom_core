@@ -13,7 +13,7 @@ class InteractionsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -21,31 +21,31 @@ class InteractionsDemo extends StatelessWidget {
           subtitle: 'Basic touch interactions',
         ),
         _TapSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'InkWell & InkResponse',
           subtitle: 'Material ripple effects',
         ),
         _InkWellSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Drag & Drop',
           subtitle: 'Draggable widgets',
         ),
         _DragDropSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Swipe Gestures',
           subtitle: 'Directional swipe detection',
         ),
         _SwipeSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Multi-touch',
           subtitle: 'Pinch and scale gestures',
         ),
         _MultiTouchSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -64,9 +64,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -76,15 +76,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -119,30 +119,30 @@ class _TapSectionState extends State<_TapSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'GestureDetector',
           'Tap, double tap, long press.',
-          Column(
+          TomColumn(
             children: [
               Text(
                 _lastAction,
                 style: TextStyle(color: Colors.grey.shade600),
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               GestureDetector(
                 onTap: () => setState(() => _lastAction = 'Single tap'),
                 onDoubleTap: () => setState(() => _lastAction = 'Double tap'),
                 onLongPress: () => setState(() => _lastAction = 'Long press'),
-                child: Container(
+                child: TomContainer(
                   width: 150,
                   height: 80,
                   decoration: BoxDecoration(
                     color: Colors.blue,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Center(
+                  child: const TomCenter(
                     child: Text(
                       'Tap Me',
                       style: TextStyle(
@@ -162,14 +162,14 @@ class _TapSectionState extends State<_TapSection> {
           'Count your taps.',
           GestureDetector(
             onTap: () => setState(() => _tapCount++),
-            child: Container(
+            child: TomContainer(
               width: 100,
               height: 100,
               decoration: BoxDecoration(
                 color: Colors.green,
                 shape: BoxShape.circle,
               ),
-              child: Center(
+              child: TomCenter(
                 child: Text(
                   '$_tapCount',
                   style: const TextStyle(
@@ -206,7 +206,7 @@ class _TapSectionState extends State<_TapSection> {
                         ),
                       ],
               ),
-              child: Center(
+              child: TomCenter(
                 child: Text(
                   _isPressed ? 'Pressed!' : 'Press',
                   style: const TextStyle(
@@ -223,24 +223,24 @@ class _TapSectionState extends State<_TapSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -257,12 +257,12 @@ class _InkWellSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'InkWell',
           'Material ripple on tap.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Material(
@@ -271,10 +271,10 @@ class _InkWellSection extends StatelessWidget {
                 child: InkWell(
                   onTap: () {},
                   borderRadius: BorderRadius.circular(8),
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: Center(child: Text('Tap')),
+                    child: TomCenter(child: Text('Tap')),
                   ),
                 ),
               ),
@@ -285,10 +285,10 @@ class _InkWellSection extends StatelessWidget {
                   onTap: () {},
                   splashColor: Colors.green.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: Center(child: Text('Green')),
+                    child: TomCenter(child: Text('Green')),
                   ),
                 ),
               ),
@@ -299,10 +299,10 @@ class _InkWellSection extends StatelessWidget {
                   onTap: () {},
                   highlightColor: Colors.purple.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: Center(child: Text('Highlight')),
+                    child: TomCenter(child: Text('Highlight')),
                   ),
                 ),
               ),
@@ -312,7 +312,7 @@ class _InkWellSection extends StatelessWidget {
         _buildDemoCard(
           'Ink Shapes',
           'Different splash shapes.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               Material(
@@ -321,10 +321,10 @@ class _InkWellSection extends StatelessWidget {
                 child: InkWell(
                   onTap: () {},
                   customBorder: const CircleBorder(),
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 60,
                     height: 60,
-                    child: Center(child: Icon(Icons.favorite)),
+                    child: TomCenter(child: TomIcon(Icons.favorite)),
                   ),
                 ),
               ),
@@ -334,10 +334,10 @@ class _InkWellSection extends StatelessWidget {
                 child: InkWell(
                   onTap: () {},
                   borderRadius: BorderRadius.circular(30),
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 100,
                     height: 40,
-                    child: Center(child: Text('Pill')),
+                    child: TomCenter(child: Text('Pill')),
                   ),
                 ),
               ),
@@ -345,10 +345,10 @@ class _InkWellSection extends StatelessWidget {
                 color: Colors.amber.shade100,
                 child: InkWell(
                   onTap: () {},
-                  child: const SizedBox(
+                  child: const TomSizedBox(
                     width: 60,
                     height: 60,
-                    child: Center(child: Icon(Icons.star)),
+                    child: TomCenter(child: TomIcon(Icons.star)),
                   ),
                 ),
               ),
@@ -360,23 +360,23 @@ class _InkWellSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),
@@ -407,12 +407,12 @@ class _DragDropSectionState extends State<_DragDropSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Drag to Target',
           'Drag colored items to the target.',
-          Column(
+          TomColumn(
             children: [
               DragTarget<Color>(
                 onAcceptWithDetails: (details) {
@@ -433,7 +433,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
                         width: candidateData.isNotEmpty ? 3 : 1,
                       ),
                     ),
-                    child: Center(
+                    child: TomCenter(
                       child: Text(
                         candidateData.isNotEmpty ? 'Drop here!' : 'Target',
                         style: TextStyle(
@@ -447,13 +447,13 @@ class _DragDropSectionState extends State<_DragDropSection> {
                   );
                 },
               ),
-              const SizedBox(height: 24),
-              Row(
+              const TomSizedBox(height: 24),
+              TomRow(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: _colors.map((color) {
                   return Draggable<Color>(
                     data: color,
-                    feedback: Container(
+                    feedback: TomContainer(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
@@ -467,7 +467,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
                         ],
                       ),
                     ),
-                    childWhenDragging: Container(
+                    childWhenDragging: TomContainer(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
@@ -475,7 +475,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    child: Container(
+                    child: TomContainer(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
@@ -492,7 +492,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
         _buildDemoCard(
           'LongPressDraggable',
           'Long press to start dragging.',
-          Row(
+          TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: List.generate(3, (index) {
               return LongPressDraggable<int>(
@@ -500,14 +500,14 @@ class _DragDropSectionState extends State<_DragDropSection> {
                 feedback: Material(
                   elevation: 4,
                   borderRadius: BorderRadius.circular(8),
-                  child: Container(
+                  child: TomContainer(
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
                       color: Colors.purple,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Center(
+                    child: TomCenter(
                       child: Text(
                         '${index + 1}',
                         style: const TextStyle(
@@ -519,7 +519,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
                     ),
                   ),
                 ),
-                child: Container(
+                child: TomContainer(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
@@ -527,7 +527,7 @@ class _DragDropSectionState extends State<_DragDropSection> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.purple),
                   ),
-                  child: Center(
+                  child: TomCenter(
                     child: Text(
                       '${index + 1}',
                       style: TextStyle(
@@ -547,23 +547,23 @@ class _DragDropSectionState extends State<_DragDropSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),
@@ -589,7 +589,7 @@ class _SwipeSectionState extends State<_SwipeSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _buildDemoCard(
           'Swipe Detection',
@@ -609,7 +609,7 @@ class _SwipeSectionState extends State<_SwipeSection> {
                 setState(() => _swipeDirection = '↑ Swiped Up');
               }
             },
-            child: Container(
+            child: TomContainer(
               width: 200,
               height: 100,
               decoration: BoxDecoration(
@@ -617,7 +617,7 @@ class _SwipeSectionState extends State<_SwipeSection> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.indigo),
               ),
-              child: Center(
+              child: TomCenter(
                 child: Text(
                   _swipeDirection,
                   style: TextStyle(
@@ -632,9 +632,9 @@ class _SwipeSectionState extends State<_SwipeSection> {
         _buildDemoCard(
           'Pan Gesture',
           'Drag to move.',
-          Stack(
+          TomStack(
             children: [
-              Container(
+              TomContainer(
                 height: 150,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
@@ -654,7 +654,7 @@ class _SwipeSectionState extends State<_SwipeSection> {
                       );
                     });
                   },
-                  child: Container(
+                  child: TomContainer(
                     width: 50,
                     height: 50,
                     decoration: BoxDecoration(
@@ -667,7 +667,7 @@ class _SwipeSectionState extends State<_SwipeSection> {
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.open_with, color: Colors.white),
+                    child: const TomIcon(Icons.open_with, color: Colors.white),
                   ),
                 ),
               ),
@@ -679,24 +679,24 @@ class _SwipeSectionState extends State<_SwipeSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
-            Center(child: child),
+            const TomSizedBox(height: 16),
+            TomCenter(child: child),
           ],
         ),
       ),
@@ -735,18 +735,18 @@ class _MultiTouchSectionState extends State<_MultiTouchSection> {
             _rotation = details.rotation;
           });
         },
-        child: Container(
+        child: TomContainer(
           height: 200,
           decoration: BoxDecoration(
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Center(
+          child: TomCenter(
             child: Transform.scale(
               scale: _scale,
               child: Transform.rotate(
                 angle: _rotation,
-                child: Container(
+                child: TomContainer(
                   width: 100,
                   height: 100,
                   decoration: BoxDecoration(
@@ -761,10 +761,10 @@ class _MultiTouchSectionState extends State<_MultiTouchSection> {
                       ),
                     ],
                   ),
-                  child: const Column(
+                  child: const TomColumn(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.zoom_in, color: Colors.white),
+                      TomIcon(Icons.zoom_in, color: Colors.white),
                       Text(
                         'Pinch me',
                         style: TextStyle(
@@ -784,23 +784,23 @@ class _MultiTouchSectionState extends State<_MultiTouchSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            const SizedBox(height: 4),
+            const TomSizedBox(height: 4),
             Text(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
           ],
         ),

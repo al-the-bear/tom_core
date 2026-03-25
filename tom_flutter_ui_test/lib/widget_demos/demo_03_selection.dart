@@ -1,8 +1,10 @@
-/// Comprehensive Selection Widgets Demo
+/// Tom Selection Widgets Demo
 ///
-/// This demo showcases all Flutter selection widgets including dropdowns,
-/// autocomplete, chips, and search components with their various
-/// configurations and styling options.
+/// This demo showcases Tom selection widgets from tom_flutter_ui with their
+/// Tom-specific features:
+/// - tomId: Widget identification for tracking/analytics
+/// - tomGroup: Group-based visibility and authorization
+/// - Resource-resolved labels (for i18n)
 library;
 
 import 'package:flutter/material.dart';
@@ -14,51 +16,51 @@ class SelectionDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
-          title: 'DropdownButton',
-          subtitle: 'Classic dropdown menus for item selection',
+          title: 'TomDropdownButton',
+          subtitle: 'Tom-wrapped dropdown menus for item selection',
         ),
         _DropdownButtonSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
-          title: 'DropdownMenu',
-          subtitle: 'Material 3 dropdown menus with search support',
+          title: 'TomDropdownMenu',
+          subtitle: 'Tom-wrapped Material 3 dropdown menus with search support',
         ),
         _DropdownMenuSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
-          title: 'Autocomplete',
-          subtitle: 'Text field with suggestions as you type',
+          title: 'TomAutocomplete',
+          subtitle: 'Tom-wrapped text field with suggestions',
         ),
         _AutocompleteSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
-          title: 'Chips',
-          subtitle: 'Compact elements for selection, filtering, and actions',
+          title: 'TomChips',
+          subtitle: 'Tom-wrapped compact elements for selection, filtering, and actions',
         ),
         _ChipsSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
-          title: 'FilterChip & ChoiceChip',
-          subtitle: 'Chips for filtering and single selection',
+          title: 'TomFilterChip & TomChoiceChip',
+          subtitle: 'Tom-wrapped chips for filtering and single selection',
         ),
         _FilterChoiceChipSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Multi-Select',
           subtitle: 'Selecting multiple items from a list',
         ),
         _MultiSelectSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Selection Examples',
           subtitle: 'Real-world selection patterns',
         ),
         _SelectionExamplesSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -77,9 +79,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -89,15 +91,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -136,9 +138,9 @@ class _DemoCard extends StatelessWidget {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -148,7 +150,7 @@ class _DemoCard extends StatelessWidget {
               ),
             ),
             if (description != null) ...[
-              const SizedBox(height: 4),
+              const TomSizedBox(height: 4),
               Text(
                 description!,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -156,10 +158,10 @@ class _DemoCard extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             child,
             if (code != null) ...[
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               _CodeSnippet(code: code!),
             ],
           ],
@@ -188,30 +190,30 @@ class _CodeSnippetState extends State<_CodeSnippet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Column(
+    return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           borderRadius: BorderRadius.circular(4),
-          child: Padding(
+          child: TomPadding(
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
+            child: TomRow(
               children: [
-                Icon(
+                TomIcon(
                   _expanded ? Icons.code_off : Icons.code,
                   size: 16,
                   color: theme.colorScheme.primary,
                 ),
-                const SizedBox(width: 8),
+                const TomSizedBox(width: 8),
                 Text(
                   _expanded ? 'Hide code' : 'Show code',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const Spacer(),
-                Icon(
+                const TomSpacer(),
+                TomIcon(
                   _expanded ? Icons.expand_less : Icons.expand_more,
                   size: 20,
                   color: theme.colorScheme.outline,
@@ -221,8 +223,8 @@ class _CodeSnippetState extends State<_CodeSnippet> {
           ),
         ),
         if (_expanded) ...[
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -265,17 +267,18 @@ class _DropdownButtonSectionState extends State<_DropdownButtonSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
-          title: 'Basic DropdownButton',
-          description: 'Simple dropdown with string items.',
-          child: Column(
+          title: 'Basic TomDropdownButton',
+          description: 'Simple dropdown with string items and resource-backed hint.',
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DropdownButton<String>(
+              TomDropdownButton<String>(
+                tomId: 'demo.select.dropdown.fruit',
                 value: _selectedFruit,
-                hint: const Text('Select a fruit'),
+                hint: 'Select a fruit',
                 isExpanded: true,
                 items:
                     _fruits.map((fruit) {
@@ -283,7 +286,7 @@ class _DropdownButtonSectionState extends State<_DropdownButtonSection> {
                     }).toList(),
                 onChanged: (value) => setState(() => _selectedFruit = value),
               ),
-              const SizedBox(height: 8),
+              const TomSizedBox(height: 8),
               Text(
                 'Selected: ${_selectedFruit ?? "None"}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -291,9 +294,10 @@ class _DropdownButtonSectionState extends State<_DropdownButtonSection> {
             ],
           ),
           code: '''
-DropdownButton<String>(
+TomDropdownButton<String>(
+  tomId: 'app.select.fruit',
   value: _selectedValue,
-  hint: Text('Select a fruit'),
+  hint: 'Select a fruit',  // Resource-backed via tomId.hint
   isExpanded: true,
   items: items.map((item) {
     return DropdownMenuItem(
@@ -305,20 +309,21 @@ DropdownButton<String>(
 )''',
         ),
         _DemoCard(
-          title: 'DropdownButton with Icons',
+          title: 'TomDropdownButton with Icons',
           description: 'Dropdown items with leading icons.',
-          child: DropdownButton<String>(
+          child: TomDropdownButton<String>(
+            tomId: 'demo.select.dropdown.country',
             value: _selectedCountry,
-            hint: const Text('Select a country'),
+            hint: 'Select a country',
             isExpanded: true,
             items:
                 _countries.map((country) {
                   return DropdownMenuItem(
                     value: country,
-                    child: Row(
+                    child: TomRow(
                       children: [
                         _countryFlag(country),
-                        const SizedBox(width: 12),
+                        const TomSizedBox(width: 12),
                         Text(country),
                       ],
                     ),
@@ -328,47 +333,48 @@ DropdownButton<String>(
           ),
         ),
         _DemoCard(
-          title: 'DropdownButton with Custom Styling',
+          title: 'TomDropdownButton with Custom Styling',
           description: 'Styled dropdown with elevation and border.',
-          child: Container(
+          child: TomContainer(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: DropdownButton<int>(
+            child: TomDropdownButton<int>(
+              tomId: 'demo.select.dropdown.priority',
               value: _selectedPriority,
-              hint: const Text('Select priority'),
+              hint: 'Select priority',
               isExpanded: true,
-              underline: const SizedBox(),
-              icon: const Icon(Icons.keyboard_arrow_down),
+              underline: const TomSizedBox(),
+              icon: const TomIcon(Icons.keyboard_arrow_down),
               items: const [
                 DropdownMenuItem(
                   value: 1,
-                  child: Row(
+                  child: TomRow(
                     children: [
-                      Icon(Icons.flag, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
+                      TomIcon(Icons.flag, color: Colors.red, size: 20),
+                      TomSizedBox(width: 8),
                       Text('High'),
                     ],
                   ),
                 ),
                 DropdownMenuItem(
                   value: 2,
-                  child: Row(
+                  child: TomRow(
                     children: [
-                      Icon(Icons.flag, color: Colors.orange, size: 20),
-                      SizedBox(width: 8),
+                      TomIcon(Icons.flag, color: Colors.orange, size: 20),
+                      TomSizedBox(width: 8),
                       Text('Medium'),
                     ],
                   ),
                 ),
                 DropdownMenuItem(
                   value: 3,
-                  child: Row(
+                  child: TomRow(
                     children: [
-                      Icon(Icons.flag, color: Colors.green, size: 20),
-                      SizedBox(width: 8),
+                      TomIcon(Icons.flag, color: Colors.green, size: 20),
+                      TomSizedBox(width: 8),
                       Text('Low'),
                     ],
                   ),
@@ -379,13 +385,14 @@ DropdownButton<String>(
           ),
         ),
         _DemoCard(
-          title: 'DropdownButtonFormField',
-          description: 'Dropdown with form validation support.',
+          title: 'TomDropdownButtonFormField',
+          description: 'Dropdown with form validation and resource-backed label.',
           child: Form(
-            child: DropdownButtonFormField<String>(
+            child: TomDropdownButtonFormField<String>(
+              tomId: 'demo.select.formfield.fruit',
               decoration: InputDecoration(
                 labelText: 'Favorite Fruit',
-                prefixIcon: const Icon(Icons.local_florist),
+                prefixIcon: const TomIcon(Icons.local_florist),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -402,10 +409,11 @@ DropdownButton<String>(
             ),
           ),
           code: '''
-DropdownButtonFormField<String>(
+TomDropdownButtonFormField<String>(
+  tomId: 'app.form.favorite_fruit',
+  // Label resolved from tomId.label resource
   decoration: InputDecoration(
-    labelText: 'Favorite Fruit',
-    prefixIcon: Icon(Icons.local_florist),
+    prefixIcon: TomIcon(Icons.local_florist),
     border: OutlineInputBorder(),
   ),
   items: items.map((item) {
@@ -474,12 +482,13 @@ class _DropdownMenuSectionState extends State<_DropdownMenuSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
-          title: 'Basic DropdownMenu',
-          description: 'Material 3 dropdown with built-in search.',
-          child: DropdownMenu<String>(
+          title: 'Basic TomDropdownMenu',
+          description: 'Material 3 dropdown with resource-backed hint.',
+          child: TomDropdownMenu<String>(
+            tomId: 'demo.select.menu.color',
             width: double.infinity,
             hintText: 'Select a color',
             enableSearch: false,
@@ -490,7 +499,7 @@ class _DropdownMenuSectionState extends State<_DropdownMenuSection> {
                   return DropdownMenuEntry(
                     value: c.$1,
                     label: c.$1,
-                    leadingIcon: Container(
+                    leadingIcon: TomContainer(
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
@@ -502,14 +511,15 @@ class _DropdownMenuSectionState extends State<_DropdownMenuSection> {
                 }).toList(),
           ),
           code: '''
-DropdownMenu<String>(
-  hintText: 'Select a color',
+TomDropdownMenu<String>(
+  tomId: 'app.select.color',
+  // hintText and label resolved from tomId resources
   onSelected: (value) => setState(() => _selectedValue = value),
   dropdownMenuEntries: colors.map((color) {
     return DropdownMenuEntry(
       value: color.name,
       label: color.name,
-      leadingIcon: Container(
+      leadingIcon: TomContainer(
         width: 20,
         height: 20,
         color: color,
@@ -519,9 +529,10 @@ DropdownMenu<String>(
 )''',
         ),
         _DemoCard(
-          title: 'DropdownMenu with Search',
+          title: 'TomDropdownMenu with Search',
           description: 'Searchable dropdown for long lists.',
-          child: DropdownMenu<String>(
+          child: TomDropdownMenu<String>(
+            tomId: 'demo.select.menu.icon',
             width: double.infinity,
             hintText: 'Search and select',
             enableFilter: true,
@@ -532,15 +543,16 @@ DropdownMenu<String>(
                   return DropdownMenuEntry(
                     value: i.$1,
                     label: i.$1,
-                    leadingIcon: Icon(i.$2),
+                    leadingIcon: TomIcon(i.$2),
                   );
                 }).toList(),
           ),
         ),
         _DemoCard(
-          title: 'DropdownMenu Styling',
+          title: 'TomDropdownMenu Styling',
           description: 'Customized appearance with input decoration.',
-          child: DropdownMenu<String>(
+          child: TomDropdownMenu<String>(
+            tomId: 'demo.select.menu.category',
             width: double.infinity,
             hintText: 'Select category',
             inputDecorationTheme: InputDecorationTheme(
@@ -604,12 +616,13 @@ class _AutocompleteSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
-          title: 'Basic Autocomplete',
+          title: 'Basic TomAutocomplete',
           description: 'Text field with suggestions as you type.',
-          child: Autocomplete<String>(
+          child: TomAutocomplete<String>(
+            tomId: 'demo.select.autocomplete.language',
             optionsBuilder: (textEditingValue) {
               if (textEditingValue.text.isEmpty) {
                 return const Iterable<String>.empty();
@@ -629,14 +642,15 @@ class _AutocompleteSection extends StatelessWidget {
               focusNode,
               onFieldSubmitted,
             ) {
-              return TextField(
+              return TomTextField(
+                tomId: 'demo.select.autocomplete.language.field',
                 controller: controller,
                 focusNode: focusNode,
                 onSubmitted: (_) => onFieldSubmitted(),
                 decoration: InputDecoration(
                   labelText: 'Programming Language',
                   hintText: 'Start typing...',
-                  prefixIcon: const Icon(Icons.code),
+                  prefixIcon: const TomIcon(Icons.code),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -645,7 +659,8 @@ class _AutocompleteSection extends StatelessWidget {
             },
           ),
           code: '''
-Autocomplete<String>(
+TomAutocomplete<String>(
+  tomId: 'app.search.language',
   optionsBuilder: (textEditingValue) {
     if (textEditingValue.text.isEmpty) {
       return const Iterable<String>.empty();
@@ -657,12 +672,21 @@ Autocomplete<String>(
   onSelected: (selection) {
     print('Selected: \$selection');
   },
+  fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+    return TomTextField(
+      tomId: 'app.search.language.field',
+      controller: controller,
+      focusNode: focusNode,
+      onSubmitted: (_) => onSubmit(),
+    );
+  },
 )''',
         ),
         _DemoCard(
-          title: 'Custom Autocomplete Options',
+          title: 'Custom TomAutocomplete Options',
           description: 'Styled suggestion items with icons.',
-          child: Autocomplete<String>(
+          child: TomAutocomplete<String>(
+            tomId: 'demo.select.autocomplete.custom',
             optionsBuilder: (textEditingValue) {
               if (textEditingValue.text.isEmpty) {
                 return _programmingLanguages.take(5);
@@ -707,12 +731,13 @@ Autocomplete<String>(
               focusNode,
               onFieldSubmitted,
             ) {
-              return TextField(
+              return TomTextField(
+                tomId: 'demo.select.autocomplete.custom.field',
                 controller: controller,
                 focusNode: focusNode,
                 decoration: InputDecoration(
                   labelText: 'Select Language',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const TomIcon(Icons.search),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -735,7 +760,7 @@ Autocomplete<String>(
       'Java': Icons.coffee,
       'Swift': Icons.speed,
     };
-    return Icon(iconMap[language] ?? Icons.code, size: 24, color: Colors.blue);
+    return TomIcon(iconMap[language] ?? Icons.code, size: 24, color: Colors.blue);
   }
 }
 
@@ -768,9 +793,10 @@ class _AsyncAutocompleteDemoState extends State<_AsyncAutocompleteDemo> {
   @override
   Widget build(BuildContext context) {
     return _DemoCard(
-      title: 'Async Autocomplete',
+      title: 'Async TomAutocomplete',
       description: 'Simulated API call with loading state.',
-      child: RawAutocomplete<String>(
+      child: TomAutocomplete<String>(
+        tomId: 'demo.select.autocomplete.async',
         optionsBuilder: (textEditingValue) async {
           if (textEditingValue.text.isEmpty) {
             return const [];
@@ -800,7 +826,7 @@ class _AsyncAutocompleteDemoState extends State<_AsyncAutocompleteDemo> {
                   itemBuilder: (context, index) {
                     final option = options.elementAt(index);
                     return ListTile(
-                      leading: const Icon(Icons.location_city),
+                      leading: const TomIcon(Icons.location_city),
                       title: Text(option),
                       onTap: () => onSelected(option),
                     );
@@ -811,13 +837,14 @@ class _AsyncAutocompleteDemoState extends State<_AsyncAutocompleteDemo> {
           );
         },
         fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-          return TextField(
+          return TomTextField(
+            tomId: 'demo.select.autocomplete.async.field',
             controller: controller,
             focusNode: focusNode,
             decoration: InputDecoration(
               labelText: 'City',
               hintText: 'Search cities...',
-              prefixIcon: const Icon(Icons.location_city),
+              prefixIcon: const TomIcon(Icons.location_city),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -852,12 +879,12 @@ class _ChipsSectionState extends State<_ChipsSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Basic Chips',
           description: 'Different chip variants and their uses.',
-          child: Wrap(
+          child: TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
@@ -867,19 +894,20 @@ class _ChipsSectionState extends State<_ChipsSection> {
                 label: Text('With Avatar'),
               ),
               Chip(
-                avatar: const Icon(Icons.check, size: 16),
+                avatar: const TomIcon(Icons.check, size: 16),
                 label: const Text('With Icon'),
                 backgroundColor: Colors.green.shade100,
               ),
               Chip(
                 label: const Text('Deletable'),
                 onDeleted: () {},
-                deleteIcon: const Icon(Icons.close, size: 16),
+                deleteIcon: const TomIcon(Icons.close, size: 16),
               ),
             ],
           ),
           code: '''
-// Basic chip
+// TomChip not needed for simple Chip - no text resolution
+// Use Chip directly or wrap with TomWidget for auth
 Chip(label: Text('Basic'))
 
 // With avatar
@@ -895,55 +923,60 @@ Chip(
 )''',
         ),
         _DemoCard(
-          title: 'ActionChip',
+          title: 'TomActionChip',
           description: 'Chips that trigger an action when tapped.',
-          child: Wrap(
+          child: TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              ActionChip(
-                label: const Text('Add to Cart'),
-                avatar: const Icon(Icons.add_shopping_cart, size: 18),
+              TomActionChip(
+                tomId: 'demo.chip.action.cart',
+                labelText: 'Add to Cart',
+                avatar: const TomIcon(Icons.add_shopping_cart, size: 18),
                 onPressed: () {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(const SnackBar(content: Text('Added!')));
+                  ).showSnackBar(TomSnackBar(content: Text('Added!')));
                 },
               ),
-              ActionChip(
-                label: const Text('Share'),
-                avatar: const Icon(Icons.share, size: 18),
+              TomActionChip(
+                tomId: 'demo.chip.action.share',
+                labelText: 'Share',
+                avatar: const TomIcon(Icons.share, size: 18),
                 onPressed: () {},
               ),
-              ActionChip(
-                label: const Text('Bookmark'),
-                avatar: const Icon(Icons.bookmark_add, size: 18),
+              TomActionChip(
+                tomId: 'demo.chip.action.bookmark',
+                labelText: 'Bookmark',
+                avatar: const TomIcon(Icons.bookmark_add, size: 18),
                 onPressed: () {},
               ),
             ],
           ),
           code: '''
-ActionChip(
-  label: Text('Add to Cart'),
-  avatar: Icon(Icons.add_shopping_cart),
+TomActionChip(
+  tomId: 'app.action.add_cart',
+  labelText: 'Add to Cart',  // Or use tomId for resource resolution
+  avatar: TomIcon(Icons.add_shopping_cart),
   onPressed: () {
     // Handle action
   },
 )''',
         ),
         _DemoCard(
-          title: 'InputChip (Tags)',
+          title: 'TomInputChip (Tags)',
           description: 'Add and remove tags dynamically.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(
+              TomWrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   ..._inputChips.map(
-                    (chip) => InputChip(
-                      label: Text(chip),
+                    (chip) => TomInputChip(
+                      tomId: 'demo.chip.input.$chip',
+                      labelText: chip,
                       onDeleted: () {
                         setState(() => _inputChips.remove(chip));
                       },
@@ -951,11 +984,12 @@ ActionChip(
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
+              const TomSizedBox(height: 12),
+              TomRow(
                 children: [
-                  Expanded(
-                    child: TextField(
+                  TomExpanded(
+                    child: TomTextField(
+                      tomId: 'demo.chip.input.field',
                       controller: _chipController,
                       decoration: InputDecoration(
                         hintText: 'Add a tag',
@@ -972,15 +1006,20 @@ ActionChip(
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
+                  const TomSizedBox(width: 8),
+                  TomIconButton.filled(
+                    tomId: 'demo.chip.input.add',
                     onPressed: () {
                       if (_chipController.text.isNotEmpty) {
                         setState(() => _inputChips.add(_chipController.text));
                         _chipController.clear();
                       }
                     },
-                    icon: const Icon(Icons.add),
+                    icon: const TomIcon(Icons.add),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    ),
                   ),
                 ],
               ),
@@ -1012,27 +1051,28 @@ class _FilterChoiceChipSectionState extends State<_FilterChoiceChipSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
-          title: 'FilterChip',
+          title: 'TomFilterChip',
           description: 'Multi-select chips for filtering content.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Select Categories:',
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
-              const SizedBox(height: 8),
-              Wrap(
+              const TomSizedBox(height: 8),
+              TomWrap(
                 spacing: 8,
                 runSpacing: 8,
                 children:
                     _categories.skip(1).map((category) {
                       final selected = _selectedFilters.contains(category);
-                      return FilterChip(
-                        label: Text(category),
+                      return TomFilterChip(
+                        tomId: 'demo.chip.filter.$category',
+                        labelText: category,
                         selected: selected,
                         onSelected: (value) {
                           setState(() {
@@ -1052,7 +1092,7 @@ class _FilterChoiceChipSectionState extends State<_FilterChoiceChipSection> {
                       );
                     }).toList(),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'Selected: ${_selectedFilters.isEmpty ? "None" : _selectedFilters.join(", ")}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -1060,8 +1100,9 @@ class _FilterChoiceChipSectionState extends State<_FilterChoiceChipSection> {
             ],
           ),
           code: '''
-FilterChip(
-  label: Text(category),
+TomFilterChip(
+  tomId: 'app.filter.category',
+  label: category,  // Resolved from tomId.label
   selected: isSelected,
   onSelected: (value) {
     setState(() {
@@ -1075,22 +1116,23 @@ FilterChip(
 )''',
         ),
         _DemoCard(
-          title: 'ChoiceChip',
+          title: 'TomChoiceChip',
           description: 'Single-select chips (radio button behavior).',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
                 'Select Size:',
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
-              const SizedBox(height: 8),
-              Wrap(
+              const TomSizedBox(height: 8),
+              TomWrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: List.generate(_sizes.length, (index) {
-                  return ChoiceChip(
-                    label: Text(_sizes[index]),
+                  return TomChoiceChip(
+                    tomId: 'demo.chip.choice.${_sizes[index]}',
+                    labelText: _sizes[index],
                     selected: _selectedChoice == index,
                     onSelected: (selected) {
                       if (selected) {
@@ -1100,7 +1142,7 @@ FilterChip(
                   );
                 }),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               Text(
                 'Selected: ${_sizes[_selectedChoice]}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -1108,8 +1150,9 @@ FilterChip(
             ],
           ),
           code: '''
-ChoiceChip(
-  label: Text(size),
+TomChoiceChip(
+  tomId: 'app.choice.size',
+  labelText: size,  // Or use tomId for resource resolution
   selected: _selectedIndex == index,
   onSelected: (selected) {
     if (selected) {
@@ -1121,7 +1164,7 @@ ChoiceChip(
         _DemoCard(
           title: 'Chip Styling',
           description: 'Custom colors, shapes, and elevations.',
-          child: Wrap(
+          child: TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
@@ -1144,14 +1187,14 @@ ChoiceChip(
                 backgroundColor: Colors.white,
               ),
               Chip(
-                avatar: Container(
+                avatar: TomContainer(
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [Colors.purple, Colors.blue],
                     ),
                   ),
-                  child: const Icon(Icons.star, size: 16, color: Colors.white),
+                  child: const TomIcon(Icons.star, size: 16, color: Colors.white),
                 ),
                 label: const Text('Gradient'),
               ),
@@ -1189,14 +1232,14 @@ class _MultiSelectSectionState extends State<_MultiSelectSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'Multi-Select List',
           description: 'Select multiple items from a list.',
-          child: Column(
+          child: TomColumn(
             children: [
-              Container(
+              TomContainer(
                 constraints: const BoxConstraints(maxHeight: 200),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
@@ -1225,9 +1268,9 @@ class _MultiSelectSectionState extends State<_MultiSelectSection> {
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+              const TomSizedBox(height: 12),
               if (_selectedLanguages.isNotEmpty)
-                Wrap(
+                TomWrap(
                   spacing: 8,
                   runSpacing: 8,
                   children:
@@ -1296,7 +1339,7 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text('Select Hobbies'),
-              content: SizedBox(
+              content: TomSizedBox(
                 width: 300,
                 child: ListView.builder(
                   shrinkWrap: true,
@@ -1348,12 +1391,12 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
     return _DemoCard(
       title: 'Multi-Select Dialog',
       description: 'Select multiple items in a dialog.',
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           OutlinedButton.icon(
             onPressed: _showMultiSelectDialog,
-            icon: const Icon(Icons.add),
+            icon: const TomIcon(Icons.add),
             label: Text(
               _selectedHobbies.isEmpty
                   ? 'Select Hobbies'
@@ -1361,8 +1404,8 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
             ),
           ),
           if (_selectedHobbies.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Wrap(
+            const TomSizedBox(height: 12),
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children:
@@ -1412,12 +1455,12 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return TomColumn(
       children: [
         _DemoCard(
           title: 'E-commerce Filter Panel',
           description: 'Complete filter UI with multiple selection types.',
-          child: Column(
+          child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Sort By
@@ -1425,8 +1468,9 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                 'Sort By',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              DropdownMenu<String>(
+              const TomSizedBox(height: 8),
+              TomDropdownMenu<String>(
+                tomId: 'demo.select.example.sort',
                 width: double.infinity,
                 initialSelection: _sortBy,
                 onSelected: (value) {
@@ -1446,22 +1490,23 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                   DropdownMenuEntry(value: 'Rating', label: 'Rating'),
                 ],
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
 
               // Price Range
               const Text(
                 'Price Range',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
-              Wrap(
+              const TomSizedBox(height: 8),
+              TomWrap(
                 spacing: 8,
                 runSpacing: 8,
                 children:
                     ['Any', '\$0-\$25', '\$25-\$50', '\$50-\$100', '\$100+']
                         .map((price) {
-                          return ChoiceChip(
-                            label: Text(price),
+                          return TomChoiceChip(
+                            tomId: 'demo.select.example.price.$price',
+                            labelText: price,
                             selected: _priceRange == price,
                             onSelected: (selected) {
                               if (selected) {
@@ -1472,20 +1517,21 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                         })
                         .toList(),
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
 
               // Color Filter
               const Text('Colors', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Wrap(
+              const TomSizedBox(height: 8),
+              TomWrap(
                 spacing: 8,
                 runSpacing: 8,
                 children:
                     _colors.map((c) {
                       final selected = _selectedColors.contains(c.$1);
-                      return FilterChip(
-                        label: Text(c.$1),
-                        avatar: Container(
+                      return TomFilterChip(
+                        tomId: 'demo.select.example.color.${c.$1}',
+                        labelText: c.$1,
+                        avatar: TomContainer(
                           width: 16,
                           height: 16,
                           decoration: BoxDecoration(
@@ -1510,13 +1556,15 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                       );
                     }).toList(),
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
 
               // Clear all / Apply
-              Row(
+              TomRow(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(
+                  TomTextButton(
+                    tomId: 'demo.select.example.clear',
+                    label: 'Clear All',
                     onPressed: () {
                       setState(() {
                         _sortBy = 'Relevance';
@@ -1524,16 +1572,16 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                         _selectedColors.clear();
                       });
                     },
-                    child: const Text('Clear All'),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(
+                  const TomSizedBox(width: 8),
+                  TomFilledButton(
+                    tomId: 'demo.select.example.apply',
+                    label: 'Apply Filters',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Filters applied!')),
+                        TomSnackBar(content: Text('Filters applied!')),
                       );
                     },
-                    child: const Text('Apply Filters'),
                   ),
                 ],
               ),
@@ -1591,11 +1639,11 @@ class _TagInputDemoState extends State<_TagInputDemo> {
   Widget build(BuildContext context) {
     return _DemoCard(
       title: 'Tag Input Field',
-      description: 'Autocomplete with chip display.',
-      child: Column(
+      description: 'TomAutocomplete with chip display.',
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
+          TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
@@ -1608,10 +1656,9 @@ class _TagInputDemoState extends State<_TagInputDemo> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          RawAutocomplete<String>(
-            textEditingController: _controller,
-            focusNode: _focusNode,
+          const TomSizedBox(height: 12),
+          TomAutocomplete<String>(
+            tomId: 'demo.select.tag.input',
             optionsBuilder: (textEditingValue) {
               if (textEditingValue.text.isEmpty) return const [];
               return _suggestions
@@ -1624,14 +1671,16 @@ class _TagInputDemoState extends State<_TagInputDemo> {
             },
             onSelected: _addTag,
             fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
-              return TextField(
+              return TomTextField(
+                tomId: 'demo.select.tag.field',
                 controller: controller,
                 focusNode: focusNode,
                 decoration: InputDecoration(
                   hintText: 'Add tags...',
-                  prefixIcon: const Icon(Icons.tag),
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.add),
+                  prefixIcon: const TomIcon(Icons.tag),
+                  suffixIcon: TomIconButton(
+                    tomId: 'demo.select.tag.add',
+                    icon: const TomIcon(Icons.add),
                     onPressed:
                         controller.text.isNotEmpty
                             ? () => _addTag(controller.text)
@@ -1655,13 +1704,13 @@ class _TagInputDemoState extends State<_TagInputDemo> {
                   borderRadius: BorderRadius.circular(8),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 300),
-                    child: ListView(
+                    child: TomListView(
                       shrinkWrap: true,
                       padding: EdgeInsets.zero,
                       children:
                           options.map((option) {
                             return ListTile(
-                              leading: const Icon(Icons.tag, size: 20),
+                              leading: const TomIcon(Icons.tag, size: 20),
                               title: Text('#$option'),
                               dense: true,
                               onTap: () => onSelected(option),

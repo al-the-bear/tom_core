@@ -403,13 +403,13 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
 /// Uses extension pattern because Stack checks `is Positioned`.
 class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
   @override
-  final String tomId;
+  final String? tomId;
   @override
   final String? tomGroup;
 
   const TomAnimatedPositioned({
     super.key,
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     required super.child,
     super.left,
@@ -431,13 +431,13 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
 class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
     with TomWidgetMixin {
   @override
-  final String tomId;
+  final String? tomId;
   @override
   final String? tomGroup;
 
   const TomAnimatedPositionedDirectional({
     super.key,
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     required super.child,
     super.start,

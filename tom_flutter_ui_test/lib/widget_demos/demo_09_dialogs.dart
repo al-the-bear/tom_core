@@ -13,7 +13,7 @@ class DialogsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return TomListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SectionHeader(
@@ -21,43 +21,43 @@ class DialogsDemo extends StatelessWidget {
           subtitle: 'Modal dialogs for alerts and confirmations',
         ),
         _AlertDialogSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'SimpleDialog',
           subtitle: 'Dialogs for simple choices',
         ),
         _SimpleDialogSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'BottomSheet',
           subtitle: 'Sheets sliding up from bottom',
         ),
         _BottomSheetSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'SnackBar',
           subtitle: 'Brief messages at screen bottom',
         ),
         _SnackBarSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Tooltip',
           subtitle: 'Informational tooltips on hover/press',
         ),
         _TooltipSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Banner',
           subtitle: 'Persistent banners at top',
         ),
         _BannerSection(),
-        SizedBox(height: 32),
+        TomSizedBox(height: 32),
         _SectionHeader(
           title: 'Dialog Patterns',
           subtitle: 'Common dialog implementations',
         ),
         _DialogPatternsSection(),
-        SizedBox(height: 48),
+        TomSizedBox(height: 48),
       ],
     );
   }
@@ -76,9 +76,9 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
+    return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -88,15 +88,15 @@ class _SectionHeader extends StatelessWidget {
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 4),
+          const TomSizedBox(height: 4),
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
+          const TomSizedBox(height: 8),
+          TomContainer(
             height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -122,13 +122,13 @@ class _AlertDialogSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -194,7 +194,7 @@ class _AlertDialogSection extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Action confirmed!')),
+                  TomSnackBar(content: Text('Action confirmed!')),
                 );
               },
               child: const Text('Confirm'),
@@ -210,7 +210,7 @@ class _AlertDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          icon: const Icon(Icons.warning, color: Colors.orange, size: 48),
+          icon: const TomIcon(Icons.warning, color: Colors.orange, size: 48),
           title: const Text('Warning'),
           content: const Text(
             'This action cannot be undone. Please proceed with caution.',
@@ -273,13 +273,13 @@ class _SimpleDialogSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -329,7 +329,7 @@ class _SimpleDialogSection extends StatelessWidget {
     if (result != null && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Selected: $result')));
+      ).showSnackBar(TomSnackBar(content: Text('Selected: $result')));
     }
   }
 
@@ -355,7 +355,7 @@ class _SimpleDialogSection extends StatelessWidget {
             ListTile(
               leading: CircleAvatar(
                 backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.add),
+                child: const TomIcon(Icons.add),
               ),
               title: const Text('Add Account'),
               onTap: () => Navigator.of(context).pop(),
@@ -372,16 +372,16 @@ class _SimpleDialogSection extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           title: const Text('Choose Color'),
-          content: SizedBox(
+          content: TomSizedBox(
             width: 280,
-            child: Wrap(
+            child: TomWrap(
               spacing: 8,
               runSpacing: 8,
               children:
                   Colors.primaries.map((color) {
                     return InkWell(
                       onTap: () => Navigator.of(context).pop(color),
-                      child: Container(
+                      child: TomContainer(
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
@@ -408,13 +408,13 @@ class _BottomSheetSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -445,12 +445,12 @@ class _BottomSheetSection extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Container(
+        return TomContainer(
           padding: const EdgeInsets.all(24),
-          child: Column(
+          child: TomColumn(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
+              TomContainer(
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
@@ -458,13 +458,13 @@ class _BottomSheetSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 24),
+              const TomSizedBox(height: 24),
               const Text(
                 'Share with',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 24),
-              Row(
+              const TomSizedBox(height: 24),
+              TomRow(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children:
                     [
@@ -473,19 +473,19 @@ class _BottomSheetSection extends StatelessWidget {
                       ('Copy Link', Icons.link, Colors.blue),
                       ('More', Icons.more_horiz, Colors.grey),
                     ].map((item) {
-                      return Column(
+                      return TomColumn(
                         children: [
                           CircleAvatar(
                             backgroundColor: item.$3.withValues(alpha: 0.1),
-                            child: Icon(item.$2, color: item.$3),
+                            child: TomIcon(item.$2, color: item.$3),
                           ),
-                          const SizedBox(height: 8),
+                          const TomSizedBox(height: 8),
                           Text(item.$1, style: const TextStyle(fontSize: 12)),
                         ],
                       );
                     }).toList(),
               ),
-              const SizedBox(height: 24),
+              const TomSizedBox(height: 24),
             ],
           ),
         );
@@ -507,13 +507,13 @@ class _BottomSheetSection extends StatelessWidget {
           maxChildSize: 0.9,
           expand: false,
           builder: (context, scrollController) {
-            return Container(
+            return TomContainer(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ListView(
+              child: TomListView(
                 controller: scrollController,
                 children: [
-                  Center(
-                    child: Container(
+                  TomCenter(
+                    child: TomContainer(
                       margin: const EdgeInsets.symmetric(vertical: 12),
                       width: 40,
                       height: 4,
@@ -527,7 +527,7 @@ class _BottomSheetSection extends StatelessWidget {
                     'Notifications',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
+                  const TomSizedBox(height: 16),
                   ...List.generate(15, (index) {
                     return ListTile(
                       leading: CircleAvatar(child: Text('${index + 1}')),
@@ -556,14 +556,14 @@ class _BottomSheetSection extends StatelessWidget {
           maxChildSize: 0.8,
           expand: false,
           builder: (context, scrollController) {
-            return Container(
+            return TomContainer(
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              child: Column(
+              child: TomColumn(
                 children: [
-                  Container(
+                  TomContainer(
                     margin: const EdgeInsets.symmetric(vertical: 12),
                     width: 40,
                     height: 4,
@@ -572,8 +572,8 @@ class _BottomSheetSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  Expanded(
-                    child: ListView(
+                  TomExpanded(
+                    child: TomListView(
                       controller: scrollController,
                       padding: const EdgeInsets.all(16),
                       children:
@@ -588,9 +588,9 @@ class _BottomSheetSection extends StatelessWidget {
                             ('Logout', Icons.logout),
                           ].map((item) {
                             return ListTile(
-                              leading: Icon(item.$2),
+                              leading: TomIcon(item.$2),
                               title: Text(item.$1),
-                              trailing: const Icon(Icons.chevron_right),
+                              trailing: const TomIcon(Icons.chevron_right),
                             );
                           }).toList(),
                     ),
@@ -614,13 +614,13 @@ class _SnackBarSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -650,19 +650,19 @@ class _SnackBarSection extends StatelessWidget {
 
   void _showBasicSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This is a basic snackbar')),
+      TomSnackBar(content: Text('This is a basic snackbar')),
     );
   }
 
   void _showActionSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      TomSnackBar(
         content: const Text('Item deleted'),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Undo successful')),
+              TomSnackBar(content: Text('Undo successful')),
             );
           },
         ),
@@ -672,7 +672,7 @@ class _SnackBarSection extends StatelessWidget {
 
   void _showFloatingSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      TomSnackBar(
         content: const Text('This is a floating snackbar'),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -683,11 +683,11 @@ class _SnackBarSection extends StatelessWidget {
 
   void _showStyledSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
+      TomSnackBar(
+        content: TomRow(
           children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 12),
+            const TomIcon(Icons.check_circle, color: Colors.white),
+            const TomSizedBox(width: 12),
             const Text('Operation successful!'),
           ],
         ),
@@ -709,18 +709,18 @@ class _TooltipSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Hover or long-press the buttons:',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            const SizedBox(height: 16),
-            Wrap(
+            const TomSizedBox(height: 16),
+            TomWrap(
               spacing: 16,
               runSpacing: 16,
               children: [
@@ -737,7 +737,7 @@ class _TooltipSection extends StatelessWidget {
                   showDuration: const Duration(seconds: 2),
                   child: IconButton.filled(
                     onPressed: () {},
-                    icon: const Icon(Icons.add),
+                    icon: const TomIcon(Icons.add),
                   ),
                 ),
                 Tooltip(
@@ -800,10 +800,10 @@ class _BannerSectionState extends State<_BannerSection> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             FilledButton(
@@ -812,14 +812,14 @@ class _BannerSectionState extends State<_BannerSection> {
               },
               child: Text(_showBanner ? 'Hide Banner' : 'Show Banner'),
             ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             if (_showBanner)
               MaterialBanner(
                 content: const Text(
                   'Your subscription will expire in 3 days. Renew now to '
                   'continue enjoying all features.',
                 ),
-                leading: const Icon(Icons.warning, color: Colors.orange),
+                leading: const TomIcon(Icons.warning, color: Colors.orange),
                 actions: [
                   TextButton(
                     onPressed: () => setState(() => _showBanner = false),
@@ -831,7 +831,7 @@ class _BannerSectionState extends State<_BannerSection> {
                   ),
                 ],
               ),
-            const SizedBox(height: 16),
+            const TomSizedBox(height: 16),
             const Text(
               'Note: MaterialBanner is typically shown using '
               'ScaffoldMessenger.showMaterialBanner()',
@@ -853,13 +853,13 @@ class _DialogPatternsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
+    return TomCard(
+      child: TomPadding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
+            TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
@@ -900,7 +900,7 @@ class _DialogPatternsSection extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           title: const Text('Contact Form'),
-          content: Column(
+          content: TomColumn(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
@@ -910,7 +910,7 @@ class _DialogPatternsSection extends StatelessWidget {
                   border: OutlineInputBorder(),
                 ),
               ),
-              const SizedBox(height: 16),
+              const TomSizedBox(height: 16),
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
@@ -930,7 +930,7 @@ class _DialogPatternsSection extends StatelessWidget {
               onPressed: () {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
+                  TomSnackBar(
                     content: Text('Submitted: ${nameController.text}'),
                   ),
                 );
@@ -952,10 +952,10 @@ class _DialogPatternsSection extends StatelessWidget {
           if (context.mounted) Navigator.of(context).pop();
         });
         return AlertDialog(
-          content: Row(
+          content: TomRow(
             children: [
               const CircularProgressIndicator(),
-              const SizedBox(width: 24),
+              const TomSizedBox(width: 24),
               const Text('Loading, please wait...'),
             ],
           ),
@@ -979,9 +979,9 @@ class _DialogPatternsSection extends StatelessWidget {
                 ),
               ],
             ),
-            body: Padding(
+            body: TomPadding(
               padding: const EdgeInsets.all(16),
-              child: Column(
+              child: TomColumn(
                 children: [
                   const TextField(
                     decoration: InputDecoration(
@@ -989,7 +989,7 @@ class _DialogPatternsSection extends StatelessWidget {
                       border: OutlineInputBorder(),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const TomSizedBox(height: 16),
                   const TextField(
                     decoration: InputDecoration(
                       labelText: 'Description',
@@ -1015,7 +1015,7 @@ class _DialogPatternsSection extends StatelessWidget {
     );
     if (date != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        TomSnackBar(
           content: Text('Selected: ${date.toString().split(' ')[0]}'),
         ),
       );
@@ -1029,7 +1029,7 @@ class _DialogPatternsSection extends StatelessWidget {
     );
     if (time != null && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Selected: ${time.format(context)}')),
+        TomSnackBar(content: Text('Selected: ${time.format(context)}')),
       );
     }
   }

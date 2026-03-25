@@ -6,7 +6,7 @@ import '../../widget_base/tom_family_base.dart';
 /// Tom wrapper for [ListView].
 ///
 /// Adds ID, group, authorization, and resource resolution to the standard
-/// Flutter [ListView]. Uses the `custom` constructor to accept a delegate.
+/// Flutter [ListView]. Supports both simple children lists and builder patterns.
 class TomListView extends TomListBase {
   final Axis scrollDirection;
   final bool reverse;
@@ -17,14 +17,24 @@ class TomListView extends TomListBase {
   final EdgeInsetsGeometry? padding;
   final double? itemExtent;
   final Widget? prototypeItem;
-  final SliverChildDelegate childrenDelegate;
+  final SliverChildDelegate? _childrenDelegate;
+  final List<Widget>? _children;
   final double? cacheExtent;
   final int? semanticChildCount;
   final DragStartBehavior dragStartBehavior;
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
   final String? restorationId;
   final Clip clipBehavior;
+  final bool addAutomaticKeepAlives;
+  final bool addRepaintBoundaries;
+  final bool addSemanticIndexes;
 
+  /// Creates a scrollable, linear array of widgets from an explicit [List].
+  ///
+  /// This constructor is appropriate for list views with a small number of
+  /// children because constructing the [List] requires doing work for every
+  /// child that could possibly be displayed in the list view instead of just
+  /// those children that are actually visible.
   const TomListView({
     super.key,
     super.tomId,
@@ -38,17 +48,157 @@ class TomListView extends TomListBase {
     this.padding,
     this.itemExtent,
     this.prototypeItem,
-    required this.childrenDelegate,
+    List<Widget> children = const <Widget>[],
     this.cacheExtent,
     this.semanticChildCount,
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
-  });
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+  })  : _children = children,
+        _childrenDelegate = null;
+
+  /// Creates a scrollable, linear array of widgets that are created on demand.
+  ///
+  /// This constructor is appropriate for list views with a large (or infinite)
+  /// number of children because the builder is called only for those children
+  /// that are actually visible.
+  TomListView.builder({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.shrinkWrap = false,
+    this.padding,
+    this.itemExtent,
+    this.prototypeItem,
+    required NullableIndexedWidgetBuilder itemBuilder,
+    int? itemCount,
+    this.cacheExtent,
+    this.semanticChildCount,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+  })  : _children = null,
+        _childrenDelegate = SliverChildBuilderDelegate(
+          itemBuilder,
+          childCount: itemCount,
+          addAutomaticKeepAlives: addAutomaticKeepAlives,
+          addRepaintBoundaries: addRepaintBoundaries,
+          addSemanticIndexes: addSemanticIndexes,
+        );
+
+  /// Creates a fixed-length scrollable linear array of list "items" separated
+  /// by list item "separators".
+  TomListView.separated({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.shrinkWrap = false,
+    this.padding,
+    required NullableIndexedWidgetBuilder itemBuilder,
+    required IndexedWidgetBuilder separatorBuilder,
+    required int itemCount,
+    this.cacheExtent,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+  })  : itemExtent = null,
+        prototypeItem = null,
+        semanticChildCount = itemCount,
+        _children = null,
+        _childrenDelegate = SliverChildBuilderDelegate(
+          (BuildContext context, int index) {
+            final int itemIndex = index ~/ 2;
+            if (index.isEven) {
+              return itemBuilder(context, itemIndex);
+            }
+            return separatorBuilder(context, itemIndex);
+          },
+          childCount: _computeActualChildCount(itemCount),
+          addAutomaticKeepAlives: addAutomaticKeepAlives,
+          addRepaintBoundaries: addRepaintBoundaries,
+          addSemanticIndexes: addSemanticIndexes,
+        );
+
+  /// Creates a scrollable, linear array of widgets with a custom child model.
+  const TomListView.custom({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    this.scrollDirection = Axis.vertical,
+    this.reverse = false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.shrinkWrap = false,
+    this.padding,
+    this.itemExtent,
+    this.prototypeItem,
+    required SliverChildDelegate childrenDelegate,
+    this.cacheExtent,
+    this.semanticChildCount,
+    this.dragStartBehavior = DragStartBehavior.start,
+    this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
+    this.restorationId,
+    this.clipBehavior = Clip.hardEdge,
+    this.addAutomaticKeepAlives = true,
+    this.addRepaintBoundaries = true,
+    this.addSemanticIndexes = true,
+  })  : _children = null,
+        _childrenDelegate = childrenDelegate;
+
+  static int _computeActualChildCount(int itemCount) {
+    return itemCount > 0 ? itemCount * 2 - 1 : 0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
+    // If children list provided, use default ListView constructor
+    if (_children != null) {
+      return ListView(
+        scrollDirection: scrollDirection,
+        reverse: reverse,
+        controller: controller,
+        primary: primary,
+        physics: physics,
+        shrinkWrap: shrinkWrap,
+        padding: padding,
+        itemExtent: itemExtent,
+        prototypeItem: prototypeItem,
+        cacheExtent: cacheExtent,
+        semanticChildCount: semanticChildCount,
+        dragStartBehavior: dragStartBehavior,
+        keyboardDismissBehavior: keyboardDismissBehavior,
+        restorationId: restorationId,
+        clipBehavior: clipBehavior,
+        addAutomaticKeepAlives: addAutomaticKeepAlives,
+        addRepaintBoundaries: addRepaintBoundaries,
+        addSemanticIndexes: addSemanticIndexes,
+        children: _children,
+      );
+    }
+    // Otherwise use custom with delegate
     return ListView.custom(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -59,7 +209,7 @@ class TomListView extends TomListBase {
       padding: padding,
       itemExtent: itemExtent,
       prototypeItem: prototypeItem,
-      childrenDelegate: childrenDelegate,
+      childrenDelegate: _childrenDelegate!,
       cacheExtent: cacheExtent,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,

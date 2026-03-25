@@ -24,6 +24,7 @@ class TomTextField extends TomInputBase {
   final int? maxLines;
   final int? minLines;
   final int? maxLength;
+  final MaxLengthEnforcement? maxLengthEnforcement;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onEditingComplete;
   final ValueChanged<String>? onSubmitted;
@@ -31,6 +32,7 @@ class TomTextField extends TomInputBase {
   final bool readOnly;
   final String? label;
   final String? hint;
+  final InputCounterWidgetBuilder? buildCounter;
 
   const TomTextField({
     super.key,
@@ -51,6 +53,7 @@ class TomTextField extends TomInputBase {
     this.maxLines = 1,
     this.minLines,
     this.maxLength,
+    this.maxLengthEnforcement,
     this.onChanged,
     this.onEditingComplete,
     this.onSubmitted,
@@ -58,6 +61,7 @@ class TomTextField extends TomInputBase {
     this.readOnly = false,
     this.label,
     this.hint,
+    this.buildCounter,
   });
 
   @override
@@ -87,11 +91,13 @@ class TomTextField extends TomInputBase {
       maxLines: maxLines,
       minLines: minLines,
       maxLength: maxLength,
+      maxLengthEnforcement: maxLengthEnforcement,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onSubmitted: onSubmitted,
       enabled: enabled,
       readOnly: readOnly,
+      buildCounter: buildCounter,
     );
   }
 }

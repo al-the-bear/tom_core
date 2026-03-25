@@ -729,7 +729,7 @@ class TomTab extends Tab with TomWidgetMixin {
   /// Requires [tomId] for authorization and resource resolution.
   /// At least one of [text], [icon], or [child] must be non-null.
   const TomTab({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.text,
@@ -740,7 +740,7 @@ class TomTab extends Tab with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -770,7 +770,7 @@ class TomNavigationDestination extends NavigationDestination
     with TomWidgetMixin {
   /// Creates a Tom NavigationDestination.
   const TomNavigationDestination({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     required super.icon,
@@ -781,7 +781,7 @@ class TomNavigationDestination extends NavigationDestination
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
@@ -810,7 +810,7 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
     with TomWidgetMixin {
   /// Creates a Tom NavigationDrawerDestination.
   const TomNavigationDrawerDestination({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     required super.icon,
@@ -821,7 +821,7 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;

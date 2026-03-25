@@ -8,6 +8,9 @@ import '../../widget_base/tom_family_base.dart';
 ///
 /// Adds ID, group, authorization, and resource resolution to the standard
 /// Flutter [ElevatedButton]. Exposes the full underlying API.
+///
+/// When [label] is not provided, resolves from resources using suffix 'label'.
+/// When [icon] is not provided, resolves from resources using suffix 'icon'.
 class TomElevatedButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -43,7 +46,10 @@ class TomElevatedButton extends TomButtonBase {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
-    if (icon != null) {
+    // Resolve icon: use provided widget, or resolve from resources
+    final resolvedIcon = icon ?? _buildResolvedIcon(context);
+
+    if (resolvedIcon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
@@ -53,7 +59,7 @@ class TomElevatedButton extends TomButtonBase {
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: icon!,
+        icon: resolvedIcon,
         label: buttonChild,
       );
     }
@@ -70,9 +76,19 @@ class TomElevatedButton extends TomButtonBase {
       child: buttonChild,
     );
   }
+
+  /// Builds an Icon widget from resolved icon data, or null if not available.
+  Widget? _buildResolvedIcon(BuildContext context) {
+    final iconData = resolveIcon(context);
+    if (iconData == null) return null;
+    return Icon(iconData);
+  }
 }
 
 /// Tom wrapper for [TextButton].
+///
+/// When [label] is not provided, resolves from resources using suffix 'label'.
+/// When [icon] is not provided, resolves from resources using suffix 'icon'.
 class TomTextButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -107,8 +123,9 @@ class TomTextButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
+    final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
-    if (icon != null) {
+    if (resolvedIcon != null) {
       return TextButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
@@ -118,7 +135,7 @@ class TomTextButton extends TomButtonBase {
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: icon!,
+        icon: resolvedIcon,
         label: buttonChild,
       );
     }
@@ -135,9 +152,18 @@ class TomTextButton extends TomButtonBase {
       child: buttonChild,
     );
   }
+
+  Widget? _buildResolvedIcon(BuildContext context) {
+    final iconData = resolveIcon(context);
+    if (iconData == null) return null;
+    return Icon(iconData);
+  }
 }
 
 /// Tom wrapper for [OutlinedButton].
+///
+/// When [label] is not provided, resolves from resources using suffix 'label'.
+/// When [icon] is not provided, resolves from resources using suffix 'icon'.
 class TomOutlinedButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -172,8 +198,9 @@ class TomOutlinedButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
+    final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
-    if (icon != null) {
+    if (resolvedIcon != null) {
       return OutlinedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
@@ -183,7 +210,7 @@ class TomOutlinedButton extends TomButtonBase {
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: icon!,
+        icon: resolvedIcon,
         label: buttonChild,
       );
     }
@@ -200,9 +227,18 @@ class TomOutlinedButton extends TomButtonBase {
       child: buttonChild,
     );
   }
+
+  Widget? _buildResolvedIcon(BuildContext context) {
+    final iconData = resolveIcon(context);
+    if (iconData == null) return null;
+    return Icon(iconData);
+  }
 }
 
 /// Tom wrapper for [FilledButton].
+///
+/// When [label] is not provided, resolves from resources using suffix 'label'.
+/// When [icon] is not provided, resolves from resources using suffix 'icon'.
 class TomFilledButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
@@ -239,9 +275,10 @@ class TomFilledButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResource(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
+    final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
     if (tonal) {
-      if (icon != null) {
+      if (resolvedIcon != null) {
         return FilledButton.tonalIcon(
           onPressed: onPressed,
           onLongPress: onLongPress,
@@ -251,7 +288,7 @@ class TomFilledButton extends TomButtonBase {
           focusNode: focusNode,
           autofocus: autofocus,
           clipBehavior: clipBehavior,
-          icon: icon!,
+          icon: resolvedIcon,
           label: buttonChild,
         );
       }
@@ -268,7 +305,7 @@ class TomFilledButton extends TomButtonBase {
       );
     }
 
-    if (icon != null) {
+    if (resolvedIcon != null) {
       return FilledButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
@@ -278,7 +315,7 @@ class TomFilledButton extends TomButtonBase {
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: icon!,
+        icon: resolvedIcon,
         label: buttonChild,
       );
     }
@@ -294,6 +331,12 @@ class TomFilledButton extends TomButtonBase {
       clipBehavior: clipBehavior,
       child: buttonChild,
     );
+  }
+
+  Widget? _buildResolvedIcon(BuildContext context) {
+    final iconData = resolveIcon(context);
+    if (iconData == null) return null;
+    return Icon(iconData);
   }
 }
 
@@ -418,7 +461,7 @@ class TomFloatingActionButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     this.onPressed,
-    required this.label,
+    this.label,
     this.icon,
     this.tooltip,
     this.foregroundColor,
@@ -440,6 +483,22 @@ class TomFloatingActionButton extends TomButtonBase {
   })  : _variant = _FABVariant.extended,
         child = null,
         mini = false;
+
+  /// Resolves the child widget from parameter or resources.
+  Widget? _resolveChild(BuildContext context) {
+    if (child != null) return child;
+    final iconData = resolveIcon(context);
+    if (iconData != null) return Icon(iconData);
+    return null;
+  }
+
+  /// Resolves the icon widget from parameter or resources.
+  Widget? _resolveIconWidget(BuildContext context) {
+    if (icon != null) return icon;
+    final iconData = resolveIcon(context);
+    if (iconData != null) return Icon(iconData);
+    return null;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -467,7 +526,7 @@ class TomFloatingActionButton extends TomButtonBase {
           autofocus: autofocus,
           focusNode: focusNode,
           isExtended: isExtended ?? true,
-          icon: icon,
+          icon: _resolveIconWidget(context),
           label: extendedIconLabelChild ?? Text(resolvedLabel ?? ''),
         );
 
@@ -489,7 +548,7 @@ class TomFloatingActionButton extends TomButtonBase {
           clipBehavior: clipBehavior,
           autofocus: autofocus,
           focusNode: focusNode,
-          child: child,
+          child: _resolveChild(context),
         );
 
       case _FABVariant.large:
@@ -510,12 +569,13 @@ class TomFloatingActionButton extends TomButtonBase {
           clipBehavior: clipBehavior,
           autofocus: autofocus,
           focusNode: focusNode,
-          child: child,
+          child: _resolveChild(context),
         );
 
       case _FABVariant.regular:
+        final resolvedIcon = _resolveIconWidget(context);
         // Legacy behavior: if icon and label are both provided, use extended
-        if (icon != null && resolvedLabel != null) {
+        if (resolvedIcon != null && resolvedLabel != null) {
           return FloatingActionButton.extended(
             onPressed: onPressed,
             tooltip: resolvedTooltip,
@@ -534,7 +594,7 @@ class TomFloatingActionButton extends TomButtonBase {
             autofocus: autofocus,
             focusNode: focusNode,
             isExtended: isExtended ?? true,
-            icon: icon,
+            icon: resolvedIcon,
             label: Text(resolvedLabel),
           );
         }
@@ -558,7 +618,7 @@ class TomFloatingActionButton extends TomButtonBase {
             clipBehavior: clipBehavior,
             autofocus: autofocus,
             focusNode: focusNode,
-            child: child,
+            child: _resolveChild(context),
           );
         }
 
@@ -580,7 +640,7 @@ class TomFloatingActionButton extends TomButtonBase {
           autofocus: autofocus,
           focusNode: focusNode,
           mini: mini,
-          child: child,
+          child: _resolveChild(context),
         );
     }
   }
@@ -761,7 +821,7 @@ class TomIconButton extends TomButtonBase {
   final ButtonStyle? style;
   final bool? isSelected;
   final Widget? selectedIcon;
-  final Widget icon;
+  final Widget? icon;
   final String? tooltip;
   final FocusNode? focusNode;
   final _IconButtonVariant _variant;
@@ -787,7 +847,7 @@ class TomIconButton extends TomButtonBase {
     this.style,
     this.isSelected,
     this.selectedIcon,
-    required this.icon,
+    this.icon,
     this.tooltip,
     this.focusNode,
   }) : _variant = _IconButtonVariant.regular;
@@ -814,7 +874,7 @@ class TomIconButton extends TomButtonBase {
     this.style,
     this.isSelected,
     this.selectedIcon,
-    required this.icon,
+    this.icon,
     this.tooltip,
     this.focusNode,
   }) : _variant = _IconButtonVariant.filled;
@@ -841,7 +901,7 @@ class TomIconButton extends TomButtonBase {
     this.style,
     this.isSelected,
     this.selectedIcon,
-    required this.icon,
+    this.icon,
     this.tooltip,
     this.focusNode,
   }) : _variant = _IconButtonVariant.filledTonal;
@@ -868,14 +928,24 @@ class TomIconButton extends TomButtonBase {
     this.style,
     this.isSelected,
     this.selectedIcon,
-    required this.icon,
+    this.icon,
     this.tooltip,
     this.focusNode,
   }) : _variant = _IconButtonVariant.outlined;
 
+  /// Resolves the icon widget from parameter or resources.
+  Widget _resolveIcon(BuildContext context) {
+    if (icon != null) return icon!;
+    final iconData = resolveIcon(context);
+    if (iconData != null) return Icon(iconData);
+    // Fallback to placeholder icon
+    return const Icon(Icons.error_outline);
+  }
+
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final resolvedIcon = _resolveIcon(context);
 
     switch (_variant) {
       case _IconButtonVariant.filled:
@@ -897,7 +967,7 @@ class TomIconButton extends TomButtonBase {
           style: style,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: icon,
+          icon: resolvedIcon,
           tooltip: resolvedTooltip,
           focusNode: focusNode,
         );
@@ -921,7 +991,7 @@ class TomIconButton extends TomButtonBase {
           style: style,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: icon,
+          icon: resolvedIcon,
           tooltip: resolvedTooltip,
           focusNode: focusNode,
         );
@@ -945,7 +1015,7 @@ class TomIconButton extends TomButtonBase {
           style: style,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: icon,
+          icon: resolvedIcon,
           tooltip: resolvedTooltip,
           focusNode: focusNode,
         );
@@ -969,7 +1039,7 @@ class TomIconButton extends TomButtonBase {
           style: style,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: icon,
+          icon: resolvedIcon,
           tooltip: resolvedTooltip,
           focusNode: focusNode,
         );
@@ -1602,7 +1672,7 @@ class TomButtonBar extends TomButtonBase {
 class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
   /// Creates a Tom SnackBarAction.
   TomSnackBarAction({
-    required this.tomId,
+    this.tomId,
     this.tomGroup,
     super.key,
     super.textColor,
@@ -1612,7 +1682,7 @@ class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
   });
 
   @override
-  final String tomId;
+  final String? tomId;
 
   @override
   final String? tomGroup;
