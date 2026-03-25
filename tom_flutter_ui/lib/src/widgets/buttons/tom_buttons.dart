@@ -504,7 +504,7 @@ class TomFloatingActionButton extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     final resolvedTooltip =
         tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
-    final resolvedLabel = label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrNull(context, 'label');
 
     switch (_variant) {
       case _FABVariant.extended:

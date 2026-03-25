@@ -57,6 +57,18 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIResources.resolveText(basePath, suffix);
   }
 
+  /// Resolves a text resource relative to this node's base path.
+  ///
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  String? resolveResourceOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    if (!TomUIResources.resourceExists(basePath, suffix)) return null;
+    return TomUIResources.resolveText(basePath, suffix);
+  }
+
   /// Resolves an icon from resources relative to this node's base path.
   ///
   /// Returns `null` if:
