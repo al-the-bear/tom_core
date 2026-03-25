@@ -18,7 +18,7 @@ class SliversDemo extends StatelessWidget {
       child: TomScaffold(
         body: TomNestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
-            SliverAppBar(
+            TomSliverAppBar(
               floating: true,
               pinned: true,
               snap: false,
@@ -34,7 +34,7 @@ class SliversDemo extends StatelessWidget {
               ),
             ),
           ],
-          body: const TabBarView(
+          body: const TomTabBarView(
             children: [
               _SliverAppBarTab(),
               _SliverListTab(),
@@ -67,7 +67,7 @@ class _SliverAppBarTab extends StatelessWidget {
             height: 300,
             child: TomCustomScrollView(
               slivers: [
-                SliverAppBar(
+                TomSliverAppBar(
                   floating: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.blue,
@@ -91,7 +91,7 @@ class _SliverAppBarTab extends StatelessWidget {
             height: 300,
             child: TomCustomScrollView(
               slivers: [
-                SliverAppBar(
+                TomSliverAppBar(
                   pinned: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.green,
@@ -115,12 +115,12 @@ class _SliverAppBarTab extends StatelessWidget {
             height: 350,
             child: TomCustomScrollView(
               slivers: [
-                SliverAppBar(
+                TomSliverAppBar(
                   pinned: true,
                   expandedHeight: 150,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.purple,
-                  flexibleSpace: FlexibleSpaceBar(
+                  flexibleSpace: TomFlexibleSpaceBar(
                     title: const TomText('Expandable'),
                     background: TomContainer(
                       decoration: BoxDecoration(
@@ -154,14 +154,14 @@ class _SliverAppBarTab extends StatelessWidget {
             height: 350,
             child: TomCustomScrollView(
               slivers: [
-                SliverAppBar(
+                TomSliverAppBar(
                   floating: true,
                   pinned: true,
                   snap: true,
                   expandedHeight: 150,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.orange,
-                  flexibleSpace: const FlexibleSpaceBar(
+                  flexibleSpace: const TomFlexibleSpaceBar(
                     title: TomText('Snap'),
                   ),
                 ),
@@ -225,7 +225,7 @@ class _SliverListTab extends StatelessWidget {
       slivers: [
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverList',
               subtitle: 'Basic sliver list',
@@ -250,7 +250,7 @@ class _SliverListTab extends StatelessWidget {
         ),
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverFixedExtentList',
               subtitle: 'Fixed height items for performance',
@@ -276,7 +276,7 @@ class _SliverListTab extends StatelessWidget {
         ),
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverPrototypeExtentList',
               subtitle: 'Items sized by prototype',
@@ -307,7 +307,7 @@ class _SliverListTab extends StatelessWidget {
             ),
           ),
         ),
-        const SliverToBoxAdapter(
+        const TomSliverToBoxAdapter(
           child: TomSizedBox(height: 48),
         ),
       ],
@@ -328,7 +328,7 @@ class _SliverGridTab extends StatelessWidget {
       slivers: [
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverGrid with Fixed Count',
               subtitle: 'Fixed number of columns',
@@ -337,7 +337,7 @@ class _SliverGridTab extends StatelessWidget {
         ),
         TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverGrid(
+          sliver: TomSliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               mainAxisSpacing: 8,
@@ -362,7 +362,7 @@ class _SliverGridTab extends StatelessWidget {
         ),
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverGrid with Max Extent',
               subtitle: 'Maximum item width',
@@ -371,7 +371,7 @@ class _SliverGridTab extends StatelessWidget {
         ),
         TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverGrid(
+          sliver: TomSliverGrid(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 150,
               mainAxisSpacing: 8,
@@ -399,7 +399,7 @@ class _SliverGridTab extends StatelessWidget {
         ),
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'SliverGrid.extent',
               subtitle: 'Convenience constructor',
@@ -426,7 +426,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        const SliverToBoxAdapter(
+        const TomSliverToBoxAdapter(
           child: TomSizedBox(height: 48),
         ),
       ],
@@ -457,7 +457,7 @@ class _CombinedSliversTab extends StatelessWidget {
     return TomCustomScrollView(
       slivers: [
         // Header section
-        SliverToBoxAdapter(
+        TomSliverToBoxAdapter(
           child: TomContainer(
             height: 150,
             margin: const EdgeInsets.all(16),
@@ -489,7 +489,7 @@ class _CombinedSliversTab extends StatelessWidget {
         // Section header
         const TomSliverPadding(
           padding: EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Featured',
               subtitle: 'Grid section',
@@ -499,7 +499,7 @@ class _CombinedSliversTab extends StatelessWidget {
         // Grid section
         TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverGrid(
+          sliver: TomSliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
               mainAxisSpacing: 8,
@@ -526,7 +526,7 @@ class _CombinedSliversTab extends StatelessWidget {
         // Another section header
         const TomSliverPadding(
           padding: EdgeInsets.all(16),
-          sliver: SliverToBoxAdapter(
+          sliver: TomSliverToBoxAdapter(
             child: _SectionHeader(
               title: 'Recent Items',
               subtitle: 'List section',

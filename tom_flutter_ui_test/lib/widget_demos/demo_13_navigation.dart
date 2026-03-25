@@ -299,20 +299,20 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
           'Standard bottom navigation.',
           TomClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: NavigationBar(
+            child: TomNavigationBar(
               selectedIndex: _selectedIndex,
               onDestinationSelected: (i) => setState(() => _selectedIndex = i),
               destinations: const [
-                NavigationDestination(
+                TomNavigationDestination(
                   icon: TomIcon(Icons.home_outlined),
                   selectedIcon: TomIcon(Icons.home),
                   label: 'Home',
                 ),
-                NavigationDestination(
+                TomNavigationDestination(
                   icon: TomIcon(Icons.search),
                   label: 'Search',
                 ),
-                NavigationDestination(
+                TomNavigationDestination(
                   icon: TomIcon(Icons.person_outline),
                   selectedIcon: TomIcon(Icons.person),
                   label: 'Profile',
@@ -326,27 +326,27 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
           'Navigation items with notification badges.',
           TomClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: NavigationBar(
+            child: TomNavigationBar(
               selectedIndex: _selectedIndex2,
               onDestinationSelected: (i) => setState(() => _selectedIndex2 = i),
               destinations: [
-                const NavigationDestination(
+                const TomNavigationDestination(
                   icon: TomIcon(Icons.home_outlined),
                   selectedIcon: TomIcon(Icons.home),
                   label: 'Home',
                 ),
-                NavigationDestination(
-                  icon: Badge(
+                TomNavigationDestination(
+                  icon: TomBadge(
                     label: const TomText('3'),
                     child: const TomIcon(Icons.notifications_outlined),
                   ),
-                  selectedIcon: Badge(
+                  selectedIcon: TomBadge(
                     label: const TomText('3'),
                     child: const TomIcon(Icons.notifications),
                   ),
                   label: 'Alerts',
                 ),
-                NavigationDestination(
+                TomNavigationDestination(
                   icon: Badge.count(
                     count: 12,
                     child: const TomIcon(Icons.message_outlined),
@@ -357,7 +357,7 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
                   ),
                   label: 'Messages',
                 ),
-                const NavigationDestination(
+                const TomNavigationDestination(
                   icon: TomIcon(Icons.settings_outlined),
                   selectedIcon: TomIcon(Icons.settings),
                   label: 'Settings',
@@ -471,7 +471,7 @@ class _NavigationRailSectionState extends State<_NavigationRailSection> {
                       ),
                     ],
                   ),
-                  const VerticalDivider(width: 1),
+                  const TomVerticalDivider(width: 1),
                   TomExpanded(
                     child: TomContainer(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -559,7 +559,7 @@ class _BasicTabDemoState extends State<_BasicTabDemo>
             ),
             TomSizedBox(
               height: 100,
-              child: TabBarView(
+              child: TomTabBarView(
                 controller: _controller,
                 children: [
                   TomCenter(child: TomText('Content 1')),
@@ -622,7 +622,7 @@ class _ScrollableTabDemoState extends State<_ScrollableTabDemo>
             ),
             TomSizedBox(
               height: 80,
-              child: TabBarView(
+              child: TomTabBarView(
                 controller: _controller,
                 children: List.generate(
                   8,
@@ -685,7 +685,7 @@ class _IconTabDemoState extends State<_IconTabDemo>
             ),
             TomSizedBox(
               height: 80,
-              child: TabBarView(
+              child: TomTabBarView(
                 controller: _controller,
                 children: [
                   TomCenter(child: TomText('Photos')),
@@ -880,11 +880,11 @@ class _BreadcrumbSection extends StatelessWidget {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              ActionChip(label: const TomText('Home'), onPressed: () {}),
+              TomActionChip(label: const TomText('Home'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
-              ActionChip(label: const TomText('Category'), onPressed: () {}),
+              TomActionChip(label: const TomText('Category'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
-              ActionChip(label: const TomText('Subcategory'), onPressed: () {}),
+              TomActionChip(label: const TomText('Subcategory'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
               const TomChip(label: TomText('Current')),
             ],

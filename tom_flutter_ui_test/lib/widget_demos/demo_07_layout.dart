@@ -1268,7 +1268,7 @@ class _ConstraintsSection extends StatelessWidget {
           TomContainer(
             height: 80,
             color: Colors.grey.shade200,
-            child: UnconstrainedBox(
+            child: TomUnconstrainedBox(
               child: TomContainer(
                 width: 150,
                 height: 50,

@@ -512,12 +512,12 @@ class _ExpansionSection extends StatelessWidget {
               title: const TomText('Settings'),
               subtitle: const TomText('App configuration'),
               children: [
-                SwitchListTile(
+                TomSwitchListTile(
                   title: const TomText('Dark Mode'),
                   value: false,
                   onChanged: (v) {},
                 ),
-                SwitchListTile(
+                TomSwitchListTile(
                   title: const TomText('Notifications'),
                   value: true,
                   onChanged: (v) {},

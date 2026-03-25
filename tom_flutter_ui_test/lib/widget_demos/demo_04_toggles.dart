@@ -1152,7 +1152,7 @@ class _CustomTogglesSectionState extends State<_CustomTogglesSection> {
                 borderRadius: BorderRadius.circular(20),
                 color: _customToggle1 ? Colors.green : Colors.grey.shade300,
               ),
-              child: AnimatedAlign(
+              child: TomAnimatedAlign(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
                 alignment:
@@ -1184,7 +1184,7 @@ TomGestureDetector(
       borderRadius: BorderRadius.circular(20),
       color: _isOn ? Colors.green : Colors.grey,
     ),
-    child: AnimatedAlign(
+    child: TomAnimatedAlign(
       alignment: _isOn ? Alignment.centerRight : Alignment.centerLeft,
       child: TomContainer(
         width: 32,
@@ -1212,7 +1212,7 @@ TomGestureDetector(
                 icon: TomAnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, animation) {
-                    return ScaleTransition(scale: animation, child: child);
+                    return TomScaleTransition(scale: animation, child: child);
                   },
                   child: TomIcon(
                   _customToggle2 ? Icons.favorite : Icons.favorite_border,

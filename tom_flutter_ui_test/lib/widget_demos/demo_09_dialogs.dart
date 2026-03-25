@@ -307,18 +307,18 @@ class _SimpleDialogSection extends StatelessWidget {
     final result = await showDialog<String>(
       context: context,
       builder: (context) {
-        return SimpleDialog(
+        return TomSimpleDialog(
           title: const TomText('Select Option'),
           children: [
-            SimpleDialogOption(
+            TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 1'),
               child: const TomText('Option 1'),
             ),
-            SimpleDialogOption(
+            TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 2'),
               child: const TomText('Option 2'),
             ),
-            SimpleDialogOption(
+            TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 3'),
               child: const TomText('Option 3'),
             ),
@@ -337,7 +337,7 @@ class _SimpleDialogSection extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) {
-        return SimpleDialog(
+        return TomSimpleDialog(
           title: const TomText('Select Account'),
           children: [
             TomListTile(
@@ -501,7 +501,7 @@ class _BottomSheetSection extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return DraggableScrollableSheet(
+        return TomDraggableScrollableSheet(
           initialChildSize: 0.5,
           minChildSize: 0.3,
           maxChildSize: 0.9,
@@ -550,7 +550,7 @@ class _BottomSheetSection extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
+        return TomDraggableScrollableSheet(
           initialChildSize: 0.4,
           minChildSize: 0.2,
           maxChildSize: 0.8,
@@ -658,7 +658,7 @@ class _SnackBarSection extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
         content: const TomText('Item deleted'),
-        action: SnackBarAction(
+        action: TomSnackBarAction(
           label: 'Undo',
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -954,7 +954,7 @@ class _DialogPatternsSection extends StatelessWidget {
         return TomAlertDialog(
           content: TomRow(
             children: [
-              const CircularProgressIndicator(),
+              const TomCircularProgressIndicator(),
               const TomSizedBox(width: 24),
               const TomText('Loading, please wait...'),
             ],

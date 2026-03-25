@@ -337,7 +337,7 @@ class TomSearchBar extends TomInputBase {
   final FocusNode? focusNode;
   final String? hintText;
   final Widget? leading;
-  final Widget? trailing;
+  final Iterable<Widget>? trailing;
   final ValueChanged<String>? onChanged;
   final VoidCallback? onTap;
   final WidgetStateProperty<double?>? elevation;
@@ -388,6 +388,7 @@ class TomSearchBar extends TomInputBase {
       focusNode: focusNode,
       hintText: resolvedHint,
       leading: leading,
+      trailing: trailing,
       onChanged: onChanged,
       onTap: onTap,
       elevation: elevation,

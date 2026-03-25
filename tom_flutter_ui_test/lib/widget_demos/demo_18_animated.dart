@@ -281,7 +281,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
               child: TomAnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 transitionBuilder: (child, animation) {
-                  return ScaleTransition(scale: animation, child: child);
+                  return TomScaleTransition(scale: animation, child: child);
                 },
                 child: TomText(
                   '$_count',
@@ -527,7 +527,7 @@ class _AnimatedPropertiesSectionState
                 color: Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: AnimatedAlign(
+              child: TomAnimatedAlign(
                 alignment: _alignment,
                 duration: const Duration(milliseconds: 500),
                 curve: Curves.easeInOut,
@@ -650,7 +650,7 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
               ],
             ),
             const TomSizedBox(height: 16),
-            AnimatedList(
+            TomAnimatedList(
               key: _listKey,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -731,7 +731,7 @@ class _PulseAnimationState extends State<_PulseAnimation>
             ),
             const TomSizedBox(height: 16),
             TomCenter(
-              child: ScaleTransition(
+              child: TomScaleTransition(
                 scale: _animation,
                 child: TomContainer(
                   width: 60,

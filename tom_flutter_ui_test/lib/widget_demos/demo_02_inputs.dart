@@ -484,7 +484,7 @@ class _TextFormFieldSectionState extends State<_TextFormFieldSection> {
         _DemoCard(
           title: 'Basic Validation',
           description: 'TomTextFormField with validator function.',
-          child: Form(
+          child: TomForm(
             key: _formKey,
             child: TomColumn(
               children: [
@@ -527,7 +527,7 @@ class _TextFormFieldSectionState extends State<_TextFormFieldSection> {
             ),
           ),
           code: '''
-TextFormField(
+TomTextFormField(
   decoration: InputDecoration(
     labelText: 'Email',
     prefixIcon: TomIcon(Icons.email),
@@ -1382,10 +1382,10 @@ TomTextField(
         _DemoCard(
           title: 'SearchBar (Material 3)',
           description: 'Material 3 search bar with suggestions.',
-          child: SearchAnchor(
+          child: TomSearchAnchor(
             searchController: _searchBarController,
             builder: (context, controller) {
-              return SearchBar(
+              return TomSearchBar(
                 controller: controller,
                 padding: const WidgetStatePropertyAll<EdgeInsets>(
                   EdgeInsets.symmetric(horizontal: 16),
@@ -1422,10 +1422,10 @@ TomTextField(
             },
           ),
           code: '''
-SearchAnchor(
+TomSearchAnchor(
   searchController: _controller,
   builder: (context, controller) {
-    return SearchBar(
+    return TomSearchBar(
       controller: controller,
       onTap: () => controller.openView(),
       leading: TomIcon(Icons.search),
@@ -1627,11 +1627,11 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
         _DemoCard(
           title: 'Login Form',
           description: 'Complete login form with validation.',
-          child: Form(
+          child: TomForm(
             key: _loginFormKey,
             child: TomColumn(
               children: [
-                TextFormField(
+                TomTextFormField(
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: const TomIcon(Icons.email),
@@ -1651,7 +1651,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                   },
                 ),
                 const TomSizedBox(height: 16),
-                TextFormField(
+                TomTextFormField(
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
@@ -1709,7 +1709,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                             ? const TomSizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
+                              child: TomCircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   Colors.white,
@@ -1726,14 +1726,14 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
         _DemoCard(
           title: 'Registration Form',
           description: 'Complete signup form with multiple fields.',
-          child: Form(
+          child: TomForm(
             key: _signupFormKey,
             child: TomColumn(
               children: [
                 TomRow(
                   children: [
                     TomExpanded(
-                      child: TextFormField(
+                      child: TomTextFormField(
                         decoration: InputDecoration(
                           labelText: 'First Name',
                           border: OutlineInputBorder(
@@ -1750,7 +1750,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                     ),
                     const TomSizedBox(width: 16),
                     TomExpanded(
-                      child: TextFormField(
+                      child: TomTextFormField(
                         decoration: InputDecoration(
                           labelText: 'Last Name',
                           border: OutlineInputBorder(
@@ -1768,7 +1768,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                   ],
                 ),
                 const TomSizedBox(height: 16),
-                TextFormField(
+                TomTextFormField(
                   decoration: InputDecoration(
                     labelText: 'Email',
                     prefixIcon: const TomIcon(Icons.email),
@@ -1788,7 +1788,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                   },
                 ),
                 const TomSizedBox(height: 16),
-                TextFormField(
+                TomTextFormField(
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Password',
@@ -1809,7 +1809,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                   },
                 ),
                 const TomSizedBox(height: 16),
-                TextFormField(
+                TomTextFormField(
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Confirm Password',
@@ -1889,7 +1889,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                             ? const TomSizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(
+                              child: TomCircularProgressIndicator(
                                 strokeWidth: 2,
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   Colors.white,

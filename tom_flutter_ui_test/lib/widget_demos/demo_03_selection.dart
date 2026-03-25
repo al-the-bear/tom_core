@@ -387,7 +387,7 @@ TomDropdownButton<String>(
         _DemoCard(
           title: 'TomDropdownButtonFormField',
           description: 'Dropdown with form validation and resource-backed label.',
-          child: Form(
+          child: TomForm(
             child: TomDropdownButtonFormField<String>(
               tomId: 'demo.select.formfield.fruit',
               decoration: InputDecoration(
@@ -1251,7 +1251,7 @@ class _MultiSelectSectionState extends State<_MultiSelectSection> {
                   itemBuilder: (context, index) {
                     final language = _languages[index];
                     final selected = _selectedLanguages.contains(language);
-                    return CheckboxListTile(
+                    return TomCheckboxListTile(
                       title: TomText(language),
                       value: selected,
                       onChanged: (value) {
@@ -1287,7 +1287,7 @@ class _MultiSelectSectionState extends State<_MultiSelectSection> {
             ],
           ),
           code: '''
-CheckboxListTile(
+TomCheckboxListTile(
   title: TomText(item),
   value: _selectedItems.contains(item),
   onChanged: (value) {
@@ -1346,7 +1346,7 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
                   itemCount: _hobbies.length,
                   itemBuilder: (context, index) {
                     final hobby = _hobbies[index];
-                    return CheckboxListTile(
+                    return TomCheckboxListTile(
                       title: TomText(hobby),
                       value: tempSelection.contains(hobby),
                       onChanged: (value) {

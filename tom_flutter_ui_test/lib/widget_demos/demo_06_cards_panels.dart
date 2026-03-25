@@ -935,7 +935,7 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       TomSnackBar(
                         content: TomText('$item dismissed'),
-                        action: SnackBarAction(
+                        action: TomSnackBarAction(
                           label: 'Undo',
                           onPressed: () {
                             setState(() => _items.add(item));

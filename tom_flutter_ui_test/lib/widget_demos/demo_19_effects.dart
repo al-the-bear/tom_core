@@ -384,7 +384,7 @@ class _ClipPathSection extends StatelessWidget {
         _buildDemoCard(
           'Wave Clip',
           'Wavy bottom edge.',
-          ClipPath(
+          TomClipPath(
             clipper: _WaveClipper(),
             child: TomContainer(
               height: 120,
@@ -409,7 +409,7 @@ class _ClipPathSection extends StatelessWidget {
         _buildDemoCard(
           'Triangle Clip',
           'Triangular corners.',
-          ClipPath(
+          TomClipPath(
             clipper: _TriangleClipper(),
             child: TomContainer(
               height: 100,
@@ -458,7 +458,7 @@ class _ClipPathSection extends StatelessWidget {
                   ),
                 ),
               ),
-              ClipPath(
+              TomClipPath(
                 clipper: _HexagonClipper(),
                 child: TomContainer(
                   width: 80,
