@@ -314,7 +314,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                 transitionBuilder: (child, animation) {
                   return RotationTransition(
                     turns: animation,
-                    child: FadeTransition(opacity: animation, child: child),
+                    child: TomFadeTransition(opacity: animation, child: child),
                   );
                 },
                 child: TomIcon(
@@ -607,7 +607,7 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
   Widget _buildItem(String item, Animation<double> animation) {
     return SizeTransition(
       sizeFactor: animation,
-      child: FadeTransition(
+      child: TomFadeTransition(
         opacity: animation,
         child: TomCard(
           margin: const EdgeInsets.only(bottom: 8),

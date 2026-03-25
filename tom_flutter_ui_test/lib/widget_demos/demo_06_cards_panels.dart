@@ -491,7 +491,7 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                 });
               },
               children: [
-                ExpansionPanel(
+                TomExpansionPanel(
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.question_answer),
@@ -507,8 +507,8 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                     ),
                   ),
                   isExpanded: _isExpanded[0],
-                ),
-                ExpansionPanel(
+                ).toPanel(),
+                TomExpansionPanel(
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.code),
@@ -524,8 +524,8 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                     ),
                   ),
                   isExpanded: _isExpanded[1],
-                ),
-                ExpansionPanel(
+                ).toPanel(),
+                TomExpansionPanel(
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.widgets),
@@ -541,7 +541,7 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                     ),
                   ),
                   isExpanded: _isExpanded[2],
-                ),
+                ).toPanel(),
               ],
             ),
           ],

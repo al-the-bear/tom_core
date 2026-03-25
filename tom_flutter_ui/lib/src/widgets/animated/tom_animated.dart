@@ -754,3 +754,30 @@ class TomScaleTransition extends TomAnimatedBase {
     );
   }
 }
+
+/// Tom wrapper for [FadeTransition].
+///
+/// Opacity animation driven by Animation. Auth on faded content.
+class TomFadeTransition extends TomAnimatedBase {
+  final Animation<double> opacity;
+  final bool alwaysIncludeSemantics;
+  final Widget? child;
+
+  const TomFadeTransition({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    required this.opacity,
+    this.alwaysIncludeSemantics = false,
+    this.child,
+  });
+
+  @override
+  Widget buildContent(BuildContext context) {
+    return FadeTransition(
+      opacity: opacity,
+      alwaysIncludeSemantics: alwaysIncludeSemantics,
+      child: child,
+    );
+  }
+}

@@ -753,3 +753,37 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     );
   }
 }
+
+/// Tom widget that EXTENDS [DropdownMenuItem] with authorization.
+///
+/// This widget IS a [DropdownMenuItem] — passes `is DropdownMenuItem<T>` checks.
+/// Use this when you need type identity for DropdownButton itemBuilder.
+///
+/// ```dart
+/// TomDropdownButton<String>(
+///   items: [
+///     TomDropdownMenuItem<String>(tomId: 'apple', value: 'apple', child: Text('Apple')),
+///     TomDropdownMenuItem<String>(tomId: 'banana', value: 'banana', child: Text('Banana')),
+///   ],
+///   onChanged: (value) { ... },
+/// )
+/// ```
+class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
+  /// Creates a Tom DropdownMenuItem.
+  const TomDropdownMenuItem({
+    this.tomId,
+    this.tomGroup,
+    super.key,
+    super.onTap,
+    super.value,
+    super.enabled,
+    super.alignment,
+    required super.child,
+  });
+
+  @override
+  final String? tomId;
+
+  @override
+  final String? tomGroup;
+}

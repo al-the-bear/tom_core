@@ -373,3 +373,254 @@ class TomReorderableListView extends TomTableBase {
     );
   }
 }
+
+// ============================================================================
+// DATA TABLE HELPER CLASSES
+// These are non-widget classes that wrap Flutter's DataCell, DataColumn,
+// DataRow for use with TomDataTable.
+// ============================================================================
+
+/// Tom equivalent for [DataCell] (non-widget data class).
+///
+/// DataCell is not a widget — it's a data class for DataTable rows.
+/// This class mirrors DataCell's API and adds Tom ID support for
+/// resource resolution and authorization tracking.
+///
+/// Usage:
+/// ```dart
+/// TomDataRow(
+///   cells: [
+///     TomDataCell(tomId: 'name', child: TomText('John')).toCell(),
+///     TomDataCell(tomId: 'email', child: TomText('john@example.com')).toCell(),
+///   ],
+/// )
+/// ```
+class TomDataCell {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final String? tomGroup;
+
+  /// The widget to display in the cell.
+  final Widget child;
+
+  /// Whether tapping cell shows placeholder.
+  final bool placeholder;
+
+  /// Whether to show edit icon.
+  final bool showEditIcon;
+
+  /// Callback when cell is tapped.
+  final GestureTapCallback? onTap;
+
+  /// Callback when cell is long-pressed.
+  final GestureLongPressCallback? onLongPress;
+
+  /// Callback when cell is double-tapped.
+  final GestureTapCallback? onDoubleTap;
+
+  /// Callback when cell tap is cancelled.
+  final GestureTapCancelCallback? onTapCancel;
+
+  /// Callback when cell tap starts.
+  final GestureTapDownCallback? onTapDown;
+
+  const TomDataCell({
+    this.tomId,
+    this.tomGroup,
+    required this.child,
+    this.placeholder = false,
+    this.showEditIcon = false,
+    this.onTap,
+    this.onLongPress,
+    this.onDoubleTap,
+    this.onTapCancel,
+    this.onTapDown,
+  });
+
+  /// Convenience constructor for empty/placeholder cells.
+  const TomDataCell.empty({this.tomId, this.tomGroup})
+      : child = const SizedBox.shrink(),
+        placeholder = true,
+        showEditIcon = false,
+        onTap = null,
+        onLongPress = null,
+        onDoubleTap = null,
+        onTapCancel = null,
+        onTapDown = null;
+
+  /// Converts this to a Flutter [DataCell].
+  DataCell toCell() {
+    return DataCell(
+      child,
+      placeholder: placeholder,
+      showEditIcon: showEditIcon,
+      onTap: onTap,
+      onLongPress: onLongPress,
+      onDoubleTap: onDoubleTap,
+      onTapCancel: onTapCancel,
+      onTapDown: onTapDown,
+    );
+  }
+}
+
+/// Tom equivalent for [DataColumn] (non-widget data class).
+///
+/// DataColumn is not a widget — it's a data class for DataTable headers.
+/// This class mirrors DataColumn's API and adds Tom ID support for
+/// resource resolution and authorization tracking.
+///
+/// Usage:
+/// ```dart
+/// TomDataTable(
+///   columns: [
+///     TomDataColumn(tomId: 'name', label: TomText('Name')).toColumn(),
+///     TomDataColumn(tomId: 'email', label: TomText('Email')).toColumn(),
+///   ],
+///   rows: [...],
+/// )
+/// ```
+class TomDataColumn {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final String? tomGroup;
+
+  /// The column header label widget.
+  final Widget label;
+
+  /// Tooltip when hovering over the header.
+  final String? tooltip;
+
+  /// Whether this is a numeric column (right-aligned).
+  final bool numeric;
+
+  /// Whether this column can be sorted.
+  final DataColumnSortCallback? onSort;
+
+  /// Mouse cursor for this column.
+  final WidgetStateProperty<MouseCursor?>? mouseCursor;
+
+  const TomDataColumn({
+    this.tomId,
+    this.tomGroup,
+    required this.label,
+    this.tooltip,
+    this.numeric = false,
+    this.onSort,
+    this.mouseCursor,
+  });
+
+  /// Converts this to a Flutter [DataColumn].
+  DataColumn toColumn() {
+    return DataColumn(
+      label: label,
+      tooltip: tooltip,
+      numeric: numeric,
+      onSort: onSort,
+      mouseCursor: mouseCursor,
+    );
+  }
+}
+
+/// Tom equivalent for [DataRow] (non-widget data class).
+///
+/// DataRow is not a widget — it's a data class for DataTable rows.
+/// This class mirrors DataRow's API and adds Tom ID support for
+/// resource resolution and authorization tracking.
+///
+/// Usage:
+/// ```dart
+/// TomDataTable(
+///   columns: [...],
+///   rows: [
+///     TomDataRow(
+///       tomId: 'user1',
+///       cells: [
+///         TomDataCell(child: TomText('1')).toCell(),
+///         TomDataCell(child: TomText('John')).toCell(),
+///       ],
+///     ).toRow(),
+///   ],
+/// )
+/// ```
+class TomDataRow {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final String? tomGroup;
+
+  /// Unique key for this row.
+  final LocalKey? key;
+
+  /// Whether this row is selected.
+  final bool selected;
+
+  /// Callback when selection changes.
+  final ValueChanged<bool?>? onSelectChanged;
+
+  /// Callback when row is long-pressed.
+  final GestureLongPressCallback? onLongPress;
+
+  /// Color of this row.
+  final WidgetStateProperty<Color?>? color;
+
+  /// The cells in this row.
+  final List<DataCell> cells;
+
+  /// Mouse cursor for this row.
+  final WidgetStateProperty<MouseCursor?>? mouseCursor;
+
+  const TomDataRow({
+    this.tomId,
+    this.tomGroup,
+    this.key,
+    this.selected = false,
+    this.onSelectChanged,
+    this.onLongPress,
+    this.color,
+    required this.cells,
+    this.mouseCursor,
+  });
+
+  /// Factory constructor that takes [TomDataCell] list and converts them.
+  factory TomDataRow.fromTomCells({
+    String? tomId,
+    String? tomGroup,
+    LocalKey? key,
+    bool selected = false,
+    ValueChanged<bool?>? onSelectChanged,
+    GestureLongPressCallback? onLongPress,
+    WidgetStateProperty<Color?>? color,
+    required List<TomDataCell> cells,
+    WidgetStateProperty<MouseCursor?>? mouseCursor,
+  }) {
+    return TomDataRow(
+      tomId: tomId,
+      tomGroup: tomGroup,
+      key: key,
+      selected: selected,
+      onSelectChanged: onSelectChanged,
+      onLongPress: onLongPress,
+      color: color,
+      cells: cells.map((c) => c.toCell()).toList(),
+      mouseCursor: mouseCursor,
+    );
+  }
+
+  /// Converts this to a Flutter [DataRow].
+  DataRow toRow() {
+    return DataRow(
+      key: key,
+      selected: selected,
+      onSelectChanged: onSelectChanged,
+      onLongPress: onLongPress,
+      color: color,
+      cells: cells,
+      mouseCursor: mouseCursor,
+    );
+  }
+}

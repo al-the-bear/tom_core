@@ -282,7 +282,7 @@ class _DropdownButtonSectionState extends State<_DropdownButtonSection> {
                 isExpanded: true,
                 items:
                     _fruits.map((fruit) {
-                      return DropdownMenuItem(value: fruit, child: TomText(fruit));
+                      return TomDropdownMenuItem(value: fruit, child: TomText(fruit));
                     }).toList(),
                 onChanged: (value) => setState(() => _selectedFruit = value),
               ),
@@ -300,7 +300,7 @@ TomDropdownButton<String>(
   hint: 'Select a fruit',  // Resource-backed via tomId.hint
   isExpanded: true,
   items: items.map((item) {
-    return DropdownMenuItem(
+    return TomDropdownMenuItem(
       value: item,
       child: TomText(item),
     );
@@ -318,7 +318,7 @@ TomDropdownButton<String>(
             isExpanded: true,
             items:
                 _countries.map((country) {
-                  return DropdownMenuItem(
+                  return TomDropdownMenuItem(
                     value: country,
                     child: TomRow(
                       children: [
@@ -349,7 +349,7 @@ TomDropdownButton<String>(
               underline: const TomSizedBox(),
               icon: const TomIcon(Icons.keyboard_arrow_down),
               items: const [
-                DropdownMenuItem(
+                TomDropdownMenuItem(
                   value: 1,
                   child: TomRow(
                     children: [
@@ -359,7 +359,7 @@ TomDropdownButton<String>(
                     ],
                   ),
                 ),
-                DropdownMenuItem(
+                TomDropdownMenuItem(
                   value: 2,
                   child: TomRow(
                     children: [
@@ -369,7 +369,7 @@ TomDropdownButton<String>(
                     ],
                   ),
                 ),
-                DropdownMenuItem(
+                TomDropdownMenuItem(
                   value: 3,
                   child: TomRow(
                     children: [
@@ -399,7 +399,7 @@ TomDropdownButton<String>(
               ),
               items:
                   _fruits.map((fruit) {
-                    return DropdownMenuItem(value: fruit, child: TomText(fruit));
+                    return TomDropdownMenuItem(value: fruit, child: TomText(fruit));
                   }).toList(),
               onChanged: (value) {},
               validator: (value) {
@@ -417,7 +417,7 @@ TomDropdownButtonFormField<String>(
     border: OutlineInputBorder(),
   ),
   items: items.map((item) {
-    return DropdownMenuItem(
+    return TomDropdownMenuItem(
       value: item,
       child: TomText(item),
     );

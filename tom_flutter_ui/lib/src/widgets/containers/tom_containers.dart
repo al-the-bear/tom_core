@@ -1348,9 +1348,83 @@ class TomCustomScrollView extends TomContainerBase {
   }
 }
 
+/// Tom equivalent for [ExpansionPanel] (non-widget data class).
+///
+/// ExpansionPanel is not a widget — it's a data class for ExpansionPanelList.
+/// This class mirrors ExpansionPanel's API and adds Tom ID support for
+/// resource resolution and authorization tracking.
+///
+/// Usage:
+/// ```dart
+/// TomExpansionPanelList(
+///   children: [
+///     TomExpansionPanel(
+///       tomId: 'basicInfo',
+///       headerBuilder: (context, isExpanded) => Text('Basic Info'),
+///       body: MyBodyWidget(),
+///     ).toPanel(),
+///   ],
+/// )
+/// ```
+class TomExpansionPanel {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final String? tomGroup;
+
+  /// Callback that builds the header widget.
+  final ExpansionPanelHeaderBuilder headerBuilder;
+
+  /// The body content when expanded.
+  final Widget body;
+
+  /// Whether the panel is expanded.
+  final bool isExpanded;
+
+  /// Whether tapping the header toggles expansion.
+  final bool canTapOnHeader;
+
+  /// Background color of the panel.
+  final Color? backgroundColor;
+
+  /// Splash color when tapping the header.
+  final Color? splashColor;
+
+  /// Highlight color when tapping the header.
+  final Color? highlightColor;
+
+  const TomExpansionPanel({
+    this.tomId,
+    this.tomGroup,
+    required this.headerBuilder,
+    required this.body,
+    this.isExpanded = false,
+    this.canTapOnHeader = false,
+    this.backgroundColor,
+    this.splashColor,
+    this.highlightColor,
+  });
+
+  /// Converts this to a Flutter [ExpansionPanel].
+  ExpansionPanel toPanel() {
+    return ExpansionPanel(
+      headerBuilder: headerBuilder,
+      body: body,
+      isExpanded: isExpanded,
+      canTapOnHeader: canTapOnHeader,
+      backgroundColor: backgroundColor,
+      splashColor: splashColor,
+      highlightColor: highlightColor,
+    );
+  }
+}
+
 /// Tom wrapper for [ExpansionPanelList].
 ///
 /// Adds ID, group, authorization, and resource resolution.
+/// Accepts either raw [ExpansionPanel] or [TomExpansionPanel] via the
+/// [tomChildren] constructor.
 class TomExpansionPanelList extends TomContainerBase {
   final List<ExpansionPanel> children;
   final ExpansionPanelCallback? expansionCallback;
