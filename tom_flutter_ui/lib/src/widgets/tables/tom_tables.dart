@@ -1,7 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../resource_auth/tom_auth_state.dart';
+import '../../resource_auth/tom_id_prefix.dart';
+import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_node_base.dart';
 
 /// Tom wrapper for [DataTable].
 ///
@@ -450,7 +454,24 @@ class TomDataCell {
         onTapCancel = null,
         onTapDown = null;
 
-  /// Converts this to a Flutter [DataCell].
+  /// Resolves the full canonical path for this cell.
+  String? _resolveFullPath(BuildContext context) {
+    if (tomId == null) return null;
+    final scope = TomNodeScope.of(context);
+    return scope?.appendWidget(tomId!) ??
+        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+  }
+
+  /// Gets authorization state for this cell.
+  TomAuthState getAuth(BuildContext context) {
+    final path = _resolveFullPath(context);
+    if (path == null) return TomAuthState.fullAccess;
+    return TomUIAuthorization.resolveAuth(path);
+  }
+
+  /// Converts this to a Flutter [DataCell] WITHOUT authorization checking.
+  ///
+  /// Use [toCellWithAuth] for authorization-aware conversion.
   DataCell toCell() {
     return DataCell(
       child,
@@ -463,6 +484,45 @@ class TomDataCell {
       onTapDown: onTapDown,
     );
   }
+
+  /// Converts this to a Flutter [DataCell] with authorization.
+  ///
+  /// - If hidden: returns an empty placeholder cell
+  /// - If readonly: applies readonly styling and disables interactions
+  /// - If full access: returns the normal cell
+  DataCell toCellWithAuth(BuildContext context) {
+    final auth = getAuth(context);
+
+    // Hidden: return empty placeholder cell
+    if (!auth.visible) {
+      return const DataCell(SizedBox.shrink(), placeholder: true);
+    }
+
+    // Readonly: apply styling and disable interactions
+    if (auth.readonly) {
+      final style = TomThemeScope.readonlyStyleOf(context);
+      return DataCell(
+        style.apply(child),
+        placeholder: placeholder,
+        showEditIcon: false, // No editing when readonly
+        // Disable all interactions
+        onTap: null,
+        onLongPress: null,
+        onDoubleTap: null,
+        onTapCancel: null,
+        onTapDown: null,
+      );
+    }
+
+    // Full access
+    return toCell();
+  }
+
+  /// Returns true if this cell should be visible based on authorization.
+  bool isVisible(BuildContext context) => getAuth(context).visible;
+
+  /// Returns true if this cell should be readonly based on authorization.
+  bool isReadonly(BuildContext context) => getAuth(context).readonly;
 }
 
 /// Tom equivalent for [DataColumn] (non-widget data class).
@@ -513,7 +573,24 @@ class TomDataColumn {
     this.mouseCursor,
   });
 
-  /// Converts this to a Flutter [DataColumn].
+  /// Resolves the full canonical path for this column.
+  String? _resolveFullPath(BuildContext context) {
+    if (tomId == null) return null;
+    final scope = TomNodeScope.of(context);
+    return scope?.appendWidget(tomId!) ??
+        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+  }
+
+  /// Gets authorization state for this column.
+  TomAuthState getAuth(BuildContext context) {
+    final path = _resolveFullPath(context);
+    if (path == null) return TomAuthState.fullAccess;
+    return TomUIAuthorization.resolveAuth(path);
+  }
+
+  /// Converts this to a Flutter [DataColumn] WITHOUT authorization checking.
+  ///
+  /// Use [toColumnWithAuth] for authorization-aware conversion.
   DataColumn toColumn() {
     return DataColumn(
       label: label,
@@ -523,6 +600,42 @@ class TomDataColumn {
       mouseCursor: mouseCursor,
     );
   }
+
+  /// Converts this to a Flutter [DataColumn] with authorization.
+  ///
+  /// - If hidden: returns null (column should be filtered out)
+  /// - If readonly: disables sorting
+  /// - If full access: returns the normal column
+  ///
+  /// Returns null if the column should be hidden. Caller must filter nulls.
+  DataColumn? toColumnWithAuth(BuildContext context) {
+    final auth = getAuth(context);
+
+    // Hidden: return null (caller filters these out)
+    if (!auth.visible) {
+      return null;
+    }
+
+    // Readonly: disable sorting
+    if (auth.readonly) {
+      return DataColumn(
+        label: label,
+        tooltip: tooltip,
+        numeric: numeric,
+        onSort: null, // No sorting when readonly
+        mouseCursor: mouseCursor,
+      );
+    }
+
+    // Full access
+    return toColumn();
+  }
+
+  /// Returns true if this column should be visible based on authorization.
+  bool isVisible(BuildContext context) => getAuth(context).visible;
+
+  /// Returns true if this column should be readonly based on authorization.
+  bool isReadonly(BuildContext context) => getAuth(context).readonly;
 }
 
 /// Tom equivalent for [DataRow] (non-widget data class).
@@ -611,7 +724,52 @@ class TomDataRow {
     );
   }
 
-  /// Converts this to a Flutter [DataRow].
+  /// Factory constructor that takes [TomDataCell] list and applies auth.
+  ///
+  /// Each cell's visibility and readonly state is checked via authorization.
+  static TomDataRow fromTomCellsWithAuth(
+    BuildContext context, {
+    String? tomId,
+    String? tomGroup,
+    LocalKey? key,
+    bool selected = false,
+    ValueChanged<bool?>? onSelectChanged,
+    GestureLongPressCallback? onLongPress,
+    WidgetStateProperty<Color?>? color,
+    required List<TomDataCell> cells,
+    WidgetStateProperty<MouseCursor?>? mouseCursor,
+  }) {
+    return TomDataRow(
+      tomId: tomId,
+      tomGroup: tomGroup,
+      key: key,
+      selected: selected,
+      onSelectChanged: onSelectChanged,
+      onLongPress: onLongPress,
+      color: color,
+      cells: cells.map((c) => c.toCellWithAuth(context)).toList(),
+      mouseCursor: mouseCursor,
+    );
+  }
+
+  /// Resolves the full canonical path for this row.
+  String? _resolveFullPath(BuildContext context) {
+    if (tomId == null) return null;
+    final scope = TomNodeScope.of(context);
+    return scope?.appendWidget(tomId!) ??
+        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+  }
+
+  /// Gets authorization state for this row.
+  TomAuthState getAuth(BuildContext context) {
+    final path = _resolveFullPath(context);
+    if (path == null) return TomAuthState.fullAccess;
+    return TomUIAuthorization.resolveAuth(path);
+  }
+
+  /// Converts this to a Flutter [DataRow] WITHOUT authorization checking.
+  ///
+  /// Use [toRowWithAuth] for authorization-aware conversion.
   DataRow toRow() {
     return DataRow(
       key: key,
@@ -623,4 +781,45 @@ class TomDataRow {
       mouseCursor: mouseCursor,
     );
   }
+
+  /// Converts this to a Flutter [DataRow] with authorization.
+  ///
+  /// - If hidden: returns null (row should be filtered out)
+  /// - If readonly: disables selection and long-press
+  /// - If full access: returns the normal row
+  ///
+  /// Note: This checks row-level auth. Cell-level auth requires using
+  /// [TomDataRow.fromTomCellsWithAuth] with [TomDataCell] instances.
+  ///
+  /// Returns null if the row should be hidden. Caller must filter nulls.
+  DataRow? toRowWithAuth(BuildContext context) {
+    final auth = getAuth(context);
+
+    // Hidden: return null (caller filters these out)
+    if (!auth.visible) {
+      return null;
+    }
+
+    // Readonly: disable interactions
+    if (auth.readonly) {
+      return DataRow(
+        key: key,
+        selected: selected,
+        onSelectChanged: null, // No selection when readonly
+        onLongPress: null, // No long-press when readonly
+        color: color,
+        cells: cells,
+        mouseCursor: mouseCursor,
+      );
+    }
+
+    // Full access
+    return toRow();
+  }
+
+  /// Returns true if this row should be visible based on authorization.
+  bool isVisible(BuildContext context) => getAuth(context).visible;
+
+  /// Returns true if this row should be readonly based on authorization.
+  bool isReadonly(BuildContext context) => getAuth(context).readonly;
 }
