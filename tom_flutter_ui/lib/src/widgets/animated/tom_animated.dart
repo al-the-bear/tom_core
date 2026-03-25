@@ -49,24 +49,36 @@ class TomAnimatedAlign extends TomAnimatedBase {
 /// Tom wrapper for [AnimatedBuilder].
 ///
 /// Rebuilds on Listenable changes. Auth on rebuilt content.
+///
+/// Accepts either [animation] (Flutter API) or [listenable] parameter.
 class TomAnimatedBuilder extends TomAnimatedBase {
-  final Listenable listenable;
+  final Listenable? _listenable;
+  final Listenable? _animation;
   final TransitionBuilder builder;
   final Widget? child;
 
+  /// Creates TomAnimatedBuilder with [listenable] parameter.
   const TomAnimatedBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.listenable,
+    Listenable? listenable,
+    Listenable? animation,
     required this.builder,
     this.child,
-  });
+  })  : _listenable = listenable,
+        _animation = animation;
+
+  Listenable get effectiveListenable {
+    final anim = _animation ?? _listenable;
+    assert(anim != null, 'Either animation or listenable must be provided');
+    return anim!;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return AnimatedBuilder(
-      animation: listenable,
+      animation: effectiveListenable,
       builder: builder,
       child: child,
     );
@@ -83,6 +95,8 @@ class TomAnimatedContainer extends TomAnimatedBase {
   final Decoration? decoration;
   final Decoration? foregroundDecoration;
   final BoxConstraints? constraints;
+  final double? width;
+  final double? height;
   final EdgeInsetsGeometry? margin;
   final Matrix4? transform;
   final AlignmentGeometry? transformAlignment;
@@ -102,6 +116,8 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.decoration,
     this.foregroundDecoration,
     this.constraints,
+    this.width,
+    this.height,
     this.margin,
     this.transform,
     this.transformAlignment,
@@ -121,6 +137,8 @@ class TomAnimatedContainer extends TomAnimatedBase {
       decoration: decoration,
       foregroundDecoration: foregroundDecoration,
       constraints: constraints,
+      width: width,
+      height: height,
       margin: margin,
       transform: transform,
       transformAlignment: transformAlignment,

@@ -75,7 +75,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -83,7 +83,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -126,10 +126,10 @@ class _ListViewSection extends StatelessWidget {
             child: ListView.builder(
               itemCount: 20,
               itemBuilder: (context, index) {
-                return ListTile(
-                  leading: CircleAvatar(child: Text('${index + 1}')),
-                  title: Text('Item ${index + 1}'),
-                  subtitle: Text('Description for item ${index + 1}'),
+                return TomListTile(
+                  leading: TomCircleAvatar(child: TomText('${index + 1}')),
+                  title: TomText('Item ${index + 1}'),
+                  subtitle: TomText('Description for item ${index + 1}'),
                   trailing: const TomIcon(Icons.chevron_right),
                 );
               },
@@ -145,13 +145,13 @@ class _ListViewSection extends StatelessWidget {
               itemCount: 10,
               separatorBuilder: (context, index) => const TomDivider(height: 1),
               itemBuilder: (context, index) {
-                return ListTile(
+                return TomListTile(
                   leading: TomIcon(
                     Icons.folder,
                     color: Colors.primaries[index % Colors.primaries.length],
                   ),
-                  title: Text('Folder ${index + 1}'),
-                  trailing: Text('${(index + 1) * 3} items'),
+                  title: TomText('Folder ${index + 1}'),
+                  trailing: TomText('${(index + 1) * 3} items'),
                 );
               },
             ),
@@ -174,7 +174,7 @@ class _ListViewSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TomCenter(
-                    child: Text(
+                    child: TomText(
                       '${index + 1}',
                       style: const TextStyle(
                         color: Colors.white,
@@ -200,7 +200,7 @@ class _ListViewSection extends StatelessWidget {
                   return TomContainer(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     padding: const EdgeInsets.all(12),
-                    child: const Text(
+                    child: const TomText(
                       'Today',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
@@ -210,15 +210,15 @@ class _ListViewSection extends StatelessWidget {
                   return TomContainer(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     padding: const EdgeInsets.all(12),
-                    child: const Text(
+                    child: const TomText(
                       'Yesterday',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   );
                 }
-                return ListTile(
+                return TomListTile(
                   leading: const TomIcon(Icons.message),
-                  title: Text('Message $index'),
+                  title: TomText('Message $index'),
                 );
               },
             ),
@@ -236,12 +236,12 @@ class _ListViewSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -281,7 +281,7 @@ class _GridViewSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomCenter(
-                    child: Text(
+                    child: TomText(
                       '${index + 1}',
                       style: const TextStyle(
                         color: Colors.white,
@@ -338,7 +338,7 @@ class _GridViewSection extends StatelessWidget {
               children: List.generate(12, (index) {
                 return TomCard(
                   child: TomCenter(
-                    child: Text('Item ${index + 1}'),
+                    child: TomText('Item ${index + 1}'),
                   ),
                 );
               }),
@@ -370,7 +370,7 @@ class _GridViewSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomCenter(
-                    child: Text(
+                    child: TomText(
                       '${index + 1}',
                       style: const TextStyle(color: Colors.white),
                     ),
@@ -392,12 +392,12 @@ class _GridViewSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -465,7 +465,7 @@ class _PageViewSectionState extends State<_PageViewSection> {
                         child: TomColumn(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
+                            TomText(
                               'Page ${index + 1}',
                               style: const TextStyle(
                                 color: Colors.white,
@@ -474,7 +474,7 @@ class _PageViewSectionState extends State<_PageViewSection> {
                               ),
                             ),
                             const TomSizedBox(height: 8),
-                            const Text(
+                            const TomText(
                               'Swipe to navigate',
                               style: TextStyle(color: Colors.white70),
                             ),
@@ -520,12 +520,12 @@ class _PageViewSectionState extends State<_PageViewSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -550,12 +550,12 @@ class _VerticalPageViewDemo extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Vertical PageView',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               'Pages scrolling vertically.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -582,7 +582,7 @@ class _VerticalPageViewDemo extends StatelessWidget {
                         children: [
                           const TomIcon(Icons.swap_vert, color: Colors.grey),
                           const TomSizedBox(width: 8),
-                          Text(
+                          TomText(
                             'Section ${index + 1}',
                             style: const TextStyle(fontSize: 18),
                           ),
@@ -627,12 +627,12 @@ class _PageViewWithTransformDemoState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'PageView with Transform',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               'Carousel effect with viewportFraction.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -643,7 +643,7 @@ class _PageViewWithTransformDemoState
                 controller: _controller,
                 itemCount: 5,
                 itemBuilder: (context, index) {
-                  return AnimatedBuilder(
+                  return TomAnimatedBuilder(
                     animation: _controller,
                     builder: (context, child) {
                       double value = 1.0;
@@ -669,7 +669,7 @@ class _PageViewWithTransformDemoState
                               ],
                             ),
                             child: TomCenter(
-                              child: Text(
+                              child: TomText(
                                 '${index + 1}',
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -709,13 +709,13 @@ class _SingleChildScrollViewSection extends StatelessWidget {
           'Scrollable container for a single child.',
           TomSizedBox(
             height: 150,
-            child: SingleChildScrollView(
+            child: TomSingleChildScrollView(
               child: TomColumn(
                 children: List.generate(
                   10,
-                  (index) => ListTile(
+                  (index) => TomListTile(
                     leading: TomIcon(Icons.star, color: Colors.amber),
-                    title: Text('Item ${index + 1}'),
+                    title: TomText('Item ${index + 1}'),
                   ),
                 ),
               ),
@@ -727,7 +727,7 @@ class _SingleChildScrollViewSection extends StatelessWidget {
           'Horizontal scrolling container.',
           TomSizedBox(
             height: 100,
-            child: SingleChildScrollView(
+            child: TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomRow(
                 children: List.generate(
@@ -741,7 +741,7 @@ class _SingleChildScrollViewSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: TomCenter(
-                      child: Text(
+                      child: TomText(
                         '${index + 1}',
                         style: const TextStyle(
                           color: Colors.white,
@@ -760,7 +760,7 @@ class _SingleChildScrollViewSection extends StatelessWidget {
           'Custom padding and scroll physics.',
           TomSizedBox(
             height: 150,
-            child: SingleChildScrollView(
+            child: TomSingleChildScrollView(
               padding: const EdgeInsets.all(16),
               physics: const BouncingScrollPhysics(),
               child: TomColumn(
@@ -773,9 +773,9 @@ class _SingleChildScrollViewSection extends StatelessWidget {
                       ('Examples', Icons.lightbulb, Colors.amber),
                     ].map((item) {
                       return TomCard(
-                        child: ListTile(
+                        child: TomListTile(
                           leading: TomIcon(item.$2, color: item.$3),
-                          title: Text(item.$1),
+                          title: TomText(item.$1),
                           trailing: const TomIcon(Icons.chevron_right),
                         ),
                       );
@@ -796,12 +796,12 @@ class _SingleChildScrollViewSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -856,12 +856,12 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Scroll Controller Demo',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               'Programmatic scrolling and position listening.',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -876,7 +876,7 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
                       curve: Curves.easeOut,
                     );
                   },
-                  child: const Text('Scroll to Top'),
+                  child: const TomText('Scroll to Top'),
                 ),
                 const TomSizedBox(width: 8),
                 FilledButton.tonal(
@@ -887,7 +887,7 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
                       curve: Curves.easeOut,
                     );
                   },
-                  child: const Text('Scroll to Bottom'),
+                  child: const TomText('Scroll to Bottom'),
                 ),
               ],
             ),
@@ -900,14 +900,14 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
                     controller: _scrollController,
                     itemCount: 30,
                     itemBuilder: (context, index) {
-                      return ListTile(
-                        leading: CircleAvatar(child: Text('${index + 1}')),
-                        title: Text('Item ${index + 1}'),
+                      return TomListTile(
+                        leading: TomCircleAvatar(child: TomText('${index + 1}')),
+                        title: TomText('Item ${index + 1}'),
                       );
                     },
                   ),
                   if (_showScrollToTop)
-                    Positioned(
+                    TomPositioned(
                       right: 8,
                       bottom: 8,
                       child: FloatingActionButton.small(
@@ -950,7 +950,7 @@ class _NestedScrollSection extends StatelessWidget {
             children: [
               const TomPadding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: Text(
+                child: TomText(
                   'Categories',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
@@ -987,7 +987,7 @@ class _NestedScrollSection extends StatelessWidget {
                             ][index % 10],
                           ),
                           const TomSizedBox(height: 4),
-                          Text(
+                          TomText(
                             'Cat ${index + 1}',
                             style: const TextStyle(fontSize: 10),
                           ),
@@ -1000,7 +1000,7 @@ class _NestedScrollSection extends StatelessWidget {
               const TomSizedBox(height: 16),
               const TomPadding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: Text(
+                child: TomText(
                   'Featured',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
@@ -1025,7 +1025,7 @@ class _NestedScrollSection extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: TomCenter(
-                        child: Text(
+                        child: TomText(
                           'Featured ${index + 1}',
                           style: const TextStyle(
                             color: Colors.white,
@@ -1046,7 +1046,7 @@ class _NestedScrollSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              const TomText(
                 'BouncingScrollPhysics (iOS style):',
                 style: TextStyle(fontSize: 12),
               ),
@@ -1062,13 +1062,13 @@ class _NestedScrollSection extends StatelessWidget {
                       width: 60,
                       margin: const EdgeInsets.only(right: 8),
                       color: Colors.blue.shade200,
-                      child: TomCenter(child: Text('${i + 1}')),
+                      child: TomCenter(child: TomText('${i + 1}')),
                     ),
                   ),
                 ),
               ),
               const TomSizedBox(height: 12),
-              const Text(
+              const TomText(
                 'ClampingScrollPhysics (Android style):',
                 style: TextStyle(fontSize: 12),
               ),
@@ -1084,13 +1084,13 @@ class _NestedScrollSection extends StatelessWidget {
                       width: 60,
                       margin: const EdgeInsets.only(right: 8),
                       color: Colors.green.shade200,
-                      child: TomCenter(child: Text('${i + 1}')),
+                      child: TomCenter(child: TomText('${i + 1}')),
                     ),
                   ),
                 ),
               ),
               const TomSizedBox(height: 12),
-              const Text(
+              const TomText(
                 'NeverScrollableScrollPhysics:',
                 style: TextStyle(fontSize: 12),
               ),
@@ -1106,7 +1106,7 @@ class _NestedScrollSection extends StatelessWidget {
                       width: 60,
                       margin: const EdgeInsets.only(right: 8),
                       color: Colors.red.shade200,
-                      child: TomCenter(child: Text('${i + 1}')),
+                      child: TomCenter(child: TomText('${i + 1}')),
                     ),
                   ),
                 ),
@@ -1126,12 +1126,12 @@ class _NestedScrollSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),

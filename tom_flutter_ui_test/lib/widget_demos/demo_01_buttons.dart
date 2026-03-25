@@ -1384,7 +1384,7 @@ class _GroupVisibilitySection extends StatelessWidget {
                     ),
                     const TomSizedBox(width: 12),
                     TomExpanded(
-                      child: Text(
+                      child: TomText(
                         'Buttons use tomGroup to specify their required '
                         'permission group. TomGroupScope defines group boundaries '
                         'and the auth system controls visibility.',

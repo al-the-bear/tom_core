@@ -71,7 +71,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -79,7 +79,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -143,9 +143,9 @@ class _BackdropFilterSection extends StatelessWidget {
                   ),
                 ),
               ),
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
+                child: TomBackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                   child: TomContainer(
                     padding: const EdgeInsets.symmetric(
@@ -159,7 +159,7 @@ class _BackdropFilterSection extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
-                    child: const Text(
+                    child: const TomText(
                       'Frosted Glass',
                       style: TextStyle(
                         color: Colors.white,
@@ -204,12 +204,12 @@ class _BackdropFilterSection extends StatelessWidget {
   Widget _blurSection(String label, double sigma) {
     return TomExpanded(
       child: ClipRect(
-        child: BackdropFilter(
+        child: TomBackdropFilter(
           filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
           child: TomContainer(
             color: Colors.black.withValues(alpha: 0.1),
             child: TomCenter(
-              child: Text(
+              child: TomText(
                 label,
                 style: const TextStyle(
                   color: Colors.white,
@@ -232,12 +232,12 @@ class _BackdropFilterSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -264,11 +264,11 @@ class _ShaderMaskSection extends StatelessWidget {
         _buildDemoCard(
           'Gradient Text',
           'Text with gradient fill.',
-          ShaderMask(
+          TomShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Colors.purple, Colors.blue, Colors.cyan],
             ).createShader(bounds),
-            child: const Text(
+            child: const TomText(
               'Gradient Text',
               style: TextStyle(
                 fontSize: 32,
@@ -284,19 +284,19 @@ class _ShaderMaskSection extends StatelessWidget {
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ShaderMask(
+              TomShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.red, Colors.orange],
                 ).createShader(bounds),
                 child: const TomIcon(Icons.favorite, size: 48, color: Colors.white),
               ),
-              ShaderMask(
+              TomShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.green, Colors.teal],
                 ).createShader(bounds),
                 child: const TomIcon(Icons.eco, size: 48, color: Colors.white),
               ),
-              ShaderMask(
+              TomShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
                   colors: [Colors.blue, Colors.purple],
                 ).createShader(bounds),
@@ -308,7 +308,7 @@ class _ShaderMaskSection extends StatelessWidget {
         _buildDemoCard(
           'Fade Effect',
           'Gradient fade at edges.',
-          ShaderMask(
+          TomShaderMask(
             shaderCallback: (bounds) => LinearGradient(
               colors: [
                 Colors.transparent,
@@ -328,7 +328,7 @@ class _ShaderMaskSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: Text(
+                child: TomText(
                   'Faded Edges',
                   style: TextStyle(
                     color: Colors.white,
@@ -352,12 +352,12 @@ class _ShaderMaskSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -394,7 +394,7 @@ class _ClipPathSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: Text(
+                child: TomText(
                   'Wave',
                   style: TextStyle(
                     color: Colors.white,
@@ -419,7 +419,7 @@ class _ClipPathSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: Text(
+                child: TomText(
                   'Triangle',
                   style: TextStyle(
                     color: Colors.white,
@@ -437,24 +437,24 @@ class _ClipPathSection extends StatelessWidget {
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              ClipOval(
+              TomClipOval(
                 child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.teal,
                   child: const TomCenter(
-                    child: Text('Oval', style: TextStyle(color: Colors.white)),
+                    child: TomText('Oval', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: TomContainer(
                   width: 80,
                   height: 80,
                   color: Colors.purple,
                   child: const TomCenter(
-                    child: Text('Round', style: TextStyle(color: Colors.white)),
+                    child: TomText('Round', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
@@ -465,7 +465,7 @@ class _ClipPathSection extends StatelessWidget {
                   height: 80,
                   color: Colors.indigo,
                   child: const TomCenter(
-                    child: Text('Hex', style: TextStyle(color: Colors.white)),
+                    child: TomText('Hex', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
@@ -484,12 +484,12 @@ class _ClipPathSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -602,7 +602,7 @@ class _OpacitySection extends StatelessWidget {
   Widget _opacityBox(double opacity) {
     return TomColumn(
       children: [
-        Opacity(
+        TomOpacity(
           opacity: opacity,
           child: TomContainer(
             width: 60,
@@ -614,7 +614,7 @@ class _OpacitySection extends StatelessWidget {
           ),
         ),
         const TomSizedBox(height: 4),
-        Text('${(opacity * 100).toInt()}%'),
+        TomText('${(opacity * 100).toInt()}%'),
       ],
     );
   }
@@ -642,7 +642,7 @@ class _OpacitySection extends StatelessWidget {
           ),
         ),
         const TomSizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 10)),
+        TomText(label, style: const TextStyle(fontSize: 10)),
       ],
     );
   }
@@ -655,12 +655,12 @@ class _OpacitySection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -759,7 +759,7 @@ class _ShadowSection extends StatelessWidget {
               ],
             ),
             child: const TomCenter(
-              child: Text(
+              child: TomText(
                 'Multi',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -773,7 +773,7 @@ class _ShadowSection extends StatelessWidget {
   Widget _elevationCard(double elevation) {
     return TomColumn(
       children: [
-        Material(
+        TomMaterial(
           elevation: elevation,
           borderRadius: BorderRadius.circular(8),
           child: TomContainer(
@@ -784,7 +784,7 @@ class _ShadowSection extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TomCenter(
-              child: Text(
+              child: TomText(
                 '${elevation.toInt()}',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -792,7 +792,7 @@ class _ShadowSection extends StatelessWidget {
           ),
         ),
         const TomSizedBox(height: 8),
-        Text('E${elevation.toInt()}'),
+        TomText('E${elevation.toInt()}'),
       ],
     );
   }
@@ -810,7 +810,7 @@ class _ShadowSection extends StatelessWidget {
           ),
         ),
         const TomSizedBox(height: 8),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        TomText(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -823,12 +823,12 @@ class _ShadowSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),

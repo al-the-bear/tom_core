@@ -70,7 +70,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -78,7 +78,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -202,12 +202,12 @@ class _CircularProgressSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -285,7 +285,7 @@ class _LinearProgressSection extends StatelessWidget {
           'Progress bars with border radius.',
           TomColumn(
             children: [
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: TomLinearProgressIndicator(
                   value: 0.6,
@@ -294,7 +294,7 @@ class _LinearProgressSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 12),
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: TomLinearProgressIndicator(
                   value: 0.4,
@@ -318,12 +318,12 @@ class _LinearProgressSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -394,7 +394,7 @@ class _DeterminateProgressSectionState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Animated Progress',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
@@ -416,7 +416,7 @@ class _DeterminateProgressSectionState
                               backgroundColor: Colors.grey.shade200,
                             ),
                           ),
-                          Text(
+                          TomText(
                             '${(_progress * 100).toInt()}%',
                             style: const TextStyle(
                               fontSize: 20,
@@ -437,7 +437,7 @@ class _DeterminateProgressSectionState
                         backgroundColor: Colors.grey.shade200,
                       ),
                       const TomSizedBox(height: 8),
-                      Text('${(_progress * 100).toInt()}% complete'),
+                      TomText('${(_progress * 100).toInt()}% complete'),
                     ],
                   ),
                 ),
@@ -447,14 +447,14 @@ class _DeterminateProgressSectionState
             TomRow(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                FilledButton(
+                TomFilledButton(
                   onPressed: _isRunning ? null : _startProgress,
-                  child: const Text('Start'),
+                  child: const TomText('Start'),
                 ),
                 const TomSizedBox(width: 8),
-                OutlinedButton(
+                TomOutlinedButton(
                   onPressed: _resetProgress,
-                  child: const Text('Reset'),
+                  child: const TomText('Reset'),
                 ),
               ],
             ),
@@ -533,12 +533,12 @@ class _ShimmerSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -581,7 +581,7 @@ class _ShimmerCardState extends State<_ShimmerCard>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
+    return TomAnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
         return TomContainer(
@@ -768,12 +768,12 @@ class _CustomProgressSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -818,14 +818,14 @@ class _StepProgressDemoState extends State<_StepProgressDemo> {
         TomRow(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(
+            TomIconButton(
               onPressed: _currentStep > 1
                   ? () => setState(() => _currentStep--)
                   : null,
               icon: const TomIcon(Icons.arrow_back),
             ),
-            Text('Step $_currentStep of 4'),
-            IconButton(
+            TomText('Step $_currentStep of 4'),
+            TomIconButton(
               onPressed: _currentStep < 4
                   ? () => setState(() => _currentStep++)
                   : null,
@@ -850,7 +850,7 @@ class _StepProgressDemoState extends State<_StepProgressDemo> {
       child: TomCenter(
         child: isCompleted
             ? const TomIcon(Icons.check, color: Colors.white, size: 18)
-            : Text(
+            : TomText(
                 '$step',
                 style: TextStyle(
                   color: isCurrent ? Colors.white : Colors.grey.shade600,

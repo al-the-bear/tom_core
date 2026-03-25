@@ -75,7 +75,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -83,7 +83,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -122,48 +122,48 @@ class _DataTableSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Basic DataTable',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            const Text(
+            const TomText(
               'Standard data table with columns and rows.',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
-            SingleChildScrollView(
+            TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomDataTable(
                 columns: const [
-                  DataColumn(label: Text('ID')),
-                  DataColumn(label: Text('Name')),
-                  DataColumn(label: Text('Email')),
-                  DataColumn(label: Text('Role'), numeric: true),
+                  DataColumn(label: TomText('ID')),
+                  DataColumn(label: TomText('Name')),
+                  DataColumn(label: TomText('Email')),
+                  DataColumn(label: TomText('Role'), numeric: true),
                 ],
                 rows: const [
                   DataRow(
                     cells: [
-                      DataCell(Text('1')),
-                      DataCell(Text('John Doe')),
-                      DataCell(Text('john@example.com')),
-                      DataCell(Text('Admin')),
+                      DataCell(TomText('1')),
+                      DataCell(TomText('John Doe')),
+                      DataCell(TomText('john@example.com')),
+                      DataCell(TomText('Admin')),
                     ],
                   ),
                   DataRow(
                     cells: [
-                      DataCell(Text('2')),
-                      DataCell(Text('Jane Smith')),
-                      DataCell(Text('jane@example.com')),
-                      DataCell(Text('Editor')),
+                      DataCell(TomText('2')),
+                      DataCell(TomText('Jane Smith')),
+                      DataCell(TomText('jane@example.com')),
+                      DataCell(TomText('Editor')),
                     ],
                   ),
                   DataRow(
                     cells: [
-                      DataCell(Text('3')),
-                      DataCell(Text('Bob Wilson')),
-                      DataCell(Text('bob@example.com')),
-                      DataCell(Text('Viewer')),
+                      DataCell(TomText('3')),
+                      DataCell(TomText('Bob Wilson')),
+                      DataCell(TomText('bob@example.com')),
+                      DataCell(TomText('Viewer')),
                     ],
                   ),
                 ],
@@ -226,34 +226,34 @@ class _SortableDataTableSectionState extends State<_SortableDataTableSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Click column headers to sort',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
-            SingleChildScrollView(
+            TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomDataTable(
                 sortColumnIndex: _sortColumnIndex,
                 sortAscending: _sortAscending,
                 columns: [
                   DataColumn(
-                    label: const Text('ID'),
+                    label: const TomText('ID'),
                     numeric: true,
                     onSort: (i, asc) => _sort((d) => d['id'] as int, i, asc),
                   ),
                   DataColumn(
-                    label: const Text('Name'),
+                    label: const TomText('Name'),
                     onSort:
                         (i, asc) => _sort((d) => d['name'] as String, i, asc),
                   ),
                   DataColumn(
-                    label: const Text('Sales'),
+                    label: const TomText('Sales'),
                     numeric: true,
                     onSort: (i, asc) => _sort((d) => d['sales'] as int, i, asc),
                   ),
                   DataColumn(
-                    label: const Text('Region'),
+                    label: const TomText('Region'),
                     onSort:
                         (i, asc) => _sort((d) => d['region'] as String, i, asc),
                   ),
@@ -262,10 +262,10 @@ class _SortableDataTableSectionState extends State<_SortableDataTableSection> {
                     _data.map((item) {
                       return DataRow(
                         cells: [
-                          DataCell(Text('${item['id']}')),
-                          DataCell(Text(item['name'])),
-                          DataCell(Text('\$${item['sales']}')),
-                          DataCell(Text(item['region'])),
+                          DataCell(TomText('${item['id']}')),
+                          DataCell(TomText(item['name'])),
+                          DataCell(TomText('\$${item['sales']}')),
+                          DataCell(TomText(item['region'])),
                         ],
                       );
                     }).toList(),
@@ -312,7 +312,7 @@ class _SelectableDataTableSectionState
           children: [
             TomRow(
               children: [
-                Text(
+                TomText(
                   '${_selectedIds.length} selected',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
@@ -321,20 +321,20 @@ class _SelectableDataTableSectionState
                   TextButton.icon(
                     onPressed: () => setState(() => _selectedIds.clear()),
                     icon: const TomIcon(Icons.clear, size: 16),
-                    label: const Text('Clear'),
+                    label: const TomText('Clear'),
                   ),
               ],
             ),
             const TomSizedBox(height: 12),
-            SingleChildScrollView(
+            TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomDataTable(
                 showCheckboxColumn: true,
                 columns: const [
-                  DataColumn(label: Text('Product')),
-                  DataColumn(label: Text('Price'), numeric: true),
-                  DataColumn(label: Text('Stock'), numeric: true),
-                  DataColumn(label: Text('Actions')),
+                  DataColumn(label: TomText('Product')),
+                  DataColumn(label: TomText('Price'), numeric: true),
+                  DataColumn(label: TomText('Stock'), numeric: true),
+                  DataColumn(label: TomText('Actions')),
                 ],
                 rows:
                     _data.map((item) {
@@ -351,18 +351,18 @@ class _SelectableDataTableSectionState
                           });
                         },
                         cells: [
-                          DataCell(Text(item['product'])),
-                          DataCell(Text('\$${item['price']}')),
-                          DataCell(Text('${item['stock']}')),
+                          DataCell(TomText(item['product'])),
+                          DataCell(TomText('\$${item['price']}')),
+                          DataCell(TomText('${item['stock']}')),
                           DataCell(
                             TomRow(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                IconButton(
+                                TomIconButton(
                                   icon: const TomIcon(Icons.edit, size: 18),
                                   onPressed: () {},
                                 ),
-                                IconButton(
+                                TomIconButton(
                                   icon: const TomIcon(Icons.delete, size: 18),
                                   onPressed: () {},
                                 ),
@@ -405,28 +405,28 @@ class _PaginatedDataTableSectionState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SingleChildScrollView(
+            TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomSizedBox(
                 width: 600,
                 child: TomPaginatedDataTable(
-                  header: const Text('Orders'),
+                  header: const TomText('Orders'),
                   actions: [
-                    IconButton(
+                    TomIconButton(
                       icon: const TomIcon(Icons.refresh),
                       onPressed: () {},
                     ),
-                    IconButton(
+                    TomIconButton(
                       icon: const TomIcon(Icons.download),
                       onPressed: () {},
                     ),
                   ],
                   columns: const [
-                    DataColumn(label: Text('Order #')),
-                    DataColumn(label: Text('Customer')),
-                    DataColumn(label: Text('Date')),
-                    DataColumn(label: Text('Amount'), numeric: true),
-                    DataColumn(label: Text('Status')),
+                    DataColumn(label: TomText('Order #')),
+                    DataColumn(label: TomText('Customer')),
+                    DataColumn(label: TomText('Date')),
+                    DataColumn(label: TomText('Amount'), numeric: true),
+                    DataColumn(label: TomText('Status')),
                   ],
                   source: _OrderDataSource(),
                   rowsPerPage: _rowsPerPage,
@@ -469,10 +469,10 @@ class _OrderDataSource extends DataTableSource {
     final order = _orders[index];
     return DataRow(
       cells: [
-        DataCell(Text(order['id'])),
-        DataCell(Text(order['customer'])),
-        DataCell(Text(order['date'])),
-        DataCell(Text('\$${(order['amount'] as double).toStringAsFixed(2)}')),
+        DataCell(TomText(order['id'])),
+        DataCell(TomText(order['customer'])),
+        DataCell(TomText(order['date'])),
+        DataCell(TomText('\$${(order['amount'] as double).toStringAsFixed(2)}')),
         DataCell(_buildStatusChip(order['status'])),
       ],
     );
@@ -493,8 +493,8 @@ class _OrderDataSource extends DataTableSource {
       default:
         color = Colors.grey;
     }
-    return Chip(
-      label: Text(status, style: const TextStyle(fontSize: 10)),
+    return TomChip(
+      label: TomText(status, style: const TextStyle(fontSize: 10)),
       backgroundColor: color.withValues(alpha: 0.2),
       side: BorderSide(color: color),
       visualDensity: VisualDensity.compact,
@@ -525,7 +525,7 @@ class _TableWidgetSection extends StatelessWidget {
         _buildDemoCard(
           'Basic Table',
           'Low-level Table widget for simple layouts.',
-          Table(
+          TomTable(
             border: TableBorder.all(color: Colors.grey.shade300),
             columnWidths: const {
               0: FlexColumnWidth(1),
@@ -538,7 +538,7 @@ class _TableWidgetSection extends StatelessWidget {
                 children: [
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Header 1',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -548,7 +548,7 @@ class _TableWidgetSection extends StatelessWidget {
                   ),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Header 2',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -558,7 +558,7 @@ class _TableWidgetSection extends StatelessWidget {
                   ),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Header 3',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
@@ -570,22 +570,22 @@ class _TableWidgetSection extends StatelessWidget {
               ),
               TableRow(
                 children: [
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Row 1')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Row 1')),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text('Extended content for row 1'),
+                    child: TomText('Extended content for row 1'),
                   ),
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Value 1')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Value 1')),
                 ],
               ),
               TableRow(
                 children: [
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Row 2')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Row 2')),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text('Data for row 2'),
+                    child: TomText('Data for row 2'),
                   ),
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Value 2')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Value 2')),
                 ],
               ),
             ],
@@ -594,7 +594,7 @@ class _TableWidgetSection extends StatelessWidget {
         _buildDemoCard(
           'Column Width Types',
           'Different column width specifications.',
-          Table(
+          TomTable(
             border: TableBorder.all(color: Colors.grey.shade300),
             columnWidths: const {
               0: FixedColumnWidth(80),
@@ -610,28 +610,28 @@ class _TableWidgetSection extends StatelessWidget {
                 children: [
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Fixed\n80px',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Flex (2)',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Flex (1)',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                   TomPadding(
                     padding: EdgeInsets.all(8),
-                    child: Text(
+                    child: TomText(
                       'Intrinsic',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
@@ -640,10 +640,10 @@ class _TableWidgetSection extends StatelessWidget {
               ),
               const TableRow(
                 children: [
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('A')),
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Takes 2x space')),
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('1x space')),
-                  TomPadding(padding: EdgeInsets.all(8), child: Text('Fits content')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('A')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Takes 2x space')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('1x space')),
+                  TomPadding(padding: EdgeInsets.all(8), child: TomText('Fits content')),
                 ],
               ),
             ],
@@ -661,12 +661,12 @@ class _TableWidgetSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -698,9 +698,9 @@ class _StyledTablesSection extends StatelessWidget {
               Theme.of(context).colorScheme.primaryContainer,
             ),
             columns: const [
-              DataColumn(label: Text('Name')),
-              DataColumn(label: Text('Department')),
-              DataColumn(label: Text('Salary'), numeric: true),
+              DataColumn(label: TomText('Name')),
+              DataColumn(label: TomText('Department')),
+              DataColumn(label: TomText('Salary'), numeric: true),
             ],
             rows: List.generate(5, (index) {
               return DataRow(
@@ -708,14 +708,14 @@ class _StyledTablesSection extends StatelessWidget {
                   return index.isEven ? Colors.grey.withValues(alpha: 0.1) : null;
                 }),
                 cells: [
-                  DataCell(Text('Employee ${index + 1}')),
+                  DataCell(TomText('Employee ${index + 1}')),
                   DataCell(
-                    Text(
+                    TomText(
                       ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance'][
                           index],
                     ),
                   ),
-                  DataCell(Text('\$${50000 + index * 5000}')),
+                  DataCell(TomText('\$${50000 + index * 5000}')),
                 ],
               );
             }),
@@ -726,9 +726,9 @@ class _StyledTablesSection extends StatelessWidget {
           'Rows highlight on hover.',
           TomDataTable(
             columns: const [
-              DataColumn(label: Text('Item')),
-              DataColumn(label: Text('Quantity'), numeric: true),
-              DataColumn(label: Text('Price'), numeric: true),
+              DataColumn(label: TomText('Item')),
+              DataColumn(label: TomText('Quantity'), numeric: true),
+              DataColumn(label: TomText('Price'), numeric: true),
             ],
             rows: List.generate(4, (index) {
               return DataRow(
@@ -741,9 +741,9 @@ class _StyledTablesSection extends StatelessWidget {
                   return null;
                 }),
                 cells: [
-                  DataCell(Text('Product ${index + 1}')),
-                  DataCell(Text('${(index + 1) * 5}')),
-                  DataCell(Text('\$${(index + 1) * 19.99}')),
+                  DataCell(TomText('Product ${index + 1}')),
+                  DataCell(TomText('${(index + 1) * 5}')),
+                  DataCell(TomText('\$${(index + 1) * 19.99}')),
                 ],
               );
             }),
@@ -764,16 +764,16 @@ class _StyledTablesSection extends StatelessWidget {
             ),
             child: TomDataTable(
               columns: const [
-                DataColumn(label: Text('Code')),
-                DataColumn(label: Text('Item')),
-                DataColumn(label: Text('Qty'), numeric: true),
+                DataColumn(label: TomText('Code')),
+                DataColumn(label: TomText('Item')),
+                DataColumn(label: TomText('Qty'), numeric: true),
               ],
               rows: List.generate(6, (index) {
                 return DataRow(
                   cells: [
-                    DataCell(Text('SKU${1000 + index}')),
-                    DataCell(Text('Item ${index + 1}')),
-                    DataCell(Text('${(index + 1) * 10}')),
+                    DataCell(TomText('SKU${1000 + index}')),
+                    DataCell(TomText('Item ${index + 1}')),
+                    DataCell(TomText('${(index + 1) * 10}')),
                   ],
                 );
               }),
@@ -792,17 +792,17 @@ class _StyledTablesSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
-            SingleChildScrollView(
+            TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: child,
             ),

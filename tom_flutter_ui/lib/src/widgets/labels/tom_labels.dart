@@ -79,8 +79,18 @@ class TomText extends TomLabelBase {
 
 /// Tom wrapper for [SelectableText].
 ///
-/// Resolves the text string from resources when [text] is not provided.
+/// Provides both positional [data] parameter (matching Flutter's SelectableText API)
+/// and optional resource resolution when neither [data] nor [text] is provided.
+///
+/// Drop-in replacement for Flutter's [SelectableText] widget:
+/// ```dart
+/// TomSelectableText('Hello')  // Same as SelectableText('Hello')
+/// ```
 class TomSelectableText extends TomLabelBase {
+  /// The text to display (positional parameter for Flutter API compatibility).
+  final String? data;
+
+  /// Alternative named text parameter for resource-based resolution.
   final String? text;
   final TextStyle? style;
   final StrutStyle? strutStyle;
@@ -101,8 +111,19 @@ class TomSelectableText extends TomLabelBase {
   final String? semanticsLabel;
   final TextWidthBasis? textWidthBasis;
   final TextHeightBehavior? textHeightBehavior;
+  final EditableTextContextMenuBuilder? contextMenuBuilder;
+  final TextMagnifierConfiguration? magnifierConfiguration;
+  final TextSelectionControls? selectionControls;
+  final SelectionChangedCallback? onSelectionChanged;
 
-  const TomSelectableText({
+  /// Creates a TomSelectableText widget.
+  ///
+  /// Use the positional [data] parameter for Flutter API compatibility:
+  /// ```dart
+  /// TomSelectableText('Hello')  // Same as SelectableText('Hello')
+  /// ```
+  const TomSelectableText(
+    String? this.data, {
     super.key,
     super.tomId,
     super.tomGroup,
@@ -126,11 +147,15 @@ class TomSelectableText extends TomLabelBase {
     this.semanticsLabel,
     this.textWidthBasis,
     this.textHeightBehavior,
+    this.contextMenuBuilder,
+    this.magnifierConfiguration,
+    this.selectionControls,
+    this.onSelectionChanged,
   });
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResource(context, 'label');
+    final resolvedText = data ?? text ?? resolveResource(context, 'label');
 
     return SelectableText(
       resolvedText,
@@ -152,6 +177,10 @@ class TomSelectableText extends TomLabelBase {
       semanticsLabel: semanticsLabel,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
+      contextMenuBuilder: contextMenuBuilder,
+      magnifierConfiguration: magnifierConfiguration,
+      selectionControls: selectionControls,
+      onSelectionChanged: onSelectionChanged,
     );
   }
 }
@@ -415,6 +444,10 @@ class TomChip extends TomLabelBase {
   final Color? shadowColor;
   final Color? surfaceTintColor;
   final double? elevation;
+  final MaterialTapTargetSize? materialTapTargetSize;
+  final VisualDensity? visualDensity;
+  final IconThemeData? iconTheme;
+  final WidgetStateProperty<Color?>? color;
 
   const TomChip({
     super.key,
@@ -437,6 +470,10 @@ class TomChip extends TomLabelBase {
     this.shadowColor,
     this.surfaceTintColor,
     this.elevation,
+    this.materialTapTargetSize,
+    this.visualDensity,
+    this.iconTheme,
+    this.color,
   });
 
   @override
@@ -462,6 +499,10 @@ class TomChip extends TomLabelBase {
       shadowColor: shadowColor,
       surfaceTintColor: surfaceTintColor,
       elevation: elevation,
+      materialTapTargetSize: materialTapTargetSize,
+      visualDensity: visualDensity,
+      iconTheme: iconTheme,
+      color: color,
     );
   }
 }

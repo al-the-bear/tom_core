@@ -69,7 +69,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -77,7 +77,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -204,7 +204,7 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        TomInkWell(
           onTap: hasChildren
               ? () => setState(() => node.isExpanded = !node.isExpanded)
               : null,
@@ -231,7 +231,7 @@ class _BasicTreeSectionState extends State<_BasicTreeSection> {
                 TomExpanded(
                   child: TomPadding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(node.title),
+                    child: TomText(node.title),
                   ),
                 ),
               ],
@@ -319,7 +319,7 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
           children: [
             TomRow(
               children: [
-                Text(
+                TomText(
                   'EXPLORER',
                   style: TextStyle(
                     color: Colors.grey.shade500,
@@ -345,7 +345,7 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        TomInkWell(
           onTap: isDir
               ? () => setState(() => file.isExpanded = !file.isExpanded)
               : null,
@@ -367,7 +367,7 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
                   color: _getFileColor(file),
                 ),
                 const TomSizedBox(width: 6),
-                Text(
+                TomText(
                   file.name,
                   style: TextStyle(
                     color: Colors.grey.shade300,
@@ -485,7 +485,7 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
             if (_selectedId != null)
               TomPadding(
                 padding: const EdgeInsets.all(8.0),
-                child: Text(
+                child: TomText(
                   'Selected: $_selectedId',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
@@ -509,7 +509,7 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
             color: isSelected ? Colors.blue.shade50 : null,
             borderRadius: BorderRadius.circular(4),
           ),
-          child: InkWell(
+          child: TomInkWell(
             onTap: () {
               if (hasChildren) {
                 setState(() => node.isExpanded = !node.isExpanded);
@@ -542,7 +542,7 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
                     const TomSizedBox(width: 8),
                   ],
                   TomExpanded(
-                    child: Text(
+                    child: TomText(
                       node.title,
                       style: TextStyle(
                         color: isSelected ? Colors.blue : null,
@@ -641,7 +641,7 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
               TomSizedBox(
                 width: 24,
                 child: hasChildren
-                    ? GestureDetector(
+                    ? TomGestureDetector(
                         onTap: () =>
                             setState(() => node.isExpanded = !node.isExpanded),
                         child: TomIcon(
@@ -653,7 +653,7 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
                       )
                     : null,
               ),
-              Checkbox(
+              TomCheckbox(
                 value: checkState == _CheckState.checked
                     ? true
                     : checkState == _CheckState.partial
@@ -665,7 +665,7 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
                 },
               ),
               TomExpanded(
-                child: GestureDetector(
+                child: TomGestureDetector(
                   onTap: () {
                     if (hasChildren) {
                       setState(() => node.isExpanded = !node.isExpanded);
@@ -673,7 +673,7 @@ class _CheckboxTreeSectionState extends State<_CheckboxTreeSection> {
                   },
                   child: TomPadding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
+                    child: TomText(
                       node.title,
                       style: TextStyle(
                         fontWeight: hasChildren ? FontWeight.w500 : null,
@@ -795,7 +795,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               'Organization Chart',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -819,7 +819,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
           children: [
             ...List.generate(level, (i) => _buildConnector(i == level - 1)),
             TomExpanded(
-              child: InkWell(
+              child: TomInkWell(
                 onTap: hasChildren
                     ? () => setState(() => node.isExpanded = !node.isExpanded)
                     : null,
@@ -839,10 +839,10 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                   ),
                   child: TomRow(
                     children: [
-                      CircleAvatar(
+                      TomCircleAvatar(
                         backgroundColor: node.color,
                         radius: 18,
-                        child: Text(
+                        child: TomText(
                           node.avatar,
                           style: const TextStyle(
                             color: Colors.white,
@@ -855,11 +855,11 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
                         child: TomColumn(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
+                            TomText(
                               node.name,
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            Text(
+                            TomText(
                               node.role,
                               style: TextStyle(
                                 fontSize: 12,

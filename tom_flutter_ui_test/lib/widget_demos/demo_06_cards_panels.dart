@@ -69,7 +69,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -77,7 +77,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -118,7 +118,7 @@ class _CardSection extends StatelessWidget {
           const TomCard(
             child: TomPadding(
               padding: EdgeInsets.all(16),
-              child: Text('This is a basic card with some content inside.'),
+              child: TomText('This is a basic card with some content inside.'),
             ),
           ),
         ),
@@ -135,11 +135,11 @@ class _CardSection extends StatelessWidget {
                 children: [
                   const TomIcon(Icons.cloud, size: 48, color: Colors.blue),
                   const TomSizedBox(height: 8),
-                  Text(
+                  TomText(
                     'Elevated Card',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const Text('With shadow'),
+                  const TomText('With shadow'),
                 ],
               ),
             ),
@@ -162,7 +162,7 @@ class _CardSection extends StatelessWidget {
                   TomIcon(Icons.info_outline),
                   TomSizedBox(width: 12),
                   TomExpanded(
-                    child: Text('This is an outlined card without elevation.'),
+                    child: TomText('This is an outlined card without elevation.'),
                   ),
                 ],
               ),
@@ -186,7 +186,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   const TomSizedBox(width: 12),
                   TomExpanded(
-                    child: Text(
+                    child: TomText(
                       'Tip: You can use filled cards for emphasis.',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -224,17 +224,17 @@ class _CardSection extends StatelessWidget {
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TomText(
                         'Card Title',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const TomSizedBox(height: 4),
-                      const Text('Card description goes here with some text.'),
+                      const TomText('Card description goes here with some text.'),
                       const TomSizedBox(height: 8),
                       TomRow(
                         children: [
-                          TextButton(onPressed: () {}, child: const Text('ACTION 1')),
-                          TextButton(onPressed: () {}, child: const Text('ACTION 2')),
+                          TomTextButton(onPressed: () {}, child: const TomText('ACTION 1')),
+                          TomTextButton(onPressed: () {}, child: const TomText('ACTION 2')),
                         ],
                       ),
                     ],
@@ -256,7 +256,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: Text('Square')),
+                    child: TomCenter(child: TomText('Square')),
                   ),
                 ),
               ),
@@ -268,7 +268,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: Text('Rounded')),
+                    child: TomCenter(child: TomText('Rounded')),
                   ),
                 ),
               ),
@@ -280,7 +280,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: Text('Stadium')),
+                    child: TomCenter(child: TomText('Stadium')),
                   ),
                 ),
               ),
@@ -299,12 +299,12 @@ class _CardSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -331,31 +331,31 @@ class _ExpansionTileSection extends StatelessWidget {
         children: [
           const TomExpansionTile(
             leading: TomIcon(Icons.folder),
-            title: Text('Basic ExpansionTile'),
-            subtitle: Text('Tap to expand'),
+            title: TomText('Basic ExpansionTile'),
+            subtitle: TomText('Tap to expand'),
             children: [
-              ListTile(title: Text('Item 1')),
-              ListTile(title: Text('Item 2')),
-              ListTile(title: Text('Item 3')),
+              TomListTile(title: TomText('Item 1')),
+              TomListTile(title: TomText('Item 2')),
+              TomListTile(title: TomText('Item 3')),
             ],
           ),
           const TomDivider(height: 1),
           TomExpansionTile(
             tomId: 'demo.expansion.styled',
             leading: const TomIcon(Icons.settings),
-            title: const Text('Styled ExpansionTile'),
+            title: const TomText('Styled ExpansionTile'),
             iconColor: Colors.purple,
             collapsedIconColor: Colors.grey,
             backgroundColor: Colors.purple.shade50,
             children: [
-              ListTile(
+              TomListTile(
                 leading: TomIcon(Icons.brightness_6),
-                title: Text('Appearance'),
+                title: TomText('Appearance'),
                 trailing: TomIcon(Icons.chevron_right),
               ),
-              ListTile(
+              TomListTile(
                 leading: TomIcon(Icons.language),
-                title: Text('Language'),
+                title: TomText('Language'),
                 trailing: TomIcon(Icons.chevron_right),
               ),
             ],
@@ -365,12 +365,12 @@ class _ExpansionTileSection extends StatelessWidget {
             tomId: 'demo.expansion.profile',
             initiallyExpanded: true,
             shape: Border.all(color: Colors.transparent),
-            leading: const CircleAvatar(
+            leading: const TomCircleAvatar(
               backgroundColor: Colors.blue,
               child: TomIcon(Icons.person, color: Colors.white),
             ),
-            title: const Text('Initially Expanded'),
-            subtitle: const Text('User Profile'),
+            title: const TomText('Initially Expanded'),
+            subtitle: const TomText('User Profile'),
             children: [
               TomPadding(
                 padding: const EdgeInsets.all(16),
@@ -397,8 +397,8 @@ class _ExpansionTileSection extends StatelessWidget {
       child: TomRow(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          TomText(label, style: const TextStyle(color: Colors.grey)),
+          TomText(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -412,35 +412,35 @@ class _NestedExpansionDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const TomExpansionTile(
       leading: TomIcon(Icons.menu_book),
-      title: Text('Nested ExpansionTiles'),
-      subtitle: Text('Documentation'),
+      title: TomText('Nested ExpansionTiles'),
+      subtitle: TomText('Documentation'),
       children: [
         TomExpansionTile(
-          title: Text('Getting Started'),
+          title: TomText('Getting Started'),
           leading: TomIcon(Icons.play_arrow),
           tilePadding: EdgeInsets.only(left: 32, right: 16),
           children: [
-            ListTile(
-              title: Text('Installation'),
+            TomListTile(
+              title: TomText('Installation'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
-            ListTile(
-              title: Text('Configuration'),
+            TomListTile(
+              title: TomText('Configuration'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
           ],
         ),
         TomExpansionTile(
-          title: Text('API Reference'),
+          title: TomText('API Reference'),
           leading: TomIcon(Icons.code),
           tilePadding: EdgeInsets.only(left: 32, right: 16),
           children: [
-            ListTile(
-              title: Text('Components'),
+            TomListTile(
+              title: TomText('Components'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
-            ListTile(
-              title: Text('Utilities'),
+            TomListTile(
+              title: TomText('Utilities'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
           ],
@@ -472,12 +472,12 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'ExpansionPanelList',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 8),
-            const Text(
+            const TomText(
               'Accordion-style panels where only one can be expanded at a time.',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
@@ -493,14 +493,14 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
               children: [
                 ExpansionPanel(
                   headerBuilder: (context, isExpanded) {
-                    return const ListTile(
+                    return const TomListTile(
                       leading: TomIcon(Icons.question_answer),
-                      title: Text('What is Flutter?'),
+                      title: TomText('What is Flutter?'),
                     );
                   },
                   body: const TomPadding(
                     padding: EdgeInsets.all(16),
-                    child: Text(
+                    child: TomText(
                       'Flutter is Google\'s UI toolkit for building beautiful, '
                       'natively compiled applications for mobile, web, and desktop '
                       'from a single codebase.',
@@ -510,14 +510,14 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                 ),
                 ExpansionPanel(
                   headerBuilder: (context, isExpanded) {
-                    return const ListTile(
+                    return const TomListTile(
                       leading: TomIcon(Icons.code),
-                      title: Text('What is Dart?'),
+                      title: TomText('What is Dart?'),
                     );
                   },
                   body: const TomPadding(
                     padding: EdgeInsets.all(16),
-                    child: Text(
+                    child: TomText(
                       'Dart is a client-optimized programming language for apps on '
                       'multiple platforms. It is developed by Google and is used to '
                       'build mobile, desktop, server, and web applications.',
@@ -527,14 +527,14 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                 ),
                 ExpansionPanel(
                   headerBuilder: (context, isExpanded) {
-                    return const ListTile(
+                    return const TomListTile(
                       leading: TomIcon(Icons.widgets),
-                      title: Text('What are widgets?'),
+                      title: TomText('What are widgets?'),
                     );
                   },
                   body: const TomPadding(
                     padding: EdgeInsets.all(16),
-                    child: Text(
+                    child: TomText(
                       'Widgets are the basic building blocks of a Flutter app\'s '
                       'user interface. Each widget is an immutable declaration of '
                       'part of the user interface.',
@@ -628,16 +628,16 @@ class _PanelPatternsSection extends StatelessWidget {
                   ('Secure', 'Enterprise-grade security', Icons.security),
                   ('Scalable', 'Grows with your needs', Icons.trending_up),
                 ].map((f) {
-                  return ListTile(
-                    leading: CircleAvatar(
+                  return TomListTile(
+                    leading: TomCircleAvatar(
                       backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                       child: TomIcon(
                         f.$3,
                         color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    title: Text(f.$1),
-                    subtitle: Text(f.$2),
+                    title: TomText(f.$1),
+                    subtitle: TomText(f.$2),
                   );
                 }).toList(),
           ),
@@ -667,11 +667,11 @@ class _PanelPatternsSection extends StatelessWidget {
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TomText(
                   title,
                   style: TextStyle(fontWeight: FontWeight.bold, color: color),
                 ),
-                Text(message, style: const TextStyle(fontSize: 12)),
+                TomText(message, style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
@@ -690,7 +690,7 @@ class _PanelPatternsSection extends StatelessWidget {
           children: [
             TomIcon(icon, color: color),
             const TomSizedBox(height: 8),
-            Text(
+            TomText(
               value,
               style: TextStyle(
                 fontSize: 18,
@@ -698,7 +698,7 @@ class _PanelPatternsSection extends StatelessWidget {
                 color: color,
               ),
             ),
-            Text(label, style: const TextStyle(fontSize: 12)),
+            TomText(label, style: const TextStyle(fontSize: 12)),
           ],
         ),
       ),
@@ -713,12 +713,12 @@ class _PanelPatternsSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -759,10 +759,10 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
             runSpacing: 8,
             children: List.generate(4, (index) {
               final isSelected = _selectedIndex == index;
-              return InkWell(
+              return TomInkWell(
                 onTap: () => setState(() => _selectedIndex = index),
                 borderRadius: BorderRadius.circular(12),
-                child: AnimatedContainer(
+                child: TomAnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   width: 80,
                   height: 80,
@@ -791,7 +791,7 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
                                 : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       const TomSizedBox(height: 4),
-                      Text(
+                      TomText(
                         ['Home', 'Work', 'School', 'Park'][index],
                         style: TextStyle(
                           fontSize: 10,
@@ -829,21 +829,21 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
+                          TomText(
                             'Item ${index + 1}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          const Text(
+                          const TomText(
                             'Description here',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
                       ),
                     ),
-                    Positioned(
+                    TomPositioned(
                       top: 4,
                       right: 4,
-                      child: IconButton(
+                      child: TomIconButton(
                         icon: TomIcon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: isFavorite ? Colors.red : Colors.grey,
@@ -878,12 +878,12 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -915,12 +915,12 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Dismissible Cards',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            const Text(
+            const TomText(
               'Swipe left or right to dismiss.',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
@@ -928,13 +928,13 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
             ..._items.map((item) {
               return TomPadding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Dismissible(
+                child: TomDismissible(
                   key: Key(item),
                   onDismissed: (direction) {
                     setState(() => _items.remove(item));
                     ScaffoldMessenger.of(context).showSnackBar(
                       TomSnackBar(
-                        content: Text('$item dismissed'),
+                        content: TomText('$item dismissed'),
                         action: SnackBarAction(
                           label: 'Undo',
                           onPressed: () {
@@ -964,10 +964,10 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
                   ),
                   child: TomCard(
                     margin: EdgeInsets.zero,
-                    child: ListTile(
+                    child: TomListTile(
                       leading: const TomIcon(Icons.drag_indicator),
-                      title: Text(item),
-                      subtitle: const Text('Swipe to dismiss'),
+                      title: TomText(item),
+                      subtitle: const TomText('Swipe to dismiss'),
                     ),
                   ),
                 ),
@@ -977,7 +977,7 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
               const TomCenter(
                 child: TomPadding(
                   padding: EdgeInsets.all(16),
-                  child: Text('All items dismissed!'),
+                  child: TomText('All items dismissed!'),
                 ),
               ),
           ],

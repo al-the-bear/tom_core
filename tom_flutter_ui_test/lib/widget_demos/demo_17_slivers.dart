@@ -15,21 +15,21 @@ class SliversDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
-      child: Scaffold(
-        body: NestedScrollView(
+      child: TomScaffold(
+        body: TomNestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) => [
             SliverAppBar(
               floating: true,
               pinned: true,
               snap: false,
               automaticallyImplyLeading: false,
-              title: const Text('Slivers Demo'),
-              bottom: const TabBar(
+              title: const TomText('Slivers Demo'),
+              bottom: const TomTabBar(
                 tabs: [
-                  Tab(text: 'App Bar'),
-                  Tab(text: 'Lists'),
-                  Tab(text: 'Grids'),
-                  Tab(text: 'Combined'),
+                  TomTab(text: 'App Bar'),
+                  TomTab(text: 'Lists'),
+                  TomTab(text: 'Grids'),
+                  TomTab(text: 'Combined'),
                 ],
               ),
             ),
@@ -65,17 +65,17 @@ class _SliverAppBarTab extends StatelessWidget {
           'Appears when scrolling up.',
           TomSizedBox(
             height: 300,
-            child: CustomScrollView(
+            child: TomCustomScrollView(
               slivers: [
                 SliverAppBar(
                   floating: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.blue,
-                  title: const Text('Floating'),
+                  title: const TomText('Floating'),
                 ),
-                SliverList(
+                TomSliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => TomListTile(title: Text('Item $index')),
+                    (context, index) => TomListTile(title: TomText('Item $index')),
                     childCount: 20,
                   ),
                 ),
@@ -89,17 +89,17 @@ class _SliverAppBarTab extends StatelessWidget {
           'Stays at top when scrolling.',
           TomSizedBox(
             height: 300,
-            child: CustomScrollView(
+            child: TomCustomScrollView(
               slivers: [
                 SliverAppBar(
                   pinned: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.green,
-                  title: const Text('Pinned'),
+                  title: const TomText('Pinned'),
                 ),
-                SliverList(
+                TomSliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => TomListTile(title: Text('Item $index')),
+                    (context, index) => TomListTile(title: TomText('Item $index')),
                     childCount: 20,
                   ),
                 ),
@@ -113,7 +113,7 @@ class _SliverAppBarTab extends StatelessWidget {
           'Expands with flexible space.',
           TomSizedBox(
             height: 350,
-            child: CustomScrollView(
+            child: TomCustomScrollView(
               slivers: [
                 SliverAppBar(
                   pinned: true,
@@ -121,7 +121,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.purple,
                   flexibleSpace: FlexibleSpaceBar(
-                    title: const Text('Expandable'),
+                    title: const TomText('Expandable'),
                     background: TomContainer(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -136,9 +136,9 @@ class _SliverAppBarTab extends StatelessWidget {
                     ),
                   ),
                 ),
-                SliverList(
+                TomSliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => TomListTile(title: Text('Item $index')),
+                    (context, index) => TomListTile(title: TomText('Item $index')),
                     childCount: 20,
                   ),
                 ),
@@ -152,7 +152,7 @@ class _SliverAppBarTab extends StatelessWidget {
           'Snaps to expanded/collapsed.',
           TomSizedBox(
             height: 350,
-            child: CustomScrollView(
+            child: TomCustomScrollView(
               slivers: [
                 SliverAppBar(
                   floating: true,
@@ -162,12 +162,12 @@ class _SliverAppBarTab extends StatelessWidget {
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.orange,
                   flexibleSpace: const FlexibleSpaceBar(
-                    title: Text('Snap'),
+                    title: TomText('Snap'),
                   ),
                 ),
-                SliverList(
+                TomSliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (context, index) => TomListTile(title: Text('Item $index')),
+                    (context, index) => TomListTile(title: TomText('Item $index')),
                     childCount: 20,
                   ),
                 ),
@@ -190,7 +190,7 @@ class _SliverAppBarTab extends StatelessWidget {
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                TomText(
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
@@ -198,7 +198,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   ),
                 ),
                 const TomSizedBox(height: 4),
-                Text(
+                TomText(
                   description,
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
@@ -221,9 +221,9 @@ class _SliverListTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    return TomCustomScrollView(
       slivers: [
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -232,23 +232,23 @@ class _SliverListTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList(
+          sliver: TomSliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) => TomCard(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: TomListTile(
-                  leading: CircleAvatar(child: Text('${index + 1}')),
-                  title: Text('SliverList Item ${index + 1}'),
-                  subtitle: const Text('Built with SliverChildBuilderDelegate'),
+                  leading: TomCircleAvatar(child: TomText('${index + 1}')),
+                  title: TomText('SliverList Item ${index + 1}'),
+                  subtitle: const TomText('Built with SliverChildBuilderDelegate'),
                 ),
               ),
               childCount: 5,
             ),
           ),
         ),
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -257,7 +257,7 @@ class _SliverListTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverFixedExtentList(
             itemExtent: 72,
@@ -266,15 +266,15 @@ class _SliverListTab extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 8),
                 child: TomListTile(
                   leading: TomIcon(Icons.star, color: Colors.amber.shade600),
-                  title: Text('Fixed Height Item ${index + 1}'),
-                  subtitle: const Text('Exactly 72 pixels tall'),
+                  title: TomText('Fixed Height Item ${index + 1}'),
+                  subtitle: const TomText('Exactly 72 pixels tall'),
                 ),
               ),
               childCount: 5,
             ),
           ),
         ),
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -283,15 +283,15 @@ class _SliverListTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverPrototypeExtentList(
             prototypeItem: TomCard(
               margin: const EdgeInsets.only(bottom: 8),
               child: TomListTile(
                 leading: const TomIcon(Icons.star),
-                title: const Text('Prototype'),
-                subtitle: const Text('Size template'),
+                title: const TomText('Prototype'),
+                subtitle: const TomText('Size template'),
               ),
             ),
             delegate: SliverChildBuilderDelegate(
@@ -299,8 +299,8 @@ class _SliverListTab extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 8),
                 child: TomListTile(
                   leading: TomIcon(Icons.brightness_1, color: Colors.primaries[index % Colors.primaries.length]),
-                  title: Text('Prototype Item ${index + 1}'),
-                  subtitle: const Text('Sized by prototype'),
+                  title: TomText('Prototype Item ${index + 1}'),
+                  subtitle: const TomText('Sized by prototype'),
                 ),
               ),
               childCount: 5,
@@ -324,9 +324,9 @@ class _SliverGridTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    return TomCustomScrollView(
       slivers: [
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -335,7 +335,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -347,7 +347,7 @@ class _SliverGridTab extends StatelessWidget {
               (context, index) => TomCard(
                 color: Colors.primaries[index % Colors.primaries.length].shade100,
                 child: TomCenter(
-                  child: Text(
+                  child: TomText(
                     '${index + 1}',
                     style: const TextStyle(
                       fontSize: 24,
@@ -360,7 +360,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -369,7 +369,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -389,7 +389,7 @@ class _SliverGridTab extends StatelessWidget {
                       color: Colors.primaries[index % Colors.primaries.length],
                     ),
                     const TomSizedBox(height: 4),
-                    Text('Item ${index + 1}'),
+                    TomText('Item ${index + 1}'),
                   ],
                 ),
               ),
@@ -397,7 +397,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -406,7 +406,7 @@ class _SliverGridTab extends StatelessWidget {
             ),
           ),
         ),
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid.extent(
             maxCrossAxisExtent: 120,
@@ -454,7 +454,7 @@ class _CombinedSliversTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
+    return TomCustomScrollView(
       slivers: [
         // Header section
         SliverToBoxAdapter(
@@ -473,7 +473,7 @@ class _CombinedSliversTab extends StatelessWidget {
                 children: [
                   TomIcon(Icons.dashboard, size: 48, color: Colors.white),
                   TomSizedBox(height: 8),
-                  Text(
+                  TomText(
                     'Combined Slivers',
                     style: TextStyle(
                       color: Colors.white,
@@ -487,7 +487,7 @@ class _CombinedSliversTab extends StatelessWidget {
           ),
         ),
         // Section header
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -497,7 +497,7 @@ class _CombinedSliversTab extends StatelessWidget {
           ),
         ),
         // Grid section
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -514,7 +514,7 @@ class _CombinedSliversTab extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TomIcon(Icons.star, color: Colors.amber.shade700),
-                      Text('Featured ${index + 1}'),
+                      TomText('Featured ${index + 1}'),
                     ],
                   ),
                 ),
@@ -524,7 +524,7 @@ class _CombinedSliversTab extends StatelessWidget {
           ),
         ),
         // Another section header
-        const SliverPadding(
+        const TomSliverPadding(
           padding: EdgeInsets.all(16),
           sliver: SliverToBoxAdapter(
             child: _SectionHeader(
@@ -534,19 +534,19 @@ class _CombinedSliversTab extends StatelessWidget {
           ),
         ),
         // List section
-        SliverPadding(
+        TomSliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList(
+          sliver: TomSliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) => TomCard(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: TomListTile(
-                  leading: CircleAvatar(
+                  leading: TomCircleAvatar(
                     backgroundColor: Colors.green.shade100,
                     child: TomIcon(Icons.check, color: Colors.green.shade700),
                   ),
-                  title: Text('Recent Item ${index + 1}'),
-                  subtitle: const Text('Added recently'),
+                  title: TomText('Recent Item ${index + 1}'),
+                  subtitle: const TomText('Added recently'),
                   trailing: const TomIcon(Icons.chevron_right),
                 ),
               ),
@@ -569,14 +569,14 @@ class _CombinedSliversTab extends StatelessWidget {
               children: [
                 TomIcon(Icons.check_circle, size: 48, color: Colors.grey.shade400),
                 const TomSizedBox(height: 8),
-                Text(
+                TomText(
                   'End of Content',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(
+                TomText(
                   'SliverFillRemaining fills the space',
                   style: TextStyle(
                     color: Colors.grey.shade500,
@@ -608,7 +608,7 @@ class _SectionHeader extends StatelessWidget {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        TomText(
           title,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
@@ -616,7 +616,7 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         const TomSizedBox(height: 4),
-        Text(
+        TomText(
           subtitle,
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,

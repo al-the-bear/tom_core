@@ -75,7 +75,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -83,7 +83,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -121,12 +121,12 @@ class _AppBarSection extends StatelessWidget {
         _buildDemoCard(
           'Basic AppBar',
           'Simple app bar with title.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TomSizedBox(
               height: 56,
-              child: AppBar(
-                title: const Text('App Title'),
+              child: TomAppBar(
+                title: const TomText('App Title'),
                 automaticallyImplyLeading: false,
               ),
             ),
@@ -135,19 +135,19 @@ class _AppBarSection extends StatelessWidget {
         _buildDemoCard(
           'AppBar with Actions',
           'Title with action buttons.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TomSizedBox(
               height: 56,
-              child: AppBar(
-                leading: IconButton(
+              child: TomAppBar(
+                leading: TomIconButton(
                   icon: const TomIcon(Icons.menu),
                   onPressed: () {},
                 ),
-                title: const Text('App Title'),
+                title: const TomText('App Title'),
                 actions: [
-                  IconButton(icon: const TomIcon(Icons.search), onPressed: () {}),
-                  IconButton(icon: const TomIcon(Icons.more_vert), onPressed: () {}),
+                  TomIconButton(icon: const TomIcon(Icons.search), onPressed: () {}),
+                  TomIconButton(icon: const TomIcon(Icons.more_vert), onPressed: () {}),
                 ],
               ),
             ),
@@ -156,19 +156,19 @@ class _AppBarSection extends StatelessWidget {
         _buildDemoCard(
           'Centered Title',
           'AppBar with centered title.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TomSizedBox(
               height: 56,
-              child: AppBar(
-                leading: IconButton(
+              child: TomAppBar(
+                leading: TomIconButton(
                   icon: const TomIcon(Icons.arrow_back),
                   onPressed: () {},
                 ),
-                title: const Text('Centered'),
+                title: const TomText('Centered'),
                 centerTitle: true,
                 actions: [
-                  IconButton(icon: const TomIcon(Icons.share), onPressed: () {}),
+                  TomIconButton(icon: const TomIcon(Icons.share), onPressed: () {}),
                 ],
               ),
             ),
@@ -179,12 +179,12 @@ class _AppBarSection extends StatelessWidget {
           'Different color schemes.',
           TomColumn(
             children: [
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: TomSizedBox(
                   height: 48,
-                  child: AppBar(
-                    title: const Text('Primary'),
+                  child: TomAppBar(
+                    title: const TomText('Primary'),
                     automaticallyImplyLeading: false,
                     backgroundColor: Theme.of(context).colorScheme.primary,
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -192,12 +192,12 @@ class _AppBarSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: TomSizedBox(
                   height: 48,
-                  child: AppBar(
-                    title: const Text('Secondary'),
+                  child: TomAppBar(
+                    title: const TomText('Secondary'),
                     automaticallyImplyLeading: false,
                     backgroundColor: Theme.of(context).colorScheme.secondary,
                     foregroundColor: Theme.of(context).colorScheme.onSecondary,
@@ -205,12 +205,12 @@ class _AppBarSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              ClipRRect(
+              TomClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: TomSizedBox(
                   height: 48,
-                  child: AppBar(
-                    title: const Text('Surface'),
+                  child: TomAppBar(
+                    title: const TomText('Surface'),
                     automaticallyImplyLeading: false,
                     backgroundColor: Theme.of(context).colorScheme.surface,
                     foregroundColor: Theme.of(context).colorScheme.onSurface,
@@ -223,23 +223,23 @@ class _AppBarSection extends StatelessWidget {
         _buildDemoCard(
           'Search AppBar',
           'AppBar with search field.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: TomSizedBox(
               height: 56,
-              child: AppBar(
-                leading: IconButton(
+              child: TomAppBar(
+                leading: TomIconButton(
                   icon: const TomIcon(Icons.arrow_back),
                   onPressed: () {},
                 ),
-                title: const TextField(
+                title: const TomTextField(
                   decoration: InputDecoration(
                     hintText: 'Search...',
                     border: InputBorder.none,
                   ),
                 ),
                 actions: [
-                  IconButton(icon: const TomIcon(Icons.close), onPressed: () {}),
+                  TomIconButton(icon: const TomIcon(Icons.close), onPressed: () {}),
                 ],
               ),
             ),
@@ -257,12 +257,12 @@ class _AppBarSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -297,7 +297,7 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
         _buildDemoCard(
           'Basic NavigationBar',
           'Standard bottom navigation.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: NavigationBar(
               selectedIndex: _selectedIndex,
@@ -324,7 +324,7 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
         _buildDemoCard(
           'With Badges',
           'Navigation items with notification badges.',
-          ClipRRect(
+          TomClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: NavigationBar(
               selectedIndex: _selectedIndex2,
@@ -337,11 +337,11 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
                 ),
                 NavigationDestination(
                   icon: Badge(
-                    label: const Text('3'),
+                    label: const TomText('3'),
                     child: const TomIcon(Icons.notifications_outlined),
                   ),
                   selectedIcon: Badge(
-                    label: const Text('3'),
+                    label: const TomText('3'),
                     child: const TomIcon(Icons.notifications),
                   ),
                   label: 'Alerts',
@@ -378,12 +378,12 @@ class _NavigationBarSectionState extends State<_NavigationBarSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -421,13 +421,13 @@ class _NavigationRailSectionState extends State<_NavigationRailSection> {
           children: [
             TomRow(
               children: [
-                const Text(
+                const TomText(
                   'NavigationRail',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const TomSpacer(),
-                const Text('Extended:', style: TextStyle(fontSize: 12)),
-                Switch(
+                const TomText('Extended:', style: TextStyle(fontSize: 12)),
+                TomSwitch(
                   value: _extended,
                   onChanged: (v) => setState(() => _extended = v),
                 ),
@@ -443,7 +443,7 @@ class _NavigationRailSectionState extends State<_NavigationRailSection> {
                     onDestinationSelected: (i) =>
                         setState(() => _selectedIndex = i),
                     extended: _extended,
-                    leading: FloatingActionButton(
+                    leading: TomFloatingActionButton(
                       mini: true,
                       onPressed: () {},
                       child: const TomIcon(Icons.add),
@@ -452,22 +452,22 @@ class _NavigationRailSectionState extends State<_NavigationRailSection> {
                       NavigationRailDestination(
                         icon: TomIcon(Icons.inbox_outlined),
                         selectedIcon: TomIcon(Icons.inbox),
-                        label: Text('Inbox'),
+                        label: TomText('Inbox'),
                       ),
                       NavigationRailDestination(
                         icon: TomIcon(Icons.send_outlined),
                         selectedIcon: TomIcon(Icons.send),
-                        label: Text('Sent'),
+                        label: TomText('Sent'),
                       ),
                       NavigationRailDestination(
                         icon: TomIcon(Icons.drafts_outlined),
                         selectedIcon: TomIcon(Icons.drafts),
-                        label: Text('Drafts'),
+                        label: TomText('Drafts'),
                       ),
                       NavigationRailDestination(
                         icon: TomIcon(Icons.delete_outline),
                         selectedIcon: TomIcon(Icons.delete),
-                        label: Text('Trash'),
+                        label: TomText('Trash'),
                       ),
                     ],
                   ),
@@ -476,7 +476,7 @@ class _NavigationRailSectionState extends State<_NavigationRailSection> {
                     child: TomContainer(
                       color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: TomCenter(
-                        child: Text(
+                        child: TomText(
                           ['Inbox', 'Sent', 'Drafts', 'Trash'][_selectedIndex],
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
@@ -544,17 +544,17 @@ class _BasicTabDemoState extends State<_BasicTabDemo>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Basic TabBar',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 12),
-            TabBar(
+            TomTabBar(
               controller: _controller,
               tabs: const [
-                Tab(text: 'Tab 1'),
-                Tab(text: 'Tab 2'),
-                Tab(text: 'Tab 3'),
+                TomTab(text: 'Tab 1'),
+                TomTab(text: 'Tab 2'),
+                TomTab(text: 'Tab 3'),
               ],
             ),
             TomSizedBox(
@@ -562,9 +562,9 @@ class _BasicTabDemoState extends State<_BasicTabDemo>
               child: TabBarView(
                 controller: _controller,
                 children: [
-                  TomCenter(child: Text('Content 1')),
-                  TomCenter(child: Text('Content 2')),
-                  TomCenter(child: Text('Content 3')),
+                  TomCenter(child: TomText('Content 1')),
+                  TomCenter(child: TomText('Content 2')),
+                  TomCenter(child: TomText('Content 3')),
                 ],
               ),
             ),
@@ -607,17 +607,17 @@ class _ScrollableTabDemoState extends State<_ScrollableTabDemo>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Scrollable TabBar',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 12),
-            TabBar(
+            TomTabBar(
               controller: _controller,
               isScrollable: true,
               tabs: List.generate(
                 8,
-                (i) => Tab(text: 'Category ${i + 1}'),
+                (i) => TomTab(text: 'Category ${i + 1}'),
               ),
             ),
             TomSizedBox(
@@ -626,7 +626,7 @@ class _ScrollableTabDemoState extends State<_ScrollableTabDemo>
                 controller: _controller,
                 children: List.generate(
                   8,
-                  (i) => TomCenter(child: Text('Category ${i + 1} Content')),
+                  (i) => TomCenter(child: TomText('Category ${i + 1} Content')),
                 ),
               ),
             ),
@@ -669,18 +669,18 @@ class _IconTabDemoState extends State<_IconTabDemo>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Icon Tabs',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 12),
-            TabBar(
+            TomTabBar(
               controller: _controller,
               tabs: const [
-                Tab(icon: TomIcon(Icons.photo), text: 'Photos'),
-                Tab(icon: TomIcon(Icons.video_library), text: 'Videos'),
-                Tab(icon: TomIcon(Icons.music_note), text: 'Music'),
-                Tab(icon: TomIcon(Icons.folder), text: 'Files'),
+                TomTab(icon: TomIcon(Icons.photo), text: 'Photos'),
+                TomTab(icon: TomIcon(Icons.video_library), text: 'Videos'),
+                TomTab(icon: TomIcon(Icons.music_note), text: 'Music'),
+                TomTab(icon: TomIcon(Icons.folder), text: 'Files'),
               ],
             ),
             TomSizedBox(
@@ -688,10 +688,10 @@ class _IconTabDemoState extends State<_IconTabDemo>
               child: TabBarView(
                 controller: _controller,
                 children: [
-                  TomCenter(child: Text('Photos')),
-                  TomCenter(child: Text('Videos')),
-                  TomCenter(child: Text('Music')),
-                  TomCenter(child: Text('Files')),
+                  TomCenter(child: TomText('Photos')),
+                  TomCenter(child: TomText('Videos')),
+                  TomCenter(child: TomText('Music')),
+                  TomCenter(child: TomText('Files')),
                 ],
               ),
             ),
@@ -717,7 +717,7 @@ class _DrawerSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Drawer Preview',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
@@ -728,13 +728,13 @@ class _DrawerSection extends StatelessWidget {
                 border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: ClipRRect(
+              child: TomClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: TomRow(
                   children: [
                     TomSizedBox(
                       width: 240,
-                      child: Drawer(
+                      child: TomDrawer(
                         child: TomListView(
                           padding: EdgeInsets.zero,
                           children: [
@@ -746,19 +746,19 @@ class _DrawerSection extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
-                                  const CircleAvatar(
+                                  const TomCircleAvatar(
                                     radius: 32,
                                     child: TomIcon(Icons.person, size: 32),
                                   ),
                                   const TomSizedBox(height: 8),
-                                  Text(
+                                  TomText(
                                     'John Doe',
                                     style: TextStyle(
                                       color: Theme.of(context).colorScheme.onPrimary,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  Text(
+                                  TomText(
                                     'john@example.com',
                                     style: TextStyle(
                                       color: Theme.of(context)
@@ -771,27 +771,27 @@ class _DrawerSection extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            const ListTile(
+                            const TomListTile(
                               leading: TomIcon(Icons.home),
-                              title: Text('Home'),
+                              title: TomText('Home'),
                               selected: true,
                             ),
-                            const ListTile(
+                            const TomListTile(
                               leading: TomIcon(Icons.favorite),
-                              title: Text('Favorites'),
+                              title: TomText('Favorites'),
                             ),
-                            const ListTile(
+                            const TomListTile(
                               leading: TomIcon(Icons.settings),
-                              title: Text('Settings'),
+                              title: TomText('Settings'),
                             ),
                             const TomDivider(),
-                            const ListTile(
+                            const TomListTile(
                               leading: TomIcon(Icons.help),
-                              title: Text('Help'),
+                              title: TomText('Help'),
                             ),
-                            const ListTile(
+                            const TomListTile(
                               leading: TomIcon(Icons.logout),
-                              title: Text('Logout'),
+                              title: TomText('Logout'),
                             ),
                           ],
                         ),
@@ -801,7 +801,7 @@ class _DrawerSection extends StatelessWidget {
                       child: TomContainer(
                         color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         child: const TomCenter(
-                          child: Text('Main Content Area'),
+                          child: TomText('Main Content Area'),
                         ),
                       ),
                     ),
@@ -832,22 +832,22 @@ class _BreadcrumbSection extends StatelessWidget {
           'Text-based navigation path.',
           TomRow(
             children: [
-              TextButton(
+              TomTextButton(
                 onPressed: () {},
-                child: const Text('Home'),
+                child: const TomText('Home'),
               ),
               const TomIcon(Icons.chevron_right, size: 16),
-              TextButton(
+              TomTextButton(
                 onPressed: () {},
-                child: const Text('Products'),
+                child: const TomText('Products'),
               ),
               const TomIcon(Icons.chevron_right, size: 16),
-              TextButton(
+              TomTextButton(
                 onPressed: () {},
-                child: const Text('Electronics'),
+                child: const TomText('Electronics'),
               ),
               const TomIcon(Icons.chevron_right, size: 16),
-              const Text(
+              const TomText(
                 'Phones',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -857,7 +857,7 @@ class _BreadcrumbSection extends StatelessWidget {
         _buildDemoCard(
           'Icon Breadcrumbs',
           'Navigation path with icons.',
-          SingleChildScrollView(
+          TomSingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: TomRow(
               children: [
@@ -880,13 +880,13 @@ class _BreadcrumbSection extends StatelessWidget {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              ActionChip(label: const Text('Home'), onPressed: () {}),
+              ActionChip(label: const TomText('Home'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
-              ActionChip(label: const Text('Category'), onPressed: () {}),
+              ActionChip(label: const TomText('Category'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
-              ActionChip(label: const Text('Subcategory'), onPressed: () {}),
+              ActionChip(label: const TomText('Subcategory'), onPressed: () {}),
               const TomIcon(Icons.chevron_right, size: 16),
-              const Chip(label: Text('Current')),
+              const TomChip(label: TomText('Current')),
             ],
           ),
         ),
@@ -902,7 +902,7 @@ class _BreadcrumbSection extends StatelessWidget {
         children: [
           TomIcon(icon, size: 16, color: clickable ? Colors.blue : Colors.grey),
           const TomSizedBox(width: 4),
-          Text(
+          TomText(
             label,
             style: TextStyle(
               color: clickable ? Colors.blue : Colors.black,
@@ -922,12 +922,12 @@ class _BreadcrumbSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),

@@ -234,7 +234,11 @@ class TomScaffold extends TomContainerBase {
 /// Tom wrapper for [AppBar].
 ///
 /// Adds ID, group, authorization, and resource resolution for title text.
-class TomAppBar extends TomContainerBase {
+///
+/// Implements [PreferredSizeWidget] for use in [Scaffold.appBar].
+class TomAppBar extends StatelessWidget
+    with TomWidgetMixin
+    implements PreferredSizeWidget {
   final Widget? leading;
   final bool automaticallyImplyLeading;
   final Widget? title;
@@ -266,10 +270,15 @@ class TomAppBar extends TomContainerBase {
   final ShapeBorder? shape;
   final ScrollNotificationPredicate notificationPredicate;
 
+  @override
+  final String? tomId;
+  @override
+  final String? tomGroup;
+
   const TomAppBar({
     super.key,
-    super.tomId,
-    super.tomGroup,
+    this.tomId,
+    this.tomGroup,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.title,
@@ -303,9 +312,15 @@ class TomAppBar extends TomContainerBase {
   });
 
   @override
-  Widget buildContent(BuildContext context) {
+  Size get preferredSize {
+    final bottomHeight = bottom?.preferredSize.height ?? 0.0;
+    return Size.fromHeight((toolbarHeight ?? kToolbarHeight) + bottomHeight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
+        titleText ?? (tomId != null ? getText(context, 'label') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 

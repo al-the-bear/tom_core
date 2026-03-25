@@ -70,7 +70,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -78,7 +78,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -134,9 +134,9 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
         _buildDemoCard(
           'Size Animation',
           'Tap to expand/collapse.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(() => _expanded = !_expanded),
-            child: AnimatedContainer(
+            child: TomAnimatedContainer(
               duration: const Duration(milliseconds: 500),
               curve: Curves.easeInOut,
               width: _expanded ? 200 : 100,
@@ -158,10 +158,10 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
         _buildDemoCard(
           'Color Animation',
           'Tap to change color.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(
                 () => _colorIndex = (_colorIndex + 1) % _colors.length),
-            child: AnimatedContainer(
+            child: TomAnimatedContainer(
               duration: const Duration(milliseconds: 400),
               curve: Curves.easeInOut,
               width: 150,
@@ -171,7 +171,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const TomCenter(
-                child: Text(
+                child: TomText(
                   'Tap me',
                   style: TextStyle(
                     color: Colors.white,
@@ -188,7 +188,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
           'Use slider to change.',
           TomColumn(
             children: [
-              AnimatedContainer(
+              TomAnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 width: 150,
                 height: 100,
@@ -198,7 +198,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                 ),
               ),
               const TomSizedBox(height: 16),
-              Slider(
+              TomSlider(
                 value: _borderRadius,
                 min: 0,
                 max: 50,
@@ -219,12 +219,12 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -269,7 +269,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
         _buildDemoCard(
           'Counter Animation',
           'Tap to increment.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(() => _count++),
             child: TomContainer(
               width: 100,
@@ -278,12 +278,12 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                 color: Colors.indigo.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: AnimatedSwitcher(
+              child: TomAnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 transitionBuilder: (child, animation) {
                   return ScaleTransition(scale: animation, child: child);
                 },
-                child: Text(
+                child: TomText(
                   '$_count',
                   key: ValueKey(_count),
                   style: TextStyle(
@@ -299,7 +299,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
         _buildDemoCard(
           'Icon Animation',
           'Tap to cycle icons.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () =>
                 setState(() => _iconIndex = (_iconIndex + 1) % _icons.length),
             child: TomContainer(
@@ -309,7 +309,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                 color: Colors.amber.shade100,
                 shape: BoxShape.circle,
               ),
-              child: AnimatedSwitcher(
+              child: TomAnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
                 transitionBuilder: (child, animation) {
                   return RotationTransition(
@@ -330,9 +330,9 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
         _buildDemoCard(
           'Cross Fade',
           'Tap to toggle content.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(() => _showFirst = !_showFirst),
-            child: AnimatedSwitcher(
+            child: TomAnimatedSwitcher(
               duration: const Duration(milliseconds: 500),
               child: _showFirst
                   ? TomContainer(
@@ -344,7 +344,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const TomCenter(
-                        child: Text(
+                        child: TomText(
                           'First',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
@@ -359,7 +359,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const TomCenter(
-                        child: Text(
+                        child: TomText(
                           'Second',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
@@ -380,12 +380,12 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -426,7 +426,7 @@ class _AnimatedPropertiesSectionState
           'Tap buttons to fade.',
           TomColumn(
             children: [
-              AnimatedOpacity(
+              TomAnimatedOpacity(
                 opacity: _opacity,
                 duration: const Duration(milliseconds: 400),
                 child: TomContainer(
@@ -443,14 +443,14 @@ class _AnimatedPropertiesSectionState
               TomRow(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  FilledButton(
+                  TomFilledButton(
                     onPressed: () => setState(() => _opacity = 0.0),
-                    child: const Text('Hide'),
+                    child: const TomText('Hide'),
                   ),
                   const TomSizedBox(width: 8),
-                  FilledButton(
+                  TomFilledButton(
                     onPressed: () => setState(() => _opacity = 1.0),
-                    child: const Text('Show'),
+                    child: const TomText('Show'),
                   ),
                 ],
               ),
@@ -460,7 +460,7 @@ class _AnimatedPropertiesSectionState
         _buildDemoCard(
           'AnimatedPadding',
           'Tap to toggle padding.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(
                 () => _padding = _padding == 8.0 ? 32.0 : 8.0),
             child: TomContainer(
@@ -474,7 +474,7 @@ class _AnimatedPropertiesSectionState
                   height: 80,
                   color: Colors.green,
                   child: const TomCenter(
-                    child: Text(
+                    child: TomText(
                       'Tap',
                       style: TextStyle(color: Colors.white),
                     ),
@@ -487,7 +487,7 @@ class _AnimatedPropertiesSectionState
         _buildDemoCard(
           'AnimatedRotation',
           'Tap to rotate.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () => setState(() => _rotation += 0.25),
             child: AnimatedRotation(
               turns: _rotation,
@@ -507,7 +507,7 @@ class _AnimatedPropertiesSectionState
         _buildDemoCard(
           'AnimatedAlign',
           'Tap to move.',
-          GestureDetector(
+          TomGestureDetector(
             onTap: () {
               final alignments = [
                 Alignment.topLeft,
@@ -555,12 +555,12 @@ class _AnimatedPropertiesSectionState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -611,10 +611,10 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
         opacity: animation,
         child: TomCard(
           margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
+          child: TomListTile(
             leading: const TomIcon(Icons.star),
-            title: Text(item),
-            trailing: IconButton(
+            title: TomText(item),
+            trailing: TomIconButton(
               icon: const TomIcon(Icons.delete),
               onPressed: () {
                 final index = _items.indexOf(item);
@@ -638,14 +638,14 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
             TomRow(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                const TomText(
                   'AnimatedList',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 FilledButton.icon(
                   onPressed: _addItem,
                   icon: const TomIcon(Icons.add),
-                  label: const Text('Add'),
+                  label: const TomText('Add'),
                 ),
               ],
             ),
@@ -725,7 +725,7 @@ class _PulseAnimationState extends State<_PulseAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Pulse Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
@@ -785,13 +785,13 @@ class _SpinAnimationState extends State<_SpinAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Spin Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 16),
             TomCenter(
-              child: AnimatedBuilder(
+              child: TomAnimatedBuilder(
                 animation: _controller,
                 builder: (context, child) {
                   return Transform.rotate(
@@ -855,7 +855,7 @@ class _BounceAnimationState extends State<_BounceAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            const TomText(
               'Bounce Animation',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
@@ -863,7 +863,7 @@ class _BounceAnimationState extends State<_BounceAnimation>
             TomSizedBox(
               height: 80,
               child: TomCenter(
-                child: AnimatedBuilder(
+                child: TomAnimatedBuilder(
                   animation: _animation,
                   builder: (context, child) {
                     return Transform.translate(

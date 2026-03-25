@@ -82,7 +82,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -90,7 +90,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -134,14 +134,14 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
         padding: const EdgeInsets.all(16),
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -149,7 +149,7 @@ class _DemoCard extends StatelessWidget {
             ),
             if (description != null) ...[
               const TomSizedBox(height: 4),
-              Text(
+              TomText(
                 description!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -191,7 +191,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        TomInkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           borderRadius: BorderRadius.circular(4),
           child: TomPadding(
@@ -204,7 +204,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
                   color: theme.colorScheme.primary,
                 ),
                 const TomSizedBox(width: 8),
-                Text(
+                TomText(
                   _expanded ? 'Hide code' : 'Show code',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
@@ -229,7 +229,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: SelectableText(
+            child: TomSelectableText(
               widget.code.trim(),
               style: TextStyle(
                 fontFamily: 'monospace',
@@ -271,7 +271,7 @@ class _SwitchSectionState extends State<_SwitchSection> {
           child: TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Notifications: ${_switch1 ? "ON" : "OFF"}'),
+              TomText('Notifications: ${_switch1 ? "ON" : "OFF"}'),
               TomSwitch(
                 tomId: 'demo.toggle.switch.basic',
                 value: _switch1,
@@ -293,8 +293,8 @@ TomSwitch(
             children: [
               TomSwitchListTile(
                 tomId: 'demo.toggle.switchlist.darkmode',
-                title: const Text('Dark Mode'),
-                subtitle: const Text('Use dark theme'),
+                title: const TomText('Dark Mode'),
+                subtitle: const TomText('Use dark theme'),
                 value: _switch2,
                 onChanged: (value) => setState(() => _switch2 = value),
                 secondary: TomIcon(
@@ -305,8 +305,8 @@ TomSwitch(
               const TomDivider(),
               TomSwitchListTile(
                 tomId: 'demo.toggle.switchlist.airplane',
-                title: const Text('Airplane Mode'),
-                subtitle: const Text('Disable all wireless connections'),
+                title: const TomText('Airplane Mode'),
+                subtitle: const TomText('Disable all wireless connections'),
                 value: _switch3,
                 onChanged: (value) => setState(() => _switch3 = value),
                 secondary: TomIcon(
@@ -317,8 +317,8 @@ TomSwitch(
           ),
           code: '''
 TomSwitchListTile(
-  title: Text('Dark Mode'),
-  subtitle: Text('Use dark theme'),
+  title: TomText('Dark Mode'),
+  subtitle: TomText('Use dark theme'),
   value: _darkMode,
   onChanged: (value) => setState(() => _darkMode = value),
   secondary: TomIcon(Icons.dark_mode),
@@ -330,7 +330,7 @@ TomSwitchListTile(
           child: TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Wi-Fi'),
+              const TomText('Wi-Fi'),
               TomSwitch(
                 tomId: 'demo.toggle.switch.wifi',
                 value: _switchWithIcon,
@@ -450,7 +450,7 @@ class _SwitchStylesDemoState extends State<_SwitchStylesDemo> {
     return TomRow(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label),
+        TomText(label),
         if (theme != null)
           SwitchTheme(data: theme, child: switchWidget)
         else
@@ -491,7 +491,7 @@ class _CheckboxSectionState extends State<_CheckboxSection> {
                 value: _check1,
                 onChanged: (value) => setState(() => _check1 = value ?? false),
               ),
-              Text('Agree to terms: ${_check1 ? "Yes" : "No"}'),
+              TomText('Agree to terms: ${_check1 ? "Yes" : "No"}'),
             ],
           ),
           code: '''
@@ -508,8 +508,8 @@ TomCheckbox(
             children: [
               TomCheckboxListTile(
                 tomId: 'demo.toggle.checkboxlist.email',
-                title: const Text('Email notifications'),
-                subtitle: const Text('Receive updates via email'),
+                title: const TomText('Email notifications'),
+                subtitle: const TomText('Receive updates via email'),
                 value: _check2,
                 onChanged: (value) => setState(() => _check2 = value ?? false),
                 secondary: const TomIcon(Icons.email),
@@ -520,8 +520,8 @@ TomCheckbox(
           code: '''
 TomCheckboxListTile(
   tomId: 'app.settings.email_notifications',
-  title: Text('Email notifications'),
-  subtitle: Text('Receive updates via email'),
+  title: TomText('Email notifications'),
+  subtitle: TomText('Receive updates via email'),
   value: _emailNotifications,
   onChanged: (value) => setState(() => _emailNotifications = value),
   secondary: TomIcon(Icons.email),
@@ -541,11 +541,11 @@ TomCheckboxListTile(
                     value: _tristate,
                     onChanged: (value) => setState(() => _tristate = value),
                   ),
-                  Text(_getTriStateLabel()),
+                  TomText(_getTriStateLabel()),
                 ],
               ),
               const TomSizedBox(height: 8),
-              const Text(
+              const TomText(
                 'Use case: Select all / mixed selection parent checkbox',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -568,7 +568,7 @@ TomCheckbox(
     final items = ['Buy groceries', 'Call mom', 'Finish project', 'Exercise'];
     return List.generate(items.length, (index) {
       return TomCheckboxListTile(
-        title: Text(
+        title: TomText(
           items[index],
           style: TextStyle(
             decoration:
@@ -667,7 +667,7 @@ class _CheckboxStylesDemoState extends State<_CheckboxStylesDemo> {
           value: _checks[index],
           onChanged: (v) => setState(() => _checks[index] = v!),
         ),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        TomText(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -706,7 +706,7 @@ class _RadioSectionState extends State<_RadioSection> {
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
                   ),
-                  const Text('Option 1'),
+                  const TomText('Option 1'),
                   const TomSizedBox(width: 16),
                   TomRadio<int>(
                     tomId: 'demo.toggle.radio.opt2',
@@ -714,7 +714,7 @@ class _RadioSectionState extends State<_RadioSection> {
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
                   ),
-                  const Text('Option 2'),
+                  const TomText('Option 2'),
                   const TomSizedBox(width: 16),
                   TomRadio<int>(
                     tomId: 'demo.toggle.radio.opt3',
@@ -722,11 +722,11 @@ class _RadioSectionState extends State<_RadioSection> {
                     groupValue: _radioValue,
                     onChanged: (value) => setState(() => _radioValue = value!),
                   ),
-                  const Text('Option 3'),
+                  const TomText('Option 3'),
                 ],
               ),
               const TomSizedBox(height: 8),
-              Text(
+              TomText(
                 'Selected: Option $_radioValue',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -747,8 +747,8 @@ TomRadio<int>(
             children: [
               TomRadioListTile<String>(
                 tomId: 'demo.toggle.radiolist.basic',
-                title: const Text('Basic Plan'),
-                subtitle: const Text('\$9.99/month'),
+                title: const TomText('Basic Plan'),
+                subtitle: const TomText('\$9.99/month'),
                 value: 'basic',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
@@ -756,8 +756,8 @@ TomRadio<int>(
               ),
               TomRadioListTile<String>(
                 tomId: 'demo.toggle.radiolist.pro',
-                title: const Text('Pro Plan'),
-                subtitle: const Text('\$19.99/month'),
+                title: const TomText('Pro Plan'),
+                subtitle: const TomText('\$19.99/month'),
                 value: 'pro',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
@@ -765,8 +765,8 @@ TomRadio<int>(
               ),
               TomRadioListTile<String>(
                 tomId: 'demo.toggle.radiolist.enterprise',
-                title: const Text('Enterprise Plan'),
-                subtitle: const Text('\$49.99/month'),
+                title: const TomText('Enterprise Plan'),
+                subtitle: const TomText('\$49.99/month'),
                 value: 'enterprise',
                 groupValue: _selectedPlan,
                 onChanged: (value) => setState(() => _selectedPlan = value!),
@@ -777,8 +777,8 @@ TomRadio<int>(
           code: '''
 TomRadioListTile<String>(
   tomId: 'app.plan.basic',
-  title: Text('Basic Plan'),
-  subtitle: Text('\\\$9.99/month'),
+  title: TomText('Basic Plan'),
+  subtitle: TomText('\\\$9.99/month'),
   value: 'basic',
   groupValue: _selectedPlan,
   onChanged: (value) => setState(() => _selectedPlan = value),
@@ -793,7 +793,7 @@ TomRadioListTile<String>(
                 ['card', 'paypal', 'crypto'].map((payment) {
                   final isSelected = _selectedPayment == payment;
                   return TomExpanded(
-                    child: GestureDetector(
+                    child: TomGestureDetector(
                       onTap: () => setState(() => _selectedPayment = payment),
                       child: TomContainer(
                         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -824,7 +824,7 @@ TomRadioListTile<String>(
                                       : Colors.grey,
                             ),
                             const TomSizedBox(height: 4),
-                            Text(
+                            TomText(
                               _getPaymentLabel(payment),
                               style: TextStyle(
                                 fontSize: 12,
@@ -895,17 +895,17 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
                   ButtonSegment(
                     value: 'list',
                     icon: TomIcon(Icons.list),
-                    label: Text('List'),
+                    label: TomText('List'),
                   ),
                   ButtonSegment(
                     value: 'grid',
                     icon: TomIcon(Icons.grid_view),
-                    label: Text('Grid'),
+                    label: TomText('Grid'),
                   ),
                   ButtonSegment(
                     value: 'table',
                     icon: TomIcon(Icons.table_chart),
-                    label: Text('Table'),
+                    label: TomText('Table'),
                   ),
                 ],
                 selected: {_viewMode},
@@ -914,7 +914,7 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
                 },
               ),
               const TomSizedBox(height: 12),
-              Text(
+              TomText(
                 'View mode: ${_viewMode.toUpperCase()}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -924,8 +924,8 @@ class _SegmentedButtonSectionState extends State<_SegmentedButtonSection> {
 TomSegmentedButton<String>(
   tomId: 'app.view.mode',
   segments: [
-    ButtonSegment(value: 'list', icon: TomIcon(Icons.list), label: Text('List')),
-    ButtonSegment(value: 'grid', icon: TomIcon(Icons.grid_view), label: Text('Grid')),
+    ButtonSegment(value: 'list', icon: TomIcon(Icons.list), label: TomText('List')),
+    ButtonSegment(value: 'grid', icon: TomIcon(Icons.grid_view), label: TomText('Grid')),
   ],
   selected: {_viewMode},
   onSelectionChanged: (selection) {
@@ -941,13 +941,13 @@ TomSegmentedButton<String>(
               TomSegmentedButton<String>(
                 tomId: 'demo.toggle.segment.days',
                 segments: const [
-                  ButtonSegment(value: 'Mon', label: Text('M')),
-                  ButtonSegment(value: 'Tue', label: Text('T')),
-                  ButtonSegment(value: 'Wed', label: Text('W')),
-                  ButtonSegment(value: 'Thu', label: Text('T')),
-                  ButtonSegment(value: 'Fri', label: Text('F')),
-                  ButtonSegment(value: 'Sat', label: Text('S')),
-                  ButtonSegment(value: 'Sun', label: Text('S')),
+                  ButtonSegment(value: 'Mon', label: TomText('M')),
+                  ButtonSegment(value: 'Tue', label: TomText('T')),
+                  ButtonSegment(value: 'Wed', label: TomText('W')),
+                  ButtonSegment(value: 'Thu', label: TomText('T')),
+                  ButtonSegment(value: 'Fri', label: TomText('F')),
+                  ButtonSegment(value: 'Sat', label: TomText('S')),
+                  ButtonSegment(value: 'Sun', label: TomText('S')),
                 ],
                 selected: _selectedDays,
                 onSelectionChanged: (selection) {
@@ -957,7 +957,7 @@ TomSegmentedButton<String>(
                 emptySelectionAllowed: true,
               ),
               const TomSizedBox(height: 12),
-              Text(
+              TomText(
                 'Selected: ${_selectedDays.isEmpty ? "None" : _selectedDays.join(", ")}',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -970,11 +970,11 @@ TomSegmentedButton<String>(
           child: TomSegmentedButton<String>(
             tomId: 'demo.toggle.segment.size',
             segments: const [
-              ButtonSegment(value: 'XS', label: Text('XS')),
-              ButtonSegment(value: 'S', label: Text('S')),
-              ButtonSegment(value: 'M', label: Text('M')),
-              ButtonSegment(value: 'L', label: Text('L')),
-              ButtonSegment(value: 'XL', label: Text('XL')),
+              ButtonSegment(value: 'XS', label: TomText('XS')),
+              ButtonSegment(value: 'S', label: TomText('S')),
+              ButtonSegment(value: 'M', label: TomText('M')),
+              ButtonSegment(value: 'L', label: TomText('L')),
+              ButtonSegment(value: 'XL', label: TomText('XL')),
             ],
             selected: {_selectedSize},
             onSelectionChanged: (selection) {
@@ -1070,19 +1070,19 @@ TomToggleButtons(
             children: [
               TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('Bold'),
+                child: TomText('Bold'),
               ),
               TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('Italic'),
+                child: TomText('Italic'),
               ),
               TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('Underline'),
+                child: TomText('Underline'),
               ),
               TomPadding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('Strike'),
+                child: TomText('Strike'),
               ),
             ],
           ),
@@ -1107,9 +1107,9 @@ TomToggleButtons(
             color: Colors.purple,
             constraints: const BoxConstraints(minWidth: 80, minHeight: 40),
             children: [
-              Text('Day'),
-              Text('Week'),
-              Text('Month'),
+              TomText('Day'),
+              TomText('Week'),
+              TomText('Month'),
             ],
           ),
         ),
@@ -1141,9 +1141,9 @@ class _CustomTogglesSectionState extends State<_CustomTogglesSection> {
         _DemoCard(
           title: 'Animated Toggle',
           description: 'Custom toggle with animation.',
-          child: GestureDetector(
+          child: TomGestureDetector(
             onTap: () => setState(() => _customToggle1 = !_customToggle1),
-            child: AnimatedContainer(
+            child: TomAnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 80,
               height: 40,
@@ -1174,9 +1174,9 @@ class _CustomTogglesSectionState extends State<_CustomTogglesSection> {
             ),
           ),
           code: '''
-GestureDetector(
+TomGestureDetector(
   onTap: () => setState(() => _isOn = !_isOn),
-  child: AnimatedContainer(
+  child: TomAnimatedContainer(
     duration: Duration(milliseconds: 200),
     width: 80,
     height: 40,
@@ -1204,12 +1204,12 @@ GestureDetector(
           child: TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('Favorite:'),
+              const TomText('Favorite:'),
               const TomSizedBox(width: 16),
-              IconButton(
+              TomIconButton(
                 onPressed: () =>
                     setState(() => _customToggle2 = !_customToggle2),
-                icon: AnimatedSwitcher(
+                icon: TomAnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   transitionBuilder: (child, animation) {
                     return ScaleTransition(scale: animation, child: child);
@@ -1231,7 +1231,7 @@ GestureDetector(
           child: TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              IconButton(
+              TomIconButton(
                 onPressed: () {
                   setState(() {
                     _thumbsRating = _thumbsRating == -1 ? 0 : -1;
@@ -1246,7 +1246,7 @@ GestureDetector(
                 ),
               ),
               const TomSizedBox(width: 32),
-              IconButton(
+              TomIconButton(
                 onPressed: () {
                   setState(() {
                     _thumbsRating = _thumbsRating == 1 ? 0 : 1;
@@ -1304,24 +1304,24 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
             children: [
               TomSwitchListTile(
                 tomId: 'demo.settings.notify.push',
-                title: const Text('Push Notifications'),
-                subtitle: const Text('Receive instant notifications'),
+                title: const TomText('Push Notifications'),
+                subtitle: const TomText('Receive instant notifications'),
                 value: _pushEnabled,
                 onChanged: (v) => setState(() => _pushEnabled = v),
                 secondary: const TomIcon(Icons.notifications),
               ),
               TomSwitchListTile(
                 tomId: 'demo.settings.notify.email',
-                title: const Text('Email Updates'),
-                subtitle: const Text('Weekly digest and important updates'),
+                title: const TomText('Email Updates'),
+                subtitle: const TomText('Weekly digest and important updates'),
                 value: _emailEnabled,
                 onChanged: (v) => setState(() => _emailEnabled = v),
                 secondary: const TomIcon(Icons.email),
               ),
               TomSwitchListTile(
                 tomId: 'demo.settings.notify.sms',
-                title: const Text('SMS Alerts'),
-                subtitle: const Text('Critical alerts via SMS'),
+                title: const TomText('SMS Alerts'),
+                subtitle: const TomText('Critical alerts via SMS'),
                 value: _smsEnabled,
                 onChanged: (v) => setState(() => _smsEnabled = v),
                 secondary: const TomIcon(Icons.sms),
@@ -1335,30 +1335,30 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              const TomText(
                 'Profile Visibility',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               TomRadioListTile<String>(
                 tomId: 'demo.settings.privacy.public',
-                title: const Text('Public'),
-                subtitle: const Text('Anyone can see your profile'),
+                title: const TomText('Public'),
+                subtitle: const TomText('Anyone can see your profile'),
                 value: 'public',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
               TomRadioListTile<String>(
                 tomId: 'demo.settings.privacy.friends',
-                title: const Text('Friends Only'),
-                subtitle: const Text('Only friends can see your profile'),
+                title: const TomText('Friends Only'),
+                subtitle: const TomText('Only friends can see your profile'),
                 value: 'friends',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
               ),
               TomRadioListTile<String>(
                 tomId: 'demo.settings.privacy.private',
-                title: const Text('Private'),
-                subtitle: const Text('No one can see your profile'),
+                title: const TomText('Private'),
+                subtitle: const TomText('No one can see your profile'),
                 value: 'private',
                 groupValue: _visibility,
                 onChanged: (v) => setState(() => _visibility = v!),
@@ -1366,14 +1366,14 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
               const TomDivider(),
               TomSwitchListTile(
                 tomId: 'demo.settings.privacy.location',
-                title: const Text('Location Services'),
+                title: const TomText('Location Services'),
                 value: _locationEnabled,
                 onChanged: (v) => setState(() => _locationEnabled = v),
                 secondary: const TomIcon(Icons.location_on),
               ),
               TomSwitchListTile(
                 tomId: 'demo.settings.privacy.analytics',
-                title: const Text('Usage Analytics'),
+                title: const TomText('Usage Analytics'),
                 value: _analyticsEnabled,
                 onChanged: (v) => setState(() => _analyticsEnabled = v),
                 secondary: const TomIcon(Icons.analytics),
@@ -1387,7 +1387,7 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              const TomText(
                 'Theme',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -1398,17 +1398,17 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                   ButtonSegment(
                     value: 'light',
                     icon: TomIcon(Icons.light_mode),
-                    label: Text('Light'),
+                    label: TomText('Light'),
                   ),
                   ButtonSegment(
                     value: 'dark',
                     icon: TomIcon(Icons.dark_mode),
-                    label: Text('Dark'),
+                    label: TomText('Dark'),
                   ),
                   ButtonSegment(
                     value: 'system',
                     icon: TomIcon(Icons.settings_brightness),
-                    label: Text('System'),
+                    label: TomText('System'),
                   ),
                 ],
                 selected: {_theme},
@@ -1417,7 +1417,7 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                 },
               ),
               const TomSizedBox(height: 16),
-              const Text(
+              const TomText(
                 'Font Size',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
@@ -1425,7 +1425,7 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                 children: [
                   const TomIcon(Icons.text_decrease, size: 20),
                   TomExpanded(
-                    child: Slider(
+                    child: TomSlider(
                       value: _fontSize,
                       min: 0.8,
                       max: 1.4,
@@ -1438,7 +1438,7 @@ class _SettingsExamplesSectionState extends State<_SettingsExamplesSection> {
                 ],
               ),
               TomCenter(
-                child: Text(
+                child: TomText(
                   'Preview Text',
                   style: TextStyle(fontSize: 16 * _fontSize),
                 ),

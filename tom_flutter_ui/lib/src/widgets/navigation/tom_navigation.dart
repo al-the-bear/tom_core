@@ -144,7 +144,16 @@ class TomNavigationBar extends TomNavigationBase {
 /// Tom wrapper for [TabBar].
 ///
 /// Adds ID, group, and authorization.
-class TomTabBar extends TomNavigationBase {
+/// Implements [PreferredSizeWidget] for use in [AppBar.bottom].
+class TomTabBar extends StatelessWidget
+    with TomWidgetMixin
+    implements PreferredSizeWidget {
+  @override
+  final String? tomId;
+
+  @override
+  final String? tomGroup;
+
   final List<Widget> tabs;
   final TabController? controller;
   final bool isScrollable;
@@ -173,8 +182,8 @@ class TomTabBar extends TomNavigationBase {
 
   const TomTabBar({
     super.key,
-    super.tomId,
-    super.tomGroup,
+    this.tomId,
+    this.tomGroup,
     required this.tabs,
     this.controller,
     this.isScrollable = false,
@@ -203,7 +212,12 @@ class TomTabBar extends TomNavigationBase {
   });
 
   @override
-  Widget buildContent(BuildContext context) {
+  Size get preferredSize => Size.fromHeight(
+        kToolbarHeight + (indicatorWeight ?? 2.0),
+      );
+
+  @override
+  Widget build(BuildContext context) {
     return TabBar(
       tabs: tabs,
       controller: controller,

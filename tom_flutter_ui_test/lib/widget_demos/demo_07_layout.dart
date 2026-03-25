@@ -81,7 +81,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -89,7 +89,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -188,7 +188,7 @@ class _RowColumnSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('MainAxisSize.min:', style: TextStyle(fontSize: 12)),
+              const TomText('MainAxisSize.min:', style: TextStyle(fontSize: 12)),
               TomContainer(
                 color: Colors.grey.shade200,
                 child: TomRow(
@@ -200,7 +200,7 @@ class _RowColumnSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              const Text('MainAxisSize.max:', style: TextStyle(fontSize: 12)),
+              const TomText('MainAxisSize.max:', style: TextStyle(fontSize: 12)),
               TomContainer(
                 color: Colors.grey.shade200,
                 child: TomRow(
@@ -226,12 +226,12 @@ class _RowColumnSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -274,7 +274,7 @@ class _MainAxisAlignmentSection extends StatelessWidget {
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TomText(
                         'MainAxisAlignment.${entry.key}',
                         style: const TextStyle(
                           fontSize: 12,
@@ -338,7 +338,7 @@ class _CrossAxisAlignmentSection extends StatelessWidget {
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TomText(
                         'CrossAxisAlignment.${entry.key}',
                         style: const TextStyle(
                           fontSize: 12,
@@ -359,15 +359,15 @@ class _CrossAxisAlignmentSection extends StatelessWidget {
                               isBaseline ? TextBaseline.alphabetic : null,
                           children: [
                             if (isBaseline) ...[
-                              const Text(
+                              const TomText(
                                 'Abc',
                                 style: TextStyle(fontSize: 24),
                               ),
-                              const Text(
+                              const TomText(
                                 'Xyz',
                                 style: TextStyle(fontSize: 16),
                               ),
-                              const Text(
+                              const TomText(
                                 '123',
                                 style: TextStyle(fontSize: 12),
                               ),
@@ -468,9 +468,9 @@ class _FlexSection extends StatelessWidget {
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Align(
+            child: TomAlign(
               alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
+              child: TomFractionallySizedBox(
                 widthFactor: 0.6,
                 child: TomContainer(
                   height: 40,
@@ -479,7 +479,7 @@ class _FlexSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const TomCenter(
-                    child: Text(
+                    child: TomText(
                       '60% width',
                       style: TextStyle(color: Colors.white),
                     ),
@@ -521,12 +521,12 @@ class _FlexSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -562,19 +562,19 @@ class _StackSection extends StatelessWidget {
                   width: 150,
                   height: 150,
                   color: Colors.red.shade200,
-                  child: const TomCenter(child: Text('Bottom')),
+                  child: const TomCenter(child: TomText('Bottom')),
                 ),
-                Positioned(
+                TomPositioned(
                   left: 50,
                   top: 50,
                   child: TomContainer(
                     width: 100,
                     height: 100,
                     color: Colors.green.shade300,
-                    child: const TomCenter(child: Text('Middle')),
+                    child: const TomCenter(child: TomText('Middle')),
                   ),
                 ),
-                Positioned(
+                TomPositioned(
                   left: 100,
                   top: 30,
                   child: TomContainer(
@@ -582,7 +582,7 @@ class _StackSection extends StatelessWidget {
                     height: 80,
                     color: Colors.blue.shade400,
                     child: const TomCenter(
-                      child: Text('Top', style: TextStyle(color: Colors.white)),
+                      child: TomText('Top', style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ),
@@ -648,22 +648,22 @@ class _StackSection extends StatelessWidget {
             child: TomStack(
               children: [
                 TomContainer(color: Colors.grey.shade100),
-                const Positioned(
+                const TomPositioned(
                   top: 10,
                   left: 10,
                   child: TomIcon(Icons.add_circle, color: Colors.red),
                 ),
-                const Positioned(
+                const TomPositioned(
                   top: 10,
                   right: 10,
                   child: TomIcon(Icons.remove_circle, color: Colors.blue),
                 ),
-                const Positioned(
+                const TomPositioned(
                   bottom: 10,
                   left: 10,
                   child: TomIcon(Icons.check_circle, color: Colors.green),
                 ),
-                const Positioned(
+                const TomPositioned(
                   bottom: 10,
                   right: 10,
                   child: TomIcon(Icons.cancel, color: Colors.orange),
@@ -691,7 +691,7 @@ class _StackSection extends StatelessWidget {
                   ),
                 ),
                 TomCenter(
-                  child: Text(
+                  child: TomText(
                     'Filled Background',
                     style: const TextStyle(
                       color: Colors.white,
@@ -712,7 +712,7 @@ class _StackSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('loose', style: TextStyle(fontSize: 10)),
+                    const TomText('loose', style: TextStyle(fontSize: 10)),
                     TomSizedBox(
                       height: 80,
                       child: TomStack(
@@ -730,7 +730,7 @@ class _StackSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('expand', style: TextStyle(fontSize: 10)),
+                    const TomText('expand', style: TextStyle(fontSize: 10)),
                     TomSizedBox(
                       height: 80,
                       child: TomStack(
@@ -759,12 +759,12 @@ class _StackSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -797,7 +797,7 @@ class _WrapSection extends StatelessWidget {
               10,
               (i) => TomPadding(
                 padding: const EdgeInsets.all(4),
-                child: Chip(label: Text('Item \${i + 1}')),
+                child: TomChip(label: TomText('Item \${i + 1}')),
               ),
             ),
           ),
@@ -819,7 +819,7 @@ class _WrapSection extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: TomCenter(
-                  child: Text(
+                  child: TomText(
                     '\${i + 1}',
                     style: const TextStyle(color: Colors.white),
                   ),
@@ -848,7 +848,7 @@ class _WrapSection extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: TomCenter(
-                    child: Text(
+                    child: TomText(
                       '\${i + 1}',
                       style: const TextStyle(color: Colors.white),
                     ),
@@ -864,7 +864,7 @@ class _WrapSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('WrapAlignment.start', style: TextStyle(fontSize: 10)),
+              const TomText('WrapAlignment.start', style: TextStyle(fontSize: 10)),
               TomContainer(
                 color: Colors.grey.shade100,
                 width: double.infinity,
@@ -878,7 +878,7 @@ class _WrapSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              const Text('WrapAlignment.center', style: TextStyle(fontSize: 10)),
+              const TomText('WrapAlignment.center', style: TextStyle(fontSize: 10)),
               TomContainer(
                 color: Colors.grey.shade100,
                 width: double.infinity,
@@ -892,7 +892,7 @@ class _WrapSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              const Text('WrapAlignment.end', style: TextStyle(fontSize: 10)),
+              const TomText('WrapAlignment.end', style: TextStyle(fontSize: 10)),
               TomContainer(
                 color: Colors.grey.shade100,
                 width: double.infinity,
@@ -906,7 +906,7 @@ class _WrapSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 8),
-              const Text(
+              const TomText(
                 'WrapAlignment.spaceBetween',
                 style: TextStyle(fontSize: 10),
               ),
@@ -937,12 +937,12 @@ class _WrapSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -976,7 +976,7 @@ class _SpacingSection extends StatelessWidget {
                   TomExpanded(
                     child: TomColumn(
                       children: [
-                        const Text(
+                        const TomText(
                           'EdgeInsets.all(16)',
                           style: TextStyle(fontSize: 10),
                         ),
@@ -997,7 +997,7 @@ class _SpacingSection extends StatelessWidget {
                   TomExpanded(
                     child: TomColumn(
                       children: [
-                        const Text(
+                        const TomText(
                           'EdgeInsets.symmetric',
                           style: TextStyle(fontSize: 10),
                         ),
@@ -1025,7 +1025,7 @@ class _SpacingSection extends StatelessWidget {
                   TomExpanded(
                     child: TomColumn(
                       children: [
-                        const Text(
+                        const TomText(
                           'EdgeInsets.only(left)',
                           style: TextStyle(fontSize: 10),
                         ),
@@ -1046,7 +1046,7 @@ class _SpacingSection extends StatelessWidget {
                   TomExpanded(
                     child: TomColumn(
                       children: [
-                        const Text(
+                        const TomText(
                           'EdgeInsets.fromLTRB',
                           style: TextStyle(fontSize: 10),
                         ),
@@ -1074,7 +1074,7 @@ class _SpacingSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('TomSizedBox(height: 16)', style: TextStyle(fontSize: 10)),
+              const TomText('TomSizedBox(height: 16)', style: TextStyle(fontSize: 10)),
               TomContainer(
                 color: Colors.grey.shade100,
                 child: TomColumn(
@@ -1118,7 +1118,7 @@ class _SpacingSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('Margin', style: TextStyle(fontSize: 10)),
+                    const TomText('Margin', style: TextStyle(fontSize: 10)),
                     TomContainer(
                       color: Colors.grey.shade200,
                       child: TomContainer(
@@ -1126,7 +1126,7 @@ class _SpacingSection extends StatelessWidget {
                         height: 40,
                         color: Colors.blue,
                         child: const TomCenter(
-                          child: Text(
+                          child: TomText(
                             'Container',
                             style: TextStyle(color: Colors.white, fontSize: 10),
                           ),
@@ -1140,7 +1140,7 @@ class _SpacingSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('Padding', style: TextStyle(fontSize: 10)),
+                    const TomText('Padding', style: TextStyle(fontSize: 10)),
                     TomContainer(
                       color: Colors.grey.shade200,
                       padding: const EdgeInsets.all(16),
@@ -1148,7 +1148,7 @@ class _SpacingSection extends StatelessWidget {
                         height: 40,
                         color: Colors.green,
                         child: const TomCenter(
-                          child: Text(
+                          child: TomText(
                             'Container',
                             style: TextStyle(color: Colors.white, fontSize: 10),
                           ),
@@ -1173,12 +1173,12 @@ class _SpacingSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -1213,7 +1213,7 @@ class _ConstraintsSection extends StatelessWidget {
                 child: TomContainer(
                   color: Colors.blue,
                   child: const TomCenter(
-                    child: Text(
+                    child: TomText(
                       '80x60',
                       style: TextStyle(color: Colors.white),
                     ),
@@ -1227,7 +1227,7 @@ class _ConstraintsSection extends StatelessWidget {
                 child: TomContainer(
                   color: Colors.green,
                   child: const TomCenter(
-                    child: Text(
+                    child: TomText(
                       '100x40',
                       style: TextStyle(color: Colors.white),
                     ),
@@ -1240,7 +1240,7 @@ class _ConstraintsSection extends StatelessWidget {
         _buildDemoCard(
           'ConstrainedBox',
           'Min/max width and height constraints.',
-          ConstrainedBox(
+          TomConstrainedBox(
             constraints: const BoxConstraints(
               minWidth: 100,
               maxWidth: 200,
@@ -1252,7 +1252,7 @@ class _ConstraintsSection extends StatelessWidget {
               child: const TomCenter(
                 child: TomPadding(
                   padding: EdgeInsets.all(8),
-                  child: Text(
+                  child: TomText(
                     'min 100x50\nmax 200x80',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.white, fontSize: 12),
@@ -1274,7 +1274,7 @@ class _ConstraintsSection extends StatelessWidget {
                 height: 50,
                 color: Colors.orange,
                 child: const TomCenter(
-                  child: Text(
+                  child: TomText(
                     'Unconstrained',
                     style: TextStyle(color: Colors.white),
                   ),
@@ -1292,13 +1292,13 @@ class _ConstraintsSection extends StatelessWidget {
             child: TomListView(
               scrollDirection: Axis.horizontal,
               children: [
-                LimitedBox(
+                TomLimitedBox(
                   maxWidth: 100,
                   child: TomContainer(
                     color: Colors.red,
                     child: const TomPadding(
                       padding: EdgeInsets.all(8),
-                      child: Text(
+                      child: TomText(
                         'Max 100',
                         style: TextStyle(color: Colors.white),
                       ),
@@ -1306,13 +1306,13 @@ class _ConstraintsSection extends StatelessWidget {
                   ),
                 ),
                 const TomSizedBox(width: 8),
-                LimitedBox(
+                TomLimitedBox(
                   maxWidth: 150,
                   child: TomContainer(
                     color: Colors.blue,
                     child: const TomPadding(
                       padding: EdgeInsets.all(8),
-                      child: Text(
+                      child: TomText(
                         'Max 150',
                         style: TextStyle(color: Colors.white),
                       ),
@@ -1331,13 +1331,13 @@ class _ConstraintsSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('1:1', style: TextStyle(fontSize: 10)),
-                    AspectRatio(
+                    const TomText('1:1', style: TextStyle(fontSize: 10)),
+                    TomAspectRatio(
                       aspectRatio: 1,
                       child: TomContainer(
                         color: Colors.red,
                         child: const TomCenter(
-                          child: Text(
+                          child: TomText(
                             '1:1',
                             style: TextStyle(color: Colors.white),
                           ),
@@ -1351,13 +1351,13 @@ class _ConstraintsSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('16:9', style: TextStyle(fontSize: 10)),
-                    AspectRatio(
+                    const TomText('16:9', style: TextStyle(fontSize: 10)),
+                    TomAspectRatio(
                       aspectRatio: 16 / 9,
                       child: TomContainer(
                         color: Colors.blue,
                         child: const TomCenter(
-                          child: Text(
+                          child: TomText(
                             '16:9',
                             style: TextStyle(color: Colors.white),
                           ),
@@ -1371,13 +1371,13 @@ class _ConstraintsSection extends StatelessWidget {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const Text('4:3', style: TextStyle(fontSize: 10)),
-                    AspectRatio(
+                    const TomText('4:3', style: TextStyle(fontSize: 10)),
+                    TomAspectRatio(
                       aspectRatio: 4 / 3,
                       child: TomContainer(
                         color: Colors.green,
                         child: const TomCenter(
-                          child: Text(
+                          child: TomText(
                             '4:3',
                             style: TextStyle(color: Colors.white),
                           ),
@@ -1399,17 +1399,17 @@ class _ConstraintsSection extends StatelessWidget {
                 TomContainer(
                   color: Colors.red.shade200,
                   padding: const EdgeInsets.all(8),
-                  child: const Text('Short'),
+                  child: const TomText('Short'),
                 ),
                 TomContainer(
                   color: Colors.green.shade200,
                   padding: const EdgeInsets.all(8),
-                  child: const Text('Medium length'),
+                  child: const TomText('Medium length'),
                 ),
                 TomContainer(
                   color: Colors.blue.shade200,
                   padding: const EdgeInsets.all(8),
-                  child: const Text('Longest text here'),
+                  child: const TomText('Longest text here'),
                 ),
               ],
             ),
@@ -1427,12 +1427,12 @@ class _ConstraintsSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -1467,16 +1467,16 @@ class _PracticalLayoutsSection extends StatelessWidget {
                 const TomIcon(Icons.menu),
                 const TomSizedBox(width: 16),
                 const TomExpanded(
-                  child: Text(
+                  child: TomText(
                     'App Title',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-                IconButton(
+                TomIconButton(
                   icon: const TomIcon(Icons.search),
                   onPressed: () {},
                 ),
-                IconButton(
+                TomIconButton(
                   icon: const TomIcon(Icons.more_vert),
                   onPressed: () {},
                 ),
@@ -1495,17 +1495,17 @@ class _PracticalLayoutsSection extends StatelessWidget {
             ),
             child: TomRow(
               children: [
-                const CircleAvatar(child: TomIcon(Icons.person)),
+                const TomCircleAvatar(child: TomIcon(Icons.person)),
                 const TomSizedBox(width: 12),
                 const TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TomText(
                         'John Doe',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      Text(
+                      TomText(
                         'john.doe@example.com',
                         style: TextStyle(fontSize: 12, color: Colors.grey),
                       ),
@@ -1526,10 +1526,10 @@ class _PracticalLayoutsSection extends StatelessWidget {
                 children: [
                   const TomSizedBox(
                     width: 80,
-                    child: Text('Name:', style: TextStyle(fontWeight: FontWeight.w500)),
+                    child: TomText('Name:', style: TextStyle(fontWeight: FontWeight.w500)),
                   ),
                   TomExpanded(
-                    child: TextField(
+                    child: TomTextField(
                       decoration: InputDecoration(
                         isDense: true,
                         border: OutlineInputBorder(
@@ -1549,10 +1549,10 @@ class _PracticalLayoutsSection extends StatelessWidget {
                 children: [
                   const TomSizedBox(
                     width: 80,
-                    child: Text('Email:', style: TextStyle(fontWeight: FontWeight.w500)),
+                    child: TomText('Email:', style: TextStyle(fontWeight: FontWeight.w500)),
                   ),
                   TomExpanded(
-                    child: TextField(
+                    child: TomTextField(
                       decoration: InputDecoration(
                         isDense: true,
                         border: OutlineInputBorder(
@@ -1594,12 +1594,12 @@ class _PracticalLayoutsSection extends StatelessWidget {
                 child: TomColumn(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    const TomText(
                       'Video Title',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const TomSizedBox(height: 4),
-                    const Text(
+                    const TomText(
                       'Channel Name • 125K views • 2 days ago',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
@@ -1607,12 +1607,12 @@ class _PracticalLayoutsSection extends StatelessWidget {
                     TomWrap(
                       spacing: 4,
                       children: [
-                        const Chip(
-                          label: Text('Flutter'),
+                        const TomChip(
+                          label: TomText('Flutter'),
                           visualDensity: VisualDensity.compact,
                         ),
-                        const Chip(
-                          label: Text('Tutorial'),
+                        const TomChip(
+                          label: TomText('Tutorial'),
                           visualDensity: VisualDensity.compact,
                         ),
                       ],
@@ -1634,11 +1634,11 @@ class _PracticalLayoutsSection extends StatelessWidget {
             ),
             child: TomRow(
               children: [
-                OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
+                TomOutlinedButton(onPressed: () {}, child: const TomText('Cancel')),
                 const TomSpacer(),
-                FilledButton.tonal(onPressed: () {}, child: const Text('Save Draft')),
+                FilledButton.tonal(onPressed: () {}, child: const TomText('Save Draft')),
                 const TomSizedBox(width: 8),
-                FilledButton(onPressed: () {}, child: const Text('Submit')),
+                TomFilledButton(onPressed: () {}, child: const TomText('Submit')),
               ],
             ),
           ),
@@ -1655,14 +1655,14 @@ class _PracticalLayoutsSection extends StatelessWidget {
                 children: [
                   const TomIcon(Icons.inbox, size: 48, color: Colors.grey),
                   const TomSizedBox(height: 8),
-                  Text(
+                  TomText(
                     'No items yet',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const TomSizedBox(height: 16),
-                  FilledButton(
+                  TomFilledButton(
                     onPressed: () {},
-                    child: const Text('Add First Item'),
+                    child: const TomText('Add First Item'),
                   ),
                 ],
               ),
@@ -1681,12 +1681,12 @@ class _PracticalLayoutsSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            Text(
+            TomText(
               description,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
@@ -1720,7 +1720,7 @@ class _ColorBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: TomCenter(
-        child: Text(
+        child: TomText(
           label,
           style: const TextStyle(
             color: Colors.white,

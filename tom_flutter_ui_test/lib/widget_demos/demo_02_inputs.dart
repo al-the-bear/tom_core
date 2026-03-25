@@ -105,7 +105,7 @@ class _SectionHeader extends StatelessWidget {
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          TomText(
             title,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
@@ -113,7 +113,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
           const TomSizedBox(height: 4),
-          Text(
+          TomText(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
@@ -157,14 +157,14 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
         padding: const EdgeInsets.all(16),
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            TomText(
               title,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -172,7 +172,7 @@ class _DemoCard extends StatelessWidget {
             ),
             if (description != null) ...[
               const TomSizedBox(height: 4),
-              Text(
+              TomText(
                 description!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -214,7 +214,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InkWell(
+        TomInkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           borderRadius: BorderRadius.circular(4),
           child: TomPadding(
@@ -227,7 +227,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
                   color: theme.colorScheme.primary,
                 ),
                 const TomSizedBox(width: 8),
-                Text(
+                TomText(
                   _expanded ? 'Hide code' : 'Show code',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
@@ -252,7 +252,7 @@ class _CodeSnippetState extends State<_CodeSnippet> {
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: SelectableText(
+            child: TomSelectableText(
               widget.code.trim(),
               style: TextStyle(
                 fontFamily: 'monospace',
@@ -309,7 +309,7 @@ class _TextFieldSectionState extends State<_TextFieldSection> {
               const TomSizedBox(height: 16),
               ValueListenableBuilder(
                 valueListenable: _basicController,
-                builder: (context, value, _) => Text(
+                builder: (context, value, _) => TomText(
                   'Current value: "${value.text}"',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -317,7 +317,7 @@ class _TextFieldSectionState extends State<_TextFieldSection> {
             ],
           ),
           code: '''
-TextField(
+TomTextField(
   controller: _textController,
   decoration: InputDecoration(
     hintText: 'Enter text here',
@@ -332,7 +332,7 @@ TextField(
             controller: _labelController,
           ),
           code: '''
-TextField(
+TomTextField(
   decoration: InputDecoration(
     labelText: 'Username',
     hintText: 'Enter your username',
@@ -364,7 +364,7 @@ TextField(
                 controller: _prefixController,
                 decoration: InputDecoration(
                   prefixIcon: const TomIcon(Icons.search),
-                  suffixIcon: IconButton(
+                  suffixIcon: TomIconButton(
                     icon: const TomIcon(Icons.clear),
                     onPressed: () => _prefixController.clear(),
                   ),
@@ -373,11 +373,11 @@ TextField(
             ],
           ),
           code: '''
-TextField(
+TomTextField(
   decoration: InputDecoration(
     labelText: 'Email',
     prefixIcon: TomIcon(Icons.email),
-    suffixIcon: IconButton(
+    suffixIcon: TomIconButton(
       icon: TomIcon(Icons.clear),
       onPressed: () => controller.clear(),
     ),
@@ -416,13 +416,13 @@ TextField(
           ),
           code: '''
 // Disabled
-TextField(
+TomTextField(
   enabled: false,
   decoration: InputDecoration(labelText: 'Disabled'),
 )
 
 // Read-only
-TextField(
+TomTextField(
   readOnly: true,
   controller: TextEditingController(text: 'Value'),
   decoration: InputDecoration(labelText: 'Read Only'),
@@ -516,7 +516,7 @@ class _TextFormFieldSectionState extends State<_TextFormFieldSection> {
                     if (_formKey.currentState!.validate()) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         TomSnackBar(
-                          content: Text('Form is valid!'),
+                          content: TomText('Form is valid!'),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -669,7 +669,7 @@ class _InputDecorationSection extends StatelessWidget {
           ),
           code: '''
 // Outline border
-TextField(
+TomTextField(
   decoration: InputDecoration(
     labelText: 'Label',
     border: OutlineInputBorder(
@@ -679,7 +679,7 @@ TextField(
 )
 
 // Filled with stadium shape
-TextField(
+TomTextField(
   decoration: InputDecoration(
     labelText: 'Label',
     filled: true,
@@ -695,7 +695,7 @@ TextField(
           description: 'Customize the background fill of text fields.',
           child: TomColumn(
             children: [
-              TextField(
+              TomTextField(
                 decoration: InputDecoration(
                   labelText: 'Default Fill',
                   filled: true,
@@ -706,7 +706,7 @@ TextField(
                 ),
               ),
               const TomSizedBox(height: 16),
-              TextField(
+              TomTextField(
                 decoration: InputDecoration(
                   labelText: 'Custom Fill Color',
                   filled: true,
@@ -718,7 +718,7 @@ TextField(
                 ),
               ),
               const TomSizedBox(height: 16),
-              TextField(
+              TomTextField(
                 decoration: InputDecoration(
                   labelText: 'Surface Container',
                   filled: true,
@@ -767,7 +767,7 @@ TextField(
             ],
           ),
           code: '''
-TextField(
+TomTextField(
   maxLength: 50,
   decoration: InputDecoration(
     labelText: 'With Counter',
@@ -792,7 +792,7 @@ Widget? _buildCustomCounter(
           ? (remaining < 0 ? Colors.red : Colors.orange)
           : Colors.grey;
 
-  return Text(
+  return TomText(
     '$remaining',
     style: TextStyle(
       color: color,
@@ -859,7 +859,7 @@ class _PasswordFieldSectionState extends State<_PasswordFieldSection> {
             obscureText: _obscureText1,
             decoration: InputDecoration(
               prefixIcon: const TomIcon(Icons.lock),
-              suffixIcon: IconButton(
+              suffixIcon: TomIconButton(
                 icon: TomIcon(
                   _obscureText1 ? Icons.visibility_off : Icons.visibility,
                 ),
@@ -869,12 +869,12 @@ class _PasswordFieldSectionState extends State<_PasswordFieldSection> {
             ),
           ),
           code: '''
-TextField(
+TomTextField(
   obscureText: _obscureText,
   decoration: InputDecoration(
     labelText: 'Password',
     prefixIcon: TomIcon(Icons.lock),
-    suffixIcon: IconButton(
+    suffixIcon: TomIconButton(
       icon: TomIcon(
                   _obscureText ? Icons.visibility_off : Icons.visibility,
       ),
@@ -889,14 +889,14 @@ TextField(
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextField(
+              TomTextField(
                 controller: _passwordController,
                 obscureText: _obscureText2,
                 onChanged: _checkPasswordStrength,
                 decoration: InputDecoration(
                   labelText: 'Create Password',
                   prefixIcon: const TomIcon(Icons.lock),
-                  suffixIcon: IconButton(
+                  suffixIcon: TomIconButton(
                     icon: TomIcon(
                   _obscureText2 ? Icons.visibility_off : Icons.visibility,
                     ),
@@ -908,9 +908,9 @@ TextField(
               ),
               const TomSizedBox(height: 8),
               if (_passwordController.text.isNotEmpty) ...[
-                ClipRRect(
+                TomClipRRect(
                   borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
+                  child: TomLinearProgressIndicator(
                     value: _passwordStrength,
                     backgroundColor: Colors.grey.shade200,
                     valueColor:
@@ -922,14 +922,14 @@ TextField(
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
+                    TomText(
                       'Strength: ${_getStrengthText()}',
                       style: TextStyle(
                         color: _getStrengthColor(),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    Text(
+                    TomText(
                       '${(_passwordStrength * 100).toInt()}%',
                       style: TextStyle(color: _getStrengthColor()),
                     ),
@@ -972,7 +972,7 @@ TextField(
             color: met ? Colors.green : Colors.grey,
           ),
           const TomSizedBox(width: 8),
-          Text(
+          TomText(
             text,
             style: TextStyle(
               fontSize: 12,
@@ -1001,7 +1001,7 @@ class _MultilineTextSection extends StatelessWidget {
           description: 'Expandable text area for longer content.',
           child: TomColumn(
             children: [
-              TextField(
+              TomTextField(
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Fixed 3 lines',
@@ -1012,7 +1012,7 @@ class _MultilineTextSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 16),
-              TextField(
+              TomTextField(
                 minLines: 2,
                 maxLines: 5,
                 decoration: InputDecoration(
@@ -1024,7 +1024,7 @@ class _MultilineTextSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 16),
-              TextField(
+              TomTextField(
                 maxLines: null,
                 keyboardType: TextInputType.multiline,
                 decoration: InputDecoration(
@@ -1040,7 +1040,7 @@ class _MultilineTextSection extends StatelessWidget {
           ),
           code: '''
 // Fixed height
-TextField(
+TomTextField(
   maxLines: 3,
   decoration: InputDecoration(
     labelText: 'Fixed 3 lines',
@@ -1050,7 +1050,7 @@ TextField(
 )
 
 // Expandable
-TextField(
+TomTextField(
   minLines: 2,
   maxLines: 5,
   decoration: InputDecoration(
@@ -1062,7 +1062,7 @@ TextField(
         _DemoCard(
           title: 'Rich Text Area',
           description: 'Text area with character count and helper text.',
-          child: TextField(
+          child: TomTextField(
             maxLines: 5,
             maxLength: 500,
             decoration: InputDecoration(
@@ -1097,7 +1097,7 @@ class _InputFormattersSection extends StatelessWidget {
           description: 'Using FilteringTextInputFormatter for numbers.',
           child: TomColumn(
             children: [
-              TextField(
+              TomTextField(
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(
@@ -1110,7 +1110,7 @@ class _InputFormattersSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 16),
-              TextField(
+              TomTextField(
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
@@ -1129,7 +1129,7 @@ class _InputFormattersSection extends StatelessWidget {
           ),
           code: '''
 // Digits only
-TextField(
+TomTextField(
   keyboardType: TextInputType.number,
   inputFormatters: [
     FilteringTextInputFormatter.digitsOnly,
@@ -1137,7 +1137,7 @@ TextField(
 )
 
 // Allow decimals
-TextField(
+TomTextField(
   inputFormatters: [
     FilteringTextInputFormatter.allow(RegExp(r'[\\d.]')),
   ],
@@ -1146,7 +1146,7 @@ TextField(
         _DemoCard(
           title: 'Uppercase Input',
           description: 'Auto-convert text to uppercase.',
-          child: TextField(
+          child: TomTextField(
             textCapitalization: TextCapitalization.characters,
             inputFormatters: [UpperCaseTextFormatter()],
             decoration: InputDecoration(
@@ -1171,14 +1171,14 @@ class UpperCaseTextFormatter extends TextInputFormatter {
   }
 }
 
-TextField(
+TomTextField(
   inputFormatters: [UpperCaseTextFormatter()],
 )''',
         ),
         _DemoCard(
           title: 'Phone Number Formatter',
           description: 'Auto-format input as phone number.',
-          child: TextField(
+          child: TomTextField(
             keyboardType: TextInputType.phone,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
@@ -1219,7 +1219,7 @@ class PhoneNumberFormatter extends TextInputFormatter {
         _DemoCard(
           title: 'Credit Card Formatter',
           description: 'Format input as credit card number with spaces.',
-          child: TextField(
+          child: TomTextField(
             keyboardType: TextInputType.number,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
@@ -1336,14 +1336,14 @@ class _SearchFieldSectionState extends State<_SearchFieldSection> {
         _DemoCard(
           title: 'Basic Search Field',
           description: 'TextField styled for search functionality.',
-          child: TextField(
+          child: TomTextField(
             controller: _searchController,
             decoration: InputDecoration(
               hintText: 'Search...',
               prefixIcon: const TomIcon(Icons.search),
               suffixIcon:
                   _searchController.text.isNotEmpty
-                      ? IconButton(
+                      ? TomIconButton(
                         icon: const TomIcon(Icons.clear),
                         onPressed: () {
                           _searchController.clear();
@@ -1360,13 +1360,13 @@ class _SearchFieldSectionState extends State<_SearchFieldSection> {
             onChanged: (_) => setState(() {}),
           ),
           code: '''
-TextField(
+TomTextField(
   controller: _searchController,
   decoration: InputDecoration(
     hintText: 'Search...',
     prefixIcon: TomIcon(Icons.search),
     suffixIcon: _searchController.text.isNotEmpty
-        ? IconButton(
+        ? TomIconButton(
             icon: TomIcon(Icons.clear),
             onPressed: () => _searchController.clear(),
           )
@@ -1396,7 +1396,7 @@ TextField(
                 hintText: 'Search topics...',
                 trailing: [
                   if (controller.text.isNotEmpty)
-                    IconButton(
+                    TomIconButton(
                       icon: const TomIcon(Icons.close),
                       onPressed: () => controller.clear(),
                     ),
@@ -1411,9 +1411,9 @@ TextField(
                       .toList();
 
               return filtered.map(
-                (suggestion) => ListTile(
+                (suggestion) => TomListTile(
                   leading: const TomIcon(Icons.topic),
-                  title: Text(suggestion),
+                  title: TomText(suggestion),
                   onTap: () {
                     controller.closeView(suggestion);
                   },
@@ -1435,8 +1435,8 @@ SearchAnchor(
   suggestionsBuilder: (context, controller) {
     return suggestions
         .where((s) => s.contains(controller.text))
-        .map((s) => ListTile(
-              title: Text(s),
+        .map((s) => TomListTile(
+              title: TomText(s),
               onTap: () => controller.closeView(s),
             ));
   },
@@ -1508,7 +1508,7 @@ class _DateTimePickerSectionState extends State<_DateTimePickerSection> {
         _DemoCard(
           title: 'Date Picker',
           description: 'TextField that triggers date picker dialog.',
-          child: TextField(
+          child: TomTextField(
             readOnly: true,
             onTap: _pickDate,
             controller: TextEditingController(
@@ -1518,7 +1518,7 @@ class _DateTimePickerSectionState extends State<_DateTimePickerSection> {
               labelText: 'Select Date',
               hintText: 'Tap to select',
               prefixIcon: const TomIcon(Icons.calendar_today),
-              suffixIcon: IconButton(
+              suffixIcon: TomIconButton(
                 icon: const TomIcon(Icons.clear),
                 onPressed: () => setState(() => _selectedDate = null),
               ),
@@ -1528,7 +1528,7 @@ class _DateTimePickerSectionState extends State<_DateTimePickerSection> {
             ),
           ),
           code: '''
-TextField(
+TomTextField(
   readOnly: true,
   onTap: () async {
     final date = await showDatePicker(
@@ -1550,7 +1550,7 @@ TextField(
         _DemoCard(
           title: 'Time Picker',
           description: 'TextField that triggers time picker dialog.',
-          child: TextField(
+          child: TomTextField(
             readOnly: true,
             onTap: _pickTime,
             controller: TextEditingController(
@@ -1560,7 +1560,7 @@ TextField(
               labelText: 'Select Time',
               hintText: 'Tap to select',
               prefixIcon: const TomIcon(Icons.access_time),
-              suffixIcon: IconButton(
+              suffixIcon: TomIconButton(
                 icon: const TomIcon(Icons.clear),
                 onPressed: () => setState(() => _selectedTime = null),
               ),
@@ -1573,7 +1573,7 @@ TextField(
         _DemoCard(
           title: 'Date Range Picker',
           description: 'Select a start and end date.',
-          child: TextField(
+          child: TomTextField(
             readOnly: true,
             onTap: _pickDateRange,
             controller: TextEditingController(
@@ -1586,7 +1586,7 @@ TextField(
               labelText: 'Select Date Range',
               hintText: 'Tap to select',
               prefixIcon: const TomIcon(Icons.date_range),
-              suffixIcon: IconButton(
+              suffixIcon: TomIconButton(
                 icon: const TomIcon(Icons.clear),
                 onPressed: () => setState(() => _selectedDateRange = null),
               ),
@@ -1674,16 +1674,16 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(
+                    TomTextButton(
                       onPressed: () {},
-                      child: const Text('Forgot Password?'),
+                      child: const TomText('Forgot Password?'),
                     ),
                   ],
                 ),
                 const TomSizedBox(height: 16),
                 TomSizedBox(
                   width: double.infinity,
-                  child: FilledButton(
+                  child: TomFilledButton(
                     onPressed:
                         _loginLoading
                             ? null
@@ -1697,7 +1697,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                   setState(() => _loginLoading = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     TomSnackBar(
-                                      content: Text('Login successful!'),
+                                      content: TomText('Login successful!'),
                                       backgroundColor: Colors.green,
                                     ),
                                   );
@@ -1716,7 +1716,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                 ),
                               ),
                             )
-                            : const Text('Login'),
+                            : const TomText('Login'),
                   ),
                 ),
               ],
@@ -1829,14 +1829,14 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                 const TomSizedBox(height: 16),
                 TomRow(
                   children: [
-                    Checkbox(
+                    TomCheckbox(
                       value: _agreeToTerms,
                       onChanged: (value) {
                         setState(() => _agreeToTerms = value ?? false);
                       },
                     ),
                     TomExpanded(
-                      child: GestureDetector(
+                      child: TomGestureDetector(
                         onTap: () {
                           setState(() => _agreeToTerms = !_agreeToTerms);
                         },
@@ -1863,7 +1863,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                 const TomSizedBox(height: 16),
                 TomSizedBox(
                   width: double.infinity,
-                  child: FilledButton(
+                  child: TomFilledButton(
                     onPressed:
                         _signupLoading || !_agreeToTerms
                             ? null
@@ -1877,7 +1877,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                   setState(() => _signupLoading = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     TomSnackBar(
-                                      content: Text('Account created!'),
+                                      content: TomText('Account created!'),
                                       backgroundColor: Colors.green,
                                     ),
                                   );
@@ -1896,7 +1896,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                 ),
                               ),
                             )
-                            : const Text('Create Account'),
+                            : const TomText('Create Account'),
                   ),
                 ),
               ],
