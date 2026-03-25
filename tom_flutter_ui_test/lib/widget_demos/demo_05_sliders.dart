@@ -396,8 +396,7 @@ class _SliderCallbacksDemoState extends State<_SliderCallbacksDemo> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TomText('Value: ${_value.toStringAsFixed(0)}'),
-                TomText(
-                  'Status: $_status',
+                TomText(null, tomId: 'demo.05.auto.text.1',
                   style: TextStyle(
                     color: _status.contains('Changing') ? Colors.orange : Colors.green,
                   ),
@@ -483,7 +482,7 @@ TomRangeSlider(
                     '\$${_priceRange.start.round()}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const TomText('Price Range'),
+                  const TomText(null, tomId: 'demo.05.auto.text.11'),
                   TomText(
                     '\$${_priceRange.end.round()}',
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -504,7 +503,7 @@ TomRangeSlider(
               ),
               const TomRow(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [TomText('\$0'), TomText('\$1,000')],
+                children: [TomText(null, tomId: 'demo.05.auto.text.12'), TomText(null, tomId: 'demo.05.auto.text.13')],
               ),
             ],
           ),
@@ -715,7 +714,7 @@ TomSlider(
               TomRow(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const TomText('16°C'),
+                  const TomText(null, tomId: 'demo.05.auto.text.1'),
                   TomText(
                     _getTemperatureLabel(),
                     style: TextStyle(
@@ -725,7 +724,7 @@ TomSlider(
                               : (_temperature > 25 ? Colors.red : Colors.green),
                     ),
                   ),
-                  const TomText('30°C'),
+                  const TomText(null, tomId: 'demo.05.auto.text.2'),
                 ],
               ),
             ],
@@ -862,7 +861,7 @@ class _ThumbShapesDemoState extends State<_ThumbShapesDemo> {
               onChanged: (v) => setState(() => _value1 = v),
             ),
           ),
-          const TomText('Large Round Thumb'),
+          const TomText(null, tomId: 'demo.05.auto.text.14'),
           const TomSizedBox(height: 8),
           // Custom square-ish thumb
           SliderTheme(
@@ -881,7 +880,7 @@ class _ThumbShapesDemoState extends State<_ThumbShapesDemo> {
               onChanged: (v) => setState(() => _value2 = v),
             ),
           ),
-          const TomText('Elevated on Press'),
+          const TomText(null, tomId: 'demo.05.auto.text.15'),
           const TomSizedBox(height: 8),
           // Small thumb
           SliderTheme(
@@ -899,7 +898,7 @@ class _ThumbShapesDemoState extends State<_ThumbShapesDemo> {
               onChanged: (v) => setState(() => _value3 = v),
             ),
           ),
-          const TomText('Small & Minimal'),
+          const TomText(null, tomId: 'demo.05.auto.text.16'),
         ],
       ),
     );
@@ -936,7 +935,7 @@ class _TrackShapesDemoState extends State<_TrackShapesDemo> {
               onChanged: (v) => setState(() => _value1 = v),
             ),
           ),
-          const TomText('Thick Track (12px)'),
+          const TomText(null, tomId: 'demo.05.auto.text.3'),
           const TomSizedBox(height: 16),
           // Thin track
           SliderTheme(
@@ -950,7 +949,7 @@ class _TrackShapesDemoState extends State<_TrackShapesDemo> {
               onChanged: (v) => setState(() => _value2 = v),
             ),
           ),
-          const TomText('Thin Track (2px)'),
+          const TomText(null, tomId: 'demo.05.auto.text.17'),
         ],
       ),
     );
@@ -1086,8 +1085,8 @@ class _CustomSliderSectionState extends State<_CustomSliderSection> {
               const TomRow(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TomText('downloading_file.zip', style: TextStyle(fontSize: 12)),
-                  TomText('3.5 MB / 10 MB', style: TextStyle(fontSize: 12)),
+                  TomText(null, tomId: 'demo.05.auto.text.10', style: TextStyle(fontSize: 12)),
+                  TomText(null, tomId: 'demo.05.auto.text.2', style: TextStyle(fontSize: 12)),
                 ],
               ),
             ],
@@ -1196,8 +1195,7 @@ class _PracticalExamplesSectionState extends State<_PracticalExamplesSection> {
                   border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: TomCenter(
-                  child: TomText(
-                    '#${_selectedColor.toHex()}',
+                  child: TomText(null, tomId: 'demo.05.auto.text.3',
                     style: TextStyle(
                       color:
                           _lightness > 50 ? Colors.black : Colors.white,
@@ -1325,7 +1323,7 @@ class _PracticalExamplesSectionState extends State<_PracticalExamplesSection> {
                         ),
                       ],
                     ),
-                    const TomText('10:00'),
+                    const TomText(null, tomId: 'demo.05.auto.text.4'),
                   ],
                 ),
               ),
@@ -1340,7 +1338,7 @@ class _PracticalExamplesSectionState extends State<_PracticalExamplesSection> {
   Widget _buildHueSlider() {
     return TomRow(
       children: [
-        const TomSizedBox(width: 40, child: TomText('H')),
+        const TomSizedBox(width: 40, child: TomText(null, tomId: 'demo.05.auto.text.5')),
         TomExpanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -1363,7 +1361,7 @@ class _PracticalExamplesSectionState extends State<_PracticalExamplesSection> {
   Widget _buildSaturationSlider() {
     return TomRow(
       children: [
-        const TomSizedBox(width: 40, child: TomText('S')),
+        const TomSizedBox(width: 40, child: TomText(null, tomId: 'demo.05.auto.text.6')),
         TomExpanded(
           child: TomSlider(
             value: _saturation,
@@ -1381,7 +1379,7 @@ class _PracticalExamplesSectionState extends State<_PracticalExamplesSection> {
   Widget _buildLightnessSlider() {
     return TomRow(
       children: [
-        const TomSizedBox(width: 40, child: TomText('L')),
+        const TomSizedBox(width: 40, child: TomText(null, tomId: 'demo.05.auto.text.7')),
         TomExpanded(
           child: TomSlider(
             value: _lightness,
@@ -1482,7 +1480,7 @@ class _AudioEqualizerDemoState extends State<_AudioEqualizerDemo> {
               children: List.generate(_bands.length, (index) {
                 return TomColumn(
                   children: [
-                    TomText('+12', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                    TomText(null, tomId: 'demo.05.auto.text.4', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
                     TomExpanded(
                       child: TomRotatedBox(
                         quarterTurns: 3,
@@ -1501,7 +1499,7 @@ class _AudioEqualizerDemoState extends State<_AudioEqualizerDemo> {
                         ),
                       ),
                     ),
-                    TomText('-12', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                    TomText(null, tomId: 'demo.05.auto.text.5', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
                     const TomSizedBox(height: 4),
                     TomText(
                       _frequencies[index],
@@ -1525,7 +1523,7 @@ class _AudioEqualizerDemoState extends State<_AudioEqualizerDemo> {
                   });
                 },
                 icon: const TomIcon(Icons.restart_alt, size: 16),
-                label: const TomText('Reset'),
+                label: const TomText(null, tomId: 'demo.05.auto.text.8'),
               ),
               const TomSizedBox(width: 16),
               TextButton.icon(
@@ -1542,7 +1540,7 @@ class _AudioEqualizerDemoState extends State<_AudioEqualizerDemo> {
                   });
                 },
                 icon: const TomIcon(Icons.music_note, size: 16),
-                label: const TomText('Bass Boost'),
+                label: const TomText(null, tomId: 'demo.05.auto.text.9'),
               ),
             ],
           ),

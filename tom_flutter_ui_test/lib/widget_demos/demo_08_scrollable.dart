@@ -200,8 +200,7 @@ class _ListViewSection extends StatelessWidget {
                   return TomContainer(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     padding: const EdgeInsets.all(12),
-                    child: const TomText(
-                      'Today',
+                    child: const TomText(null, tomId: 'demo.08.auto.text.1',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   );
@@ -210,8 +209,7 @@ class _ListViewSection extends StatelessWidget {
                   return TomContainer(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     padding: const EdgeInsets.all(12),
-                    child: const TomText(
-                      'Yesterday',
+                    child: const TomText(null, tomId: 'demo.08.auto.text.2',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   );
@@ -474,8 +472,7 @@ class _PageViewSectionState extends State<_PageViewSection> {
                               ),
                             ),
                             const TomSizedBox(height: 8),
-                            const TomText(
-                              'Swipe to navigate',
+                            const TomText(null, tomId: 'demo.08.auto.text.7',
                               style: TextStyle(color: Colors.white70),
                             ),
                           ],
@@ -550,13 +547,11 @@ class _VerticalPageViewDemo extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Vertical PageView',
+            const TomText(null, tomId: 'demo.08.auto.text.3',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            TomText(
-              'Pages scrolling vertically.',
+            TomText(null, tomId: 'demo.08.auto.text.8',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -627,13 +622,11 @@ class _PageViewWithTransformDemoState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'PageView with Transform',
+            const TomText(null, tomId: 'demo.08.auto.text.9',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            TomText(
-              'Carousel effect with viewportFraction.',
+            TomText(null, tomId: 'demo.08.auto.text.10',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -856,13 +849,11 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Scroll Controller Demo',
+            const TomText(null, tomId: 'demo.08.auto.text.11',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            TomText(
-              'Programmatic scrolling and position listening.',
+            TomText(null, tomId: 'demo.08.auto.text.12',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -876,7 +867,7 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
                       curve: Curves.easeOut,
                     );
                   },
-                  child: const TomText('Scroll to Top'),
+                  child: const TomText(null, tomId: 'demo.08.auto.text.1'),
                 ),
                 const TomSizedBox(width: 8),
                 FilledButton.tonal(
@@ -887,7 +878,7 @@ class _ScrollControllerSectionState extends State<_ScrollControllerSection> {
                       curve: Curves.easeOut,
                     );
                   },
-                  child: const TomText('Scroll to Bottom'),
+                  child: const TomText(null, tomId: 'demo.08.auto.text.2'),
                 ),
               ],
             ),
@@ -950,8 +941,7 @@ class _NestedScrollSection extends StatelessWidget {
             children: [
               const TomPadding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: TomText(
-                  'Categories',
+                child: TomText(null, tomId: 'demo.08.auto.text.4',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1000,8 +990,7 @@ class _NestedScrollSection extends StatelessWidget {
               const TomSizedBox(height: 16),
               const TomPadding(
                 padding: EdgeInsets.only(bottom: 8),
-                child: TomText(
-                  'Featured',
+                child: TomText(null, tomId: 'demo.08.auto.text.5',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
@@ -1046,8 +1035,7 @@ class _NestedScrollSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TomText(
-                'BouncingScrollPhysics (iOS style):',
+              const TomText(null, tomId: 'demo.08.auto.text.13',
                 style: TextStyle(fontSize: 12),
               ),
               const TomSizedBox(height: 4),
@@ -1068,8 +1056,7 @@ class _NestedScrollSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 12),
-              const TomText(
-                'ClampingScrollPhysics (Android style):',
+              const TomText(null, tomId: 'demo.08.auto.text.14',
                 style: TextStyle(fontSize: 12),
               ),
               const TomSizedBox(height: 4),
@@ -1090,8 +1077,7 @@ class _NestedScrollSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 12),
-              const TomText(
-                'NeverScrollableScrollPhysics:',
+              const TomText(null, tomId: 'demo.08.auto.text.6',
                 style: TextStyle(fontSize: 12),
               ),
               const TomSizedBox(height: 4),

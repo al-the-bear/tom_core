@@ -131,10 +131,9 @@ class _TextSection extends StatelessWidget {
           const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText('This is basic text'),
+              TomText(null, tomId: 'demo.11.auto.text.1'),
               TomSizedBox(height: 8),
-              TomText(
-                'This is text with maxLines and overflow.',
+              TomText(null, tomId: 'demo.11.auto.text.38',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -147,59 +146,51 @@ class _TextSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TomText(
-                'TextOverflow.clip:',
+              const TomText(null, tomId: 'demo.11.auto.text.1',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
-                child: const TomText(
-                  'This is a long text that will be clipped',
+                child: const TomText(null, tomId: 'demo.11.auto.text.39',
                   overflow: TextOverflow.clip,
                   maxLines: 1,
                 ),
               ),
               const TomSizedBox(height: 12),
-              const TomText(
-                'TextOverflow.fade:',
+              const TomText(null, tomId: 'demo.11.auto.text.2',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
-                child: const TomText(
-                  'This is a long text that will fade out',
+                child: const TomText(null, tomId: 'demo.11.auto.text.40',
                   overflow: TextOverflow.fade,
                   maxLines: 1,
                   softWrap: false,
                 ),
               ),
               const TomSizedBox(height: 12),
-              const TomText(
-                'TextOverflow.ellipsis:',
+              const TomText(null, tomId: 'demo.11.auto.text.3',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               TomContainer(
                 width: 200,
                 color: Colors.grey.shade100,
-                child: const TomText(
-                  'This is a long text that will show ellipsis',
+                child: const TomText(null, tomId: 'demo.11.auto.text.41',
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
               ),
               const TomSizedBox(height: 12),
-              const TomText(
-                'TextOverflow.visible:',
+              const TomText(null, tomId: 'demo.11.auto.text.4',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
               TomContainer(
                 width: 200,
                 height: 30,
                 color: Colors.grey.shade100,
-                child: const TomText(
-                  'This text overflows visibly',
+                child: const TomText(null, tomId: 'demo.11.auto.text.5',
                   overflow: TextOverflow.visible,
                   maxLines: 1,
                   softWrap: false,
@@ -279,49 +270,41 @@ class _TextStylesSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(
-                'Display Large',
+              TomText(null, tomId: 'demo.11.auto.text.6',
                 style: Theme.of(context).textTheme.displayLarge,
               ),
-              TomText(
-                'Display Medium',
+              TomText(null, tomId: 'demo.11.auto.text.7',
                 style: Theme.of(context).textTheme.displayMedium,
               ),
-              TomText(
-                'Display Small',
+              TomText(null, tomId: 'demo.11.auto.text.8',
                 style: Theme.of(context).textTheme.displaySmall,
               ),
               const TomDivider(),
-              TomText(
-                'Headline Large',
+              TomText(null, tomId: 'demo.11.auto.text.42',
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
-              TomText(
-                'Headline Medium',
+              TomText(null, tomId: 'demo.11.auto.text.43',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              TomText(
-                'Headline Small',
+              TomText(null, tomId: 'demo.11.auto.text.44',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const TomDivider(),
-              TomText('Title Large', style: Theme.of(context).textTheme.titleLarge),
-              TomText(
-                'Title Medium',
+              TomText(null, tomId: 'demo.11.auto.text.9', style: Theme.of(context).textTheme.titleLarge),
+              TomText(null, tomId: 'demo.11.auto.text.10',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              TomText('Title Small', style: Theme.of(context).textTheme.titleSmall),
+              TomText(null, tomId: 'demo.11.auto.text.11', style: Theme.of(context).textTheme.titleSmall),
               const TomDivider(),
-              TomText('Body Large', style: Theme.of(context).textTheme.bodyLarge),
-              TomText('Body Medium', style: Theme.of(context).textTheme.bodyMedium),
-              TomText('Body Small', style: Theme.of(context).textTheme.bodySmall),
+              TomText(null, tomId: 'demo.11.auto.text.12', style: Theme.of(context).textTheme.bodyLarge),
+              TomText(null, tomId: 'demo.11.auto.text.13', style: Theme.of(context).textTheme.bodyMedium),
+              TomText(null, tomId: 'demo.11.auto.text.14', style: Theme.of(context).textTheme.bodySmall),
               const TomDivider(),
-              TomText('Label Large', style: Theme.of(context).textTheme.labelLarge),
-              TomText(
-                'Label Medium',
+              TomText(null, tomId: 'demo.11.auto.text.15', style: Theme.of(context).textTheme.labelLarge),
+              TomText(null, tomId: 'demo.11.auto.text.16',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
-              TomText('Label Small', style: Theme.of(context).textTheme.labelSmall),
+              TomText(null, tomId: 'demo.11.auto.text.17', style: Theme.of(context).textTheme.labelSmall),
             ],
           ),
         ),
@@ -332,15 +315,15 @@ class _TextStylesSection extends StatelessWidget {
             spacing: 16,
             runSpacing: 8,
             children: [
-              const TomText('w100', style: TextStyle(fontWeight: FontWeight.w100)),
-              const TomText('w200', style: TextStyle(fontWeight: FontWeight.w200)),
-              const TomText('w300', style: TextStyle(fontWeight: FontWeight.w300)),
-              const TomText('w400', style: TextStyle(fontWeight: FontWeight.w400)),
-              const TomText('w500', style: TextStyle(fontWeight: FontWeight.w500)),
-              const TomText('w600', style: TextStyle(fontWeight: FontWeight.w600)),
-              const TomText('w700', style: TextStyle(fontWeight: FontWeight.w700)),
-              const TomText('w800', style: TextStyle(fontWeight: FontWeight.w800)),
-              const TomText('w900', style: TextStyle(fontWeight: FontWeight.w900)),
+              const TomText(null, tomId: 'demo.11.auto.text.18', style: TextStyle(fontWeight: FontWeight.w100)),
+              const TomText(null, tomId: 'demo.11.auto.text.19', style: TextStyle(fontWeight: FontWeight.w200)),
+              const TomText(null, tomId: 'demo.11.auto.text.20', style: TextStyle(fontWeight: FontWeight.w300)),
+              const TomText(null, tomId: 'demo.11.auto.text.21', style: TextStyle(fontWeight: FontWeight.w400)),
+              const TomText(null, tomId: 'demo.11.auto.text.22', style: TextStyle(fontWeight: FontWeight.w500)),
+              const TomText(null, tomId: 'demo.11.auto.text.23', style: TextStyle(fontWeight: FontWeight.w600)),
+              const TomText(null, tomId: 'demo.11.auto.text.24', style: TextStyle(fontWeight: FontWeight.w700)),
+              const TomText(null, tomId: 'demo.11.auto.text.25', style: TextStyle(fontWeight: FontWeight.w800)),
+              const TomText(null, tomId: 'demo.11.auto.text.26', style: TextStyle(fontWeight: FontWeight.w900)),
             ],
           ),
         ),
@@ -350,29 +333,23 @@ class _TextStylesSection extends StatelessWidget {
           const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(
-                'Normal Style',
+              TomText(null, tomId: 'demo.11.auto.text.27',
                 style: TextStyle(fontStyle: FontStyle.normal),
               ),
-              TomText(
-                'Italic Style',
+              TomText(null, tomId: 'demo.11.auto.text.28',
                 style: TextStyle(fontStyle: FontStyle.italic),
               ),
               TomSizedBox(height: 8),
-              TomText(
-                'Primary Color',
+              TomText(null, tomId: 'demo.11.auto.text.29',
                 style: TextStyle(color: Colors.blue, fontSize: 16),
               ),
-              TomText(
-                'Secondary Color',
+              TomText(null, tomId: 'demo.11.auto.text.45',
                 style: TextStyle(color: Colors.purple, fontSize: 16),
               ),
-              TomText(
-                'Error Color',
+              TomText(null, tomId: 'demo.11.auto.text.30',
                 style: TextStyle(color: Colors.red, fontSize: 16),
               ),
-              TomText(
-                'Success Color',
+              TomText(null, tomId: 'demo.11.auto.text.31',
                 style: TextStyle(color: Colors.green, fontSize: 16),
               ),
             ],
@@ -384,23 +361,19 @@ class _TextStylesSection extends StatelessWidget {
           const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText('Normal spacing'),
-              TomText(
-                'Letter spacing 2.0',
+              TomText(null, tomId: 'demo.11.auto.text.64'),
+              TomText(null, tomId: 'demo.11.auto.text.46',
                 style: TextStyle(letterSpacing: 2.0),
               ),
-              TomText(
-                'Letter spacing 4.0',
+              TomText(null, tomId: 'demo.11.auto.text.47',
                 style: TextStyle(letterSpacing: 4.0),
               ),
               TomSizedBox(height: 8),
-              TomText('Word spacing normal'),
-              TomText(
-                'Word spacing 10.0',
+              TomText(null, tomId: 'demo.11.auto.text.65'),
+              TomText(null, tomId: 'demo.11.auto.text.48',
                 style: TextStyle(wordSpacing: 10.0),
               ),
-              TomText(
-                'Word spacing 20.0',
+              TomText(null, tomId: 'demo.11.auto.text.49',
                 style: TextStyle(wordSpacing: 20.0),
               ),
             ],
@@ -522,7 +495,7 @@ class _RichTextSection extends StatelessWidget {
                             ..onTap = () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 TomSnackBar(
-                                  content: TomText('Terms of Service tapped'),
+                                  content: TomText(null, tomId: 'demo.11.auto.text.2'),
                                 ),
                               );
                             },
@@ -539,7 +512,7 @@ class _RichTextSection extends StatelessWidget {
                             ..onTap = () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 TomSnackBar(
-                                  content: TomText('Privacy Policy tapped'),
+                                  content: TomText(null, tomId: 'demo.11.auto.text.3'),
                                 ),
                               );
                             },
@@ -667,7 +640,7 @@ class _SelectableTextSection extends StatelessWidget {
                     label: 'Custom Action',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        TomSnackBar(content: TomText('Custom action!')),
+                        TomSnackBar(content: TomText(null, tomId: 'demo.11.auto.text.66')),
                       );
                     },
                   ),
@@ -725,21 +698,21 @@ class _BadgeSection extends StatelessWidget {
             runSpacing: 16,
             children: [
               TomBadge(
-                label: const TomText('3'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.4'),
                 child: TomIconButton(
                   icon: const TomIcon(Icons.mail),
                   onPressed: () {},
                 ),
               ),
               TomBadge(
-                label: const TomText('99+'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.5'),
                 child: TomIconButton(
                   icon: const TomIcon(Icons.notifications),
                   onPressed: () {},
                 ),
               ),
               const TomBadge(
-                label: TomText('New'),
+                label: TomText(null, tomId: 'demo.11.auto.text.6'),
                 child: TomIcon(Icons.star, size: 32),
               ),
             ],
@@ -762,7 +735,7 @@ class _BadgeSection extends StatelessWidget {
               const TomBadge(
                 smallSize: 10,
                 child: TomCircleAvatar(
-                  child: TomText('JD'),
+                  child: TomText(null, tomId: 'demo.11.auto.text.7'),
                 ),
               ),
             ],
@@ -776,17 +749,17 @@ class _BadgeSection extends StatelessWidget {
             runSpacing: 16,
             children: [
               TomBadge(
-                label: const TomText('5'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.8'),
                 backgroundColor: Colors.red,
                 child: const TomIcon(Icons.inbox, size: 32),
               ),
               TomBadge(
-                label: const TomText('12'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.9'),
                 backgroundColor: Colors.green,
                 child: const TomIcon(Icons.check_circle, size: 32),
               ),
               TomBadge(
-                label: const TomText('!'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.10'),
                 backgroundColor: Colors.orange,
                 child: const TomIcon(Icons.warning, size: 32),
               ),
@@ -802,7 +775,7 @@ class _BadgeSection extends StatelessWidget {
             children: [
               TomBadge(
                 alignment: Alignment.topRight,
-                label: const TomText('TR'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.11'),
                 child: TomContainer(
                   width: 60,
                   height: 60,
@@ -811,7 +784,7 @@ class _BadgeSection extends StatelessWidget {
               ),
               TomBadge(
                 alignment: Alignment.topLeft,
-                label: const TomText('TL'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.12'),
                 child: TomContainer(
                   width: 60,
                   height: 60,
@@ -820,7 +793,7 @@ class _BadgeSection extends StatelessWidget {
               ),
               TomBadge(
                 alignment: Alignment.bottomRight,
-                label: const TomText('BR'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.13'),
                 child: TomContainer(
                   width: 60,
                   height: 60,
@@ -829,7 +802,7 @@ class _BadgeSection extends StatelessWidget {
               ),
               TomBadge(
                 alignment: Alignment.bottomLeft,
-                label: const TomText('BL'),
+                label: const TomText(null, tomId: 'demo.11.auto.text.14'),
                 child: TomContainer(
                   width: 60,
                   height: 60,
@@ -886,32 +859,28 @@ class _TextEffectsSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TomText(
-                'Underline text',
+              const TomText(null, tomId: 'demo.11.auto.text.50',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   fontSize: 16,
                 ),
               ),
               const TomSizedBox(height: 8),
-              const TomText(
-                'Overline text',
+              const TomText(null, tomId: 'demo.11.auto.text.51',
                 style: TextStyle(
                   decoration: TextDecoration.overline,
                   fontSize: 16,
                 ),
               ),
               const TomSizedBox(height: 8),
-              const TomText(
-                'Line-through text',
+              const TomText(null, tomId: 'demo.11.auto.text.52',
                 style: TextStyle(
                   decoration: TextDecoration.lineThrough,
                   fontSize: 16,
                 ),
               ),
               const TomSizedBox(height: 8),
-              TomText(
-                'Combined decorations',
+              TomText(null, tomId: 'demo.11.auto.text.53',
                 style: TextStyle(
                   decoration: TextDecoration.combine([
                     TextDecoration.underline,
@@ -929,8 +898,7 @@ class _TextEffectsSection extends StatelessWidget {
           const TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(
-                'Solid underline',
+              TomText(null, tomId: 'demo.11.auto.text.54',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   decorationStyle: TextDecorationStyle.solid,
@@ -938,8 +906,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               TomSizedBox(height: 8),
-              TomText(
-                'Double underline',
+              TomText(null, tomId: 'demo.11.auto.text.55',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   decorationStyle: TextDecorationStyle.double,
@@ -947,8 +914,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               TomSizedBox(height: 8),
-              TomText(
-                'Dotted underline',
+              TomText(null, tomId: 'demo.11.auto.text.56',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   decorationStyle: TextDecorationStyle.dotted,
@@ -956,8 +922,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               TomSizedBox(height: 8),
-              TomText(
-                'Dashed underline',
+              TomText(null, tomId: 'demo.11.auto.text.57',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   decorationStyle: TextDecorationStyle.dashed,
@@ -965,8 +930,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               TomSizedBox(height: 8),
-              TomText(
-                'Wavy underline',
+              TomText(null, tomId: 'demo.11.auto.text.58',
                 style: TextStyle(
                   decoration: TextDecoration.underline,
                   decorationStyle: TextDecorationStyle.wavy,
@@ -983,8 +947,7 @@ class _TextEffectsSection extends StatelessWidget {
           TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(
-                'Text with shadow',
+              TomText(null, tomId: 'demo.11.auto.text.32',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -998,8 +961,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 12),
-              TomText(
-                'Multiple shadows',
+              TomText(null, tomId: 'demo.11.auto.text.33',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1018,8 +980,7 @@ class _TextEffectsSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 12),
-              TomText(
-                'Glow effect',
+              TomText(null, tomId: 'demo.11.auto.text.34',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1085,8 +1046,7 @@ class _PracticalExamplesSection extends StatelessWidget {
           'Formatted price with sale indicator.',
           TomRow(
             children: [
-              const TomText(
-                '\$29.99',
+              const TomText(null, tomId: 'demo.11.auto.text.59',
                 style: TextStyle(
                   fontSize: 14,
                   decoration: TextDecoration.lineThrough,
@@ -1094,8 +1054,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(width: 8),
-              const TomText(
-                '\$19.99',
+              const TomText(null, tomId: 'demo.11.auto.text.60',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -1109,8 +1068,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                   color: Colors.red,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const TomText(
-                  '-33%',
+                child: const TomText(null, tomId: 'demo.11.auto.text.35',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -1126,23 +1084,21 @@ class _PracticalExamplesSection extends StatelessWidget {
           'User display with status indicator.',
           const TomRow(
             children: [
-              TomCircleAvatar(child: TomText('JD')),
+              TomCircleAvatar(child: TomText(null, tomId: 'demo.11.auto.text.15')),
               TomSizedBox(width: 12),
               TomColumn(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   TomRow(
                     children: [
-                      TomText(
-                        'John Doe',
+                      TomText(null, tomId: 'demo.11.auto.text.61',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       TomSizedBox(width: 8),
                       TomIcon(Icons.verified, size: 16, color: Colors.blue),
                     ],
                   ),
-                  TomText(
-                    '@johndoe',
+                  TomText(null, tomId: 'demo.11.auto.text.62',
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                 ],
@@ -1189,7 +1145,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                 children: [
                   TomIcon(Icons.schedule, size: 14, color: Colors.grey),
                   TomSizedBox(width: 4),
-                  TomText('2 minutes ago', style: TextStyle(color: Colors.grey)),
+                  TomText(null, tomId: 'demo.11.auto.text.63', style: TextStyle(color: Colors.grey)),
                 ],
               ),
               TomSizedBox(height: 8),
@@ -1197,7 +1153,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                 children: [
                   TomIcon(Icons.schedule, size: 14, color: Colors.grey),
                   TomSizedBox(width: 4),
-                  TomText('Yesterday at 3:45 PM', style: TextStyle(color: Colors.grey)),
+                  TomText(null, tomId: 'demo.11.auto.text.36', style: TextStyle(color: Colors.grey)),
                 ],
               ),
               TomSizedBox(height: 8),
@@ -1205,7 +1161,7 @@ class _PracticalExamplesSection extends StatelessWidget {
                 children: [
                   TomIcon(Icons.schedule, size: 14, color: Colors.grey),
                   TomSizedBox(width: 4),
-                  TomText('Dec 25, 2024', style: TextStyle(color: Colors.grey)),
+                  TomText(null, tomId: 'demo.11.auto.text.37', style: TextStyle(color: Colors.grey)),
                 ],
               ),
             ],

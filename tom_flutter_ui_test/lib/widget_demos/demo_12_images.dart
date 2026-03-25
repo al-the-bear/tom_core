@@ -122,35 +122,35 @@ class _IconSection extends StatelessWidget {
                 children: [
                   TomIcon(Icons.star, size: 16),
                   TomSizedBox(height: 4),
-                  TomText('16', style: TextStyle(fontSize: 10)),
+                  TomText(null, tomId: 'demo.12.auto.text.1', style: TextStyle(fontSize: 10)),
                 ],
               ),
               TomColumn(
                 children: [
                   TomIcon(Icons.star, size: 24),
                   TomSizedBox(height: 4),
-                  TomText('24', style: TextStyle(fontSize: 10)),
+                  TomText(null, tomId: 'demo.12.auto.text.2', style: TextStyle(fontSize: 10)),
                 ],
               ),
               TomColumn(
                 children: [
                   TomIcon(Icons.star, size: 32),
                   TomSizedBox(height: 4),
-                  TomText('32', style: TextStyle(fontSize: 10)),
+                  TomText(null, tomId: 'demo.12.auto.text.3', style: TextStyle(fontSize: 10)),
                 ],
               ),
               TomColumn(
                 children: [
                   TomIcon(Icons.star, size: 48),
                   TomSizedBox(height: 4),
-                  TomText('48', style: TextStyle(fontSize: 10)),
+                  TomText(null, tomId: 'demo.12.auto.text.4', style: TextStyle(fontSize: 10)),
                 ],
               ),
               TomColumn(
                 children: [
                   TomIcon(Icons.star, size: 64),
                   TomSizedBox(height: 4),
-                  TomText('64', style: TextStyle(fontSize: 10)),
+                  TomText(null, tomId: 'demo.12.auto.text.5', style: TextStyle(fontSize: 10)),
                 ],
               ),
             ],
@@ -271,10 +271,10 @@ class _AvatarSection extends StatelessWidget {
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              TomCircleAvatar(radius: 16, child: TomText('S')),
-              TomCircleAvatar(radius: 24, child: TomText('M')),
-              TomCircleAvatar(radius: 32, child: TomText('L')),
-              TomCircleAvatar(radius: 40, child: TomText('XL')),
+              TomCircleAvatar(radius: 16, child: TomText(null, tomId: 'demo.12.auto.text.1')),
+              TomCircleAvatar(radius: 24, child: TomText(null, tomId: 'demo.12.auto.text.2')),
+              TomCircleAvatar(radius: 32, child: TomText(null, tomId: 'demo.12.auto.text.3')),
+              TomCircleAvatar(radius: 40, child: TomText(null, tomId: 'demo.12.auto.text.4')),
             ],
           ),
         ),
@@ -287,19 +287,19 @@ class _AvatarSection extends StatelessWidget {
             children: [
               TomCircleAvatar(
                 backgroundColor: Colors.red.shade200,
-                child: const TomText('JD', style: TextStyle(color: Colors.red)),
+                child: const TomText(null, tomId: 'demo.12.auto.text.6', style: TextStyle(color: Colors.red)),
               ),
               TomCircleAvatar(
                 backgroundColor: Colors.blue.shade200,
-                child: const TomText('AB', style: TextStyle(color: Colors.blue)),
+                child: const TomText(null, tomId: 'demo.12.auto.text.7', style: TextStyle(color: Colors.blue)),
               ),
               TomCircleAvatar(
                 backgroundColor: Colors.green.shade200,
-                child: const TomText('XY', style: TextStyle(color: Colors.green)),
+                child: const TomText(null, tomId: 'demo.12.auto.text.8', style: TextStyle(color: Colors.green)),
               ),
               TomCircleAvatar(
                 backgroundColor: Colors.purple.shade200,
-                child: const TomText('MN', style: TextStyle(color: Colors.purple)),
+                child: const TomText(null, tomId: 'demo.12.auto.text.9', style: TextStyle(color: Colors.purple)),
               ),
             ],
           ),
@@ -349,8 +349,7 @@ class _AvatarSection extends StatelessWidget {
                         radius: 24,
                         backgroundColor:
                             Colors.primaries[i % Colors.primaries.length],
-                        child: TomText(
-                          '${i + 1}',
+                        child: TomText(null, tomId: 'demo.12.auto.text.10',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
@@ -366,7 +365,7 @@ class _AvatarSection extends StatelessWidget {
                     child: TomCircleAvatar(
                       radius: 24,
                       backgroundColor: Colors.grey.shade300,
-                      child: const TomText('+3'),
+                      child: const TomText(null, tomId: 'demo.12.auto.text.5'),
                     ),
                   ),
                 ),
@@ -536,11 +535,11 @@ class _ImageContainerSection extends StatelessWidget {
                               color: Colors.red.shade200,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const TomCenter(child: TomText('1:1')),
+                            child: const TomCenter(child: TomText(null, tomId: 'demo.12.auto.text.6')),
                           ),
                         ),
                         const TomSizedBox(height: 4),
-                        const TomText('Square', style: TextStyle(fontSize: 10)),
+                        const TomText(null, tomId: 'demo.12.auto.text.11', style: TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
@@ -555,11 +554,11 @@ class _ImageContainerSection extends StatelessWidget {
                               color: Colors.blue.shade200,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const TomCenter(child: TomText('4:3')),
+                            child: const TomCenter(child: TomText(null, tomId: 'demo.12.auto.text.7')),
                           ),
                         ),
                         const TomSizedBox(height: 4),
-                        const TomText('Photo', style: TextStyle(fontSize: 10)),
+                        const TomText(null, tomId: 'demo.12.auto.text.12', style: TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
@@ -574,11 +573,11 @@ class _ImageContainerSection extends StatelessWidget {
                               color: Colors.green.shade200,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const TomCenter(child: TomText('16:9')),
+                            child: const TomCenter(child: TomText(null, tomId: 'demo.12.auto.text.8')),
                           ),
                         ),
                         const TomSizedBox(height: 4),
-                        const TomText('Video', style: TextStyle(fontSize: 10)),
+                        const TomText(null, tomId: 'demo.12.auto.text.13', style: TextStyle(fontSize: 10)),
                       ],
                     ),
                   ),
@@ -739,7 +738,7 @@ class _ImageDecorationSection extends StatelessWidget {
                       ),
                     ),
                     const TomSizedBox(height: 4),
-                    const TomText('gradient', style: TextStyle(fontSize: 10)),
+                    const TomText(null, tomId: 'demo.12.auto.text.14', style: TextStyle(fontSize: 10)),
                   ],
                 ),
               ),
@@ -784,8 +783,7 @@ class _ImageDecorationSection extends StatelessWidget {
                       const TomPositioned(
                         bottom: 8,
                         left: 8,
-                        child: TomText(
-                          'Bottom gradient',
+                        child: TomText(null, tomId: 'demo.12.auto.text.15',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -821,8 +819,7 @@ class _ImageDecorationSection extends StatelessWidget {
                       const TomPositioned(
                         top: 8,
                         left: 8,
-                        child: TomText(
-                          'Left gradient',
+                        child: TomText(null, tomId: 'demo.12.auto.text.16',
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -1041,8 +1038,7 @@ class _ImageGallerySection extends StatelessWidget {
                             'Photo ${index + 1}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          const TomText(
-                            'Description text here',
+                          const TomText(null, tomId: 'demo.12.auto.text.17',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],

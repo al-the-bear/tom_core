@@ -23,7 +23,7 @@ class SliversDemo extends StatelessWidget {
               pinned: true,
               snap: false,
               automaticallyImplyLeading: false,
-              title: const TomText('Slivers Demo'),
+              title: const TomText(null, tomId: 'demo.17.auto.text.1'),
               bottom: const TomTabBar(
                 tabs: [
                   TomTab(text: 'App Bar'),
@@ -71,7 +71,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   floating: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.blue,
-                  title: const TomText('Floating'),
+                  title: const TomText(null, tomId: 'demo.17.auto.text.10'),
                 ),
                 TomSliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -95,7 +95,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   pinned: true,
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.green,
-                  title: const TomText('Pinned'),
+                  title: const TomText(null, tomId: 'demo.17.auto.text.11'),
                 ),
                 TomSliverList(
                   delegate: SliverChildBuilderDelegate(
@@ -121,7 +121,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.purple,
                   flexibleSpace: TomFlexibleSpaceBar(
-                    title: const TomText('Expandable'),
+                    title: const TomText(null, tomId: 'demo.17.auto.text.12'),
                     background: TomContainer(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -162,7 +162,7 @@ class _SliverAppBarTab extends StatelessWidget {
                   automaticallyImplyLeading: false,
                   backgroundColor: Colors.orange,
                   flexibleSpace: const TomFlexibleSpaceBar(
-                    title: TomText('Snap'),
+                    title: TomText(null, tomId: 'demo.17.auto.text.13'),
                   ),
                 ),
                 TomSliverList(
@@ -241,7 +241,7 @@ class _SliverListTab extends StatelessWidget {
                 child: TomListTile(
                   leading: TomCircleAvatar(child: TomText('${index + 1}')),
                   title: TomText('SliverList Item ${index + 1}'),
-                  subtitle: const TomText('Built with SliverChildBuilderDelegate'),
+                  subtitle: const TomText(null, tomId: 'demo.17.auto.text.2'),
                 ),
               ),
               childCount: 5,
@@ -267,7 +267,7 @@ class _SliverListTab extends StatelessWidget {
                 child: TomListTile(
                   leading: TomIcon(Icons.star, color: Colors.amber.shade600),
                   title: TomText('Fixed Height Item ${index + 1}'),
-                  subtitle: const TomText('Exactly 72 pixels tall'),
+                  subtitle: const TomText(null, tomId: 'demo.17.auto.text.3'),
                 ),
               ),
               childCount: 5,
@@ -290,8 +290,8 @@ class _SliverListTab extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 8),
               child: TomListTile(
                 leading: const TomIcon(Icons.star),
-                title: const TomText('Prototype'),
-                subtitle: const TomText('Size template'),
+                title: const TomText(null, tomId: 'demo.17.auto.text.4'),
+                subtitle: const TomText(null, tomId: 'demo.17.auto.text.5'),
               ),
             ),
             delegate: SliverChildBuilderDelegate(
@@ -300,7 +300,7 @@ class _SliverListTab extends StatelessWidget {
                 child: TomListTile(
                   leading: TomIcon(Icons.brightness_1, color: Colors.primaries[index % Colors.primaries.length]),
                   title: TomText('Prototype Item ${index + 1}'),
-                  subtitle: const TomText('Sized by prototype'),
+                  subtitle: const TomText(null, tomId: 'demo.17.auto.text.6'),
                 ),
               ),
               childCount: 5,
@@ -473,8 +473,7 @@ class _CombinedSliversTab extends StatelessWidget {
                 children: [
                   TomIcon(Icons.dashboard, size: 48, color: Colors.white),
                   TomSizedBox(height: 8),
-                  TomText(
-                    'Combined Slivers',
+                  TomText(null, tomId: 'demo.17.auto.text.7',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -546,7 +545,7 @@ class _CombinedSliversTab extends StatelessWidget {
                     child: TomIcon(Icons.check, color: Colors.green.shade700),
                   ),
                   title: TomText('Recent Item ${index + 1}'),
-                  subtitle: const TomText('Added recently'),
+                  subtitle: const TomText(null, tomId: 'demo.17.auto.text.14'),
                   trailing: const TomIcon(Icons.chevron_right),
                 ),
               ),
@@ -569,15 +568,13 @@ class _CombinedSliversTab extends StatelessWidget {
               children: [
                 TomIcon(Icons.check_circle, size: 48, color: Colors.grey.shade400),
                 const TomSizedBox(height: 8),
-                TomText(
-                  'End of Content',
+                TomText(null, tomId: 'demo.17.auto.text.8',
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                TomText(
-                  'SliverFillRemaining fills the space',
+                TomText(null, tomId: 'demo.17.auto.text.9',
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontSize: 12,

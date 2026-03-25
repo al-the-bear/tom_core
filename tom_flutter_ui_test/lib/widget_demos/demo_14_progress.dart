@@ -394,8 +394,7 @@ class _DeterminateProgressSectionState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Animated Progress',
+            const TomText(null, tomId: 'demo.14.auto.text.3',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 16),
@@ -449,12 +448,12 @@ class _DeterminateProgressSectionState
               children: [
                 TomFilledButton(
                   onPressed: _isRunning ? null : _startProgress,
-                  child: const TomText('Start'),
+                  child: const TomText(null, tomId: 'demo.14.auto.text.1'),
                 ),
                 const TomSizedBox(width: 8),
                 TomOutlinedButton(
                   onPressed: _resetProgress,
-                  child: const TomText('Reset'),
+                  child: const TomText(null, tomId: 'demo.14.auto.text.2'),
                 ),
               ],
             ),
@@ -850,8 +849,7 @@ class _StepProgressDemoState extends State<_StepProgressDemo> {
       child: TomCenter(
         child: isCompleted
             ? const TomIcon(Icons.check, color: Colors.white, size: 18)
-            : TomText(
-                '$step',
+            : TomText(null, tomId: 'demo.14.auto.text.1',
                 style: TextStyle(
                   color: isCurrent ? Colors.white : Colors.grey.shade600,
                   fontWeight: FontWeight.bold,

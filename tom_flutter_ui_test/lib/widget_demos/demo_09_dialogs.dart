@@ -134,19 +134,19 @@ class _AlertDialogSection extends StatelessWidget {
               children: [
                 TomFilledButton(
                   onPressed: () => _showBasicDialog(context),
-                  child: const TomText('Basic Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.1'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => _showConfirmDialog(context),
-                  child: const TomText('Confirm Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.37'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showIconDialog(context),
-                  child: const TomText('With Icon'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.38'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showStyledDialog(context),
-                  child: const TomText('Styled Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.2'),
                 ),
               ],
             ),
@@ -161,14 +161,13 @@ class _AlertDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomAlertDialog(
-          title: const TomText('Basic Alert'),
-          content: const TomText(
-            'This is a basic alert dialog with a title and content.',
+          title: const TomText(null, tomId: 'demo.09.auto.text.3'),
+          content: const TomText(null, tomId: 'demo.09.auto.text.32',
           ),
           actions: [
             TomTextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('OK'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.4'),
             ),
           ],
         );
@@ -181,23 +180,22 @@ class _AlertDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomAlertDialog(
-          title: const TomText('Confirm Action'),
-          content: const TomText(
-            'Are you sure you want to proceed with this action?',
+          title: const TomText(null, tomId: 'demo.09.auto.text.39'),
+          content: const TomText(null, tomId: 'demo.09.auto.text.33',
           ),
           actions: [
             TomTextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('Cancel'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.40'),
             ),
             TomFilledButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  TomSnackBar(content: TomText('Action confirmed!')),
+                  TomSnackBar(content: TomText(null, tomId: 'demo.09.auto.text.41')),
                 );
               },
-              child: const TomText('Confirm'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.42'),
             ),
           ],
         );
@@ -211,18 +209,17 @@ class _AlertDialogSection extends StatelessWidget {
       builder: (context) {
         return TomAlertDialog(
           icon: const TomIcon(Icons.warning, color: Colors.orange, size: 48),
-          title: const TomText('Warning'),
-          content: const TomText(
-            'This action cannot be undone. Please proceed with caution.',
+          title: const TomText(null, tomId: 'demo.09.auto.text.43'),
+          content: const TomText(null, tomId: 'demo.09.auto.text.34',
           ),
           actions: [
             TomTextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('Cancel'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.44'),
             ),
             TomFilledButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('I Understand'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.45'),
             ),
           ],
         );
@@ -239,7 +236,7 @@ class _AlertDialogSection extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const TomText('Styled Dialog'),
+          title: const TomText(null, tomId: 'demo.09.auto.text.5'),
           titleTextStyle: TextStyle(
             color: Theme.of(context).colorScheme.onPrimaryContainer,
             fontSize: 20,
@@ -255,7 +252,7 @@ class _AlertDialogSection extends StatelessWidget {
           actions: [
             TomTextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('Close'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.6'),
             ),
           ],
         );
@@ -285,15 +282,15 @@ class _SimpleDialogSection extends StatelessWidget {
               children: [
                 TomFilledButton(
                   onPressed: () => _showSimpleDialog(context),
-                  child: const TomText('Simple Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.7'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => _showListDialog(context),
-                  child: const TomText('List Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.8'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showGridDialog(context),
-                  child: const TomText('Grid Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.9'),
                 ),
               ],
             ),
@@ -308,19 +305,19 @@ class _SimpleDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomSimpleDialog(
-          title: const TomText('Select Option'),
+          title: const TomText(null, tomId: 'demo.09.auto.text.46'),
           children: [
             TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 1'),
-              child: const TomText('Option 1'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.47'),
             ),
             TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 2'),
-              child: const TomText('Option 2'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.48'),
             ),
             TomSimpleDialogOption(
               onPressed: () => Navigator.of(context).pop('Option 3'),
-              child: const TomText('Option 3'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.49'),
             ),
           ],
         );
@@ -329,7 +326,7 @@ class _SimpleDialogSection extends StatelessWidget {
     if (result != null && context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(TomSnackBar(content: TomText('Selected: $result')));
+      ).showSnackBar(TomSnackBar(content: TomText(null, tomId: 'demo.09.auto.text.10')));
     }
   }
 
@@ -338,18 +335,18 @@ class _SimpleDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomSimpleDialog(
-          title: const TomText('Select Account'),
+          title: const TomText(null, tomId: 'demo.09.auto.text.50'),
           children: [
             TomListTile(
-              leading: const TomCircleAvatar(child: TomText('J')),
-              title: const TomText('John Doe'),
-              subtitle: const TomText('john@example.com'),
+              leading: const TomCircleAvatar(child: TomText(null, tomId: 'demo.09.auto.text.11')),
+              title: const TomText(null, tomId: 'demo.09.auto.text.51'),
+              subtitle: const TomText(null, tomId: 'demo.09.auto.text.52'),
               onTap: () => Navigator.of(context).pop(),
             ),
             TomListTile(
-              leading: const TomCircleAvatar(child: TomText('S')),
-              title: const TomText('Sarah Smith'),
-              subtitle: const TomText('sarah@example.com'),
+              leading: const TomCircleAvatar(child: TomText(null, tomId: 'demo.09.auto.text.12')),
+              title: const TomText(null, tomId: 'demo.09.auto.text.13'),
+              subtitle: const TomText(null, tomId: 'demo.09.auto.text.14'),
               onTap: () => Navigator.of(context).pop(),
             ),
             TomListTile(
@@ -357,7 +354,7 @@ class _SimpleDialogSection extends StatelessWidget {
                 backgroundColor: Colors.grey.shade300,
                 child: const TomIcon(Icons.add),
               ),
-              title: const TomText('Add Account'),
+              title: const TomText(null, tomId: 'demo.09.auto.text.53'),
               onTap: () => Navigator.of(context).pop(),
             ),
           ],
@@ -371,7 +368,7 @@ class _SimpleDialogSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomAlertDialog(
-          title: const TomText('Choose Color'),
+          title: const TomText(null, tomId: 'demo.09.auto.text.15'),
           content: TomSizedBox(
             width: 280,
             child: TomWrap(
@@ -420,15 +417,15 @@ class _BottomSheetSection extends StatelessWidget {
               children: [
                 TomFilledButton(
                   onPressed: () => _showModalBottomSheet(context),
-                  child: const TomText('Modal Sheet'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.16'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => _showScrollableSheet(context),
-                  child: const TomText('Scrollable Sheet'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.17'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showDraggableSheet(context),
-                  child: const TomText('Draggable Sheet'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.18'),
                 ),
               ],
             ),
@@ -459,8 +456,7 @@ class _BottomSheetSection extends StatelessWidget {
                 ),
               ),
               const TomSizedBox(height: 24),
-              const TomText(
-                'Share with',
+              const TomText(null, tomId: 'demo.09.auto.text.1',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const TomSizedBox(height: 24),
@@ -523,8 +519,7 @@ class _BottomSheetSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const TomText(
-                    'Notifications',
+                  const TomText(null, tomId: 'demo.09.auto.text.35',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const TomSizedBox(height: 16),
@@ -626,19 +621,19 @@ class _SnackBarSection extends StatelessWidget {
               children: [
                 TomFilledButton(
                   onPressed: () => _showBasicSnackBar(context),
-                  child: const TomText('Basic'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.19'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => _showActionSnackBar(context),
-                  child: const TomText('With Action'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.54'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showFloatingSnackBar(context),
-                  child: const TomText('Floating'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.55'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showStyledSnackBar(context),
-                  child: const TomText('Styled'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.20'),
                 ),
               ],
             ),
@@ -650,19 +645,19 @@ class _SnackBarSection extends StatelessWidget {
 
   void _showBasicSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
-      TomSnackBar(content: TomText('This is a basic snackbar')),
+      TomSnackBar(content: TomText(null, tomId: 'demo.09.auto.text.56')),
     );
   }
 
   void _showActionSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
-        content: const TomText('Item deleted'),
+        content: const TomText(null, tomId: 'demo.09.auto.text.21'),
         action: TomSnackBarAction(
           label: 'Undo',
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              TomSnackBar(content: TomText('Undo successful')),
+              TomSnackBar(content: TomText(null, tomId: 'demo.09.auto.text.57')),
             );
           },
         ),
@@ -673,7 +668,7 @@ class _SnackBarSection extends StatelessWidget {
   void _showFloatingSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
-        content: const TomText('This is a floating snackbar'),
+        content: const TomText(null, tomId: 'demo.09.auto.text.58'),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
@@ -688,7 +683,7 @@ class _SnackBarSection extends StatelessWidget {
           children: [
             const TomIcon(Icons.check_circle, color: Colors.white),
             const TomSizedBox(width: 12),
-            const TomText('Operation successful!'),
+            const TomText(null, tomId: 'demo.09.auto.text.59'),
           ],
         ),
         backgroundColor: Colors.green,
@@ -715,8 +710,7 @@ class _TooltipSection extends StatelessWidget {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Hover or long-press the buttons:',
+            const TomText(null, tomId: 'demo.09.auto.text.36',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const TomSizedBox(height: 16),
@@ -728,7 +722,7 @@ class _TooltipSection extends StatelessWidget {
                   message: 'This is a basic tooltip',
                   child: TomFilledButton(
                     onPressed: () {},
-                    child: const TomText('Basic'),
+                    child: const TomText(null, tomId: 'demo.09.auto.text.22'),
                   ),
                 ),
                 TomTooltip(
@@ -752,7 +746,7 @@ class _TooltipSection extends StatelessWidget {
                   ),
                   child: TomOutlinedButton(
                     onPressed: () {},
-                    child: const TomText('Styled'),
+                    child: const TomText(null, tomId: 'demo.09.auto.text.23'),
                   ),
                 ),
                 TomTooltip(
@@ -772,7 +766,7 @@ class _TooltipSection extends StatelessWidget {
                   ),
                   child: TomOutlinedButton(
                     onPressed: () {},
-                    child: const TomText('Rich Text'),
+                    child: const TomText(null, tomId: 'demo.09.auto.text.24'),
                   ),
                 ),
               ],
@@ -823,11 +817,11 @@ class _BannerSectionState extends State<_BannerSection> {
                 actions: [
                   TomTextButton(
                     onPressed: () => setState(() => _showBanner = false),
-                    child: const TomText('Dismiss'),
+                    child: const TomText(null, tomId: 'demo.09.auto.text.25'),
                   ),
                   TomFilledButton(
                     onPressed: () => setState(() => _showBanner = false),
-                    child: const TomText('Renew'),
+                    child: const TomText(null, tomId: 'demo.09.auto.text.60'),
                   ),
                 ],
               ),
@@ -865,23 +859,23 @@ class _DialogPatternsSection extends StatelessWidget {
               children: [
                 TomFilledButton(
                   onPressed: () => _showFormDialog(context),
-                  child: const TomText('Form Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.26'),
                 ),
                 FilledButton.tonal(
                   onPressed: () => _showLoadingDialog(context),
-                  child: const TomText('Loading Dialog'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.61'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showFullscreenDialog(context),
-                  child: const TomText('Fullscreen'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.62'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showDatePickerDialog(context),
-                  child: const TomText('Date Picker'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.27'),
                 ),
                 TomOutlinedButton(
                   onPressed: () => _showTimePickerDialog(context),
-                  child: const TomText('Time Picker'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.28'),
                 ),
               ],
             ),
@@ -899,7 +893,7 @@ class _DialogPatternsSection extends StatelessWidget {
       context: context,
       builder: (context) {
         return TomAlertDialog(
-          title: const TomText('Contact Form'),
+          title: const TomText(null, tomId: 'demo.09.auto.text.63'),
           content: TomColumn(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -924,7 +918,7 @@ class _DialogPatternsSection extends StatelessWidget {
           actions: [
             TomTextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const TomText('Cancel'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.64'),
             ),
             TomFilledButton(
               onPressed: () {
@@ -935,7 +929,7 @@ class _DialogPatternsSection extends StatelessWidget {
                   ),
                 );
               },
-              child: const TomText('Submit'),
+              child: const TomText(null, tomId: 'demo.09.auto.text.29'),
             ),
           ],
         );
@@ -956,7 +950,7 @@ class _DialogPatternsSection extends StatelessWidget {
             children: [
               const TomCircularProgressIndicator(),
               const TomSizedBox(width: 24),
-              const TomText('Loading, please wait...'),
+              const TomText(null, tomId: 'demo.09.auto.text.65'),
             ],
           ),
         );
@@ -971,11 +965,11 @@ class _DialogPatternsSection extends StatelessWidget {
         builder: (context) {
           return TomScaffold(
             appBar: TomAppBar(
-              title: const TomText('New Item'),
+              title: const TomText(null, tomId: 'demo.09.auto.text.30'),
               actions: [
                 TomTextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const TomText('Save'),
+                  child: const TomText(null, tomId: 'demo.09.auto.text.31'),
                 ),
               ],
             ),

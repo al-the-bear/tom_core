@@ -171,8 +171,7 @@ class _AnimatedContainerSectionState extends State<_AnimatedContainerSection> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const TomCenter(
-                child: TomText(
-                  'Tap me',
+                child: TomText(null, tomId: 'demo.18.auto.text.1',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -344,8 +343,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const TomCenter(
-                        child: TomText(
-                          'First',
+                        child: TomText(null, tomId: 'demo.18.auto.text.2',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
                       ),
@@ -359,8 +357,7 @@ class _AnimatedSwitcherSectionState extends State<_AnimatedSwitcherSection> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const TomCenter(
-                        child: TomText(
-                          'Second',
+                        child: TomText(null, tomId: 'demo.18.auto.text.4',
                           style: TextStyle(color: Colors.white, fontSize: 20),
                         ),
                       ),
@@ -445,12 +442,12 @@ class _AnimatedPropertiesSectionState
                 children: [
                   TomFilledButton(
                     onPressed: () => setState(() => _opacity = 0.0),
-                    child: const TomText('Hide'),
+                    child: const TomText(null, tomId: 'demo.18.auto.text.1'),
                   ),
                   const TomSizedBox(width: 8),
                   TomFilledButton(
                     onPressed: () => setState(() => _opacity = 1.0),
-                    child: const TomText('Show'),
+                    child: const TomText(null, tomId: 'demo.18.auto.text.2'),
                   ),
                 ],
               ),
@@ -474,8 +471,7 @@ class _AnimatedPropertiesSectionState
                   height: 80,
                   color: Colors.green,
                   child: const TomCenter(
-                    child: TomText(
-                      'Tap',
+                    child: TomText(null, tomId: 'demo.18.auto.text.3',
                       style: TextStyle(color: Colors.white),
                     ),
                   ),
@@ -638,14 +634,13 @@ class _AnimatedListSectionState extends State<_AnimatedListSection> {
             TomRow(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const TomText(
-                  'AnimatedList',
+                const TomText(null, tomId: 'demo.18.auto.text.5',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 FilledButton.icon(
                   onPressed: _addItem,
                   icon: const TomIcon(Icons.add),
-                  label: const TomText('Add'),
+                  label: const TomText(null, tomId: 'demo.18.auto.text.3'),
                 ),
               ],
             ),
@@ -725,8 +720,7 @@ class _PulseAnimationState extends State<_PulseAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Pulse Animation',
+            const TomText(null, tomId: 'demo.18.auto.text.6',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 16),
@@ -785,8 +779,7 @@ class _SpinAnimationState extends State<_SpinAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Spin Animation',
+            const TomText(null, tomId: 'demo.18.auto.text.7',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 16),
@@ -855,8 +848,7 @@ class _BounceAnimationState extends State<_BounceAnimation>
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Bounce Animation',
+            const TomText(null, tomId: 'demo.18.auto.text.8',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 16),

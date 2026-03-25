@@ -319,8 +319,7 @@ class _FileExplorerSectionState extends State<_FileExplorerSection> {
           children: [
             TomRow(
               children: [
-                TomText(
-                  'EXPLORER',
+                TomText(null, tomId: 'demo.16.auto.text.1',
                   style: TextStyle(
                     color: Colors.grey.shade500,
                     fontSize: 11,
@@ -485,8 +484,7 @@ class _SelectableTreeSectionState extends State<_SelectableTreeSection> {
             if (_selectedId != null)
               TomPadding(
                 padding: const EdgeInsets.all(8.0),
-                child: TomText(
-                  'Selected: $_selectedId',
+                child: TomText(null, tomId: 'demo.16.auto.text.2',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
               ),
@@ -795,8 +793,7 @@ class _CustomTreeSectionState extends State<_CustomTreeSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TomText(
-              'Organization Chart',
+            TomText(null, tomId: 'demo.16.auto.text.3',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.grey.shade700,

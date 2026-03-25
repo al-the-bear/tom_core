@@ -143,8 +143,7 @@ class _TapSectionState extends State<_TapSection> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const TomCenter(
-                    child: TomText(
-                      'Tap Me',
+                    child: TomText(null, tomId: 'demo.20.auto.text.1',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -274,7 +273,7 @@ class _InkWellSection extends StatelessWidget {
                   child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: TomCenter(child: TomText('Tap')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.20.auto.text.1')),
                   ),
                 ),
               ),
@@ -288,7 +287,7 @@ class _InkWellSection extends StatelessWidget {
                   child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: TomCenter(child: TomText('Green')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.20.auto.text.5')),
                   ),
                 ),
               ),
@@ -302,7 +301,7 @@ class _InkWellSection extends StatelessWidget {
                   child: const TomSizedBox(
                     width: 80,
                     height: 60,
-                    child: TomCenter(child: TomText('Highlight')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.20.auto.text.2')),
                   ),
                 ),
               ),
@@ -337,7 +336,7 @@ class _InkWellSection extends StatelessWidget {
                   child: const TomSizedBox(
                     width: 100,
                     height: 40,
-                    child: TomCenter(child: TomText('Pill')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.20.auto.text.3')),
                   ),
                 ),
               ),
@@ -765,8 +764,7 @@ class _MultiTouchSectionState extends State<_MultiTouchSection> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       TomIcon(Icons.zoom_in, color: Colors.white),
-                      TomText(
-                        'Pinch me',
+                      TomText(null, tomId: 'demo.20.auto.text.4',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,

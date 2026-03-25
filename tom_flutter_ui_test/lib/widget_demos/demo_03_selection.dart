@@ -355,7 +355,7 @@ TomDropdownButton<String>(
                     children: [
                       TomIcon(Icons.flag, color: Colors.red, size: 20),
                       TomSizedBox(width: 8),
-                      TomText('High'),
+                      TomText(null, tomId: 'demo.03.auto.text.1'),
                     ],
                   ),
                 ),
@@ -365,7 +365,7 @@ TomDropdownButton<String>(
                     children: [
                       TomIcon(Icons.flag, color: Colors.orange, size: 20),
                       TomSizedBox(width: 8),
-                      TomText('Medium'),
+                      TomText(null, tomId: 'demo.03.auto.text.2'),
                     ],
                   ),
                 ),
@@ -375,7 +375,7 @@ TomDropdownButton<String>(
                     children: [
                       TomIcon(Icons.flag, color: Colors.green, size: 20),
                       TomSizedBox(width: 8),
-                      TomText('Low'),
+                      TomText(null, tomId: 'demo.03.auto.text.3'),
                     ],
                   ),
                 ),
@@ -888,18 +888,18 @@ class _ChipsSectionState extends State<_ChipsSection> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              const TomChip(label: TomText('Basic Chip')),
+              const TomChip(label: TomText(null, tomId: 'demo.03.auto.text.4')),
               const TomChip(
-                avatar: TomCircleAvatar(child: TomText('A')),
-                label: TomText('With Avatar'),
+                avatar: TomCircleAvatar(child: TomText(null, tomId: 'demo.03.auto.text.5')),
+                label: TomText(null, tomId: 'demo.03.auto.text.6'),
               ),
               TomChip(
                 avatar: const TomIcon(Icons.check, size: 16),
-                label: const TomText('With Icon'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.18'),
                 backgroundColor: Colors.green.shade100,
               ),
               TomChip(
-                label: const TomText('Deletable'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.7'),
                 onDeleted: () {},
                 deleteIcon: const TomIcon(Icons.close, size: 16),
               ),
@@ -908,17 +908,17 @@ class _ChipsSectionState extends State<_ChipsSection> {
           code: '''
 // TomChip not needed for simple Chip - no text resolution
 // Use Chip directly or wrap with TomWidget for auth
-TomChip(label: TomText('Basic'))
+TomChip(label: TomText(null, tomId: 'demo.03.auto.text.8'))
 
 // With avatar
 TomChip(
-  avatar: TomCircleAvatar(child: TomText('A')),
-  label: TomText('With Avatar'),
+  avatar: TomCircleAvatar(child: TomText(null, tomId: 'demo.03.auto.text.9')),
+  label: TomText(null, tomId: 'demo.03.auto.text.10'),
 )
 
 // Deletable
 TomChip(
-  label: TomText('Deletable'),
+  label: TomText(null, tomId: 'demo.03.auto.text.11'),
   onDeleted: () {},
 )''',
         ),
@@ -936,7 +936,7 @@ TomChip(
                 onPressed: () {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(TomSnackBar(content: TomText('Added!')));
+                  ).showSnackBar(TomSnackBar(content: TomText(null, tomId: 'demo.03.auto.text.12')));
                 },
               ),
               TomActionChip(
@@ -1059,8 +1059,7 @@ class _FilterChoiceChipSectionState extends State<_FilterChoiceChipSection> {
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TomText(
-                'Select Categories:',
+              const TomText(null, tomId: 'demo.03.auto.text.1',
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
               const TomSizedBox(height: 8),
@@ -1121,8 +1120,7 @@ TomFilterChip(
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TomText(
-                'Select Size:',
+              const TomText(null, tomId: 'demo.03.auto.text.2',
                 style: TextStyle(fontWeight: FontWeight.w500),
               ),
               const TomSizedBox(height: 8),
@@ -1143,8 +1141,7 @@ TomFilterChip(
                 }),
               ),
               const TomSizedBox(height: 12),
-              TomText(
-                'Selected: ${_sizes[_selectedChoice]}',
+              TomText(null, tomId: 'demo.03.auto.text.3',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
@@ -1169,19 +1166,19 @@ TomChoiceChip(
             runSpacing: 8,
             children: [
               TomChip(
-                label: const TomText('Rounded'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.19'),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
                 backgroundColor: Colors.blue.shade100,
               ),
               TomChip(
-                label: const TomText('Outlined'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.20'),
                 shape: const StadiumBorder(side: BorderSide(color: Colors.blue)),
                 backgroundColor: Colors.transparent,
               ),
               TomChip(
-                label: const TomText('Elevated'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.13'),
                 elevation: 4,
                 shadowColor: Colors.black26,
                 backgroundColor: Colors.white,
@@ -1196,7 +1193,7 @@ TomChoiceChip(
                   ),
                   child: const TomIcon(Icons.star, size: 16, color: Colors.white),
                 ),
-                label: const TomText('Gradient'),
+                label: const TomText(null, tomId: 'demo.03.auto.text.21'),
               ),
             ],
           ),
@@ -1338,7 +1335,7 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return TomAlertDialog(
-              title: const TomText('Select Hobbies'),
+              title: const TomText(null, tomId: 'demo.03.auto.text.14'),
               content: TomSizedBox(
                 width: 300,
                 child: ListView.builder(
@@ -1365,11 +1362,11 @@ class _MultiSelectDialogDemoState extends State<_MultiSelectDialogDemo> {
               actions: [
                 TomTextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const TomText('Cancel'),
+                  child: const TomText(null, tomId: 'demo.03.auto.text.22'),
                 ),
                 TomFilledButton(
                   onPressed: () => Navigator.pop(context, tempSelection),
-                  child: const TomText('Confirm'),
+                  child: const TomText(null, tomId: 'demo.03.auto.text.23'),
                 ),
               ],
             );
@@ -1464,8 +1461,7 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Sort By
-              const TomText(
-                'Sort By',
+              const TomText(null, tomId: 'demo.03.auto.text.4',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const TomSizedBox(height: 8),
@@ -1493,8 +1489,7 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
               const TomSizedBox(height: 16),
 
               // Price Range
-              const TomText(
-                'Price Range',
+              const TomText(null, tomId: 'demo.03.auto.text.17',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const TomSizedBox(height: 8),
@@ -1520,7 +1515,7 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
               const TomSizedBox(height: 16),
 
               // Color Filter
-              const TomText('Colors', style: TextStyle(fontWeight: FontWeight.bold)),
+              const TomText(null, tomId: 'demo.03.auto.text.5', style: TextStyle(fontWeight: FontWeight.bold)),
               const TomSizedBox(height: 8),
               TomWrap(
                 spacing: 8,
@@ -1579,7 +1574,7 @@ class _SelectionExamplesSectionState extends State<_SelectionExamplesSection> {
                     label: 'Apply Filters',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        TomSnackBar(content: TomText('Filters applied!')),
+                        TomSnackBar(content: TomText(null, tomId: 'demo.03.auto.text.15')),
                       );
                     },
                   ),
@@ -1649,7 +1644,7 @@ class _TagInputDemoState extends State<_TagInputDemo> {
             children: [
               ..._tags.map(
                 (tag) => TomChip(
-                  label: TomText('#$tag'),
+                  label: TomText(null, tomId: 'demo.03.auto.text.16'),
                   onDeleted: () => setState(() => _tags.remove(tag)),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),

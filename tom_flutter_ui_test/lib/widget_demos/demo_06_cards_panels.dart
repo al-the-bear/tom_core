@@ -118,7 +118,7 @@ class _CardSection extends StatelessWidget {
           const TomCard(
             child: TomPadding(
               padding: EdgeInsets.all(16),
-              child: TomText('This is a basic card with some content inside.'),
+              child: TomText(null, tomId: 'demo.06.auto.text.20'),
             ),
           ),
         ),
@@ -135,11 +135,10 @@ class _CardSection extends StatelessWidget {
                 children: [
                   const TomIcon(Icons.cloud, size: 48, color: Colors.blue),
                   const TomSizedBox(height: 8),
-                  TomText(
-                    'Elevated Card',
+                  TomText(null, tomId: 'demo.06.auto.text.1',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const TomText('With shadow'),
+                  const TomText(null, tomId: 'demo.06.auto.text.1'),
                 ],
               ),
             ),
@@ -162,7 +161,7 @@ class _CardSection extends StatelessWidget {
                   TomIcon(Icons.info_outline),
                   TomSizedBox(width: 12),
                   TomExpanded(
-                    child: TomText('This is an outlined card without elevation.'),
+                    child: TomText(null, tomId: 'demo.06.auto.text.21'),
                   ),
                 ],
               ),
@@ -186,8 +185,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   const TomSizedBox(width: 12),
                   TomExpanded(
-                    child: TomText(
-                      'Tip: You can use filled cards for emphasis.',
+                    child: TomText(null, tomId: 'demo.06.auto.text.16',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
@@ -224,17 +222,16 @@ class _CardSection extends StatelessWidget {
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TomText(
-                        'Card Title',
+                      TomText(null, tomId: 'demo.06.auto.text.2',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const TomSizedBox(height: 4),
-                      const TomText('Card description goes here with some text.'),
+                      const TomText(null, tomId: 'demo.06.auto.text.22'),
                       const TomSizedBox(height: 8),
                       TomRow(
                         children: [
-                          TomTextButton(onPressed: () {}, child: const TomText('ACTION 1')),
-                          TomTextButton(onPressed: () {}, child: const TomText('ACTION 2')),
+                          TomTextButton(onPressed: () {}, child: const TomText(null, tomId: 'demo.06.auto.text.2')),
+                          TomTextButton(onPressed: () {}, child: const TomText(null, tomId: 'demo.06.auto.text.3')),
                         ],
                       ),
                     ],
@@ -256,7 +253,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: TomText('Square')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.06.auto.text.4')),
                   ),
                 ),
               ),
@@ -268,7 +265,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: TomText('Rounded')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.06.auto.text.23')),
                   ),
                 ),
               ),
@@ -280,7 +277,7 @@ class _CardSection extends StatelessWidget {
                   ),
                   child: const TomPadding(
                     padding: EdgeInsets.all(12),
-                    child: TomCenter(child: TomText('Stadium')),
+                    child: TomCenter(child: TomText(null, tomId: 'demo.06.auto.text.5')),
                   ),
                 ),
               ),
@@ -331,31 +328,31 @@ class _ExpansionTileSection extends StatelessWidget {
         children: [
           const TomExpansionTile(
             leading: TomIcon(Icons.folder),
-            title: TomText('Basic ExpansionTile'),
-            subtitle: TomText('Tap to expand'),
+            title: TomText(null, tomId: 'demo.06.auto.text.24'),
+            subtitle: TomText(null, tomId: 'demo.06.auto.text.25'),
             children: [
-              TomListTile(title: TomText('Item 1')),
-              TomListTile(title: TomText('Item 2')),
-              TomListTile(title: TomText('Item 3')),
+              TomListTile(title: TomText(null, tomId: 'demo.06.auto.text.6')),
+              TomListTile(title: TomText(null, tomId: 'demo.06.auto.text.7')),
+              TomListTile(title: TomText(null, tomId: 'demo.06.auto.text.8')),
             ],
           ),
           const TomDivider(height: 1),
           TomExpansionTile(
             tomId: 'demo.expansion.styled',
             leading: const TomIcon(Icons.settings),
-            title: const TomText('Styled ExpansionTile'),
+            title: const TomText(null, tomId: 'demo.06.auto.text.26'),
             iconColor: Colors.purple,
             collapsedIconColor: Colors.grey,
             backgroundColor: Colors.purple.shade50,
             children: [
               TomListTile(
                 leading: TomIcon(Icons.brightness_6),
-                title: TomText('Appearance'),
+                title: TomText(null, tomId: 'demo.06.auto.text.27'),
                 trailing: TomIcon(Icons.chevron_right),
               ),
               TomListTile(
                 leading: TomIcon(Icons.language),
-                title: TomText('Language'),
+                title: TomText(null, tomId: 'demo.06.auto.text.28'),
                 trailing: TomIcon(Icons.chevron_right),
               ),
             ],
@@ -369,8 +366,8 @@ class _ExpansionTileSection extends StatelessWidget {
               backgroundColor: Colors.blue,
               child: TomIcon(Icons.person, color: Colors.white),
             ),
-            title: const TomText('Initially Expanded'),
-            subtitle: const TomText('User Profile'),
+            title: const TomText(null, tomId: 'demo.06.auto.text.29'),
+            subtitle: const TomText(null, tomId: 'demo.06.auto.text.9'),
             children: [
               TomPadding(
                 padding: const EdgeInsets.all(16),
@@ -412,35 +409,35 @@ class _NestedExpansionDemo extends StatelessWidget {
   Widget build(BuildContext context) {
     return const TomExpansionTile(
       leading: TomIcon(Icons.menu_book),
-      title: TomText('Nested ExpansionTiles'),
-      subtitle: TomText('Documentation'),
+      title: TomText(null, tomId: 'demo.06.auto.text.30'),
+      subtitle: TomText(null, tomId: 'demo.06.auto.text.31'),
       children: [
         TomExpansionTile(
-          title: TomText('Getting Started'),
+          title: TomText(null, tomId: 'demo.06.auto.text.32'),
           leading: TomIcon(Icons.play_arrow),
           tilePadding: EdgeInsets.only(left: 32, right: 16),
           children: [
             TomListTile(
-              title: TomText('Installation'),
+              title: TomText(null, tomId: 'demo.06.auto.text.33'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
             TomListTile(
-              title: TomText('Configuration'),
+              title: TomText(null, tomId: 'demo.06.auto.text.34'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
           ],
         ),
         TomExpansionTile(
-          title: TomText('API Reference'),
+          title: TomText(null, tomId: 'demo.06.auto.text.35'),
           leading: TomIcon(Icons.code),
           tilePadding: EdgeInsets.only(left: 32, right: 16),
           children: [
             TomListTile(
-              title: TomText('Components'),
+              title: TomText(null, tomId: 'demo.06.auto.text.36'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
             TomListTile(
-              title: TomText('Utilities'),
+              title: TomText(null, tomId: 'demo.06.auto.text.10'),
               contentPadding: EdgeInsets.only(left: 64),
             ),
           ],
@@ -472,13 +469,11 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'ExpansionPanelList',
+            const TomText(null, tomId: 'demo.06.auto.text.17',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 8),
-            const TomText(
-              'Accordion-style panels where only one can be expanded at a time.',
+            const TomText(null, tomId: 'demo.06.auto.text.18',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const TomSizedBox(height: 16),
@@ -495,7 +490,7 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.question_answer),
-                      title: TomText('What is Flutter?'),
+                      title: TomText(null, tomId: 'demo.06.auto.text.11'),
                     );
                   },
                   body: const TomPadding(
@@ -512,7 +507,7 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.code),
-                      title: TomText('What is Dart?'),
+                      title: TomText(null, tomId: 'demo.06.auto.text.12'),
                     );
                   },
                   body: const TomPadding(
@@ -529,7 +524,7 @@ class _ExpansionPanelSectionState extends State<_ExpansionPanelSection> {
                   headerBuilder: (context, isExpanded) {
                     return const TomListTile(
                       leading: TomIcon(Icons.widgets),
-                      title: TomText('What are widgets?'),
+                      title: TomText(null, tomId: 'demo.06.auto.text.13'),
                     );
                   },
                   body: const TomPadding(
@@ -833,8 +828,7 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
                             'Item ${index + 1}',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          const TomText(
-                            'Description here',
+                          const TomText(null, tomId: 'demo.06.auto.text.19',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
@@ -915,13 +909,11 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(
-              'Dismissible Cards',
+            const TomText(null, tomId: 'demo.06.auto.text.3',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            const TomText(
-              'Swipe left or right to dismiss.',
+            const TomText(null, tomId: 'demo.06.auto.text.4',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -967,7 +959,7 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
                     child: TomListTile(
                       leading: const TomIcon(Icons.drag_indicator),
                       title: TomText(item),
-                      subtitle: const TomText('Swipe to dismiss'),
+                      subtitle: const TomText(null, tomId: 'demo.06.auto.text.14'),
                     ),
                   ),
                 ),
@@ -977,7 +969,7 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
               const TomCenter(
                 child: TomPadding(
                   padding: EdgeInsets.all(16),
-                  child: TomText('All items dismissed!'),
+                  child: TomText(null, tomId: 'demo.06.auto.text.15'),
                 ),
               ),
           ],

@@ -159,8 +159,7 @@ class _BackdropFilterSection extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
-                    child: const TomText(
-                      'Frosted Glass',
+                    child: const TomText(null, tomId: 'demo.19.auto.text.1',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -268,8 +267,7 @@ class _ShaderMaskSection extends StatelessWidget {
             shaderCallback: (bounds) => const LinearGradient(
               colors: [Colors.purple, Colors.blue, Colors.cyan],
             ).createShader(bounds),
-            child: const TomText(
-              'Gradient Text',
+            child: const TomText(null, tomId: 'demo.19.auto.text.7',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -328,8 +326,7 @@ class _ShaderMaskSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: TomText(
-                  'Faded Edges',
+                child: TomText(null, tomId: 'demo.19.auto.text.2',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -394,8 +391,7 @@ class _ClipPathSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: TomText(
-                  'Wave',
+                child: TomText(null, tomId: 'demo.19.auto.text.3',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -419,8 +415,7 @@ class _ClipPathSection extends StatelessWidget {
                 ),
               ),
               child: const TomCenter(
-                child: TomText(
-                  'Triangle',
+                child: TomText(null, tomId: 'demo.19.auto.text.8',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -443,7 +438,7 @@ class _ClipPathSection extends StatelessWidget {
                   height: 80,
                   color: Colors.teal,
                   child: const TomCenter(
-                    child: TomText('Oval', style: TextStyle(color: Colors.white)),
+                    child: TomText(null, tomId: 'demo.19.auto.text.4', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
@@ -454,7 +449,7 @@ class _ClipPathSection extends StatelessWidget {
                   height: 80,
                   color: Colors.purple,
                   child: const TomCenter(
-                    child: TomText('Round', style: TextStyle(color: Colors.white)),
+                    child: TomText(null, tomId: 'demo.19.auto.text.9', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
@@ -465,7 +460,7 @@ class _ClipPathSection extends StatelessWidget {
                   height: 80,
                   color: Colors.indigo,
                   child: const TomCenter(
-                    child: TomText('Hex', style: TextStyle(color: Colors.white)),
+                    child: TomText(null, tomId: 'demo.19.auto.text.5', style: TextStyle(color: Colors.white)),
                   ),
                 ),
               ),
@@ -759,8 +754,7 @@ class _ShadowSection extends StatelessWidget {
               ],
             ),
             child: const TomCenter(
-              child: TomText(
-                'Multi',
+              child: TomText(null, tomId: 'demo.19.auto.text.6',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),

@@ -516,7 +516,7 @@ class _TextFormFieldSectionState extends State<_TextFormFieldSection> {
                     if (_formKey.currentState!.validate()) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         TomSnackBar(
-                          content: TomText('Form is valid!'),
+                          content: TomText(null, tomId: 'demo.02.auto.text.1'),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -1676,7 +1676,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                   children: [
                     TomTextButton(
                       onPressed: () {},
-                      child: const TomText('Forgot Password?'),
+                      child: const TomText(null, tomId: 'demo.02.auto.text.2'),
                     ),
                   ],
                 ),
@@ -1697,7 +1697,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                   setState(() => _loginLoading = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     TomSnackBar(
-                                      content: TomText('Login successful!'),
+                                      content: TomText(null, tomId: 'demo.02.auto.text.3'),
                                       backgroundColor: Colors.green,
                                     ),
                                   );
@@ -1716,7 +1716,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                 ),
                               ),
                             )
-                            : const TomText('Login'),
+                            : const TomText(null, tomId: 'demo.02.auto.text.4'),
                   ),
                 ),
               ],
@@ -1877,7 +1877,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                   setState(() => _signupLoading = false);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     TomSnackBar(
-                                      content: TomText('Account created!'),
+                                      content: TomText(null, tomId: 'demo.02.auto.text.5'),
                                       backgroundColor: Colors.green,
                                     ),
                                   );
@@ -1896,7 +1896,7 @@ class _FormExamplesSectionState extends State<_FormExamplesSection> {
                                 ),
                               ),
                             )
-                            : const TomText('Create Account'),
+                            : const TomText(null, tomId: 'demo.02.auto.text.6'),
                   ),
                 ),
               ],

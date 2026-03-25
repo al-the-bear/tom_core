@@ -120,31 +120,31 @@ class _ListTileSection extends StatelessWidget {
       child: TomColumn(
         children: [
           const TomListTile(
-            title: TomText('Basic ListTile'),
+            title: TomText(null, tomId: 'demo.15.auto.text.1'),
           ),
           const TomDivider(height: 1),
           const TomListTile(
-            title: TomText('With Subtitle'),
-            subtitle: TomText('Secondary text goes here'),
+            title: TomText(null, tomId: 'demo.15.auto.text.2'),
+            subtitle: TomText(null, tomId: 'demo.15.auto.text.29'),
           ),
           const TomDivider(height: 1),
           const TomListTile(
             leading: TomIcon(Icons.person),
-            title: TomText('With Leading Icon'),
-            subtitle: TomText('Contact information'),
+            title: TomText(null, tomId: 'demo.15.auto.text.30'),
+            subtitle: TomText(null, tomId: 'demo.15.auto.text.31'),
           ),
           const TomDivider(height: 1),
           const TomListTile(
-            leading: TomCircleAvatar(child: TomText('AB')),
-            title: TomText('With Avatar'),
-            subtitle: TomText('User profile'),
+            leading: TomCircleAvatar(child: TomText(null, tomId: 'demo.15.auto.text.3')),
+            title: TomText(null, tomId: 'demo.15.auto.text.4'),
+            subtitle: TomText(null, tomId: 'demo.15.auto.text.5'),
             trailing: TomIcon(Icons.chevron_right),
           ),
           const TomDivider(height: 1),
           TomListTile(
             leading: const TomIcon(Icons.image),
-            title: const TomText('With Image'),
-            subtitle: const TomText('Image description'),
+            title: const TomText(null, tomId: 'demo.15.auto.text.6'),
+            subtitle: const TomText(null, tomId: 'demo.15.auto.text.32'),
             trailing: TomClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: TomContainer(
@@ -158,9 +158,8 @@ class _ListTileSection extends StatelessWidget {
           const TomDivider(height: 1),
           const TomListTile(
             leading: TomIcon(Icons.star, color: Colors.amber),
-            title: TomText('Three-Line ListTile'),
-            subtitle: TomText(
-              'This is a longer description that spans multiple lines to show how the ListTile handles overflow content.',
+            title: TomText(null, tomId: 'demo.15.auto.text.33'),
+            subtitle: TomText(null, tomId: 'demo.15.auto.text.28',
             ),
             isThreeLine: true,
             trailing: TomIcon(Icons.more_vert),
@@ -168,16 +167,16 @@ class _ListTileSection extends StatelessWidget {
           const TomDivider(height: 1),
           TomListTile(
             leading: const TomIcon(Icons.notifications),
-            title: const TomText('Enabled Tile'),
-            subtitle: const TomText('Tap enabled'),
+            title: const TomText(null, tomId: 'demo.15.auto.text.34'),
+            subtitle: const TomText(null, tomId: 'demo.15.auto.text.35'),
             trailing: const TomIcon(Icons.chevron_right),
             onTap: () {},
           ),
           const TomDivider(height: 1),
           const TomListTile(
             leading: TomIcon(Icons.block),
-            title: TomText('Disabled Tile'),
-            subtitle: TomText('Tap disabled'),
+            title: TomText(null, tomId: 'demo.15.auto.text.7'),
+            subtitle: TomText(null, tomId: 'demo.15.auto.text.8'),
             enabled: false,
             trailing: TomIcon(Icons.chevron_right),
           ),
@@ -206,21 +205,21 @@ class _DensitySection extends StatelessWidget {
               children: [
                 TomListTile(
                   leading: const TomIcon(Icons.inbox),
-                  title: const TomText('Inbox'),
-                  trailing: const TomText('5'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.36'),
+                  trailing: const TomText(null, tomId: 'demo.15.auto.text.9'),
                   onTap: () {},
                 ),
                 const TomDivider(height: 1),
                 TomListTile(
                   leading: const TomIcon(Icons.send),
-                  title: const TomText('Sent'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.37'),
                   onTap: () {},
                 ),
                 const TomDivider(height: 1),
                 TomListTile(
                   leading: const TomIcon(Icons.drafts),
-                  title: const TomText('Drafts'),
-                  trailing: const TomText('2'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.10'),
+                  trailing: const TomText(null, tomId: 'demo.15.auto.text.11'),
                   onTap: () {},
                 ),
               ],
@@ -236,23 +235,23 @@ class _DensitySection extends StatelessWidget {
                 TomListTile(
                   dense: true,
                   leading: const TomIcon(Icons.inbox, size: 20),
-                  title: const TomText('Inbox'),
-                  trailing: const TomText('5'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.38'),
+                  trailing: const TomText(null, tomId: 'demo.15.auto.text.12'),
                   onTap: () {},
                 ),
                 const TomDivider(height: 1),
                 TomListTile(
                   dense: true,
                   leading: const TomIcon(Icons.send, size: 20),
-                  title: const TomText('Sent'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.39'),
                   onTap: () {},
                 ),
                 const TomDivider(height: 1),
                 TomListTile(
                   dense: true,
                   leading: const TomIcon(Icons.drafts, size: 20),
-                  title: const TomText('Drafts'),
-                  trailing: const TomText('2'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.13'),
+                  trailing: const TomText(null, tomId: 'demo.15.auto.text.14'),
                   onTap: () {},
                 ),
               ],
@@ -274,8 +273,8 @@ class _DensitySection extends StatelessWidget {
                     radius: 24,
                     child: TomIcon(Icons.person),
                   ),
-                  title: const TomText('Extra Padding'),
-                  subtitle: const TomText('More breathing room'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.40'),
+                  subtitle: const TomText(null, tomId: 'demo.15.auto.text.41'),
                   trailing: TomIconButton(
                     icon: const TomIcon(Icons.message),
                     onPressed: () {},
@@ -457,23 +456,23 @@ class _ExpansionSection extends StatelessWidget {
               children: [
                 TomExpansionTile(
                   leading: const TomIcon(Icons.folder),
-                  title: const TomText('Documents'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.42'),
                   children: [
                     TomListTile(
                       leading: const TomIcon(Icons.description, size: 20),
-                      title: const TomText('Resume.pdf'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.15'),
                       dense: true,
                       onTap: () {},
                     ),
                     TomListTile(
                       leading: const TomIcon(Icons.description, size: 20),
-                      title: const TomText('Cover Letter.docx'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.16'),
                       dense: true,
                       onTap: () {},
                     ),
                     TomListTile(
                       leading: const TomIcon(Icons.description, size: 20),
-                      title: const TomText('Portfolio.pdf'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.17'),
                       dense: true,
                       onTap: () {},
                     ),
@@ -482,17 +481,17 @@ class _ExpansionSection extends StatelessWidget {
                 const TomDivider(height: 1),
                 TomExpansionTile(
                   leading: const TomIcon(Icons.photo_library),
-                  title: const TomText('Photos'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.18'),
                   children: [
                     TomListTile(
                       leading: const TomIcon(Icons.image, size: 20),
-                      title: const TomText('Vacation 2024'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.43'),
                       dense: true,
                       onTap: () {},
                     ),
                     TomListTile(
                       leading: const TomIcon(Icons.image, size: 20),
-                      title: const TomText('Family'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.19'),
                       dense: true,
                       onTap: () {},
                     ),
@@ -509,16 +508,16 @@ class _ExpansionSection extends StatelessWidget {
             child: TomExpansionTile(
               initiallyExpanded: true,
               leading: const TomIcon(Icons.settings),
-              title: const TomText('Settings'),
-              subtitle: const TomText('App configuration'),
+              title: const TomText(null, tomId: 'demo.15.auto.text.44'),
+              subtitle: const TomText(null, tomId: 'demo.15.auto.text.45'),
               children: [
                 TomSwitchListTile(
-                  title: const TomText('Dark Mode'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.20'),
                   value: false,
                   onChanged: (v) {},
                 ),
                 TomSwitchListTile(
-                  title: const TomText('Notifications'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.46'),
                   value: true,
                   onChanged: (v) {},
                 ),
@@ -532,22 +531,22 @@ class _ExpansionSection extends StatelessWidget {
           TomCard(
             child: TomExpansionTile(
               leading: const TomIcon(Icons.account_tree),
-              title: const TomText('Project Structure'),
+              title: const TomText(null, tomId: 'demo.15.auto.text.21'),
               children: [
                 TomExpansionTile(
                   leading: const TomIcon(Icons.folder_open, size: 20),
-                  title: const TomText('lib'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.22'),
                   tilePadding: const EdgeInsets.only(left: 32, right: 16),
                   children: [
                     TomListTile(
                       leading: const TomIcon(Icons.code, size: 18),
-                      title: const TomText('main.dart'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.47'),
                       contentPadding: const EdgeInsets.only(left: 56, right: 16),
                       dense: true,
                     ),
                     TomListTile(
                       leading: const TomIcon(Icons.code, size: 18),
-                      title: const TomText('app.dart'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.23'),
                       contentPadding: const EdgeInsets.only(left: 56, right: 16),
                       dense: true,
                     ),
@@ -555,12 +554,12 @@ class _ExpansionSection extends StatelessWidget {
                 ),
                 TomExpansionTile(
                   leading: const TomIcon(Icons.folder_open, size: 20),
-                  title: const TomText('test'),
+                  title: const TomText(null, tomId: 'demo.15.auto.text.24'),
                   tilePadding: const EdgeInsets.only(left: 32, right: 16),
                   children: [
                     TomListTile(
                       leading: const TomIcon(Icons.code, size: 18),
-                      title: const TomText('widget_test.dart'),
+                      title: const TomText(null, tomId: 'demo.15.auto.text.25'),
                       contentPadding: const EdgeInsets.only(left: 56, right: 16),
                       dense: true,
                     ),
@@ -628,8 +627,7 @@ class _ReorderableSectionState extends State<_ReorderableSection> {
         children: [
           TomPadding(
             padding: const EdgeInsets.all(16),
-            child: TomText(
-              'Drag items to reorder',
+            child: TomText(null, tomId: 'demo.15.auto.text.1',
               style: TextStyle(color: Colors.grey.shade600),
             ),
           ),
@@ -704,11 +702,11 @@ class _DismissibleSectionState extends State<_DismissibleSection> {
               padding: const EdgeInsets.all(32),
               child: TomColumn(
                 children: [
-                  const TomText('All items dismissed'),
+                  const TomText(null, tomId: 'demo.15.auto.text.26'),
                   const TomSizedBox(height: 16),
                   TomFilledButton(
                     onPressed: _resetItems,
-                    child: const TomText('Reset'),
+                    child: const TomText(null, tomId: 'demo.15.auto.text.27'),
                   ),
                 ],
               ),
