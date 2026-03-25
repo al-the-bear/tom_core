@@ -135,35 +135,38 @@ class _DataTableSection extends StatelessWidget {
             TomSingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: TomDataTable(
-                columns: const [
-                  DataColumn(label: TomText('ID')),
-                  DataColumn(label: TomText('Name')),
-                  DataColumn(label: TomText('Email')),
-                  DataColumn(label: TomText('Role'), numeric: true),
+                columns: [
+                  TomDataColumn(tomId: 'id', label: TomText('ID')),
+                  TomDataColumn(tomId: 'name', label: TomText('Name')),
+                  TomDataColumn(tomId: 'email', label: TomText('Email')),
+                  TomDataColumn(tomId: 'role', label: TomText('Role'), numeric: true),
                 ],
-                rows: const [
-                  DataRow(
+                rows: [
+                  TomDataRow(
+                    tomId: 'user.1',
                     cells: [
-                      DataCell(TomText('1')),
-                      DataCell(TomText('John Doe')),
-                      DataCell(TomText('john@example.com')),
-                      DataCell(TomText('Admin')),
+                      TomDataCell(tomId: 'id', child: TomText('1')),
+                      TomDataCell(tomId: 'name', child: TomText('John Doe')),
+                      TomDataCell(tomId: 'email', child: TomText('john@example.com')),
+                      TomDataCell(tomId: 'role', child: TomText('Admin')),
                     ],
                   ),
-                  DataRow(
+                  TomDataRow(
+                    tomId: 'user.2',
                     cells: [
-                      DataCell(TomText('2')),
-                      DataCell(TomText('Jane Smith')),
-                      DataCell(TomText('jane@example.com')),
-                      DataCell(TomText('Editor')),
+                      TomDataCell(tomId: 'id', child: TomText('2')),
+                      TomDataCell(tomId: 'name', child: TomText('Jane Smith')),
+                      TomDataCell(tomId: 'email', child: TomText('jane@example.com')),
+                      TomDataCell(tomId: 'role', child: TomText('Editor')),
                     ],
                   ),
-                  DataRow(
+                  TomDataRow(
+                    tomId: 'user.3',
                     cells: [
-                      DataCell(TomText('3')),
-                      DataCell(TomText('Bob Wilson')),
-                      DataCell(TomText('bob@example.com')),
-                      DataCell(TomText('Viewer')),
+                      TomDataCell(tomId: 'id', child: TomText('3')),
+                      TomDataCell(tomId: 'name', child: TomText('Bob Wilson')),
+                      TomDataCell(tomId: 'email', child: TomText('bob@example.com')),
+                      TomDataCell(tomId: 'role', child: TomText('Viewer')),
                     ],
                   ),
                 ],
@@ -237,22 +240,26 @@ class _SortableDataTableSectionState extends State<_SortableDataTableSection> {
                 sortColumnIndex: _sortColumnIndex,
                 sortAscending: _sortAscending,
                 columns: [
-                  DataColumn(
+                  TomDataColumn(
+                    tomId: 'id',
                     label: const TomText('ID'),
                     numeric: true,
                     onSort: (i, asc) => _sort((d) => d['id'] as int, i, asc),
                   ),
-                  DataColumn(
+                  TomDataColumn(
+                    tomId: 'name',
                     label: const TomText('Name'),
                     onSort:
                         (i, asc) => _sort((d) => d['name'] as String, i, asc),
                   ),
-                  DataColumn(
+                  TomDataColumn(
+                    tomId: 'sales',
                     label: const TomText('Sales'),
                     numeric: true,
                     onSort: (i, asc) => _sort((d) => d['sales'] as int, i, asc),
                   ),
-                  DataColumn(
+                  TomDataColumn(
+                    tomId: 'region',
                     label: const TomText('Region'),
                     onSort:
                         (i, asc) => _sort((d) => d['region'] as String, i, asc),
@@ -260,12 +267,13 @@ class _SortableDataTableSectionState extends State<_SortableDataTableSection> {
                 ],
                 rows:
                     _data.map((item) {
-                      return DataRow(
+                      return TomDataRow(
+                        tomId: 'sales.${item['id']}',
                         cells: [
-                          DataCell(TomText('${item['id']}')),
-                          DataCell(TomText(item['name'])),
-                          DataCell(TomText('\$${item['sales']}')),
-                          DataCell(TomText(item['region'])),
+                          TomDataCell(tomId: 'id', child: TomText('${item['id']}')),
+                          TomDataCell(tomId: 'name', child: TomText(item['name'])),
+                          TomDataCell(tomId: 'sales', child: TomText('\$${item['sales']}')),
+                          TomDataCell(tomId: 'region', child: TomText(item['region'])),
                         ],
                       );
                     }).toList(),
@@ -330,16 +338,17 @@ class _SelectableDataTableSectionState
               scrollDirection: Axis.horizontal,
               child: TomDataTable(
                 showCheckboxColumn: true,
-                columns: const [
-                  DataColumn(label: TomText('Product')),
-                  DataColumn(label: TomText('Price'), numeric: true),
-                  DataColumn(label: TomText('Stock'), numeric: true),
-                  DataColumn(label: TomText('Actions')),
+                columns: [
+                  TomDataColumn(tomId: 'product', label: TomText('Product')),
+                  TomDataColumn(tomId: 'price', label: TomText('Price'), numeric: true),
+                  TomDataColumn(tomId: 'stock', label: TomText('Stock'), numeric: true),
+                  TomDataColumn(tomId: 'actions', label: TomText('Actions')),
                 ],
                 rows:
                     _data.map((item) {
                       final id = item['id'] as int;
-                      return DataRow(
+                      return TomDataRow(
+                        tomId: 'product.$id',
                         selected: _selectedIds.contains(id),
                         onSelectChanged: (selected) {
                           setState(() {
@@ -351,11 +360,12 @@ class _SelectableDataTableSectionState
                           });
                         },
                         cells: [
-                          DataCell(TomText(item['product'])),
-                          DataCell(TomText('\$${item['price']}')),
-                          DataCell(TomText('${item['stock']}')),
-                          DataCell(
-                            TomRow(
+                          TomDataCell(tomId: 'product', child: TomText(item['product'])),
+                          TomDataCell(tomId: 'price', child: TomText('\$${item['price']}')),
+                          TomDataCell(tomId: 'stock', child: TomText('${item['stock']}')),
+                          TomDataCell(
+                            tomId: 'actions',
+                            child: TomRow(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 TomIconButton(
@@ -421,12 +431,12 @@ class _PaginatedDataTableSectionState
                       onPressed: () {},
                     ),
                   ],
-                  columns: const [
-                    DataColumn(label: TomText('Order #')),
-                    DataColumn(label: TomText('Customer')),
-                    DataColumn(label: TomText('Date')),
-                    DataColumn(label: TomText('Amount'), numeric: true),
-                    DataColumn(label: TomText('Status')),
+                  columns: [
+                    TomDataColumn(tomId: 'orderId', label: TomText('Order #')),
+                    TomDataColumn(tomId: 'customer', label: TomText('Customer')),
+                    TomDataColumn(tomId: 'date', label: TomText('Date')),
+                    TomDataColumn(tomId: 'amount', label: TomText('Amount'), numeric: true),
+                    TomDataColumn(tomId: 'status', label: TomText('Status')),
                   ],
                   source: _OrderDataSource(),
                   rowsPerPage: _rowsPerPage,
@@ -467,13 +477,14 @@ class _OrderDataSource extends DataTableSource {
   DataRow? getRow(int index) {
     if (index >= _orders.length) return null;
     final order = _orders[index];
-    return DataRow(
+    return TomDataRow(
+      tomId: 'order.$index',
       cells: [
-        DataCell(TomText(order['id'])),
-        DataCell(TomText(order['customer'])),
-        DataCell(TomText(order['date'])),
-        DataCell(TomText('\$${(order['amount'] as double).toStringAsFixed(2)}')),
-        DataCell(_buildStatusChip(order['status'])),
+        TomDataCell(tomId: 'orderId', child: TomText(order['id'])),
+        TomDataCell(tomId: 'customer', child: TomText(order['customer'])),
+        TomDataCell(tomId: 'date', child: TomText(order['date'])),
+        TomDataCell(tomId: 'amount', child: TomText('\$${(order['amount'] as double).toStringAsFixed(2)}')),
+        TomDataCell(tomId: 'status', child: _buildStatusChip(order['status'])),
       ],
     );
   }
@@ -697,25 +708,27 @@ class _StyledTablesSection extends StatelessWidget {
             headingRowColor: WidgetStateProperty.all(
               Theme.of(context).colorScheme.primaryContainer,
             ),
-            columns: const [
-              DataColumn(label: TomText('Name')),
-              DataColumn(label: TomText('Department')),
-              DataColumn(label: TomText('Salary'), numeric: true),
+            columns: [
+              TomDataColumn(tomId: 'name', label: TomText('Name')),
+              TomDataColumn(tomId: 'department', label: TomText('Department')),
+              TomDataColumn(tomId: 'salary', label: TomText('Salary'), numeric: true),
             ],
             rows: List.generate(5, (index) {
-              return DataRow(
+              return TomDataRow(
+                tomId: 'employee.$index',
                 color: WidgetStateProperty.resolveWith((states) {
                   return index.isEven ? Colors.grey.withValues(alpha: 0.1) : null;
                 }),
                 cells: [
-                  DataCell(TomText('Employee ${index + 1}')),
-                  DataCell(
-                    TomText(
+                  TomDataCell(tomId: 'name', child: TomText('Employee ${index + 1}')),
+                  TomDataCell(
+                    tomId: 'department',
+                    child: TomText(
                       ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance'][
                           index],
                     ),
                   ),
-                  DataCell(TomText('\$${50000 + index * 5000}')),
+                  TomDataCell(tomId: 'salary', child: TomText('\$${50000 + index * 5000}')),
                 ],
               );
             }),
@@ -725,13 +738,14 @@ class _StyledTablesSection extends StatelessWidget {
           'Hoverable Table',
           'Rows highlight on hover.',
           TomDataTable(
-            columns: const [
-              DataColumn(label: TomText('Item')),
-              DataColumn(label: TomText('Quantity'), numeric: true),
-              DataColumn(label: TomText('Price'), numeric: true),
+            columns: [
+              TomDataColumn(tomId: 'item', label: TomText('Item')),
+              TomDataColumn(tomId: 'quantity', label: TomText('Quantity'), numeric: true),
+              TomDataColumn(tomId: 'price', label: TomText('Price'), numeric: true),
             ],
             rows: List.generate(4, (index) {
-              return DataRow(
+              return TomDataRow(
+                tomId: 'product.$index',
                 color: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.hovered)) {
                     return Theme.of(
@@ -741,9 +755,9 @@ class _StyledTablesSection extends StatelessWidget {
                   return null;
                 }),
                 cells: [
-                  DataCell(TomText('Product ${index + 1}')),
-                  DataCell(TomText('${(index + 1) * 5}')),
-                  DataCell(TomText('\$${(index + 1) * 19.99}')),
+                  TomDataCell(tomId: 'item', child: TomText('Product ${index + 1}')),
+                  TomDataCell(tomId: 'quantity', child: TomText('${(index + 1) * 5}')),
+                  TomDataCell(tomId: 'price', child: TomText('\$${(index + 1) * 19.99}')),
                 ],
               );
             }),
@@ -763,17 +777,18 @@ class _StyledTablesSection extends StatelessWidget {
               ),
             ),
             child: TomDataTable(
-              columns: const [
-                DataColumn(label: TomText('Code')),
-                DataColumn(label: TomText('Item')),
-                DataColumn(label: TomText('Qty'), numeric: true),
+              columns: [
+                TomDataColumn(tomId: 'code', label: TomText('Code')),
+                TomDataColumn(tomId: 'item', label: TomText('Item')),
+                TomDataColumn(tomId: 'qty', label: TomText('Qty'), numeric: true),
               ],
               rows: List.generate(6, (index) {
-                return DataRow(
+                return TomDataRow(
+                  tomId: 'sku.$index',
                   cells: [
-                    DataCell(TomText('SKU${1000 + index}')),
-                    DataCell(TomText('Item ${index + 1}')),
-                    DataCell(TomText('${(index + 1) * 10}')),
+                    TomDataCell(tomId: 'code', child: TomText('SKU${1000 + index}')),
+                    TomDataCell(tomId: 'item', child: TomText('Item ${index + 1}')),
+                    TomDataCell(tomId: 'qty', child: TomText('${(index + 1) * 10}')),
                   ],
                 );
               }),

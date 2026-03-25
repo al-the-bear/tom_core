@@ -2059,10 +2059,10 @@ class ComplexLayoutDemo extends StatelessWidget {
                     isDense: true,
                   ),
                   hint: const Text('Select'),
-                  items: const [
-                    DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                    DropdownMenuItem(value: 'user', child: Text('User')),
-                    DropdownMenuItem(value: 'guest', child: Text('Guest')),
+                  items: [
+                    TomDropdownMenuItem(tomId: 'role.admin', value: 'admin', child: const Text('Admin')),
+                    TomDropdownMenuItem(tomId: 'role.user', value: 'user', child: const Text('User')),
+                    TomDropdownMenuItem(tomId: 'role.guest', value: 'guest', child: const Text('Guest')),
                   ],
                   onChanged: (_) {},
                 ),
@@ -2207,10 +2207,10 @@ class ComprehensiveFormDemo extends StatelessWidget {
             isDense: true,
           ),
           hint: const Text('Select'),
-          items: const [
-            DropdownMenuItem(value: 'high', child: Text('High')),
-            DropdownMenuItem(value: 'medium', child: Text('Medium')),
-            DropdownMenuItem(value: 'low', child: Text('Low')),
+          items: [
+            TomDropdownMenuItem(tomId: 'priority.high', value: 'high', child: const Text('High')),
+            TomDropdownMenuItem(tomId: 'priority.medium', value: 'medium', child: const Text('Medium')),
+            TomDropdownMenuItem(tomId: 'priority.low', value: 'low', child: const Text('Low')),
           ],
           onChanged: (_) {},
         ))
