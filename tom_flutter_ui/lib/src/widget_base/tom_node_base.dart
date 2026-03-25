@@ -69,6 +69,27 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIResources.resolveText(basePath, suffix);
   }
 
+  /// Resolves a required text resource relative to this node's base path.
+  ///
+  /// Use this for required text fields (label, tooltip) that must be provided
+  /// either explicitly or via resources.
+  ///
+  /// Throws [StateError] if:
+  /// - This node has no [tomId] (resource lookup is impossible)
+  ///
+  /// If [tomId] is set but no resource exists, returns a fallback key string
+  /// for development visibility.
+  String resolveResourceOrFail(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup. Widget: $runtimeType',
+      );
+    }
+    return TomUIResources.resolveText(basePath, suffix);
+  }
+
   /// Resolves an icon from resources relative to this node's base path.
   ///
   /// Returns `null` if:

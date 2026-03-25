@@ -43,7 +43,7 @@ class TomElevatedButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // Resolve icon: use provided widget, or resolve from resources
@@ -121,7 +121,7 @@ class TomTextButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -196,7 +196,7 @@ class TomOutlinedButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -273,7 +273,7 @@ class TomFilledButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -502,12 +502,13 @@ class TomFloatingActionButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip =
-        tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
-    final resolvedLabel = label ?? resolveResourceOrNull(context, 'label');
+    // Tooltip is always optional
+    final resolvedTooltip = tooltip ?? resolveResourceOrNull(context, 'tooltip');
 
     switch (_variant) {
       case _FABVariant.extended:
+        // Extended FAB requires a label
+        final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
         return FloatingActionButton.extended(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
@@ -527,7 +528,7 @@ class TomFloatingActionButton extends TomButtonBase {
           focusNode: focusNode,
           isExtended: isExtended ?? true,
           icon: _resolveIconWidget(context),
-          label: extendedIconLabelChild ?? Text(resolvedLabel ?? ''),
+          label: extendedIconLabelChild ?? Text(resolvedLabel),
         );
 
       case _FABVariant.small:
@@ -574,6 +575,7 @@ class TomFloatingActionButton extends TomButtonBase {
 
       case _FABVariant.regular:
         final resolvedIcon = _resolveIconWidget(context);
+        final resolvedLabel = label ?? resolveResourceOrNull(context, 'label');
         // Legacy behavior: if icon and label are both provided, use extended
         if (resolvedIcon != null && resolvedLabel != null) {
           return FloatingActionButton.extended(
@@ -683,7 +685,7 @@ class TomMenuItemButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return MenuItemButton(
@@ -740,7 +742,7 @@ class TomSubmenuButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return SubmenuButton(
@@ -944,7 +946,7 @@ class TomIconButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
     final resolvedIcon = _resolveIcon(context);
 
     switch (_variant) {
