@@ -367,6 +367,7 @@ class TomFloatingActionButton extends TomButtonBase {
   final Widget? icon;
   final Widget? extendedIconLabelChild;
   final String? label;
+  final Object? heroTag;
   final _FABVariant _variant;
 
   const TomFloatingActionButton({
@@ -394,6 +395,7 @@ class TomFloatingActionButton extends TomButtonBase {
     this.mini = false,
     this.icon,
     this.label,
+    this.heroTag,
   })  : _variant = _FABVariant.regular,
         extendedIconLabelChild = null;
 
@@ -419,6 +421,7 @@ class TomFloatingActionButton extends TomButtonBase {
     this.clipBehavior = Clip.none,
     this.autofocus = false,
     this.focusNode,
+    this.heroTag,
   })  : _variant = _FABVariant.small,
         isExtended = null,
         mini = false,
@@ -448,6 +451,7 @@ class TomFloatingActionButton extends TomButtonBase {
     this.clipBehavior = Clip.none,
     this.autofocus = false,
     this.focusNode,
+    this.heroTag,
   })  : _variant = _FABVariant.large,
         isExtended = null,
         mini = false,
@@ -480,6 +484,7 @@ class TomFloatingActionButton extends TomButtonBase {
     this.focusNode,
     this.isExtended,
     this.extendedIconLabelChild,
+    this.heroTag,
   })  : _variant = _FABVariant.extended,
         child = null,
         mini = false;
@@ -517,6 +522,7 @@ class TomFloatingActionButton extends TomButtonBase {
           focusColor: focusColor,
           hoverColor: hoverColor,
           splashColor: splashColor,
+          heroTag: heroTag,
           elevation: elevation,
           focusElevation: focusElevation,
           hoverElevation: hoverElevation,
@@ -540,6 +546,7 @@ class TomFloatingActionButton extends TomButtonBase {
           focusColor: focusColor,
           hoverColor: hoverColor,
           splashColor: splashColor,
+          heroTag: heroTag,
           elevation: elevation,
           focusElevation: focusElevation,
           hoverElevation: hoverElevation,
@@ -561,6 +568,7 @@ class TomFloatingActionButton extends TomButtonBase {
           focusColor: focusColor,
           hoverColor: hoverColor,
           splashColor: splashColor,
+          heroTag: heroTag,
           elevation: elevation,
           focusElevation: focusElevation,
           hoverElevation: hoverElevation,
@@ -586,6 +594,7 @@ class TomFloatingActionButton extends TomButtonBase {
             focusColor: focusColor,
             hoverColor: hoverColor,
             splashColor: splashColor,
+            heroTag: heroTag,
             elevation: elevation,
             focusElevation: focusElevation,
             hoverElevation: hoverElevation,
@@ -611,6 +620,7 @@ class TomFloatingActionButton extends TomButtonBase {
             focusColor: focusColor,
             hoverColor: hoverColor,
             splashColor: splashColor,
+            heroTag: heroTag,
             elevation: elevation,
             focusElevation: focusElevation,
             hoverElevation: hoverElevation,
@@ -632,6 +642,7 @@ class TomFloatingActionButton extends TomButtonBase {
           focusColor: focusColor,
           hoverColor: hoverColor,
           splashColor: splashColor,
+          heroTag: heroTag,
           elevation: elevation,
           focusElevation: focusElevation,
           hoverElevation: hoverElevation,

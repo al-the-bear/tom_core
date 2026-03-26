@@ -493,14 +493,17 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             children: [
               TomFloatingActionButton(
                 tomId: 'demo01.fab.basic',
+                heroTag: 'fab_basic',
                 onPressed: () {},
               ),
               TomFloatingActionButton.small(
                 tomId: 'demo01.fab.small',
+                heroTag: 'fab_small',
                 onPressed: () {},
               ),
               TomFloatingActionButton.large(
                 tomId: 'demo01.fab.large',
+                heroTag: 'fab_large',
                 onPressed: () {},
               ),
             ],
@@ -514,10 +517,12 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             children: [
               TomFloatingActionButton.extended(
                 tomId: 'demo01.fab.compose',
+                heroTag: 'fab_compose',
                 onPressed: () {},
               ),
               TomFloatingActionButton.extended(
                 tomId: 'demo01.fab.create',
+                heroTag: 'fab_create',
                 onPressed: () {},
               ),
             ],
@@ -531,6 +536,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             children: [
               TomFloatingActionButton(
                 tomId: 'demo01.fab.tertiary',
+                heroTag: 'fab_tertiary',
                 onPressed: () {},
                 backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
                 foregroundColor:
@@ -538,6 +544,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
               ),
               TomFloatingActionButton(
                 tomId: 'demo01.fab.error',
+                heroTag: 'fab_error',
                 onPressed: () {},
                 backgroundColor: Theme.of(context).colorScheme.errorContainer,
                 foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
