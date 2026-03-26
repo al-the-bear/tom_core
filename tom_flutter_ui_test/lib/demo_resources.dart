@@ -236,6 +236,134 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo01.context.title.label': 'Context Bar Title',
     'demo01.context.more.icon': 'mMoreVert',
     'demo01.context.more.tooltip': 'More options',
+
+    // ==========================================================================
+    // Demo 02: Text Inputs - Section Headers
+    // ==========================================================================
+    'demo02.section.standard.title.label': 'Standard Text Fields',
+    'demo02.section.standard.subtitle.label':
+        'TomTextField and TomTextFormField for basic text input',
+    'demo02.section.search.title.label': 'Search & Autocomplete',
+    'demo02.section.search.subtitle.label':
+        'Search bars, anchors, and type-ahead suggestions',
+    'demo02.section.cupertino.title.label': 'Cupertino Text Inputs',
+    'demo02.section.cupertino.subtitle.label':
+        'iOS-style text fields and search inputs',
+    'demo02.section.datetime.title.label': 'Date & Time Pickers',
+    'demo02.section.datetime.subtitle.label':
+        'Calendar, date and time selection widgets',
+
+    // ==========================================================================
+    // Demo 02: TomTextField Card
+    // ==========================================================================
+    'demo02.textfield.icon': 'mTextFields',
+    'demo02.textfield.title.label': 'TomTextField',
+    'demo02.textfield.description.label':
+        'Standard Material text input field with label and hint support.',
+    'demo02.textfield.basic.label': 'Full Name',
+    'demo02.textfield.basic.hint': 'Enter your full name',
+    'demo02.textfield.price.label': 'Price',
+    'demo02.textfield.price.hint': 'Enter amount',
+    'demo02.textfield.password.label': 'Password',
+    'demo02.textfield.password.hint': 'Enter your password',
+    'demo02.textfield.passwordToggle.icon': 'mVisibility',
+    'demo02.textfield.passwordToggle.tooltip': 'Toggle password visibility',
+    'demo02.textfield.multiline.label': 'Notes',
+    'demo02.textfield.multiline.hint': 'Enter additional notes',
+    'demo02.textfield.disabled.label': 'Disabled Field',
+    'demo02.textfield.disabled.hint': 'This field is disabled',
+    'demo02.textfield.readonly.label': 'Read-Only Field',
+    'demo02.textfield.readonly.hint': 'This value cannot be changed',
+
+    // ==========================================================================
+    // Demo 02: TomTextFormField Card
+    // ==========================================================================
+    'demo02.formfield.icon': 'mAssignment',
+    'demo02.formfield.title.label': 'TomTextFormField',
+    'demo02.formfield.description.label':
+        'Form-integrated text field with validation support.',
+    'demo02.formfield.email.label': 'Email Address',
+    'demo02.formfield.email.hint': 'you@example.com',
+    'demo02.formfield.required.label': 'Required Field',
+    'demo02.formfield.required.hint': 'This field is required',
+    'demo02.formfield.phone.label': 'Phone Number',
+    'demo02.formfield.phone.hint': '+1 (555) 000-0000',
+    'demo02.formfield.validate.label': 'Validate Form',
+    'demo02.formfield.validate.icon': 'mCheck',
+
+    // ==========================================================================
+    // Demo 02: TomSearchBar Card
+    // ==========================================================================
+    'demo02.searchbar.icon': 'mSearch',
+    'demo02.searchbar.title.label': 'TomSearchBar & TomSearchAnchor',
+    'demo02.searchbar.description.label':
+        'Material 3 search bars with suggestion support.',
+    'demo02.searchbar.basic.hint': 'Search...',
+    'demo02.searchbar.mic.icon': 'mMic',
+    'demo02.searchbar.mic.tooltip': 'Voice search',
+    'demo02.searchbar.anchor.hint': 'Search countries...',
+    'demo02.searchbar.anchorBar.hint': 'Search countries...',
+
+    // ==========================================================================
+    // Demo 02: TomAutocomplete Card
+    // ==========================================================================
+    'demo02.autocomplete.icon': 'mAutoAwesome',
+    'demo02.autocomplete.title.label': 'TomAutocomplete',
+    'demo02.autocomplete.description.label':
+        'Type-ahead text field with suggestions.',
+    'demo02.autocomplete.country.label': 'Country',
+    'demo02.autocomplete.country.hint': 'Start typing a country name',
+
+    // ==========================================================================
+    // Demo 02: TomCupertinoTextField Card
+    // ==========================================================================
+    'demo02.cupertino.icon': 'mApple',
+    'demo02.cupertino.title.label': 'Cupertino Text Fields',
+    'demo02.cupertino.description.label':
+        'iOS-style text inputs using TomCupertinoTextField.',
+    'demo02.cupertino.basic.label': 'Name',
+    'demo02.cupertino.basic.hint': 'Enter your name',
+    'demo02.cupertino.decorated.label': 'Email',
+    'demo02.cupertino.decorated.hint': 'Enter your email',
+    'demo02.cupertino.formrow.label': 'Username',
+    'demo02.cupertino.formrow.hint': 'Enter username',
+    'demo02.cupertino.formrowPrefix.label': 'Username',
+
+    // ==========================================================================
+    // Demo 02: TomCupertinoSearchTextField Card
+    // ==========================================================================
+    'demo02.cupertinoSearch.icon': 'mSearch',
+    'demo02.cupertinoSearch.title.label': 'Cupertino Search Fields',
+    'demo02.cupertinoSearch.description.label':
+        'iOS-style search inputs with TomCupertinoSearchTextField.',
+    'demo02.cupertinoSearch.basic.hint': 'Search',
+    'demo02.cupertinoSearch.styled.hint': 'Search with custom style',
+
+    // ==========================================================================
+    // Demo 02: Calendar & Date Pickers Card
+    // ==========================================================================
+    'demo02.calendar.icon': 'mCalendarToday',
+    'demo02.calendar.title.label': 'Calendar & Date Pickers',
+    'demo02.calendar.description.label':
+        'Calendar view and date input fields.',
+    'demo02.calendar.picker.label': 'Select Date',
+    'demo02.calendar.selectedIcon': 'mEvent',
+    'demo02.calendar.inputField.label': 'Date',
+    'demo02.calendar.inputField.hint': 'MM/DD/YYYY',
+    'demo02.calendar.yearPicker.label': 'Select Year',
+
+    // ==========================================================================
+    // Demo 02: Cupertino Date & Time Pickers Card
+    // ==========================================================================
+    'demo02.cupertinoDateTime.icon': 'mSchedule',
+    'demo02.cupertinoDateTime.title.label': 'Cupertino Date & Time',
+    'demo02.cupertinoDateTime.description.label':
+        'iOS-style date and timer wheel pickers.',
+    'demo02.cupertinoDateTime.dateLabel.label': 'Select Date',
+    'demo02.cupertinoDateTime.datePicker.label': 'Date Picker',
+    'demo02.cupertinoDateTime.timerLabel.label': 'Select Duration',
+    'demo02.cupertinoDateTime.timerPicker.label': 'Timer Picker',
+    'demo02.cupertinoDateTime.durationIcon': 'mTimer',
   };
 
   @override

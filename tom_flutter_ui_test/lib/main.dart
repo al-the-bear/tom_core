@@ -13,8 +13,8 @@ import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
 import 'demo_resources.dart';
 import 'widget_demos/demo_01_buttons.dart';
+import 'widget_demos/demo_02_inputs.dart';
 // TODO: Import remaining demos as they are created
-// import 'widget_demos/demo_02_inputs.dart';
 // import 'widget_demos/demo_03_selection.dart';
 // import 'widget_demos/demo_04_toggles.dart';
 // import 'widget_demos/demo_05_sliders.dart';
@@ -273,8 +273,12 @@ class WidgetDemosTab extends StatelessWidget {
           description: 'ElevatedButton, TextButton, IconButton, FAB, and more',
           screen: ButtonsDemo(),
         ),
+        const DemoTile(
+          title: 'Text Inputs',
+          description: 'TextField, SearchBar, Autocomplete, DatePickers, and more',
+          screen: InputsDemo(),
+        ),
         // TODO: Add remaining demos as they are created
-        _buildComingSoonTile(context, 'Text Inputs'),
         _buildComingSoonTile(context, 'Selection Controls'),
         _buildComingSoonTile(context, 'Toggles & Options'),
         _buildComingSoonTile(context, 'Sliders & Ranges'),
