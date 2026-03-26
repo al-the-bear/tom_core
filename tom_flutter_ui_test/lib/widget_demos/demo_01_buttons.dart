@@ -1,433 +1,370 @@
-/// Tom Button Widgets Demo
+/// Demo 01: Button Showcase
 ///
-/// This demo showcases all TomButton widgets from tom_flutter_ui with their
-/// Tom-specific features:
-/// - tomId: Widget identification for tracking/analytics
-/// - tomGroup: Group-based visibility and authorization
-/// - label: Resource-resolved text (for i18n)
-/// - All standard Flutter button parameters
-///
-/// Each button type is demonstrated with:
-/// - Basic usage with Tom features
-/// - State variations (enabled, disabled)
-/// - Style customization
-/// - Icon and label combinations
-/// - Group-based visibility control
+/// Comprehensive demonstration of all Tom button widgets.
+/// Widgets covered: TomElevatedButton, TomFilledButton, TomTextButton,
+/// TomOutlinedButton, TomIconButton, TomFloatingActionButton,
+/// TomSegmentedButton, TomMenuItemButton, TomSubmenuButton, TomMenuBar,
+/// TomBackButton, TomCloseButton, TomCupertinoButton, and more.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-/// Main buttons demo screen with all Tom button categories.
+// =============================================================================
+// Main Demo Page
+// =============================================================================
+
+/// Main entry point for the Buttons demo.
 class ButtonsDemo extends StatelessWidget {
   const ButtonsDemo({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return TomListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        _SectionHeader(
-          title: 'TomElevatedButton',
-          subtitle: 'Primary action buttons with elevation and shadow',
-        ),
-        _TomElevatedButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomFilledButton',
-          subtitle: 'High-emphasis buttons with filled background (M3)',
-        ),
-        _TomFilledButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomOutlinedButton',
-          subtitle: 'Medium-emphasis buttons with outline border',
-        ),
-        _TomOutlinedButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomTextButton',
-          subtitle: 'Low-emphasis buttons for less prominent actions',
-        ),
-        _TomTextButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomIconButton',
-          subtitle: 'Buttons that display a single icon',
-        ),
-        _TomIconButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomFloatingActionButton',
-          subtitle: 'Circular floating buttons for primary actions',
-        ),
-        _TomFloatingActionButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomSegmentedButton',
-          subtitle: 'Multi-segment toggle buttons (M3)',
-        ),
-        _TomSegmentedButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomMenuAnchor & TomMenuItemButton',
-          subtitle: 'Button-triggered menus with nested items',
-        ),
-        _TomMenuSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomPopupMenuButton',
-          subtitle: 'Buttons that show a popup menu',
-        ),
-        _TomPopupMenuButtonSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'TomBackButton & TomCloseButton',
-          subtitle: 'Specialized navigation buttons',
-        ),
-        _TomNavigationButtonsSection(),
-        TomSizedBox(height: 32),
-        _SectionHeader(
-          title: 'Group-based Visibility',
-          subtitle: 'Control button visibility via tomGroup and TomGroupScope',
-        ),
-        _GroupVisibilitySection(),
-        TomSizedBox(height: 48),
-      ],
-    );
+    return const _ButtonsDemoContent();
   }
 }
 
-// =============================================================================
-// Section Header
-// =============================================================================
+class _ButtonsDemoContent extends StatefulWidget {
+  const _ButtonsDemoContent();
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
+  @override
+  State<_ButtonsDemoContent> createState() => _ButtonsDemoContentState();
+}
 
-  const _SectionHeader({required this.title, required this.subtitle});
+class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
+  // State for interactive demos
+  Set<String> _selectedFormats = {'bold'};
+  String _selectedView = 'day';
+  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return TomColumn(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TomText(title,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+    return TomSingleChildScrollView(
+      child: TomPadding(
+        padding: const EdgeInsets.all(24),
+        child: TomColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section 1: Primary Buttons
+            _SectionHeader(
+              tomId: 'demo01.section.primary',
+            ),
+            const TomSizedBox(height: 16),
+            _buildElevatedButtonSection(),
+            const TomSizedBox(height: 24),
+            _buildFilledButtonSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 2: Secondary Buttons
+            _SectionHeader(
+              tomId: 'demo01.section.secondary',
+            ),
+            const TomSizedBox(height: 16),
+            _buildTextButtonSection(),
+            const TomSizedBox(height: 24),
+            _buildOutlinedButtonSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 3: Icon & FAB Buttons
+            _SectionHeader(
+              tomId: 'demo01.section.iconFab',
+            ),
+            const TomSizedBox(height: 16),
+            _buildIconButtonSection(),
+            const TomSizedBox(height: 24),
+            _buildFabSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 4: Segmented & Menu Buttons
+            _SectionHeader(
+              tomId: 'demo01.section.segmentedMenu',
+            ),
+            const TomSizedBox(height: 16),
+            _buildSegmentedButtonSection(),
+            const TomSizedBox(height: 24),
+            _buildMenuButtonSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 5: Navigation Buttons
+            _SectionHeader(
+              tomId: 'demo01.section.navigation',
+            ),
+            const TomSizedBox(height: 16),
+            _buildNavigationButtonSection(),
+            const TomSizedBox(height: 48),
+          ],
         ),
-        const TomSizedBox(height: 4),
-        TomText(subtitle,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const TomSizedBox(height: 16),
-      ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// Demo Card Helper
-// =============================================================================
+  // ===========================================================================
+  // Section 1: Primary Buttons
+  // ===========================================================================
 
-Widget _buildDemoCard(String title, String description, Widget child) {
-  return Builder(
-    builder: (context) {
-      final theme = Theme.of(context);
-      return TomCard(
-        margin: const EdgeInsets.only(bottom: 16),
-        child: TomPadding(
-          padding: const EdgeInsets.all(16),
-          child: TomColumn(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TomText(title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const TomSizedBox(height: 4),
-              TomText(description,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const TomSizedBox(height: 16),
-              child,
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-// =============================================================================
-// TomElevatedButton Section
-// =============================================================================
-
-class _TomElevatedButtonSection extends StatelessWidget {
-  const _TomElevatedButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomElevatedButton',
-          'Primary raised button with Tom widget features (tomId, tomGroup).',
+  Widget _buildElevatedButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.elevated',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic variants row
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomElevatedButton(
-                tomId: 'demo.elevated.basic',
+                tomId: 'demo01.elevated.basic',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.elevated.basic'),
               ),
               TomElevatedButton(
-                tomId: 'demo.elevated.label',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.elevated.label'),
-              ),
-              TomElevatedButton(
-                tomId: 'demo.elevated.disabled',
+                tomId: 'demo01.elevated.disabled',
                 onPressed: null,
-                child: const TomText(null, tomId: 'demo.elevated.disabled'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'With Icons',
-          'TomElevatedButton with icon parameter for icon+label combo.',
+          const TomSizedBox(height: 16),
+
+          // With icons row
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomElevatedButton(
-                tomId: 'demo.elevated.icon.save',
+                tomId: 'demo01.elevated.save',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.elevated.icon.save'),
               ),
               TomElevatedButton(
-                tomId: 'demo.elevated.icon.send',
+                tomId: 'demo01.elevated.send',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.elevated.icon.send'),
               ),
               TomElevatedButton(
-                tomId: 'demo.elevated.icon.download',
+                tomId: 'demo01.elevated.download',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.elevated.icon.download'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Custom Styles',
-          'TomElevatedButton with custom ButtonStyle.',
+          const TomSizedBox(height: 16),
+
+          // Styled variants
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomElevatedButton(
-                tomId: 'demo.elevated.style.error',
+                tomId: 'demo01.elevated.error',
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Theme.of(context).colorScheme.error,
                   foregroundColor: Theme.of(context).colorScheme.onError,
                 ),
-                child: const TomText(null, tomId: 'demo.elevated.style.error'),
               ),
               TomElevatedButton(
-                tomId: 'demo.elevated.style.rounded',
+                tomId: 'demo01.elevated.rounded',
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: const StadiumBorder(),
                 ),
-                child: const TomText(null, tomId: 'demo.elevated.style.rounded'),
               ),
               TomElevatedButton(
-                tomId: 'demo.elevated.style.large',
+                tomId: 'demo01.elevated.large',
                 onPressed: () {},
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
                   textStyle: const TextStyle(fontSize: 18),
                 ),
-                child: const TomText(null, tomId: 'demo.elevated.style.large'),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomFilledButton Section
-// =============================================================================
-
-class _TomFilledButtonSection extends StatelessWidget {
-  const _TomFilledButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomFilledButton',
-          'M3 filled button with high emphasis.',
+  Widget _buildFilledButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.filled',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic filled buttons
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomFilledButton(
-                tomId: 'demo.filled.basic',
+                tomId: 'demo01.filled.basic',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.basic'),
               ),
               TomFilledButton(
-                tomId: 'demo.filled.label',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.label'),
-              ),
-              TomFilledButton(
-                tomId: 'demo.filled.disabled',
+                tomId: 'demo01.filled.disabled',
                 onPressed: null,
-                child: const TomText(null, tomId: 'demo.filled.disabled'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Tonal Variant',
-          'TomFilledButton with tonal: true for medium emphasis.',
+          const TomSizedBox(height: 16),
+
+          // Tonal variants
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomFilledButton(
-                tomId: 'demo.filled.tonal',
                 tonal: true,
+                tomId: 'demo01.filled.tonal',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.tonal'),
               ),
               TomFilledButton(
-                tomId: 'demo.filled.tonal.icon',
                 tonal: true,
+                tomId: 'demo01.filled.tonalSettings',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.tonal.icon'),
               ),
               TomFilledButton(
-                tomId: 'demo.filled.tonal.disabled',
                 tonal: true,
+                tomId: 'demo01.filled.tonalDisabled',
                 onPressed: null,
-                child: const TomText(null, tomId: 'demo.filled.tonal.disabled'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'With Icons',
-          'TomFilledButton with icon parameter.',
+          const TomSizedBox(height: 16),
+
+          // With icons
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomFilledButton(
-                tomId: 'demo.filled.icon.add',
+                tomId: 'demo01.filled.add',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.icon.add'),
               ),
               TomFilledButton(
-                tomId: 'demo.filled.icon.share',
+                tomId: 'demo01.filled.share',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.filled.icon.share'),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomOutlinedButton Section
-// =============================================================================
+  // ===========================================================================
+  // Section 2: Secondary Buttons
+  // ===========================================================================
 
-class _TomOutlinedButtonSection extends StatelessWidget {
-  const _TomOutlinedButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomOutlinedButton',
-          'Medium-emphasis button with outline border.',
+  Widget _buildTextButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.text',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic variants
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              TomOutlinedButton(
-                tomId: 'demo.outlined.basic',
+              TomTextButton(
+                tomId: 'demo01.text.basic',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.outlined.basic'),
               ),
-              TomOutlinedButton(
-                tomId: 'demo.outlined.label',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.outlined.label'),
-              ),
-              TomOutlinedButton(
-                tomId: 'demo.outlined.disabled',
+              TomTextButton(
+                tomId: 'demo01.text.disabled',
                 onPressed: null,
-                child: const TomText(null, tomId: 'demo.outlined.disabled'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'With Icons',
-          'TomOutlinedButton with icon parameter.',
+          const TomSizedBox(height: 16),
+
+          // With icons
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              TomOutlinedButton(
-                tomId: 'demo.outlined.icon.edit',
+              TomTextButton(
+                tomId: 'demo01.text.link',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.outlined.icon.edit'),
               ),
-              TomOutlinedButton(
-                tomId: 'demo.outlined.icon.cancel',
+              TomTextButton(
+                tomId: 'demo01.text.more',
                 onPressed: () {},
-                child: const TomText(null, tomId: 'demo.outlined.icon.cancel'),
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Custom Border Styles',
-          'TomOutlinedButton with custom borders.',
+          const TomSizedBox(height: 16),
+
+          // Dialog-style buttons
+          TomCard(
+            child: TomPadding(
+              padding: const EdgeInsets.all(16),
+              child: TomRow(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TomTextButton(
+                    tomId: 'demo01.text.cancel',
+                    onPressed: () {},
+                  ),
+                  const TomSizedBox(width: 8),
+                  TomTextButton(
+                    tomId: 'demo01.text.ok',
+                    onPressed: () {},
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutlinedButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.outlined',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic variants
           TomWrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               TomOutlinedButton(
-                tomId: 'demo.outlined.style.thick',
+                tomId: 'demo01.outlined.basic',
+                onPressed: () {},
+              ),
+              TomOutlinedButton(
+                tomId: 'demo01.outlined.disabled',
+                onPressed: null,
+              ),
+            ],
+          ),
+          const TomSizedBox(height: 16),
+
+          // With icons
+          TomWrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              TomOutlinedButton(
+                tomId: 'demo01.outlined.edit',
+                onPressed: () {},
+              ),
+              TomOutlinedButton(
+                tomId: 'demo01.outlined.cancel',
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const TomSizedBox(height: 16),
+
+          // Styled variants
+          TomWrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              TomOutlinedButton(
+                tomId: 'demo01.outlined.thick',
                 onPressed: () {},
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
@@ -435,505 +372,303 @@ class _TomOutlinedButtonSection extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                child: const TomText(null, tomId: 'demo.outlined.style.thick'),
               ),
               TomOutlinedButton(
-                tomId: 'demo.outlined.style.dashed',
+                tomId: 'demo01.outlined.secondary',
                 onPressed: () {},
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(
                     color: Theme.of(context).colorScheme.secondary,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                  foregroundColor: Theme.of(context).colorScheme.secondary,
                 ),
-                child: const TomText(null, tomId: 'demo.outlined.style.dashed'),
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomTextButton Section
-// =============================================================================
+  // ===========================================================================
+  // Section 3: Icon & FAB Buttons
+  // ===========================================================================
 
-class _TomTextButtonSection extends StatelessWidget {
-  const _TomTextButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomTextButton',
-          'Low-emphasis button for less prominent actions.',
-          TomWrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TomTextButton(
-                tomId: 'demo.text.basic',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.basic'),
-              ),
-              TomTextButton(
-                tomId: 'demo.text.label',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.label'),
-              ),
-              TomTextButton(
-                tomId: 'demo.text.disabled',
-                onPressed: null,
-                child: const TomText(null, tomId: 'demo.text.disabled'),
-              ),
-            ],
-          ),
-        ),
-        _buildDemoCard(
-          'With Icons',
-          'TomTextButton with icon parameter.',
-          TomWrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              TomTextButton(
-                tomId: 'demo.text.icon.link',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.icon.link'),
-              ),
-              TomTextButton(
-                tomId: 'demo.text.icon.more',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.icon.more'),
-              ),
-            ],
-          ),
-        ),
-        _buildDemoCard(
-          'In Dialog Actions',
-          'Typical usage pattern for dialog buttons.',
-          TomRow(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TomTextButton(
-                tomId: 'demo.text.dialog.cancel',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.dialog.cancel'),
-              ),
-              const TomSizedBox(width: 8),
-              TomTextButton(
-                tomId: 'demo.text.dialog.ok',
-                onPressed: () {},
-                child: const TomText(null, tomId: 'demo.text.dialog.ok'),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// =============================================================================
-// TomIconButton Section
-// =============================================================================
-
-class _TomIconButtonSection extends StatelessWidget {
-  const _TomIconButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomIconButton',
-          'Icon-only button with tooltip for accessibility.',
+  Widget _buildIconButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.icon',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic icon buttons
           TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               TomIconButton(
-                tomId: 'demo.icon.favorite',
+                tomId: 'demo01.icon.favorite',
                 onPressed: () {},
               ),
               TomIconButton(
-                tomId: 'demo.icon.share',
+                tomId: 'demo01.icon.share',
                 onPressed: () {},
               ),
               TomIconButton(
-                tomId: 'demo.icon.more',
+                tomId: 'demo01.icon.more',
                 onPressed: () {},
               ),
               TomIconButton(
-                tomId: 'demo.icon.disabled',
+                tomId: 'demo01.icon.disabled',
                 onPressed: null,
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Filled & Tonal Variants',
-          'TomIconButton with filled and tonal styles.',
+          const TomSizedBox(height: 16),
+
+          // Variants (filled, outlined, tonal)
           TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               TomIconButton.filled(
-                tomId: 'demo.icon.filled',
+                tomId: 'demo01.icon.filled',
                 onPressed: () {},
               ),
               TomIconButton.filledTonal(
-                tomId: 'demo.icon.tonal',
+                tomId: 'demo01.icon.tonal',
                 onPressed: () {},
               ),
               TomIconButton.outlined(
-                tomId: 'demo.icon.outlined',
+                tomId: 'demo01.icon.outlined',
                 onPressed: () {},
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Custom Sizes',
-          'TomIconButton with different icon sizes.',
+          const TomSizedBox(height: 16),
+
+          // Size variants
           TomWrap(
-            spacing: 16,
+            spacing: 8,
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TomIconButton(
-                tomId: 'demo.icon.small',
+                tomId: 'demo01.icon.small',
                 onPressed: () {},
                 iconSize: 18,
               ),
               TomIconButton(
-                tomId: 'demo.icon.medium',
+                tomId: 'demo01.icon.medium',
                 onPressed: () {},
                 iconSize: 24,
               ),
               TomIconButton(
-                tomId: 'demo.icon.large',
+                tomId: 'demo01.icon.large',
                 onPressed: () {},
                 iconSize: 32,
               ),
               TomIconButton(
-                tomId: 'demo.icon.xlarge',
+                tomId: 'demo01.icon.xlarge',
                 onPressed: () {},
                 iconSize: 48,
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomFloatingActionButton Section
-// =============================================================================
-
-class _TomFloatingActionButtonSection extends StatelessWidget {
-  const _TomFloatingActionButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomFloatingActionButton',
-          'Primary action FAB with icon.',
+  Widget _buildFabSection() {
+    return _DemoCard(
+      tomId: 'demo01.fab',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Standard FABs
           TomWrap(
             spacing: 16,
             runSpacing: 16,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               TomFloatingActionButton(
-                tomId: 'demo.fab.basic',
+                tomId: 'demo01.fab.basic',
                 onPressed: () {},
               ),
               TomFloatingActionButton.small(
-                tomId: 'demo.fab.small',
+                tomId: 'demo01.fab.small',
                 onPressed: () {},
               ),
               TomFloatingActionButton.large(
-                tomId: 'demo.fab.large',
+                tomId: 'demo01.fab.large',
                 onPressed: () {},
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Extended FAB',
-          'FAB with icon and label.',
+          const TomSizedBox(height: 24),
+
+          // Extended FABs
           TomWrap(
             spacing: 16,
             runSpacing: 16,
             children: [
               TomFloatingActionButton.extended(
-                tomId: 'demo.fab.extended.compose',
+                tomId: 'demo01.fab.compose',
                 onPressed: () {},
               ),
               TomFloatingActionButton.extended(
-                tomId: 'demo.fab.extended.add',
+                tomId: 'demo01.fab.create',
                 onPressed: () {},
               ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'Custom Colors',
-          'FAB with custom background and foreground colors.',
+          const TomSizedBox(height: 24),
+
+          // Color variants
           TomWrap(
             spacing: 16,
             runSpacing: 16,
             children: [
               TomFloatingActionButton(
-                tomId: 'demo.fab.color.tertiary',
+                tomId: 'demo01.fab.tertiary',
                 onPressed: () {},
-                backgroundColor: Theme.of(context).colorScheme.tertiary,
-                foregroundColor: Theme.of(context).colorScheme.onTertiary,
+                backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+                foregroundColor:
+                    Theme.of(context).colorScheme.onTertiaryContainer,
               ),
               TomFloatingActionButton(
-                tomId: 'demo.fab.color.error',
+                tomId: 'demo01.fab.error',
                 onPressed: () {},
-                backgroundColor: Theme.of(context).colorScheme.error,
-                foregroundColor: Theme.of(context).colorScheme.onError,
+                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
               ),
             ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomSegmentedButton Section
-// =============================================================================
+  // ===========================================================================
+  // Section 4: Segmented & Menu Buttons
+  // ===========================================================================
 
-class _TomSegmentedButtonSection extends StatefulWidget {
-  const _TomSegmentedButtonSection();
-
-  @override
-  State<_TomSegmentedButtonSection> createState() =>
-      _TomSegmentedButtonSectionState();
-}
-
-class _TomSegmentedButtonSectionState
-    extends State<_TomSegmentedButtonSection> {
-  Set<String> _singleSelection = {'day'};
-  Set<String> _multiSelection = {'bold'};
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Single Selection',
-          'TomSegmentedButton with single selection (Calendar view toggle).',
+  Widget _buildSegmentedButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.segmented',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Single select
           TomSegmentedButton<String>(
-            tomId: 'demo.segmented.single',
-            segments: const [
-              ButtonSegment(
+            segments: [
+              ButtonSegment<String>(
                 value: 'day',
-                icon: TomIcon(Icons.calendar_view_day),
-                label: TomText(null, tomId: 'demo.segmented.day'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.day'),
+                label: TomText(null, tomId: 'demo01.segmented.day'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'week',
-                icon: TomIcon(Icons.calendar_view_week),
-                label: TomText(null, tomId: 'demo.segmented.week'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.week'),
+                label: TomText(null, tomId: 'demo01.segmented.week'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'month',
-                icon: TomIcon(Icons.calendar_view_month),
-                label: TomText(null, tomId: 'demo.segmented.month'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.month'),
+                label: TomText(null, tomId: 'demo01.segmented.month'),
               ),
             ],
-            selected: _singleSelection,
+            selected: {_selectedView},
             onSelectionChanged: (selection) {
-              setState(() => _singleSelection = selection);
+              setState(() => _selectedView = selection.first);
             },
           ),
-        ),
-        _buildDemoCard(
-          'Multi Selection',
-          'TomSegmentedButton with multiSelectionEnabled for text formatting.',
+          const TomSizedBox(height: 24),
+
+          // Multi select (text formatting)
           TomSegmentedButton<String>(
-            tomId: 'demo.segmented.multi',
-            multiSelectionEnabled: true,
-            segments: const [
-              ButtonSegment(
+            segments: [
+              ButtonSegment<String>(
                 value: 'bold',
-                icon: TomIcon(Icons.format_bold),
-                label: TomText(null, tomId: 'demo.segmented.bold'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.bold'),
+                label: TomText(null, tomId: 'demo01.segmented.bold'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'italic',
-                icon: TomIcon(Icons.format_italic),
-                label: TomText(null, tomId: 'demo.segmented.italic'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.italic'),
+                label: TomText(null, tomId: 'demo01.segmented.italic'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'underline',
-                icon: TomIcon(Icons.format_underline),
-                label: TomText(null, tomId: 'demo.segmented.underline'),
+                icon: TomIcon(null, tomId: 'demo01.segmented.underline'),
+                label: TomText(null, tomId: 'demo01.segmented.underline'),
               ),
             ],
-            selected: _multiSelection,
+            selected: _selectedFormats,
+            multiSelectionEnabled: true,
             emptySelectionAllowed: true,
             onSelectionChanged: (selection) {
-              setState(() => _multiSelection = selection);
+              setState(() => _selectedFormats = selection);
             },
           ),
-        ),
-        _buildDemoCard(
-          'Icon Only',
-          'TomSegmentedButton with icons only (no labels).',
+          const TomSizedBox(height: 24),
+
+          // Icon only (compact)
           TomSegmentedButton<String>(
-            tomId: 'demo.segmented.icons',
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(
+            segments: [
+              ButtonSegment<String>(
                 value: 'list',
-                icon: TomIcon(Icons.view_list),
+                icon: TomIcon(null, tomId: 'demo01.segmented.list'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'grid',
-                icon: TomIcon(Icons.grid_view),
+                icon: TomIcon(null, tomId: 'demo01.segmented.grid'),
               ),
-              ButtonSegment(
+              ButtonSegment<String>(
                 value: 'module',
-                icon: TomIcon(Icons.view_module),
+                icon: TomIcon(null, tomId: 'demo01.segmented.module'),
               ),
             ],
             selected: const {'list'},
+            showSelectedIcon: false,
             onSelectionChanged: (_) {},
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-}
 
-// =============================================================================
-// TomMenuAnchor & TomMenuItemButton Section
-// =============================================================================
-
-class _TomMenuSection extends StatelessWidget {
-  const _TomMenuSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'TomMenuAnchor with TomMenuItemButton',
-          'Dropdown menu with menu items using Tom widgets.',
+  Widget _buildMenuButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.menu',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Basic Menu
           TomMenuAnchor(
-            tomId: 'demo.menu.anchor',
             menuChildren: [
               TomMenuItemButton(
-                tomId: 'demo.menu.item.cut',
+                tomId: 'demo01.menu.cut',
                 onPressed: () {},
-                leadingIcon: const TomIcon(Icons.cut),
-                child: const TomText(null, tomId: 'demo.menu.item.cut'),
               ),
               TomMenuItemButton(
-                tomId: 'demo.menu.item.copy',
+                tomId: 'demo01.menu.copy',
                 onPressed: () {},
-                leadingIcon: const TomIcon(Icons.copy),
-                child: const TomText(null, tomId: 'demo.menu.item.copy'),
               ),
               TomMenuItemButton(
-                tomId: 'demo.menu.item.paste',
+                tomId: 'demo01.menu.paste',
                 onPressed: () {},
-                leadingIcon: const TomIcon(Icons.paste),
-                child: const TomText(null, tomId: 'demo.menu.item.paste'),
               ),
               const TomDivider(),
               TomMenuItemButton(
-                tomId: 'demo.menu.item.selectall',
+                tomId: 'demo01.menu.selectAll',
                 onPressed: () {},
-                leadingIcon: const TomIcon(Icons.select_all),
-                child: const TomText(null, tomId: 'demo.menu.item.selectall'),
-              ),
-            ],
-            builder: (context, controller, child) {
-              return TomElevatedButton(
-                tomId: 'demo.menu.trigger',
-                onPressed: () {
-                  if (controller.isOpen) {
-                    controller.close();
-                  } else {
-                    controller.open();
-                  }
-                },
-                child: const TomText(null, tomId: 'demo.menu.trigger'),
-              );
-            },
-          ),
-        ),
-        _buildDemoCard(
-          'TomSubmenuButton (Nested Menus)',
-          'Menu with nested submenu using TomSubmenuButton.',
-          TomMenuAnchor(
-            tomId: 'demo.submenu.anchor',
-            menuChildren: [
-              TomMenuItemButton(
-                tomId: 'demo.submenu.new',
-                onPressed: () {},
-                leadingIcon: const TomIcon(Icons.add),
-                child: const TomText(null, tomId: 'demo.submenu.new'),
-              ),
-              TomSubmenuButton(
-                tomId: 'demo.submenu.open',
-                leadingIcon: const TomIcon(Icons.folder_open),
-                menuChildren: [
-                  TomMenuItemButton(
-                    tomId: 'demo.submenu.open.recent',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.submenu.open.recent'),
-                  ),
-                  TomMenuItemButton(
-                    tomId: 'demo.submenu.open.browse',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.submenu.open.browse'),
-                  ),
-                ],
-                child: const TomText(null, tomId: 'demo.submenu.open'),
-              ),
-              TomSubmenuButton(
-                tomId: 'demo.submenu.export',
-                leadingIcon: const TomIcon(Icons.ios_share),
-                menuChildren: [
-                  TomMenuItemButton(
-                    tomId: 'demo.submenu.export.pdf',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.submenu.export.pdf'),
-                  ),
-                  TomMenuItemButton(
-                    tomId: 'demo.submenu.export.csv',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.submenu.export.csv'),
-                  ),
-                  TomMenuItemButton(
-                    tomId: 'demo.submenu.export.json',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.submenu.export.json'),
-                  ),
-                ],
-                child: const TomText(null, tomId: 'demo.submenu.export'),
               ),
             ],
             builder: (context, controller, child) {
               return TomFilledButton(
-                tomId: 'demo.submenu.trigger',
+                tonal: true,
+                tomId: 'demo01.menu.trigger',
                 onPressed: () {
                   if (controller.isOpen) {
                     controller.close();
@@ -941,410 +676,272 @@ class _TomMenuSection extends StatelessWidget {
                     controller.open();
                   }
                 },
-                child: const TomText(null, tomId: 'demo.submenu.trigger'),
               );
             },
           ),
-        ),
-      ],
-    );
-  }
-}
+          const TomSizedBox(height: 24),
 
-// =============================================================================
-// TomPopupMenuButton Section
-// =============================================================================
-
-class _TomPopupMenuButtonSection extends StatelessWidget {
-  const _TomPopupMenuButtonSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'Basic TomPopupMenuButton',
-          'Popup menu button with TomPopupMenuItem entries.',
-          TomPopupMenuButton<String>(
-            tomId: 'demo.popup.basic',
-            onSelected: (value) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                TomSnackBar(content: TomText('Selected: $value')),
+          // Submenu demo
+          TomMenuAnchor(
+            menuChildren: [
+              TomSubmenuButton(
+                menuChildren: [
+                  TomMenuItemButton(
+                    tomId: 'demo01.submenu.new',
+                    onPressed: () {},
+                  ),
+                  TomSubmenuButton(
+                    menuChildren: [
+                      TomMenuItemButton(
+                        tomId: 'demo01.submenu.openRecent',
+                        onPressed: () {},
+                      ),
+                      TomMenuItemButton(
+                        tomId: 'demo01.submenu.openBrowse',
+                        onPressed: () {},
+                      ),
+                    ],
+                    child: TomText(null, tomId: 'demo01.submenu.open'),
+                  ),
+                ],
+                child: TomText(null, tomId: 'demo01.submenu.file'),
+              ),
+              TomSubmenuButton(
+                menuChildren: [
+                  TomMenuItemButton(
+                    tomId: 'demo01.submenu.exportPdf',
+                    onPressed: () {},
+                  ),
+                  TomMenuItemButton(
+                    tomId: 'demo01.submenu.exportCsv',
+                    onPressed: () {},
+                  ),
+                  TomMenuItemButton(
+                    tomId: 'demo01.submenu.exportJson',
+                    onPressed: () {},
+                  ),
+                ],
+                child: TomText(null, tomId: 'demo01.submenu.export'),
+              ),
+            ],
+            builder: (context, controller, child) {
+              return TomOutlinedButton(
+                tomId: 'demo01.submenu.trigger',
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  } else {
+                    controller.open();
+                  }
+                },
               );
             },
+          ),
+          const TomSizedBox(height: 24),
+
+          // PopupMenuButton style
+          TomPopupMenuButton<String>(
+            tomId: 'demo01.popup',
             itemBuilder: (context) => [
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.item.view',
+              PopupMenuItem<String>(
                 value: 'view',
-                child: const TomText(null, tomId: 'demo.popup.item.view'),
+                child: TomText(null, tomId: 'demo01.popup.view'),
               ),
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.item.edit',
+              PopupMenuItem<String>(
                 value: 'edit',
-                child: const TomText(null, tomId: 'demo.popup.item.edit'),
+                child: TomText(null, tomId: 'demo01.popup.edit'),
               ),
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.item.delete',
+              PopupMenuItem<String>(
                 value: 'delete',
-                child: const TomText(null, tomId: 'demo.popup.item.delete'),
+                child: TomText(null, tomId: 'demo01.popup.delete'),
               ),
             ],
+            onSelected: (_) {},
           ),
-        ),
-        _buildDemoCard(
-          'With Icons and Dividers',
-          'TomPopupMenuButton with icons and TomPopupMenuDivider.',
-          TomPopupMenuButton<String>(
-            tomId: 'demo.popup.icons',
-            icon: const TomIcon(Icons.more_vert),
-            onSelected: (value) {},
-            itemBuilder: (context) => [
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.icons.share',
-                value: 'share',
-                child: const TomRow(
-                  children: [
-                    TomIcon(Icons.share, size: 20),
-                    TomSizedBox(width: 12),
-                    TomText(null, tomId: 'demo.popup.icons.share'),
-                  ],
-                ),
-              ),
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.icons.link',
-                value: 'link',
-                child: const TomRow(
-                  children: [
-                    TomIcon(Icons.link, size: 20),
-                    TomSizedBox(width: 12),
-                    TomText(null, tomId: 'demo.popup.icons.link'),
-                  ],
-                ),
-              ),
-              const TomPopupMenuDivider(tomId: 'demo.popup.divider'),
-              TomPopupMenuItem<String>(
-                tomId: 'demo.popup.icons.report',
-                value: 'report',
-                child: TomRow(
-                  children: [
-                    TomIcon(Icons.flag, size: 20, color: Colors.red.shade700),
-                    const TomSizedBox(width: 12),
-                    TomText(null, tomId: 'demo.popup.icons.report',
-                      style: TextStyle(color: Colors.red.shade700),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        _buildDemoCard(
-          'TomCheckedPopupMenuItem',
-          'Popup menu with checkable items.',
-          _CheckedPopupMenuDemo(),
-        ),
-      ],
-    );
-  }
-}
-
-class _CheckedPopupMenuDemo extends StatefulWidget {
-  @override
-  State<_CheckedPopupMenuDemo> createState() => _CheckedPopupMenuDemoState();
-}
-
-class _CheckedPopupMenuDemoState extends State<_CheckedPopupMenuDemo> {
-  bool _showImages = true;
-  bool _showVideos = true;
-  bool _showDocuments = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return TomPopupMenuButton<String>(
-      tomId: 'demo.popup.checked',
-      child: const TomRow(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TomIcon(Icons.filter_list),
-          TomSizedBox(width: 8),
-          TomText(null, tomId: 'demo.popup.filter'),
-          TomIcon(Icons.arrow_drop_down),
         ],
       ),
-      itemBuilder: (context) => [
-        TomCheckedPopupMenuItem<String>(
-          tomId: 'demo.popup.checked.images',
-          value: 'images',
-          checked: _showImages,
-          child: const TomText(null, tomId: 'demo.popup.checked.images'),
-        ),
-        TomCheckedPopupMenuItem<String>(
-          tomId: 'demo.popup.checked.videos',
-          value: 'videos',
-          checked: _showVideos,
-          child: const TomText(null, tomId: 'demo.popup.checked.videos'),
-        ),
-        TomCheckedPopupMenuItem<String>(
-          tomId: 'demo.popup.checked.documents',
-          value: 'documents',
-          checked: _showDocuments,
-          child: const TomText(null, tomId: 'demo.popup.checked.documents'),
-        ),
-      ],
-      onSelected: (value) {
-        setState(() {
-          switch (value) {
-            case 'images':
-              _showImages = !_showImages;
-            case 'videos':
-              _showVideos = !_showVideos;
-            case 'documents':
-              _showDocuments = !_showDocuments;
-          }
-        });
-      },
     );
   }
-}
 
-// =============================================================================
-// TomBackButton & TomCloseButton Section
-// =============================================================================
+  // ===========================================================================
+  // Section 5: Navigation Buttons
+  // ===========================================================================
 
-class _TomNavigationButtonsSection extends StatelessWidget {
-  const _TomNavigationButtonsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'TomBackButton',
-          'Platform-aware back navigation button.',
-          TomRow(
+  Widget _buildNavigationButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.navigation',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Back and Close buttons
+          TomWrap(
+            spacing: 16,
+            runSpacing: 16,
             children: [
               TomBackButton(
-                tomId: 'demo.back.default',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    TomSnackBar(content: TomText('Back pressed')),
-                  );
-                },
+                tomId: 'demo01.navigation.back',
+                onPressed: () {},
               ),
-              const TomSizedBox(width: 16),
-              const TomText('← TomBackButton triggers navigation'),
+              TomCloseButton(
+                tomId: 'demo01.navigation.close',
+                onPressed: () {},
+              ),
             ],
           ),
-        ),
-        _buildDemoCard(
-          'TomCloseButton',
-          'Close button for dialogs and panels.',
+          const TomSizedBox(height: 24),
+
+          // Expand icon (animated)
           TomRow(
             children: [
-              TomCloseButton(
-                tomId: 'demo.close.default',
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    TomSnackBar(content: TomText('Close pressed')),
-                  );
+              TomExpandIcon(
+                isExpanded: _isExpanded,
+                onPressed: (_) {
+                  setState(() => _isExpanded = !_isExpanded);
                 },
               ),
-              const TomSizedBox(width: 16),
-              const TomText('← TomCloseButton for dismissing content'),
-            ],
-          ),
-        ),
-        _buildDemoCard(
-          'In Context',
-          'These buttons used in typical scenarios.',
-          TomColumn(
-            children: [
-              // Simulated app bar with back button
-              TomContainer(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomRow(
-                  children: [
-                    TomBackButton(
-                      tomId: 'demo.context.back',
-                      onPressed: () {},
-                    ),
-                    const TomSizedBox(width: 8),
-                    TomExpanded(
-                      tomId: 'demo.context.detail.label',
-                      child: TomText('Detail Page'),
-                    ),
-                    TomIconButton(
-                      tomId: 'demo.context.more',
-                      icon: const TomIcon(Icons.more_vert),
-                      onPressed: () {},
-                    ),
-                  ],
-                ),
-              ),
-              const TomSizedBox(height: 16),
-              // Simulated dialog header with close button
-              TomContainer(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomColumn(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TomRow(
-                      children: [
-                        TomExpanded(
-                          tomId: 'demo.context.settings.label',
-                          child: TomText('Settings',
-                            
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                        TomCloseButton(
-                          tomId: 'demo.context.close',
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                    const TomSizedBox(height: 8),
-                    const TomText('Dialog or panel content goes here...'),
-                  ],
-                ),
+              const TomSizedBox(width: 8),
+              TomText(
+                null,
+                tomId:
+                    _isExpanded ? 'demo01.expand.collapse' : 'demo01.expand.expand',
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
-}
+          const TomSizedBox(height: 24),
 
-// =============================================================================
-// Group-based Visibility Section
-// =============================================================================
-
-class _GroupVisibilitySection extends StatelessWidget {
-  const _GroupVisibilitySection();
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        _buildDemoCard(
-          'TomGroupScope Demo',
-          'Buttons with tomGroup parameter for authorization-based visibility.',
-          TomColumn(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const TomText(
-                'Buttons can specify a tomGroup for authorization control. '
-                    'When wrapped in TomGroupScope, visibility is managed by the auth system.',
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-              const TomSizedBox(height: 16),
-
-              // Admin-only buttons (shown as examples)
-              TomWrap(
-                spacing: 8,
-                runSpacing: 8,
+          // Context bar example
+          TomCard(
+            child: TomPadding(
+              padding: const EdgeInsets.all(8),
+              child: TomRow(
                 children: [
-                  TomElevatedButton(
-                    tomId: 'demo.group.btn.delete',
-                    tomGroup: 'admin',
+                  TomBackButton(
+                    tomId: 'demo01.context.back',
                     onPressed: () {},
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.error,
-                      foregroundColor:
-                          Theme.of(context).colorScheme.onError,
+                  ),
+                  const TomExpanded(
+                    child: TomCenter(
+                      child: TomText(null, tomId: 'demo01.context.title'),
                     ),
-                    child: const TomText(null, tomId: 'demo.group.btn.delete'),
                   ),
-                  TomElevatedButton(
-                    tomId: 'demo.group.btn.settings',
-                    tomGroup: 'admin',
+                  TomIconButton(
+                    tomId: 'demo01.context.more',
                     onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.group.btn.settings'),
-                  ),
-
-                  // Editor buttons
-                  TomFilledButton(
-                    tomId: 'demo.group.btn.edit',
-                    tomGroup: 'editor',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.group.btn.edit'),
-                  ),
-                  TomFilledButton(
-                    tomId: 'demo.group.btn.publish',
-                    tomGroup: 'editor',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.group.btn.publish'),
-                  ),
-
-                  // Viewer buttons
-                  TomOutlinedButton(
-                    tomId: 'demo.group.btn.view',
-                    tomGroup: 'viewer',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.group.btn.view'),
-                  ),
-                  TomOutlinedButton(
-                    tomId: 'demo.group.btn.download',
-                    tomGroup: 'viewer',
-                    onPressed: () {},
-                    child: const TomText(null, tomId: 'demo.group.btn.download'),
                   ),
                 ],
               ),
-            ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// Helper Widgets
+// =============================================================================
+
+/// Section header widget for demo sections.
+class _SectionHeader extends StatelessWidget {
+  final String tomId;
+
+  const _SectionHeader({
+    required this.tomId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return TomColumn(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TomText(
+          null,
+          tomId: '$tomId.title',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
           ),
         ),
-        _buildDemoCard(
-          'Group Authorization Info',
-          'How group-based visibility works.',
-          TomColumn(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TomContainer(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color:
-                      Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomRow(
-                  children: [
-                    TomIcon(
-                      Icons.info,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                    const TomSizedBox(width: 12),
-                    TomExpanded(
-                      child: TomText(
-                        'Buttons use tomGroup to specify their required '
-                        'permission group. TomGroupScope defines group boundaries '
-                        'and the auth system controls visibility.',
-                        style: TextStyle(
-                          color:
-                              Theme.of(context).colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        const TomSizedBox(height: 4),
+        TomText(
+          null,
+          tomId: '$tomId.subtitle',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const TomSizedBox(height: 8),
+        TomContainer(
+          height: 2,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                theme.colorScheme.primary,
+                theme.colorScheme.primary.withValues(alpha: 0.0),
+              ],
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Demo card widget for individual widget showcases.
+class _DemoCard extends StatelessWidget {
+  final String tomId;
+  final Widget child;
+
+  const _DemoCard({
+    required this.tomId,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return TomCard(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: TomPadding(
+        padding: const EdgeInsets.all(16),
+        child: TomColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title row with icon
+            TomRow(
+              children: [
+                TomIcon(null, tomId: '$tomId.icon'),
+                const TomSizedBox(width: 12),
+                TomExpanded(
+                  child: TomText(
+                    null,
+                    tomId: '$tomId.title',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const TomSizedBox(height: 8),
+            // Description
+            TomText(
+              null,
+              tomId: '$tomId.description',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const TomSizedBox(height: 16),
+            const TomDivider(),
+            const TomSizedBox(height: 16),
+            // Widget showcase area
+            child,
+          ],
+        ),
+      ),
     );
   }
 }
