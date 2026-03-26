@@ -400,7 +400,8 @@ class TomListWheelScrollView extends TomListBase {
 /// iOS-style list tile. Adds ID, group, authorization,
 /// and resource resolution.
 class TomCupertinoListTile extends TomListBase {
-  final Widget title;
+  final Widget? title;
+  final String? titleText;
   final Widget? subtitle;
   final Widget? additionalInfo;
   final Widget? leading;
@@ -415,7 +416,8 @@ class TomCupertinoListTile extends TomListBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.title,
+    this.title,
+    this.titleText,
     this.subtitle,
     this.additionalInfo,
     this.leading,
@@ -429,8 +431,9 @@ class TomCupertinoListTile extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     return CupertinoListTile(
-      title: title,
+      title: title ?? Text(resolvedTitle),
       subtitle: subtitle,
       additionalInfo: additionalInfo,
       leading: leading,

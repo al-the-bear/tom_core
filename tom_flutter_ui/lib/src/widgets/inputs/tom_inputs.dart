@@ -148,7 +148,7 @@ class TomTextField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint = hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
 
     final effectiveDecoration =
@@ -289,8 +289,7 @@ class TomTextFormField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
         hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
 
@@ -1076,7 +1075,7 @@ class TomInputDatePickerFormField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabelText = fieldLabelText ?? resolveResource(context, 'label');
+    final resolvedLabelText = fieldLabelText ?? resolveResourceOrFail(context, 'label');
     final resolvedHintText = fieldHintText ?? resolveResource(context, 'hint');
     final resolvedErrorFormat = errorFormatText ?? resolveResource(context, 'errorFormat');
     final resolvedErrorInvalid = errorInvalidText ?? resolveResource(context, 'errorInvalid');
@@ -1392,8 +1391,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
         hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
     final resolvedHelper =
@@ -1405,7 +1403,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       menuHeight: menuHeight,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
-      label: resolvedLabel != null ? Text(resolvedLabel) : null,
+      label: Text(resolvedLabel),
       hintText: resolvedHint,
       helperText: resolvedHelper,
       selectedTrailingIcon: selectedTrailingIcon,

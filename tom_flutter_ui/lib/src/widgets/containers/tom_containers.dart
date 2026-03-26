@@ -118,8 +118,8 @@ class TomExpansionTile extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final titleWidget = title ?? Text(resolvedTitle ?? '');
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final titleWidget = title ?? Text(resolvedTitle);
 
     return ExpansionTile(
       title: titleWidget,
@@ -1160,10 +1160,8 @@ class TomSliverAppBar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveTitle =
-        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final effectiveTitle = title ?? Text(resolvedTitle);
 
     return SliverAppBar(
       leading: leading,
@@ -2976,7 +2974,8 @@ class TomGridTileBar extends TomContainerBase {
 ///
 /// Cupertino-styled expansion tile. Auth on expand access.
 class TomCupertinoExpansionTile extends TomContainerBase {
-  final Widget title;
+  final Widget? title;
+  final String? titleText;
   final Widget child;
   final ExpansibleController? controller;
   final ExpansionTileTransitionMode transitionMode;
@@ -2985,7 +2984,8 @@ class TomCupertinoExpansionTile extends TomContainerBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.title,
+    this.title,
+    this.titleText,
     required this.child,
     this.controller,
     this.transitionMode = ExpansionTileTransitionMode.fade,
@@ -2993,8 +2993,9 @@ class TomCupertinoExpansionTile extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     return CupertinoExpansionTile(
-      title: title,
+      title: title ?? Text(resolvedTitle),
       controller: controller,
       transitionMode: transitionMode,
       child: child,

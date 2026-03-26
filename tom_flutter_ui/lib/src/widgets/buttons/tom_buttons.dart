@@ -1125,8 +1125,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
 
   /// Creates the underlying [DropdownMenuEntry] for use in a [DropdownMenu].
   DropdownMenuEntry<T> toEntry(BuildContext context) {
-    final resolvedLabel =
-        label ?? (tomId != null ? resolveResource(context, 'label') : null) ?? '';
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
     return DropdownMenuEntry<T>(
       value: value,
@@ -1144,8 +1143,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     // DropdownMenuEntry is not a widget itself — it is used as data within
     // DropdownMenu. This buildContent returns a placeholder that renders
     // the label for preview/accessibility purposes.
-    final resolvedLabel =
-        label ?? (tomId != null ? resolveResource(context, 'label') : null) ?? '';
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
     return Text(resolvedLabel);
   }
@@ -1191,7 +1189,7 @@ class TomCupertinoButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     if (filled) {
@@ -1256,7 +1254,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return CheckboxMenuButton(
@@ -1304,7 +1302,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return RadioMenuButton<T>(
@@ -1564,7 +1562,7 @@ class TomMaterialButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResource(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // ignore: deprecated_member_use

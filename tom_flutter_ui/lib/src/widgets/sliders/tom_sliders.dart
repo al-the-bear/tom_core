@@ -48,7 +48,7 @@ class TomSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
     return Slider(
       value: value,

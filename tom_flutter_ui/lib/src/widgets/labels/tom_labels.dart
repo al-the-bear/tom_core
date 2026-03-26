@@ -58,7 +58,7 @@ class TomText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = data ?? text ?? resolveResource(context, 'label');
+    final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
 
     return Text(
       resolvedText,
@@ -155,7 +155,7 @@ class TomSelectableText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = data ?? text ?? resolveResource(context, 'label');
+    final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
 
     return SelectableText(
       resolvedText,
@@ -276,10 +276,8 @@ class TomBadge extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveLabel =
-        label ?? (resolvedLabel != null ? Text(resolvedLabel) : null);
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final effectiveLabel = label ?? Text(resolvedLabel);
 
     return Badge(
       label: effectiveLabel,
@@ -378,12 +376,8 @@ class TomListTile extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveTitle = title ??
-        (resolvedTitle != null
-            ? Text(resolvedTitle)
-            : const SizedBox.shrink());
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final effectiveTitle = title ?? Text(resolvedTitle);
 
     return ListTile(
       title: effectiveTitle,
@@ -478,9 +472,8 @@ class TomChip extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final chipLabel = label ?? Text(resolvedLabel ?? '');
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final chipLabel = label ?? Text(resolvedLabel);
 
     return Chip(
       avatar: avatar,
@@ -639,20 +632,20 @@ class TomVerticalDivider extends TomLabelBase {
 ///
 /// Keyboard accelerator underline display. Auth controls visibility; resource for label.
 class TomMenuAcceleratorLabel extends TomLabelBase {
-  final String label;
+  final String? label;
   final MenuAcceleratorChildBuilder? builder;
 
   const TomMenuAcceleratorLabel({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.label,
+    this.label,
     this.builder,
   });
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = tomId != null ? resolveResource(context, 'label') : label;
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     return MenuAcceleratorLabel(
       resolvedLabel,
       builder: builder ?? MenuAcceleratorLabel.defaultLabelBuilder,
@@ -665,7 +658,7 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
 /// Diagonal banner overlay with child. Auth on banner display; resource for message.
 class TomBanner extends TomLabelBase {
   final Widget? child;
-  final String message;
+  final String? message;
   final TextDirection? textDirection;
   final BannerLocation location;
   final TextStyle textStyle;
@@ -676,7 +669,7 @@ class TomBanner extends TomLabelBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.message,
+    this.message,
     this.textDirection,
     required this.location,
     this.textStyle = _kTextStyle,
@@ -693,8 +686,7 @@ class TomBanner extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedMessage =
-        tomId != null ? resolveResource(context, 'message') : message;
+    final resolvedMessage = message ?? resolveResourceOrFail(context, 'message');
     return Banner(
       message: resolvedMessage,
       textDirection: textDirection,

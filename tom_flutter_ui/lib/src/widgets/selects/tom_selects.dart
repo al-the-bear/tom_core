@@ -149,7 +149,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
 
     return PopupMenuButton<T>(
       itemBuilder: itemBuilder,
@@ -238,8 +238,7 @@ class TomDropdownMenu<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        label ?? (tomId != null ? resolveResource(context, 'label') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
         hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
 
@@ -252,7 +251,7 @@ class TomDropdownMenu<T> extends TomSelectBase {
       menuHeight: menuHeight,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
-      label: resolvedLabel != null ? Text(resolvedLabel) : null,
+      label: Text(resolvedLabel),
       hintText: resolvedHint,
       helperText: helperText,
       errorText: errorText,
@@ -392,12 +391,9 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        tomId != null ? resolveResource(context, 'label') : null;
-    final effectiveDecoration = decoration ??
-        (resolvedLabel != null
-            ? InputDecoration(labelText: resolvedLabel)
-            : const InputDecoration());
+    final resolvedLabel = resolveResourceOrFail(context, 'label');
+    final effectiveDecoration =
+      decoration ?? InputDecoration(labelText: resolvedLabel);
 
     return DropdownButtonFormField<T>(
       items: items,

@@ -65,8 +65,8 @@ class TomFilterChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final chipLabel = label ?? Text(resolvedLabel ?? '');
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final chipLabel = label ?? Text(resolvedLabel);
 
     Widget chip = FilterChip(
       selected: selected,
@@ -150,8 +150,8 @@ class TomChoiceChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final chipLabel = label ?? Text(resolvedLabel ?? '');
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final chipLabel = label ?? Text(resolvedLabel);
 
     Widget chip = ChoiceChip(
       selected: selected,
@@ -225,9 +225,9 @@ class TomActionChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final resolvedTooltip = tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
-    final chipLabel = label ?? Text(resolvedLabel ?? '');
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
+    final chipLabel = label ?? Text(resolvedLabel);
 
     Widget chip = ActionChip(
       onPressed: onPressed,
@@ -321,11 +321,9 @@ class TomInputChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        labelText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final resolvedTooltip =
-        tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
-    final chipLabel = label ?? Text(resolvedLabel ?? '');
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
+    final chipLabel = label ?? Text(resolvedLabel);
 
     return InputChip(
       selected: selected,
@@ -364,7 +362,7 @@ class TomInputChip extends TomChipBase {
 /// Adds ID, group, authorization, and resource resolution.
 class TomRawChip extends TomChipBase {
   final Widget? avatar;
-  final Widget label;
+  final Widget? label;
   final String? labelText;
   final TextStyle? labelStyle;
   final EdgeInsetsGeometry? labelPadding;
@@ -399,7 +397,7 @@ class TomRawChip extends TomChipBase {
     super.tomId,
     super.tomGroup,
     this.avatar,
-    required this.label,
+    this.label,
     this.labelText,
     this.labelStyle,
     this.labelPadding,
@@ -432,12 +430,14 @@ class TomRawChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final chipLabel = label ?? Text(resolvedLabel);
     final resolvedTooltip =
-        tooltip ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+      tooltip ?? resolveResourceOrFail(context, 'tooltip');
 
     return RawChip(
       avatar: avatar,
-      label: label,
+      label: chipLabel,
       labelStyle: labelStyle,
       labelPadding: labelPadding,
       selected: selected,

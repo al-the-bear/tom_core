@@ -255,12 +255,8 @@ class TomSwitchListTile extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveTitle = title ??
-        (resolvedTitle != null
-            ? Text(resolvedTitle)
-            : const SizedBox.shrink());
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final effectiveTitle = title ?? Text(resolvedTitle);
 
     return SwitchListTile(
       value: value,
@@ -345,12 +341,8 @@ class TomCheckboxListTile extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveTitle = title ??
-        (resolvedTitle != null
-            ? Text(resolvedTitle)
-            : const SizedBox.shrink());
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final effectiveTitle = title ?? Text(resolvedTitle);
 
     return CheckboxListTile(
       value: value,
@@ -433,12 +425,8 @@ class TomRadioListTile<T> extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'label') : null);
-    final effectiveTitle = title ??
-        (resolvedTitle != null
-            ? Text(resolvedTitle)
-            : const SizedBox.shrink());
+    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final effectiveTitle = title ?? Text(resolvedTitle);
 
     return RadioListTile<T>(
       value: value,

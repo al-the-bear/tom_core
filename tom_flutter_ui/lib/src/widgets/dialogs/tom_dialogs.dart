@@ -448,8 +448,7 @@ class TomTooltip extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedMessage =
-        message ?? (tomId != null ? resolveResource(context, 'tooltip') : null);
+    final resolvedMessage = message ?? resolveResourceOrFail(context, 'tooltip');
 
     return Tooltip(
       message: resolvedMessage,
