@@ -1037,7 +1037,7 @@ class TomAboutDialog extends TomDialogBase {
 class TomCupertinoContextMenu extends TomDialogBase {
   final Widget child;
   final List<Widget> actions;
-  final bool enableHapticFeedback;
+  final bool? enableHapticFeedback;
 
   const TomCupertinoContextMenu({
     super.key,
@@ -1045,14 +1045,17 @@ class TomCupertinoContextMenu extends TomDialogBase {
     super.tomGroup,
     required this.child,
     required this.actions,
-    this.enableHapticFeedback = false,
+    this.enableHapticFeedback,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedEnableHapticFeedback =
+        enableHapticFeedback ?? resolveBoolOrNull(context, 'enableHapticFeedback') ?? false;
+
     return CupertinoContextMenu(
       actions: actions,
-      enableHapticFeedback: enableHapticFeedback,
+      enableHapticFeedback: resolvedEnableHapticFeedback,
       child: child,
     );
   }
@@ -1105,6 +1108,9 @@ class TomDatePickerDialog extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedKeyboardType =
+        keyboardType ?? _resolveTextInputType(resolveResourceOrNull(context, 'keyboardType'));
+
     return DatePickerDialog(
       initialDate: initialDate,
       firstDate: firstDate,
@@ -1127,7 +1133,7 @@ class TomDatePickerDialog extends TomDialogBase {
           (tomId != null ? resolveResourceOrFail(context, 'fieldHint') : null),
       fieldLabelText: fieldLabelText ??
           (tomId != null ? resolveResourceOrFail(context, 'fieldLabel') : null),
-      keyboardType: keyboardType,
+      keyboardType: resolvedKeyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
     );
@@ -1154,7 +1160,7 @@ class TomDateRangePickerDialog extends TomDialogBase {
   final String? fieldEndHintText;
   final String? fieldStartLabelText;
   final String? fieldEndLabelText;
-  final TextInputType keyboardType;
+  final TextInputType? keyboardType;
   final Icon? switchToInputEntryModeIcon;
   final Icon? switchToCalendarEntryModeIcon;
 
@@ -1178,13 +1184,16 @@ class TomDateRangePickerDialog extends TomDialogBase {
     this.fieldEndHintText,
     this.fieldStartLabelText,
     this.fieldEndLabelText,
-    this.keyboardType = TextInputType.datetime,
+    this.keyboardType,
     this.switchToInputEntryModeIcon,
     this.switchToCalendarEntryModeIcon,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedKeyboardType =
+        keyboardType ?? _resolveTextInputType(resolveResourceOrNull(context, 'keyboardType')) ?? TextInputType.datetime;
+
     return DateRangePickerDialog(
       initialDateRange: initialDateRange,
       firstDate: firstDate,
@@ -1213,7 +1222,7 @@ class TomDateRangePickerDialog extends TomDialogBase {
           (tomId != null ? resolveResourceOrFail(context, 'fieldStartLabel') : null),
       fieldEndLabelText: fieldEndLabelText ??
           (tomId != null ? resolveResourceOrFail(context, 'fieldEndLabel') : null),
-      keyboardType: keyboardType,
+      keyboardType: resolvedKeyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
     );
@@ -1271,6 +1280,36 @@ class TomTimePickerDialog extends TomDialogBase {
       orientation: orientation,
       onEntryModeChanged: onEntryModeChanged,
     );
+  }
+}
+
+TextInputType? _resolveTextInputType(String? value) {
+  if (value == null || value.isEmpty) return null;
+  switch (value.toLowerCase()) {
+    case 'text':
+      return TextInputType.text;
+    case 'multiline':
+      return TextInputType.multiline;
+    case 'number':
+      return TextInputType.number;
+    case 'phone':
+      return TextInputType.phone;
+    case 'datetime':
+      return TextInputType.datetime;
+    case 'emailaddress':
+      return TextInputType.emailAddress;
+    case 'url':
+      return TextInputType.url;
+    case 'visiblepassword':
+      return TextInputType.visiblePassword;
+    case 'name':
+      return TextInputType.name;
+    case 'streetaddress':
+      return TextInputType.streetAddress;
+    case 'none':
+      return TextInputType.none;
+    default:
+      return null;
   }
 }
 

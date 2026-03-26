@@ -2949,7 +2949,7 @@ class TomListBody extends TomContainerBase {
 /// Delegate-based custom flow layout. Auth on flow children.
 class TomFlow extends TomContainerBase {
   final FlowDelegate delegate;
-  final Clip clipBehavior;
+  final Clip? clipBehavior;
   final List<Widget> children;
 
   const TomFlow({
@@ -2957,15 +2957,17 @@ class TomFlow extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     required this.delegate,
-    this.clipBehavior = Clip.hardEdge,
+    this.clipBehavior,
     this.children = const <Widget>[],
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedClipBehavior = clipBehavior ?? Clip.hardEdge;
+
     return Flow(
       delegate: delegate,
-      clipBehavior: clipBehavior,
+      clipBehavior: resolvedClipBehavior,
       children: children,
     );
   }
@@ -3025,9 +3027,9 @@ class TomCustomSingleChildLayout extends TomContainerBase {
 class TomCustomPaint extends TomContainerBase {
   final CustomPainter? painter;
   final CustomPainter? foregroundPainter;
-  final Size size;
-  final bool isComplex;
-  final bool willChange;
+  final Size? size;
+  final bool? isComplex;
+  final bool? willChange;
   final Widget? child;
 
   const TomCustomPaint({
@@ -3036,20 +3038,26 @@ class TomCustomPaint extends TomContainerBase {
     super.tomGroup,
     this.painter,
     this.foregroundPainter,
-    this.size = Size.zero,
-    this.isComplex = false,
-    this.willChange = false,
+    this.size,
+    this.isComplex,
+    this.willChange,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedSize = size ?? Size.zero;
+    final resolvedIsComplex =
+        isComplex ?? resolveBoolOrNull(context, 'isComplex') ?? false;
+    final resolvedWillChange =
+        willChange ?? resolveBoolOrNull(context, 'willChange') ?? false;
+
     return CustomPaint(
       painter: painter,
       foregroundPainter: foregroundPainter,
-      size: size,
-      isComplex: isComplex,
-      willChange: willChange,
+      size: resolvedSize,
+      isComplex: resolvedIsComplex,
+      willChange: resolvedWillChange,
       child: child,
     );
   }
@@ -3062,9 +3070,9 @@ class TomPhysicalModel extends TomContainerBase {
   final BoxShape shape;
   final Clip clipBehavior;
   final BorderRadius? borderRadius;
-  final double elevation;
-  final Color color;
-  final Color shadowColor;
+  final double? elevation;
+  final Color? color;
+  final Color? shadowColor;
   final Widget? child;
 
   const TomPhysicalModel({
@@ -3074,21 +3082,27 @@ class TomPhysicalModel extends TomContainerBase {
     this.shape = BoxShape.rectangle,
     this.clipBehavior = Clip.none,
     this.borderRadius,
-    this.elevation = 0.0,
-    required this.color,
-    this.shadowColor = const Color(0xFF000000),
+    this.elevation,
+    this.color,
+    this.shadowColor,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation') ?? 0.0;
+    final resolvedColor = color ?? resolveColorOrFail(context, 'color');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor') ?? const Color(0xFF000000);
+
     return PhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
       borderRadius: borderRadius,
-      elevation: elevation,
-      color: color,
-      shadowColor: shadowColor,
+      elevation: resolvedElevation,
+      color: resolvedColor,
+      shadowColor: resolvedShadowColor,
       child: child,
     );
   }
@@ -3100,9 +3114,9 @@ class TomPhysicalModel extends TomContainerBase {
 class TomPhysicalShape extends TomContainerBase {
   final CustomClipper<Path> clipper;
   final Clip clipBehavior;
-  final double elevation;
-  final Color color;
-  final Color shadowColor;
+  final double? elevation;
+  final Color? color;
+  final Color? shadowColor;
   final Widget? child;
 
   const TomPhysicalShape({
@@ -3111,20 +3125,26 @@ class TomPhysicalShape extends TomContainerBase {
     super.tomGroup,
     required this.clipper,
     this.clipBehavior = Clip.none,
-    this.elevation = 0.0,
-    required this.color,
-    this.shadowColor = const Color(0xFF000000),
+    this.elevation,
+    this.color,
+    this.shadowColor,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation') ?? 0.0;
+    final resolvedColor = color ?? resolveColorOrFail(context, 'color');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor') ?? const Color(0xFF000000);
+
     return PhysicalShape(
       clipper: clipper,
       clipBehavior: clipBehavior,
-      elevation: elevation,
-      color: color,
-      shadowColor: shadowColor,
+      elevation: resolvedElevation,
+      color: resolvedColor,
+      shadowColor: resolvedShadowColor,
       child: child,
     );
   }
@@ -3135,7 +3155,7 @@ class TomPhysicalShape extends TomContainerBase {
 /// Fractional offset translation with child. Auth on translated content.
 class TomFractionalTranslation extends TomContainerBase {
   final Offset translation;
-  final bool transformHitTests;
+  final bool? transformHitTests;
   final Widget? child;
 
   const TomFractionalTranslation({
@@ -3143,15 +3163,18 @@ class TomFractionalTranslation extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     required this.translation,
-    this.transformHitTests = true,
+    this.transformHitTests,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedTransformHitTests =
+        transformHitTests ?? resolveBoolOrNull(context, 'transformHitTests') ?? true;
+
     return FractionalTranslation(
       translation: translation,
-      transformHitTests: transformHitTests,
+      transformHitTests: resolvedTransformHitTests,
       child: child,
     );
   }
@@ -3207,8 +3230,11 @@ class TomGridTileBar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+
     return GridTileBar(
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       leading: leading,
       title: title,
       subtitle: subtitle,
