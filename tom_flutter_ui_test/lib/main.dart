@@ -8,10 +8,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
 import 'demo_resources.dart';
+import 'locale_settings.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
 // TODO: Import remaining demos as they are created
@@ -34,21 +36,59 @@ import 'widget_demos/demo_02_inputs.dart';
 // import 'widget_demos/demo_19_effects.dart';
 // import 'widget_demos/demo_20_interactions.dart';
 
-void main() {
+/// Global locale settings service instance.
+final localeSettingsService = LocaleSettingsService();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Initialize Tom UI resource and icon adapters
   initializeDemoResources();
+
+  // Load saved locale preference
+  await localeSettingsService.initialize();
+
   runApp(const TomFlutterUiTestApp());
 }
 
 /// Main application widget.
-class TomFlutterUiTestApp extends StatelessWidget {
+class TomFlutterUiTestApp extends StatefulWidget {
   const TomFlutterUiTestApp({super.key});
+
+  @override
+  State<TomFlutterUiTestApp> createState() => _TomFlutterUiTestAppState();
+}
+
+class _TomFlutterUiTestAppState extends State<TomFlutterUiTestApp> {
+  @override
+  void initState() {
+    super.initState();
+    localeSettingsService.addListener(_onLocaleChanged);
+  }
+
+  @override
+  void dispose() {
+    localeSettingsService.removeListener(_onLocaleChanged);
+    super.dispose();
+  }
+
+  void _onLocaleChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Tom Flutter UI Test',
       debugShowCheckedModeBanner: false,
+      // Localization configuration
+      locale: localeSettingsService.locale,
+      supportedLocales: AppLocales.locales,
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -76,6 +116,10 @@ class MainTabsPage extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Tom Flutter UI'),
+          actions: [
+            LanguageSelectorButton(localeService: localeSettingsService),
+            const SizedBox(width: 8),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.grid_view), text: 'ACL Demos'),
