@@ -49,35 +49,23 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
   bool _showSidebar = true;
   String _radioMenuValue = 'option1';
 
-  // Sample data for dropdowns
-  final List<String> _categories = [
-    'Electronics',
-    'Clothing',
-    'Home & Garden',
-    'Books',
-    'Sports',
-  ];
+  // Data keys for resource lookups
+  static const _categoryKeys = ['electronics', 'clothing', 'homeGarden', 'books', 'sports'];
+  static const _colorKeys = ['red', 'green', 'blue', 'yellow', 'black'];
+  static const _sizeKeys = ['xs', 's', 'm', 'l', 'xl', 'xxl'];
+  static const _fruitKeys = ['apple', 'banana', 'orange', 'mango', 'grape', 'strawberry', 'pineapple', 'watermelon'];
+  static const _countryKeys = ['us', 'uk', 'de', 'fr', 'jp'];
 
-  final List<Map<String, dynamic>> _colors = [
-    {'name': 'Red', 'color': Colors.red, 'emoji': '🔴'},
-    {'name': 'Green', 'color': Colors.green, 'emoji': '🟢'},
-    {'name': 'Blue', 'color': Colors.blue, 'emoji': '🔵'},
-    {'name': 'Yellow', 'color': Colors.amber, 'emoji': '🟡'},
-    {'name': 'Black', 'color': Colors.black, 'emoji': '⚫'},
-  ];
+  /// Resolves a text resource by tomId and suffix.
+  String _resolveText(String tomId, String suffix) {
+    return TomUIResources.resolveText(tomId, suffix);
+  }
 
-  final List<String> _sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-
-  final List<String> _fruits = [
-    'Apple',
-    'Banana',
-    'Orange',
-    'Mango',
-    'Grape',
-    'Strawberry',
-    'Pineapple',
-    'Watermelon',
-  ];
+  /// Resolves a color from resources by tomId.
+  Color? _resolveColor(String tomId) {
+    final colorName = TomUIResources.resolveText(tomId, 'color');
+    return TomUIColors.resolveColor(colorName);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,10 +153,11 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                     tomId: 'demo03.dropdownButton.category',
                     value: _selectedCategory,
                     isExpanded: true,
-                    items: _categories
-                        .map((cat) => DropdownMenuItem<String>(
-                              value: cat,
-                              child: Text(cat),
+                    items: _categoryKeys
+                        .map((key) => TomDropdownMenuItem<String>(
+                              tomId: 'demo03.data.category.$key',
+                              value: key,
+                              child: TomText(null, tomId: 'demo03.data.category.$key'),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -187,14 +176,15 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
               tomId: 'demo03.dropdownButton.color',
               value: _selectedColor,
               isExpanded: true,
-              items: _colors
-                  .map((color) => DropdownMenuItem<String>(
-                        value: color['name'] as String,
+              items: _colorKeys
+                  .map((key) => TomDropdownMenuItem<String>(
+                        tomId: 'demo03.data.color.$key',
+                        value: key,
                         child: Row(
                           children: [
-                            Text(color['emoji'] as String),
+                            Text(_resolveText('demo03.data.color.$key', 'emoji')),
                             const SizedBox(width: 8),
-                            Text(color['name'] as String),
+                            TomText(null, tomId: 'demo03.data.color.$key'),
                           ],
                         ),
                       ))
@@ -215,13 +205,13 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                     tomId: 'demo03.dropdownButton.countryForm',
                     value: _selectedCountry,
                     isExpanded: true,
-                    items: const [
-                      DropdownMenuItem(value: 'us', child: Text('🇺🇸 United States')),
-                      DropdownMenuItem(value: 'uk', child: Text('🇬🇧 United Kingdom')),
-                      DropdownMenuItem(value: 'de', child: Text('🇩🇪 Germany')),
-                      DropdownMenuItem(value: 'fr', child: Text('🇫🇷 France')),
-                      DropdownMenuItem(value: 'jp', child: Text('🇯🇵 Japan')),
-                    ],
+                    items: _countryKeys
+                        .map((key) => TomDropdownMenuItem<String>(
+                              tomId: 'demo03.data.country.$key',
+                              value: key,
+                              child: TomText(null, tomId: 'demo03.data.country.$key'),
+                            ))
+                        .toList(),
                     onChanged: (value) {
                       setState(() => _selectedCountry = value);
                     },
@@ -263,10 +253,10 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             TomDropdownMenu<String>(
               tomId: 'demo03.dropdownMenu.size',
               initialSelection: _selectedSize,
-              dropdownMenuEntries: _sizes
-                  .map((size) => DropdownMenuEntry<String>(
-                        value: size,
-                        label: size,
+              dropdownMenuEntries: _sizeKeys
+                  .map((key) => DropdownMenuEntry<String>(
+                        value: key,
+                        label: _resolveText('demo03.data.size.$key', 'label'),
                       ))
                   .toList(),
               onSelected: (value) {
@@ -280,15 +270,15 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
               tomId: 'demo03.dropdownMenu.colorWithIcon',
               initialSelection: _selectedColor,
               leadingIcon: const Icon(Icons.palette),
-              dropdownMenuEntries: _colors
-                  .map((color) => DropdownMenuEntry<String>(
-                        value: color['name'] as String,
-                        label: color['name'] as String,
+              dropdownMenuEntries: _colorKeys
+                  .map((key) => DropdownMenuEntry<String>(
+                        value: key,
+                        label: _resolveText('demo03.data.color.$key', 'label'),
                         leadingIcon: Container(
                           width: 16,
                           height: 16,
                           decoration: BoxDecoration(
-                            color: color['color'] as Color,
+                            color: _resolveColor('demo03.data.color.$key'),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -305,10 +295,10 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
               tomId: 'demo03.dropdownMenu.expanded',
               initialSelection: _selectedCategory,
               expandedInsets: EdgeInsets.zero,
-              dropdownMenuEntries: _categories
-                  .map((cat) => DropdownMenuEntry<String>(
-                        value: cat,
-                        label: cat,
+              dropdownMenuEntries: _categoryKeys
+                  .map((key) => DropdownMenuEntry<String>(
+                        value: key,
+                        label: _resolveText('demo03.data.category.$key', 'label'),
                       ))
                   .toList(),
               onSelected: (value) {
@@ -507,9 +497,16 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             const TomSizedBox(height: 16),
 
             // Status display
-            TomText(
-              'Preview: ${_showPreview ? "ON" : "OFF"}, Details: ${_showDetails ? "ON" : "OFF"}, Sidebar: ${_showSidebar ? "ON" : "OFF"}',
-              style: Theme.of(context).textTheme.bodySmall,
+            Builder(
+              builder: (context) {
+                final preview = _showPreview ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
+                final details = _showDetails ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
+                final sidebar = _showSidebar ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
+                return TomText(
+                  'Preview: $preview, Details: $details, Sidebar: $sidebar',
+                  style: Theme.of(context).textTheme.bodySmall,
+                );
+              },
             ),
           ],
         ),
@@ -702,7 +699,11 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
 
             // Status display
             TomText(
-              'Sliding: ${['Day', 'Week', 'Month', 'Year'][_slidingValue]}, Classic: ${['First', 'Second', 'Third'][_segmentedValue]}',
+              'Sliding: ${_resolveText('demo03.cupertinoSegmented.${
+                ['day', 'week', 'month', 'year'][_slidingValue]
+              }', 'label')}, Classic: ${_resolveText('demo03.cupertinoSegmented.${
+                ['first', 'second', 'third'][_segmentedValue]
+              }', 'label')}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -735,10 +736,11 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 onSelectedItemChanged: (index) {
                   setState(() => _pickerValue = index);
                 },
-                children: _fruits
-                    .map((fruit) => Center(
-                          child: Text(
-                            fruit,
+                children: _fruitKeys
+                    .map((key) => Center(
+                          child: TomText(
+                            null,
+                            tomId: 'demo03.data.fruit.$key',
                             style: const TextStyle(fontSize: 18),
                           ),
                         ))
@@ -753,7 +755,8 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 TomIcon(null, tomId: 'demo03.cupertinoPicker.selectedIcon'),
                 const TomSizedBox(width: 8),
                 TomText(
-                  _fruits[_pickerValue],
+                  null,
+                  tomId: 'demo03.data.fruit.${_fruitKeys[_pickerValue]}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
@@ -780,10 +783,11 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 tomId: 'demo03.aclDropdown.category',
                 value: _selectedCategory,
                 isExpanded: true,
-                items: _categories
-                    .map((cat) => DropdownMenuItem<String>(
-                          value: cat,
-                          child: Text(cat),
+                items: _categoryKeys
+                    .map((key) => TomDropdownMenuItem<String>(
+                          tomId: 'demo03.data.category.$key',
+                          value: key,
+                          child: TomText(null, tomId: 'demo03.data.category.$key'),
                         ))
                     .toList(),
                 onChanged: (value) {
@@ -800,10 +804,10 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             TomDropdownMenu<String>(
               tomId: 'demo03.aclDropdown.size',
               initialSelection: _selectedSize,
-              dropdownMenuEntries: _sizes
-                  .map((size) => DropdownMenuEntry<String>(
-                        value: size,
-                        label: size,
+              dropdownMenuEntries: _sizeKeys
+                  .map((key) => DropdownMenuEntry<String>(
+                        value: key,
+                        label: _resolveText('demo03.data.size.$key', 'label'),
                       ))
                   .toList(),
               onSelected: (value) {

@@ -614,6 +614,77 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo03.aclSegmented.reset.icon': 'mRefresh',
     'demo03.aclSegmented.apply.label': 'Apply',
     'demo03.aclSegmented.apply.icon': 'mCheck',
+
+    // ==========================================================================
+    // Demo 03: Sample Data - Categories
+    // ==========================================================================
+    'demo03.data.category.electronics.label': 'Electronics',
+    'demo03.data.category.clothing.label': 'Clothing',
+    'demo03.data.category.homeGarden.label': 'Home & Garden',
+    'demo03.data.category.books.label': 'Books',
+    'demo03.data.category.sports.label': 'Sports',
+
+    // ==========================================================================
+    // Demo 03: Sample Data - Colors (with emoji and color values)
+    // ==========================================================================
+    'demo03.data.color.red.label': 'Red',
+    'demo03.data.color.red.emoji': '🔴',
+    'demo03.data.color.red.color': 'mRed',
+    'demo03.data.color.green.label': 'Green',
+    'demo03.data.color.green.emoji': '🟢',
+    'demo03.data.color.green.color': 'mGreen',
+    'demo03.data.color.blue.label': 'Blue',
+    'demo03.data.color.blue.emoji': '🔵',
+    'demo03.data.color.blue.color': 'mBlue',
+    'demo03.data.color.yellow.label': 'Yellow',
+    'demo03.data.color.yellow.emoji': '🟡',
+    'demo03.data.color.yellow.color': 'mAmber',
+    'demo03.data.color.black.label': 'Black',
+    'demo03.data.color.black.emoji': '⚫',
+    'demo03.data.color.black.color': 'mBlack',
+
+    // ==========================================================================
+    // Demo 03: Sample Data - Sizes
+    // ==========================================================================
+    'demo03.data.size.xs.label': 'XS',
+    'demo03.data.size.s.label': 'S',
+    'demo03.data.size.m.label': 'M',
+    'demo03.data.size.l.label': 'L',
+    'demo03.data.size.xl.label': 'XL',
+    'demo03.data.size.xxl.label': 'XXL',
+
+    // ==========================================================================
+    // Demo 03: Sample Data - Fruits
+    // ==========================================================================
+    'demo03.data.fruit.apple.label': 'Apple',
+    'demo03.data.fruit.banana.label': 'Banana',
+    'demo03.data.fruit.orange.label': 'Orange',
+    'demo03.data.fruit.mango.label': 'Mango',
+    'demo03.data.fruit.grape.label': 'Grape',
+    'demo03.data.fruit.strawberry.label': 'Strawberry',
+    'demo03.data.fruit.pineapple.label': 'Pineapple',
+    'demo03.data.fruit.watermelon.label': 'Watermelon',
+
+    // ==========================================================================
+    // Demo 03: Sample Data - Countries
+    // ==========================================================================
+    'demo03.data.country.us.label': '🇺🇸 United States',
+    'demo03.data.country.uk.label': '🇬🇧 United Kingdom',
+    'demo03.data.country.de.label': '🇩🇪 Germany',
+    'demo03.data.country.fr.label': '🇫🇷 France',
+    'demo03.data.country.jp.label': '🇯🇵 Japan',
+
+    // ==========================================================================
+    // Demo 03: Status Display Labels
+    // ==========================================================================
+    'demo03.status.preview.label': 'Preview',
+    'demo03.status.details.label': 'Details',
+    'demo03.status.sidebar.label': 'Sidebar',
+    'demo03.status.on.label': 'ON',
+    'demo03.status.off.label': 'OFF',
+    'demo03.status.selected.label': 'Selected',
+    'demo03.status.sliding.label': 'Sliding',
+    'demo03.status.classic.label': 'Classic',
   };
 
   @override
