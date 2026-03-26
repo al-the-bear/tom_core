@@ -115,13 +115,13 @@ class TomPaginatedDataTable extends TomTableBase {
   final int? sortColumnIndex;
   final bool sortAscending;
   final ValueSetter<bool?>? onSelectAll;
-  final double dataRowMinHeight;
-  final double dataRowMaxHeight;
+  final double? dataRowMinHeight;
+  final double? dataRowMaxHeight;
   final TextStyle? dataTextStyle;
-  final double headingRowHeight;
+  final double? headingRowHeight;
   final TextStyle? headingTextStyle;
-  final double horizontalMargin;
-  final double columnSpacing;
+  final double? horizontalMargin;
+  final double? columnSpacing;
   final bool showCheckboxColumn;
   final bool showFirstLastButtons;
   final int? initialFirstRowIndex;
@@ -146,13 +146,13 @@ class TomPaginatedDataTable extends TomTableBase {
     this.sortColumnIndex,
     this.sortAscending = true,
     this.onSelectAll,
-    this.dataRowMinHeight = kMinInteractiveDimension,
-    this.dataRowMaxHeight = kMinInteractiveDimension,
+    this.dataRowMinHeight,
+    this.dataRowMaxHeight,
     this.dataTextStyle,
-    this.headingRowHeight = 56.0,
+    this.headingRowHeight,
     this.headingTextStyle,
-    this.horizontalMargin = 24.0,
-    this.columnSpacing = 56.0,
+    this.horizontalMargin,
+    this.columnSpacing,
     this.showCheckboxColumn = true,
     this.showFirstLastButtons = false,
     this.initialFirstRowIndex = 0,
@@ -177,15 +177,15 @@ class TomPaginatedDataTable extends TomTableBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedDataRowMinHeight =
-        resolveDoubleOrNull(context, 'dataRowMinHeight') ?? dataRowMinHeight;
+        dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight') ?? kMinInteractiveDimension;
     final resolvedDataRowMaxHeight =
-        resolveDoubleOrNull(context, 'dataRowMaxHeight') ?? dataRowMaxHeight;
+        dataRowMaxHeight ?? resolveDoubleOrNull(context, 'dataRowMaxHeight') ?? kMinInteractiveDimension;
     final resolvedHeadingRowHeight =
-        resolveDoubleOrNull(context, 'headingRowHeight') ?? headingRowHeight;
+        headingRowHeight ?? resolveDoubleOrNull(context, 'headingRowHeight') ?? 56.0;
     final resolvedHorizontalMargin =
-        resolveDoubleOrNull(context, 'horizontalMargin') ?? horizontalMargin;
+        horizontalMargin ?? resolveDoubleOrNull(context, 'horizontalMargin') ?? 24.0;
     final resolvedColumnSpacing =
-        resolveDoubleOrNull(context, 'columnSpacing') ?? columnSpacing;
+        columnSpacing ?? resolveDoubleOrNull(context, 'columnSpacing') ?? 56.0;
     final resolvedCheckboxHorizontalMargin =
         checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
 
@@ -345,7 +345,7 @@ class TomReorderableListView extends TomTableBase {
   final bool? primary;
   final ScrollPhysics? physics;
   final bool shrinkWrap;
-  final double anchor;
+  final double? anchor;
   final double? cacheExtent;
   final DragStartBehavior dragStartBehavior;
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
@@ -374,7 +374,7 @@ class TomReorderableListView extends TomTableBase {
     this.primary,
     this.physics,
     this.shrinkWrap = false,
-    this.anchor = 0.0,
+    this.anchor,
     this.cacheExtent,
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
@@ -391,7 +391,7 @@ class TomReorderableListView extends TomTableBase {
     final resolvedCacheExtent =
         cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
     final resolvedAnchor =
-        resolveDoubleOrNull(context, 'anchor') ?? anchor;
+        anchor ?? resolveDoubleOrNull(context, 'anchor') ?? 0.0;
     final resolvedAutoScrollerVelocityScalar =
         autoScrollerVelocityScalar ?? resolveDoubleOrNull(context, 'autoScrollerVelocityScalar');
     final resolvedPadding =

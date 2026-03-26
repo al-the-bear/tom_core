@@ -420,7 +420,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
   final BottomNavigationBarType? type;
   final Color? fixedColor;
   final Color? backgroundColor;
-  final double iconSize;
+  final double? iconSize;
   final Color? selectedItemColor;
   final Color? unselectedItemColor;
   final IconThemeData? selectedIconTheme;
@@ -446,7 +446,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
     this.type,
     this.fixedColor,
     this.backgroundColor,
-    this.iconSize = 24.0,
+    this.iconSize,
     this.selectedItemColor,
     this.unselectedItemColor,
     this.selectedIconTheme,
@@ -470,7 +470,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedIconSize =
-        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
     final resolvedSelectedItemColor =
         selectedItemColor ?? resolveColorOrNull(context, 'selectedItemColor');
     final resolvedUnselectedItemColor =
@@ -571,7 +571,7 @@ class TomTabBarView extends TomNavigationBase {
   final TabController? controller;
   final ScrollPhysics? physics;
   final DragStartBehavior dragStartBehavior;
-  final double viewportFraction;
+  final double? viewportFraction;
   final Clip clipBehavior;
 
   const TomTabBarView({
@@ -582,7 +582,7 @@ class TomTabBarView extends TomNavigationBase {
     this.controller,
     this.physics,
     this.dragStartBehavior = DragStartBehavior.start,
-    this.viewportFraction = 1.0,
+    this.viewportFraction,
     this.clipBehavior = Clip.hardEdge,
   });
 
@@ -590,7 +590,7 @@ class TomTabBarView extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedViewportFraction =
-        resolveDoubleOrNull(context, 'viewportFraction') ?? viewportFraction;
+        viewportFraction ?? resolveDoubleOrNull(context, 'viewportFraction') ?? 1.0;
 
     return TabBarView(
       controller: controller,
@@ -671,8 +671,8 @@ class TomCupertinoTabBar extends TomNavigationBase {
   final Color? backgroundColor;
   final Color? activeColor;
   final Color inactiveColor;
-  final double iconSize;
-  final double height;
+  final double? iconSize;
+  final double? height;
   final Border? border;
 
   const TomCupertinoTabBar({
@@ -685,8 +685,8 @@ class TomCupertinoTabBar extends TomNavigationBase {
     this.backgroundColor,
     this.activeColor,
     this.inactiveColor = CupertinoColors.inactiveGray,
-    this.iconSize = 30.0,
-    this.height = 50.0,
+    this.iconSize,
+    this.height,
     this.border,
   });
 
@@ -698,9 +698,9 @@ class TomCupertinoTabBar extends TomNavigationBase {
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedIconSize =
-        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 30.0;
     final resolvedHeight =
-        resolveDoubleOrNull(context, 'height') ?? height;
+        height ?? resolveDoubleOrNull(context, 'height') ?? 50.0;
 
     return CupertinoTabBar(
       items: items,

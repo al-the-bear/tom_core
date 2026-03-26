@@ -293,7 +293,7 @@ class TomDismissible extends TomListBase {
   final Duration? resizeDuration;
   final Map<DismissDirection, double> dismissThresholds;
   final Duration movementDuration;
-  final double crossAxisEndOffset;
+  final double? crossAxisEndOffset;
   final DragStartBehavior dragStartBehavior;
   final HitTestBehavior behavior;
 
@@ -312,7 +312,7 @@ class TomDismissible extends TomListBase {
     this.resizeDuration = const Duration(milliseconds: 300),
     this.dismissThresholds = const {},
     this.movementDuration = const Duration(milliseconds: 200),
-    this.crossAxisEndOffset = 0.0,
+    this.crossAxisEndOffset,
     this.dragStartBehavior = DragStartBehavior.start,
     this.behavior = HitTestBehavior.opaque,
   });
@@ -321,7 +321,7 @@ class TomDismissible extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedCrossAxisEndOffset =
-        resolveDoubleOrNull(context, 'crossAxisEndOffset') ?? crossAxisEndOffset;
+        crossAxisEndOffset ?? resolveDoubleOrNull(context, 'crossAxisEndOffset') ?? 0.0;
 
     return Dismissible(
       key: key ?? ValueKey(tomId),
@@ -349,14 +349,14 @@ class TomDismissible extends TomListBase {
 class TomListWheelScrollView extends TomListBase {
   final ScrollController? controller;
   final ScrollPhysics? physics;
-  final double diameterRatio;
-  final double perspective;
-  final double offAxisFraction;
+  final double? diameterRatio;
+  final double? perspective;
+  final double? offAxisFraction;
   final bool useMagnifier;
-  final double magnification;
-  final double overAndUnderCenterOpacity;
+  final double? magnification;
+  final double? overAndUnderCenterOpacity;
   final double itemExtent;
-  final double squeeze;
+  final double? squeeze;
   final ValueChanged<int>? onSelectedItemChanged;
   final bool renderChildrenOutsideViewport;
   final Clip clipBehavior;
@@ -370,14 +370,14 @@ class TomListWheelScrollView extends TomListBase {
     super.tomGroup,
     this.controller,
     this.physics,
-    this.diameterRatio = RenderListWheelViewport.defaultDiameterRatio,
-    this.perspective = RenderListWheelViewport.defaultPerspective,
-    this.offAxisFraction = 0.0,
+    this.diameterRatio,
+    this.perspective,
+    this.offAxisFraction,
     this.useMagnifier = false,
-    this.magnification = 1.0,
-    this.overAndUnderCenterOpacity = 1.0,
+    this.magnification,
+    this.overAndUnderCenterOpacity,
     required this.itemExtent,
-    this.squeeze = 1.0,
+    this.squeeze,
     this.onSelectedItemChanged,
     this.renderChildrenOutsideViewport = false,
     this.clipBehavior = Clip.hardEdge,
@@ -390,19 +390,19 @@ class TomListWheelScrollView extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedDiameterRatio =
-        resolveDoubleOrNull(context, 'diameterRatio') ?? diameterRatio;
+        diameterRatio ?? resolveDoubleOrNull(context, 'diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
     final resolvedPerspective =
-        resolveDoubleOrNull(context, 'perspective') ?? perspective;
+        perspective ?? resolveDoubleOrNull(context, 'perspective') ?? RenderListWheelViewport.defaultPerspective;
     final resolvedOffAxisFraction =
-        resolveDoubleOrNull(context, 'offAxisFraction') ?? offAxisFraction;
+        offAxisFraction ?? resolveDoubleOrNull(context, 'offAxisFraction') ?? 0.0;
     final resolvedMagnification =
-        resolveDoubleOrNull(context, 'magnification') ?? magnification;
+        magnification ?? resolveDoubleOrNull(context, 'magnification') ?? 1.0;
     final resolvedOverAndUnderCenterOpacity =
-        resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? overAndUnderCenterOpacity;
+        overAndUnderCenterOpacity ?? resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? 1.0;
     final resolvedItemExtent =
         resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
     final resolvedSqueeze =
-        resolveDoubleOrNull(context, 'squeeze') ?? squeeze;
+        squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.0;
 
     return ListWheelScrollView.useDelegate(
       controller: controller,

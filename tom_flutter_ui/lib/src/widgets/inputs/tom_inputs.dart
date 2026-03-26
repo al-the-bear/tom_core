@@ -43,7 +43,7 @@ class TomTextField extends TomInputBase {
   final bool readOnly;
   final bool? showCursor;
   final String? obscuringCharacter;
-  final double cursorWidth;
+  final double? cursorWidth;
   final double? cursorHeight;
   final Radius? cursorRadius;
   final Color? cursorColor;
@@ -112,7 +112,7 @@ class TomTextField extends TomInputBase {
     this.readOnly = false,
     this.showCursor,
     this.obscuringCharacter,
-    this.cursorWidth = 2.0,
+    this.cursorWidth,
     this.cursorHeight,
     this.cursorRadius,
     this.cursorColor,
@@ -159,7 +159,7 @@ class TomTextField extends TomInputBase {
     final resolvedCursorHeight =
         cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
     final resolvedCursorWidth =
-        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+        cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0;
     final resolvedMaxLines =
         maxLines ?? resolveIntOrNull(context, 'maxLines');
     final resolvedMinLines =
@@ -603,7 +603,7 @@ class TomEditableText extends TomInputBase {
   final TextScaler? textScaler;
   final bool showCursor;
   final bool showSelectionHandles;
-  final double cursorWidth;
+  final double? cursorWidth;
   final double? cursorHeight;
   final Radius? cursorRadius;
   final Offset? cursorOffset;
@@ -645,7 +645,7 @@ class TomEditableText extends TomInputBase {
     this.textScaler,
     this.showCursor = true,
     this.showSelectionHandles = false,
-    this.cursorWidth = 2.0,
+    this.cursorWidth,
     this.cursorHeight,
     this.cursorRadius,
     this.cursorOffset,
@@ -670,7 +670,7 @@ class TomEditableText extends TomInputBase {
     final resolvedCursorHeight =
         cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
     final resolvedCursorWidth =
-        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+        cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0;
     final resolvedMaxLines =
         maxLines ?? resolveIntOrNull(context, 'maxLines');
     final resolvedMinLines =
@@ -726,7 +726,7 @@ class TomCupertinoTextField extends TomInputBase {
   final TextEditingController? controller;
   final FocusNode? focusNode;
   final BoxDecoration? decoration;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final String? placeholder;
   final TextStyle? placeholderStyle;
   final Widget? prefix;
@@ -759,7 +759,7 @@ class TomCupertinoTextField extends TomInputBase {
     this.controller,
     this.focusNode,
     this.decoration,
-    this.padding = const EdgeInsets.all(7.0),
+    this.padding,
     this.placeholder,
     this.placeholderStyle,
     this.prefix,
@@ -793,7 +793,7 @@ class TomCupertinoTextField extends TomInputBase {
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsets.all(7.0);
     final resolvedMaxLines =
         maxLines ?? resolveIntOrNull(context, 'maxLines');
     final resolvedMinLines =
@@ -889,7 +889,7 @@ class TomCupertinoDatePicker extends TomInputBase {
   final bool use24hFormat;
   final Color? backgroundColor;
   final bool showDayOfWeek;
-  final double itemExtent;
+  final double? itemExtent;
 
   const TomCupertinoDatePicker({
     super.key,
@@ -906,7 +906,7 @@ class TomCupertinoDatePicker extends TomInputBase {
     this.use24hFormat = false,
     this.backgroundColor,
     this.showDayOfWeek = false,
-    this.itemExtent = 32.0,
+    this.itemExtent,
   });
 
   @override
@@ -915,7 +915,7 @@ class TomCupertinoDatePicker extends TomInputBase {
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedItemExtent =
-        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0;
 
     return CupertinoDatePicker(
       mode: mode,

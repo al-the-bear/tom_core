@@ -130,7 +130,7 @@ class TomSliverCrossAxisGroup extends TomSliverBase {
 /// Fills viewport with each child. Auth on viewport children.
 class TomSliverFillViewport extends TomSliverBase {
   final SliverChildDelegate delegate;
-  final double viewportFraction;
+  final double? viewportFraction;
   final bool padEnds;
 
   const TomSliverFillViewport({
@@ -138,7 +138,7 @@ class TomSliverFillViewport extends TomSliverBase {
     super.tomId,
     super.tomGroup,
     required this.delegate,
-    this.viewportFraction = 1.0,
+    this.viewportFraction,
     this.padEnds = true,
   });
 
@@ -146,7 +146,7 @@ class TomSliverFillViewport extends TomSliverBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedViewportFraction =
-        resolveDoubleOrNull(context, 'viewportFraction') ?? viewportFraction;
+        viewportFraction ?? resolveDoubleOrNull(context, 'viewportFraction') ?? 1.0;
 
     return SliverFillViewport(
       delegate: delegate,

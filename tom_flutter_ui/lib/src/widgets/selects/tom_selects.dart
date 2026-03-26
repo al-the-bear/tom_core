@@ -12,13 +12,13 @@ class TomDropdownButton<T> extends TomSelectBase {
   final List<DropdownMenuItem<T>>? items;
   final ValueChanged<T?>? onChanged;
   final VoidCallback? onTap;
-  final int elevation;
+  final int? elevation;
   final TextStyle? style;
   final Widget? underline;
   final Widget? icon;
   final Color? iconDisabledColor;
   final Color? iconEnabledColor;
-  final double iconSize;
+  final double? iconSize;
   final bool isDense;
   final bool isExpanded;
   final double? itemHeight;
@@ -41,13 +41,13 @@ class TomDropdownButton<T> extends TomSelectBase {
     this.items,
     this.onChanged,
     this.onTap,
-    this.elevation = 8,
+    this.elevation,
     this.style,
     this.underline,
     this.icon,
     this.iconDisabledColor,
     this.iconEnabledColor,
-    this.iconSize = 24.0,
+    this.iconSize,
     this.isDense = false,
     this.isExpanded = false,
     this.itemHeight,
@@ -69,13 +69,13 @@ class TomDropdownButton<T> extends TomSelectBase {
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        resolveIntOrNull(context, 'elevation') ?? elevation;
+        elevation ?? resolveIntOrNull(context, 'elevation') ?? 8;
     final resolvedIconDisabledColor =
         iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
     final resolvedIconEnabledColor =
         iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
     final resolvedIconSize =
-        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
     final resolvedItemHeight =
         itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
     final resolvedFocusColor =
@@ -369,12 +369,12 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   final InputDecoration? decoration;
   final Widget? hint;
   final Widget? disabledHint;
-  final int elevation;
+  final int? elevation;
   final TextStyle? style;
   final Widget? icon;
   final Color? iconDisabledColor;
   final Color? iconEnabledColor;
-  final double iconSize;
+  final double? iconSize;
   final bool isDense;
   final bool isExpanded;
   final double? itemHeight;
@@ -402,12 +402,12 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     this.decoration,
     this.hint,
     this.disabledHint,
-    this.elevation = 8,
+    this.elevation,
     this.style,
     this.icon,
     this.iconDisabledColor,
     this.iconEnabledColor,
-    this.iconSize = 24.0,
+    this.iconSize,
     this.isDense = true,
     this.isExpanded = false,
     this.itemHeight,
@@ -433,13 +433,13 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        resolveIntOrNull(context, 'elevation') ?? elevation;
+        elevation ?? resolveIntOrNull(context, 'elevation') ?? 8;
     final resolvedIconDisabledColor =
         iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
     final resolvedIconEnabledColor =
         iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
     final resolvedIconSize =
-        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
     final resolvedItemHeight =
         itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
     final resolvedFocusColor =
@@ -494,7 +494,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
   final T? groupValue;
   final ValueChanged<T?> onValueChanged;
   final Color? thumbColor;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final Color? backgroundColor;
 
   const TomCupertinoSlidingSegmentedControl({
@@ -505,7 +505,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     required this.groupValue,
     required this.onValueChanged,
     this.thumbColor,
-    this.padding = const EdgeInsets.symmetric(vertical: 2, horizontal: 3),
+    this.padding,
     this.backgroundColor,
   });
 
@@ -517,7 +517,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     final resolvedThumbColor =
         thumbColor ?? resolveColorOrNull(context, 'thumbColor');
     final resolvedPadding =
-        resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
 
     final effectiveBg = resolvedBackgroundColor ??
         CupertinoDynamicColor.resolve(

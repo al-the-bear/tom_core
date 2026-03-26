@@ -1501,7 +1501,7 @@ class TomCupertinoContextMenuAction extends TomButtonBase {
 class TomExpandIcon extends TomButtonBase {
   final bool isExpanded;
   final ValueChanged<bool>? onPressed;
-  final double size;
+  final double? size;
   final EdgeInsetsGeometry padding;
   final Color? color;
   final Color? disabledColor;
@@ -1514,7 +1514,7 @@ class TomExpandIcon extends TomButtonBase {
     super.tomGroup,
     this.isExpanded = false,
     required this.onPressed,
-    this.size = 24.0,
+    this.size,
     this.padding = const EdgeInsets.all(8.0),
     this.color,
     this.disabledColor,
@@ -1526,7 +1526,7 @@ class TomExpandIcon extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSize =
-        resolveDoubleOrNull(context, 'size') ?? size;
+        size ?? resolveDoubleOrNull(context, 'size') ?? 24.0;
     final resolvedColor =
         color ?? resolveColorOrNull(context, 'color');
     final resolvedDisabledColor =

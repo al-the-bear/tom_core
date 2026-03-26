@@ -12,7 +12,7 @@ import '../../widget_base/tom_family_base.dart';
 class TomTreeView extends TomTreeBase {
   final List<TomTreeNode> nodes;
   final EdgeInsetsGeometry? padding;
-  final double indentation;
+  final double? indentation;
   final bool shrinkWrap;
   final ScrollPhysics? physics;
 
@@ -22,7 +22,7 @@ class TomTreeView extends TomTreeBase {
     super.tomGroup,
     required this.nodes,
     this.padding,
-    this.indentation = 24.0,
+    this.indentation,
     this.shrinkWrap = false,
     this.physics,
   });
@@ -31,7 +31,7 @@ class TomTreeView extends TomTreeBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedIndentation =
-        resolveDoubleOrNull(context, 'indentation') ?? indentation;
+        indentation ?? resolveDoubleOrNull(context, 'indentation') ?? 24.0;
 
     return ListView(
       padding: padding,
