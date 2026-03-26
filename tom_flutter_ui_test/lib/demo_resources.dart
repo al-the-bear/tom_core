@@ -11,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Resource keys follow the pattern: `<tomId>.<suffix>`
 /// - `demo01.elevated.basic.label` → "Basic"
 /// - `demo01.elevated.save.icon` → "mSave"
-class DemoResourceAdapter implements TomUIResourceAdapter {
+class DemoResourceAdapter extends TomUIResourceAdapter {
   /// All text resources for the demo app.
   ///
   /// Keys are `<tomId>.<suffix>` where suffix is typically:
@@ -687,6 +687,52 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo03.status.classic.label': 'Classic',
   };
 
+  // ─── Phase 1: Structured Resources ─────────────────────────────────────────
+  
+  /// Structured resources for lists, maps, and typed values.
+  ///
+  /// Keys follow the same pattern as text resources: `<tomId>.<suffix>`
+  /// Values can be any type: List, Map, int, double, bool, String.
+  static final Map<String, Object> _structuredResources = {
+    // Example countries list for dropdown/autocomplete
+    'demo03.dropdown.country.items': [
+      {'code': 'us', 'name': 'United States'},
+      {'code': 'uk', 'name': 'United Kingdom'},
+      {'code': 'ca', 'name': 'Canada'},
+      {'code': 'au', 'name': 'Australia'},
+      {'code': 'de', 'name': 'Germany'},
+      {'code': 'fr', 'name': 'France'},
+      {'code': 'jp', 'name': 'Japan'},
+    ],
+    
+    // Example category list for menus
+    'demo03.menu.categories.items': [
+      'Electronics',
+      'Clothing',
+      'Home & Garden',
+      'Sports',
+      'Books',
+    ],
+    
+    // Numeric config values
+    'demo03.card.basic.elevation': 4.0,
+    'demo03.icon.small.iconSize': 16.0,
+    'demo03.icon.medium.iconSize': 24.0,
+    'demo03.icon.large.iconSize': 32.0,
+    
+    // Boolean config values
+    'demo03.toggle.dense.isDense': true,
+    
+    // EdgeInsets config values
+    'demo03.card.basic.padding': [16, 8], // horizontal, vertical
+    'demo03.card.compact.padding': 8.0,   // all sides
+    'demo03.card.custom.padding': {'left': 16, 'top': 8, 'right': 16, 'bottom': 24},
+    
+    // Color references (color names that TomUIColors can resolve)
+    'demo03.card.primary.backgroundColor': 'primaryContainer',
+    'demo03.card.error.backgroundColor': 'errorContainer',
+  };
+
   @override
   String resolveText(String basePath, String suffix) {
     // Remove widget prefix (w-) for lookup
@@ -701,6 +747,37 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     final key = '$cleanPath.$suffix';
     return _resources.containsKey(key);
   }
+
+  // ─── Phase 1: Typed Resolution Methods ───────────────────────────────────
+
+  @override
+  T? resolveValue<T>(String basePath, String suffix) {
+    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    final key = '$cleanPath.$suffix';
+    final value = _structuredResources[key];
+    if (value is T) return value;
+    return null;
+  }
+
+  @override
+  List<T>? resolveList<T>(String basePath, String suffix) {
+    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    final key = '$cleanPath.$suffix';
+    final value = _structuredResources[key];
+    if (value is List) {
+      return value.whereType<T>().toList();
+    }
+    return null;
+  }
+
+  @override
+  Map<String, dynamic>? resolveMap(String basePath, String suffix) {
+    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    final key = '$cleanPath.$suffix';
+    final value = _structuredResources[key];
+    if (value is Map<String, dynamic>) return value;
+    return null;
+  }
 }
 
 /// Initializes the Tom UI resource and icon adapters for the demo app.
@@ -709,4 +786,5 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
 void initializeDemoResources() {
   TomUIResources.adapter = DemoResourceAdapter();
   TomUIIcons.adapter = AllIconsAdapter();
+  TomUIColors.adapter = AllColorsAdapter();
 }

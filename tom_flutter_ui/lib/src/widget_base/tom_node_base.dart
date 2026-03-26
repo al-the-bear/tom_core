@@ -117,6 +117,80 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIIcons.resolveIcon(iconName);
   }
 
+  // ─── Phase 1: Typed Resolution Helpers ───────────────────────────────────
+
+  /// Resolves a [Color] resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  Color? resolveColorOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveColor(basePath, suffix);
+  }
+
+  /// Resolves a [double] resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  double? resolveDoubleOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveDouble(basePath, suffix);
+  }
+
+  /// Resolves an [int] resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  int? resolveIntOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveInt(basePath, suffix);
+  }
+
+  /// Resolves a [bool] resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  bool? resolveBoolOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveBool(basePath, suffix);
+  }
+
+  /// Resolves [EdgeInsets] resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  EdgeInsets? resolveEdgeInsetsOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveEdgeInsets(basePath, suffix);
+  }
+
+  /// Resolves a list resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  List<T>? resolveListOrNull<T>(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveList<T>(basePath, suffix);
+  }
+
+  /// Resolves a map resource relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  Map<String, dynamic>? resolveMapOrNull(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveMap(basePath, suffix);
+  }
+
+  /// Resolves any typed value relative to this node's base path.
+  ///
+  /// Returns `null` if this node has no [tomId] or no resource exists.
+  T? resolveValueOrNull<T>(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveValue<T>(basePath, suffix);
+  }
+
   /// Debug description for this node.
   String get debugLabel {
     final parts = <String>[];
