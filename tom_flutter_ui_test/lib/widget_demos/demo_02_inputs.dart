@@ -71,6 +71,17 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     super.dispose();
   }
 
+  /// Formats a duration using resource-based unit labels.
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+    final seconds = duration.inSeconds % 60;
+    final h = TomUIResources.resolveText('demo02.duration', 'hours');
+    final m = TomUIResources.resolveText('demo02.duration', 'minutes');
+    final s = TomUIResources.resolveText('demo02.duration', 'seconds');
+    return '$hours$h $minutes$m $seconds$s';
+  }
+
   @override
   Widget build(BuildContext context) {
     return TomSingleChildScrollView(
@@ -397,27 +408,34 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   }
 
   Widget _buildCupertinoSearchSection() {
-    return _DemoCard(
-      tomId: 'demo02.cupertinoSearch',
-      child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Cupertino search text field
-          TomCupertinoSearchTextField(
-            tomId: 'demo02.cupertinoSearch.basic',
-            onChanged: (value) {
-              // Handle search
-            },
-          ),
-          const TomSizedBox(height: 16),
+    // Wrap in NotificationListener to prevent CupertinoSearchTextField from
+    // receiving scroll notifications that trigger size access during build.
+    // This is a workaround for a Flutter bug where YearPicker.jumpTo dispatches
+    // scroll notifications that CupertinoSearchTextField tries to handle.
+    return NotificationListener<ScrollNotification>(
+      onNotification: (_) => true, // Block scroll notifications
+      child: _DemoCard(
+        tomId: 'demo02.cupertinoSearch',
+        child: TomColumn(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Cupertino search text field
+            TomCupertinoSearchTextField(
+              tomId: 'demo02.cupertinoSearch.basic',
+              onChanged: (value) {
+                // Handle search
+              },
+            ),
+            const TomSizedBox(height: 16),
 
-          // Cupertino search with custom styling
-          TomCupertinoSearchTextField(
-            tomId: 'demo02.cupertinoSearch.styled',
-            backgroundColor: CupertinoColors.systemGrey6,
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ],
+            // Cupertino search with custom styling
+            TomCupertinoSearchTextField(
+              tomId: 'demo02.cupertinoSearch.styled',
+              backgroundColor: CupertinoColors.systemGrey6,
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -535,7 +553,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               TomIcon(null, tomId: 'demo02.cupertinoDateTime.durationIcon'),
               const TomSizedBox(width: 8),
               TomText(
-                '${_selectedDuration.inHours}h ${_selectedDuration.inMinutes % 60}m ${_selectedDuration.inSeconds % 60}s',
+                _formatDuration(_selectedDuration),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],

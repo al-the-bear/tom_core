@@ -378,6 +378,13 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo02.cupertinoDateTime.timerLabel.label': 'Select Duration',
     'demo02.cupertinoDateTime.timerPicker.label': 'Timer Picker',
     'demo02.cupertinoDateTime.durationIcon': 'mTimer',
+
+    // ==========================================================================
+    // Demo 02: Duration Format Units
+    // ==========================================================================
+    'demo02.duration.hours': 'h',
+    'demo02.duration.minutes': 'm',
+    'demo02.duration.seconds': 's',
   };
 
   @override
