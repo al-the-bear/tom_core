@@ -65,7 +65,7 @@ class TomDropdownButton<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedHint = hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
+    final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return DropdownButton<T>(
       value: value,
@@ -240,7 +240,7 @@ class TomDropdownMenu<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
-        hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return DropdownMenu<T>(
       initialSelection: initialSelection,

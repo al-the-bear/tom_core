@@ -77,8 +77,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// Throws [StateError] if:
   /// - This node has no [tomId] (resource lookup is impossible)
   ///
-  /// If [tomId] is set but no resource exists, returns a fallback key string
-  /// for development visibility.
+  /// If [tomId] is set but no resource exists, returns the looked-up key
+  /// (`<basePath>.<suffix>`) for development visibility.
   String resolveResourceOrFail(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) {
@@ -86,6 +86,9 @@ abstract class TomNodeBase extends StatelessWidget {
         'Tom widget requires either an explicit $suffix or a tomId for '
         'resource lookup. Widget: $runtimeType',
       );
+    }
+    if (!TomUIResources.resourceExists(basePath, suffix)) {
+      return '$basePath.$suffix';
     }
     return TomUIResources.resolveText(basePath, suffix);
   }

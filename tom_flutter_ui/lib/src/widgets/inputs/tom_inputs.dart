@@ -149,7 +149,7 @@ class TomTextField extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
-    final resolvedHint = hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
+    final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     final effectiveDecoration =
         (decoration ?? const InputDecoration()).copyWith(
@@ -291,7 +291,7 @@ class TomTextFormField extends TomInputBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
-        hint ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     final effectiveDecoration =
         (decoration ?? const InputDecoration()).copyWith(
@@ -380,7 +380,7 @@ class TomSearchBar extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedHint =
-        hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return SearchBar(
       controller: controller,
@@ -508,7 +508,7 @@ class TomSearchAnchor extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedHint =
-        viewHintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        viewHintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return SearchAnchor(
       isFullScreen: isFullScreen,
@@ -741,7 +741,7 @@ class TomCupertinoTextField extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return CupertinoTextField(
       controller: controller,
@@ -929,7 +929,7 @@ class TomCupertinoSearchTextField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPlaceholder = placeholder ?? resolveResource(context, 'hint');
+    final resolvedPlaceholder = placeholder ?? resolveResourceOrFail(context, 'hint');
 
     return CupertinoSearchTextField(
       controller: controller,
@@ -1076,9 +1076,9 @@ class TomInputDatePickerFormField extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabelText = fieldLabelText ?? resolveResourceOrFail(context, 'label');
-    final resolvedHintText = fieldHintText ?? resolveResource(context, 'hint');
-    final resolvedErrorFormat = errorFormatText ?? resolveResource(context, 'errorFormat');
-    final resolvedErrorInvalid = errorInvalidText ?? resolveResource(context, 'errorInvalid');
+    final resolvedHintText = fieldHintText ?? resolveResourceOrFail(context, 'hint');
+    final resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail(context, 'errorFormat');
+    final resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail(context, 'errorInvalid');
 
     return InputDatePickerFormField(
       initialDate: initialDate,
@@ -1250,7 +1250,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
     return CupertinoTextFormFieldRow(
       prefix: prefix,
@@ -1393,9 +1393,9 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint =
-        hintText ?? (tomId != null ? resolveResource(context, 'hint') : null);
+        hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
     final resolvedHelper =
-        helperText ?? (tomId != null ? resolveResource(context, 'helper') : null);
+        helperText ?? (tomId != null ? resolveResourceOrFail(context, 'helper') : null);
 
     return DropdownMenuFormField<T>(
       enabled: enabled,

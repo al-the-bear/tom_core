@@ -67,7 +67,7 @@ class TomIcon extends TomImageBase {
     // Resolve icon: use provided icon, or look up from resources
     final resolvedIcon = icon ?? _resolveIconFromResources(context);
     final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResource(context, 'alt') : null);
+        semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
     return Icon(
       resolvedIcon,
@@ -90,7 +90,7 @@ class TomIcon extends TomImageBase {
   IconData? _resolveIconFromResources(BuildContext context) {
     if (tomId == null) return null;
     // Get icon name from resources (e.g., "save", "delete")
-    final iconName = resolveResource(context, 'icon');
+    final iconName = resolveResourceOrFail(context, 'icon');
     // Skip if it returns the key itself (no resource found)
     if (iconName.endsWith('.icon')) return null;
     // Look up IconData from icon provider
@@ -142,7 +142,7 @@ class TomImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResource(context, 'alt') : null);
+        semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
     return Image(
       image: imageProvider,
@@ -265,7 +265,7 @@ class TomFadeInImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = imageSemanticLabel ??
-        (tomId != null ? resolveResource(context, 'alt') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
     return FadeInImage(
       placeholder: placeholder,
@@ -313,7 +313,7 @@ class TomImageIcon extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
     return ImageIcon(
       image,
@@ -428,7 +428,7 @@ class TomNetworkImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
     return Image.network(
       src,
@@ -512,7 +512,7 @@ class TomAssetImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
     return Image.asset(
       name,
@@ -591,7 +591,7 @@ class TomFileImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
     return Image(
       image: FileImage(File(filePath), scale: scale),
@@ -645,7 +645,7 @@ class TomAnimatedIcon extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResource(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
     return AnimatedIcon(
       icon: icon,
       progress: progress,

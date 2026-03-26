@@ -92,7 +92,7 @@ class TomAlertDialog extends TomDialogBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+        titleText ?? (tomId != null ? resolveResourceOrFail(context, 'title') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
@@ -171,7 +171,7 @@ class TomSimpleDialog extends TomDialogBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+        titleText ?? (tomId != null ? resolveResourceOrFail(context, 'title') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
@@ -503,7 +503,7 @@ class TomCupertinoAlertDialog extends TomDialogBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+        titleText ?? (tomId != null ? resolveResourceOrFail(context, 'title') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
@@ -546,7 +546,7 @@ class TomCupertinoActionSheet extends TomDialogBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResource(context, 'title') : null);
+        titleText ?? (tomId != null ? resolveResourceOrFail(context, 'title') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
@@ -953,15 +953,15 @@ class TomAboutDialog extends TomDialogBase {
   Widget buildContent(BuildContext context) {
     return AboutDialog(
       applicationName: applicationName ??
-          (tomId != null ? resolveResource(context, 'applicationName') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'applicationName') : null),
       applicationVersion: applicationVersion ??
           (tomId != null
-              ? resolveResource(context, 'applicationVersion')
+              ? resolveResourceOrFail(context, 'applicationVersion')
               : null),
       applicationIcon: applicationIcon,
       applicationLegalese: applicationLegalese ??
           (tomId != null
-              ? resolveResource(context, 'applicationLegalese')
+              ? resolveResourceOrFail(context, 'applicationLegalese')
               : null),
       children: children,
     );
@@ -1050,20 +1050,20 @@ class TomDatePickerDialog extends TomDialogBase {
       initialEntryMode: initialEntryMode,
       selectableDayPredicate: selectableDayPredicate,
       cancelText:
-          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+          cancelText ?? (tomId != null ? resolveResourceOrFail(context, 'cancel') : null),
       confirmText:
-          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+          confirmText ?? (tomId != null ? resolveResourceOrFail(context, 'confirm') : null),
       helpText:
-          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+          helpText ?? (tomId != null ? resolveResourceOrFail(context, 'help') : null),
       initialCalendarMode: initialCalendarMode,
       errorFormatText: errorFormatText ??
-          (tomId != null ? resolveResource(context, 'errorFormat') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorFormat') : null),
       errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorInvalid') : null),
       fieldHintText: fieldHintText ??
-          (tomId != null ? resolveResource(context, 'fieldHint') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldHint') : null),
       fieldLabelText: fieldLabelText ??
-          (tomId != null ? resolveResource(context, 'fieldLabel') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldLabel') : null),
       keyboardType: keyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
@@ -1129,27 +1129,27 @@ class TomDateRangePickerDialog extends TomDialogBase {
       currentDate: currentDate,
       initialEntryMode: initialEntryMode,
       helpText:
-          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+          helpText ?? (tomId != null ? resolveResourceOrFail(context, 'help') : null),
       cancelText:
-          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+          cancelText ?? (tomId != null ? resolveResourceOrFail(context, 'cancel') : null),
       confirmText:
-          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+          confirmText ?? (tomId != null ? resolveResourceOrFail(context, 'confirm') : null),
       saveText:
-          saveText ?? (tomId != null ? resolveResource(context, 'save') : null),
+          saveText ?? (tomId != null ? resolveResourceOrFail(context, 'save') : null),
       errorFormatText: errorFormatText ??
-          (tomId != null ? resolveResource(context, 'errorFormat') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorFormat') : null),
       errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorInvalid') : null),
       errorInvalidRangeText: errorInvalidRangeText ??
-          (tomId != null ? resolveResource(context, 'errorInvalidRange') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorInvalidRange') : null),
       fieldStartHintText: fieldStartHintText ??
-          (tomId != null ? resolveResource(context, 'fieldStartHint') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldStartHint') : null),
       fieldEndHintText: fieldEndHintText ??
-          (tomId != null ? resolveResource(context, 'fieldEndHint') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldEndHint') : null),
       fieldStartLabelText: fieldStartLabelText ??
-          (tomId != null ? resolveResource(context, 'fieldStartLabel') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldStartLabel') : null),
       fieldEndLabelText: fieldEndLabelText ??
-          (tomId != null ? resolveResource(context, 'fieldEndLabel') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'fieldEndLabel') : null),
       keyboardType: keyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
@@ -1193,17 +1193,17 @@ class TomTimePickerDialog extends TomDialogBase {
     return TimePickerDialog(
       initialTime: initialTime,
       cancelText:
-          cancelText ?? (tomId != null ? resolveResource(context, 'cancel') : null),
+          cancelText ?? (tomId != null ? resolveResourceOrFail(context, 'cancel') : null),
       confirmText:
-          confirmText ?? (tomId != null ? resolveResource(context, 'confirm') : null),
+          confirmText ?? (tomId != null ? resolveResourceOrFail(context, 'confirm') : null),
       helpText:
-          helpText ?? (tomId != null ? resolveResource(context, 'help') : null),
+          helpText ?? (tomId != null ? resolveResourceOrFail(context, 'help') : null),
       errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResource(context, 'errorInvalid') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'errorInvalid') : null),
       hourLabelText: hourLabelText ??
-          (tomId != null ? resolveResource(context, 'hourLabel') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'hourLabel') : null),
       minuteLabelText: minuteLabelText ??
-          (tomId != null ? resolveResource(context, 'minuteLabel') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'minuteLabel') : null),
       initialEntryMode: initialEntryMode,
       orientation: orientation,
       onEntryModeChanged: onEntryModeChanged,
@@ -1261,15 +1261,15 @@ class TomLicensePage extends TomDialogBase {
   Widget buildContent(BuildContext context) {
     return LicensePage(
       applicationName: applicationName ??
-          (tomId != null ? resolveResource(context, 'applicationName') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'applicationName') : null),
       applicationVersion: applicationVersion ??
           (tomId != null
-              ? resolveResource(context, 'applicationVersion')
+              ? resolveResourceOrFail(context, 'applicationVersion')
               : null),
       applicationIcon: applicationIcon,
       applicationLegalese: applicationLegalese ??
           (tomId != null
-              ? resolveResource(context, 'applicationLegalese')
+              ? resolveResourceOrFail(context, 'applicationLegalese')
               : null),
     );
   }

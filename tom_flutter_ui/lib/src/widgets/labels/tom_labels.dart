@@ -578,15 +578,15 @@ class TomAboutListTile extends TomLabelBase {
     return AboutListTile(
       icon: icon,
       applicationName: applicationName ??
-          (tomId != null ? resolveResource(context, 'applicationName') : null),
+          (tomId != null ? resolveResourceOrFail(context, 'applicationName') : null),
       applicationVersion: applicationVersion ??
           (tomId != null
-              ? resolveResource(context, 'applicationVersion')
+              ? resolveResourceOrFail(context, 'applicationVersion')
               : null),
       applicationIcon: applicationIcon,
       applicationLegalese: applicationLegalese ??
           (tomId != null
-              ? resolveResource(context, 'applicationLegalese')
+              ? resolveResourceOrFail(context, 'applicationLegalese')
               : null),
       aboutBoxChildren: aboutBoxChildren,
       dense: dense,

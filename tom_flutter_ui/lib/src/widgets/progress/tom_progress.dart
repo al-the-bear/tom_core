@@ -36,7 +36,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
-        semanticsLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+        semanticsLabel ?? (tomId != null ? resolveResourceOrFail(context, 'label') : null);
 
     return CircularProgressIndicator(
       value: value,
@@ -82,7 +82,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
-        semanticsLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+        semanticsLabel ?? (tomId != null ? resolveResourceOrFail(context, 'label') : null);
 
     return LinearProgressIndicator(
       value: value,
@@ -133,7 +133,7 @@ class TomRefreshIndicator extends TomProgressBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
-        semanticsLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+        semanticsLabel ?? (tomId != null ? resolveResourceOrFail(context, 'label') : null);
 
     return RefreshIndicator(
       onRefresh: onRefresh,

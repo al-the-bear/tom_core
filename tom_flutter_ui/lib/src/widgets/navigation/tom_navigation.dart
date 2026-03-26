@@ -326,7 +326,7 @@ class TomDrawer extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
-        semanticLabel ?? (tomId != null ? resolveResource(context, 'label') : null);
+        semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'label') : null);
 
     return Drawer(
       backgroundColor: backgroundColor,
@@ -1060,7 +1060,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle = previousPageTitle ??
-        (tomId != null ? resolveResource(context, 'previousPageTitle') : null);
+        (tomId != null ? resolveResourceOrFail(context, 'previousPageTitle') : null);
     return CupertinoNavigationBarBackButton(
       color: color,
       previousPageTitle: resolvedTitle,
