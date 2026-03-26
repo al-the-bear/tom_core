@@ -1473,6 +1473,10 @@ class TomCustomScrollView extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCacheExtent =
+        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+
     return CustomScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -1483,7 +1487,7 @@ class TomCustomScrollView extends TomContainerBase {
       shrinkWrap: shrinkWrap,
       center: center,
       anchor: anchor,
-      cacheExtent: cacheExtent,
+      cacheExtent: resolvedCacheExtent,
       slivers: slivers,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,
@@ -1593,13 +1597,23 @@ class TomExpansionPanelList extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDividerColor =
+        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+    final resolvedElevation =
+        elevation != 2 ? elevation : (resolveDoubleOrNull(context, 'elevation') ?? 2);
+    final resolvedExpandedHeaderPadding =
+        expandedHeaderPadding != const EdgeInsets.symmetric(vertical: 16.0)
+            ? expandedHeaderPadding
+            : (resolveEdgeInsetsOrNull(context, 'expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0));
+
     return ExpansionPanelList(
       children: children,
       expansionCallback: expansionCallback,
       animationDuration: animationDuration,
-      expandedHeaderPadding: expandedHeaderPadding,
-      dividerColor: dividerColor,
-      elevation: elevation,
+      expandedHeaderPadding: resolvedExpandedHeaderPadding,
+      dividerColor: resolvedDividerColor,
+      elevation: resolvedElevation,
     );
   }
 }
@@ -1631,12 +1645,19 @@ class TomInk extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+
     return Ink(
-      padding: padding,
-      color: color,
+      padding: resolvedPadding,
+      color: resolvedColor,
       decoration: decoration,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       child: child,
     );
   }
