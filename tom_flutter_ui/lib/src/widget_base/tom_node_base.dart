@@ -137,6 +137,36 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIResources.resolveColor(basePath, suffix);
   }
 
+  /// Resolves a required color from resources relative to this node's base path.
+  ///
+  /// Throws [StateError] if:
+  /// - This node has no [tomId] (resource lookup is impossible)
+  /// - No resource exists for this suffix
+  /// - The value exists but cannot be parsed as a color
+  Color resolveColorOrFail(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup. Widget: $runtimeType',
+      );
+    }
+    if (!TomUIResources.resourceExists(basePath, suffix)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a color '
+        'resource value at $basePath.$suffix. Widget: $runtimeType',
+      );
+    }
+    final value = TomUIResources.resolveColor(basePath, suffix);
+    if (value == null) {
+      throw StateError(
+        'Resource $basePath.$suffix must be a valid color for widget '
+        '$runtimeType.',
+      );
+    }
+    return value;
+  }
+
   /// Resolves a double from resources relative to this node's base path.
   ///
   /// Returns `null` if:
@@ -188,6 +218,35 @@ abstract class TomNodeBase extends StatelessWidget {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveInt(basePath, suffix);
+  }
+
+  /// Resolves a required int from resources relative to this node's base path.
+  ///
+  /// Throws [StateError] if:
+  /// - This node has no [tomId] (resource lookup is impossible)
+  /// - No resource exists for this suffix
+  /// - The value exists but is not numeric
+  int resolveIntOrFail(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup. Widget: $runtimeType',
+      );
+    }
+    if (!TomUIResources.resourceExists(basePath, suffix)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a numeric '
+        'resource value at $basePath.$suffix. Widget: $runtimeType',
+      );
+    }
+    final value = TomUIResources.resolveInt(basePath, suffix);
+    if (value == null) {
+      throw StateError(
+        'Resource $basePath.$suffix must be an int for widget $runtimeType.',
+      );
+    }
+    return value;
   }
 
   /// Resolves a bool from resources relative to this node's base path.

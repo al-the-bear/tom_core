@@ -2228,7 +2228,7 @@ class TomNestedScrollView extends TomContainerBase {
   final NestedScrollViewHeaderSliversBuilder headerSliverBuilder;
   final Widget body;
   final DragStartBehavior dragStartBehavior;
-  final bool floatHeaderSlivers;
+  final bool? floatHeaderSlivers;
   final Clip clipBehavior;
   final String? restorationId;
   final ScrollBehavior? scrollBehavior;
@@ -2244,7 +2244,7 @@ class TomNestedScrollView extends TomContainerBase {
     required this.headerSliverBuilder,
     required this.body,
     this.dragStartBehavior = DragStartBehavior.start,
-    this.floatHeaderSlivers = false,
+    this.floatHeaderSlivers,
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.scrollBehavior,
@@ -2252,6 +2252,9 @@ class TomNestedScrollView extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedFloatHeaderSlivers =
+        floatHeaderSlivers ?? resolveBoolOrNull(context, 'floatHeaderSlivers') ?? false;
+
     return NestedScrollView(
       controller: controller,
       scrollDirection: scrollDirection,
@@ -2260,7 +2263,7 @@ class TomNestedScrollView extends TomContainerBase {
       headerSliverBuilder: headerSliverBuilder,
       body: body,
       dragStartBehavior: dragStartBehavior,
-      floatHeaderSlivers: floatHeaderSlivers,
+      floatHeaderSlivers: resolvedFloatHeaderSlivers,
       clipBehavior: clipBehavior,
       restorationId: restorationId,
       scrollBehavior: scrollBehavior,
@@ -2299,14 +2302,23 @@ class TomScrollbar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedThumbVisibility =
+        thumbVisibility ?? resolveBoolOrNull(context, 'thumbVisibility');
+    final resolvedTrackVisibility =
+        trackVisibility ?? resolveBoolOrNull(context, 'trackVisibility');
+    final resolvedThickness =
+        thickness ?? resolveDoubleOrNull(context, 'thickness');
+    final resolvedInteractive =
+        interactive ?? resolveBoolOrNull(context, 'interactive');
+
     return Scrollbar(
       controller: controller,
-      thumbVisibility: thumbVisibility,
-      trackVisibility: trackVisibility,
-      thickness: thickness,
+      thumbVisibility: resolvedThumbVisibility,
+      trackVisibility: resolvedTrackVisibility,
+      thickness: resolvedThickness,
       radius: radius,
       notificationPredicate: notificationPredicate,
-      interactive: interactive,
+      interactive: resolvedInteractive,
       scrollbarOrientation: scrollbarOrientation,
       child: child,
     );
@@ -2320,8 +2332,8 @@ class TomCupertinoScrollbar extends TomContainerBase {
   final Widget child;
   final ScrollController? controller;
   final bool? thumbVisibility;
-  final double thickness;
-  final double thicknessWhileDragging;
+  final double? thickness;
+  final double? thicknessWhileDragging;
   final Radius radius;
   final Radius radiusWhileDragging;
   final ScrollNotificationPredicate? notificationPredicate;
@@ -2333,8 +2345,8 @@ class TomCupertinoScrollbar extends TomContainerBase {
     required this.child,
     this.controller,
     this.thumbVisibility,
-    this.thickness = CupertinoScrollbar.defaultThickness,
-    this.thicknessWhileDragging = CupertinoScrollbar.defaultThicknessWhileDragging,
+    this.thickness,
+    this.thicknessWhileDragging,
     this.radius = CupertinoScrollbar.defaultRadius,
     this.radiusWhileDragging = CupertinoScrollbar.defaultRadiusWhileDragging,
     this.notificationPredicate,
@@ -2342,11 +2354,18 @@ class TomCupertinoScrollbar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedThumbVisibility =
+        thumbVisibility ?? resolveBoolOrNull(context, 'thumbVisibility');
+    final resolvedThickness =
+        thickness ?? resolveDoubleOrNull(context, 'thickness') ?? CupertinoScrollbar.defaultThickness;
+    final resolvedThicknessWhileDragging =
+        thicknessWhileDragging ?? resolveDoubleOrNull(context, 'thicknessWhileDragging') ?? CupertinoScrollbar.defaultThicknessWhileDragging;
+
     return CupertinoScrollbar(
       controller: controller,
-      thumbVisibility: thumbVisibility,
-      thickness: thickness,
-      thicknessWhileDragging: thicknessWhileDragging,
+      thumbVisibility: resolvedThumbVisibility,
+      thickness: resolvedThickness,
+      thicknessWhileDragging: resolvedThicknessWhileDragging,
       radius: radius,
       radiusWhileDragging: radiusWhileDragging,
       notificationPredicate: notificationPredicate,
@@ -2359,44 +2378,57 @@ class TomCupertinoScrollbar extends TomContainerBase {
 ///
 /// Bottom sheet with drag-to-expand. Auth controls sheet access.
 class TomDraggableScrollableSheet extends TomContainerBase {
-  final double initialChildSize;
-  final double minChildSize;
-  final double maxChildSize;
-  final bool expand;
-  final bool snap;
+  final double? initialChildSize;
+  final double? minChildSize;
+  final double? maxChildSize;
+  final bool? expand;
+  final bool? snap;
   final List<double>? snapSizes;
   final double? snapAnimationDuration;
   final DraggableScrollableController? controller;
-  final bool shouldCloseOnMinExtent;
+  final bool? shouldCloseOnMinExtent;
   final ScrollableWidgetBuilder builder;
 
   const TomDraggableScrollableSheet({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.initialChildSize = 0.5,
-    this.minChildSize = 0.25,
-    this.maxChildSize = 1.0,
-    this.expand = true,
-    this.snap = false,
+    this.initialChildSize,
+    this.minChildSize,
+    this.maxChildSize,
+    this.expand,
+    this.snap,
     this.snapSizes,
     this.snapAnimationDuration,
     this.controller,
-    this.shouldCloseOnMinExtent = true,
+    this.shouldCloseOnMinExtent,
     required this.builder,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedInitialChildSize =
+        initialChildSize ?? resolveDoubleOrNull(context, 'initialChildSize') ?? 0.5;
+    final resolvedMinChildSize =
+        minChildSize ?? resolveDoubleOrNull(context, 'minChildSize') ?? 0.25;
+    final resolvedMaxChildSize =
+        maxChildSize ?? resolveDoubleOrNull(context, 'maxChildSize') ?? 1.0;
+    final resolvedExpand =
+        expand ?? resolveBoolOrNull(context, 'expand') ?? true;
+    final resolvedSnap =
+        snap ?? resolveBoolOrNull(context, 'snap') ?? false;
+    final resolvedShouldCloseOnMinExtent =
+        shouldCloseOnMinExtent ?? resolveBoolOrNull(context, 'shouldCloseOnMinExtent') ?? true;
+
     return DraggableScrollableSheet(
-      initialChildSize: initialChildSize,
-      minChildSize: minChildSize,
-      maxChildSize: maxChildSize,
-      expand: expand,
-      snap: snap,
+      initialChildSize: resolvedInitialChildSize,
+      minChildSize: resolvedMinChildSize,
+      maxChildSize: resolvedMaxChildSize,
+      expand: resolvedExpand,
+      snap: resolvedSnap,
       snapSizes: snapSizes,
       controller: controller,
-      shouldCloseOnMinExtent: shouldCloseOnMinExtent,
+      shouldCloseOnMinExtent: resolvedShouldCloseOnMinExtent,
       builder: builder,
     );
   }
@@ -2408,19 +2440,19 @@ class TomDraggableScrollableSheet extends TomContainerBase {
 class TomInteractiveViewer extends TomContainerBase {
   final Clip clipBehavior;
   final PanAxis panAxis;
-  final EdgeInsets boundaryMargin;
-  final bool constrained;
-  final double maxScale;
-  final double minScale;
-  final double interactionEndFrictionCoefficient;
+  final EdgeInsets? boundaryMargin;
+  final bool? constrained;
+  final double? maxScale;
+  final double? minScale;
+  final double? interactionEndFrictionCoefficient;
   final GestureScaleEndCallback? onInteractionEnd;
   final GestureScaleStartCallback? onInteractionStart;
   final GestureScaleUpdateCallback? onInteractionUpdate;
-  final bool panEnabled;
-  final bool scaleEnabled;
-  final double scaleFactor;
+  final bool? panEnabled;
+  final bool? scaleEnabled;
+  final double? scaleFactor;
   final TransformationController? transformationController;
-  final Alignment alignment;
+  final Alignment? alignment;
   final Widget child;
 
   const TomInteractiveViewer({
@@ -2429,40 +2461,58 @@ class TomInteractiveViewer extends TomContainerBase {
     super.tomGroup,
     this.clipBehavior = Clip.hardEdge,
     this.panAxis = PanAxis.free,
-    this.boundaryMargin = EdgeInsets.zero,
-    this.constrained = true,
-    this.maxScale = 2.5,
-    this.minScale = 0.8,
-    this.interactionEndFrictionCoefficient = 0.0000135,
+    this.boundaryMargin,
+    this.constrained,
+    this.maxScale,
+    this.minScale,
+    this.interactionEndFrictionCoefficient,
     this.onInteractionEnd,
     this.onInteractionStart,
     this.onInteractionUpdate,
-    this.panEnabled = true,
-    this.scaleEnabled = true,
-    this.scaleFactor = kDefaultMouseScrollToScaleFactor,
+    this.panEnabled,
+    this.scaleEnabled,
+    this.scaleFactor,
     this.transformationController,
-    this.alignment = Alignment.topLeft,
+    this.alignment,
     required this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedBoundaryMargin =
+      boundaryMargin ?? resolveEdgeInsetsOrNull(context, 'boundaryMargin') ?? EdgeInsets.zero;
+    final resolvedConstrained =
+      constrained ?? resolveBoolOrNull(context, 'constrained') ?? true;
+    final resolvedMaxScale =
+      maxScale ?? resolveDoubleOrNull(context, 'maxScale') ?? 2.5;
+    final resolvedMinScale =
+      minScale ?? resolveDoubleOrNull(context, 'minScale') ?? 0.8;
+    final resolvedInteractionEndFrictionCoefficient =
+      interactionEndFrictionCoefficient ?? resolveDoubleOrNull(context, 'interactionEndFrictionCoefficient') ?? 0.0000135;
+    final resolvedPanEnabled =
+      panEnabled ?? resolveBoolOrNull(context, 'panEnabled') ?? true;
+    final resolvedScaleEnabled =
+      scaleEnabled ?? resolveBoolOrNull(context, 'scaleEnabled') ?? true;
+    final resolvedScaleFactor =
+      scaleFactor ?? resolveDoubleOrNull(context, 'scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
+    final resolvedAlignment = alignment ?? Alignment.topLeft;
+
     return InteractiveViewer(
       clipBehavior: clipBehavior,
       panAxis: panAxis,
-      boundaryMargin: boundaryMargin,
-      constrained: constrained,
-      maxScale: maxScale,
-      minScale: minScale,
-      interactionEndFrictionCoefficient: interactionEndFrictionCoefficient,
+      boundaryMargin: resolvedBoundaryMargin,
+      constrained: resolvedConstrained,
+      maxScale: resolvedMaxScale,
+      minScale: resolvedMinScale,
+      interactionEndFrictionCoefficient: resolvedInteractionEndFrictionCoefficient,
       onInteractionEnd: onInteractionEnd,
       onInteractionStart: onInteractionStart,
       onInteractionUpdate: onInteractionUpdate,
-      panEnabled: panEnabled,
-      scaleEnabled: scaleEnabled,
-      scaleFactor: scaleFactor,
+      panEnabled: resolvedPanEnabled,
+      scaleEnabled: resolvedScaleEnabled,
+      scaleFactor: resolvedScaleFactor,
       transformationController: transformationController,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       child: child,
     );
   }
@@ -2499,21 +2549,23 @@ class TomClipPath extends TomContainerBase {
 ///
 /// Single solid-color background with child. Auth on content.
 class TomColoredBox extends TomContainerBase {
-  final Color color;
+  final Color? color;
   final Widget? child;
 
   const TomColoredBox({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.color,
+    this.color,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedColor = color ?? resolveColorOrFail(context, 'color');
+
     return ColoredBox(
-      color: color,
+      color: resolvedColor,
       child: child,
     );
   }
@@ -2523,7 +2575,7 @@ class TomColoredBox extends TomContainerBase {
 ///
 /// Visual opacity 0.0–1.0. Auth on content.
 class TomOpacity extends TomContainerBase {
-  final double opacity;
+  final double? opacity;
   final bool alwaysIncludeSemantics;
   final Widget? child;
 
@@ -2531,15 +2583,17 @@ class TomOpacity extends TomContainerBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.opacity,
+    this.opacity,
     this.alwaysIncludeSemantics = false,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedOpacity = opacity ?? resolveDoubleOrFail(context, 'opacity');
+
     return Opacity(
-      opacity: opacity,
+      opacity: resolvedOpacity,
       alwaysIncludeSemantics: alwaysIncludeSemantics,
       child: child,
     );
@@ -2553,7 +2607,7 @@ class TomTransform extends TomContainerBase {
   final Matrix4 transform;
   final Offset? origin;
   final AlignmentGeometry? alignment;
-  final bool transformHitTests;
+  final bool? transformHitTests;
   final FilterQuality? filterQuality;
   final Widget? child;
 
@@ -2564,18 +2618,21 @@ class TomTransform extends TomContainerBase {
     required this.transform,
     this.origin,
     this.alignment,
-    this.transformHitTests = true,
+    this.transformHitTests,
     this.filterQuality,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedTransformHitTests =
+        transformHitTests ?? resolveBoolOrNull(context, 'transformHitTests') ?? true;
+
     return Transform(
       transform: transform,
       origin: origin,
       alignment: alignment,
-      transformHitTests: transformHitTests,
+      transformHitTests: resolvedTransformHitTests,
       filterQuality: filterQuality,
       child: child,
     );
@@ -2586,21 +2643,24 @@ class TomTransform extends TomContainerBase {
 ///
 /// Quarter-turn rotation with child. Auth on rotated content.
 class TomRotatedBox extends TomContainerBase {
-  final int quarterTurns;
+  final int? quarterTurns;
   final Widget? child;
 
   const TomRotatedBox({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.quarterTurns,
+    this.quarterTurns,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedQuarterTurns =
+        quarterTurns ?? resolveIntOrFail(context, 'quarterTurns');
+
     return RotatedBox(
-      quarterTurns: quarterTurns,
+      quarterTurns: resolvedQuarterTurns,
       child: child,
     );
   }
@@ -2610,9 +2670,9 @@ class TomRotatedBox extends TomContainerBase {
 ///
 /// Wrapping row that overflows to column (ButtonBar replacement). Auth on children.
 class TomOverflowBar extends TomContainerBase {
-  final double spacing;
+  final double? spacing;
   final MainAxisAlignment? alignment;
-  final double overflowSpacing;
+  final double? overflowSpacing;
   final OverflowBarAlignment overflowAlignment;
   final VerticalDirection overflowDirection;
   final TextDirection? textDirection;
@@ -2622,9 +2682,9 @@ class TomOverflowBar extends TomContainerBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    this.spacing = 0.0,
+    this.spacing,
     this.alignment,
-    this.overflowSpacing = 0.0,
+    this.overflowSpacing,
     this.overflowAlignment = OverflowBarAlignment.start,
     this.overflowDirection = VerticalDirection.down,
     this.textDirection,
@@ -2633,10 +2693,15 @@ class TomOverflowBar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedSpacing =
+        spacing ?? resolveDoubleOrNull(context, 'spacing') ?? 0.0;
+    final resolvedOverflowSpacing =
+        overflowSpacing ?? resolveDoubleOrNull(context, 'overflowSpacing') ?? 0.0;
+
     return OverflowBar(
-      spacing: spacing,
+      spacing: resolvedSpacing,
       alignment: alignment,
-      overflowSpacing: overflowSpacing,
+      overflowSpacing: resolvedOverflowSpacing,
       overflowAlignment: overflowAlignment,
       overflowDirection: overflowDirection,
       textDirection: textDirection,
@@ -2672,12 +2737,21 @@ class TomOverflowBox extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedMinWidth =
+        minWidth ?? resolveDoubleOrNull(context, 'minWidth');
+    final resolvedMaxWidth =
+        maxWidth ?? resolveDoubleOrNull(context, 'maxWidth');
+    final resolvedMinHeight =
+        minHeight ?? resolveDoubleOrNull(context, 'minHeight');
+    final resolvedMaxHeight =
+        maxHeight ?? resolveDoubleOrNull(context, 'maxHeight');
+
     return OverflowBox(
       alignment: alignment,
-      minWidth: minWidth,
-      maxWidth: maxWidth,
-      minHeight: minHeight,
-      maxHeight: maxHeight,
+      minWidth: resolvedMinWidth,
+      maxWidth: resolvedMaxWidth,
+      minHeight: resolvedMinHeight,
+      maxHeight: resolvedMaxHeight,
       fit: fit,
       child: child,
     );
@@ -2784,24 +2858,29 @@ class TomConstraintsTransformBox extends TomContainerBase {
 ///
 /// Limits child size when unconstrained. Auth on content.
 class TomLimitedBox extends TomContainerBase {
-  final double maxWidth;
-  final double maxHeight;
+  final double? maxWidth;
+  final double? maxHeight;
   final Widget? child;
 
   const TomLimitedBox({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.maxWidth = double.infinity,
-    this.maxHeight = double.infinity,
+    this.maxWidth,
+    this.maxHeight,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedMaxWidth =
+        maxWidth ?? resolveDoubleOrNull(context, 'maxWidth') ?? double.infinity;
+    final resolvedMaxHeight =
+        maxHeight ?? resolveDoubleOrNull(context, 'maxHeight') ?? double.infinity;
+
     return LimitedBox(
-      maxWidth: maxWidth,
-      maxHeight: maxHeight,
+      maxWidth: resolvedMaxWidth,
+      maxHeight: resolvedMaxHeight,
       child: child,
     );
   }
@@ -2811,7 +2890,7 @@ class TomLimitedBox extends TomContainerBase {
 ///
 /// Aligns child by text baseline. Auth on content.
 class TomBaseline extends TomContainerBase {
-  final double baseline;
+  final double? baseline;
   final TextBaseline baselineType;
   final Widget? child;
 
@@ -2819,15 +2898,17 @@ class TomBaseline extends TomContainerBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.baseline,
+    this.baseline,
     required this.baselineType,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedBaseline = baseline ?? resolveDoubleOrFail(context, 'baseline');
+
     return Baseline(
-      baseline: baseline,
+      baseline: resolvedBaseline,
       baselineType: baselineType,
       child: child,
     );
@@ -2839,7 +2920,7 @@ class TomBaseline extends TomContainerBase {
 /// Linear layout for dialog body lists. Auth on list content.
 class TomListBody extends TomContainerBase {
   final Axis mainAxis;
-  final bool reverse;
+  final bool? reverse;
   final List<Widget> children;
 
   const TomListBody({
@@ -2847,15 +2928,17 @@ class TomListBody extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     this.mainAxis = Axis.vertical,
-    this.reverse = false,
+    this.reverse,
     this.children = const <Widget>[],
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedReverse = reverse ?? resolveBoolOrNull(context, 'reverse') ?? false;
+
     return ListBody(
       mainAxis: mainAxis,
-      reverse: reverse,
+      reverse: resolvedReverse,
       children: children,
     );
   }
