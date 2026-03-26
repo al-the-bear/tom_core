@@ -431,6 +431,26 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     final effectiveDecoration =
       decoration ?? InputDecoration(labelText: resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        resolveIntOrNull(context, 'elevation') ?? elevation;
+    final resolvedIconDisabledColor =
+        iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
+    final resolvedIconEnabledColor =
+        iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
+    final resolvedIconSize =
+        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+    final resolvedItemHeight =
+        itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedDropdownColor =
+        dropdownColor ?? resolveColorOrNull(context, 'dropdownColor');
+    final resolvedMenuMaxHeight =
+        menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return DropdownButtonFormField<T>(
       items: items,
       value: value,
@@ -439,21 +459,21 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       decoration: effectiveDecoration,
       hint: hint,
       disabledHint: disabledHint,
-      elevation: elevation,
+      elevation: resolvedElevation,
       style: style,
       icon: icon,
-      iconDisabledColor: iconDisabledColor,
-      iconEnabledColor: iconEnabledColor,
-      iconSize: iconSize,
+      iconDisabledColor: resolvedIconDisabledColor,
+      iconEnabledColor: resolvedIconEnabledColor,
+      iconSize: resolvedIconSize,
       isDense: isDense,
       isExpanded: isExpanded,
-      itemHeight: itemHeight,
-      focusColor: focusColor,
+      itemHeight: resolvedItemHeight,
+      focusColor: resolvedFocusColor,
       focusNode: focusNode,
       autofocus: autofocus,
-      dropdownColor: dropdownColor,
-      padding: padding,
-      menuMaxHeight: menuMaxHeight,
+      dropdownColor: resolvedDropdownColor,
+      padding: resolvedPadding,
+      menuMaxHeight: resolvedMenuMaxHeight,
       enableFeedback: enableFeedback,
       alignment: alignment,
       borderRadius: borderRadius,
@@ -491,10 +511,18 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
 
   @override
   Widget buildContent(BuildContext context) {
-    final effectiveBg = backgroundColor ??
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedThumbColor =
+        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+    final resolvedPadding =
+        resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+
+    final effectiveBg = resolvedBackgroundColor ??
         CupertinoDynamicColor.resolve(
           CupertinoColors.tertiarySystemFill, context);
-    final effectiveThumb = thumbColor ??
+    final effectiveThumb = resolvedThumbColor ??
         CupertinoDynamicColor.resolve(
           CupertinoColors.white, context);
 
@@ -503,7 +531,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
       groupValue: groupValue,
       onValueChanged: onValueChanged,
       thumbColor: effectiveThumb,
-      padding: padding,
+      padding: resolvedPadding,
       backgroundColor: effectiveBg,
     );
   }

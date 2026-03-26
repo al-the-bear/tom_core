@@ -309,6 +309,14 @@ class TomTextFormField extends TomInputBase {
     final resolvedHint =
         hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMaxLines =
+        maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMinLines =
+        minLines ?? resolveIntOrNull(context, 'minLines');
+    final resolvedMaxLength =
+        maxLength ?? resolveIntOrNull(context, 'maxLength');
+
     final effectiveDecoration =
         (decoration ?? const InputDecoration()).copyWith(
       labelText: resolvedLabel,
@@ -328,9 +336,9 @@ class TomTextFormField extends TomInputBase {
       autofocus: autofocus,
       obscureText: obscureText,
       autocorrect: autocorrect,
-      maxLines: maxLines,
-      minLines: minLines,
-      maxLength: maxLength,
+      maxLines: resolvedMaxLines,
+      minLines: resolvedMinLines,
+      maxLength: resolvedMaxLength,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onFieldSubmitted: onFieldSubmitted,
@@ -526,6 +534,16 @@ class TomSearchAnchor extends TomInputBase {
     final resolvedHint =
         viewHintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedViewBackgroundColor =
+        viewBackgroundColor ?? resolveColorOrNull(context, 'viewBackgroundColor');
+    final resolvedViewElevation =
+        viewElevation ?? resolveDoubleOrNull(context, 'viewElevation');
+    final resolvedViewSurfaceTintColor =
+        viewSurfaceTintColor ?? resolveColorOrNull(context, 'viewSurfaceTintColor');
+    final resolvedDividerColor =
+        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+
     return SearchAnchor(
       isFullScreen: isFullScreen,
       searchController: searchController,
@@ -542,14 +560,14 @@ class TomSearchAnchor extends TomInputBase {
       viewLeading: viewLeading,
       viewTrailing: viewTrailing,
       viewHintText: resolvedHint,
-      viewBackgroundColor: viewBackgroundColor,
-      viewElevation: viewElevation,
-      viewSurfaceTintColor: viewSurfaceTintColor,
+      viewBackgroundColor: resolvedViewBackgroundColor,
+      viewElevation: resolvedViewElevation,
+      viewSurfaceTintColor: resolvedViewSurfaceTintColor,
       viewSide: viewSide,
       viewShape: viewShape,
       headerTextStyle: headerTextStyle,
       headerHintStyle: headerHintStyle,
-      dividerColor: dividerColor,
+      dividerColor: resolvedDividerColor,
       viewConstraints: viewConstraints,
       textCapitalization: textCapitalization,
     );
@@ -644,6 +662,20 @@ class TomEditableText extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundCursorColor =
+        backgroundCursorColor ?? resolveColorOrNull(context, 'backgroundCursorColor') ?? Colors.grey;
+    final resolvedSelectionColor =
+        selectionColor ?? resolveColorOrNull(context, 'selectionColor');
+    final resolvedCursorHeight =
+        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+    final resolvedCursorWidth =
+        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+    final resolvedMaxLines =
+        maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMinLines =
+        minLines ?? resolveIntOrNull(context, 'minLines');
+
     return EditableText(
       controller: controller,
       focusNode: focusNode,
@@ -654,12 +686,12 @@ class TomEditableText extends TomInputBase {
       style: style,
       strutStyle: strutStyle,
       cursorColor: cursorColor,
-      backgroundCursorColor: backgroundCursorColor ?? Colors.grey,
-      maxLines: maxLines,
-      minLines: minLines,
+      backgroundCursorColor: resolvedBackgroundCursorColor,
+      maxLines: resolvedMaxLines,
+      minLines: resolvedMinLines,
       expands: expands,
       autofocus: autofocus,
-      selectionColor: selectionColor,
+      selectionColor: resolvedSelectionColor,
       selectionControls: selectionControls,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
@@ -669,8 +701,8 @@ class TomEditableText extends TomInputBase {
       textScaler: textScaler,
       showCursor: showCursor,
       showSelectionHandles: showSelectionHandles,
-      cursorWidth: cursorWidth,
-      cursorHeight: cursorHeight,
+      cursorWidth: resolvedCursorWidth,
+      cursorHeight: resolvedCursorHeight,
       cursorRadius: cursorRadius,
       cursorOffset: cursorOffset,
       scrollPhysics: scrollPhysics,
@@ -759,11 +791,21 @@ class TomCupertinoTextField extends TomInputBase {
     final resolvedPlaceholder =
         placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+    final resolvedMaxLines =
+        maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMinLines =
+        minLines ?? resolveIntOrNull(context, 'minLines');
+    final resolvedMaxLength =
+        maxLength ?? resolveIntOrNull(context, 'maxLength');
+
     return CupertinoTextField(
       controller: controller,
       focusNode: focusNode,
       decoration: decoration,
-      padding: padding,
+      padding: resolvedPadding,
       placeholder: resolvedPlaceholder,
       placeholderStyle: placeholderStyle,
       prefix: prefix,
@@ -780,9 +822,9 @@ class TomCupertinoTextField extends TomInputBase {
       autofocus: autofocus,
       obscureText: obscureText,
       autocorrect: autocorrect,
-      maxLines: maxLines,
-      minLines: minLines,
-      maxLength: maxLength,
+      maxLines: resolvedMaxLines,
+      minLines: resolvedMinLines,
+      maxLength: resolvedMaxLength,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onSubmitted: onSubmitted,
@@ -869,6 +911,12 @@ class TomCupertinoDatePicker extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedItemExtent =
+        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+
     return CupertinoDatePicker(
       mode: mode,
       onDateTimeChanged: onDateTimeChanged,
@@ -879,9 +927,9 @@ class TomCupertinoDatePicker extends TomInputBase {
       maximumYear: maximumYear,
       minuteInterval: minuteInterval,
       use24hFormat: use24hFormat,
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       showDayOfWeek: showDayOfWeek,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
     );
   }
 }

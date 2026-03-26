@@ -292,6 +292,24 @@ class TomSwitchListTile extends TomToggleBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedActiveTrackColor =
+        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+    final resolvedInactiveThumbColor =
+        inactiveThumbColor ?? resolveColorOrNull(context, 'inactiveThumbColor');
+    final resolvedInactiveTrackColor =
+        inactiveTrackColor ?? resolveColorOrNull(context, 'inactiveTrackColor');
+    final resolvedTileColor =
+        tileColor ?? resolveColorOrNull(context, 'tileColor');
+    final resolvedSelectedTileColor =
+        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedContentPadding =
+        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+
     return SwitchListTile(
       value: value,
       onChanged: onChanged,
@@ -300,20 +318,20 @@ class TomSwitchListTile extends TomToggleBase {
       secondary: secondary,
       isThreeLine: isThreeLine,
       dense: dense,
-      contentPadding: contentPadding,
-      activeColor: activeColor,
-      activeTrackColor: activeTrackColor,
-      inactiveThumbColor: inactiveThumbColor,
-      inactiveTrackColor: inactiveTrackColor,
+      contentPadding: resolvedContentPadding,
+      activeColor: resolvedActiveColor,
+      activeTrackColor: resolvedActiveTrackColor,
+      inactiveThumbColor: resolvedInactiveThumbColor,
+      inactiveTrackColor: resolvedInactiveTrackColor,
       autofocus: autofocus,
       focusNode: focusNode,
       controlAffinity: controlAffinity,
       shape: shape,
-      tileColor: tileColor,
-      selectedTileColor: selectedTileColor,
+      tileColor: resolvedTileColor,
+      selectedTileColor: resolvedSelectedTileColor,
       visualDensity: visualDensity,
       enableFeedback: enableFeedback,
-      hoverColor: hoverColor,
+      hoverColor: resolvedHoverColor,
     );
   }
 }
@@ -378,6 +396,18 @@ class TomCheckboxListTile extends TomToggleBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedCheckColor =
+        checkColor ?? resolveColorOrNull(context, 'checkColor');
+    final resolvedTileColor =
+        tileColor ?? resolveColorOrNull(context, 'tileColor');
+    final resolvedSelectedTileColor =
+        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+    final resolvedContentPadding =
+        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+
     return CheckboxListTile(
       value: value,
       onChanged: onChanged,
@@ -386,14 +416,14 @@ class TomCheckboxListTile extends TomToggleBase {
       secondary: secondary,
       isThreeLine: isThreeLine,
       dense: dense,
-      contentPadding: contentPadding,
-      activeColor: activeColor,
-      checkColor: checkColor,
+      contentPadding: resolvedContentPadding,
+      activeColor: resolvedActiveColor,
+      checkColor: resolvedCheckColor,
       tristate: tristate,
       shape: shape,
       side: side,
-      tileColor: tileColor,
-      selectedTileColor: selectedTileColor,
+      tileColor: resolvedTileColor,
+      selectedTileColor: resolvedSelectedTileColor,
       visualDensity: visualDensity,
       enableFeedback: enableFeedback,
       controlAffinity: controlAffinity,
@@ -462,6 +492,16 @@ class TomRadioListTile<T> extends TomToggleBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedTileColor =
+        tileColor ?? resolveColorOrNull(context, 'tileColor');
+    final resolvedSelectedTileColor =
+        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+    final resolvedContentPadding =
+        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+
     return RadioListTile<T>(
       value: value,
       groupValue: groupValue,
@@ -471,10 +511,10 @@ class TomRadioListTile<T> extends TomToggleBase {
       secondary: secondary,
       isThreeLine: isThreeLine,
       dense: dense,
-      contentPadding: contentPadding,
-      activeColor: activeColor,
-      tileColor: tileColor,
-      selectedTileColor: selectedTileColor,
+      contentPadding: resolvedContentPadding,
+      activeColor: resolvedActiveColor,
+      tileColor: resolvedTileColor,
+      selectedTileColor: resolvedSelectedTileColor,
       visualDensity: visualDensity,
       enableFeedback: enableFeedback,
       controlAffinity: controlAffinity,
@@ -544,23 +584,48 @@ class TomToggleButtons extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedFillColor =
+        fillColor ?? resolveColorOrNull(context, 'fillColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHighlightColor =
+        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedSplashColor =
+        splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedBorderColor =
+        borderColor ?? resolveColorOrNull(context, 'borderColor');
+    final resolvedSelectedBorderColor =
+        selectedBorderColor ?? resolveColorOrNull(context, 'selectedBorderColor');
+    final resolvedDisabledBorderColor =
+        disabledBorderColor ?? resolveColorOrNull(context, 'disabledBorderColor');
+    final resolvedBorderWidth =
+        borderWidth ?? resolveDoubleOrNull(context, 'borderWidth');
+
     return ToggleButtons(
       isSelected: isSelected,
       onPressed: onPressed,
-      color: color,
-      selectedColor: selectedColor,
-      disabledColor: disabledColor,
-      fillColor: fillColor,
-      focusColor: focusColor,
-      highlightColor: highlightColor,
-      hoverColor: hoverColor,
-      splashColor: splashColor,
+      color: resolvedColor,
+      selectedColor: resolvedSelectedColor,
+      disabledColor: resolvedDisabledColor,
+      fillColor: resolvedFillColor,
+      focusColor: resolvedFocusColor,
+      highlightColor: resolvedHighlightColor,
+      hoverColor: resolvedHoverColor,
+      splashColor: resolvedSplashColor,
       focusNodes: focusNodes,
       renderBorder: renderBorder,
-      borderColor: borderColor,
-      selectedBorderColor: selectedBorderColor,
-      disabledBorderColor: disabledBorderColor,
-      borderWidth: borderWidth,
+      borderColor: resolvedBorderColor,
+      selectedBorderColor: resolvedSelectedBorderColor,
+      disabledBorderColor: resolvedDisabledBorderColor,
+      borderWidth: resolvedBorderWidth,
       borderRadius: borderRadius,
       direction: direction,
       verticalDirection: verticalDirection,
@@ -609,17 +674,31 @@ class TomCupertinoSwitch extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveTrackColor =
+        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+    final resolvedThumbColor =
+        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+    final resolvedTrackColor =
+        trackColor ?? resolveColorOrNull(context, 'trackColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedOnLabelColor =
+        onLabelColor ?? resolveColorOrNull(context, 'onLabelColor');
+    final resolvedOffLabelColor =
+        offLabelColor ?? resolveColorOrNull(context, 'offLabelColor');
+
     return CupertinoSwitch(
       value: value,
       onChanged: onChanged,
-      activeTrackColor: activeTrackColor,
-      thumbColor: thumbColor,
-      trackColor: trackColor,
+      activeTrackColor: resolvedActiveTrackColor,
+      thumbColor: resolvedThumbColor,
+      trackColor: resolvedTrackColor,
       dragStartBehavior: dragStartBehavior,
       applyTheme: applyTheme,
-      focusColor: focusColor,
-      onLabelColor: onLabelColor,
-      offLabelColor: offLabelColor,
+      focusColor: resolvedFocusColor,
+      onLabelColor: resolvedOnLabelColor,
+      offLabelColor: resolvedOffLabelColor,
       focusNode: focusNode,
       autofocus: autofocus,
     );
@@ -667,14 +746,24 @@ class TomCupertinoCheckbox extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedInactiveColor =
+        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+    final resolvedCheckColor =
+        checkColor ?? resolveColorOrNull(context, 'checkColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+
     return CupertinoCheckbox(
       value: value,
       onChanged: onChanged,
-      activeColor: activeColor,
-      inactiveColor: inactiveColor,
-      checkColor: checkColor,
+      activeColor: resolvedActiveColor,
+      inactiveColor: resolvedInactiveColor,
+      checkColor: resolvedCheckColor,
       tristate: tristate,
-      focusColor: focusColor,
+      focusColor: resolvedFocusColor,
       focusNode: focusNode,
       autofocus: autofocus,
       side: side,
@@ -721,16 +810,26 @@ class TomCupertinoRadio<T> extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedInactiveColor =
+        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+    final resolvedFillColor =
+        fillColor ?? resolveColorOrNull(context, 'fillColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+
     return CupertinoRadio<T>(
       value: value,
       groupValue: groupValue,
       onChanged: onChanged,
       mouseCursor: mouseCursor,
       toggleable: toggleable,
-      activeColor: activeColor,
-      inactiveColor: inactiveColor,
-      fillColor: fillColor,
-      focusColor: focusColor,
+      activeColor: resolvedActiveColor,
+      inactiveColor: resolvedInactiveColor,
+      fillColor: resolvedFillColor,
+      focusColor: resolvedFocusColor,
       focusNode: focusNode,
       autofocus: autofocus,
       useCheckmarkStyle: useCheckmarkStyle,
