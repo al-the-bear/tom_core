@@ -628,6 +628,10 @@ class TomResourceNavigationRail extends TomNavigationBase {
    ```
 3. Make constructor parameters nullable when they have Flutter defaults
 4. Apply defaults in buildContent(), not in constructor defaults
+5. For values that were historically `required` but should support resource override:
+  - make constructor param nullable
+  - resolve with explicit fail-fast check after `resolveXOrNull`
+  - this preserves explicit-param priority and fails fast when both are missing
 
 #### Default Value Preservation (CRITICAL)
 
@@ -686,8 +690,20 @@ itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent'),
 // ❌ WRONG — default in constructor prevents resource override
 const TomCupertinoPicker({ this.itemExtent = 32.0, ... });
 
+// ❌ WRONG — resource wins over explicit parameter
+itemExtent: resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent,
+
 // ✅ CORRECT — 3-way pattern preserves Flutter defaults
 itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
+
+// ✅ CORRECT — formerly required value, now nullable with fail-fast
+final resolvedItemExtent =
+    itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+if (resolvedItemExtent == null) {
+  throw StateError(
+    'TomWidget requires itemExtent either as explicit param or resource value.',
+  );
+}
 ```
 
 ### Phase 3: Complex Structure Support

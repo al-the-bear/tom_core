@@ -659,9 +659,9 @@ class TomRow extends TomContainerBase {
 class TomWrap extends TomContainerBase {
   final Axis direction;
   final WrapAlignment alignment;
-  final double spacing;
+  final double? spacing;
   final WrapAlignment runAlignment;
-  final double runSpacing;
+  final double? runSpacing;
   final WrapCrossAlignment crossAxisAlignment;
   final TextDirection? textDirection;
   final VerticalDirection verticalDirection;
@@ -674,9 +674,9 @@ class TomWrap extends TomContainerBase {
     super.tomGroup,
     this.direction = Axis.horizontal,
     this.alignment = WrapAlignment.start,
-    this.spacing = 0.0,
+    this.spacing,
     this.runAlignment = WrapAlignment.start,
-    this.runSpacing = 0.0,
+    this.runSpacing,
     this.crossAxisAlignment = WrapCrossAlignment.start,
     this.textDirection,
     this.verticalDirection = VerticalDirection.down,
@@ -688,9 +688,9 @@ class TomWrap extends TomContainerBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSpacing =
-        spacing != 0.0 ? spacing : (resolveDoubleOrNull(context, 'spacing') ?? 0.0);
+      spacing ?? resolveDoubleOrNull(context, 'spacing') ?? 0.0;
     final resolvedRunSpacing =
-        runSpacing != 0.0 ? runSpacing : (resolveDoubleOrNull(context, 'runSpacing') ?? 0.0);
+      runSpacing ?? resolveDoubleOrNull(context, 'runSpacing') ?? 0.0;
 
     return Wrap(
       direction: direction,
@@ -1042,7 +1042,7 @@ class TomIntrinsicWidth extends TomContainerBase {
 /// Tom wrapper for [Material].
 class TomMaterial extends TomContainerBase {
   final MaterialType type;
-  final double elevation;
+  final double? elevation;
   final Color? color;
   final Color? shadowColor;
   final Color? surfaceTintColor;
@@ -1059,7 +1059,7 @@ class TomMaterial extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     this.type = MaterialType.canvas,
-    this.elevation = 0.0,
+    this.elevation,
     this.color,
     this.shadowColor,
     this.surfaceTintColor,
@@ -1076,7 +1076,7 @@ class TomMaterial extends TomContainerBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        elevation != 0.0 ? elevation : (resolveDoubleOrNull(context, 'elevation') ?? 0.0);
+      elevation ?? resolveDoubleOrNull(context, 'elevation') ?? 0.0;
     final resolvedColor = color ?? resolveColorOrNull(context, 'color');
     final resolvedShadowColor =
         shadowColor ?? resolveColorOrNull(context, 'shadowColor');
@@ -1579,9 +1579,9 @@ class TomExpansionPanelList extends TomContainerBase {
   final List<ExpansionPanel> children;
   final ExpansionPanelCallback? expansionCallback;
   final Duration animationDuration;
-  final EdgeInsets expandedHeaderPadding;
+  final EdgeInsets? expandedHeaderPadding;
   final Color? dividerColor;
-  final double elevation;
+  final double? elevation;
 
   const TomExpansionPanelList({
     super.key,
@@ -1590,9 +1590,9 @@ class TomExpansionPanelList extends TomContainerBase {
     this.children = const [],
     this.expansionCallback,
     this.animationDuration = kThemeAnimationDuration,
-    this.expandedHeaderPadding = const EdgeInsets.symmetric(vertical: 16.0),
+    this.expandedHeaderPadding,
     this.dividerColor,
-    this.elevation = 2,
+    this.elevation,
   });
 
   @override
@@ -1601,11 +1601,9 @@ class TomExpansionPanelList extends TomContainerBase {
     final resolvedDividerColor =
         dividerColor ?? resolveColorOrNull(context, 'dividerColor');
     final resolvedElevation =
-        elevation != 2 ? elevation : (resolveDoubleOrNull(context, 'elevation') ?? 2);
+      elevation ?? resolveDoubleOrNull(context, 'elevation') ?? 2;
     final resolvedExpandedHeaderPadding =
-        expandedHeaderPadding != const EdgeInsets.symmetric(vertical: 16.0)
-            ? expandedHeaderPadding
-            : (resolveEdgeInsetsOrNull(context, 'expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0));
+      expandedHeaderPadding ?? resolveEdgeInsetsOrNull(context, 'expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0);
 
     return ExpansionPanelList(
       children: children,

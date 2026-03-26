@@ -355,7 +355,7 @@ class TomListWheelScrollView extends TomListBase {
   final bool useMagnifier;
   final double? magnification;
   final double? overAndUnderCenterOpacity;
-  final double itemExtent;
+  final double? itemExtent;
   final double? squeeze;
   final ValueChanged<int>? onSelectedItemChanged;
   final bool renderChildrenOutsideViewport;
@@ -376,7 +376,7 @@ class TomListWheelScrollView extends TomListBase {
     this.useMagnifier = false,
     this.magnification,
     this.overAndUnderCenterOpacity,
-    required this.itemExtent,
+    this.itemExtent,
     this.squeeze,
     this.onSelectedItemChanged,
     this.renderChildrenOutsideViewport = false,
@@ -400,7 +400,12 @@ class TomListWheelScrollView extends TomListBase {
     final resolvedOverAndUnderCenterOpacity =
         overAndUnderCenterOpacity ?? resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? 1.0;
     final resolvedItemExtent =
-        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+    if (resolvedItemExtent == null) {
+      throw StateError(
+        'TomListWheelScrollView requires itemExtent either as an explicit parameter or as a resource value.',
+      );
+    }
     final resolvedSqueeze =
         squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.0;
 

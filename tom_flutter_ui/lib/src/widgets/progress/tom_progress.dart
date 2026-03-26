@@ -12,7 +12,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
   final Color? backgroundColor;
   final Color? color;
   final Animation<Color?>? valueColor;
-  final double strokeWidth;
+  final double? strokeWidth;
   final double strokeAlign;
   final String? semanticsLabel;
   final String? semanticsValue;
@@ -26,7 +26,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
     this.backgroundColor,
     this.color,
     this.valueColor,
-    this.strokeWidth = 4.0,
+    this.strokeWidth,
     this.strokeAlign = 0.0,
     this.semanticsLabel,
     this.semanticsValue,
@@ -43,7 +43,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedStrokeWidth =
-        strokeWidth != 4.0 ? strokeWidth : (resolveDoubleOrNull(context, 'strokeWidth') ?? 4.0);
+      strokeWidth ?? resolveDoubleOrNull(context, 'strokeWidth') ?? 4.0;
 
     return CircularProgressIndicator(
       value: value,

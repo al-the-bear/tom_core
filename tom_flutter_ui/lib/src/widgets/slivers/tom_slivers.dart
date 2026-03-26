@@ -56,14 +56,14 @@ class TomPinnedHeaderSliver extends TomSliverBase {
 ///
 /// Constrains sliver cross-axis size. Auth on constrained sliver content.
 class TomSliverConstrainedCrossAxis extends TomSliverBase {
-  final double maxExtent;
+  final double? maxExtent;
   final Widget sliver;
 
   const TomSliverConstrainedCrossAxis({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.maxExtent,
+    this.maxExtent,
     required this.sliver,
   });
 
@@ -71,7 +71,12 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedMaxExtent =
-        resolveDoubleOrNull(context, 'maxExtent') ?? maxExtent;
+      maxExtent ?? resolveDoubleOrNull(context, 'maxExtent');
+    if (resolvedMaxExtent == null) {
+      throw StateError(
+        'TomSliverConstrainedCrossAxis requires maxExtent either as an explicit parameter or as a resource value.',
+      );
+    }
 
     return SliverConstrainedCrossAxis(
       maxExtent: resolvedMaxExtent,
@@ -161,21 +166,26 @@ class TomSliverFillViewport extends TomSliverBase {
 /// Fixed-height items in sliver. Auth on list content.
 class TomSliverFixedExtentList extends TomSliverBase {
   final SliverChildDelegate delegate;
-  final double itemExtent;
+  final double? itemExtent;
 
   const TomSliverFixedExtentList({
     super.key,
     super.tomId,
     super.tomGroup,
     required this.delegate,
-    required this.itemExtent,
+    this.itemExtent,
   });
 
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedItemExtent =
-        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+      itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+    if (resolvedItemExtent == null) {
+      throw StateError(
+        'TomSliverFixedExtentList requires itemExtent either as an explicit parameter or as a resource value.',
+      );
+    }
 
     return SliverFixedExtentList(
       delegate: delegate,
