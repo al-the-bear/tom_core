@@ -26,28 +26,28 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // ==========================================================================
     // Demo 01: Buttons - Section Headers
     // ==========================================================================
-    'demo01.section.primary.title': 'Primary Buttons',
-    'demo01.section.primary.subtitle':
+    'demo01.section.primary.title.label': 'Primary Buttons',
+    'demo01.section.primary.subtitle.label':
         'High-emphasis buttons for primary actions',
-    'demo01.section.secondary.title': 'Secondary Buttons',
-    'demo01.section.secondary.subtitle':
+    'demo01.section.secondary.title.label': 'Secondary Buttons',
+    'demo01.section.secondary.subtitle.label':
         'Lower emphasis buttons for secondary actions',
-    'demo01.section.iconFab.title': 'Icon & FAB Buttons',
-    'demo01.section.iconFab.subtitle':
+    'demo01.section.iconFab.title.label': 'Icon & FAB Buttons',
+    'demo01.section.iconFab.subtitle.label':
         'Compact icon buttons and floating action buttons',
-    'demo01.section.segmentedMenu.title': 'Segmented & Menu Buttons',
-    'demo01.section.segmentedMenu.subtitle':
+    'demo01.section.segmentedMenu.title.label': 'Segmented & Menu Buttons',
+    'demo01.section.segmentedMenu.subtitle.label':
         'Selection groups and menu interactions',
-    'demo01.section.navigation.title': 'Navigation Buttons',
-    'demo01.section.navigation.subtitle':
+    'demo01.section.navigation.title.label': 'Navigation Buttons',
+    'demo01.section.navigation.subtitle.label':
         'Navigation controls and context buttons',
 
     // ==========================================================================
     // Demo 01: TomElevatedButton Card
     // ==========================================================================
     'demo01.elevated.icon': 'mSmartButton',
-    'demo01.elevated.title': 'TomElevatedButton',
-    'demo01.elevated.description':
+    'demo01.elevated.title.label': 'TomElevatedButton',
+    'demo01.elevated.description.label':
         'Primary action buttons with elevation and shadow effect.',
     'demo01.elevated.basic.label': 'Basic',
     'demo01.elevated.disabled.label': 'Disabled',
@@ -66,8 +66,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomFilledButton Card
     // ==========================================================================
     'demo01.filled.icon': 'mRectangle',
-    'demo01.filled.title': 'TomFilledButton',
-    'demo01.filled.description':
+    'demo01.filled.title.label': 'TomFilledButton',
+    'demo01.filled.description.label':
         'Material 3 filled buttons with highest visual emphasis.',
     'demo01.filled.basic.label': 'Filled',
     'demo01.filled.disabled.label': 'Disabled',
@@ -84,8 +84,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomTextButton Card
     // ==========================================================================
     'demo01.text.icon': 'mTextFields',
-    'demo01.text.title': 'TomTextButton',
-    'demo01.text.description':
+    'demo01.text.title.label': 'TomTextButton',
+    'demo01.text.description.label':
         'Low-emphasis buttons for less prominent actions.',
     'demo01.text.basic.label': 'Text Button',
     'demo01.text.disabled.label': 'Disabled',
@@ -100,8 +100,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomOutlinedButton Card
     // ==========================================================================
     'demo01.outlined.icon': 'mRectangle',
-    'demo01.outlined.title': 'TomOutlinedButton',
-    'demo01.outlined.description':
+    'demo01.outlined.title.label': 'TomOutlinedButton',
+    'demo01.outlined.description.label':
         'Medium-emphasis buttons with outline border.',
     'demo01.outlined.basic.label': 'Outlined',
     'demo01.outlined.disabled.label': 'Disabled',
@@ -116,8 +116,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomIconButton Card
     // ==========================================================================
     'demo01.icon.icon': 'mTouchApp',
-    'demo01.icon.title': 'TomIconButton',
-    'demo01.icon.description': 'Compact icon-only buttons for actions.',
+    'demo01.icon.title.label': 'TomIconButton',
+    'demo01.icon.description.label': 'Compact icon-only buttons for actions.',
     'demo01.icon.favorite.icon': 'mFavorite',
     'demo01.icon.favorite.tooltip': 'Favorite',
     'demo01.icon.share.icon': 'mShare',
@@ -145,8 +145,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomFloatingActionButton Card
     // ==========================================================================
     'demo01.fab.icon': 'mAddCircle',
-    'demo01.fab.title': 'TomFloatingActionButton',
-    'demo01.fab.description':
+    'demo01.fab.title.label': 'TomFloatingActionButton',
+    'demo01.fab.description.label':
         'Circular floating buttons for primary actions.',
     'demo01.fab.basic.icon': 'mAdd',
     'demo01.fab.basic.tooltip': 'Add',
@@ -167,8 +167,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: TomSegmentedButton Card
     // ==========================================================================
     'demo01.segmented.icon': 'mSegment',
-    'demo01.segmented.title': 'TomSegmentedButton',
-    'demo01.segmented.description':
+    'demo01.segmented.title.label': 'TomSegmentedButton',
+    'demo01.segmented.description.label':
         'Single or multi-select from a set of options.',
     'demo01.segmented.day.label': 'Day',
     'demo01.segmented.day.icon': 'mCalendarViewDay',
@@ -190,8 +190,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: Menu Buttons Card
     // ==========================================================================
     'demo01.menu.icon': 'mMenu',
-    'demo01.menu.title': 'Menu Buttons',
-    'demo01.menu.description':
+    'demo01.menu.title.label': 'Menu Buttons',
+    'demo01.menu.description.label':
         'Menu anchors and submenu button examples.',
     'demo01.menu.trigger.label': 'Open Menu',
     'demo01.menu.trigger.icon': 'mMenu',
@@ -225,8 +225,8 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     // Demo 01: Navigation Buttons Card
     // ==========================================================================
     'demo01.navigation.icon': 'mNavigation',
-    'demo01.navigation.title': 'Navigation Buttons',
-    'demo01.navigation.description':
+    'demo01.navigation.title.label': 'Navigation Buttons',
+    'demo01.navigation.description.label':
         'Back, close, and expand buttons for navigation.',
     'demo01.navigation.back.tooltip': 'Go back',
     'demo01.navigation.close.tooltip': 'Close',
