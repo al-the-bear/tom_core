@@ -53,10 +53,10 @@ class TomGestureDetector extends TomInteractionBase {
   final GestureForcePressUpdateCallback? onForcePressUpdate;
   final GestureForcePressEndCallback? onForcePressEnd;
   final HitTestBehavior? behavior;
-  final bool excludeFromSemantics;
+  final bool? excludeFromSemantics;
   final DragStartBehavior dragStartBehavior;
   final Set<PointerDeviceKind>? supportedDevices;
-  final bool trackpadScrollCausesScale;
+  final bool? trackpadScrollCausesScale;
   final Offset trackpadScrollToScaleFactor;
 
   const TomGestureDetector({
@@ -104,15 +104,21 @@ class TomGestureDetector extends TomInteractionBase {
     this.onForcePressUpdate,
     this.onForcePressEnd,
     this.behavior,
-    this.excludeFromSemantics = false,
+    this.excludeFromSemantics,
     this.dragStartBehavior = DragStartBehavior.start,
     this.supportedDevices,
-    this.trackpadScrollCausesScale = false,
+    this.trackpadScrollCausesScale,
     this.trackpadScrollToScaleFactor = kDefaultTrackpadScrollToScaleFactor,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedExcludeFromSemantics = excludeFromSemantics ??
+      resolveBoolOrNull(context, 'excludeFromSemantics') ?? false;
+    final resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ??
+      resolveBoolOrNull(context, 'trackpadScrollCausesScale') ?? false;
+
     return GestureDetector(
       onTap: onTap,
       onTapCancel: onTapCancel,
@@ -154,10 +160,10 @@ class TomGestureDetector extends TomInteractionBase {
       onForcePressUpdate: onForcePressUpdate,
       onForcePressEnd: onForcePressEnd,
       behavior: behavior,
-      excludeFromSemantics: excludeFromSemantics,
+      excludeFromSemantics: resolvedExcludeFromSemantics,
       dragStartBehavior: dragStartBehavior,
       supportedDevices: supportedDevices,
-      trackpadScrollCausesScale: trackpadScrollCausesScale,
+      trackpadScrollCausesScale: resolvedTrackpadScrollCausesScale,
       trackpadScrollToScaleFactor: trackpadScrollToScaleFactor,
       child: child,
     );
@@ -301,7 +307,7 @@ class TomInkResponse extends TomInteractionBase {
   final ValueChanged<bool>? onHighlightChanged;
   final ValueChanged<bool>? onHover;
   final MouseCursor? mouseCursor;
-  final bool containedInkWell;
+  final bool? containedInkWell;
   final BoxShape highlightShape;
   final double? radius;
   final BorderRadius? borderRadius;
@@ -312,12 +318,12 @@ class TomInkResponse extends TomInteractionBase {
   final WidgetStateProperty<Color?>? overlayColor;
   final Color? splashColor;
   final InteractiveInkFeatureFactory? splashFactory;
-  final bool enableFeedback;
-  final bool excludeFromSemantics;
+  final bool? enableFeedback;
+  final bool? excludeFromSemantics;
   final ValueChanged<bool>? onFocusChange;
-  final bool autofocus;
+  final bool? autofocus;
   final FocusNode? focusNode;
-  final bool canRequestFocus;
+  final bool? canRequestFocus;
   final WidgetStatesController? statesController;
   final Duration? hoverDuration;
 
@@ -335,7 +341,7 @@ class TomInkResponse extends TomInteractionBase {
     this.onHighlightChanged,
     this.onHover,
     this.mouseCursor,
-    this.containedInkWell = false,
+    this.containedInkWell,
     this.highlightShape = BoxShape.circle,
     this.radius,
     this.borderRadius,
@@ -346,18 +352,39 @@ class TomInkResponse extends TomInteractionBase {
     this.overlayColor,
     this.splashColor,
     this.splashFactory,
-    this.enableFeedback = true,
-    this.excludeFromSemantics = false,
+    this.enableFeedback,
+    this.excludeFromSemantics,
     this.onFocusChange,
-    this.autofocus = false,
+    this.autofocus,
     this.focusNode,
-    this.canRequestFocus = true,
+    this.canRequestFocus,
     this.statesController,
     this.hoverDuration,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedContainedInkWell =
+      containedInkWell ?? resolveBoolOrNull(context, 'containedInkWell') ?? false;
+    final resolvedRadius = radius ?? resolveDoubleOrNull(context, 'radius');
+    final resolvedFocusColor =
+      focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+      hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedHighlightColor =
+      highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+    final resolvedSplashColor =
+      splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedEnableFeedback =
+      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback') ?? true;
+    final resolvedExcludeFromSemantics = excludeFromSemantics ??
+      resolveBoolOrNull(context, 'excludeFromSemantics') ?? false;
+    final resolvedAutofocus =
+      autofocus ?? resolveBoolOrNull(context, 'autofocus') ?? false;
+    final resolvedCanRequestFocus =
+      canRequestFocus ?? resolveBoolOrNull(context, 'canRequestFocus') ?? true;
+
     return InkResponse(
       onTap: onTap,
       onTapDown: onTapDown,
@@ -368,23 +395,23 @@ class TomInkResponse extends TomInteractionBase {
       onHighlightChanged: onHighlightChanged,
       onHover: onHover,
       mouseCursor: mouseCursor,
-      containedInkWell: containedInkWell,
+      containedInkWell: resolvedContainedInkWell,
       highlightShape: highlightShape,
-      radius: radius,
+      radius: resolvedRadius,
       borderRadius: borderRadius,
       customBorder: customBorder,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
-      highlightColor: highlightColor,
+      focusColor: resolvedFocusColor,
+      hoverColor: resolvedHoverColor,
+      highlightColor: resolvedHighlightColor,
       overlayColor: overlayColor,
-      splashColor: splashColor,
+      splashColor: resolvedSplashColor,
       splashFactory: splashFactory,
-      enableFeedback: enableFeedback,
-      excludeFromSemantics: excludeFromSemantics,
+      enableFeedback: resolvedEnableFeedback,
+      excludeFromSemantics: resolvedExcludeFromSemantics,
       onFocusChange: onFocusChange,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       focusNode: focusNode,
-      canRequestFocus: canRequestFocus,
+      canRequestFocus: resolvedCanRequestFocus,
       statesController: statesController,
       hoverDuration: hoverDuration,
       child: child,
@@ -410,9 +437,9 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
   final DraggableCanceledCallback? onDraggableCanceled;
   final DragEndCallback? onDragEnd;
   final VoidCallback? onDragCompleted;
-  final bool ignoringFeedbackSemantics;
-  final bool ignoringFeedbackPointer;
-  final bool rootOverlay;
+  final bool? ignoringFeedbackSemantics;
+  final bool? ignoringFeedbackPointer;
+  final bool? rootOverlay;
   final HitTestBehavior hitTestBehavior;
   final bool allowedButtonsFilter;
 
@@ -434,15 +461,25 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
     this.onDraggableCanceled,
     this.onDragEnd,
     this.onDragCompleted,
-    this.ignoringFeedbackSemantics = true,
-    this.ignoringFeedbackPointer = true,
-    this.rootOverlay = false,
+    this.ignoringFeedbackSemantics,
+    this.ignoringFeedbackPointer,
+    this.rootOverlay,
     this.hitTestBehavior = HitTestBehavior.deferToChild,
     this.allowedButtonsFilter = true,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMaxSimultaneousDrags = maxSimultaneousDrags ??
+      resolveIntOrNull(context, 'maxSimultaneousDrags');
+    final resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ??
+      resolveBoolOrNull(context, 'ignoringFeedbackSemantics') ?? true;
+    final resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ??
+      resolveBoolOrNull(context, 'ignoringFeedbackPointer') ?? true;
+    final resolvedRootOverlay =
+      rootOverlay ?? resolveBoolOrNull(context, 'rootOverlay') ?? false;
+
     return Draggable<T>(
       data: data,
       axis: axis,
@@ -450,15 +487,15 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
       feedbackOffset: feedbackOffset,
       dragAnchorStrategy: dragAnchorStrategy,
       affinity: affinity,
-      maxSimultaneousDrags: maxSimultaneousDrags,
+      maxSimultaneousDrags: resolvedMaxSimultaneousDrags,
       onDragStarted: onDragStarted,
       onDragUpdate: onDragUpdate,
       onDraggableCanceled: onDraggableCanceled,
       onDragEnd: onDragEnd,
       onDragCompleted: onDragCompleted,
-      ignoringFeedbackSemantics: ignoringFeedbackSemantics,
-      ignoringFeedbackPointer: ignoringFeedbackPointer,
-      rootOverlay: rootOverlay,
+      ignoringFeedbackSemantics: resolvedIgnoringFeedbackSemantics,
+      ignoringFeedbackPointer: resolvedIgnoringFeedbackPointer,
+      rootOverlay: resolvedRootOverlay,
       hitTestBehavior: hitTestBehavior,
       feedback: feedback,
       child: child,
@@ -475,7 +512,7 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
   final DragTargetAcceptWithDetails<T>? onAcceptWithDetails;
   final DragTargetLeave<T>? onLeave;
   final DragTargetMove<T>? onMove;
-  final HitTestBehavior hitTestBehavior;
+  final HitTestBehavior? hitTestBehavior;
 
   const TomDragTarget({
     super.key,
@@ -486,18 +523,23 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
     this.onAcceptWithDetails,
     this.onLeave,
     this.onMove,
-    this.hitTestBehavior = HitTestBehavior.translucent,
+    this.hitTestBehavior,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedHitTestBehavior = hitTestBehavior ??
+        _resolveHitTestBehavior(resolveResourceOrNull(context, 'hitTestBehavior')) ??
+        HitTestBehavior.translucent;
+
     return DragTarget<T>(
       builder: builder,
       onWillAcceptWithDetails: onWillAcceptWithDetails,
       onAcceptWithDetails: onAcceptWithDetails,
       onLeave: onLeave,
       onMove: onMove,
-      hitTestBehavior: hitTestBehavior,
+      hitTestBehavior: resolvedHitTestBehavior,
     );
   }
 }
@@ -519,9 +561,9 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
   final DraggableCanceledCallback? onDraggableCanceled;
   final DragEndCallback? onDragEnd;
   final VoidCallback? onDragCompleted;
-  final bool hapticFeedbackOnStart;
-  final bool ignoringFeedbackSemantics;
-  final bool ignoringFeedbackPointer;
+  final bool? hapticFeedbackOnStart;
+  final bool? ignoringFeedbackSemantics;
+  final bool? ignoringFeedbackPointer;
   final Duration delay;
 
   const TomLongPressDraggable({
@@ -541,29 +583,39 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
     this.onDraggableCanceled,
     this.onDragEnd,
     this.onDragCompleted,
-    this.hapticFeedbackOnStart = true,
-    this.ignoringFeedbackSemantics = true,
-    this.ignoringFeedbackPointer = true,
+    this.hapticFeedbackOnStart,
+    this.ignoringFeedbackSemantics,
+    this.ignoringFeedbackPointer,
     this.delay = kLongPressTimeout,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMaxSimultaneousDrags = maxSimultaneousDrags ??
+      resolveIntOrNull(context, 'maxSimultaneousDrags');
+    final resolvedHapticFeedbackOnStart = hapticFeedbackOnStart ??
+      resolveBoolOrNull(context, 'hapticFeedbackOnStart') ?? true;
+    final resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ??
+      resolveBoolOrNull(context, 'ignoringFeedbackSemantics') ?? true;
+    final resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ??
+      resolveBoolOrNull(context, 'ignoringFeedbackPointer') ?? true;
+
     return LongPressDraggable<T>(
       data: data,
       axis: axis,
       childWhenDragging: childWhenDragging,
       feedbackOffset: feedbackOffset,
       dragAnchorStrategy: dragAnchorStrategy,
-      maxSimultaneousDrags: maxSimultaneousDrags,
+      maxSimultaneousDrags: resolvedMaxSimultaneousDrags,
       onDragStarted: onDragStarted,
       onDragUpdate: onDragUpdate,
       onDraggableCanceled: onDraggableCanceled,
       onDragEnd: onDragEnd,
       onDragCompleted: onDragCompleted,
-      hapticFeedbackOnStart: hapticFeedbackOnStart,
-      ignoringFeedbackSemantics: ignoringFeedbackSemantics,
-      ignoringFeedbackPointer: ignoringFeedbackPointer,
+      hapticFeedbackOnStart: resolvedHapticFeedbackOnStart,
+      ignoringFeedbackSemantics: resolvedIgnoringFeedbackSemantics,
+      ignoringFeedbackPointer: resolvedIgnoringFeedbackPointer,
       delay: delay,
       feedback: feedback,
       child: child,
@@ -575,21 +627,25 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
 ///
 /// Absorbs (blocks) pointer events. Auth can add/remove pointer blocking based on permissions.
 class TomAbsorbPointer extends TomInteractionBase {
-  final bool absorbing;
+  final bool? absorbing;
   final Widget? child;
 
   const TomAbsorbPointer({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.absorbing = true,
+    this.absorbing,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedAbsorbing =
+        absorbing ?? resolveBoolOrNull(context, 'absorbing') ?? true;
+
     return AbsorbPointer(
-      absorbing: absorbing,
+      absorbing: resolvedAbsorbing,
       child: child,
     );
   }
@@ -599,21 +655,25 @@ class TomAbsorbPointer extends TomInteractionBase {
 ///
 /// Ignores pointer events (pass-through). Auth on pointer passthrough control.
 class TomIgnorePointer extends TomInteractionBase {
-  final bool ignoring;
+  final bool? ignoring;
   final Widget? child;
 
   const TomIgnorePointer({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.ignoring = true,
+    this.ignoring,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIgnoring =
+        ignoring ?? resolveBoolOrNull(context, 'ignoring') ?? true;
+
     return IgnorePointer(
-      ignoring: ignoring,
+      ignoring: resolvedIgnoring,
       child: child,
     );
   }
@@ -627,7 +687,7 @@ class TomMouseRegion extends TomInteractionBase {
   final PointerExitEventListener? onExit;
   final PointerHoverEventListener? onHover;
   final MouseCursor cursor;
-  final bool opaque;
+  final bool? opaque;
   final HitTestBehavior? hitTestBehavior;
   final Widget? child;
 
@@ -639,21 +699,39 @@ class TomMouseRegion extends TomInteractionBase {
     this.onExit,
     this.onHover,
     this.cursor = MouseCursor.defer,
-    this.opaque = true,
+    this.opaque,
     this.hitTestBehavior,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOpaque = opaque ?? resolveBoolOrNull(context, 'opaque') ?? true;
+    final resolvedHitTestBehavior = hitTestBehavior ??
+        _resolveHitTestBehavior(resolveResourceOrNull(context, 'hitTestBehavior'));
+
     return MouseRegion(
       onEnter: onEnter,
       onExit: onExit,
       onHover: onHover,
       cursor: cursor,
-      opaque: opaque,
-      hitTestBehavior: hitTestBehavior,
+      opaque: resolvedOpaque,
+      hitTestBehavior: resolvedHitTestBehavior,
       child: child,
     );
+  }
+}
+
+HitTestBehavior? _resolveHitTestBehavior(String? value) {
+  switch (value?.toLowerCase()) {
+    case 'defertochild':
+      return HitTestBehavior.deferToChild;
+    case 'opaque':
+      return HitTestBehavior.opaque;
+    case 'translucent':
+      return HitTestBehavior.translucent;
+    default:
+      return null;
   }
 }

@@ -199,7 +199,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     super.tomGroup,
     required this.tween,
     required this.duration,
-    this.curve = Curves.linear,
+    this.curve,
     required this.builder,
     this.onEnd,
     this.child,
@@ -212,7 +212,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
   final Duration duration;
 
   /// The curve to apply to the animation.
-  final Curve curve;
+  final Curve? curve;
 
   /// The builder function that creates the widget tree based on the animated value.
   final ValueWidgetBuilder<T> builder;
@@ -225,10 +225,14 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCurve =
+        curve ?? _resolveCurve(resolveResourceOrNull(context, 'curve')) ?? Curves.linear;
+
     return TweenAnimationBuilder<T>(
       tween: tween,
       duration: duration,
-      curve: curve,
+      curve: resolvedCurve,
       builder: builder,
       onEnd: onEnd,
       child: child,
@@ -287,5 +291,30 @@ class TomLayoutBuilder extends TomBuilderBase {
     return LayoutBuilder(
       builder: builder,
     );
+  }
+}
+
+Curve? _resolveCurve(String? value) {
+  switch (value?.toLowerCase()) {
+    case 'linear':
+      return Curves.linear;
+    case 'ease':
+      return Curves.ease;
+    case 'easein':
+      return Curves.easeIn;
+    case 'easeout':
+      return Curves.easeOut;
+    case 'easeinout':
+      return Curves.easeInOut;
+    case 'decelerate':
+      return Curves.decelerate;
+    case 'fastoutslowin':
+      return Curves.fastOutSlowIn;
+    case 'bouncein':
+      return Curves.bounceIn;
+    case 'bounceout':
+      return Curves.bounceOut;
+    default:
+      return null;
   }
 }

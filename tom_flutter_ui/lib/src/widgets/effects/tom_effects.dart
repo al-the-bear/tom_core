@@ -249,22 +249,41 @@ class TomSelectionArea extends TomEffectBase {
 /// Flags content as sensitive to OS. Auth on sensitive content;
 /// natural fit for auth-controlled sensitivity.
 class TomSensitiveContent extends TomEffectBase {
-  final ContentSensitivity sensitivity;
+  final ContentSensitivity? sensitivity;
   final Widget child;
 
   const TomSensitiveContent({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.sensitivity,
+    this.sensitivity,
     required this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSensitivity = sensitivity ??
+        _resolveContentSensitivity(resolveResourceOrNull(context, 'sensitivity')) ??
+      ContentSensitivity.autoSensitive;
+
     return SensitiveContent(
-      sensitivity: sensitivity,
+      sensitivity: resolvedSensitivity,
       child: child,
     );
+  }
+}
+
+ContentSensitivity? _resolveContentSensitivity(String? value) {
+  switch (value?.toLowerCase()) {
+    case 'auto':
+    case 'autosensitive':
+      return ContentSensitivity.autoSensitive;
+    case 'sensitive':
+      return ContentSensitivity.sensitive;
+    case 'notsensitive':
+      return ContentSensitivity.notSensitive;
+    default:
+      return null;
   }
 }
