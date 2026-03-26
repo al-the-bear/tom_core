@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
 import '../resource_auth/tom_id_prefix.dart';
 import '../resource_auth/tom_resources.dart';
@@ -117,78 +118,111 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIIcons.resolveIcon(iconName);
   }
 
-  // ─── Phase 1: Typed Resolution Helpers ───────────────────────────────────
+  // ===========================================================================
+  // Typed Resource Resolution (Phase 1)
+  // ===========================================================================
 
-  /// Resolves a [Color] resource relative to this node's base path.
+  /// Resolves a color from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No color resource exists for this suffix
+  /// - The color name cannot be resolved to a [Color]
+  ///
+  /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
+  /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
   Color? resolveColorOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveColor(basePath, suffix);
   }
 
-  /// Resolves a [double] resource relative to this node's base path.
+  /// Resolves a double from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not numeric
   double? resolveDoubleOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveDouble(basePath, suffix);
   }
 
-  /// Resolves an [int] resource relative to this node's base path.
+  /// Resolves an int from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not numeric
   int? resolveIntOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveInt(basePath, suffix);
   }
 
-  /// Resolves a [bool] resource relative to this node's base path.
+  /// Resolves a bool from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not boolean-like
   bool? resolveBoolOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveBool(basePath, suffix);
   }
 
-  /// Resolves [EdgeInsets] resource relative to this node's base path.
+  /// Resolves edge insets from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The format is not recognized
+  ///
+  /// Accepts various formats in the JSON resource:
+  /// - A single number for uniform insets
+  /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
+  /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
   EdgeInsets? resolveEdgeInsetsOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveEdgeInsets(basePath, suffix);
   }
 
-  /// Resolves a list resource relative to this node's base path.
+  /// Resolves a list from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
-  List<T>? resolveListOrNull<T>(BuildContext context, String suffix) {
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The resource is not a list
+  List<dynamic>? resolveListOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
-    return TomUIResources.resolveList<T>(basePath, suffix);
+    return TomUIResources.resolveList(basePath, suffix);
   }
 
-  /// Resolves a map resource relative to this node's base path.
+  /// Resolves a map from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The resource is not a map
   Map<String, dynamic>? resolveMapOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomUIResources.resolveMap(basePath, suffix);
   }
 
-  /// Resolves any typed value relative to this node's base path.
+  /// Resolves any value from resources relative to this node's base path.
   ///
-  /// Returns `null` if this node has no [tomId] or no resource exists.
-  T? resolveValueOrNull<T>(BuildContext context, String suffix) {
+  /// Returns `null` if:
+  /// - This node has no [tomId]
+  /// - No resource exists for this suffix
+  dynamic resolveValueOrNull(BuildContext context, String suffix) {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
-    return TomUIResources.resolveValue<T>(basePath, suffix);
+    return TomUIResources.resolveValue(basePath, suffix);
   }
 
   /// Debug description for this node.

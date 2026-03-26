@@ -11,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Resource keys follow the pattern: `<tomId>.<suffix>`
 /// - `demo01.elevated.basic.label` → "Basic"
 /// - `demo01.elevated.save.icon` → "mSave"
-class DemoResourceAdapter extends TomUIResourceAdapter {
+class DemoResourceAdapter implements TomUIResourceAdapter {
   /// All text resources for the demo app.
   ///
   /// Keys are `<tomId>.<suffix>` where suffix is typically:
@@ -687,50 +687,33 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo03.status.classic.label': 'Classic',
   };
 
-  // ─── Phase 1: Structured Resources ─────────────────────────────────────────
-  
-  /// Structured resources for lists, maps, and typed values.
+  /// Structured data resources (lists, maps) for Phase 1 typed resolution.
   ///
-  /// Keys follow the same pattern as text resources: `<tomId>.<suffix>`
-  /// Values can be any type: List, Map, int, double, bool, String.
-  static final Map<String, Object> _structuredResources = {
-    // Example countries list for dropdown/autocomplete
-    'demo03.dropdown.country.items': [
-      {'code': 'us', 'name': 'United States'},
-      {'code': 'uk', 'name': 'United Kingdom'},
-      {'code': 'ca', 'name': 'Canada'},
-      {'code': 'au', 'name': 'Australia'},
-      {'code': 'de', 'name': 'Germany'},
-      {'code': 'fr', 'name': 'France'},
-      {'code': 'jp', 'name': 'Japan'},
+  /// These demonstrate how complex resources can be stored for widgets
+  /// to auto-assemble their content.
+  static final Map<String, dynamic> _structuredResources = {
+    // Example: Countries list for auto-assembling dropdowns
+    'demo03.dropdown.countries.items': [
+      {'value': 'us', 'label': '🇺🇸 United States', 'icon': 'mFlag'},
+      {'value': 'uk', 'label': '🇬🇧 United Kingdom', 'icon': 'mFlag'},
+      {'value': 'de', 'label': '🇩🇪 Germany', 'icon': 'mFlag'},
+      {'value': 'fr', 'label': '🇫🇷 France', 'icon': 'mFlag'},
+      {'value': 'jp', 'label': '🇯🇵 Japan', 'icon': 'mFlag'},
     ],
-    
-    // Example category list for menus
-    'demo03.menu.categories.items': [
-      'Electronics',
-      'Clothing',
-      'Home & Garden',
-      'Sports',
-      'Books',
+    // Example: Categories list
+    'demo03.dropdown.categories.items': [
+      {'value': 'electronics', 'label': 'Electronics', 'icon': 'mDevices'},
+      {'value': 'clothing', 'label': 'Clothing', 'icon': 'mCheckroom'},
+      {'value': 'homeGarden', 'label': 'Home & Garden', 'icon': 'mHome'},
+      {'value': 'books', 'label': 'Books', 'icon': 'mMenuBook'},
+      {'value': 'sports', 'label': 'Sports', 'icon': 'mSportsBaseball'},
     ],
-    
-    // Numeric config values
-    'demo03.card.basic.elevation': 4.0,
-    'demo03.icon.small.iconSize': 16.0,
-    'demo03.icon.medium.iconSize': 24.0,
-    'demo03.icon.large.iconSize': 32.0,
-    
-    // Boolean config values
-    'demo03.toggle.dense.isDense': true,
-    
-    // EdgeInsets config values
-    'demo03.card.basic.padding': [16, 8], // horizontal, vertical
-    'demo03.card.compact.padding': 8.0,   // all sides
-    'demo03.card.custom.padding': {'left': 16, 'top': 8, 'right': 16, 'bottom': 24},
-    
-    // Color references (color names that TomUIColors can resolve)
-    'demo03.card.primary.backgroundColor': 'primaryContainer',
-    'demo03.card.error.backgroundColor': 'errorContainer',
+    // Example: Numeric configuration
+    'demo03.card.elevation': 4.0,
+    'demo03.card.margin': {'all': 16},
+    'demo03.card.padding': [16, 12, 16, 12],
+    // Example: Color configuration
+    'demo03.card.backgroundColor': 'mBlue50',
   };
 
   @override
@@ -745,36 +728,38 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
   bool resourceExists(String basePath, String suffix) {
     final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
     final key = '$cleanPath.$suffix';
-    return _resources.containsKey(key);
+    return _resources.containsKey(key) ||
+        _structuredResources.containsKey(key);
   }
 
-  // ─── Phase 1: Typed Resolution Methods ───────────────────────────────────
-
   @override
-  T? resolveValue<T>(String basePath, String suffix) {
+  dynamic resolveValue(String basePath, String suffix) {
     final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
     final key = '$cleanPath.$suffix';
-    final value = _structuredResources[key];
-    if (value is T) return value;
+
+    // First check structured resources
+    if (_structuredResources.containsKey(key)) {
+      return _structuredResources[key];
+    }
+
+    // Fall back to string resources
+    if (_resources.containsKey(key)) {
+      return _resources[key];
+    }
+
     return null;
   }
 
   @override
-  List<T>? resolveList<T>(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
-    final key = '$cleanPath.$suffix';
-    final value = _structuredResources[key];
-    if (value is List) {
-      return value.whereType<T>().toList();
-    }
+  List<dynamic>? resolveList(String basePath, String suffix) {
+    final value = resolveValue(basePath, suffix);
+    if (value is List) return value;
     return null;
   }
 
   @override
   Map<String, dynamic>? resolveMap(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
-    final key = '$cleanPath.$suffix';
-    final value = _structuredResources[key];
+    final value = resolveValue(basePath, suffix);
     if (value is Map<String, dynamic>) return value;
     return null;
   }
