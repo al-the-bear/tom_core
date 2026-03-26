@@ -87,6 +87,11 @@ class InputsDemo extends StatelessWidget {
   }
 }
 
+String _slugify(String value) {
+  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+}
+
 // =============================================================================
 // Section Header
 // =============================================================================
@@ -100,13 +105,15 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sectionId = 'section.inputs.${_slugify(title)}';
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            title,
+            null,
+            tomId: sectionId,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,
@@ -114,7 +121,8 @@ class _SectionHeader extends StatelessWidget {
           ),
           const TomSizedBox(height: 4),
           TomText(
-            subtitle,
+            null,
+            tomId: '$sectionId.subtitle',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -157,6 +165,7 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final cardId = 'demo.input.card.${_slugify(title)}';
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -165,7 +174,8 @@ class _DemoCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              title,
+              null,
+              tomId: cardId,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -173,7 +183,8 @@ class _DemoCard extends StatelessWidget {
             if (description != null) ...[
               const TomSizedBox(height: 4),
               TomText(
-                description!,
+                null,
+                tomId: '$cardId.description',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -228,7 +239,8 @@ class _CodeSnippetState extends State<_CodeSnippet> {
                 ),
                 const TomSizedBox(width: 8),
                 TomText(
-                  _expanded ? 'Hide code' : 'Show code',
+                  null,
+                  tomId: _expanded ? 'demo.code.hide' : 'demo.code.show',
                   style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.primary,
                   ),
