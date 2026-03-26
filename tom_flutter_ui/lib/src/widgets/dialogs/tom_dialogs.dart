@@ -1332,9 +1332,11 @@ class TomSimpleDialogOption extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedPadding = padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return SimpleDialogOption(
       onPressed: onPressed,
-      padding: padding,
+      padding: resolvedPadding,
       child: child,
     );
   }
@@ -1361,18 +1363,18 @@ class TomLicensePage extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedApplicationName =
+      applicationName ?? resolveResourceOrNull(context, 'applicationName');
+    final resolvedApplicationVersion =
+      applicationVersion ?? resolveResourceOrNull(context, 'applicationVersion');
+    final resolvedApplicationLegalese =
+      applicationLegalese ?? resolveResourceOrNull(context, 'applicationLegalese');
+
     return LicensePage(
-      applicationName: applicationName ??
-          (tomId != null ? resolveResourceOrFail(context, 'applicationName') : null),
-      applicationVersion: applicationVersion ??
-          (tomId != null
-              ? resolveResourceOrFail(context, 'applicationVersion')
-              : null),
+      applicationName: resolvedApplicationName,
+      applicationVersion: resolvedApplicationVersion,
       applicationIcon: applicationIcon,
-      applicationLegalese: applicationLegalese ??
-          (tomId != null
-              ? resolveResourceOrFail(context, 'applicationLegalese')
-              : null),
+      applicationLegalese: resolvedApplicationLegalese,
     );
   }
 }

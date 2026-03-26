@@ -692,8 +692,8 @@ class TomAnimatedIcon extends TomImageBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
+    final resolvedSemanticLabel =
+        semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
     return AnimatedIcon(
       icon: icon,
       progress: progress,
@@ -710,7 +710,7 @@ class TomAnimatedIcon extends TomImageBase {
 /// Applies ImageFilter (blur, matrix) to child. Auth on filtered content.
 class TomImageFiltered extends TomImageBase {
   final ImageFilter imageFilter;
-  final bool enabled;
+  final bool? enabled;
   final Widget? child;
 
   const TomImageFiltered({
@@ -718,15 +718,17 @@ class TomImageFiltered extends TomImageBase {
     super.tomId,
     super.tomGroup,
     required this.imageFilter,
-    this.enabled = true,
+    this.enabled,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedEnabled = enabled ?? resolveBoolOrNull(context, 'enabled') ?? true;
+
     return ImageFiltered(
       imageFilter: imageFilter,
-      enabled: enabled,
+      enabled: resolvedEnabled,
       child: child,
     );
   }

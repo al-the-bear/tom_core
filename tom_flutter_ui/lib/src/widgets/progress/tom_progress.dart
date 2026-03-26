@@ -208,31 +208,39 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
 ///
 /// Linear Cupertino progress indicator. Auth on progress display.
 class TomCupertinoLinearActivityIndicator extends TomProgressBase {
-  final double value;
+  final double? value;
   final Color? color;
-  final double trackHeight;
-  final EdgeInsetsGeometry padding;
+  final double? trackHeight;
+  final EdgeInsetsGeometry? padding;
 
   const TomCupertinoLinearActivityIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.value = 0.0,
+    this.value,
     this.color,
-    this.trackHeight = 4.0,
-    this.padding = EdgeInsets.zero,
+    this.trackHeight,
+    this.padding,
   });
 
   @override
   Widget buildContent(BuildContext context) {
     // CupertinoActivityIndicator doesn't have a linear variant by default.
     // Using MaterialLinearProgressIndicator with Cupertino styling.
+    final resolvedValue = value ?? resolveDoubleOrNull(context, 'value') ?? 0.0;
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color') ??
+        CupertinoTheme.of(context).primaryColor;
+    final resolvedTrackHeight =
+        trackHeight ?? resolveDoubleOrNull(context, 'trackHeight') ?? 4.0;
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? EdgeInsets.zero;
+
     return Padding(
-      padding: padding,
+      padding: resolvedPadding,
       child: LinearProgressIndicator(
-        value: value,
-        color: color ?? CupertinoTheme.of(context).primaryColor,
-        minHeight: trackHeight,
+        value: resolvedValue,
+        color: resolvedColor,
+        minHeight: resolvedTrackHeight,
         backgroundColor: CupertinoColors.systemGrey5.resolveFrom(context),
       ),
     );
@@ -243,8 +251,8 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
 ///
 /// Pull-to-refresh for Cupertino scroll views. Auth can disable refresh.
 class TomCupertinoSliverRefreshControl extends TomProgressBase {
-  final double refreshTriggerPullDistance;
-  final double refreshIndicatorExtent;
+  final double? refreshTriggerPullDistance;
+  final double? refreshIndicatorExtent;
   final RefreshControlIndicatorBuilder? builder;
   final RefreshCallback? onRefresh;
 
@@ -252,17 +260,22 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    this.refreshTriggerPullDistance = 100.0,
-    this.refreshIndicatorExtent = 60.0,
+    this.refreshTriggerPullDistance,
+    this.refreshIndicatorExtent,
     this.builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
     this.onRefresh,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedRefreshTriggerPullDistance = refreshTriggerPullDistance ??
+        resolveDoubleOrNull(context, 'refreshTriggerPullDistance') ?? 100.0;
+    final resolvedRefreshIndicatorExtent = refreshIndicatorExtent ??
+        resolveDoubleOrNull(context, 'refreshIndicatorExtent') ?? 60.0;
+
     return CupertinoSliverRefreshControl(
-      refreshTriggerPullDistance: refreshTriggerPullDistance,
-      refreshIndicatorExtent: refreshIndicatorExtent,
+      refreshTriggerPullDistance: resolvedRefreshTriggerPullDistance,
+      refreshIndicatorExtent: resolvedRefreshIndicatorExtent,
       builder: builder,
       onRefresh: onRefresh,
     );

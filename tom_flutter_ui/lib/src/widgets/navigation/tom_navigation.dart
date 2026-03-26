@@ -868,7 +868,21 @@ class TomTab extends Tab with TomWidgetMixin {
   Widget build(BuildContext context) {
     final hidden = checkHidden(context);
     if (hidden != null) return hidden;
-    return applyReadonly(context, super.build(context));
+
+    final resolvedText =
+        text ?? (tomId != null ? getText(context, 'text') : null);
+
+    return applyReadonly(
+      context,
+      Tab(
+        key: key,
+        text: resolvedText,
+        icon: icon,
+        iconMargin: iconMargin,
+        height: height,
+        child: child,
+      ),
+    );
   }
 }
 
@@ -909,7 +923,23 @@ class TomNavigationDestination extends NavigationDestination
   Widget build(BuildContext context) {
     final hidden = checkHidden(context);
     if (hidden != null) return hidden;
-    return applyReadonly(context, super.build(context));
+
+    final resolvedLabel =
+        label.isNotEmpty ? label : (tomId != null ? getText(context, 'label') : label);
+    final resolvedTooltip =
+        tooltip ?? (tomId != null ? getText(context, 'tooltip') : null);
+
+    return applyReadonly(
+      context,
+      NavigationDestination(
+        key: key,
+        icon: icon,
+        selectedIcon: selectedIcon,
+        label: resolvedLabel,
+        tooltip: resolvedTooltip,
+        enabled: enabled,
+      ),
+    );
   }
 }
 
@@ -949,7 +979,21 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   Widget build(BuildContext context) {
     final hidden = checkHidden(context);
     if (hidden != null) return hidden;
-    return applyReadonly(context, super.build(context));
+
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+
+    return applyReadonly(
+      context,
+      NavigationDrawerDestination(
+        key: key,
+        icon: icon,
+        selectedIcon: selectedIcon,
+        label: label,
+        backgroundColor: resolvedBackgroundColor,
+        enabled: enabled,
+      ),
+    );
   }
 }
 
@@ -1002,15 +1046,20 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedPreviousPageTitle =
+        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+
     return CupertinoSliverNavigationBar(
       largeTitle: largeTitle,
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
       automaticallyImplyTitle: automaticallyImplyTitle,
-      previousPageTitle: previousPageTitle,
+      previousPageTitle: resolvedPreviousPageTitle,
       middle: middle,
       trailing: trailing,
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       brightness: brightness,
       padding: padding,
       border: border,
@@ -1066,8 +1115,8 @@ class TomFlexibleSpaceBar extends TomNavigationBase {
 /// Header area of a Drawer. Auth on header content.
 class TomDrawerHeader extends TomNavigationBase {
   final Decoration? decoration;
-  final EdgeInsetsGeometry padding;
-  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
   final Duration duration;
   final Curve curve;
   final Widget? child;
@@ -1077,8 +1126,8 @@ class TomDrawerHeader extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     this.decoration,
-    this.padding = const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0),
-    this.margin = const EdgeInsets.only(bottom: 8.0),
+    this.padding,
+    this.margin,
     this.duration = const Duration(milliseconds: 250),
     this.curve = Curves.fastOutSlowIn,
     this.child,
@@ -1086,10 +1135,17 @@ class TomDrawerHeader extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ??
+            const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
+    final resolvedMargin =
+        margin ?? resolveEdgeInsetsOrNull(context, 'margin') ??
+            const EdgeInsets.only(bottom: 8.0);
+
     return DrawerHeader(
       decoration: decoration,
-      padding: padding,
-      margin: margin,
+      padding: resolvedPadding,
+      margin: resolvedMargin,
       duration: duration,
       curve: curve,
       child: child,
@@ -1110,7 +1166,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
   final Widget? accountName;
   final Widget? accountEmail;
   final VoidCallback? onDetailsPressed;
-  final Color arrowColor;
+  final Color? arrowColor;
 
   const TomUserAccountsDrawerHeader({
     super.key,
@@ -1125,11 +1181,14 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     this.accountName,
     this.accountEmail,
     this.onDetailsPressed,
-    this.arrowColor = Colors.white,
+    this.arrowColor,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedArrowColor =
+        arrowColor ?? resolveColorOrNull(context, 'arrowColor') ?? Colors.white;
+
     return UserAccountsDrawerHeader(
       decoration: decoration,
       margin: margin,
@@ -1140,7 +1199,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
       accountName: accountName,
       accountEmail: accountEmail,
       onDetailsPressed: onDetailsPressed,
-      arrowColor: arrowColor,
+      arrowColor: resolvedArrowColor,
     );
   }
 }
@@ -1164,8 +1223,9 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = previousPageTitle ??
-        (tomId != null ? resolveResourceOrFail(context, 'previousPageTitle') : null);
+    final resolvedTitle =
+        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
+
     return CupertinoNavigationBarBackButton(
       color: color,
       previousPageTitle: resolvedTitle,
@@ -1179,7 +1239,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
 /// Dot indicator showing current tab page. Auth can hide page indicator.
 class TomTabPageSelector extends TomNavigationBase {
   final TabController? controller;
-  final double indicatorSize;
+  final double? indicatorSize;
   final Color? color;
   final Color? selectedColor;
   final BorderStyle? borderStyle;
@@ -1189,7 +1249,7 @@ class TomTabPageSelector extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     this.controller,
-    this.indicatorSize = 12.0,
+    this.indicatorSize,
     this.color,
     this.selectedColor,
     this.borderStyle,
@@ -1197,11 +1257,17 @@ class TomTabPageSelector extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedIndicatorSize =
+        indicatorSize ?? resolveDoubleOrNull(context, 'indicatorSize') ?? 12.0;
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+
     return TabPageSelector(
       controller: controller,
-      indicatorSize: indicatorSize,
-      color: color,
-      selectedColor: selectedColor,
+      indicatorSize: resolvedIndicatorSize,
+      color: resolvedColor,
+      selectedColor: resolvedSelectedColor,
       borderStyle: borderStyle,
     );
   }

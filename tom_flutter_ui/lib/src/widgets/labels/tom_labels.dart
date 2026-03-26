@@ -640,19 +640,19 @@ class TomAboutListTile extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedApplicationName =
+      applicationName ?? resolveResourceOrNull(context, 'applicationName');
+    final resolvedApplicationVersion =
+      applicationVersion ?? resolveResourceOrNull(context, 'applicationVersion');
+    final resolvedApplicationLegalese =
+      applicationLegalese ?? resolveResourceOrNull(context, 'applicationLegalese');
+
     return AboutListTile(
       icon: icon,
-      applicationName: applicationName ??
-          (tomId != null ? resolveResourceOrFail(context, 'applicationName') : null),
-      applicationVersion: applicationVersion ??
-          (tomId != null
-              ? resolveResourceOrFail(context, 'applicationVersion')
-              : null),
+      applicationName: resolvedApplicationName,
+      applicationVersion: resolvedApplicationVersion,
       applicationIcon: applicationIcon,
-      applicationLegalese: applicationLegalese ??
-          (tomId != null
-              ? resolveResourceOrFail(context, 'applicationLegalese')
-              : null),
+      applicationLegalese: resolvedApplicationLegalese,
       aboutBoxChildren: aboutBoxChildren,
       dense: dense,
       child: child,
@@ -683,12 +683,20 @@ class TomVerticalDivider extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedThickness =
+        thickness ?? resolveDoubleOrNull(context, 'thickness');
+    final resolvedIndent = indent ?? resolveDoubleOrNull(context, 'indent');
+    final resolvedEndIndent =
+        endIndent ?? resolveDoubleOrNull(context, 'endIndent');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+
     return VerticalDivider(
-      width: width,
-      thickness: thickness,
-      indent: indent,
-      endIndent: endIndent,
-      color: color,
+      width: resolvedWidth,
+      thickness: resolvedThickness,
+      indent: resolvedIndent,
+      endIndent: resolvedEndIndent,
+      color: resolvedColor,
     );
   }
 }
@@ -727,7 +735,7 @@ class TomBanner extends TomLabelBase {
   final TextDirection? textDirection;
   final BannerLocation location;
   final TextStyle textStyle;
-  final Color color;
+  final Color? color;
 
   const TomBanner({
     super.key,
@@ -738,7 +746,7 @@ class TomBanner extends TomLabelBase {
     this.textDirection,
     required this.location,
     this.textStyle = _kTextStyle,
-    this.color = _kColor,
+    this.color,
   });
 
   static const Color _kColor = Color(0xA0B71C1C);
@@ -752,12 +760,13 @@ class TomBanner extends TomLabelBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedMessage = message ?? resolveResourceOrFail(context, 'message');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color') ?? _kColor;
     return Banner(
       message: resolvedMessage,
       textDirection: textDirection,
       location: location,
       textStyle: textStyle,
-      color: color,
+      color: resolvedColor,
       child: child,
     );
   }
