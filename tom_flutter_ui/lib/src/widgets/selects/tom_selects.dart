@@ -725,13 +725,13 @@ class _TomCheckedPopupMenuItemState<T>
 ///
 /// Cupertino scroll wheel picker. Auth controls selection access.
 class TomCupertinoPicker extends TomSelectBase {
-  final double diameterRatio;
+  final double? diameterRatio;
   final Color? backgroundColor;
-  final double offAxisFraction;
+  final double? offAxisFraction;
   final bool useMagnifier;
-  final double magnification;
-  final double squeeze;
-  final double itemExtent;
+  final double? magnification;
+  final double? squeeze;
+  final double? itemExtent;
   final ValueChanged<int> onSelectedItemChanged;
   final List<Widget> children;
   final Widget? selectionOverlay;
@@ -741,13 +741,13 @@ class TomCupertinoPicker extends TomSelectBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    this.diameterRatio = 1.07,
+    this.diameterRatio,
     this.backgroundColor,
-    this.offAxisFraction = 0.0,
+    this.offAxisFraction,
     this.useMagnifier = false,
-    this.magnification = 1.0,
-    this.squeeze = 1.45,
-    required this.itemExtent,
+    this.magnification,
+    this.squeeze,
+    this.itemExtent,
     required this.onSelectedItemChanged,
     required this.children,
     this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
@@ -757,13 +757,13 @@ class TomCupertinoPicker extends TomSelectBase {
   @override
   Widget buildContent(BuildContext context) {
     return CupertinoPicker(
-      diameterRatio: diameterRatio,
-      backgroundColor: backgroundColor,
-      offAxisFraction: offAxisFraction,
+      diameterRatio: diameterRatio ?? resolveDoubleOrNull(context, 'diameterRatio') ?? 1.07,
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
+      offAxisFraction: offAxisFraction ?? resolveDoubleOrNull(context, 'offAxisFraction') ?? 0.0,
       useMagnifier: useMagnifier,
-      magnification: magnification,
-      squeeze: squeeze,
-      itemExtent: itemExtent,
+      magnification: magnification ?? resolveDoubleOrNull(context, 'magnification') ?? 1.0,
+      squeeze: squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.45,
+      itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
       onSelectedItemChanged: onSelectedItemChanged,
       selectionOverlay: selectionOverlay,
       looping: looping,
@@ -805,11 +805,11 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
       children: children,
       groupValue: groupValue,
       onValueChanged: onValueChanged,
-      unselectedColor: unselectedColor,
-      selectedColor: selectedColor,
-      borderColor: borderColor,
-      pressedColor: pressedColor,
-      padding: padding,
+      unselectedColor: unselectedColor ?? resolveColorOrNull(context, 'unselectedColor'),
+      selectedColor: selectedColor ?? resolveColorOrNull(context, 'selectedColor'),
+      borderColor: borderColor ?? resolveColorOrNull(context, 'borderColor'),
+      pressedColor: pressedColor ?? resolveColorOrNull(context, 'pressedColor'),
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
     );
   }
 }

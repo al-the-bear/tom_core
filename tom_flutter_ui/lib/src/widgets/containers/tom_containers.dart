@@ -1935,7 +1935,7 @@ class TomSingleChildScrollView extends TomContainerBase {
     return SingleChildScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
-      padding: padding,
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
       physics: physics,
       controller: controller,
       dragStartBehavior: dragStartBehavior,
@@ -1958,7 +1958,7 @@ class TomCarouselView extends TomContainerBase {
   final ShapeBorder? shape;
   final Clip? overlayColor;
   final double? itemExtent;
-  final double shrinkExtent;
+  final double? shrinkExtent;
   final CarouselController? controller;
   final Axis scrollDirection;
   final bool reverse;
@@ -1975,7 +1975,7 @@ class TomCarouselView extends TomContainerBase {
     this.shape,
     this.overlayColor,
     this.itemExtent,
-    this.shrinkExtent = 0.0,
+    this.shrinkExtent,
     this.controller,
     this.scrollDirection = Axis.horizontal,
     this.reverse = false,
@@ -1985,12 +1985,12 @@ class TomCarouselView extends TomContainerBase {
   @override
   Widget buildContent(BuildContext context) {
     return CarouselView(
-      padding: padding,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
+      elevation: elevation ?? resolveDoubleOrNull(context, 'elevation'),
       shape: shape,
-      itemExtent: itemExtent ?? 200.0,
-      shrinkExtent: shrinkExtent,
+      itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 200.0,
+      shrinkExtent: shrinkExtent ?? resolveDoubleOrNull(context, 'shrinkExtent') ?? 0.0,
       controller: controller,
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -2089,7 +2089,7 @@ class TomCupertinoPageScaffold extends TomContainerBase {
   Widget buildContent(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: navigationBar,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       child: child,
     );
@@ -2125,7 +2125,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
       tabBar: tabBar,
       tabBuilder: tabBuilder,
       controller: controller,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       restorationId: restorationId,
     );
@@ -2157,7 +2157,7 @@ class TomCupertinoFormRow extends TomContainerBase {
   Widget buildContent(BuildContext context) {
     return CupertinoFormRow(
       prefix: prefix,
-      padding: padding,
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
       helper: helper,
       error: error,
       child: child,
@@ -2172,7 +2172,7 @@ class TomCupertinoFormSection extends TomContainerBase {
   final List<Widget> children;
   final Widget? header;
   final Widget? footer;
-  final EdgeInsetsGeometry margin;
+  final EdgeInsetsGeometry? margin;
   final Color? backgroundColor;
   final BoxDecoration? decoration;
   final Clip clipBehavior;
@@ -2185,7 +2185,7 @@ class TomCupertinoFormSection extends TomContainerBase {
     required this.children,
     this.header,
     this.footer,
-    this.margin = EdgeInsets.zero,
+    this.margin,
     this.backgroundColor,
     this.decoration,
     this.clipBehavior = Clip.none,
@@ -2194,12 +2194,13 @@ class TomCupertinoFormSection extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedBgColor = backgroundColor ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
+    final resolvedBgColor = backgroundColor ?? resolveColorOrNull(context, 'backgroundColor') ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
+    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin') ?? EdgeInsets.zero;
     if (insetGrouped) {
       return CupertinoFormSection.insetGrouped(
         header: header,
         footer: footer,
-        margin: margin,
+        margin: resolvedMargin,
         backgroundColor: resolvedBgColor,
         decoration: decoration,
         clipBehavior: clipBehavior,
@@ -2209,7 +2210,7 @@ class TomCupertinoFormSection extends TomContainerBase {
     return CupertinoFormSection(
       header: header,
       footer: footer,
-      margin: margin,
+      margin: resolvedMargin,
       backgroundColor: resolvedBgColor,
       decoration: decoration,
       clipBehavior: clipBehavior,

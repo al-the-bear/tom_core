@@ -948,9 +948,9 @@ class TomCupertinoSearchTextField extends TomInputBase {
   final BoxDecoration? decoration;
   final Color? backgroundColor;
   final BorderRadius? borderRadius;
-  final EdgeInsetsGeometry padding;
-  final Color itemColor;
-  final double itemSize;
+  final EdgeInsetsGeometry? padding;
+  final Color? itemColor;
+  final double? itemSize;
   final Widget prefixIcon;
   final Icon suffixIcon;
   final OverlayVisibilityMode suffixMode;
@@ -976,9 +976,9 @@ class TomCupertinoSearchTextField extends TomInputBase {
     this.decoration,
     this.backgroundColor,
     this.borderRadius,
-    this.padding = const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
-    this.itemColor = CupertinoColors.secondaryLabel,
-    this.itemSize = 20.0,
+    this.padding,
+    this.itemColor,
+    this.itemSize,
     this.prefixIcon = const Icon(CupertinoIcons.search),
     this.suffixIcon = const Icon(CupertinoIcons.xmark_circle_fill),
     this.suffixMode = OverlayVisibilityMode.editing,
@@ -1004,11 +1004,11 @@ class TomCupertinoSearchTextField extends TomInputBase {
       placeholder: resolvedPlaceholder,
       placeholderStyle: placeholderStyle,
       decoration: decoration,
-      backgroundColor: backgroundColor,
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
       borderRadius: borderRadius,
-      padding: padding,
-      itemColor: itemColor,
-      itemSize: itemSize,
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
+      itemColor: itemColor ?? resolveColorOrNull(context, 'itemColor') ?? CupertinoColors.secondaryLabel,
+      itemSize: itemSize ?? resolveDoubleOrNull(context, 'itemSize') ?? 20.0,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       suffixMode: suffixMode,
@@ -1033,7 +1033,7 @@ class TomCupertinoTimerPicker extends TomInputBase {
   final int secondInterval;
   final AlignmentGeometry alignment;
   final Color? backgroundColor;
-  final double itemExtent;
+  final double? itemExtent;
   final ValueChanged<Duration> onTimerDurationChanged;
 
   const TomCupertinoTimerPicker({
@@ -1046,7 +1046,7 @@ class TomCupertinoTimerPicker extends TomInputBase {
     this.secondInterval = 1,
     this.alignment = Alignment.center,
     this.backgroundColor,
-    this.itemExtent = 32.0,
+    this.itemExtent,
     required this.onTimerDurationChanged,
   });
 
@@ -1058,8 +1058,8 @@ class TomCupertinoTimerPicker extends TomInputBase {
       minuteInterval: minuteInterval,
       secondInterval: secondInterval,
       alignment: alignment,
-      backgroundColor: backgroundColor,
-      itemExtent: itemExtent,
+      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
+      itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
       onTimerDurationChanged: onTimerDurationChanged,
     );
   }
@@ -1239,11 +1239,11 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   final FormFieldValidator<String>? validator;
   final List<TextInputFormatter>? inputFormatters;
   final bool? enabled;
-  final double cursorWidth;
+  final double? cursorWidth;
   final double? cursorHeight;
   final Color? cursorColor;
   final Brightness? keyboardAppearance;
-  final EdgeInsets scrollPadding;
+  final EdgeInsets? scrollPadding;
   final bool enableInteractiveSelection;
   final TextSelectionControls? selectionControls;
   final ScrollPhysics? scrollPhysics;
@@ -1294,11 +1294,11 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
     this.validator,
     this.inputFormatters,
     this.enabled,
-    this.cursorWidth = 2.0,
+    this.cursorWidth,
     this.cursorHeight,
     this.cursorColor,
     this.keyboardAppearance,
-    this.scrollPadding = const EdgeInsets.all(20.0),
+    this.scrollPadding,
     this.enableInteractiveSelection = true,
     this.selectionControls,
     this.scrollPhysics,
@@ -1318,7 +1318,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
 
     return CupertinoTextFormFieldRow(
       prefix: prefix,
-      padding: padding,
+      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
       controller: controller,
       initialValue: initialValue,
       focusNode: focusNode,
@@ -1352,11 +1352,11 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       validator: validator,
       inputFormatters: inputFormatters,
       enabled: enabled,
-      cursorWidth: cursorWidth,
-      cursorHeight: cursorHeight,
-      cursorColor: cursorColor,
+      cursorWidth: cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0,
+      cursorHeight: cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight'),
+      cursorColor: cursorColor ?? resolveColorOrNull(context, 'cursorColor'),
       keyboardAppearance: keyboardAppearance,
-      scrollPadding: scrollPadding,
+      scrollPadding: scrollPadding ?? resolveEdgeInsetsOrNull(context, 'scrollPadding') ?? const EdgeInsets.all(20.0),
       enableInteractiveSelection: enableInteractiveSelection,
       selectionControls: selectionControls,
       scrollPhysics: scrollPhysics,
@@ -1463,8 +1463,8 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
 
     return DropdownMenuFormField<T>(
       enabled: enabled,
-      width: width,
-      menuHeight: menuHeight,
+      width: width ?? resolveDoubleOrNull(context, 'width'),
+      menuHeight: menuHeight ?? resolveDoubleOrNull(context, 'menuHeight'),
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
       label: Text(resolvedLabel),
@@ -1483,7 +1483,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       onSelected: onSelected,
       focusNode: focusNode,
       requestFocusOnTap: requestFocusOnTap,
-      expandedInsets: expandedInsets,
+      expandedInsets: expandedInsets ?? resolveEdgeInsetsOrNull(context, 'expandedInsets'),
       alignmentOffset: alignmentOffset,
       filterCallback: filterCallback,
       searchCallback: searchCallback,
