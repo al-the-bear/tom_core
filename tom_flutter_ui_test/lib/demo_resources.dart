@@ -238,6 +238,40 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo01.context.more.tooltip': 'More options',
 
     // ==========================================================================
+    // Demo 01: ACL Layout Section (RTL/LTR)
+    // ==========================================================================
+    'demo01.section.acl.title.label': 'ACL Layout',
+    'demo01.section.acl.subtitle.label':
+        'AclBuilder-based button layouts that respond to RTL/LTR switching',
+    'demo01.aclButtons.icon': 'mViewColumn',
+    'demo01.aclButtons.title.label': 'ACL Button Layout',
+    'demo01.aclButtons.description.label':
+        'Buttons laid out with AclBuilder for automatic RTL support.',
+    'demo01.aclButtons.primaryLabel.label': 'Primary Action:',
+    'demo01.aclButtons.primary.label': 'Submit',
+    'demo01.aclButtons.primary.icon': 'mSend',
+    'demo01.aclButtons.secondaryLabel.label': 'Secondary Action:',
+    'demo01.aclButtons.secondary.label': 'Edit',
+    'demo01.aclButtons.secondary.icon': 'mEdit',
+    'demo01.aclButtons.cancel.label': 'Cancel',
+    'demo01.aclButtons.save.label': 'Save',
+    'demo01.aclButtons.save.icon': 'mSave',
+    'demo01.aclIconRow.icon': 'mViewHeadline',
+    'demo01.aclIconRow.title.label': 'ACL Icon Row',
+    'demo01.aclIconRow.description.label':
+        'Icon buttons in a toolbar-style layout with ACL.',
+    'demo01.aclIconRow.back.icon': 'mArrowBack',
+    'demo01.aclIconRow.back.tooltip': 'Go back',
+    'demo01.aclIconRow.pageTitle.label': 'Page Title',
+    'demo01.aclIconRow.settings.icon': 'mSettings',
+    'demo01.aclIconRow.settings.tooltip': 'Settings',
+    'demo01.aclIconRow.menu.icon': 'mMoreVert',
+    'demo01.aclIconRow.menu.tooltip': 'Menu',
+    'demo01.aclIconRow.fabLabel.label': 'Quick action:',
+    'demo01.aclIconRow.fab.icon': 'mAdd',
+    'demo01.aclIconRow.fab.tooltip': 'Add new item',
+
+    // ==========================================================================
     // Demo 02: Text Inputs - Section Headers
     // ==========================================================================
     'demo02.section.standard.title.label': 'Standard Text Fields',

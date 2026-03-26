@@ -91,6 +91,16 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ),
             const TomSizedBox(height: 16),
             _buildNavigationButtonSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 6: ACL Layout Demo (RTL/LTR)
+            _SectionHeader(
+              tomId: 'demo01.section.acl',
+            ),
+            const TomSizedBox(height: 16),
+            _buildAclButtonSection(),
+            const TomSizedBox(height: 24),
+            _buildAclIconRowSection(),
             const TomSizedBox(height: 48),
           ],
         ),
@@ -103,9 +113,14 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
   // ===========================================================================
 
   Widget _buildElevatedButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.elevated',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.elevated',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic variants row
@@ -178,14 +193,20 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildFilledButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.filled',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.filled',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic filled buttons
@@ -245,6 +266,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -254,9 +276,14 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
   // ===========================================================================
 
   Widget _buildTextButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.text',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.text',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic variants
@@ -314,14 +341,20 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildOutlinedButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.outlined',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.outlined',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic variants
@@ -386,6 +419,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -395,9 +429,14 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
   // ===========================================================================
 
   Widget _buildIconButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.icon',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.icon',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic icon buttons
@@ -475,14 +514,20 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildFabSection() {
-    return _DemoCard(
-      tomId: 'demo01.fab',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.fab',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Standard FABs
@@ -552,6 +597,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
@@ -561,9 +607,14 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
   // ===========================================================================
 
   Widget _buildSegmentedButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.segmented',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.segmented',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Single select
@@ -641,14 +692,20 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             onSelectionChanged: (_) {},
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildMenuButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.menu',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.menu',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic Menu
@@ -766,6 +823,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             onSelected: (_) {},
           ),
         ],
+        ),
       ),
     );
   }
@@ -775,9 +833,14 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
   // ===========================================================================
 
   Widget _buildNavigationButtonSection() {
-    return _DemoCard(
-      tomId: 'demo01.navigation',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo01.navigation',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Back and Close buttons
@@ -840,7 +903,98 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             ),
           ),
         ],
+        ),
       ),
+    );
+  }
+
+  // ===========================================================================
+  // Section 6: ACL Layout Demo (RTL/LTR)
+  // ===========================================================================
+
+  Widget _buildAclButtonSection() {
+    return _DemoCard(
+      tomId: 'demo01.aclButtons',
+      child: AclBuilder()
+          // Row 1: Label + Button side by side
+          .append(TomText(null, tomId: 'demo01.aclButtons.primaryLabel'))
+          .append(
+            TomElevatedButton(
+              tomId: 'demo01.aclButtons.primary',
+              onPressed: () {},
+            ),
+            dist: 16,
+          )
+          .gap()
+          .newRow(dist: 16)
+          // Row 2: Label + Button side by side
+          .append(TomText(null, tomId: 'demo01.aclButtons.secondaryLabel'))
+          .append(
+            TomOutlinedButton(
+              tomId: 'demo01.aclButtons.secondary',
+              onPressed: () {},
+            ),
+            dist: 16,
+          )
+          .gap()
+          .newRow(dist: 16)
+          // Row 3: Multiple buttons aligned
+          .append(
+            TomTextButton(
+              tomId: 'demo01.aclButtons.cancel',
+              onPressed: () {},
+            ),
+          )
+          .gap()
+          .append(
+            TomFilledButton(
+              tomId: 'demo01.aclButtons.save',
+              onPressed: () {},
+            ),
+            dist: 8,
+          )
+          .build(),
+    );
+  }
+
+  Widget _buildAclIconRowSection() {
+    return _DemoCard(
+      tomId: 'demo01.aclIconRow',
+      child: AclBuilder()
+          // Row 1: Icon buttons in a row
+          .append(TomIconButton(
+            tomId: 'demo01.aclIconRow.back',
+            onPressed: () {},
+          ))
+          .append(
+            TomText(null, tomId: 'demo01.aclIconRow.pageTitle'),
+            dist: 8,
+          )
+          .expandX()
+          .append(TomIconButton(
+            tomId: 'demo01.aclIconRow.settings',
+            onPressed: () {},
+          ))
+          .append(
+            TomIconButton(
+              tomId: 'demo01.aclIconRow.menu',
+              onPressed: () {},
+            ),
+            dist: 4,
+          )
+          .newRow(dist: 24)
+          // Row 2: FAB row
+          .append(TomText(null, tomId: 'demo01.aclIconRow.fabLabel'))
+          .gap()
+          .append(
+            TomFloatingActionButton.small(
+              tomId: 'demo01.aclIconRow.fab',
+              heroTag: 'acl_fab',
+              onPressed: () {},
+            ),
+            dist: 16,
+          )
+          .build(),
     );
   }
 }
