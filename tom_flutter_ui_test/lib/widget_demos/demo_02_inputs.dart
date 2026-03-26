@@ -471,7 +471,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               TomIcon(null, tomId: 'demo02.calendar.selectedIcon'),
               const TomSizedBox(width: 8),
               TomText(
-                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                MaterialLocalizations.of(context).formatShortDate(_selectedDate),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],

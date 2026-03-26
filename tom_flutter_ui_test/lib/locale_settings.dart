@@ -16,6 +16,7 @@ class AppLocales {
     LocaleOption(Locale('en', 'GB'), 'English (UK)', '🇬🇧'),
     LocaleOption(Locale('de', 'DE'), 'Deutsch (Deutschland)', '🇩🇪'),
     LocaleOption(Locale('de', 'AT'), 'Deutsch (Österreich)', '🇦🇹'),
+    LocaleOption(Locale('ar', 'AE'), 'العربية (الإمارات)', '🇦🇪'),
     LocaleOption(Locale('tr', 'TR'), 'Türkçe', '🇹🇷'),
     LocaleOption(Locale('el', 'GR'), 'Ελληνικά', '🇬🇷'),
     LocaleOption(Locale('ru', 'RU'), 'Русский', '🇷🇺'),
