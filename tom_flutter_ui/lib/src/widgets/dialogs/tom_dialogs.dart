@@ -96,10 +96,22 @@ class TomAlertDialog extends TomDialogBase {
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIconColor =
+        iconColor ?? resolveColorOrNull(context, 'iconColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+
     return AlertDialog(
       icon: icon,
       iconPadding: iconPadding,
-      iconColor: iconColor,
+      iconColor: resolvedIconColor,
       title: effectiveTitle,
       titlePadding: titlePadding,
       titleTextStyle: titleTextStyle,
@@ -113,10 +125,10 @@ class TomAlertDialog extends TomDialogBase {
       actionsOverflowDirection: actionsOverflowDirection,
       actionsOverflowButtonSpacing: actionsOverflowButtonSpacing,
       buttonPadding: buttonPadding,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      elevation: resolvedElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       semanticLabel: semanticLabel,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,
@@ -175,15 +187,25 @@ class TomSimpleDialog extends TomDialogBase {
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+
     return SimpleDialog(
       title: effectiveTitle,
       titlePadding: titlePadding,
       titleTextStyle: titleTextStyle,
       contentPadding: contentPadding,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      elevation: resolvedElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       semanticLabel: semanticLabel,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,

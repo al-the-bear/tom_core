@@ -68,6 +68,26 @@ class TomFilterChip extends TomChipBase {
     final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
     final chipLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCheckmarkColor =
+        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedSelectedShadowColor =
+        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedPressElevation =
+        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+    final resolvedDeleteIconColor =
+        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+
     Widget chip = FilterChip(
       selected: selected,
       onSelected: onSelected,
@@ -77,21 +97,21 @@ class TomFilterChip extends TomChipBase {
       labelPadding: labelPadding,
       padding: padding,
       showCheckmark: showCheckmark,
-      checkmarkColor: checkmarkColor,
-      selectedColor: selectedColor,
-      disabledColor: disabledColor,
-      backgroundColor: backgroundColor,
-      selectedShadowColor: selectedShadowColor,
-      shadowColor: shadowColor,
+      checkmarkColor: resolvedCheckmarkColor,
+      selectedColor: resolvedSelectedColor,
+      disabledColor: resolvedDisabledColor,
+      backgroundColor: resolvedBackgroundColor,
+      selectedShadowColor: resolvedSelectedShadowColor,
+      shadowColor: resolvedShadowColor,
       shape: shape,
       side: side,
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
-      elevation: elevation,
-      pressElevation: pressElevation,
+      elevation: resolvedElevation,
+      pressElevation: resolvedPressElevation,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: deleteIconColor,
+      deleteIconColor: resolvedDeleteIconColor,
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
     );
 
@@ -153,6 +173,22 @@ class TomChoiceChip extends TomChipBase {
     final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
     final chipLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedSelectedShadowColor =
+        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedPressElevation =
+        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+
     Widget chip = ChoiceChip(
       selected: selected,
       onSelected: onSelected,
@@ -161,17 +197,17 @@ class TomChoiceChip extends TomChipBase {
       labelStyle: labelStyle,
       labelPadding: labelPadding,
       padding: padding,
-      selectedColor: selectedColor,
-      disabledColor: disabledColor,
-      backgroundColor: backgroundColor,
-      selectedShadowColor: selectedShadowColor,
-      shadowColor: shadowColor,
+      selectedColor: resolvedSelectedColor,
+      disabledColor: resolvedDisabledColor,
+      backgroundColor: resolvedBackgroundColor,
+      selectedShadowColor: resolvedSelectedShadowColor,
+      shadowColor: resolvedShadowColor,
       shape: shape,
       side: side,
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
-      elevation: elevation,
-      pressElevation: pressElevation,
+      elevation: resolvedElevation,
+      pressElevation: resolvedPressElevation,
     );
 
     return chip;
@@ -229,6 +265,18 @@ class TomActionChip extends TomChipBase {
     final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
     final chipLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedPressElevation =
+        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+
     Widget chip = ActionChip(
       onPressed: onPressed,
       avatar: avatar,
@@ -237,15 +285,15 @@ class TomActionChip extends TomChipBase {
       labelPadding: labelPadding,
       padding: padding,
       tooltip: resolvedTooltip,
-      backgroundColor: backgroundColor,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       shape: shape,
       side: side,
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
-      elevation: elevation,
-      pressElevation: pressElevation,
+      elevation: resolvedElevation,
+      pressElevation: resolvedPressElevation,
     );
 
     return chip;
@@ -325,6 +373,26 @@ class TomInputChip extends TomChipBase {
     final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
     final chipLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDeleteIconColor =
+        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+    final resolvedCheckmarkColor =
+        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedSelectedShadowColor =
+        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedPressElevation =
+        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+
     return InputChip(
       selected: selected,
       isEnabled: isEnabled,
@@ -337,21 +405,21 @@ class TomInputChip extends TomChipBase {
       labelPadding: labelPadding,
       padding: padding,
       deleteIcon: deleteIcon,
-      deleteIconColor: deleteIconColor,
+      deleteIconColor: resolvedDeleteIconColor,
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
       showCheckmark: showCheckmark,
-      checkmarkColor: checkmarkColor,
-      selectedColor: selectedColor,
-      disabledColor: disabledColor,
-      backgroundColor: backgroundColor,
-      selectedShadowColor: selectedShadowColor,
-      shadowColor: shadowColor,
+      checkmarkColor: resolvedCheckmarkColor,
+      selectedColor: resolvedSelectedColor,
+      disabledColor: resolvedDisabledColor,
+      backgroundColor: resolvedBackgroundColor,
+      selectedShadowColor: resolvedSelectedShadowColor,
+      shadowColor: resolvedShadowColor,
       shape: shape,
       side: side,
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
-      elevation: elevation,
-      pressElevation: pressElevation,
+      elevation: resolvedElevation,
+      pressElevation: resolvedPressElevation,
       tooltip: resolvedTooltip,
     );
   }

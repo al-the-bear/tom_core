@@ -151,6 +151,22 @@ class TomTextField extends TomInputBase {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCursorColor =
+        cursorColor ?? resolveColorOrNull(context, 'cursorColor');
+    final resolvedCursorErrorColor =
+        cursorErrorColor ?? resolveColorOrNull(context, 'cursorErrorColor');
+    final resolvedCursorHeight =
+        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+    final resolvedCursorWidth =
+        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+    final resolvedMaxLines =
+        maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMinLines =
+        minLines ?? resolveIntOrNull(context, 'minLines');
+    final resolvedMaxLength =
+        maxLength ?? resolveIntOrNull(context, 'maxLength');
+
     final effectiveDecoration =
         (decoration ?? const InputDecoration()).copyWith(
       labelText: resolvedLabel,
@@ -175,10 +191,10 @@ class TomTextField extends TomInputBase {
       smartDashesType: smartDashesType,
       smartQuotesType: smartQuotesType,
       enableSuggestions: enableSuggestions,
-      maxLines: maxLines,
-      minLines: minLines,
+      maxLines: resolvedMaxLines,
+      minLines: resolvedMinLines,
       expands: expands,
-      maxLength: maxLength,
+      maxLength: resolvedMaxLength,
       maxLengthEnforcement: maxLengthEnforcement,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
@@ -189,11 +205,11 @@ class TomTextField extends TomInputBase {
       ignorePointers: ignorePointers,
       readOnly: readOnly,
       showCursor: showCursor,
-      cursorWidth: cursorWidth,
-      cursorHeight: cursorHeight,
+      cursorWidth: resolvedCursorWidth,
+      cursorHeight: resolvedCursorHeight,
       cursorRadius: cursorRadius,
-      cursorColor: cursorColor,
-      cursorErrorColor: cursorErrorColor,
+      cursorColor: resolvedCursorColor,
+      cursorErrorColor: resolvedCursorErrorColor,
       selectionHeightStyle: selectionHeightStyle,
       selectionWidthStyle: selectionWidthStyle,
       keyboardAppearance: keyboardAppearance,

@@ -60,6 +60,9 @@ class TomText extends TomLabelBase {
   Widget buildContent(BuildContext context) {
     final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
 
+    // Phase 2: Resolve optional parameter from resources
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+
     return Text(
       resolvedText,
       style: style,
@@ -69,7 +72,7 @@ class TomText extends TomLabelBase {
       locale: locale,
       softWrap: softWrap,
       overflow: overflow,
-      maxLines: maxLines,
+      maxLines: resolvedMaxLines,
       semanticsLabel: semanticsLabel,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
@@ -157,13 +160,18 @@ class TomSelectableText extends TomLabelBase {
   Widget buildContent(BuildContext context) {
     final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCursorColor =
+        cursorColor ?? resolveColorOrNull(context, 'cursorColor');
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+
     return SelectableText(
       resolvedText,
       style: style,
       strutStyle: strutStyle,
       textAlign: textAlign,
       textDirection: textDirection,
-      maxLines: maxLines,
+      maxLines: resolvedMaxLines,
       focusNode: focusNode,
       autofocus: autofocus,
       showCursor: showCursor,
@@ -171,7 +179,7 @@ class TomSelectableText extends TomLabelBase {
       cursorWidth: cursorWidth,
       cursorHeight: cursorHeight,
       cursorRadius: cursorRadius,
-      cursorColor: cursorColor,
+      cursorColor: resolvedCursorColor,
       onTap: onTap,
       scrollPhysics: scrollPhysics,
       semanticsLabel: semanticsLabel,

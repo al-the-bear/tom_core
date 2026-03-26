@@ -56,6 +56,20 @@ class TomNavigationRail extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedIndicatorColor =
+        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+    final resolvedMinWidth =
+        minWidth ?? resolveDoubleOrNull(context, 'minWidth');
+    final resolvedMinExtendedWidth =
+        minExtendedWidth ?? resolveDoubleOrNull(context, 'minExtendedWidth');
+    final resolvedGroupAlignment =
+        groupAlignment ?? resolveDoubleOrNull(context, 'groupAlignment');
+
     return NavigationRail(
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
@@ -63,14 +77,14 @@ class TomNavigationRail extends TomNavigationBase {
       leading: leading,
       trailing: trailing,
       labelType: labelType,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      indicatorColor: indicatorColor,
+      backgroundColor: resolvedBackgroundColor,
+      elevation: resolvedElevation,
+      indicatorColor: resolvedIndicatorColor,
       indicatorShape: indicatorShape,
-      minWidth: minWidth,
-      minExtendedWidth: minExtendedWidth,
+      minWidth: resolvedMinWidth,
+      minExtendedWidth: resolvedMinExtendedWidth,
       useIndicator: useIndicator,
-      groupAlignment: groupAlignment,
+      groupAlignment: resolvedGroupAlignment,
       selectedLabelTextStyle: selectedLabelTextStyle,
       unselectedLabelTextStyle: unselectedLabelTextStyle,
       selectedIconTheme: selectedIconTheme,
@@ -123,19 +137,33 @@ class TomNavigationBar extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedIndicatorColor =
+        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+
     return NavigationBar(
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: destinations,
-      backgroundColor: backgroundColor,
-      indicatorColor: indicatorColor,
+      backgroundColor: resolvedBackgroundColor,
+      indicatorColor: resolvedIndicatorColor,
       indicatorShape: indicatorShape,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      elevation: resolvedElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       animationDuration: animationDuration,
       labelBehavior: labelBehavior,
-      height: height,
+      height: resolvedHeight,
       overlayColor: overlayColor,
     );
   }
@@ -279,14 +307,26 @@ class TomNavigationDrawer extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedIndicatorColor =
+        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+
     return NavigationDrawer(
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
-      backgroundColor: backgroundColor,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      elevation: elevation,
-      indicatorColor: indicatorColor,
+      backgroundColor: resolvedBackgroundColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      elevation: resolvedElevation,
+      indicatorColor: resolvedIndicatorColor,
       indicatorShape: indicatorShape,
       tilePadding: tilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
       children: children,
@@ -328,13 +368,25 @@ class TomDrawer extends TomNavigationBase {
     final resolvedLabel =
         semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'label') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+
     return Drawer(
-      backgroundColor: backgroundColor,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      elevation: elevation,
+      backgroundColor: resolvedBackgroundColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      elevation: resolvedElevation,
       shape: shape,
-      width: width,
+      width: resolvedWidth,
       clipBehavior: clipBehavior,
       semanticLabel: resolvedLabel,
       child: child,
@@ -397,17 +449,29 @@ class TomBottomNavigationBar extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedIconSize =
+        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+    final resolvedSelectedItemColor =
+        selectedItemColor ?? resolveColorOrNull(context, 'selectedItemColor');
+    final resolvedUnselectedItemColor =
+        unselectedItemColor ?? resolveColorOrNull(context, 'unselectedItemColor');
+
     return BottomNavigationBar(
       items: items,
       currentIndex: currentIndex,
       onTap: onTap,
-      elevation: elevation,
+      elevation: resolvedElevation,
       type: type,
       fixedColor: fixedColor,
-      backgroundColor: backgroundColor,
-      iconSize: iconSize,
-      selectedItemColor: selectedItemColor,
-      unselectedItemColor: unselectedItemColor,
+      backgroundColor: resolvedBackgroundColor,
+      iconSize: resolvedIconSize,
+      selectedItemColor: resolvedSelectedItemColor,
+      unselectedItemColor: resolvedUnselectedItemColor,
       selectedIconTheme: selectedIconTheme,
       unselectedIconTheme: unselectedIconTheme,
       selectedLabelStyle: selectedLabelStyle,
@@ -460,6 +524,14 @@ class TomStepper extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedConnectorThickness =
+        connectorThickness ?? resolveDoubleOrNull(context, 'connectorThickness');
+    final resolvedConnectorColor =
+        connectorColor ?? resolveColorOrNull(context, 'connectorColor');
+
     return Stepper(
       steps: steps,
       currentStep: currentStep,
@@ -468,10 +540,10 @@ class TomStepper extends TomNavigationBase {
       onStepContinue: onStepContinue,
       onStepCancel: onStepCancel,
       controlsBuilder: controlsBuilder,
-      elevation: elevation,
+      elevation: resolvedElevation,
       margin: margin,
-      connectorThickness: connectorThickness,
-      connectorColor: connectorColor != null ? WidgetStatePropertyAll<Color>(connectorColor!) : null,
+      connectorThickness: resolvedConnectorThickness,
+      connectorColor: resolvedConnectorColor != null ? WidgetStatePropertyAll<Color>(resolvedConnectorColor) : null,
     );
   }
 }

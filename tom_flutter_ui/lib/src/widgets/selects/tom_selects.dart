@@ -67,26 +67,44 @@ class TomDropdownButton<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        resolveIntOrNull(context, 'elevation') ?? elevation;
+    final resolvedIconDisabledColor =
+        iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
+    final resolvedIconEnabledColor =
+        iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
+    final resolvedIconSize =
+        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+    final resolvedItemHeight =
+        itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedDropdownColor =
+        dropdownColor ?? resolveColorOrNull(context, 'dropdownColor');
+    final resolvedMenuMaxHeight =
+        menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
+
     return DropdownButton<T>(
       value: value,
       items: items,
       onChanged: onChanged,
       onTap: onTap,
-      elevation: elevation,
+      elevation: resolvedElevation,
       style: style,
       underline: underline,
       icon: icon,
-      iconDisabledColor: iconDisabledColor,
-      iconEnabledColor: iconEnabledColor,
-      iconSize: iconSize,
+      iconDisabledColor: resolvedIconDisabledColor,
+      iconEnabledColor: resolvedIconEnabledColor,
+      iconSize: resolvedIconSize,
       isDense: isDense,
       isExpanded: isExpanded,
-      itemHeight: itemHeight,
-      focusColor: focusColor,
+      itemHeight: resolvedItemHeight,
+      focusColor: resolvedFocusColor,
       focusNode: focusNode,
       autofocus: autofocus,
-      dropdownColor: dropdownColor,
-      menuMaxHeight: menuMaxHeight,
+      dropdownColor: resolvedDropdownColor,
+      menuMaxHeight: resolvedMenuMaxHeight,
       enableFeedback: enableFeedback,
       alignment: alignment,
       borderRadius: borderRadius,
@@ -151,22 +169,34 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedIconSize =
+        iconSize ?? resolveDoubleOrNull(context, 'iconSize');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+
     return PopupMenuButton<T>(
       itemBuilder: itemBuilder,
       initialValue: initialValue,
       onSelected: onSelected,
       onCanceled: onCanceled,
       tooltip: resolvedTooltip,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      elevation: resolvedElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       padding: padding,
       icon: icon,
-      iconSize: iconSize,
+      iconSize: resolvedIconSize,
       offset: offset,
       enabled: enabled,
       shape: shape,
-      color: color,
+      color: resolvedColor,
       enableFeedback: enableFeedback,
       constraints: constraints,
       position: position,
@@ -242,13 +272,19 @@ class TomDropdownMenu<T> extends TomSelectBase {
     final resolvedHint =
         hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedMenuHeight =
+        menuHeight ?? resolveDoubleOrNull(context, 'menuHeight');
+
     return DropdownMenu<T>(
       initialSelection: initialSelection,
       onSelected: onSelected,
       dropdownMenuEntries: dropdownMenuEntries,
       enabled: enabled,
-      width: width,
-      menuHeight: menuHeight,
+      width: resolvedWidth,
+      menuHeight: resolvedMenuHeight,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
       label: Text(resolvedLabel),

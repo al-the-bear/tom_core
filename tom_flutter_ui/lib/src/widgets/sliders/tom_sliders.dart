@@ -50,6 +50,14 @@ class TomSlider extends TomSliderBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedInactiveColor =
+        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+    final resolvedThumbColor =
+        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+
     return Slider(
       value: value,
       onChanged: onChanged,
@@ -59,9 +67,9 @@ class TomSlider extends TomSliderBase {
       max: max,
       divisions: divisions,
       label: resolvedLabel,
-      activeColor: activeColor,
-      inactiveColor: inactiveColor,
-      thumbColor: thumbColor,
+      activeColor: resolvedActiveColor,
+      inactiveColor: resolvedInactiveColor,
+      thumbColor: resolvedThumbColor,
       overlayColor: overlayColor,
       semanticFormatterCallback: semanticFormatterCallback,
       focusNode: focusNode,
@@ -108,6 +116,12 @@ class TomRangeSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedInactiveColor =
+        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+
     return RangeSlider(
       values: values,
       onChanged: onChanged,
@@ -117,8 +131,8 @@ class TomRangeSlider extends TomSliderBase {
       max: max,
       divisions: divisions,
       labels: labels,
-      activeColor: activeColor,
-      inactiveColor: inactiveColor,
+      activeColor: resolvedActiveColor,
+      inactiveColor: resolvedInactiveColor,
       overlayColor: overlayColor,
       semanticFormatterCallback: semanticFormatterCallback,
     );
@@ -157,6 +171,10 @@ class TomCupertinoSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameter from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+
     return CupertinoSlider(
       value: value,
       onChanged: onChanged,
@@ -165,7 +183,7 @@ class TomCupertinoSlider extends TomSliderBase {
       min: min,
       max: max,
       divisions: divisions,
-      activeColor: activeColor,
+      activeColor: resolvedActiveColor,
       thumbColor: thumbColor,
     );
   }
