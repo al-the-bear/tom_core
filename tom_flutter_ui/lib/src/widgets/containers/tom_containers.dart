@@ -360,6 +360,26 @@ class TomAppBar extends StatelessWidget
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedScrolledUnderElevation =
+        scrolledUnderElevation ?? resolveDoubleOrNull(context, 'scrolledUnderElevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedForegroundColor =
+        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+    final resolvedTitleSpacing =
+        titleSpacing ?? resolveDoubleOrNull(context, 'titleSpacing');
+    final resolvedToolbarHeight =
+        toolbarHeight ?? resolveDoubleOrNull(context, 'toolbarHeight');
+    final resolvedLeadingWidth =
+        leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
+
     return AppBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -367,22 +387,22 @@ class TomAppBar extends StatelessWidget
       actions: actions,
       flexibleSpace: flexibleSpace,
       bottom: bottom,
-      elevation: elevation,
-      scrolledUnderElevation: scrolledUnderElevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
+      elevation: resolvedElevation,
+      scrolledUnderElevation: resolvedScrolledUnderElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      foregroundColor: resolvedForegroundColor,
       iconTheme: iconTheme,
       actionsIconTheme: actionsIconTheme,
       primary: primary,
       centerTitle: centerTitle,
       excludeHeaderSemantics: excludeHeaderSemantics,
-      titleSpacing: titleSpacing,
+      titleSpacing: resolvedTitleSpacing,
       toolbarOpacity: toolbarOpacity,
       bottomOpacity: bottomOpacity,
-      toolbarHeight: toolbarHeight,
-      leadingWidth: leadingWidth,
+      toolbarHeight: resolvedToolbarHeight,
+      leadingWidth: resolvedLeadingWidth,
       toolbarTextStyle: toolbarTextStyle,
       titleTextStyle: titleTextStyle,
       systemOverlayStyle: systemOverlayStyle,

@@ -142,4 +142,76 @@ mixin TomWidgetMixin on Widget {
     if (tomGroup != null) parts.add('group: $tomGroup');
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
+
+  // ===========================================================================
+  // Typed Resource Resolution (Phase 2)
+  // ===========================================================================
+
+  /// Resolves a color from resources relative to this widget's canonical path.
+  ///
+  /// Returns `null` if:
+  /// - This widget has no [tomId]
+  /// - No color resource exists for this suffix
+  /// - The color name cannot be resolved to a [Color]
+  ///
+  /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
+  /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
+  Color? resolveColorOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveColor(basePath, suffix);
+  }
+
+  /// Resolves a double from resources relative to this widget's canonical path.
+  ///
+  /// Returns `null` if:
+  /// - This widget has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not numeric
+  double? resolveDoubleOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveDouble(basePath, suffix);
+  }
+
+  /// Resolves an int from resources relative to this widget's canonical path.
+  ///
+  /// Returns `null` if:
+  /// - This widget has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not numeric
+  int? resolveIntOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveInt(basePath, suffix);
+  }
+
+  /// Resolves a bool from resources relative to this widget's canonical path.
+  ///
+  /// Returns `null` if:
+  /// - This widget has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The value is not boolean-like
+  bool? resolveBoolOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveBool(basePath, suffix);
+  }
+
+  /// Resolves edge insets from resources relative to this widget's canonical path.
+  ///
+  /// Returns `null` if:
+  /// - This widget has no [tomId]
+  /// - No resource exists for this suffix
+  /// - The format is not recognized
+  ///
+  /// Accepts various formats in the JSON resource:
+  /// - A single number for uniform insets
+  /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
+  /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
+  EdgeInsets? resolveEdgeInsetsOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomUIResources.resolveEdgeInsets(basePath, suffix);
+  }
 }
