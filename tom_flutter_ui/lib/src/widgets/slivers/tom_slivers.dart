@@ -84,21 +84,24 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
 ///
 /// Expands sliver in cross axis. Auth on expanded sliver section.
 class TomSliverCrossAxisExpanded extends TomSliverBase {
-  final int flex;
+  final int? flex;
   final Widget sliver;
 
   const TomSliverCrossAxisExpanded({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.flex = 1,
+    this.flex,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedFlex = flex ?? resolveIntOrNull(context, 'flex') ?? 1;
+
     return SliverCrossAxisExpanded(
-      flex: flex,
+      flex: resolvedFlex,
       sliver: sliver,
     );
   }
@@ -230,21 +233,25 @@ class TomSliverMainAxisGroup extends TomSliverBase {
 ///
 /// Hides sliver (keeps in tree). Auth on offstage sliver — natural visibility control.
 class TomSliverOffstage extends TomSliverBase {
-  final bool offstage;
+  final bool? offstage;
   final Widget sliver;
 
   const TomSliverOffstage({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.offstage = true,
+    this.offstage,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOffstage =
+        offstage ?? resolveBoolOrNull(context, 'offstage') ?? true;
+
     return SliverOffstage(
-      offstage: offstage,
+      offstage: resolvedOffstage,
       sliver: sliver,
     );
   }
@@ -254,24 +261,30 @@ class TomSliverOffstage extends TomSliverBase {
 ///
 /// Opacity for slivers. Auth on sliver content; can make sliver invisible.
 class TomSliverOpacity extends TomSliverBase {
-  final double opacity;
-  final bool alwaysIncludeSemantics;
+  final double? opacity;
+  final bool? alwaysIncludeSemantics;
   final Widget sliver;
 
   const TomSliverOpacity({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.opacity,
-    this.alwaysIncludeSemantics = false,
+    this.opacity,
+    this.alwaysIncludeSemantics,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOpacity =
+        opacity ?? resolveDoubleOrFail(context, 'opacity');
+    final resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ??
+        resolveBoolOrNull(context, 'alwaysIncludeSemantics') ?? false;
+
     return SliverOpacity(
-      opacity: opacity,
-      alwaysIncludeSemantics: alwaysIncludeSemantics,
+      opacity: resolvedOpacity,
+      alwaysIncludeSemantics: resolvedAlwaysIncludeSemantics,
       sliver: sliver,
     );
   }
@@ -281,21 +294,31 @@ class TomSliverOpacity extends TomSliverBase {
 ///
 /// Padding around a sliver. Auth on padded sliver content.
 class TomSliverPadding extends TomSliverBase {
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final Widget sliver;
 
   const TomSliverPadding({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.padding,
+    this.padding,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    if (resolvedPadding == null) {
+      throw StateError(
+        'Tom widget requires either an explicit padding or a tomId resource '
+        'value at padding. Widget: $runtimeType',
+      );
+    }
+
     return SliverPadding(
-      padding: padding,
+      padding: resolvedPadding,
       sliver: sliver,
     );
   }
@@ -306,24 +329,29 @@ class TomSliverPadding extends TomSliverBase {
 /// Persistent/pinned header in scroll. Auth on persistent header content.
 class TomSliverPersistentHeader extends TomSliverBase {
   final SliverPersistentHeaderDelegate delegate;
-  final bool pinned;
-  final bool floating;
+  final bool? pinned;
+  final bool? floating;
 
   const TomSliverPersistentHeader({
     super.key,
     super.tomId,
     super.tomGroup,
     required this.delegate,
-    this.pinned = false,
-    this.floating = false,
+    this.pinned,
+    this.floating,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPinned = pinned ?? resolveBoolOrNull(context, 'pinned') ?? false;
+    final resolvedFloating =
+        floating ?? resolveBoolOrNull(context, 'floating') ?? false;
+
     return SliverPersistentHeader(
       delegate: delegate,
-      pinned: pinned,
-      floating: floating,
+      pinned: resolvedPinned,
+      floating: resolvedFloating,
     );
   }
 }
@@ -381,33 +409,42 @@ class TomSliverResizingHeader extends TomSliverBase {
 ///
 /// Safe area insets for slivers. Auth on safe-area sliver content.
 class TomSliverSafeArea extends TomSliverBase {
-  final bool left;
-  final bool top;
-  final bool right;
-  final bool bottom;
-  final EdgeInsets minimum;
+  final bool? left;
+  final bool? top;
+  final bool? right;
+  final bool? bottom;
+  final EdgeInsets? minimum;
   final Widget sliver;
 
   const TomSliverSafeArea({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.left = true,
-    this.top = true,
-    this.right = true,
-    this.bottom = true,
-    this.minimum = EdgeInsets.zero,
+    this.left,
+    this.top,
+    this.right,
+    this.bottom,
+    this.minimum,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedLeft = left ?? resolveBoolOrNull(context, 'left') ?? true;
+    final resolvedTop = top ?? resolveBoolOrNull(context, 'top') ?? true;
+    final resolvedRight = right ?? resolveBoolOrNull(context, 'right') ?? true;
+    final resolvedBottom =
+        bottom ?? resolveBoolOrNull(context, 'bottom') ?? true;
+    final resolvedMinimum =
+        minimum ?? resolveEdgeInsetsOrNull(context, 'minimum') ?? EdgeInsets.zero;
+
     return SliverSafeArea(
-      left: left,
-      top: top,
-      right: right,
-      bottom: bottom,
-      minimum: minimum,
+      left: resolvedLeft,
+      top: resolvedTop,
+      right: resolvedRight,
+      bottom: resolvedBottom,
+      minimum: resolvedMinimum,
       sliver: sliver,
     );
   }
@@ -443,12 +480,12 @@ class TomSliverVariedExtentList extends TomSliverBase {
 class TomSliverVisibility extends TomSliverBase {
   final Widget sliver;
   final Widget replacementSliver;
-  final bool visible;
-  final bool maintainState;
-  final bool maintainAnimation;
-  final bool maintainSize;
-  final bool maintainSemantics;
-  final bool maintainInteractivity;
+  final bool? visible;
+  final bool? maintainState;
+  final bool? maintainAnimation;
+  final bool? maintainSize;
+  final bool? maintainSemantics;
+  final bool? maintainInteractivity;
 
   const TomSliverVisibility({
     super.key,
@@ -456,25 +493,39 @@ class TomSliverVisibility extends TomSliverBase {
     super.tomGroup,
     required this.sliver,
     this.replacementSliver = const SliverToBoxAdapter(child: SizedBox.shrink()),
-    this.visible = true,
-    this.maintainState = false,
-    this.maintainAnimation = false,
-    this.maintainSize = false,
-    this.maintainSemantics = false,
-    this.maintainInteractivity = false,
+    this.visible,
+    this.maintainState,
+    this.maintainAnimation,
+    this.maintainSize,
+    this.maintainSemantics,
+    this.maintainInteractivity,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedVisible =
+        visible ?? resolveBoolOrNull(context, 'visible') ?? true;
+    final resolvedMaintainState =
+        maintainState ?? resolveBoolOrNull(context, 'maintainState') ?? false;
+    final resolvedMaintainAnimation = maintainAnimation ??
+        resolveBoolOrNull(context, 'maintainAnimation') ?? false;
+    final resolvedMaintainSize =
+        maintainSize ?? resolveBoolOrNull(context, 'maintainSize') ?? false;
+    final resolvedMaintainSemantics = maintainSemantics ??
+        resolveBoolOrNull(context, 'maintainSemantics') ?? false;
+    final resolvedMaintainInteractivity = maintainInteractivity ??
+        resolveBoolOrNull(context, 'maintainInteractivity') ?? false;
+
     return SliverVisibility(
       sliver: sliver,
       replacementSliver: replacementSliver,
-      visible: visible,
-      maintainState: maintainState,
-      maintainAnimation: maintainAnimation,
-      maintainSize: maintainSize,
-      maintainSemantics: maintainSemantics,
-      maintainInteractivity: maintainInteractivity,
+      visible: resolvedVisible,
+      maintainState: resolvedMaintainState,
+      maintainAnimation: resolvedMaintainAnimation,
+      maintainSize: resolvedMaintainSize,
+      maintainSemantics: resolvedMaintainSemantics,
+      maintainInteractivity: resolvedMaintainInteractivity,
     );
   }
 }

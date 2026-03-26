@@ -502,7 +502,7 @@ class TomCupertinoListSection extends TomListBase {
   final CupertinoListSectionType type;
   final Clip clipBehavior;
   final double? topMargin;
-  final bool hasLeading;
+  final bool? hasLeading;
   final Color? dividerMargin;
   final double additionalDividerMargin;
   final Widget? decoration;
@@ -520,7 +520,7 @@ class TomCupertinoListSection extends TomListBase {
     this.type = CupertinoListSectionType.base,
     this.clipBehavior = Clip.hardEdge,
     this.topMargin,
-    this.hasLeading = true,
+    this.hasLeading,
     this.dividerMargin,
     this.additionalDividerMargin = 0.0,
     this.decoration,
@@ -529,15 +529,28 @@ class TomCupertinoListSection extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor') ?? CupertinoColors.systemBackground;
+    final resolvedTopMargin =
+        topMargin ?? resolveDoubleOrNull(context, 'topMargin');
+    final resolvedHasLeading =
+      hasLeading ?? resolveBoolOrNull(context, 'hasLeading') ?? true;
+    final resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0
+        ? additionalDividerMargin
+        : resolveDoubleOrNull(context, 'additionalDividerMargin') ?? 0.0;
+    final resolvedMargin =
+        margin ?? resolveEdgeInsetsOrNull(context, 'margin') ?? const EdgeInsets.only(bottom: 8.0);
+
     return CupertinoListSection(
       header: header,
       footer: footer,
-      backgroundColor: backgroundColor ?? CupertinoColors.systemBackground,
+      backgroundColor: resolvedBackgroundColor,
       clipBehavior: clipBehavior,
-      topMargin: topMargin,
-      hasLeading: hasLeading,
-      additionalDividerMargin: additionalDividerMargin,
-      margin: margin ?? const EdgeInsets.only(bottom: 8.0),
+      topMargin: resolvedTopMargin,
+      hasLeading: resolvedHasLeading,
+      additionalDividerMargin: resolvedAdditionalDividerMargin,
+      margin: resolvedMargin,
       children: children,
     );
   }
@@ -560,7 +573,7 @@ class TomReorderableList extends TomListBase {
   final ScrollController? controller;
   final bool? primary;
   final ScrollPhysics? physics;
-  final bool shrinkWrap;
+  final bool? shrinkWrap;
   final EdgeInsetsGeometry? padding;
   final Clip clipBehavior;
   final double anchor;
@@ -586,7 +599,7 @@ class TomReorderableList extends TomListBase {
     this.controller,
     this.primary,
     this.physics,
-    this.shrinkWrap = false,
+    this.shrinkWrap,
     this.padding,
     this.clipBehavior = Clip.hardEdge,
     this.anchor = 0.0,
@@ -598,6 +611,18 @@ class TomReorderableList extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedItemExtent =
+      itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+    final resolvedShrinkWrap =
+      shrinkWrap ?? resolveBoolOrNull(context, 'shrinkWrap') ?? false;
+    final resolvedPadding =
+      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedAnchor =
+      anchor != 0.0 ? anchor : resolveDoubleOrNull(context, 'anchor') ?? 0.0;
+    final resolvedCacheExtent =
+      cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+
     return ReorderableList(
       itemBuilder: (context, index) {
         return (childrenDelegate as SliverChildBuilderDelegate).builder(context, index)!;
@@ -606,7 +631,7 @@ class TomReorderableList extends TomListBase {
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
       itemExtentBuilder: itemExtentBuilder,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,
@@ -615,11 +640,11 @@ class TomReorderableList extends TomListBase {
       controller: controller,
       primary: primary,
       physics: physics,
-      shrinkWrap: shrinkWrap,
-      padding: padding,
+      shrinkWrap: resolvedShrinkWrap,
+      padding: resolvedPadding,
       clipBehavior: clipBehavior,
-      anchor: anchor,
-      cacheExtent: cacheExtent,
+      anchor: resolvedAnchor,
+      cacheExtent: resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
       restorationId: restorationId,
@@ -658,13 +683,17 @@ class TomSliverReorderableList extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedItemExtent =
+        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+
     return SliverReorderableList(
       itemBuilder: itemBuilder,
       itemCount: itemCount,
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
       itemExtentBuilder: itemExtentBuilder,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,

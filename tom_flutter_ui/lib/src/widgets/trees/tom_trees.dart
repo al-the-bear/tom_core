@@ -153,9 +153,9 @@ class TomTreeSliver<T> extends TomTreeBase {
   final TreeSliverNodeCallback? onNodeToggle;
   final AnimationStyle? toggleAnimationStyle;
   final TreeSliverIndentationType indentation;
-  final bool addAutomaticKeepAlives;
-  final bool addRepaintBoundaries;
-  final bool addSemanticIndexes;
+  final bool? addAutomaticKeepAlives;
+  final bool? addRepaintBoundaries;
+  final bool? addSemanticIndexes;
 
   const TomTreeSliver({
     super.key,
@@ -168,13 +168,21 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.onNodeToggle,
     this.toggleAnimationStyle,
     this.indentation = TreeSliverIndentationType.standard,
-    this.addAutomaticKeepAlives = true,
-    this.addRepaintBoundaries = true,
-    this.addSemanticIndexes = true,
+    this.addAutomaticKeepAlives,
+    this.addRepaintBoundaries,
+    this.addSemanticIndexes,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ??
+        resolveBoolOrNull(context, 'addAutomaticKeepAlives') ?? true;
+    final resolvedAddRepaintBoundaries = addRepaintBoundaries ??
+        resolveBoolOrNull(context, 'addRepaintBoundaries') ?? true;
+    final resolvedAddSemanticIndexes =
+        addSemanticIndexes ?? resolveBoolOrNull(context, 'addSemanticIndexes') ?? true;
+
     return TreeSliver<T>(
       tree: tree,
       treeNodeBuilder: treeNodeBuilder,
@@ -183,9 +191,9 @@ class TomTreeSliver<T> extends TomTreeBase {
       onNodeToggle: onNodeToggle,
       toggleAnimationStyle: toggleAnimationStyle,
       indentation: indentation,
-      addAutomaticKeepAlives: addAutomaticKeepAlives,
-      addRepaintBoundaries: addRepaintBoundaries,
-      addSemanticIndexes: addSemanticIndexes,
+      addAutomaticKeepAlives: resolvedAddAutomaticKeepAlives,
+      addRepaintBoundaries: resolvedAddRepaintBoundaries,
+      addSemanticIndexes: resolvedAddSemanticIndexes,
     );
   }
 }

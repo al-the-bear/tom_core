@@ -34,11 +34,17 @@ class TomAnimatedAlign extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedHeightFactor =
+        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+    final resolvedWidthFactor =
+        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+
     return AnimatedAlign(
       alignment: alignment,
       child: child,
-      heightFactor: heightFactor,
-      widthFactor: widthFactor,
+      heightFactor: resolvedHeightFactor,
+      widthFactor: resolvedWidthFactor,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
