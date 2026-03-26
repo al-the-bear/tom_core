@@ -400,12 +400,7 @@ class TomListWheelScrollView extends TomListBase {
     final resolvedOverAndUnderCenterOpacity =
         overAndUnderCenterOpacity ?? resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? 1.0;
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
-    if (resolvedItemExtent == null) {
-      throw StateError(
-        'TomListWheelScrollView requires itemExtent either as an explicit parameter or as a resource value.',
-      );
-    }
+        itemExtent ?? resolveDoubleOrFail(context, 'itemExtent');
     final resolvedSqueeze =
         squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.0;
 

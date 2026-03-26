@@ -71,12 +71,7 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedMaxExtent =
-      maxExtent ?? resolveDoubleOrNull(context, 'maxExtent');
-    if (resolvedMaxExtent == null) {
-      throw StateError(
-        'TomSliverConstrainedCrossAxis requires maxExtent either as an explicit parameter or as a resource value.',
-      );
-    }
+      maxExtent ?? resolveDoubleOrFail(context, 'maxExtent');
 
     return SliverConstrainedCrossAxis(
       maxExtent: resolvedMaxExtent,
@@ -180,12 +175,7 @@ class TomSliverFixedExtentList extends TomSliverBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedItemExtent =
-      itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
-    if (resolvedItemExtent == null) {
-      throw StateError(
-        'TomSliverFixedExtentList requires itemExtent either as an explicit parameter or as a resource value.',
-      );
-    }
+      itemExtent ?? resolveDoubleOrFail(context, 'itemExtent');
 
     return SliverFixedExtentList(
       delegate: delegate,

@@ -630,7 +630,7 @@ class TomResourceNavigationRail extends TomNavigationBase {
 4. Apply defaults in buildContent(), not in constructor defaults
 5. For values that were historically `required` but should support resource override:
   - make constructor param nullable
-  - resolve with explicit fail-fast check after `resolveXOrNull`
+  - resolve as `param ?? resolveXOrFail(context, 'suffix')`
   - this preserves explicit-param priority and fails fast when both are missing
 
 #### Default Value Preservation (CRITICAL)
@@ -697,13 +697,7 @@ itemExtent: resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent,
 itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
 
 // ✅ CORRECT — formerly required value, now nullable with fail-fast
-final resolvedItemExtent =
-    itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
-if (resolvedItemExtent == null) {
-  throw StateError(
-    'TomWidget requires itemExtent either as explicit param or resource value.',
-  );
-}
+itemExtent: itemExtent ?? resolveDoubleOrFail(context, 'itemExtent'),
 ```
 
 ### Phase 3: Complex Structure Support

@@ -149,6 +149,35 @@ abstract class TomNodeBase extends StatelessWidget {
     return TomUIResources.resolveDouble(basePath, suffix);
   }
 
+  /// Resolves a required double from resources relative to this node's base path.
+  ///
+  /// Throws [StateError] if:
+  /// - This node has no [tomId] (resource lookup is impossible)
+  /// - No resource exists for this suffix
+  /// - The value exists but is not numeric
+  double resolveDoubleOrFail(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup. Widget: $runtimeType',
+      );
+    }
+    if (!TomUIResources.resourceExists(basePath, suffix)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a numeric '
+        'resource value at $basePath.$suffix. Widget: $runtimeType',
+      );
+    }
+    final value = TomUIResources.resolveDouble(basePath, suffix);
+    if (value == null) {
+      throw StateError(
+        'Resource $basePath.$suffix must be numeric for widget $runtimeType.',
+      );
+    }
+    return value;
+  }
+
   /// Resolves an int from resources relative to this node's base path.
   ///
   /// Returns `null` if:
