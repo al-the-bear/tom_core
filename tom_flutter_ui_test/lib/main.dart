@@ -16,8 +16,8 @@ import 'demo_resources.dart';
 import 'locale_settings.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
+import 'widget_demos/demo_03_selection.dart';
 // TODO: Import remaining demos as they are created
-// import 'widget_demos/demo_03_selection.dart';
 // import 'widget_demos/demo_04_toggles.dart';
 // import 'widget_demos/demo_05_sliders.dart';
 // import 'widget_demos/demo_06_cards_panels.dart';
@@ -322,8 +322,12 @@ class WidgetDemosTab extends StatelessWidget {
           description: 'TextField, SearchBar, Autocomplete, DatePickers, and more',
           screen: InputsDemo(),
         ),
+        const DemoTile(
+          title: 'Selection Controls',
+          description: 'Dropdowns, Popup Menus, Menu Anchors, Segmented Controls',
+          screen: SelectionDemo(),
+        ),
         // TODO: Add remaining demos as they are created
-        _buildComingSoonTile(context, 'Selection Controls'),
         _buildComingSoonTile(context, 'Toggles & Options'),
         _buildComingSoonTile(context, 'Sliders & Ranges'),
         const SizedBox(height: 16),

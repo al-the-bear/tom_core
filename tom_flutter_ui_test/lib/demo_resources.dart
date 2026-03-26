@@ -452,6 +452,168 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo02.aclDatePicker.durationLabel.label': 'Duration:',
     'demo02.aclDatePicker.timerIcon': 'mTimer',
     'demo02.aclDatePicker.calendar.label': 'Calendar',
+
+    // ==========================================================================
+    // Demo 03: Selection Controls - Section Headers
+    // ==========================================================================
+    'demo03.section.dropdown.title.label': 'Dropdown Menus',
+    'demo03.section.dropdown.subtitle.label':
+        'TomDropdownButton, TomDropdownMenu, and form field variants',
+    'demo03.section.popup.title.label': 'Popup Menus',
+    'demo03.section.popup.subtitle.label':
+        'TomPopupMenuButton with dividers and checked items',
+    'demo03.section.anchor.title.label': 'Menu Anchors',
+    'demo03.section.anchor.subtitle.label':
+        'TomMenuAnchor with checkbox and radio menu buttons',
+    'demo03.section.cupertino.title.label': 'Cupertino Segmented Controls',
+    'demo03.section.cupertino.subtitle.label':
+        'iOS-style sliding and classic segmented controls',
+    'demo03.section.acl.title.label': 'ACL Layout (RTL/LTR)',
+    'demo03.section.acl.subtitle.label':
+        'Using AclBuilder — toggle LTR/RTL in the app bar to see layout direction change',
+
+    // ==========================================================================
+    // Demo 03: TomDropdownButton Card
+    // ==========================================================================
+    'demo03.dropdownButton.icon': 'mArrowDropDown',
+    'demo03.dropdownButton.title.label': 'TomDropdownButton',
+    'demo03.dropdownButton.description.label':
+        'Classic dropdown button with form field support.',
+    'demo03.dropdownButton.categoryLabel.label': 'Category:',
+    'demo03.dropdownButton.category.hint': 'Select a category',
+    'demo03.dropdownButton.colorLabel.label': 'Select a color:',
+    'demo03.dropdownButton.color.hint': 'Choose color',
+    'demo03.dropdownButton.countryForm.label': 'Country',
+    'demo03.dropdownButton.countryForm.hint': 'Select your country',
+    'demo03.dropdownButton.validate.label': 'Validate',
+    'demo03.dropdownButton.validate.icon': 'mCheck',
+
+    // ==========================================================================
+    // Demo 03: TomDropdownMenu Card
+    // ==========================================================================
+    'demo03.dropdownMenu.icon': 'mMenu',
+    'demo03.dropdownMenu.title.label': 'TomDropdownMenu',
+    'demo03.dropdownMenu.description.label':
+        'Material 3 dropdown menus with search and icons.',
+    'demo03.dropdownMenu.size.label': 'Size',
+    'demo03.dropdownMenu.size.hint': 'Select size',
+    'demo03.dropdownMenu.colorWithIcon.label': 'Color',
+    'demo03.dropdownMenu.colorWithIcon.hint': 'Select color',
+    'demo03.dropdownMenu.expanded.label': 'Category',
+    'demo03.dropdownMenu.expanded.hint': 'Select category',
+
+    // ==========================================================================
+    // Demo 03: TomPopupMenuButton Card
+    // ==========================================================================
+    'demo03.popupMenu.icon': 'mMoreVert',
+    'demo03.popupMenu.title.label': 'TomPopupMenuButton',
+    'demo03.popupMenu.description.label':
+        'Popup menus with icons, dividers, and custom triggers.',
+    'demo03.popupMenu.basicLabel.label': 'Edit menu:',
+    'demo03.popupMenu.basic.tooltip': 'Open edit menu',
+    'demo03.popupMenu.copy.label': 'Copy',
+    'demo03.popupMenu.copy.icon': 'mContentCopy',
+    'demo03.popupMenu.cut.label': 'Cut',
+    'demo03.popupMenu.cut.icon': 'mContentCut',
+    'demo03.popupMenu.paste.label': 'Paste',
+    'demo03.popupMenu.paste.icon': 'mContentPaste',
+    'demo03.popupMenu.delete.label': 'Delete',
+    'demo03.popupMenu.delete.icon': 'mDelete',
+    'demo03.popupMenu.moreOptions.label': 'More Options',
+    'demo03.popupMenu.customTrigger.tooltip': 'Open options menu',
+    'demo03.popupMenu.view.label': 'View',
+    'demo03.popupMenu.edit.label': 'Edit',
+    'demo03.popupMenu.share.label': 'Share',
+
+    // ==========================================================================
+    // Demo 03: TomCheckedPopupMenuItem Card
+    // ==========================================================================
+    'demo03.checkedPopup.icon': 'mChecklist',
+    'demo03.checkedPopup.title.label': 'Checked Popup Menu',
+    'demo03.checkedPopup.description.label':
+        'Popup menu items with checkmarks for toggle options.',
+    'demo03.checkedPopup.viewLabel.label': 'View options:',
+    'demo03.checkedPopup.viewIcon.icon': 'mVisibility',
+    'demo03.checkedPopup.viewText.label': 'View',
+    'demo03.checkedPopup.view.tooltip': 'Toggle view options',
+    'demo03.checkedPopup.preview.label': 'Show Preview',
+    'demo03.checkedPopup.details.label': 'Show Details',
+    'demo03.checkedPopup.sidebar.label': 'Show Sidebar',
+
+    // ==========================================================================
+    // Demo 03: TomMenuAnchor Card
+    // ==========================================================================
+    'demo03.menuAnchor.icon': 'mMenuOpen',
+    'demo03.menuAnchor.title.label': 'TomMenuAnchor',
+    'demo03.menuAnchor.description.label':
+        'Menu anchors with checkbox and radio menu buttons.',
+    'demo03.menuAnchor.checkboxLabel.label': 'View toggles (checkbox menu):',
+    'demo03.menuAnchor.checkboxTrigger.label': 'View Options',
+    'demo03.menuAnchor.checkboxTrigger.icon': 'mChecklist',
+    'demo03.menuAnchor.checkPreview.label': 'Show Preview',
+    'demo03.menuAnchor.checkDetails.label': 'Show Details',
+    'demo03.menuAnchor.checkSidebar.label': 'Show Sidebar',
+    'demo03.menuAnchor.radioLabel.label': 'Select option (radio menu):',
+    'demo03.menuAnchor.radioTrigger.label': 'Select Option',
+    'demo03.menuAnchor.radioTrigger.icon': 'mRadioButtonChecked',
+    'demo03.menuAnchor.radioOption1.label': 'Option One',
+    'demo03.menuAnchor.radioOption2.label': 'Option Two',
+    'demo03.menuAnchor.radioOption3.label': 'Option Three',
+
+    // ==========================================================================
+    // Demo 03: Cupertino Segmented Controls Card
+    // ==========================================================================
+    'demo03.cupertinoSegmented.icon': 'mSegment',
+    'demo03.cupertinoSegmented.title.label': 'Cupertino Segmented Controls',
+    'demo03.cupertinoSegmented.description.label':
+        'iOS-style sliding and classic segmented controls.',
+    'demo03.cupertinoSegmented.slidingLabel.label': 'Sliding Segmented Control:',
+    'demo03.cupertinoSegmented.day.label': 'Day',
+    'demo03.cupertinoSegmented.week.label': 'Week',
+    'demo03.cupertinoSegmented.month.label': 'Month',
+    'demo03.cupertinoSegmented.year.label': 'Year',
+    'demo03.cupertinoSegmented.classicLabel.label': 'Classic Segmented Control:',
+    'demo03.cupertinoSegmented.first.label': 'First',
+    'demo03.cupertinoSegmented.second.label': 'Second',
+    'demo03.cupertinoSegmented.third.label': 'Third',
+
+    // ==========================================================================
+    // Demo 03: Cupertino Picker Card
+    // ==========================================================================
+    'demo03.cupertinoPicker.icon': 'mUnfoldMore',
+    'demo03.cupertinoPicker.title.label': 'Cupertino Picker',
+    'demo03.cupertinoPicker.description.label':
+        'iOS-style wheel picker for scrolling selection.',
+    'demo03.cupertinoPicker.fruitLabel.label': 'Select a fruit:',
+    'demo03.cupertinoPicker.selectedIcon.icon': 'mChecklist',
+
+    // ==========================================================================
+    // Demo 03: ACL Dropdown Layout Card
+    // ==========================================================================
+    'demo03.aclDropdown.icon': 'mViewColumn',
+    'demo03.aclDropdown.title.label': 'ACL Dropdown Layout',
+    'demo03.aclDropdown.description.label':
+        'Dropdown fields using AclBuilder for responsive RTL/LTR layout.',
+    'demo03.aclDropdown.categoryLabel.label': 'Category:',
+    'demo03.aclDropdown.category.hint': 'Select category',
+    'demo03.aclDropdown.sizeLabel.label': 'Size:',
+    'demo03.aclDropdown.size.hint': 'Select size',
+
+    // ==========================================================================
+    // Demo 03: ACL Segmented Layout Card
+    // ==========================================================================
+    'demo03.aclSegmented.icon': 'mViewHeadline',
+    'demo03.aclSegmented.title.label': 'ACL Segmented Layout',
+    'demo03.aclSegmented.description.label':
+        'Segmented controls with action buttons using AclBuilder.',
+    'demo03.aclSegmented.periodLabel.label': 'Period:',
+    'demo03.aclSegmented.day.label': 'Day',
+    'demo03.aclSegmented.week.label': 'Week',
+    'demo03.aclSegmented.month.label': 'Month',
+    'demo03.aclSegmented.reset.label': 'Reset',
+    'demo03.aclSegmented.reset.icon': 'mRefresh',
+    'demo03.aclSegmented.apply.label': 'Apply',
+    'demo03.aclSegmented.apply.icon': 'mCheck',
   };
 
   @override
