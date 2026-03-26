@@ -29,12 +29,16 @@ class TomTreeView extends TomTreeBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIndentation =
+        resolveDoubleOrNull(context, 'indentation') ?? indentation;
+
     return ListView(
       padding: padding,
       shrinkWrap: shrinkWrap,
       physics: physics,
       children: [
-        for (final node in nodes) _TomTreeNodeWidget(node: node, depth: 0, indentation: indentation),
+        for (final node in nodes) _TomTreeNodeWidget(node: node, depth: 0, indentation: resolvedIndentation),
       ],
     );
   }

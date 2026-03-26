@@ -130,15 +130,23 @@ class TomAnimatedContainer extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+
     return AnimatedContainer(
       alignment: alignment,
       padding: padding,
-      color: color,
+      color: resolvedColor,
       decoration: decoration,
       foregroundDecoration: foregroundDecoration,
       constraints: constraints,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       margin: margin,
       transform: transform,
       transformAlignment: transformAlignment,

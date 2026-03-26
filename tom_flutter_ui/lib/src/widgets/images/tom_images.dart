@@ -69,14 +69,28 @@ class TomIcon extends TomImageBase {
     final resolvedSemanticLabel =
         semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSize =
+        size ?? resolveDoubleOrNull(context, 'size');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedFill =
+        fill ?? resolveDoubleOrNull(context, 'fill');
+    final resolvedWeight =
+        weight ?? resolveDoubleOrNull(context, 'weight');
+    final resolvedGrade =
+        grade ?? resolveDoubleOrNull(context, 'grade');
+    final resolvedOpticalSize =
+        opticalSize ?? resolveDoubleOrNull(context, 'opticalSize');
+
     return Icon(
       resolvedIcon,
-      size: size,
-      fill: fill,
-      weight: weight,
-      grade: grade,
-      opticalSize: opticalSize,
-      color: color,
+      size: resolvedSize,
+      fill: resolvedFill,
+      weight: resolvedWeight,
+      grade: resolvedGrade,
+      opticalSize: resolvedOpticalSize,
+      color: resolvedColor,
       shadows: shadows,
       semanticLabel: resolvedSemanticLabel,
       textDirection: textDirection,
@@ -144,11 +158,19 @@ class TomImage extends TomImageBase {
     final resolvedSemanticLabel =
         semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+
     return Image(
       image: imageProvider,
-      width: width,
-      height: height,
-      color: color,
+      width: resolvedWidth,
+      height: resolvedHeight,
+      color: resolvedColor,
       colorBlendMode: colorBlendMode,
       fit: fit,
       alignment: alignment,
@@ -196,16 +218,28 @@ class TomCircleAvatar extends TomImageBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedForegroundColor =
+        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+    final resolvedRadius =
+        radius ?? resolveDoubleOrNull(context, 'radius');
+    final resolvedMinRadius =
+        minRadius ?? resolveDoubleOrNull(context, 'minRadius');
+    final resolvedMaxRadius =
+        maxRadius ?? resolveDoubleOrNull(context, 'maxRadius');
+
     return CircleAvatar(
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
+      backgroundColor: resolvedBackgroundColor,
+      foregroundColor: resolvedForegroundColor,
       backgroundImage: backgroundImage,
       foregroundImage: foregroundImage,
       onBackgroundImageError: onBackgroundImageError,
       onForegroundImageError: onForegroundImageError,
-      radius: radius,
-      minRadius: minRadius,
-      maxRadius: maxRadius,
+      radius: resolvedRadius,
+      minRadius: resolvedMinRadius,
+      maxRadius: resolvedMaxRadius,
       child: child,
     );
   }
@@ -267,6 +301,14 @@ class TomFadeInImage extends TomImageBase {
     final resolvedSemanticLabel = imageSemanticLabel ??
         (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedPlaceholderColor =
+        placeholderColor ?? resolveColorOrNull(context, 'placeholderColor');
+
     return FadeInImage(
       placeholder: placeholder,
       image: image,
@@ -274,8 +316,8 @@ class TomFadeInImage extends TomImageBase {
       fadeOutCurve: fadeOutCurve,
       fadeInDuration: fadeInDuration,
       fadeInCurve: fadeInCurve,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       fit: fit,
       placeholderFit: placeholderFit,
       alignment: alignment,
@@ -283,7 +325,7 @@ class TomFadeInImage extends TomImageBase {
       matchTextDirection: matchTextDirection,
       excludeFromSemantics: excludeFromSemantics,
       imageSemanticLabel: resolvedSemanticLabel,
-      placeholderColor: placeholderColor,
+      placeholderColor: resolvedPlaceholderColor,
       placeholderColorBlendMode: placeholderColorBlendMode,
       placeholderErrorBuilder: placeholderErrorBuilder,
       imageErrorBuilder: imageErrorBuilder,
@@ -315,10 +357,16 @@ class TomImageIcon extends TomImageBase {
     final resolvedSemanticLabel = semanticLabel ??
         (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSize =
+        size ?? resolveDoubleOrNull(context, 'size');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+
     return ImageIcon(
       image,
-      size: size,
-      color: color,
+      size: resolvedSize,
+      color: resolvedColor,
       semanticLabel: resolvedSemanticLabel,
     );
   }

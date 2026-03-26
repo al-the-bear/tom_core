@@ -63,6 +63,22 @@ class TomDataTable extends TomTableBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDataRowMinHeight =
+        dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight');
+    final resolvedDataRowMaxHeight =
+        dataRowMaxHeight ?? resolveDoubleOrNull(context, 'dataRowMaxHeight');
+    final resolvedHeadingRowHeight =
+        headingRowHeight ?? resolveDoubleOrNull(context, 'headingRowHeight');
+    final resolvedHorizontalMargin =
+        horizontalMargin ?? resolveDoubleOrNull(context, 'horizontalMargin');
+    final resolvedColumnSpacing =
+        columnSpacing ?? resolveDoubleOrNull(context, 'columnSpacing');
+    final resolvedDividerThickness =
+        dividerThickness ?? resolveDoubleOrNull(context, 'dividerThickness');
+    final resolvedCheckboxHorizontalMargin =
+        checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+
     return DataTable(
       columns: columns,
       sortColumnIndex: sortColumnIndex,
@@ -70,18 +86,18 @@ class TomDataTable extends TomTableBase {
       onSelectAll: onSelectAll,
       decoration: decoration,
       dataRowColor: dataRowColor,
-      dataRowMinHeight: dataRowMinHeight,
-      dataRowMaxHeight: dataRowMaxHeight,
+      dataRowMinHeight: resolvedDataRowMinHeight,
+      dataRowMaxHeight: resolvedDataRowMaxHeight,
       dataTextStyle: dataTextStyle,
       headingRowColor: headingRowColor,
-      headingRowHeight: headingRowHeight,
+      headingRowHeight: resolvedHeadingRowHeight,
       headingTextStyle: headingTextStyle,
-      horizontalMargin: horizontalMargin,
-      columnSpacing: columnSpacing,
+      horizontalMargin: resolvedHorizontalMargin,
+      columnSpacing: resolvedColumnSpacing,
       showCheckboxColumn: showCheckboxColumn,
       showBottomBorder: showBottomBorder,
-      dividerThickness: dividerThickness,
-      checkboxHorizontalMargin: checkboxHorizontalMargin,
+      dividerThickness: resolvedDividerThickness,
+      checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
       border: border,
       clipBehavior: clipBehavior,
       rows: rows,
@@ -159,6 +175,20 @@ class TomPaginatedDataTable extends TomTableBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDataRowMinHeight =
+        resolveDoubleOrNull(context, 'dataRowMinHeight') ?? dataRowMinHeight;
+    final resolvedDataRowMaxHeight =
+        resolveDoubleOrNull(context, 'dataRowMaxHeight') ?? dataRowMaxHeight;
+    final resolvedHeadingRowHeight =
+        resolveDoubleOrNull(context, 'headingRowHeight') ?? headingRowHeight;
+    final resolvedHorizontalMargin =
+        resolveDoubleOrNull(context, 'horizontalMargin') ?? horizontalMargin;
+    final resolvedColumnSpacing =
+        resolveDoubleOrNull(context, 'columnSpacing') ?? columnSpacing;
+    final resolvedCheckboxHorizontalMargin =
+        checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+
     return PaginatedDataTable(
       header: header,
       actions: actions,
@@ -166,11 +196,11 @@ class TomPaginatedDataTable extends TomTableBase {
       sortColumnIndex: sortColumnIndex,
       sortAscending: sortAscending,
       onSelectAll: onSelectAll,
-      dataRowMinHeight: dataRowMinHeight,
-      dataRowMaxHeight: dataRowMaxHeight,
-      headingRowHeight: headingRowHeight,
-      horizontalMargin: horizontalMargin,
-      columnSpacing: columnSpacing,
+      dataRowMinHeight: resolvedDataRowMinHeight,
+      dataRowMaxHeight: resolvedDataRowMaxHeight,
+      headingRowHeight: resolvedHeadingRowHeight,
+      horizontalMargin: resolvedHorizontalMargin,
+      columnSpacing: resolvedColumnSpacing,
       showCheckboxColumn: showCheckboxColumn,
       showFirstLastButtons: showFirstLastButtons,
       initialFirstRowIndex: initialFirstRowIndex,
@@ -179,7 +209,7 @@ class TomPaginatedDataTable extends TomTableBase {
       availableRowsPerPage: availableRowsPerPage,
       onRowsPerPageChanged: onRowsPerPageChanged,
       dragStartBehavior: dragStartBehavior,
-      checkboxHorizontalMargin: checkboxHorizontalMargin,
+      checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
       showEmptyRows: showEmptyRows,
       source: source,
     );

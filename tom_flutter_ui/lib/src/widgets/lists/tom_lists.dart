@@ -174,6 +174,12 @@ class TomListView extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedItemExtent =
+        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+    final resolvedCacheExtent =
+        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+
     // If children list provided, use default ListView constructor
     if (_children != null) {
       return ListView(
@@ -184,9 +190,9 @@ class TomListView extends TomListBase {
         physics: physics,
         shrinkWrap: shrinkWrap,
         padding: padding,
-        itemExtent: itemExtent,
+        itemExtent: resolvedItemExtent,
         prototypeItem: prototypeItem,
-        cacheExtent: cacheExtent,
+        cacheExtent: resolvedCacheExtent,
         semanticChildCount: semanticChildCount,
         dragStartBehavior: dragStartBehavior,
         keyboardDismissBehavior: keyboardDismissBehavior,
@@ -207,10 +213,10 @@ class TomListView extends TomListBase {
       physics: physics,
       shrinkWrap: shrinkWrap,
       padding: padding,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
       prototypeItem: prototypeItem,
       childrenDelegate: _childrenDelegate!,
-      cacheExtent: cacheExtent,
+      cacheExtent: resolvedCacheExtent,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,

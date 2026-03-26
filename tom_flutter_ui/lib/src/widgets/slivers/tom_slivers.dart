@@ -69,8 +69,12 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMaxExtent =
+        resolveDoubleOrNull(context, 'maxExtent') ?? maxExtent;
+
     return SliverConstrainedCrossAxis(
-      maxExtent: maxExtent,
+      maxExtent: resolvedMaxExtent,
       sliver: sliver,
     );
   }
@@ -140,9 +144,13 @@ class TomSliverFillViewport extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedViewportFraction =
+        resolveDoubleOrNull(context, 'viewportFraction') ?? viewportFraction;
+
     return SliverFillViewport(
       delegate: delegate,
-      viewportFraction: viewportFraction,
+      viewportFraction: resolvedViewportFraction,
       padEnds: padEnds,
     );
   }
@@ -165,9 +173,13 @@ class TomSliverFixedExtentList extends TomSliverBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedItemExtent =
+        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+
     return SliverFixedExtentList(
       delegate: delegate,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
     );
   }
 }

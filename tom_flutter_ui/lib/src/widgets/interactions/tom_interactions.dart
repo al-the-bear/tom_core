@@ -239,6 +239,18 @@ class TomInkWell extends TomInteractionBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedHighlightColor =
+        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+    final resolvedSplashColor =
+        splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedRadius =
+        radius ?? resolveDoubleOrNull(context, 'radius');
+
     return InkWell(
       onTap: onTap,
       onDoubleTap: onDoubleTap,
@@ -253,13 +265,13 @@ class TomInkWell extends TomInteractionBase {
       onHighlightChanged: onHighlightChanged,
       onHover: onHover,
       mouseCursor: mouseCursor,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
-      highlightColor: highlightColor,
+      focusColor: resolvedFocusColor,
+      hoverColor: resolvedHoverColor,
+      highlightColor: resolvedHighlightColor,
       overlayColor: overlayColor,
-      splashColor: splashColor,
+      splashColor: resolvedSplashColor,
       splashFactory: splashFactory,
-      radius: radius,
+      radius: resolvedRadius,
       borderRadius: borderRadius,
       customBorder: customBorder,
       enableFeedback: enableFeedback ?? true,
