@@ -84,7 +84,7 @@ class _DemoXXPageState extends State<DemoXXPage> {
       tomId: 'demoXX',
       appBar: TomAppBar(
         tomId: 'demoXXAppBar',
-        title: TomText(tomId: 'demoXXTitle', text: 'Demo Title'),
+        title: TomText(tomId: 'demoXXTitle'), // actual title must be in resources!
       ),
       body: _buildDemoContent(),
     );
@@ -118,29 +118,28 @@ Individual widget showcases use a consistent card layout:
 
 ```dart
 class DemoCard extends StatelessWidget {
-  final String title;
-  final String description;
+  final String id;
   final Widget child;
   final String? code;
   
   Widget build(BuildContext context) {
     return TomCard(
-      tomId: 'demoCard_$title',
+      tomId: '$id_demoCard',
       child: TomColumn(
-        tomId: 'demoCardColumn_$title',
+        tomId: '$id_demoCardColumn',
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Title row with icon
           TomRow(
-            tomId: 'demoCardTitleRow_$title',
+            tomId: '$id_demoCardTitleRow',
             children: [
-              TomIcon(tomId: 'demoCardIcon', icon: Icons.widgets),
+              TomIcon(tomId: '$id_demoCardIcon', icon: Icons.widgets),
               const SizedBox(width: 12),
-              TomText(tomId: 'demoCardTitle', text: title, style: TextStyle(...)),
+              TomText(tomId: '$id_demoCardTitle', style: TextStyle(...)), // actual text must be in resources, will be retrieved by TomText, place text with right key in resources
             ],
           ),
           // Description
-          TomText(tomId: 'demoCardDesc', text: description),
+          TomText(tomId: '$id_demoCardDesc'), // actual text must be in resources, will be retrieved by TomText, place text with right key in resources
           const Divider(),
           // Widget showcase area
           child,
