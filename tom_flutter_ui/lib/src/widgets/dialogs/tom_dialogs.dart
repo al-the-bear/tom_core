@@ -247,11 +247,21 @@ class TomDialog extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+
     return Dialog(
-      backgroundColor: backgroundColor,
-      elevation: elevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      elevation: resolvedElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,
       shape: shape,
@@ -298,12 +308,18 @@ class TomBottomSheet extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+
     return BottomSheet(
       animationController: animationController,
       onClosing: onClosing,
       builder: builder,
-      backgroundColor: backgroundColor,
-      elevation: elevation,
+      backgroundColor: resolvedBackgroundColor,
+      elevation: resolvedElevation,
       shape: shape,
       clipBehavior: clipBehavior,
       constraints: constraints,
@@ -398,19 +414,36 @@ class TomMaterialBanner extends TomDialogBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedDividerColor =
+        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
+    final resolvedLeadingPadding =
+        leadingPadding ?? resolveEdgeInsetsOrNull(context, 'leadingPadding');
+
     return MaterialBanner(
       content: content,
       contentTextStyle: contentTextStyle,
       actions: actions,
-      elevation: elevation,
+      elevation: resolvedElevation,
       leading: leading,
-      backgroundColor: backgroundColor,
-      surfaceTintColor: surfaceTintColor,
-      shadowColor: shadowColor,
-      dividerColor: dividerColor,
-      padding: padding,
-      margin: margin,
-      leadingPadding: leadingPadding,
+      backgroundColor: resolvedBackgroundColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      shadowColor: resolvedShadowColor,
+      dividerColor: resolvedDividerColor,
+      padding: resolvedPadding,
+      margin: resolvedMargin,
+      leadingPadding: resolvedLeadingPadding,
       forceActionsBelow: forceActionsBelow,
       overflowAlignment: overflowAlignment,
       animation: animation,
@@ -472,13 +505,21 @@ class TomTooltip extends TomDialogBase {
   Widget buildContent(BuildContext context) {
     final resolvedMessage = message ?? resolveResourceOrFail(context, 'tooltip');
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedVerticalOffset =
+        verticalOffset ?? resolveDoubleOrNull(context, 'verticalOffset');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
+
     return Tooltip(
       message: resolvedMessage,
       richMessage: richMessage,
-      height: height,
-      padding: padding,
-      margin: margin,
-      verticalOffset: verticalOffset,
+      height: resolvedHeight,
+      padding: resolvedPadding,
+      margin: resolvedMargin,
+      verticalOffset: resolvedVerticalOffset,
       preferBelow: preferBelow,
       excludeFromSemantics: excludeFromSemantics,
       decoration: decoration,

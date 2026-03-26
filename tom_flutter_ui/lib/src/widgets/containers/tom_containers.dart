@@ -233,6 +233,14 @@ class TomScaffold extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedDrawerScrimColor =
+        drawerScrimColor ?? resolveColorOrNull(context, 'drawerScrimColor');
+    final resolvedDrawerEdgeDragWidth =
+        drawerEdgeDragWidth ?? resolveDoubleOrNull(context, 'drawerEdgeDragWidth');
+
     return Scaffold(
       appBar: appBar,
       body: body,
@@ -245,13 +253,13 @@ class TomScaffold extends TomContainerBase {
       endDrawer: endDrawer,
       bottomNavigationBar: bottomNavigationBar,
       bottomSheet: bottomSheet,
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       primary: primary,
       extendBody: extendBody,
       extendBodyBehindAppBar: extendBodyBehindAppBar,
-      drawerScrimColor: drawerScrimColor,
-      drawerEdgeDragWidth: drawerEdgeDragWidth,
+      drawerScrimColor: resolvedDrawerScrimColor,
+      drawerEdgeDragWidth: resolvedDrawerEdgeDragWidth,
       drawerEnableOpenDragGesture: drawerEnableOpenDragGesture,
       endDrawerEnableOpenDragGesture: endDrawerEnableOpenDragGesture,
       restorationId: restorationId,
@@ -419,16 +427,26 @@ class TomBottomAppBar extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+
     return BottomAppBar(
-      color: color,
-      elevation: elevation,
+      color: resolvedColor,
+      elevation: resolvedElevation,
       shape: shape,
       clipBehavior: clipBehavior,
       notchMargin: notchMargin,
       padding: padding,
-      height: height,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      height: resolvedHeight,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       child: child,
     );
   }
@@ -457,12 +475,21 @@ class TomDivider extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedThickness =
+        thickness ?? resolveDoubleOrNull(context, 'thickness');
+    final resolvedIndent = indent ?? resolveDoubleOrNull(context, 'indent');
+    final resolvedEndIndent =
+        endIndent ?? resolveDoubleOrNull(context, 'endIndent');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+
     return Divider(
-      height: height,
-      thickness: thickness,
-      indent: indent,
-      endIndent: endIndent,
-      color: color,
+      height: resolvedHeight,
+      thickness: resolvedThickness,
+      indent: resolvedIndent,
+      endIndent: resolvedEndIndent,
+      color: resolvedColor,
     );
   }
 }
@@ -508,19 +535,27 @@ class TomContainer extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
+
     return Container(
       alignment: alignment,
-      padding: padding,
-      color: color,
+      padding: resolvedPadding,
+      color: resolvedColor,
       decoration: decoration,
       foregroundDecoration: foregroundDecoration,
       constraints: constraints,
-      margin: margin,
+      margin: resolvedMargin,
       transform: transform,
       transformAlignment: transformAlignment,
       clipBehavior: clipBehavior,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       child: child,
     );
   }
@@ -631,12 +666,18 @@ class TomWrap extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSpacing =
+        spacing != 0.0 ? spacing : (resolveDoubleOrNull(context, 'spacing') ?? 0.0);
+    final resolvedRunSpacing =
+        runSpacing != 0.0 ? runSpacing : (resolveDoubleOrNull(context, 'runSpacing') ?? 0.0);
+
     return Wrap(
       direction: direction,
       alignment: alignment,
-      spacing: spacing,
+      spacing: resolvedSpacing,
       runAlignment: runAlignment,
-      runSpacing: runSpacing,
+      runSpacing: resolvedRunSpacing,
       crossAxisAlignment: crossAxisAlignment,
       textDirection: textDirection,
       verticalDirection: verticalDirection,
@@ -725,9 +766,13 @@ class TomSizedBox extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
+
     return SizedBox(
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       child: child,
     );
   }
@@ -794,9 +839,15 @@ class TomCenter extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidthFactor =
+        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+    final resolvedHeightFactor =
+        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+
     return Center(
-      widthFactor: widthFactor,
-      heightFactor: heightFactor,
+      widthFactor: resolvedWidthFactor,
+      heightFactor: resolvedHeightFactor,
       child: child,
     );
   }
@@ -821,10 +872,16 @@ class TomAlign extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidthFactor =
+        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+    final resolvedHeightFactor =
+        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+
     return Align(
       alignment: alignment,
-      widthFactor: widthFactor,
-      heightFactor: heightFactor,
+      widthFactor: resolvedWidthFactor,
+      heightFactor: resolvedHeightFactor,
       child: child,
     );
   }
@@ -899,10 +956,16 @@ class TomFractionallySizedBox extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidthFactor =
+        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+    final resolvedHeightFactor =
+        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+
     return FractionallySizedBox(
       alignment: alignment,
-      widthFactor: widthFactor,
-      heightFactor: heightFactor,
+      widthFactor: resolvedWidthFactor,
+      heightFactor: resolvedHeightFactor,
       child: child,
     );
   }
@@ -942,9 +1005,15 @@ class TomIntrinsicWidth extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedStepWidth =
+        stepWidth ?? resolveDoubleOrNull(context, 'stepWidth');
+    final resolvedStepHeight =
+        stepHeight ?? resolveDoubleOrNull(context, 'stepHeight');
+
     return IntrinsicWidth(
-      stepWidth: stepWidth,
-      stepHeight: stepHeight,
+      stepWidth: resolvedStepWidth,
+      stepHeight: resolvedStepHeight,
       child: child,
     );
   }
@@ -985,12 +1054,21 @@ class TomMaterial extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation != 0.0 ? elevation : (resolveDoubleOrNull(context, 'elevation') ?? 0.0);
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+
     return Material(
       type: type,
-      elevation: elevation,
-      color: color,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      elevation: resolvedElevation,
+      color: resolvedColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       textStyle: textStyle,
       borderRadius: borderRadius,
       shape: shape,
@@ -1191,6 +1269,28 @@ class TomSliverAppBar extends TomContainerBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedScrolledUnderElevation =
+        scrolledUnderElevation ?? resolveDoubleOrNull(context, 'scrolledUnderElevation');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedForegroundColor =
+        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+    final resolvedTitleSpacing =
+        titleSpacing ?? resolveDoubleOrNull(context, 'titleSpacing');
+    final resolvedExpandedHeight =
+        expandedHeight ?? resolveDoubleOrNull(context, 'expandedHeight');
+    final resolvedCollapsedHeight =
+        collapsedHeight ?? resolveDoubleOrNull(context, 'collapsedHeight');
+    final resolvedLeadingWidth =
+        leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
+
     return SliverAppBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -1198,22 +1298,22 @@ class TomSliverAppBar extends TomContainerBase {
       actions: actions,
       flexibleSpace: flexibleSpace,
       bottom: bottom,
-      elevation: elevation,
-      scrolledUnderElevation: scrolledUnderElevation,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
+      elevation: resolvedElevation,
+      scrolledUnderElevation: resolvedScrolledUnderElevation,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      backgroundColor: resolvedBackgroundColor,
+      foregroundColor: resolvedForegroundColor,
       iconTheme: iconTheme,
       actionsIconTheme: actionsIconTheme,
       primary: primary,
       centerTitle: centerTitle,
       excludeHeaderSemantics: excludeHeaderSemantics,
-      titleSpacing: titleSpacing,
-      expandedHeight: expandedHeight,
-      collapsedHeight: collapsedHeight,
+      titleSpacing: resolvedTitleSpacing,
+      expandedHeight: resolvedExpandedHeight,
+      collapsedHeight: resolvedCollapsedHeight,
       toolbarHeight: toolbarHeight,
-      leadingWidth: leadingWidth,
+      leadingWidth: resolvedLeadingWidth,
       floating: floating,
       pinned: pinned,
       snap: snap,

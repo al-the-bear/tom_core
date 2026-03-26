@@ -230,19 +230,24 @@ class TomRichText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedSelectionColor =
+        selectionColor ?? resolveColorOrNull(context, 'selectionColor');
+
     return RichText(
       text: text,
       textAlign: textAlign,
       textDirection: textDirection,
       softWrap: softWrap,
       overflow: overflow,
-      maxLines: maxLines,
+      maxLines: resolvedMaxLines,
       locale: locale,
       strutStyle: strutStyle,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
       selectionRegistrar: selectionRegistrar,
-      selectionColor: selectionColor,
+      selectionColor: resolvedSelectionColor,
     );
   }
 }
@@ -287,17 +292,29 @@ class TomBadge extends TomLabelBase {
     final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
     final effectiveLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedTextColor =
+        textColor ?? resolveColorOrNull(context, 'textColor');
+    final resolvedSmallSize =
+        smallSize ?? resolveDoubleOrNull(context, 'smallSize');
+    final resolvedLargeSize =
+        largeSize ?? resolveDoubleOrNull(context, 'largeSize');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return Badge(
       label: effectiveLabel,
-      backgroundColor: backgroundColor,
-      textColor: textColor,
+      backgroundColor: resolvedBackgroundColor,
+      textColor: resolvedTextColor,
       textStyle: textStyle,
-      padding: padding,
+      padding: resolvedPadding,
       alignment: alignment,
       offset: offset,
       isLabelVisible: isLabelVisible,
-      smallSize: smallSize,
-      largeSize: largeSize,
+      smallSize: resolvedSmallSize,
+      largeSize: resolvedLargeSize,
       child: child,
     );
   }
@@ -387,6 +404,34 @@ class TomListTile extends TomLabelBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedIconColor =
+        iconColor ?? resolveColorOrNull(context, 'iconColor');
+    final resolvedTextColor =
+        textColor ?? resolveColorOrNull(context, 'textColor');
+    final resolvedContentPadding =
+        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedSplashColor =
+        splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedTileColor =
+        tileColor ?? resolveColorOrNull(context, 'tileColor');
+    final resolvedSelectedTileColor =
+        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+    final resolvedHorizontalTitleGap =
+        horizontalTitleGap ?? resolveDoubleOrNull(context, 'horizontalTitleGap');
+    final resolvedMinVerticalPadding =
+        minVerticalPadding ?? resolveDoubleOrNull(context, 'minVerticalPadding');
+    final resolvedMinLeadingWidth =
+        minLeadingWidth ?? resolveDoubleOrNull(context, 'minLeadingWidth');
+    final resolvedMinTileHeight =
+        minTileHeight ?? resolveDoubleOrNull(context, 'minTileHeight');
+
     return ListTile(
       title: effectiveTitle,
       subtitle: subtitle,
@@ -396,29 +441,29 @@ class TomListTile extends TomLabelBase {
       dense: dense,
       visualDensity: visualDensity,
       shape: shape,
-      selectedColor: selectedColor,
-      iconColor: iconColor,
-      textColor: textColor,
+      selectedColor: resolvedSelectedColor,
+      iconColor: resolvedIconColor,
+      textColor: resolvedTextColor,
       titleTextStyle: titleTextStyle,
       subtitleTextStyle: subtitleTextStyle,
       leadingAndTrailingTextStyle: leadingAndTrailingTextStyle,
-      contentPadding: contentPadding,
+      contentPadding: resolvedContentPadding,
       enabled: enabled,
       onTap: onTap,
       onLongPress: onLongPress,
       selected: selected,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
-      splashColor: splashColor,
+      focusColor: resolvedFocusColor,
+      hoverColor: resolvedHoverColor,
+      splashColor: resolvedSplashColor,
       focusNode: focusNode,
       autofocus: autofocus,
-      tileColor: tileColor,
-      selectedTileColor: selectedTileColor,
+      tileColor: resolvedTileColor,
+      selectedTileColor: resolvedSelectedTileColor,
       enableFeedback: enableFeedback,
-      horizontalTitleGap: horizontalTitleGap,
-      minVerticalPadding: minVerticalPadding,
-      minLeadingWidth: minLeadingWidth,
-      minTileHeight: minTileHeight,
+      horizontalTitleGap: resolvedHorizontalTitleGap,
+      minVerticalPadding: resolvedMinVerticalPadding,
+      minLeadingWidth: resolvedMinLeadingWidth,
+      minTileHeight: resolvedMinTileHeight,
       titleAlignment: titleAlignment,
       mouseCursor: mouseCursor,
     );
