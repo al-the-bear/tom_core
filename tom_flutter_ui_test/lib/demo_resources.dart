@@ -577,6 +577,45 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo.slider.card.audio_equalizer.label': 'Audio Equalizer',
     'demo.slider.card.audio_equalizer.description.label': 'Vertical sliders for frequency band adjustment.',
     // ==========================================================================
+    // Cards & Panels Demo (demo_06_cards_panels.dart)
+    // ==========================================================================
+    // Section headers
+    'section.cards.card.label': 'Card',
+    'section.cards.card.subtitle.label': 'Material design card containers',
+    'section.cards.expansiontile.label': 'ExpansionTile',
+    'section.cards.expansiontile.subtitle.label': 'Collapsible list tiles',
+    'section.cards.expansionpanel.label': 'ExpansionPanel',
+    'section.cards.expansionpanel.subtitle.label': 'Accordion-style expandable panels',
+    'section.cards.panel_patterns.label': 'Panel Patterns',
+    'section.cards.panel_patterns.subtitle.label': 'Common panel layouts and designs',
+    'section.cards.interactive_cards.label': 'Interactive Cards',
+    'section.cards.interactive_cards.subtitle.label': 'Cards with actions and gestures',
+    // Demo cards
+    'demo.cards.card.basic_card.label': 'Basic Card',
+    'demo.cards.card.basic_card.description.label': 'Simple card with padding and content.',
+    'demo.cards.card.elevated_card.label': 'Elevated Card',
+    'demo.cards.card.elevated_card.description.label': 'Card with custom elevation and shadow.',
+    'demo.cards.card.outlined_card.label': 'Outlined Card',
+    'demo.cards.card.outlined_card.description.label': 'Card with border instead of shadow.',
+    'demo.cards.card.filled_card.label': 'Filled Card',
+    'demo.cards.card.filled_card.description.label': 'Card with filled background color.',
+    'demo.cards.card.card_with_image.label': 'Card with Image',
+    'demo.cards.card.card_with_image.description.label': 'Card containing an image header.',
+    'demo.cards.card.card_shapes.label': 'Card Shapes',
+    'demo.cards.card.card_shapes.description.label': 'Different border radius and shapes.',
+    'demo.cards.card.info_panel.label': 'Info Panel',
+    'demo.cards.card.info_panel.description.label': 'Alert-style panels with icons.',
+    'demo.cards.card.stats_panel.label': 'Stats Panel',
+    'demo.cards.card.stats_panel.description.label': 'Display statistics in a card grid.',
+    'demo.cards.card.feature_panel.label': 'Feature Panel',
+    'demo.cards.card.feature_panel.description.label': 'Showcase features with icons.',
+    'demo.cards.card.selectable_cards.label': 'Selectable Cards',
+    'demo.cards.card.selectable_cards.description.label': 'Cards that can be selected with visual feedback.',
+    'demo.cards.card.favorite_cards.label': 'Favorite Cards',
+    'demo.cards.card.favorite_cards.description.label': 'Cards with favorite toggle button.',
+    'demo.cards.card.swipeable_cards.label': 'Swipeable Cards',
+    'demo.cards.card.swipeable_cards.description.label': 'Cards with dismiss/swipe actions.',
+    // ==========================================================================
     // Auto Text Resources (demo_02..demo_06)
     // ==========================================================================
     'demo.02.auto.text.1': 'Form is valid!',

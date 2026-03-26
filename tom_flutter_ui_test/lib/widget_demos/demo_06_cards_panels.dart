@@ -51,6 +51,11 @@ class CardsPanelsDemo extends StatelessWidget {
   }
 }
 
+String _slugify(String value) {
+  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+}
+
 // =============================================================================
 // Section Header
 // =============================================================================
@@ -64,13 +69,15 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sectionId = 'section.cards.${_slugify(title)}';
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            title,
+            null,
+            tomId: sectionId,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,
@@ -78,7 +85,8 @@ class _SectionHeader extends StatelessWidget {
           ),
           const TomSizedBox(height: 4),
           TomText(
-            subtitle,
+            null,
+            tomId: '$sectionId.subtitle',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -289,6 +297,7 @@ class _CardSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
+    final cardId = 'demo.cards.card.${_slugify(title)}';
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -297,12 +306,14 @@ class _CardSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              title,
+              null,
+              tomId: cardId,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
             TomText(
-              description,
+              null,
+              tomId: '$cardId.description',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -701,6 +712,7 @@ class _PanelPatternsSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
+    final cardId = 'demo.cards.card.${_slugify(title)}';
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -709,12 +721,14 @@ class _PanelPatternsSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              title,
+              null,
+              tomId: cardId,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
             TomText(
-              description,
+              null,
+              tomId: '$cardId.description',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -865,6 +879,7 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
+    final cardId = 'demo.cards.card.${_slugify(title)}';
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -873,12 +888,14 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              title,
+              null,
+              tomId: cardId,
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
             TomText(
-              description,
+              null,
+              tomId: '$cardId.description',
               style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
@@ -909,11 +926,11 @@ class _SwipeableCardDemoState extends State<_SwipeableCardDemo> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const TomText(null, tomId: 'demo.06.auto.text.3',
+            const TomText(null, tomId: 'demo.cards.card.swipeable_cards',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const TomSizedBox(height: 4),
-            const TomText(null, tomId: 'demo.06.auto.text.4',
+            const TomText(null, tomId: 'demo.cards.card.swipeable_cards.description',
               style: TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const TomSizedBox(height: 12),
