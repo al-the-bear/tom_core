@@ -150,9 +150,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   // ===========================================================================
 
   Widget _buildTextFieldSection() {
-    return _DemoCard(
-      tomId: 'demo02.textfield',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.textfield',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic text field
@@ -212,14 +217,20 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             readOnly: true,
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildTextFormFieldSection() {
-    return _DemoCard(
-      tomId: 'demo02.formfield',
-      child: Form(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.formfield',
+        child: Form(
         key: _formKey,
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -272,6 +283,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               },
             ),
           ],
+          ),
         ),
       ),
     );
@@ -282,9 +294,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   // ===========================================================================
 
   Widget _buildSearchBarSection() {
-    return _DemoCard(
-      tomId: 'demo02.searchbar',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.searchbar',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic search bar
@@ -330,14 +347,20 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             },
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildAutocompleteSection() {
-    return _DemoCard(
-      tomId: 'demo02.autocomplete',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.autocomplete',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Country autocomplete
@@ -371,6 +394,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
         ],
+        ),
       ),
     );
   }
@@ -380,9 +404,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   // ===========================================================================
 
   Widget _buildCupertinoTextFieldSection() {
-    return _DemoCard(
-      tomId: 'demo02.cupertino',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.cupertino',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic Cupertino text field
@@ -413,20 +442,26 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             prefix: TomText(null, tomId: 'demo02.cupertino.formrowPrefix'),
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildCupertinoSearchSection() {
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
     // Wrap in NotificationListener to prevent CupertinoSearchTextField from
     // receiving scroll notifications that trigger size access during build.
     // This is a workaround for a Flutter bug where YearPicker.jumpTo dispatches
     // scroll notifications that CupertinoSearchTextField tries to handle.
-    return NotificationListener<ScrollNotification>(
-      onNotification: (_) => true, // Block scroll notifications
-      child: _DemoCard(
-        tomId: 'demo02.cupertinoSearch',
-        child: TomColumn(
+    return Directionality(
+      textDirection: textDirection,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (_) => true, // Block scroll notifications
+        child: _DemoCard(
+          tomId: 'demo02.cupertinoSearch',
+          child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cupertino search text field
@@ -445,6 +480,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               borderRadius: BorderRadius.circular(16),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -455,9 +491,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   // ===========================================================================
 
   Widget _buildCalendarSection() {
-    return _DemoCard(
-      tomId: 'demo02.calendar',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.calendar',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Calendar date picker
@@ -515,14 +556,20 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
 
   Widget _buildCupertinoDateTimeSection() {
-    return _DemoCard(
-      tomId: 'demo02.cupertinoDateTime',
-      child: TomColumn(
+    final direction = AclDirectionScope.maybeOf(context);
+    final textDirection =
+        direction == AclDirection.rtl ? TextDirection.rtl : TextDirection.ltr;
+    return Directionality(
+      textDirection: textDirection,
+      child: _DemoCard(
+        tomId: 'demo02.cupertinoDateTime',
+        child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cupertino date picker
@@ -569,6 +616,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             ],
           ),
         ],
+        ),
       ),
     );
   }
