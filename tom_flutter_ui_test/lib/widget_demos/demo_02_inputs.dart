@@ -46,19 +46,21 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   int _selectedYear = DateTime.now().year;
   String? _selectedCountry;
 
-  // Sample data for autocomplete
-  static const List<String> _countries = [
-    'United States',
-    'United Kingdom',
-    'Canada',
-    'Australia',
-    'Germany',
-    'France',
-    'Japan',
-    'Brazil',
-    'India',
-    'China',
-  ];
+  // Sample data for autocomplete - resolved from resources
+  List<String> _getCountries() {
+    return [
+      TomUIResources.resolveText('demo02.countries', 'us'),
+      TomUIResources.resolveText('demo02.countries', 'uk'),
+      TomUIResources.resolveText('demo02.countries', 'ca'),
+      TomUIResources.resolveText('demo02.countries', 'au'),
+      TomUIResources.resolveText('demo02.countries', 'de'),
+      TomUIResources.resolveText('demo02.countries', 'fr'),
+      TomUIResources.resolveText('demo02.countries', 'jp'),
+      TomUIResources.resolveText('demo02.countries', 'br'),
+      TomUIResources.resolveText('demo02.countries', 'in'),
+      TomUIResources.resolveText('demo02.countries', 'cn'),
+    ];
+  }
 
   @override
   void dispose() {
@@ -286,7 +288,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             tomId: 'demo02.searchbar.anchor',
             suggestionsBuilder: (context, controller) {
               final query = controller.text.toLowerCase();
-              final suggestions = _countries
+              final suggestions = _getCountries()
                   .where((c) => c.toLowerCase().contains(query))
                   .toList();
               return suggestions.map((item) => ListTile(
@@ -323,7 +325,8 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               if (textEditingValue.text.isEmpty) {
                 return const Iterable<String>.empty();
               }
-              return _countries.where((c) =>
+              final countries = _getCountries();
+              return countries.where((c) =>
                   c.toLowerCase().contains(textEditingValue.text.toLowerCase()));
             },
             onSelected: (selection) {

@@ -315,6 +315,20 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo02.autocomplete.country.hint': 'Start typing a country name',
 
     // ==========================================================================
+    // Demo 02: Country Data (for Autocomplete)
+    // ==========================================================================
+    'demo02.countries.us': 'United States',
+    'demo02.countries.uk': 'United Kingdom',
+    'demo02.countries.ca': 'Canada',
+    'demo02.countries.au': 'Australia',
+    'demo02.countries.de': 'Germany',
+    'demo02.countries.fr': 'France',
+    'demo02.countries.jp': 'Japan',
+    'demo02.countries.br': 'Brazil',
+    'demo02.countries.in': 'India',
+    'demo02.countries.cn': 'China',
+
+    // ==========================================================================
     // Demo 02: TomCupertinoTextField Card
     // ==========================================================================
     'demo02.cupertino.icon': 'mApple',
