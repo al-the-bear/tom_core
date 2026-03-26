@@ -622,22 +622,87 @@ class TomResourceNavigationRail extends TomNavigationBase {
 ### Phase 2: Widget Updates
 
 1. Update all widgets to try resource resolution for optional parameters
-2. Follow pattern: `final color = this.color ?? resolveColorOrNull(context, 'color');`
-3. Only apply resource value if explicitly provided OR resource exists (never default)
+2. **Follow the 3-way resolution pattern** (see "Default Value Preservation" below):
+   ```dart
+   param ?? resolveXOrNull(context, 'suffix') ?? flutterDefault
+   ```
+3. Make constructor parameters nullable when they have Flutter defaults
+4. Apply defaults in buildContent(), not in constructor defaults
 
-### Phase 3: Auto-Assembling Components
+#### Default Value Preservation (CRITICAL)
 
-1. Create `TomResourceDropdown` for dropdown menus
-2. Create `TomResourcePopupMenu` for popup menus
-3. Create `TomResourceNavigationRail` and `TomResourceNavigationBar`
-4. Create `TomResourceTabBar` for tabs
+When implementing Phase 2 resource resolution, you **MUST** preserve Flutter's original default values. The resolution pattern has three tiers:
 
-### Phase 4: Complex Structure Support
+```dart
+// BUILD METHOD — resolves in priority order:
+// 1. Explicit parameter (if user passed a value) → use it
+// 2. Resource value (if defined in resources) → use it
+// 3. Flutter default (if neither above) → use Flutter's original default
+
+@override
+Widget buildContent(BuildContext context) {
+  return CupertinoPicker(
+    // NO default — backgroundColor has no Flutter default (null is valid)
+    backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
+    
+    // WITH default — diameterRatio defaults to 1.07 in Flutter
+    diameterRatio: diameterRatio ?? resolveDoubleOrNull(context, 'diameterRatio') ?? 1.07,
+    
+    // WITH default — itemExtent defaults to 32.0 in Flutter
+    itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
+    ...
+  );
+}
+```
+
+**Constructor parameters** should be nullable without defaults:
+
+```dart
+class TomCupertinoPicker extends TomSelectBase {
+  final double? diameterRatio;  // nullable, NO default
+  final Color? backgroundColor; // nullable, NO default
+  final double? itemExtent;     // nullable, NO default
+  
+  const TomCupertinoPicker({
+    this.diameterRatio,    // ✅ No default — applied in buildContent
+    this.backgroundColor,  // ✅ Nullable, no default
+    this.itemExtent,       // ✅ No default — applied in buildContent
+    ...
+  });
+}
+```
+
+**Why this matters:**
+- Without the 3-way pattern, if no explicit param AND no resource → param becomes null
+- Null breaks widgets that require a value (like `itemExtent` in CupertinoPicker)
+- Flutter widgets expect their documented defaults when user passes nothing
+
+**Anti-patterns to avoid:**
+
+```dart
+// ❌ WRONG — loses Flutter default if neither param nor resource exists
+itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent'),
+
+// ❌ WRONG — default in constructor prevents resource override
+const TomCupertinoPicker({ this.itemExtent = 32.0, ... });
+
+// ✅ CORRECT — 3-way pattern preserves Flutter defaults
+itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
+```
+
+### Phase 3: Complex Structure Support
 
 1. Implement `TextStyle` parsing from maps
 2. Implement `EdgeInsets` parsing from maps/arrays
 3. Implement `BorderRadius` parsing from maps/arrays
 4. Add enum mapping support (TextAlign, TextOverflow, etc.)
+
+### Phase 4: Auto-Assembling Components
+
+1. Create `TomResourceDropdown` for dropdown menus
+2. Create `TomResourcePopupMenu` for popup menus
+3. Create `TomResourceNavigationRail` and `TomResourceNavigationBar`
+4. Create `TomResourceTabBar` for tabs
 
 ---
 
@@ -654,13 +719,12 @@ final resolvedColor = this.color ?? resolveColorOrNull(context, 'color');
 
 ### 2. Silent Fallback
 
-If no resource exists, the parameter remains null/default — no errors:
+If no resource exists AND no explicit param, use Flutter's default:
 
 ```dart
-// resolveColorOrNull returns null if:
-// - Widget has no tomId
-// - No resource exists for the suffix
-// - Color string cannot be parsed
+// 3-way resolution pattern:
+// param → resource → flutter default
+itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
 ```
 
 ### 3. Type Safety
