@@ -66,10 +66,16 @@ class DemoScaffold extends StatefulWidget {
 }
 
 class _DemoScaffoldState extends State<DemoScaffold> {
-  AclDirection _direction = AclDirection.ltr;
+  AclDirection? _direction;
 
   @override
   Widget build(BuildContext context) {
+    // Initialize direction from locale's text direction if not yet set
+    final localeDirection = Directionality.of(context);
+    _direction ??= localeDirection == TextDirection.rtl
+        ? AclDirection.rtl
+        : AclDirection.ltr;
+
     // Demos that use ListView manage their own scrolling and padding.
     // fullScreen: true is for demos that need the entire screen (no padding).
     final body = widget.child;
@@ -98,7 +104,7 @@ class _DemoScaffoldState extends State<DemoScaffold> {
             : null,
       ),
       body: AclDirectionScope(
-        direction: _direction,
+        direction: _direction!,
         child: body,
       ),
     );

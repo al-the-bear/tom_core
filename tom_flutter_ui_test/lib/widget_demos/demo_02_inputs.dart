@@ -128,6 +128,16 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             _buildCalendarSection(),
             const TomSizedBox(height: 24),
             _buildCupertinoDateTimeSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 5: ACL Layout Demo (RTL/LTR)
+            _SectionHeader(
+              tomId: 'demo02.section.acl',
+            ),
+            const TomSizedBox(height: 16),
+            _buildAclTextFieldSection(),
+            const TomSizedBox(height: 24),
+            _buildAclDatePickerSection(),
             const TomSizedBox(height: 48),
           ],
         ),
@@ -560,6 +570,109 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           ),
         ],
       ),
+    );
+  }
+
+  // ===========================================================================
+  // Section 5: ACL Layout Demo (RTL/LTR)
+  // ===========================================================================
+
+  Widget _buildAclTextFieldSection() {
+    return _DemoCard(
+      tomId: 'demo02.aclTextField',
+      child: AclBuilder()
+          // Row 1: Label + TextField side by side
+          .append(TomText(null, tomId: 'demo02.aclTextField.nameLabel'))
+          .append(
+            TomTextField(
+              tomId: 'demo02.aclTextField.name',
+            ),
+            dist: 8,
+          )
+          .setPSize(200, 56)
+          .expandX()
+          .newRow(dist: 16)
+          // Row 2: Label + TextField side by side
+          .append(TomText(null, tomId: 'demo02.aclTextField.emailLabel'))
+          .append(
+            TomTextField(
+              tomId: 'demo02.aclTextField.email',
+              keyboardType: TextInputType.emailAddress,
+            ),
+            dist: 8,
+          )
+          .setPSize(200, 56)
+          .expandX()
+          .newRow(dist: 16)
+          // Row 3: Two text fields side by side
+          .append(
+            TomTextField(
+              tomId: 'demo02.aclTextField.city',
+            ),
+          )
+          .expandX()
+          .append(
+            TomTextField(
+              tomId: 'demo02.aclTextField.zip',
+            ),
+            dist: 16,
+          )
+          .setPSize(120, 56)
+          .build(),
+    );
+  }
+
+  Widget _buildAclDatePickerSection() {
+    return _DemoCard(
+      tomId: 'demo02.aclDatePicker',
+      child: AclBuilder()
+          // Row 1: Date label with formatted date display
+          .append(TomIcon(null, tomId: 'demo02.aclDatePicker.icon'))
+          .append(
+            TomText(null, tomId: 'demo02.aclDatePicker.label'),
+            dist: 8,
+          )
+          .append(
+            TomText(
+              MaterialLocalizations.of(context).formatShortDate(_selectedDate),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            dist: 16,
+          )
+          .gap()
+          .newRow(dist: 16)
+          // Row 2: Duration label with formatted duration
+          .append(TomIcon(null, tomId: 'demo02.aclDatePicker.timerIcon'))
+          .append(
+            TomText(null, tomId: 'demo02.aclDatePicker.durationLabel'),
+            dist: 8,
+          )
+          .append(
+            TomText(
+              _formatDuration(_selectedDuration),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            dist: 16,
+          )
+          .gap()
+          .newRow(dist: 24)
+          // Row 3: Calendar picker (constrained height)
+          .append(
+            TomContainer(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: TomCalendarDatePicker(
+                tomId: 'demo02.aclDatePicker.calendar',
+                initialDate: _selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                onDateChanged: (date) {
+                  setState(() => _selectedDate = date);
+                },
+              ),
+            ),
+          )
+          .expandX()
+          .build(),
     );
   }
 }

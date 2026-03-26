@@ -385,6 +385,39 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo02.duration.hours': 'h',
     'demo02.duration.minutes': 'm',
     'demo02.duration.seconds': 's',
+
+    // ==========================================================================
+    // Demo 02: ACL Layout Section
+    // ==========================================================================
+    'demo02.section.acl.title.label': 'ACL Layout (RTL/LTR)',
+    'demo02.section.acl.subtitle.label':
+        'Using AclBuilder — toggle LTR/RTL in the app bar to see layout direction change',
+
+    // ACL Text Fields Card
+    'demo02.aclTextField.icon': 'mViewQuilt',
+    'demo02.aclTextField.title.label': 'ACL Text Field Layout',
+    'demo02.aclTextField.description.label':
+        'Form fields using AclBuilder for responsive left-to-right/right-to-left layout.',
+    'demo02.aclTextField.nameLabel.label': 'Name:',
+    'demo02.aclTextField.name.label': 'Full Name',
+    'demo02.aclTextField.name.hint': 'Enter your full name',
+    'demo02.aclTextField.emailLabel.label': 'Email:',
+    'demo02.aclTextField.email.label': 'Email',
+    'demo02.aclTextField.email.hint': 'you@example.com',
+    'demo02.aclTextField.city.label': 'City',
+    'demo02.aclTextField.city.hint': 'City name',
+    'demo02.aclTextField.zip.label': 'ZIP',
+    'demo02.aclTextField.zip.hint': 'ZIP code',
+
+    // ACL Date Picker Card
+    'demo02.aclDatePicker.icon': 'mCalendarMonth',
+    'demo02.aclDatePicker.title.label': 'ACL Date Picker Layout',
+    'demo02.aclDatePicker.description.label':
+        'Date and duration display using AclBuilder for directional layout.',
+    'demo02.aclDatePicker.label.label': 'Selected Date:',
+    'demo02.aclDatePicker.durationLabel.label': 'Duration:',
+    'demo02.aclDatePicker.timerIcon': 'mTimer',
+    'demo02.aclDatePicker.calendar.label': 'Calendar',
   };
 
   @override
