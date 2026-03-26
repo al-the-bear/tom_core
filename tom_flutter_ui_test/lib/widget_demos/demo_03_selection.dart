@@ -66,9 +66,72 @@ class SelectionDemo extends StatelessWidget {
   }
 }
 
-String _slugify(String value) {
-  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+String _sectionTomId(String title) {
+  switch (title) {
+    case 'TomDropdownButton':
+      return 'section.select.tomdropdownbutton';
+    case 'TomDropdownMenu':
+      return 'section.select.tomdropdownmenu';
+    case 'TomAutocomplete':
+      return 'section.select.tomautocomplete';
+    case 'TomChips':
+      return 'section.select.tomchips';
+    case 'TomFilterChip & TomChoiceChip':
+      return 'section.select.tomfilterchip_tomchoicechip';
+    case 'Multi-Select':
+      return 'section.select.multi_select';
+    case 'Selection Examples':
+      return 'section.select.selection_examples';
+    default:
+      throw ArgumentError('Unknown section title: $title');
+  }
+}
+
+String _cardTomId(String title) {
+  switch (title) {
+    case 'Basic TomDropdownButton':
+      return 'demo.select.card.basic_tomdropdownbutton';
+    case 'TomDropdownButton with Icons':
+      return 'demo.select.card.tomdropdownbutton_with_icons';
+    case 'TomDropdownButton with Custom Styling':
+      return 'demo.select.card.tomdropdownbutton_with_custom_styling';
+    case 'TomDropdownButtonFormField':
+      return 'demo.select.card.tomdropdownbuttonformfield';
+    case 'Basic TomDropdownMenu':
+      return 'demo.select.card.basic_tomdropdownmenu';
+    case 'TomDropdownMenu with Search':
+      return 'demo.select.card.tomdropdownmenu_with_search';
+    case 'TomDropdownMenu Styling':
+      return 'demo.select.card.tomdropdownmenu_styling';
+    case 'Basic TomAutocomplete':
+      return 'demo.select.card.basic_tomautocomplete';
+    case 'Custom TomAutocomplete Options':
+      return 'demo.select.card.custom_tomautocomplete_options';
+    case 'Async TomAutocomplete':
+      return 'demo.select.card.async_tomautocomplete';
+    case 'Basic Chips':
+      return 'demo.select.card.basic_chips';
+    case 'TomActionChip':
+      return 'demo.select.card.tomactionchip';
+    case 'TomInputChip (Tags)':
+      return 'demo.select.card.tominputchip_tags';
+    case 'TomFilterChip':
+      return 'demo.select.card.tomfilterchip';
+    case 'TomChoiceChip':
+      return 'demo.select.card.tomchoicechip';
+    case 'Chip Styling':
+      return 'demo.select.card.chip_styling';
+    case 'Multi-Select List':
+      return 'demo.select.card.multi_select_list';
+    case 'Multi-Select Dialog':
+      return 'demo.select.card.multi_select_dialog';
+    case 'E-commerce Filter Panel':
+      return 'demo.select.card.e_commerce_filter_panel';
+    case 'Tag Input Field':
+      return 'demo.select.card.tag_input_field';
+    default:
+      throw ArgumentError('Unknown card title: $title');
+  }
 }
 
 // =============================================================================
@@ -84,7 +147,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sectionId = 'section.select.${_slugify(title)}';
+    final sectionId = _sectionTomId(title);
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
@@ -144,7 +207,7 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cardId = 'demo.select.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(

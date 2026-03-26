@@ -51,9 +51,50 @@ class CardsPanelsDemo extends StatelessWidget {
   }
 }
 
-String _slugify(String value) {
-  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+String _sectionTomId(String title) {
+  switch (title) {
+    case 'Card':
+      return 'section.cards.card';
+    case 'ExpansionTile':
+      return 'section.cards.expansiontile';
+    case 'ExpansionPanel':
+      return 'section.cards.expansionpanel';
+    case 'Panel Patterns':
+      return 'section.cards.panel_patterns';
+    case 'Interactive Cards':
+      return 'section.cards.interactive_cards';
+    default:
+      throw ArgumentError('Unknown section title: $title');
+  }
+}
+
+String _cardTomId(String title) {
+  switch (title) {
+    case 'Basic Card':
+      return 'demo.cards.card.basic_card';
+    case 'Elevated Card':
+      return 'demo.cards.card.elevated_card';
+    case 'Outlined Card':
+      return 'demo.cards.card.outlined_card';
+    case 'Filled Card':
+      return 'demo.cards.card.filled_card';
+    case 'Card with Image':
+      return 'demo.cards.card.card_with_image';
+    case 'Card Shapes':
+      return 'demo.cards.card.card_shapes';
+    case 'Info Panel':
+      return 'demo.cards.card.info_panel';
+    case 'Stats Panel':
+      return 'demo.cards.card.stats_panel';
+    case 'Feature Panel':
+      return 'demo.cards.card.feature_panel';
+    case 'Selectable Cards':
+      return 'demo.cards.card.selectable_cards';
+    case 'Favorite Cards':
+      return 'demo.cards.card.favorite_cards';
+    default:
+      throw ArgumentError('Unknown card title: $title');
+  }
 }
 
 // =============================================================================
@@ -69,7 +110,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sectionId = 'section.cards.${_slugify(title)}';
+    final sectionId = _sectionTomId(title);
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
@@ -297,7 +338,7 @@ class _CardSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    final cardId = 'demo.cards.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -712,7 +753,7 @@ class _PanelPatternsSection extends StatelessWidget {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    final cardId = 'demo.cards.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
@@ -879,7 +920,7 @@ class _InteractiveCardsSectionState extends State<_InteractiveCardsSection> {
   }
 
   Widget _buildDemoCard(String title, String description, Widget child) {
-    final cardId = 'demo.cards.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(

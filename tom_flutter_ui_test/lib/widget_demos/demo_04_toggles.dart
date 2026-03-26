@@ -64,9 +64,78 @@ class TogglesDemo extends StatelessWidget {
   }
 }
 
-String _slugify(String value) {
-  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+String _sectionTomId(String title) {
+  switch (title) {
+    case 'Switch':
+      return 'section.toggles.switch';
+    case 'Checkbox':
+      return 'section.toggles.checkbox';
+    case 'Radio':
+      return 'section.toggles.radio';
+    case 'SegmentedButton':
+      return 'section.toggles.segmentedbutton';
+    case 'ToggleButtons':
+      return 'section.toggles.togglebuttons';
+    case 'Custom Toggles':
+      return 'section.toggles.custom_toggles';
+    case 'Settings Examples':
+      return 'section.toggles.settings_examples';
+    default:
+      throw ArgumentError('Unknown section title: $title');
+  }
+}
+
+String _cardTomId(String title) {
+  switch (title) {
+    case 'Basic Switch':
+      return 'demo.toggle.card.basic_switch';
+    case 'SwitchListTile':
+      return 'demo.toggle.card.switchlisttile';
+    case 'Switch with Thumb Icon':
+      return 'demo.toggle.card.switch_with_thumb_icon';
+    case 'Switch Styling':
+      return 'demo.toggle.card.switch_styling';
+    case 'Basic Checkbox':
+      return 'demo.toggle.card.basic_checkbox';
+    case 'CheckboxListTile':
+      return 'demo.toggle.card.checkboxlisttile';
+    case 'Tristate Checkbox':
+      return 'demo.toggle.card.tristate_checkbox';
+    case 'Checkbox Styling':
+      return 'demo.toggle.card.checkbox_styling';
+    case 'Basic Radio':
+      return 'demo.toggle.card.basic_radio';
+    case 'RadioListTile':
+      return 'demo.toggle.card.radiolisttile';
+    case 'Custom Radio Design':
+      return 'demo.toggle.card.custom_radio_design';
+    case 'Single Selection':
+      return 'demo.toggle.card.single_selection';
+    case 'Multi Selection':
+      return 'demo.toggle.card.multi_selection';
+    case 'Styled Segments':
+      return 'demo.toggle.card.styled_segments';
+    case 'Basic ToggleButtons':
+      return 'demo.toggle.card.basic_togglebuttons';
+    case 'Multi-Select ToggleButtons':
+      return 'demo.toggle.card.multi_select_togglebuttons';
+    case 'Styled ToggleButtons':
+      return 'demo.toggle.card.styled_togglebuttons';
+    case 'Animated Toggle':
+      return 'demo.toggle.card.animated_toggle';
+    case 'Icon Toggle':
+      return 'demo.toggle.card.icon_toggle';
+    case 'Thumbs Rating':
+      return 'demo.toggle.card.thumbs_rating';
+    case 'Notification Settings':
+      return 'demo.toggle.card.notification_settings';
+    case 'Privacy Settings':
+      return 'demo.toggle.card.privacy_settings';
+    case 'Appearance Settings':
+      return 'demo.toggle.card.appearance_settings';
+    default:
+      throw ArgumentError('Unknown card title: $title');
+  }
 }
 
 // =============================================================================
@@ -82,7 +151,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sectionId = 'section.toggles.${_slugify(title)}';
+    final sectionId = _sectionTomId(title);
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
@@ -142,7 +211,7 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cardId = 'demo.toggle.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(

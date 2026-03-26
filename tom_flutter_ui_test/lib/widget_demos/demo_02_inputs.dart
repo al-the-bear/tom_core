@@ -87,9 +87,84 @@ class InputsDemo extends StatelessWidget {
   }
 }
 
-String _slugify(String value) {
-  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+String _sectionTomId(String title) {
+  switch (title) {
+    case 'TomTextField':
+      return 'section.inputs.tomtextfield';
+    case 'TomTextFormField':
+      return 'section.inputs.tomtextformfield';
+    case 'Input Decorations':
+      return 'section.inputs.input_decorations';
+    case 'Password Fields':
+      return 'section.inputs.password_fields';
+    case 'Multi-line Text':
+      return 'section.inputs.multi_line_text';
+    case 'Input Formatters':
+      return 'section.inputs.input_formatters';
+    case 'Search Fields':
+      return 'section.inputs.search_fields';
+    case 'Date & Time Pickers':
+      return 'section.inputs.date_time_pickers';
+    case 'Form Examples':
+      return 'section.inputs.form_examples';
+    default:
+      throw ArgumentError('Unknown section title: $title');
+  }
+}
+
+String _cardTomId(String title) {
+  switch (title) {
+    case 'Basic TomTextField':
+      return 'demo.input.card.basic_tomtextfield';
+    case 'TomTextField with Label':
+      return 'demo.input.card.tomtextfield_with_label';
+    case 'TomTextField with Prefix & Suffix':
+      return 'demo.input.card.tomtextfield_with_prefix_suffix';
+    case 'TomTextField States':
+      return 'demo.input.card.tomtextfield_states';
+    case 'Basic Validation':
+      return 'demo.input.card.basic_validation';
+    case 'Validation States':
+      return 'demo.input.card.validation_states';
+    case 'Border Styles':
+      return 'demo.input.card.border_styles';
+    case 'Fill Colors':
+      return 'demo.input.card.fill_colors';
+    case 'Counter & Max Length':
+      return 'demo.input.card.counter_max_length';
+    case 'Basic Password Field':
+      return 'demo.input.card.basic_password_field';
+    case 'Password with Strength Indicator':
+      return 'demo.input.card.password_with_strength_indicator';
+    case 'Multi-line TextField':
+      return 'demo.input.card.multi_line_textfield';
+    case 'Rich Text Area':
+      return 'demo.input.card.rich_text_area';
+    case 'Digit Only Input':
+      return 'demo.input.card.digit_only_input';
+    case 'Uppercase Input':
+      return 'demo.input.card.uppercase_input';
+    case 'Phone Number Formatter':
+      return 'demo.input.card.phone_number_formatter';
+    case 'Credit Card Formatter':
+      return 'demo.input.card.credit_card_formatter';
+    case 'Basic Search Field':
+      return 'demo.input.card.basic_search_field';
+    case 'SearchBar (Material 3)':
+      return 'demo.input.card.searchbar_material_3';
+    case 'Date Picker':
+      return 'demo.input.card.date_picker';
+    case 'Time Picker':
+      return 'demo.input.card.time_picker';
+    case 'Date Range Picker':
+      return 'demo.input.card.date_range_picker';
+    case 'Login Form':
+      return 'demo.input.card.login_form';
+    case 'Registration Form':
+      return 'demo.input.card.registration_form';
+    default:
+      throw ArgumentError('Unknown card title: $title');
+  }
 }
 
 // =============================================================================
@@ -105,7 +180,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sectionId = 'section.inputs.${_slugify(title)}';
+    final sectionId = _sectionTomId(title);
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
@@ -165,7 +240,7 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cardId = 'demo.input.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(

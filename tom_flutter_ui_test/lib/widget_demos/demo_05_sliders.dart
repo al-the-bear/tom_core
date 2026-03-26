@@ -59,9 +59,70 @@ class SlidersDemo extends StatelessWidget {
   }
 }
 
-String _slugify(String value) {
-  final normalized = value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-  return normalized.replaceAll(RegExp(r'^_+|_+$'), '');
+String _sectionTomId(String title) {
+  switch (title) {
+    case 'Slider':
+      return 'section.sliders.slider';
+    case 'RangeSlider':
+      return 'section.sliders.rangeslider';
+    case 'Discrete Sliders':
+      return 'section.sliders.discrete_sliders';
+    case 'Slider Theming':
+      return 'section.sliders.slider_theming';
+    case 'Custom Track & Thumb':
+      return 'section.sliders.custom_track_thumb';
+    case 'Practical Examples':
+      return 'section.sliders.practical_examples';
+    default:
+      throw ArgumentError('Unknown section title: $title');
+  }
+}
+
+String _cardTomId(String title) {
+  switch (title) {
+    case 'Basic Slider':
+      return 'demo.slider.card.basic_slider';
+    case 'Slider with Label':
+      return 'demo.slider.card.slider_with_label';
+    case 'Slider with Overlay Color':
+      return 'demo.slider.card.slider_with_overlay_color';
+    case 'Slider Callbacks':
+      return 'demo.slider.card.slider_callbacks';
+    case 'Basic RangeSlider':
+      return 'demo.slider.card.basic_rangeslider';
+    case 'Price Range Filter':
+      return 'demo.slider.card.price_range_filter';
+    case 'Age Range Selector':
+      return 'demo.slider.card.age_range_selector';
+    case 'Rating Slider':
+      return 'demo.slider.card.rating_slider';
+    case 'Quantity Selector':
+      return 'demo.slider.card.quantity_selector';
+    case 'Temperature Control':
+      return 'demo.slider.card.temperature_control';
+    case 'Active & Inactive Colors':
+      return 'demo.slider.card.active_inactive_colors';
+    case 'Custom Thumb Shapes':
+      return 'demo.slider.card.custom_thumb_shapes';
+    case 'Custom Track Heights':
+      return 'demo.slider.card.custom_track_heights';
+    case 'Gradient Track Slider':
+      return 'demo.slider.card.gradient_track_slider';
+    case 'Volume Slider':
+      return 'demo.slider.card.volume_slider';
+    case 'Download Progress Slider':
+      return 'demo.slider.card.download_progress_slider';
+    case 'HSL Color Picker':
+      return 'demo.slider.card.hsl_color_picker';
+    case 'Brightness Control':
+      return 'demo.slider.card.brightness_control';
+    case 'Video Seek Bar':
+      return 'demo.slider.card.video_seek_bar';
+    case 'Audio Equalizer':
+      return 'demo.slider.card.audio_equalizer';
+    default:
+      throw ArgumentError('Unknown card title: $title');
+  }
 }
 
 // =============================================================================
@@ -77,7 +138,7 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final sectionId = 'section.sliders.${_slugify(title)}';
+    final sectionId = _sectionTomId(title);
     return TomPadding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TomColumn(
@@ -137,7 +198,7 @@ class _DemoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cardId = 'demo.slider.card.${_slugify(title)}';
+    final cardId = _cardTomId(title);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: TomPadding(
