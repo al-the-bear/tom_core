@@ -53,13 +53,25 @@ class TomSwitch extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedActiveTrackColor =
+        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+    final resolvedInactiveThumbColor =
+        inactiveThumbColor ?? resolveColorOrNull(context, 'inactiveThumbColor');
+    final resolvedInactiveTrackColor =
+        inactiveTrackColor ?? resolveColorOrNull(context, 'inactiveTrackColor');
+    final resolvedSplashRadius =
+        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+
     return Switch(
       value: value,
       onChanged: onChanged,
-      activeColor: activeColor,
-      activeTrackColor: activeTrackColor,
-      inactiveThumbColor: inactiveThumbColor,
-      inactiveTrackColor: inactiveTrackColor,
+      activeColor: resolvedActiveColor,
+      activeTrackColor: resolvedActiveTrackColor,
+      inactiveThumbColor: resolvedInactiveThumbColor,
+      inactiveTrackColor: resolvedInactiveTrackColor,
       activeThumbImage: activeThumbImage,
       inactiveThumbImage: inactiveThumbImage,
       thumbColor: thumbColor,
@@ -70,7 +82,7 @@ class TomSwitch extends TomToggleBase {
       focusNode: focusNode,
       autofocus: autofocus,
       overlayColor: overlayColor,
-      splashRadius: splashRadius,
+      splashRadius: resolvedSplashRadius,
     );
   }
 }
@@ -120,17 +132,29 @@ class TomCheckbox extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedCheckColor =
+        checkColor ?? resolveColorOrNull(context, 'checkColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedSplashRadius =
+        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+
     return Checkbox(
       value: value,
       onChanged: onChanged,
       tristate: tristate,
-      activeColor: activeColor,
+      activeColor: resolvedActiveColor,
       fillColor: fillColor,
-      checkColor: checkColor,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
+      checkColor: resolvedCheckColor,
+      focusColor: resolvedFocusColor,
+      hoverColor: resolvedHoverColor,
       overlayColor: overlayColor,
-      splashRadius: splashRadius,
+      splashRadius: resolvedSplashRadius,
       visualDensity: visualDensity,
       shape: shape,
       side: side,
@@ -180,16 +204,26 @@ class TomRadio<T> extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedSplashRadius =
+        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+
     return Radio<T>(
       value: value,
       groupValue: groupValue,
       onChanged: onChanged,
-      activeColor: activeColor,
+      activeColor: resolvedActiveColor,
       fillColor: fillColor,
-      focusColor: focusColor,
-      hoverColor: hoverColor,
+      focusColor: resolvedFocusColor,
+      hoverColor: resolvedHoverColor,
       overlayColor: overlayColor,
-      splashRadius: splashRadius,
+      splashRadius: resolvedSplashRadius,
       visualDensity: visualDensity,
       toggleable: toggleable,
       focusNode: focusNode,

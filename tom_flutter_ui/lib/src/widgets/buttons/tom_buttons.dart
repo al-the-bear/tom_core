@@ -510,6 +510,28 @@ class TomFloatingActionButton extends TomButtonBase {
     // Tooltip is always optional
     final resolvedTooltip = tooltip ?? resolveResourceOrNull(context, 'tooltip');
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedForegroundColor =
+        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedSplashColor =
+        splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedFocusElevation =
+        focusElevation ?? resolveDoubleOrNull(context, 'focusElevation');
+    final resolvedHoverElevation =
+        hoverElevation ?? resolveDoubleOrNull(context, 'hoverElevation');
+    final resolvedHighlightElevation =
+        highlightElevation ?? resolveDoubleOrNull(context, 'highlightElevation');
+    final resolvedDisabledElevation =
+        disabledElevation ?? resolveDoubleOrNull(context, 'disabledElevation');
+
     switch (_variant) {
       case _FABVariant.extended:
         // Extended FAB requires a label
@@ -517,17 +539,17 @@ class TomFloatingActionButton extends TomButtonBase {
         return FloatingActionButton.extended(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
-          foregroundColor: foregroundColor,
-          backgroundColor: backgroundColor,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          splashColor: splashColor,
+          foregroundColor: resolvedForegroundColor,
+          backgroundColor: resolvedBackgroundColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          splashColor: resolvedSplashColor,
           heroTag: heroTag,
-          elevation: elevation,
-          focusElevation: focusElevation,
-          hoverElevation: hoverElevation,
-          highlightElevation: highlightElevation,
-          disabledElevation: disabledElevation,
+          elevation: resolvedElevation,
+          focusElevation: resolvedFocusElevation,
+          hoverElevation: resolvedHoverElevation,
+          highlightElevation: resolvedHighlightElevation,
+          disabledElevation: resolvedDisabledElevation,
           shape: shape,
           clipBehavior: clipBehavior,
           autofocus: autofocus,
@@ -541,17 +563,17 @@ class TomFloatingActionButton extends TomButtonBase {
         return FloatingActionButton.small(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
-          foregroundColor: foregroundColor,
-          backgroundColor: backgroundColor,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          splashColor: splashColor,
+          foregroundColor: resolvedForegroundColor,
+          backgroundColor: resolvedBackgroundColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          splashColor: resolvedSplashColor,
           heroTag: heroTag,
-          elevation: elevation,
-          focusElevation: focusElevation,
-          hoverElevation: hoverElevation,
-          highlightElevation: highlightElevation,
-          disabledElevation: disabledElevation,
+          elevation: resolvedElevation,
+          focusElevation: resolvedFocusElevation,
+          hoverElevation: resolvedHoverElevation,
+          highlightElevation: resolvedHighlightElevation,
+          disabledElevation: resolvedDisabledElevation,
           shape: shape,
           clipBehavior: clipBehavior,
           autofocus: autofocus,
@@ -563,17 +585,17 @@ class TomFloatingActionButton extends TomButtonBase {
         return FloatingActionButton.large(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
-          foregroundColor: foregroundColor,
-          backgroundColor: backgroundColor,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          splashColor: splashColor,
+          foregroundColor: resolvedForegroundColor,
+          backgroundColor: resolvedBackgroundColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          splashColor: resolvedSplashColor,
           heroTag: heroTag,
-          elevation: elevation,
-          focusElevation: focusElevation,
-          hoverElevation: hoverElevation,
-          highlightElevation: highlightElevation,
-          disabledElevation: disabledElevation,
+          elevation: resolvedElevation,
+          focusElevation: resolvedFocusElevation,
+          hoverElevation: resolvedHoverElevation,
+          highlightElevation: resolvedHighlightElevation,
+          disabledElevation: resolvedDisabledElevation,
           shape: shape,
           clipBehavior: clipBehavior,
           autofocus: autofocus,
@@ -589,17 +611,17 @@ class TomFloatingActionButton extends TomButtonBase {
           return FloatingActionButton.extended(
             onPressed: onPressed,
             tooltip: resolvedTooltip,
-            foregroundColor: foregroundColor,
-            backgroundColor: backgroundColor,
-            focusColor: focusColor,
-            hoverColor: hoverColor,
-            splashColor: splashColor,
+            foregroundColor: resolvedForegroundColor,
+            backgroundColor: resolvedBackgroundColor,
+            focusColor: resolvedFocusColor,
+            hoverColor: resolvedHoverColor,
+            splashColor: resolvedSplashColor,
             heroTag: heroTag,
-            elevation: elevation,
-            focusElevation: focusElevation,
-            hoverElevation: hoverElevation,
-            highlightElevation: highlightElevation,
-            disabledElevation: disabledElevation,
+            elevation: resolvedElevation,
+            focusElevation: resolvedFocusElevation,
+            hoverElevation: resolvedHoverElevation,
+            highlightElevation: resolvedHighlightElevation,
+            disabledElevation: resolvedDisabledElevation,
             shape: shape,
             clipBehavior: clipBehavior,
             autofocus: autofocus,
@@ -615,17 +637,17 @@ class TomFloatingActionButton extends TomButtonBase {
           return FloatingActionButton.small(
             onPressed: onPressed,
             tooltip: resolvedTooltip,
-            foregroundColor: foregroundColor,
-            backgroundColor: backgroundColor,
-            focusColor: focusColor,
-            hoverColor: hoverColor,
-            splashColor: splashColor,
+            foregroundColor: resolvedForegroundColor,
+            backgroundColor: resolvedBackgroundColor,
+            focusColor: resolvedFocusColor,
+            hoverColor: resolvedHoverColor,
+            splashColor: resolvedSplashColor,
             heroTag: heroTag,
-            elevation: elevation,
-            focusElevation: focusElevation,
-            hoverElevation: hoverElevation,
-            highlightElevation: highlightElevation,
-            disabledElevation: disabledElevation,
+            elevation: resolvedElevation,
+            focusElevation: resolvedFocusElevation,
+            hoverElevation: resolvedHoverElevation,
+            highlightElevation: resolvedHighlightElevation,
+            disabledElevation: resolvedDisabledElevation,
             shape: shape,
             clipBehavior: clipBehavior,
             autofocus: autofocus,
@@ -637,17 +659,17 @@ class TomFloatingActionButton extends TomButtonBase {
         return FloatingActionButton(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
-          foregroundColor: foregroundColor,
-          backgroundColor: backgroundColor,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          splashColor: splashColor,
+          foregroundColor: resolvedForegroundColor,
+          backgroundColor: resolvedBackgroundColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          splashColor: resolvedSplashColor,
           heroTag: heroTag,
-          elevation: elevation,
-          focusElevation: focusElevation,
-          hoverElevation: hoverElevation,
-          highlightElevation: highlightElevation,
-          disabledElevation: disabledElevation,
+          elevation: resolvedElevation,
+          focusElevation: resolvedFocusElevation,
+          hoverElevation: resolvedHoverElevation,
+          highlightElevation: resolvedHighlightElevation,
+          disabledElevation: resolvedDisabledElevation,
           shape: shape,
           clipBehavior: clipBehavior,
           autofocus: autofocus,
@@ -960,21 +982,39 @@ class TomIconButton extends TomButtonBase {
     final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
     final resolvedIcon = _resolveIcon(context);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIconSize = iconSize ?? resolveDoubleOrNull(context, 'iconSize');
+    final resolvedSplashRadius =
+        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedFocusColor =
+        focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedHoverColor =
+        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedHighlightColor =
+        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+    final resolvedSplashColor =
+        splashColor ?? resolveColorOrNull(context, 'splashColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     switch (_variant) {
       case _IconButtonVariant.filled:
         return IconButton.filled(
           onPressed: onPressed,
-          iconSize: iconSize,
+          iconSize: resolvedIconSize,
           visualDensity: visualDensity,
-          padding: padding,
+          padding: resolvedPadding,
           alignment: alignment ?? Alignment.center,
-          splashRadius: splashRadius,
-          color: color,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          highlightColor: highlightColor,
-          splashColor: splashColor,
-          disabledColor: disabledColor,
+          splashRadius: resolvedSplashRadius,
+          color: resolvedColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          highlightColor: resolvedHighlightColor,
+          splashColor: resolvedSplashColor,
+          disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
           style: style,
@@ -988,17 +1028,17 @@ class TomIconButton extends TomButtonBase {
       case _IconButtonVariant.filledTonal:
         return IconButton.filledTonal(
           onPressed: onPressed,
-          iconSize: iconSize,
+          iconSize: resolvedIconSize,
           visualDensity: visualDensity,
-          padding: padding,
+          padding: resolvedPadding,
           alignment: alignment ?? Alignment.center,
-          splashRadius: splashRadius,
-          color: color,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          highlightColor: highlightColor,
-          splashColor: splashColor,
-          disabledColor: disabledColor,
+          splashRadius: resolvedSplashRadius,
+          color: resolvedColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          highlightColor: resolvedHighlightColor,
+          splashColor: resolvedSplashColor,
+          disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
           style: style,
@@ -1012,17 +1052,17 @@ class TomIconButton extends TomButtonBase {
       case _IconButtonVariant.outlined:
         return IconButton.outlined(
           onPressed: onPressed,
-          iconSize: iconSize,
+          iconSize: resolvedIconSize,
           visualDensity: visualDensity,
-          padding: padding,
+          padding: resolvedPadding,
           alignment: alignment ?? Alignment.center,
-          splashRadius: splashRadius,
-          color: color,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          highlightColor: highlightColor,
-          splashColor: splashColor,
-          disabledColor: disabledColor,
+          splashRadius: resolvedSplashRadius,
+          color: resolvedColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          highlightColor: resolvedHighlightColor,
+          splashColor: resolvedSplashColor,
+          disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
           style: style,
@@ -1036,17 +1076,17 @@ class TomIconButton extends TomButtonBase {
       case _IconButtonVariant.regular:
         return IconButton(
           onPressed: onPressed,
-          iconSize: iconSize,
+          iconSize: resolvedIconSize,
           visualDensity: visualDensity,
-          padding: padding,
+          padding: resolvedPadding,
           alignment: alignment ?? Alignment.center,
-          splashRadius: splashRadius,
-          color: color,
-          focusColor: focusColor,
-          hoverColor: hoverColor,
-          highlightColor: highlightColor,
-          splashColor: splashColor,
-          disabledColor: disabledColor,
+          splashRadius: resolvedSplashRadius,
+          color: resolvedColor,
+          focusColor: resolvedFocusColor,
+          hoverColor: resolvedHoverColor,
+          highlightColor: resolvedHighlightColor,
+          splashColor: resolvedSplashColor,
+          disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
           style: style,
@@ -1077,9 +1117,11 @@ class TomBackButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve color from resources if not explicitly set
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
     return BackButton(
       onPressed: onPressed,
-      color: color,
+      color: resolvedColor,
     );
   }
 }
@@ -1101,9 +1143,11 @@ class TomCloseButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve color from resources if not explicitly set
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
     return CloseButton(
       onPressed: onPressed,
-      color: color,
+      color: resolvedColor,
     );
   }
 }

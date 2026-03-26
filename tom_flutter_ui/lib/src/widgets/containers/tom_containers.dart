@@ -40,14 +40,24 @@ class TomCard extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
+
     return Card(
-      color: color,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      elevation: elevation,
+      color: resolvedColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      elevation: resolvedElevation,
       shape: shape,
       borderOnForeground: borderOnForeground,
-      margin: margin,
+      margin: resolvedMargin,
       clipBehavior: clipBehavior,
       semanticContainer: semanticContainer,
       child: child,
@@ -121,6 +131,24 @@ class TomExpansionTile extends TomContainerBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final titleWidget = title ?? Text(resolvedTitle);
 
+    // Phase 2: Resolve optional color parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedCollapsedBackgroundColor = collapsedBackgroundColor ??
+        resolveColorOrNull(context, 'collapsedBackgroundColor');
+    final resolvedTextColor =
+        textColor ?? resolveColorOrNull(context, 'textColor');
+    final resolvedCollapsedTextColor =
+        collapsedTextColor ?? resolveColorOrNull(context, 'collapsedTextColor');
+    final resolvedIconColor =
+        iconColor ?? resolveColorOrNull(context, 'iconColor');
+    final resolvedCollapsedIconColor =
+        collapsedIconColor ?? resolveColorOrNull(context, 'collapsedIconColor');
+    final resolvedChildrenPadding =
+        childrenPadding ?? resolveEdgeInsetsOrNull(context, 'childrenPadding');
+    final resolvedTilePadding =
+        tilePadding ?? resolveEdgeInsetsOrNull(context, 'tilePadding');
+
     return ExpansionTile(
       title: titleWidget,
       subtitle: subtitle,
@@ -128,16 +156,16 @@ class TomExpansionTile extends TomContainerBase {
       trailing: trailing,
       initiallyExpanded: initiallyExpanded,
       maintainState: maintainState,
-      tilePadding: tilePadding,
+      tilePadding: resolvedTilePadding,
       expandedCrossAxisAlignment: expandedCrossAxisAlignment,
       expandedAlignment: expandedAlignment,
-      childrenPadding: childrenPadding,
-      backgroundColor: backgroundColor,
-      collapsedBackgroundColor: collapsedBackgroundColor,
-      textColor: textColor,
-      collapsedTextColor: collapsedTextColor,
-      iconColor: iconColor,
-      collapsedIconColor: collapsedIconColor,
+      childrenPadding: resolvedChildrenPadding,
+      backgroundColor: resolvedBackgroundColor,
+      collapsedBackgroundColor: resolvedCollapsedBackgroundColor,
+      textColor: resolvedTextColor,
+      collapsedTextColor: resolvedCollapsedTextColor,
+      iconColor: resolvedIconColor,
+      collapsedIconColor: resolvedCollapsedIconColor,
       shape: shape,
       collapsedShape: collapsedShape,
       clipBehavior: clipBehavior,
