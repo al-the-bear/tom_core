@@ -1524,14 +1524,24 @@ class TomExpandIcon extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSize =
+        resolveDoubleOrNull(context, 'size') ?? size;
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedExpandedColor =
+        expandedColor ?? resolveColorOrNull(context, 'expandedColor');
+
     return ExpandIcon(
       isExpanded: isExpanded,
       onPressed: onPressed,
-      size: size,
+      size: resolvedSize,
       padding: padding,
-      color: color,
-      disabledColor: disabledColor,
-      expandedColor: expandedColor,
+      color: resolvedColor,
+      disabledColor: resolvedDisabledColor,
+      expandedColor: resolvedExpandedColor,
     );
   }
 }

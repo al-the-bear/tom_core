@@ -259,6 +259,10 @@ class TomAnimatedList extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return AnimatedList(
       itemBuilder: itemBuilder,
       initialItemCount: initialItemCount,
@@ -268,7 +272,7 @@ class TomAnimatedList extends TomListBase {
       primary: primary,
       physics: physics,
       shrinkWrap: shrinkWrap,
-      padding: padding,
+      padding: resolvedPadding,
       clipBehavior: clipBehavior,
     );
   }
@@ -315,6 +319,10 @@ class TomDismissible extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCrossAxisEndOffset =
+        resolveDoubleOrNull(context, 'crossAxisEndOffset') ?? crossAxisEndOffset;
+
     return Dismissible(
       key: key ?? ValueKey(tomId),
       background: background,
@@ -327,7 +335,7 @@ class TomDismissible extends TomListBase {
       resizeDuration: resizeDuration,
       dismissThresholds: dismissThresholds,
       movementDuration: movementDuration,
-      crossAxisEndOffset: crossAxisEndOffset,
+      crossAxisEndOffset: resolvedCrossAxisEndOffset,
       dragStartBehavior: dragStartBehavior,
       behavior: behavior,
       child: child,
@@ -380,17 +388,33 @@ class TomListWheelScrollView extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDiameterRatio =
+        resolveDoubleOrNull(context, 'diameterRatio') ?? diameterRatio;
+    final resolvedPerspective =
+        resolveDoubleOrNull(context, 'perspective') ?? perspective;
+    final resolvedOffAxisFraction =
+        resolveDoubleOrNull(context, 'offAxisFraction') ?? offAxisFraction;
+    final resolvedMagnification =
+        resolveDoubleOrNull(context, 'magnification') ?? magnification;
+    final resolvedOverAndUnderCenterOpacity =
+        resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? overAndUnderCenterOpacity;
+    final resolvedItemExtent =
+        resolveDoubleOrNull(context, 'itemExtent') ?? itemExtent;
+    final resolvedSqueeze =
+        resolveDoubleOrNull(context, 'squeeze') ?? squeeze;
+
     return ListWheelScrollView.useDelegate(
       controller: controller,
       physics: physics,
-      diameterRatio: diameterRatio,
-      perspective: perspective,
-      offAxisFraction: offAxisFraction,
+      diameterRatio: resolvedDiameterRatio,
+      perspective: resolvedPerspective,
+      offAxisFraction: resolvedOffAxisFraction,
       useMagnifier: useMagnifier,
-      magnification: magnification,
-      overAndUnderCenterOpacity: overAndUnderCenterOpacity,
-      itemExtent: itemExtent,
-      squeeze: squeeze,
+      magnification: resolvedMagnification,
+      overAndUnderCenterOpacity: resolvedOverAndUnderCenterOpacity,
+      itemExtent: resolvedItemExtent,
+      squeeze: resolvedSqueeze,
       onSelectedItemChanged: onSelectedItemChanged,
       renderChildrenOutsideViewport: renderChildrenOutsideViewport,
       clipBehavior: clipBehavior,
@@ -438,6 +462,15 @@ class TomCupertinoListTile extends TomListBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedLeadingSize =
+        leadingSize ?? resolveDoubleOrNull(context, 'leadingSize') ?? 28.0;
+    final resolvedLeadingToTitle =
+        leadingToTitle ?? resolveDoubleOrNull(context, 'leadingToTitle') ?? 12.0;
+
     return CupertinoListTile(
       title: title ?? Text(resolvedTitle),
       subtitle: subtitle,
@@ -445,10 +478,10 @@ class TomCupertinoListTile extends TomListBase {
       leading: leading,
       trailing: trailing,
       onTap: onTap,
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       padding: padding,
-      leadingSize: leadingSize ?? 28.0,
-      leadingToTitle: leadingToTitle ?? 12.0,
+      leadingSize: resolvedLeadingSize,
+      leadingToTitle: resolvedLeadingToTitle,
     );
   }
 }

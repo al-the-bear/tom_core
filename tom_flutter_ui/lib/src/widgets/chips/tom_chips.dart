@@ -503,6 +503,28 @@ class TomRawChip extends TomChipBase {
     final resolvedTooltip =
       tooltip ?? resolveResourceOrFail(context, 'tooltip');
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDeleteIconColor =
+        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+    final resolvedPressElevation =
+        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+    final resolvedCheckmarkColor =
+        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+    final resolvedSelectedColor =
+        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+    final resolvedDisabledColor =
+        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedSelectedShadowColor =
+        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+
     return RawChip(
       avatar: avatar,
       label: chipLabel,
@@ -513,25 +535,25 @@ class TomRawChip extends TomChipBase {
       onSelected: onSelected,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: deleteIconColor,
+      deleteIconColor: resolvedDeleteIconColor,
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
       onPressed: onPressed,
-      pressElevation: pressElevation,
+      pressElevation: resolvedPressElevation,
       showCheckmark: showCheckmark,
-      checkmarkColor: checkmarkColor,
+      checkmarkColor: resolvedCheckmarkColor,
       shape: shape,
       side: side,
       clipBehavior: clipBehavior,
-      selectedColor: selectedColor,
-      disabledColor: disabledColor,
-      backgroundColor: backgroundColor,
-      selectedShadowColor: selectedShadowColor,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
+      selectedColor: resolvedSelectedColor,
+      disabledColor: resolvedDisabledColor,
+      backgroundColor: resolvedBackgroundColor,
+      selectedShadowColor: resolvedSelectedShadowColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
       padding: padding,
       visualDensity: visualDensity,
       materialTapTargetSize: materialTapTargetSize,
-      elevation: elevation,
+      elevation: resolvedElevation,
       tooltip: resolvedTooltip,
     );
   }

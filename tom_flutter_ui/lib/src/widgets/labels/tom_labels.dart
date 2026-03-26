@@ -528,6 +528,18 @@ class TomChip extends TomLabelBase {
     final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
     final chipLabel = label ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedDeleteIconColor =
+        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedShadowColor =
+        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+    final resolvedSurfaceTintColor =
+        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedElevation =
+        elevation ?? resolveDoubleOrNull(context, 'elevation');
+
     return Chip(
       avatar: avatar,
       label: chipLabel,
@@ -536,15 +548,15 @@ class TomChip extends TomLabelBase {
       padding: padding,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: deleteIconColor,
+      deleteIconColor: resolvedDeleteIconColor,
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
       side: side,
       shape: shape,
       clipBehavior: clipBehavior,
-      backgroundColor: backgroundColor,
-      shadowColor: shadowColor,
-      surfaceTintColor: surfaceTintColor,
-      elevation: elevation,
+      backgroundColor: resolvedBackgroundColor,
+      shadowColor: resolvedShadowColor,
+      surfaceTintColor: resolvedSurfaceTintColor,
+      elevation: resolvedElevation,
       materialTapTargetSize: materialTapTargetSize,
       visualDensity: visualDensity,
       iconTheme: iconTheme,

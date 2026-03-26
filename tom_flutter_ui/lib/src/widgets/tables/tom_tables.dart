@@ -298,6 +298,12 @@ class TomGridView extends TomTableBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedCacheExtent =
+        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return GridView.custom(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -305,10 +311,10 @@ class TomGridView extends TomTableBase {
       primary: primary,
       physics: physics,
       shrinkWrap: shrinkWrap,
-      padding: padding,
+      padding: resolvedPadding,
       gridDelegate: gridDelegate,
       childrenDelegate: childrenDelegate,
-      cacheExtent: cacheExtent,
+      cacheExtent: resolvedCacheExtent,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
@@ -379,15 +385,27 @@ class TomReorderableListView extends TomTableBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedItemExtent =
+        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+    final resolvedCacheExtent =
+        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+    final resolvedAnchor =
+        resolveDoubleOrNull(context, 'anchor') ?? anchor;
+    final resolvedAutoScrollerVelocityScalar =
+        autoScrollerVelocityScalar ?? resolveDoubleOrNull(context, 'autoScrollerVelocityScalar');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     return ReorderableListView(
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: itemExtent,
+      itemExtent: resolvedItemExtent,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,
       buildDefaultDragHandles: buildDefaultDragHandles,
-      padding: padding,
+      padding: resolvedPadding,
       header: header,
       footer: footer,
       scrollDirection: scrollDirection,
@@ -396,13 +414,13 @@ class TomReorderableListView extends TomTableBase {
       primary: primary,
       physics: physics,
       shrinkWrap: shrinkWrap,
-      anchor: anchor,
-      cacheExtent: cacheExtent,
+      anchor: resolvedAnchor,
+      cacheExtent: resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
       restorationId: restorationId,
       clipBehavior: clipBehavior,
-      autoScrollerVelocityScalar: autoScrollerVelocityScalar,
+      autoScrollerVelocityScalar: resolvedAutoScrollerVelocityScalar,
       children: children,
     );
   }

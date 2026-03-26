@@ -246,21 +246,36 @@ class TomTabBar extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIndicatorColor =
+        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+    final resolvedIndicatorWeight =
+        indicatorWeight ?? resolveDoubleOrNull(context, 'indicatorWeight');
+    final resolvedDividerColor =
+        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+    final resolvedDividerHeight =
+        dividerHeight ?? resolveDoubleOrNull(context, 'dividerHeight');
+    final resolvedLabelColor =
+        labelColor ?? resolveColorOrNull(context, 'labelColor');
+    final resolvedUnselectedLabelColor =
+        unselectedLabelColor ?? resolveColorOrNull(context, 'unselectedLabelColor');
+
     return TabBar(
       tabs: tabs,
       controller: controller,
       isScrollable: isScrollable,
       padding: padding,
-      indicatorColor: indicatorColor,
+      indicatorColor: resolvedIndicatorColor,
+      indicatorWeight: resolvedIndicatorWeight ?? 2.0,
       indicatorPadding: indicatorPadding ?? EdgeInsets.zero,
       indicator: indicator,
       indicatorSize: indicatorSize,
-      dividerColor: dividerColor,
-      dividerHeight: dividerHeight,
-      labelColor: labelColor,
+      dividerColor: resolvedDividerColor,
+      dividerHeight: resolvedDividerHeight,
+      labelColor: resolvedLabelColor,
       labelStyle: labelStyle,
       labelPadding: labelPadding,
-      unselectedLabelColor: unselectedLabelColor,
+      unselectedLabelColor: resolvedUnselectedLabelColor,
       unselectedLabelStyle: unselectedLabelStyle,
       overlayColor: overlayColor,
       onTap: onTap,
@@ -573,11 +588,15 @@ class TomTabBarView extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedViewportFraction =
+        resolveDoubleOrNull(context, 'viewportFraction') ?? viewportFraction;
+
     return TabBarView(
       controller: controller,
       physics: physics,
       dragStartBehavior: dragStartBehavior,
-      viewportFraction: viewportFraction,
+      viewportFraction: resolvedViewportFraction,
       clipBehavior: clipBehavior,
       children: children,
     );
@@ -673,15 +692,25 @@ class TomCupertinoTabBar extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedActiveColor =
+        activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedIconSize =
+        resolveDoubleOrNull(context, 'iconSize') ?? iconSize;
+    final resolvedHeight =
+        resolveDoubleOrNull(context, 'height') ?? height;
+
     return CupertinoTabBar(
       items: items,
       onTap: onTap,
       currentIndex: currentIndex,
-      backgroundColor: backgroundColor,
-      activeColor: activeColor,
+      backgroundColor: resolvedBackgroundColor,
+      activeColor: resolvedActiveColor,
       inactiveColor: inactiveColor,
-      iconSize: iconSize,
-      height: height,
+      iconSize: resolvedIconSize,
+      height: resolvedHeight,
       border: border,
     );
   }
@@ -725,6 +754,10 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+
     return CupertinoNavigationBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -732,7 +765,7 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
       previousPageTitle: previousPageTitle,
       middle: middle,
       trailing: trailing,
-      backgroundColor: backgroundColor,
+      backgroundColor: resolvedBackgroundColor,
       brightness: brightness,
       padding: padding,
       border: border,
