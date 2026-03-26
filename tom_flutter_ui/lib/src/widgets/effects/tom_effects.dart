@@ -15,7 +15,7 @@ import '../../widget_base/tom_family_base.dart';
 /// Applies blur/filter to everything behind the child. Auth on filtered content region.
 class TomBackdropFilter extends TomEffectBase {
   final ImageFilter filter;
-  final BlendMode blendMode;
+  final BlendMode? blendMode;
   final Widget? child;
 
   const TomBackdropFilter({
@@ -23,15 +23,20 @@ class TomBackdropFilter extends TomEffectBase {
     super.tomId,
     super.tomGroup,
     required this.filter,
-    this.blendMode = BlendMode.srcOver,
+    this.blendMode,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBlendMode = blendMode ??
+        _resolveBlendMode(resolveResourceOrNull(context, 'blendMode')) ??
+        BlendMode.srcOver;
+
     return BackdropFilter(
       filter: filter,
-      blendMode: blendMode,
+      blendMode: resolvedBlendMode,
       child: child,
     );
   }
@@ -66,7 +71,7 @@ class TomColorFiltered extends TomEffectBase {
 /// Applies shader as mask on child. Auth on masked content.
 class TomShaderMask extends TomEffectBase {
   final ShaderCallback shaderCallback;
-  final BlendMode blendMode;
+  final BlendMode? blendMode;
   final Widget? child;
 
   const TomShaderMask({
@@ -74,17 +79,87 @@ class TomShaderMask extends TomEffectBase {
     super.tomId,
     super.tomGroup,
     required this.shaderCallback,
-    this.blendMode = BlendMode.modulate,
+    this.blendMode,
     this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBlendMode = blendMode ??
+        _resolveBlendMode(resolveResourceOrNull(context, 'blendMode')) ??
+        BlendMode.modulate;
+
     return ShaderMask(
       shaderCallback: shaderCallback,
-      blendMode: blendMode,
+      blendMode: resolvedBlendMode,
       child: child,
     );
+  }
+}
+
+BlendMode? _resolveBlendMode(String? value) {
+  switch (value?.toLowerCase()) {
+    case 'clear':
+      return BlendMode.clear;
+    case 'src':
+      return BlendMode.src;
+    case 'dst':
+      return BlendMode.dst;
+    case 'srcover':
+      return BlendMode.srcOver;
+    case 'dstover':
+      return BlendMode.dstOver;
+    case 'srcin':
+      return BlendMode.srcIn;
+    case 'dstin':
+      return BlendMode.dstIn;
+    case 'srcout':
+      return BlendMode.srcOut;
+    case 'dstout':
+      return BlendMode.dstOut;
+    case 'srcatop':
+      return BlendMode.srcATop;
+    case 'dstatop':
+      return BlendMode.dstATop;
+    case 'xor':
+      return BlendMode.xor;
+    case 'plus':
+      return BlendMode.plus;
+    case 'modulate':
+      return BlendMode.modulate;
+    case 'screen':
+      return BlendMode.screen;
+    case 'overlay':
+      return BlendMode.overlay;
+    case 'darken':
+      return BlendMode.darken;
+    case 'lighten':
+      return BlendMode.lighten;
+    case 'colordodge':
+      return BlendMode.colorDodge;
+    case 'colorburn':
+      return BlendMode.colorBurn;
+    case 'hardlight':
+      return BlendMode.hardLight;
+    case 'softlight':
+      return BlendMode.softLight;
+    case 'difference':
+      return BlendMode.difference;
+    case 'exclusion':
+      return BlendMode.exclusion;
+    case 'multiply':
+      return BlendMode.multiply;
+    case 'hue':
+      return BlendMode.hue;
+    case 'saturation':
+      return BlendMode.saturation;
+    case 'color':
+      return BlendMode.color;
+    case 'luminosity':
+      return BlendMode.luminosity;
+    default:
+      return null;
   }
 }
 

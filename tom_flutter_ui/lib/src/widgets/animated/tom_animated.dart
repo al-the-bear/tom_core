@@ -179,7 +179,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   final Curve sizeCurve;
   final AlignmentGeometry alignment;
   final AnimatedCrossFadeBuilder layoutBuilder;
-  final bool excludeBottomFocus;
+  final bool? excludeBottomFocus;
 
   const TomAnimatedCrossFade({
     super.key,
@@ -195,11 +195,15 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     this.sizeCurve = Curves.linear,
     this.alignment = Alignment.topCenter,
     this.layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
-    this.excludeBottomFocus = true,
+    this.excludeBottomFocus,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedExcludeBottomFocus = excludeBottomFocus ??
+        resolveBoolOrNull(context, 'excludeBottomFocus') ?? true;
+
     return AnimatedCrossFade(
       firstChild: firstChild,
       secondChild: secondChild,
@@ -211,7 +215,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
       sizeCurve: sizeCurve,
       alignment: alignment,
       layoutBuilder: layoutBuilder,
-      excludeBottomFocus: excludeBottomFocus,
+      excludeBottomFocus: resolvedExcludeBottomFocus,
     );
   }
 }
@@ -223,7 +227,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   final Widget child;
   final TextStyle style;
   final TextAlign? textAlign;
-  final bool softWrap;
+  final bool? softWrap;
   final TextOverflow overflow;
   final int? maxLines;
   final TextWidthBasis textWidthBasis;
@@ -239,7 +243,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     required this.child,
     required this.style,
     this.textAlign,
-    this.softWrap = true,
+    this.softWrap,
     this.overflow = TextOverflow.clip,
     this.maxLines,
     this.textWidthBasis = TextWidthBasis.parent,
@@ -251,12 +255,18 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSoftWrap =
+        softWrap ?? resolveBoolOrNull(context, 'softWrap') ?? true;
+    final resolvedMaxLines =
+        maxLines ?? resolveIntOrNull(context, 'maxLines');
+
     return AnimatedDefaultTextStyle(
       style: style,
       textAlign: textAlign,
-      softWrap: softWrap,
+      softWrap: resolvedSoftWrap,
       overflow: overflow,
-      maxLines: maxLines,
+      maxLines: resolvedMaxLines,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
       duration: duration,
@@ -294,10 +304,16 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidthFactor =
+        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+    final resolvedHeightFactor =
+        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+
     return AnimatedFractionallySizedBox(
       alignment: alignment,
-      widthFactor: widthFactor,
-      heightFactor: heightFactor,
+      widthFactor: resolvedWidthFactor,
+      heightFactor: resolvedHeightFactor,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
@@ -311,32 +327,38 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
 /// Animates opacity changes. Auth on content being faded.
 class TomAnimatedOpacity extends TomAnimatedBase {
   final Widget? child;
-  final double opacity;
+  final double? opacity;
   final Duration duration;
   final Curve curve;
   final VoidCallback? onEnd;
-  final bool alwaysIncludeSemantics;
+  final bool? alwaysIncludeSemantics;
 
   const TomAnimatedOpacity({
     super.key,
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.opacity,
+    this.opacity,
     required this.duration,
     this.curve = Curves.linear,
     this.onEnd,
-    this.alwaysIncludeSemantics = false,
+    this.alwaysIncludeSemantics,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOpacity =
+        opacity ?? resolveDoubleOrFail(context, 'opacity');
+    final resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ??
+        resolveBoolOrNull(context, 'alwaysIncludeSemantics') ?? false;
+
     return AnimatedOpacity(
-      opacity: opacity,
+      opacity: resolvedOpacity,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
-      alwaysIncludeSemantics: alwaysIncludeSemantics,
+      alwaysIncludeSemantics: resolvedAlwaysIncludeSemantics,
       child: child,
     );
   }
@@ -346,7 +368,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
 ///
 /// Animates padding changes. Auth on padded content.
 class TomAnimatedPadding extends TomAnimatedBase {
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
   final Widget? child;
   final Duration duration;
   final Curve curve;
@@ -356,7 +378,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.padding,
+    this.padding,
     this.child,
     required this.duration,
     this.curve = Curves.linear,
@@ -365,8 +387,18 @@ class TomAnimatedPadding extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    if (resolvedPadding == null) {
+      throw StateError(
+        'Tom widget requires either an explicit padding or a tomId resource '
+        'value at padding. Widget: $runtimeType',
+      );
+    }
+
     return AnimatedPadding(
-      padding: padding,
+      padding: resolvedPadding,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
@@ -383,11 +415,11 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   final BoxShape shape;
   final Clip clipBehavior;
   final BorderRadius borderRadius;
-  final double elevation;
-  final Color color;
-  final bool animateColor;
-  final Color shadowColor;
-  final bool animateShadowColor;
+  final double? elevation;
+  final Color? color;
+  final bool? animateColor;
+  final Color? shadowColor;
+  final bool? animateShadowColor;
   final Duration duration;
   final Curve curve;
   final VoidCallback? onEnd;
@@ -400,11 +432,11 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     required this.shape,
     this.clipBehavior = Clip.none,
     this.borderRadius = BorderRadius.zero,
-    required this.elevation,
-    required this.color,
-    this.animateColor = true,
-    required this.shadowColor,
-    this.animateShadowColor = true,
+    this.elevation,
+    this.color,
+    this.animateColor,
+    this.shadowColor,
+    this.animateShadowColor,
     required this.duration,
     this.curve = Curves.linear,
     this.onEnd,
@@ -412,15 +444,27 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedElevation =
+      elevation ?? resolveDoubleOrFail(context, 'elevation');
+    final resolvedColor =
+      color ?? resolveColorOrFail(context, 'color');
+    final resolvedAnimateColor =
+      animateColor ?? resolveBoolOrNull(context, 'animateColor') ?? true;
+    final resolvedShadowColor =
+      shadowColor ?? resolveColorOrFail(context, 'shadowColor');
+    final resolvedAnimateShadowColor = animateShadowColor ??
+      resolveBoolOrNull(context, 'animateShadowColor') ?? true;
+
     return AnimatedPhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
       borderRadius: borderRadius,
-      elevation: elevation,
-      color: color,
-      animateColor: animateColor,
-      shadowColor: shadowColor,
-      animateShadowColor: animateShadowColor,
+      elevation: resolvedElevation,
+      color: resolvedColor,
+      animateColor: resolvedAnimateColor,
+      shadowColor: resolvedShadowColor,
+      animateShadowColor: resolvedAnimateShadowColor,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
@@ -489,7 +533,7 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
 /// Animates rotation. Auth on rotated content.
 class TomAnimatedRotation extends TomAnimatedBase {
   final Widget? child;
-  final double turns;
+  final double? turns;
   final Alignment alignment;
   final FilterQuality? filterQuality;
   final Duration duration;
@@ -501,7 +545,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.turns,
+    this.turns,
     this.alignment = Alignment.center,
     this.filterQuality,
     required this.duration,
@@ -511,8 +555,12 @@ class TomAnimatedRotation extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedTurns =
+        turns ?? resolveDoubleOrFail(context, 'turns');
+
     return AnimatedRotation(
-      turns: turns,
+      turns: resolvedTurns,
       alignment: alignment,
       filterQuality: filterQuality,
       duration: duration,
@@ -528,7 +576,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
 /// Animates scale. Auth on scaled content.
 class TomAnimatedScale extends TomAnimatedBase {
   final Widget? child;
-  final double scale;
+  final double? scale;
   final Alignment alignment;
   final FilterQuality? filterQuality;
   final Duration duration;
@@ -540,7 +588,7 @@ class TomAnimatedScale extends TomAnimatedBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.scale,
+    this.scale,
     this.alignment = Alignment.center,
     this.filterQuality,
     required this.duration,
@@ -550,8 +598,12 @@ class TomAnimatedScale extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedScale =
+        scale ?? resolveDoubleOrFail(context, 'scale');
+
     return AnimatedScale(
-      scale: scale,
+      scale: resolvedScale,
       alignment: alignment,
       filterQuality: filterQuality,
       duration: duration,
@@ -681,7 +733,7 @@ class TomHero extends TomAnimatedBase {
   final CreateRectTween? createRectTween;
   final HeroFlightShuttleBuilder? flightShuttleBuilder;
   final HeroPlaceholderBuilder? placeholderBuilder;
-  final bool transitionOnUserGestures;
+  final bool? transitionOnUserGestures;
   final Widget child;
 
   const TomHero({
@@ -692,18 +744,22 @@ class TomHero extends TomAnimatedBase {
     this.createRectTween,
     this.flightShuttleBuilder,
     this.placeholderBuilder,
-    this.transitionOnUserGestures = false,
+    this.transitionOnUserGestures,
     required this.child,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedTransitionOnUserGestures = transitionOnUserGestures ??
+        resolveBoolOrNull(context, 'transitionOnUserGestures') ?? false;
+
     return Hero(
       tag: tag,
       createRectTween: createRectTween,
       flightShuttleBuilder: flightShuttleBuilder,
       placeholderBuilder: placeholderBuilder,
-      transitionOnUserGestures: transitionOnUserGestures,
+      transitionOnUserGestures: resolvedTransitionOnUserGestures,
       child: child,
     );
   }
