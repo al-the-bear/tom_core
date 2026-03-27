@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [ElevatedButton].
 ///
@@ -49,13 +50,16 @@ class TomElevatedButton extends TomButtonBase {
     // Resolve icon: use provided widget, or resolve from resources
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     if (resolvedIcon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: style,
+        style: resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -69,7 +73,7 @@ class TomElevatedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: style,
+      style: resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -82,6 +86,13 @@ class TomElevatedButton extends TomButtonBase {
     final iconData = resolveIcon(context);
     if (iconData == null) return null;
     return Icon(iconData);
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -125,13 +136,16 @@ class TomTextButton extends TomButtonBase {
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     if (resolvedIcon != null) {
       return TextButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: style,
+        style: resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -145,7 +159,7 @@ class TomTextButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: style,
+      style: resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -157,6 +171,13 @@ class TomTextButton extends TomButtonBase {
     final iconData = resolveIcon(context);
     if (iconData == null) return null;
     return Icon(iconData);
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -200,13 +221,16 @@ class TomOutlinedButton extends TomButtonBase {
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     if (resolvedIcon != null) {
       return OutlinedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: style,
+        style: resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -220,7 +244,7 @@ class TomOutlinedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: style,
+      style: resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -232,6 +256,13 @@ class TomOutlinedButton extends TomButtonBase {
     final iconData = resolveIcon(context);
     if (iconData == null) return null;
     return Icon(iconData);
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -277,6 +308,9 @@ class TomFilledButton extends TomButtonBase {
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     if (tonal) {
       if (resolvedIcon != null) {
         return FilledButton.tonalIcon(
@@ -284,7 +318,7 @@ class TomFilledButton extends TomButtonBase {
           onLongPress: onLongPress,
           onHover: onHover,
           onFocusChange: onFocusChange,
-          style: style,
+          style: resolvedStyle,
           focusNode: focusNode,
           autofocus: autofocus,
           clipBehavior: clipBehavior,
@@ -297,7 +331,7 @@ class TomFilledButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: style,
+        style: resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -311,7 +345,7 @@ class TomFilledButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: style,
+        style: resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -325,7 +359,7 @@ class TomFilledButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: style,
+      style: resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -337,6 +371,13 @@ class TomFilledButton extends TomButtonBase {
     final iconData = resolveIcon(context);
     if (iconData == null) return null;
     return Icon(iconData);
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -721,11 +762,14 @@ class TomMenuItemButton extends TomButtonBase {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     return MenuItemButton(
       onPressed: onPressed,
       focusNode: focusNode,
       shortcut: shortcut,
-      style: style,
+      style: resolvedStyle,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
       leadingIcon: leadingIcon,
@@ -733,6 +777,13 @@ class TomMenuItemButton extends TomButtonBase {
       closeOnActivate: closeOnActivate,
       child: buttonChild,
     );
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -778,12 +829,16 @@ class TomSubmenuButton extends TomButtonBase {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
+    // Phase 3: Resolve ButtonStyle and MenuStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+    final resolvedMenuStyle = menuStyle ?? _resolveMenuStyle(context);
+
     return SubmenuButton(
       onOpen: onOpen,
       onClose: onClose,
       focusNode: focusNode,
-      style: style,
-      menuStyle: menuStyle,
+      style: resolvedStyle,
+      menuStyle: resolvedMenuStyle,
       alignmentOffset: alignmentOffset,
       clipBehavior: clipBehavior,
       leadingIcon: leadingIcon,
@@ -791,6 +846,20 @@ class TomSubmenuButton extends TomButtonBase {
       menuChildren: menuChildren,
       child: buttonChild,
     );
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+  }
+
+  /// Phase 3: Resolves MenuStyle from resources.
+  MenuStyle? _resolveMenuStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
 }
 
@@ -821,16 +890,26 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     return SegmentedButton<T>(
       segments: segments,
       selected: selected,
       onSelectionChanged: onSelectionChanged,
       multiSelectionEnabled: multiSelectionEnabled,
       emptySelectionAllowed: emptySelectionAllowed,
-      style: style,
+      style: resolvedStyle,
       showSelectedIcon: showSelectedIcon,
       selectedIcon: selectedIcon,
     );
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -1000,6 +1079,9 @@ class TomIconButton extends TomButtonBase {
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     switch (_variant) {
       case _IconButtonVariant.filled:
         return IconButton.filled(
@@ -1017,7 +1099,7 @@ class TomIconButton extends TomButtonBase {
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
-          style: style,
+          style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
           icon: resolvedIcon,
@@ -1041,7 +1123,7 @@ class TomIconButton extends TomButtonBase {
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
-          style: style,
+          style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
           icon: resolvedIcon,
@@ -1065,7 +1147,7 @@ class TomIconButton extends TomButtonBase {
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
-          style: style,
+          style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
           icon: resolvedIcon,
@@ -1089,7 +1171,7 @@ class TomIconButton extends TomButtonBase {
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
           constraints: constraints,
-          style: style,
+          style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
           icon: resolvedIcon,
@@ -1097,6 +1179,13 @@ class TomIconButton extends TomButtonBase {
           focusNode: focusNode,
         );
     }
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 
@@ -1182,13 +1271,16 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
   DropdownMenuEntry<T> toEntry(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
+    // Phase 3: Resolve ButtonStyle from resources
+    final resolvedStyle = style ?? _resolveStyle(context);
+
     return DropdownMenuEntry<T>(
       value: value,
       label: resolvedLabel,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
       enabled: enabled,
-      style: style,
+      style: resolvedStyle,
       labelWidget: labelWidget,
     );
   }
@@ -1201,6 +1293,13 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
 
     return Text(resolvedLabel);
+  }
+
+  /// Phase 3: Resolves ButtonStyle from resources.
+  ButtonStyle? _resolveStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 }
 

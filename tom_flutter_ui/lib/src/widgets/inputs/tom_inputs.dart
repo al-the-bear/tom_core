@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [TextField].
 ///
@@ -167,20 +168,20 @@ class TomTextField extends TomInputBase {
     final resolvedMaxLength =
         maxLength ?? resolveIntOrNull(context, 'maxLength');
 
-    final effectiveDecoration =
-        (decoration ?? const InputDecoration()).copyWith(
-      labelText: resolvedLabel,
-      hintText: resolvedHint,
-    );
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context);
+
+    // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
+    final resolvedDecoration = _resolveDecoration(context, resolvedLabel, resolvedHint);
 
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      decoration: effectiveDecoration,
+      decoration: resolvedDecoration,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: style,
+      style: resolvedStyle,
       strutStyle: strutStyle,
       textAlign: textAlign,
       textAlignVertical: textAlignVertical,
@@ -235,6 +236,46 @@ class TomTextField extends TomInputBase {
       magnifierConfiguration: magnifierConfiguration,
       undoController: undoController,
       buildCounter: buildCounter,
+    );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+  }
+
+  /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
+  InputDecoration _resolveDecoration(
+      BuildContext context, String resolvedLabel, String? resolvedHint) {
+    final basePath = resolveResourceBasePath(context);
+
+    // Start with explicit decoration or empty
+    InputDecoration base = decoration ?? const InputDecoration();
+
+    // Try to resolve InputDecoration from resources
+    if (basePath != null) {
+      final resourceDecoration =
+          TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+      if (resourceDecoration != null) {
+        // Merge: explicit decoration properties take precedence
+        base = resourceDecoration.copyWith(
+          labelText: base.labelText,
+          hintText: base.hintText,
+          helperText: base.helperText,
+          errorText: base.errorText,
+          prefixIcon: base.prefixIcon,
+          suffixIcon: base.suffixIcon,
+          // Keep other explicit properties if set
+        );
+      }
+    }
+
+    // Apply resolved label and hint
+    return base.copyWith(
+      labelText: resolvedLabel,
+      hintText: resolvedHint,
     );
   }
 }
@@ -317,20 +358,20 @@ class TomTextFormField extends TomInputBase {
     final resolvedMaxLength =
         maxLength ?? resolveIntOrNull(context, 'maxLength');
 
-    final effectiveDecoration =
-        (decoration ?? const InputDecoration()).copyWith(
-      labelText: resolvedLabel,
-      hintText: resolvedHint,
-    );
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context);
+
+    // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
+    final resolvedDecoration = _resolveDecoration(context, resolvedLabel, resolvedHint);
 
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      decoration: effectiveDecoration,
+      decoration: resolvedDecoration,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: style,
+      style: resolvedStyle,
       textAlign: textAlign,
       textDirection: textDirection,
       autofocus: autofocus,
@@ -348,6 +389,45 @@ class TomTextFormField extends TomInputBase {
       enabled: enabled,
       readOnly: readOnly,
       autovalidateMode: autovalidateMode,
+    );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+  }
+
+  /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
+  InputDecoration _resolveDecoration(
+      BuildContext context, String resolvedLabel, String? resolvedHint) {
+    final basePath = resolveResourceBasePath(context);
+
+    // Start with explicit decoration or empty
+    InputDecoration base = decoration ?? const InputDecoration();
+
+    // Try to resolve InputDecoration from resources
+    if (basePath != null) {
+      final resourceDecoration =
+          TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+      if (resourceDecoration != null) {
+        // Merge: explicit decoration properties take precedence
+        base = resourceDecoration.copyWith(
+          labelText: base.labelText,
+          hintText: base.hintText,
+          helperText: base.helperText,
+          errorText: base.errorText,
+          prefixIcon: base.prefixIcon,
+          suffixIcon: base.suffixIcon,
+        );
+      }
+    }
+
+    // Apply resolved label and hint
+    return base.copyWith(
+      labelText: resolvedLabel,
+      hintText: resolvedHint,
     );
   }
 }
@@ -544,6 +624,10 @@ class TomSearchAnchor extends TomInputBase {
     final resolvedDividerColor =
         dividerColor ?? resolveColorOrNull(context, 'dividerColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle(context, 'headerTextStyle');
+    final resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle(context, 'headerHintStyle');
+
     return SearchAnchor(
       isFullScreen: isFullScreen,
       searchController: searchController,
@@ -565,12 +649,19 @@ class TomSearchAnchor extends TomInputBase {
       viewSurfaceTintColor: resolvedViewSurfaceTintColor,
       viewSide: viewSide,
       viewShape: viewShape,
-      headerTextStyle: headerTextStyle,
-      headerHintStyle: headerHintStyle,
+      headerTextStyle: resolvedHeaderTextStyle,
+      headerHintStyle: resolvedHeaderHintStyle,
       dividerColor: resolvedDividerColor,
       viewConstraints: viewConstraints,
       textCapitalization: textCapitalization,
     );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -675,6 +766,9 @@ class TomEditableText extends TomInputBase {
         maxLines ?? resolveIntOrNull(context, 'maxLines');
     final resolvedMinLines =
         minLines ?? resolveIntOrNull(context, 'minLines');
+
+    // Phase 3: Style is required, so no resource resolution for this widget
+    // (EditableText requires an explicit style)
 
     return EditableText(
       controller: controller,
@@ -801,13 +895,17 @@ class TomCupertinoTextField extends TomInputBase {
     final resolvedMaxLength =
         maxLength ?? resolveIntOrNull(context, 'maxLength');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+
     return CupertinoTextField(
       controller: controller,
       focusNode: focusNode,
       decoration: decoration,
       padding: resolvedPadding,
       placeholder: resolvedPlaceholder,
-      placeholderStyle: placeholderStyle,
+      placeholderStyle: resolvedPlaceholderStyle,
       prefix: prefix,
       prefixMode: prefixMode,
       suffix: suffix,
@@ -816,7 +914,7 @@ class TomCupertinoTextField extends TomInputBase {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: style,
+      style: resolvedStyle,
       textAlign: textAlign,
       textDirection: textDirection,
       autofocus: autofocus,
@@ -831,6 +929,13 @@ class TomCupertinoTextField extends TomInputBase {
       enabled: enabled,
       readOnly: readOnly,
     );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

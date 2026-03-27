@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [DropdownButton].
 ///
@@ -85,13 +86,16 @@ class TomDropdownButton<T> extends TomSelectBase {
     final resolvedMenuMaxHeight =
         menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context);
+
     return DropdownButton<T>(
       value: value,
       items: items,
       onChanged: onChanged,
       onTap: onTap,
       elevation: resolvedElevation,
-      style: style,
+      style: resolvedStyle,
       underline: underline,
       icon: icon,
       iconDisabledColor: resolvedIconDisabledColor,
@@ -111,6 +115,13 @@ class TomDropdownButton<T> extends TomSelectBase {
       padding: padding,
       hint: resolvedHint != null ? Text(resolvedHint) : null,
     );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 }
 
