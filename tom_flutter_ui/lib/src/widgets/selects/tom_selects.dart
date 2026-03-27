@@ -305,16 +305,30 @@ class TomDropdownMenu<T> extends TomSelectBase {
       selectedTrailingIcon: selectedTrailingIcon,
       enableFilter: enableFilter,
       enableSearch: enableSearch,
-      textStyle: textStyle,
+      textStyle: textStyle ?? _resolveTextStyle(context),
       textAlign: textAlign,
       inputDecorationTheme: inputDecorationTheme,
-      menuStyle: menuStyle,
+      menuStyle: menuStyle ?? _resolveMenuStyle(context),
       controller: controller,
       focusNode: focusNode,
       requestFocusOnTap: requestFocusOnTap,
       expandedInsets: expandedInsets,
       searchCallback: searchCallback,
     );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, 'textStyle');
+  }
+
+  /// Phase 3: Resolves MenuStyle from resources.
+  MenuStyle? _resolveMenuStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
 }
 
@@ -357,7 +371,7 @@ class TomMenuAnchor extends TomSelectBase {
       menuChildren: menuChildren,
       controller: controller,
       childFocusNode: childFocusNode,
-      style: style,
+      style: style ?? _resolveMenuStyle(context),
       alignmentOffset: alignmentOffset,
       clipBehavior: clipBehavior,
       onOpen: onOpen,
@@ -366,6 +380,13 @@ class TomMenuAnchor extends TomSelectBase {
       builder: builder,
       child: child,
     );
+  }
+
+  /// Phase 3: Resolves MenuStyle from resources.
+  MenuStyle? _resolveMenuStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveMenuStyle(basePath, 'style');
   }
 }
 
@@ -439,8 +460,9 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel = resolveResourceOrFail(context, 'label');
+    // Phase 3: Resolve InputDecoration from resources
     final effectiveDecoration =
-      decoration ?? InputDecoration(labelText: resolvedLabel);
+      decoration ?? _resolveInputDecoration(context) ?? InputDecoration(labelText: resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
@@ -462,6 +484,9 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context);
+
     return DropdownButtonFormField<T>(
       items: items,
       value: value,
@@ -471,7 +496,7 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       hint: hint,
       disabledHint: disabledHint,
       elevation: resolvedElevation,
-      style: style,
+      style: resolvedStyle,
       icon: icon,
       iconDisabledColor: resolvedIconDisabledColor,
       iconEnabledColor: resolvedIconEnabledColor,
@@ -492,6 +517,20 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       validator: validator,
       autovalidateMode: autovalidateMode,
     );
+  }
+
+  /// Phase 3: Resolves TextStyle from resources.
+  TextStyle? _resolveTextStyle(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+  }
+
+  /// Phase 3: Resolves InputDecoration from resources.
+  InputDecoration? _resolveInputDecoration(BuildContext context) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
   }
 }
 
