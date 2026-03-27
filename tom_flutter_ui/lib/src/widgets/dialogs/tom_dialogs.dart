@@ -20,6 +20,7 @@ import 'package:flutter/material.dart' as material
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [AlertDialog].
 ///
@@ -108,16 +109,22 @@ class TomAlertDialog extends TomDialogBase {
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedTitleTextStyle =
+        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+    final resolvedContentTextStyle =
+        contentTextStyle ?? _resolveTextStyle(context, 'contentTextStyle');
+
     return AlertDialog(
       icon: icon,
       iconPadding: iconPadding,
       iconColor: resolvedIconColor,
       title: effectiveTitle,
       titlePadding: titlePadding,
-      titleTextStyle: titleTextStyle,
+      titleTextStyle: resolvedTitleTextStyle,
       content: content,
       contentPadding: contentPadding,
-      contentTextStyle: contentTextStyle,
+      contentTextStyle: resolvedContentTextStyle,
       actions: actions,
       actionsPadding: actionsPadding,
       actionsAlignment: actionsAlignment,
@@ -136,6 +143,12 @@ class TomAlertDialog extends TomDialogBase {
       alignment: alignment,
       scrollable: scrollable,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -197,10 +210,14 @@ class TomSimpleDialog extends TomDialogBase {
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedTitleTextStyle =
+        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+
     return SimpleDialog(
       title: effectiveTitle,
       titlePadding: titlePadding,
-      titleTextStyle: titleTextStyle,
+      titleTextStyle: resolvedTitleTextStyle,
       contentPadding: contentPadding,
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
@@ -213,6 +230,12 @@ class TomSimpleDialog extends TomDialogBase {
       alignment: alignment,
       children: children,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -431,9 +454,13 @@ class TomMaterialBanner extends TomDialogBase {
     final resolvedLeadingPadding =
         leadingPadding ?? resolveEdgeInsetsOrNull(context, 'leadingPadding');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedContentTextStyle =
+        contentTextStyle ?? _resolveTextStyle(context, 'contentTextStyle');
+
     return MaterialBanner(
       content: content,
-      contentTextStyle: contentTextStyle,
+      contentTextStyle: resolvedContentTextStyle,
       actions: actions,
       elevation: resolvedElevation,
       leading: leading,
@@ -449,6 +476,12 @@ class TomMaterialBanner extends TomDialogBase {
       animation: animation,
       onVisible: onVisible,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -513,6 +546,10 @@ class TomTooltip extends TomDialogBase {
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
     final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedTextStyle =
+        textStyle ?? _resolveTextStyle(context, 'textStyle');
+
     return Tooltip(
       message: resolvedMessage,
       richMessage: richMessage,
@@ -523,7 +560,7 @@ class TomTooltip extends TomDialogBase {
       preferBelow: preferBelow,
       excludeFromSemantics: excludeFromSemantics,
       decoration: decoration,
-      textStyle: textStyle,
+      textStyle: resolvedTextStyle,
       textAlign: textAlign,
       waitDuration: waitDuration,
       showDuration: showDuration,
@@ -534,6 +571,12 @@ class TomTooltip extends TomDialogBase {
       onTriggered: onTriggered,
       child: child,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

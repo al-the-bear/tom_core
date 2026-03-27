@@ -1100,14 +1100,18 @@ class TomCupertinoSearchTextField extends TomInputBase {
   Widget buildContent(BuildContext context) {
     final resolvedPlaceholder = placeholder ?? resolveResourceOrFail(context, 'hint');
 
+    // Phase 3: Resolve optional TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+
     return CupertinoSearchTextField(
       controller: controller,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       onSuffixTap: onSuffixTap,
-      style: style,
+      style: resolvedStyle,
       placeholder: resolvedPlaceholder,
-      placeholderStyle: placeholderStyle,
+      placeholderStyle: resolvedPlaceholderStyle,
       decoration: decoration,
       backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
       borderRadius: borderRadius,
@@ -1125,6 +1129,12 @@ class TomCupertinoSearchTextField extends TomInputBase {
       smartQuotesType: smartQuotesType,
       smartDashesType: smartDashesType,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1421,6 +1431,10 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
     final resolvedPlaceholder =
         placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 3: Resolve optional TextStyle from resources
+    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+
     return CupertinoTextFormFieldRow(
       prefix: prefix,
       padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
@@ -1431,7 +1445,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
-      style: style,
+      style: resolvedStyle,
       strutStyle: strutStyle,
       textDirection: textDirection,
       textAlign: textAlign,
@@ -1468,11 +1482,17 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       autofillHints: autofillHints,
       autovalidateMode: autovalidateMode,
       placeholder: resolvedPlaceholder,
-      placeholderStyle: placeholderStyle,
+      placeholderStyle: resolvedPlaceholderStyle,
       contextMenuBuilder: contextMenuBuilder,
       spellCheckConfiguration: spellCheckConfiguration,
       restorationId: restorationId,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1565,6 +1585,8 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
         hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
     final resolvedHelper =
         helperText ?? (tomId != null ? resolveResourceOrFail(context, 'helper') : null);
+    // Phase 3: Resolve optional TextStyle from resources
+    final resolvedTextStyle = textStyle ?? _resolveTextStyle(context, 'textStyle');
 
     return DropdownMenuFormField<T>(
       enabled: enabled,
@@ -1579,7 +1601,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       enableFilter: enableFilter,
       enableSearch: enableSearch,
       keyboardType: keyboardType,
-      textStyle: textStyle,
+      textStyle: resolvedTextStyle,
       textAlign: textAlign,
       inputDecorationTheme: inputDecorationTheme,
       menuStyle: menuStyle,
@@ -1603,5 +1625,11 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       validator: validator,
       forceErrorText: forceErrorText,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }

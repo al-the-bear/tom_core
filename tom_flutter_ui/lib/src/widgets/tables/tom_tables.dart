@@ -6,6 +6,7 @@ import '../../resource_auth/tom_id_prefix.dart';
 import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_node_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [DataTable].
 ///
@@ -79,6 +80,12 @@ class TomDataTable extends TomTableBase {
     final resolvedCheckboxHorizontalMargin =
         checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedDataTextStyle =
+        dataTextStyle ?? _resolveTextStyle(context, 'dataTextStyle');
+    final resolvedHeadingTextStyle =
+        headingTextStyle ?? _resolveTextStyle(context, 'headingTextStyle');
+
     return DataTable(
       columns: columns,
       sortColumnIndex: sortColumnIndex,
@@ -88,10 +95,10 @@ class TomDataTable extends TomTableBase {
       dataRowColor: dataRowColor,
       dataRowMinHeight: resolvedDataRowMinHeight,
       dataRowMaxHeight: resolvedDataRowMaxHeight,
-      dataTextStyle: dataTextStyle,
+      dataTextStyle: resolvedDataTextStyle,
       headingRowColor: headingRowColor,
       headingRowHeight: resolvedHeadingRowHeight,
-      headingTextStyle: headingTextStyle,
+      headingTextStyle: resolvedHeadingTextStyle,
       horizontalMargin: resolvedHorizontalMargin,
       columnSpacing: resolvedColumnSpacing,
       showCheckboxColumn: showCheckboxColumn,
@@ -102,6 +109,12 @@ class TomDataTable extends TomTableBase {
       clipBehavior: clipBehavior,
       rows: rows,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -117,9 +130,7 @@ class TomPaginatedDataTable extends TomTableBase {
   final ValueSetter<bool?>? onSelectAll;
   final double? dataRowMinHeight;
   final double? dataRowMaxHeight;
-  final TextStyle? dataTextStyle;
   final double? headingRowHeight;
-  final TextStyle? headingTextStyle;
   final double? horizontalMargin;
   final double? columnSpacing;
   final bool showCheckboxColumn;
@@ -148,9 +159,7 @@ class TomPaginatedDataTable extends TomTableBase {
     this.onSelectAll,
     this.dataRowMinHeight,
     this.dataRowMaxHeight,
-    this.dataTextStyle,
     this.headingRowHeight,
-    this.headingTextStyle,
     this.horizontalMargin,
     this.columnSpacing,
     this.showCheckboxColumn = true,

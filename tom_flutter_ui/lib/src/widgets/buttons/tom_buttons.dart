@@ -1551,13 +1551,22 @@ class TomCupertinoDialogAction extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 3: Resolve optional TextStyle from resources
+    final resolvedTextStyle = textStyle ?? _resolveTextStyle(context, 'textStyle');
+
     return CupertinoDialogAction(
       onPressed: onPressed,
       isDefaultAction: isDefaultAction,
       isDestructiveAction: isDestructiveAction,
-      textStyle: textStyle,
+      textStyle: resolvedTextStyle,
       child: child,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

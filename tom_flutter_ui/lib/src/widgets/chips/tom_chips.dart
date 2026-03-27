@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [FilterChip].
 ///
@@ -88,12 +89,15 @@ class TomFilterChip extends TomChipBase {
     final resolvedDeleteIconColor =
         deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     Widget chip = FilterChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       showCheckmark: showCheckmark,
@@ -116,6 +120,12 @@ class TomFilterChip extends TomChipBase {
     );
 
     return chip;
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -189,12 +199,15 @@ class TomChoiceChip extends TomChipBase {
     final resolvedPressElevation =
         pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     Widget chip = ChoiceChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       selectedColor: resolvedSelectedColor,
@@ -211,6 +224,12 @@ class TomChoiceChip extends TomChipBase {
     );
 
     return chip;
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -277,11 +296,14 @@ class TomActionChip extends TomChipBase {
     final resolvedPressElevation =
         pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     Widget chip = ActionChip(
       onPressed: onPressed,
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       tooltip: resolvedTooltip,
@@ -297,6 +319,12 @@ class TomActionChip extends TomChipBase {
     );
 
     return chip;
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -393,6 +421,9 @@ class TomInputChip extends TomChipBase {
     final resolvedPressElevation =
         pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     return InputChip(
       selected: selected,
       isEnabled: isEnabled,
@@ -401,7 +432,7 @@ class TomInputChip extends TomChipBase {
       onPressed: onPressed,
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       deleteIcon: deleteIcon,
@@ -422,6 +453,12 @@ class TomInputChip extends TomChipBase {
       pressElevation: resolvedPressElevation,
       tooltip: resolvedTooltip,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -525,10 +562,13 @@ class TomRawChip extends TomChipBase {
     final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     return RawChip(
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       selected: selected,
       isEnabled: isEnabled,
@@ -556,5 +596,11 @@ class TomRawChip extends TomChipBase {
       elevation: resolvedElevation,
       tooltip: resolvedTooltip,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }

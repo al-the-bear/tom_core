@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [NavigationRail].
 ///
@@ -54,6 +55,13 @@ class TomNavigationRail extends TomNavigationBase {
     this.extended = false,
   });
 
+  // Phase 3: Resolve TextStyle from resources
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
@@ -70,6 +78,12 @@ class TomNavigationRail extends TomNavigationBase {
     final resolvedGroupAlignment =
         groupAlignment ?? resolveDoubleOrNull(context, 'groupAlignment');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedSelectedLabelTextStyle =
+        selectedLabelTextStyle ?? _resolveTextStyle(context, 'selectedLabelTextStyle');
+    final resolvedUnselectedLabelTextStyle =
+        unselectedLabelTextStyle ?? _resolveTextStyle(context, 'unselectedLabelTextStyle');
+
     return NavigationRail(
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
@@ -85,8 +99,8 @@ class TomNavigationRail extends TomNavigationBase {
       minExtendedWidth: resolvedMinExtendedWidth,
       useIndicator: useIndicator,
       groupAlignment: resolvedGroupAlignment,
-      selectedLabelTextStyle: selectedLabelTextStyle,
-      unselectedLabelTextStyle: unselectedLabelTextStyle,
+      selectedLabelTextStyle: resolvedSelectedLabelTextStyle,
+      unselectedLabelTextStyle: resolvedUnselectedLabelTextStyle,
       selectedIconTheme: selectedIconTheme,
       unselectedIconTheme: unselectedIconTheme,
       extended: extended,
@@ -173,15 +187,7 @@ class TomNavigationBar extends TomNavigationBase {
 ///
 /// Adds ID, group, and authorization.
 /// Implements [PreferredSizeWidget] for use in [AppBar.bottom].
-class TomTabBar extends StatelessWidget
-    with TomWidgetMixin
-    implements PreferredSizeWidget {
-  @override
-  final String? tomId;
-
-  @override
-  final String? tomGroup;
-
+class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   final List<Widget> tabs;
   final TabController? controller;
   final bool isScrollable;
@@ -210,8 +216,8 @@ class TomTabBar extends StatelessWidget
 
   const TomTabBar({
     super.key,
-    this.tomId,
-    this.tomGroup,
+    super.tomId,
+    super.tomGroup,
     required this.tabs,
     this.controller,
     this.isScrollable = false,
@@ -244,8 +250,15 @@ class TomTabBar extends StatelessWidget
         kToolbarHeight + (indicatorWeight ?? 2.0),
       );
 
+  // Phase 3: Resolve TextStyle from resources
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedIndicatorColor =
         indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
@@ -260,6 +273,12 @@ class TomTabBar extends StatelessWidget
     final resolvedUnselectedLabelColor =
         unselectedLabelColor ?? resolveColorOrNull(context, 'unselectedLabelColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle =
+        labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedUnselectedLabelStyle =
+        unselectedLabelStyle ?? _resolveTextStyle(context, 'unselectedLabelStyle');
+
     return TabBar(
       tabs: tabs,
       controller: controller,
@@ -273,10 +292,10 @@ class TomTabBar extends StatelessWidget
       dividerColor: resolvedDividerColor,
       dividerHeight: resolvedDividerHeight,
       labelColor: resolvedLabelColor,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       unselectedLabelColor: resolvedUnselectedLabelColor,
-      unselectedLabelStyle: unselectedLabelStyle,
+      unselectedLabelStyle: resolvedUnselectedLabelStyle,
       overlayColor: overlayColor,
       onTap: onTap,
       automaticIndicatorColorAdjustment: automaticIndicatorColorAdjustment,
@@ -476,6 +495,12 @@ class TomBottomNavigationBar extends TomNavigationBase {
     final resolvedUnselectedItemColor =
         unselectedItemColor ?? resolveColorOrNull(context, 'unselectedItemColor');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedSelectedLabelStyle =
+        selectedLabelStyle ?? _resolveTextStyle(context, 'selectedLabelStyle');
+    final resolvedUnselectedLabelStyle =
+        unselectedLabelStyle ?? _resolveTextStyle(context, 'unselectedLabelStyle');
+
     return BottomNavigationBar(
       items: items,
       currentIndex: currentIndex,
@@ -489,8 +514,8 @@ class TomBottomNavigationBar extends TomNavigationBase {
       unselectedItemColor: resolvedUnselectedItemColor,
       selectedIconTheme: selectedIconTheme,
       unselectedIconTheme: unselectedIconTheme,
-      selectedLabelStyle: selectedLabelStyle,
-      unselectedLabelStyle: unselectedLabelStyle,
+      selectedLabelStyle: resolvedSelectedLabelStyle,
+      unselectedLabelStyle: resolvedUnselectedLabelStyle,
       selectedFontSize: selectedFontSize ?? 14.0,
       unselectedFontSize: unselectedFontSize ?? 12.0,
       showSelectedLabels: showSelectedLabels,
@@ -499,6 +524,12 @@ class TomBottomNavigationBar extends TomNavigationBase {
       landscapeLayout: landscapeLayout,
       mouseCursor: mouseCursor,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

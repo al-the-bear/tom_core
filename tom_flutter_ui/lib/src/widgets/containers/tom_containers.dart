@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Card].
 ///
@@ -380,6 +381,12 @@ class TomAppBar extends StatelessWidget
     final resolvedLeadingWidth =
         leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedToolbarTextStyle =
+        toolbarTextStyle ?? _resolveTextStyle(context, 'toolbarTextStyle');
+    final resolvedTitleTextStyle =
+        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+
     return AppBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -403,14 +410,20 @@ class TomAppBar extends StatelessWidget
       bottomOpacity: bottomOpacity,
       toolbarHeight: resolvedToolbarHeight,
       leadingWidth: resolvedLeadingWidth,
-      toolbarTextStyle: toolbarTextStyle,
-      titleTextStyle: titleTextStyle,
+      toolbarTextStyle: resolvedToolbarTextStyle,
+      titleTextStyle: resolvedTitleTextStyle,
       systemOverlayStyle: systemOverlayStyle,
       forceMaterialTransparency: forceMaterialTransparency,
       clipBehavior: clipBehavior,
       shape: shape,
       notificationPredicate: notificationPredicate,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1083,13 +1096,17 @@ class TomMaterial extends TomContainerBase {
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedTextStyle =
+        textStyle ?? _resolveTextStyle(context, 'textStyle');
+
     return Material(
       type: type,
       elevation: resolvedElevation,
       color: resolvedColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      textStyle: textStyle,
+      textStyle: resolvedTextStyle,
       borderRadius: borderRadius,
       shape: shape,
       borderOnForeground: borderOnForeground,
@@ -1097,6 +1114,12 @@ class TomMaterial extends TomContainerBase {
       animationDuration: animationDuration,
       child: child,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -1311,6 +1334,12 @@ class TomSliverAppBar extends TomContainerBase {
     final resolvedLeadingWidth =
         leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedToolbarTextStyle =
+        toolbarTextStyle ?? _resolveTextStyle(context, 'toolbarTextStyle');
+    final resolvedTitleTextStyle =
+        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+
     return SliverAppBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -1340,12 +1369,18 @@ class TomSliverAppBar extends TomContainerBase {
       stretch: stretch,
       stretchTriggerOffset: stretchTriggerOffset,
       shape: shape,
-      toolbarTextStyle: toolbarTextStyle,
-      titleTextStyle: titleTextStyle,
+      toolbarTextStyle: resolvedToolbarTextStyle,
+      titleTextStyle: resolvedTitleTextStyle,
       systemOverlayStyle: systemOverlayStyle,
       forceMaterialTransparency: forceMaterialTransparency,
       clipBehavior: clipBehavior,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 

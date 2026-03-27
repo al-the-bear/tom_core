@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Text].
 ///
@@ -304,11 +305,15 @@ class TomBadge extends TomLabelBase {
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedTextStyle =
+        textStyle ?? _resolveTextStyle(context, 'textStyle');
+
     return Badge(
       label: effectiveLabel,
       backgroundColor: resolvedBackgroundColor,
       textColor: resolvedTextColor,
-      textStyle: textStyle,
+      textStyle: resolvedTextStyle,
       padding: resolvedPadding,
       alignment: alignment,
       offset: offset,
@@ -317,6 +322,12 @@ class TomBadge extends TomLabelBase {
       largeSize: resolvedLargeSize,
       child: child,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -432,6 +443,14 @@ class TomListTile extends TomLabelBase {
     final resolvedMinTileHeight =
         minTileHeight ?? resolveDoubleOrNull(context, 'minTileHeight');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedTitleTextStyle =
+        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+    final resolvedSubtitleTextStyle =
+        subtitleTextStyle ?? _resolveTextStyle(context, 'subtitleTextStyle');
+    final resolvedLeadingAndTrailingTextStyle =
+        leadingAndTrailingTextStyle ?? _resolveTextStyle(context, 'leadingAndTrailingTextStyle');
+
     return ListTile(
       title: effectiveTitle,
       subtitle: subtitle,
@@ -444,9 +463,9 @@ class TomListTile extends TomLabelBase {
       selectedColor: resolvedSelectedColor,
       iconColor: resolvedIconColor,
       textColor: resolvedTextColor,
-      titleTextStyle: titleTextStyle,
-      subtitleTextStyle: subtitleTextStyle,
-      leadingAndTrailingTextStyle: leadingAndTrailingTextStyle,
+      titleTextStyle: resolvedTitleTextStyle,
+      subtitleTextStyle: resolvedSubtitleTextStyle,
+      leadingAndTrailingTextStyle: resolvedLeadingAndTrailingTextStyle,
       contentPadding: resolvedContentPadding,
       enabled: enabled,
       onTap: onTap,
@@ -467,6 +486,12 @@ class TomListTile extends TomLabelBase {
       titleAlignment: titleAlignment,
       mouseCursor: mouseCursor,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
@@ -540,10 +565,14 @@ class TomChip extends TomLabelBase {
     final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
 
+    // Phase 3: Resolve TextStyle from resources
+    final resolvedLabelStyle =
+        labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+
     return Chip(
       avatar: avatar,
       label: chipLabel,
-      labelStyle: labelStyle,
+      labelStyle: resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       deleteIcon: deleteIcon,
@@ -562,6 +591,12 @@ class TomChip extends TomLabelBase {
       iconTheme: iconTheme,
       color: color,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
