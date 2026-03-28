@@ -77,6 +77,8 @@ class TomNavigationRail extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedSelectedIndex =
+      selectedIndex ?? resolveIntOrNull(context, 'selectedIndex');
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedElevation =
@@ -87,8 +89,12 @@ class TomNavigationRail extends TomNavigationBase {
         minWidth ?? resolveDoubleOrNull(context, 'minWidth');
     final resolvedMinExtendedWidth =
         minExtendedWidth ?? resolveDoubleOrNull(context, 'minExtendedWidth');
+    final resolvedUseIndicator =
+      useIndicator ?? resolveBoolOrNull(context, 'useIndicator');
     final resolvedGroupAlignment =
         groupAlignment ?? resolveDoubleOrNull(context, 'groupAlignment');
+    final resolvedExtended =
+      resolveBoolOrNull(context, 'extended') ?? extended;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedSelectedLabelTextStyle =
@@ -99,7 +105,7 @@ class TomNavigationRail extends TomNavigationBase {
         indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape');
 
     return NavigationRail(
-      selectedIndex: selectedIndex,
+      selectedIndex: resolvedSelectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: destinations,
       leading: leading,
@@ -111,13 +117,13 @@ class TomNavigationRail extends TomNavigationBase {
       indicatorShape: resolvedIndicatorShape,
       minWidth: resolvedMinWidth,
       minExtendedWidth: resolvedMinExtendedWidth,
-      useIndicator: useIndicator,
+      useIndicator: resolvedUseIndicator,
       groupAlignment: resolvedGroupAlignment,
       selectedLabelTextStyle: resolvedSelectedLabelTextStyle,
       unselectedLabelTextStyle: resolvedUnselectedLabelTextStyle,
       selectedIconTheme: selectedIconTheme ?? _resolveIconThemeData(context, 'selectedIconTheme'),
       unselectedIconTheme: unselectedIconTheme ?? _resolveIconThemeData(context, 'unselectedIconTheme'),
-      extended: extended,
+      extended: resolvedExtended,
     );
   }
 }
@@ -166,6 +172,8 @@ class TomNavigationBar extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedSelectedIndex =
+      resolveIntOrNull(context, 'selectedIndex') ?? selectedIndex;
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedIndicatorColor =
@@ -180,7 +188,7 @@ class TomNavigationBar extends TomNavigationBase {
         height ?? resolveDoubleOrNull(context, 'height');
 
     return NavigationBar(
-      selectedIndex: selectedIndex,
+      selectedIndex: resolvedSelectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: destinations,
       backgroundColor: resolvedBackgroundColor,

@@ -446,6 +446,12 @@ class TomListWheelScrollView extends TomListBase {
         itemExtent ?? resolveDoubleOrFail(context, 'itemExtent');
     final resolvedSqueeze =
         squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.0;
+    final resolvedUseMagnifier =
+        resolveBoolOrNull(context, 'useMagnifier') ?? useMagnifier;
+    final resolvedRenderChildrenOutsideViewport =
+        resolveBoolOrNull(context, 'renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
 
     return ListWheelScrollView.useDelegate(
       controller: controller,
@@ -453,15 +459,15 @@ class TomListWheelScrollView extends TomListBase {
       diameterRatio: resolvedDiameterRatio,
       perspective: resolvedPerspective,
       offAxisFraction: resolvedOffAxisFraction,
-      useMagnifier: useMagnifier,
+      useMagnifier: resolvedUseMagnifier,
       magnification: resolvedMagnification,
       overAndUnderCenterOpacity: resolvedOverAndUnderCenterOpacity,
       itemExtent: resolvedItemExtent,
       squeeze: resolvedSqueeze,
       onSelectedItemChanged: onSelectedItemChanged,
-      renderChildrenOutsideViewport: renderChildrenOutsideViewport,
+      renderChildrenOutsideViewport: resolvedRenderChildrenOutsideViewport,
       clipBehavior: clipBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       scrollBehavior: scrollBehavior,
       childDelegate: childDelegate,
     );
@@ -504,11 +510,16 @@ class TomCupertinoListTile extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTitle =
+      titleText ??
+        resolveResourceOrNull(context, 'titleText') ??
+        resolveResourceOrFail(context, 'label');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedPadding =
+      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
     final resolvedLeadingSize =
         leadingSize ?? resolveDoubleOrNull(context, 'leadingSize') ?? 28.0;
     final resolvedLeadingToTitle =
@@ -522,7 +533,7 @@ class TomCupertinoListTile extends TomListBase {
       trailing: trailing,
       onTap: onTap,
       backgroundColor: resolvedBackgroundColor,
-      padding: padding,
+      padding: resolvedPadding,
       leadingSize: resolvedLeadingSize,
       leadingToTitle: resolvedLeadingToTitle,
     );

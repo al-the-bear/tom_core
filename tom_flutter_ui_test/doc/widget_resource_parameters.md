@@ -1919,37 +1919,37 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| diameterRatio | double? | resolveDoubleOrNull | ⬜ |
-| perspective | double? | resolveDoubleOrNull | ⬜ |
-| offAxisFraction | double? | resolveDoubleOrNull | ⬜ |
-| useMagnifier | bool | resolveBoolOrNull | ⬜ |
-| magnification | double? | resolveDoubleOrNull | ⬜ |
-| overAndUnderCenterOpacity | double? | resolveDoubleOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
-| squeeze | double? | resolveDoubleOrNull | ⬜ |
-| renderChildrenOutsideViewport | bool | resolveBoolOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
+| diameterRatio | double? | resolveDoubleOrNull | ✅ |
+| perspective | double? | resolveDoubleOrNull | ✅ |
+| offAxisFraction | double? | resolveDoubleOrNull | ✅ |
+| useMagnifier | bool | resolveBoolOrNull | ✅ |
+| magnification | double? | resolveDoubleOrNull | ✅ |
+| overAndUnderCenterOpacity | double? | resolveDoubleOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| squeeze | double? | resolveDoubleOrNull | ✅ |
+| renderChildrenOutsideViewport | bool | resolveBoolOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
 
 #### TomCupertinoListTile
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| leadingSize | double? | resolveDoubleOrNull | ⬜ |
-| leadingToTitle | double? | resolveDoubleOrNull | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| leadingSize | double? | resolveDoubleOrNull | ✅ |
+| leadingToTitle | double? | resolveDoubleOrNull | ✅ |
 
 
 #### TomCupertinoListSection
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| topMargin | double? | resolveDoubleOrNull | ⬜ |
-| hasLeading | bool? | resolveBoolOrNull | ⬜ |
-| additionalDividerMargin | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| topMargin | double? | resolveDoubleOrNull | ✅ |
+| hasLeading | bool? | resolveBoolOrNull | ✅ |
+| additionalDividerMargin | double? | resolveDoubleOrNull | ✅ |
 
 ---
 
@@ -1959,33 +1959,33 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| selectedIndex | int? | resolveIntOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| minWidth | double? | resolveDoubleOrNull | ⬜ |
-| minExtendedWidth | double? | resolveDoubleOrNull | ⬜ |
-| indicatorColor | Color? | resolveColorOrNull | ⬜ |
+| selectedIndex | int? | resolveIntOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| minWidth | double? | resolveDoubleOrNull | ✅ |
+| minExtendedWidth | double? | resolveDoubleOrNull | ✅ |
+| indicatorColor | Color? | resolveColorOrNull | ✅ |
 | indicatorShape | ShapeBorder? | resolveShapeBorder | ✅ |
-| useIndicator | bool? | resolveBoolOrNull | ⬜ |
-| groupAlignment | double? | resolveDoubleOrNull | ⬜ |
-| selectedLabelTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| unselectedLabelTextStyle | TextStyle? | resolveTextStyle | ⬜ |
+| useIndicator | bool? | resolveBoolOrNull | ✅ |
+| groupAlignment | double? | resolveDoubleOrNull | ✅ |
+| selectedLabelTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| unselectedLabelTextStyle | TextStyle? | resolveTextStyle | ✅ |
 | selectedIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
 | unselectedIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
-| extended | bool | resolveBoolOrNull | ⬜ |
+| extended | bool | resolveBoolOrNull | ✅ |
 
 #### TomNavigationBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| selectedIndex | int | resolveIntOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| indicatorColor | Color? | resolveColorOrNull | ⬜ |
+| selectedIndex | int | resolveIntOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| indicatorColor | Color? | resolveColorOrNull | ✅ |
 | indicatorShape | ShapeBorder? | resolveShapeBorder | ✅ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 > **Note:** TomNavigationBar uses `WidgetStateProperty<TextStyle?>` for labelTextStyle and `WidgetStateProperty<IconThemeData?>` for iconTheme — these cannot be directly resource-resolved.
 
@@ -2709,8 +2709,8 @@ No resource-loadable parameters.
 | Inputs | 16 | 88 | 88 | 0 | 0 |
 | Interactions | 10 | 38 | 38 | 0 | 0 |
 | Labels | 15 | 79 | 79 | 0 | 0 |
-| Lists | 6 | 39 | 20 | 0 | 19 |
-| Navigation | 21 | 81 | 4 | 0 | 77 |
+| Lists | 6 | 39 | 39 | 0 | 0 |
+| Navigation | 21 | 81 | 22 | 0 | 59 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **747** | **30** | **354** |
+| **Total** | **291** | **1131** | **785** | **30** | **316** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
