@@ -433,18 +433,34 @@ class TomInkImage extends TomImageBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+
     return Ink.image(
-      padding: padding,
+      padding: resolvedPadding,
       image: image,
       colorFilter: colorFilter,
       fit: fit,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       centerSlice: centerSlice,
       repeat: repeat,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -505,28 +521,54 @@ class TomNetworkImage extends TomImageBase {
     final resolvedSemanticLabel = semanticLabel ??
         (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedSrc =
+        resolveResourceOrNull(context, 'src') ?? src;
+    final resolvedScale =
+        resolveDoubleOrNull(context, 'scale') ?? scale;
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+    final resolvedMatchTextDirection =
+        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+    final resolvedGaplessPlayback =
+        resolveBoolOrNull(context, 'gaplessPlayback') ?? gaplessPlayback;
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedExcludeFromSemantics =
+        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
+
     return Image.network(
-      src,
-      scale: scale,
+      resolvedSrc,
+      scale: resolvedScale,
       headers: headers,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       fit: fit,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       repeat: repeat,
       centerSlice: centerSlice,
-      matchTextDirection: matchTextDirection,
-      gaplessPlayback: gaplessPlayback,
+      matchTextDirection: resolvedMatchTextDirection,
+      gaplessPlayback: resolvedGaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: color,
+      color: resolvedColor,
       colorBlendMode: colorBlendMode,
       semanticLabel: resolvedSemanticLabel,
-      excludeFromSemantics: excludeFromSemantics,
+      excludeFromSemantics: resolvedExcludeFromSemantics,
       frameBuilder: frameBuilder,
       loadingBuilder: loadingBuilder,
       errorBuilder: errorBuilder,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -589,12 +631,24 @@ class TomAssetImage extends TomImageBase {
     final resolvedSemanticLabel = semanticLabel ??
         (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedCacheWidth =
+        cacheWidth ?? resolveIntOrNull(context, 'cacheWidth');
+    final resolvedCacheHeight =
+        cacheHeight ?? resolveIntOrNull(context, 'cacheHeight');
+
     return Image.asset(
       name,
       bundle: bundle,
       package: package,
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       fit: fit,
       alignment: alignment,
       repeat: repeat,
@@ -603,14 +657,14 @@ class TomAssetImage extends TomImageBase {
       gaplessPlayback: gaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: color,
+      color: resolvedColor,
       colorBlendMode: colorBlendMode,
       semanticLabel: resolvedSemanticLabel,
       excludeFromSemantics: excludeFromSemantics,
       frameBuilder: frameBuilder,
       errorBuilder: errorBuilder,
-      cacheWidth: cacheWidth,
-      cacheHeight: cacheHeight,
+      cacheWidth: resolvedCacheWidth,
+      cacheHeight: resolvedCacheHeight,
     );
   }
 }
@@ -721,11 +775,18 @@ class TomAnimatedIcon extends TomImageBase {
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel =
         semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
+
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+    final resolvedSize =
+        size ?? resolveDoubleOrNull(context, 'size');
+
     return AnimatedIcon(
       icon: icon,
       progress: progress,
-      color: color,
-      size: size,
+      color: resolvedColor,
+      size: resolvedSize,
       semanticLabel: resolvedSemanticLabel,
       textDirection: textDirection,
     );
