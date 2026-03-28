@@ -480,68 +480,68 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
-| tooltip | String? | resolveResourceOrNull | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
 | labelStyle | TextStyle? | resolveTextStyle | ✅ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
 | shape | OutlinedBorder? | resolveShapeBorder | ✅ |
 | side | BorderSide? | resolveBorderSide | ✅ |
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| pressElevation | double? | resolveDoubleOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| pressElevation | double? | resolveDoubleOrNull | ✅ |
 
 #### TomInputChip
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
-| tooltip | String? | resolveResourceOrNull | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
 | labelStyle | TextStyle? | resolveTextStyle | ✅ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
-| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ⬜ |
-| showCheckmark | bool | resolveBoolOrNull | ⬜ |
-| checkmarkColor | Color? | resolveColorOrNull | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| selectedShadowColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| deleteIconColor | Color? | resolveColorOrNull | ✅ |
+| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ✅ |
+| showCheckmark | bool | resolveBoolOrNull | ✅ |
+| checkmarkColor | Color? | resolveColorOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| selectedShadowColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
 | shape | OutlinedBorder? | resolveShapeBorder | ✅ |
 | side | BorderSide? | resolveBorderSide | ✅ |
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| pressElevation | double? | resolveDoubleOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| pressElevation | double? | resolveDoubleOrNull | ✅ |
 
 
 #### TomRawChip
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
-| labelStyle | TextStyle? | resolveTextStyle | ⬜ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
-| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ⬜ |
-| pressElevation | double? | resolveDoubleOrNull | ⬜ |
-| checkmarkColor | Color? | resolveColorOrNull | ⬜ |
-| shape | OutlinedBorder? | resolveShapeBorder | ⬜ |
-| side | BorderSide? | resolveBorderSide | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| selectedShadowColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| tooltip | String? | resolveResourceOrNull | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
+| labelStyle | TextStyle? | resolveTextStyle | ✅ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| deleteIconColor | Color? | resolveColorOrNull | ✅ |
+| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ✅ |
+| pressElevation | double? | resolveDoubleOrNull | ✅ |
+| checkmarkColor | Color? | resolveColorOrNull | ✅ |
+| shape | OutlinedBorder? | resolveShapeBorder | ✅ |
+| side | BorderSide? | resolveBorderSide | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| selectedShadowColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
 
 ---
 
@@ -551,34 +551,34 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| color | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| borderOnForeground | bool | resolveBoolOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| semanticContainer | bool | resolveBoolOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| borderOnForeground | bool | resolveBoolOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| semanticContainer | bool | resolveBoolOrNull | ✅ |
 
 #### TomExpansionTile
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| initiallyExpanded | bool | resolveBoolOrNull | ⬜ |
-| maintainState | bool | resolveBoolOrNull | ⬜ |
-| tilePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| childrenPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| collapsedBackgroundColor | Color? | resolveColorOrNull | ⬜ |
-| textColor | Color? | resolveColorOrNull | ⬜ |
-| collapsedTextColor | Color? | resolveColorOrNull | ⬜ |
-| iconColor | Color? | resolveColorOrNull | ⬜ |
-| collapsedIconColor | Color? | resolveColorOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| collapsedShape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| dense | bool | resolveBoolOrNull | ⬜ |
-| showTrailingIcon | bool | resolveBoolOrNull | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| initiallyExpanded | bool | resolveBoolOrNull | ✅ |
+| maintainState | bool | resolveBoolOrNull | ✅ |
+| tilePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| childrenPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| collapsedBackgroundColor | Color? | resolveColorOrNull | ✅ |
+| textColor | Color? | resolveColorOrNull | ✅ |
+| collapsedTextColor | Color? | resolveColorOrNull | ✅ |
+| iconColor | Color? | resolveColorOrNull | ✅ |
+| collapsedIconColor | Color? | resolveColorOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| collapsedShape | ShapeBorder? | resolveShapeBorder | ✅ |
+| dense | bool | resolveBoolOrNull | ✅ |
+| showTrailingIcon | bool | resolveBoolOrNull | ✅ |
 
 #### TomScaffold
 
@@ -2694,8 +2694,8 @@ No resource-loadable parameters.
 | Animated Widgets | 20 | 46 | 34 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
-| Chips | 5 | 83 | 40 | 0 | 43 |
-| Containers | 81 | 203 | 35 | 0 | 168 |
+| Chips | 5 | 83 | 83 | 0 | 0 |
+| Containers | 81 | 203 | 58 | 0 | 145 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **221** | **12** | **898** |
+| **Total** | **291** | **1131** | **286** | **12** | **833** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
