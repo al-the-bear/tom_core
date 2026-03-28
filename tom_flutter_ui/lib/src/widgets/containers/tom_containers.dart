@@ -54,16 +54,22 @@ class TomCard extends TomContainerBase {
     // Phase 3: Resolve complex objects from resources
     final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedBorderOnForeground =
+        resolveBoolOrNull(context, 'borderOnForeground') ?? borderOnForeground;
+    final resolvedSemanticContainer =
+        resolveBoolOrNull(context, 'semanticContainer') ?? semanticContainer;
+
     return Card(
       color: resolvedColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       elevation: resolvedElevation,
       shape: resolvedShape,
-      borderOnForeground: borderOnForeground,
+      borderOnForeground: resolvedBorderOnForeground,
       margin: resolvedMargin,
       clipBehavior: clipBehavior,
-      semanticContainer: semanticContainer,
+      semanticContainer: resolvedSemanticContainer,
       child: child,
     );
   }
@@ -164,13 +170,23 @@ class TomExpansionTile extends TomContainerBase {
     final resolvedCollapsedShape =
         collapsedShape ?? _resolveShapeBorder(context, 'collapsedShape');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedInitiallyExpanded =
+        resolveBoolOrNull(context, 'initiallyExpanded') ?? initiallyExpanded;
+    final resolvedMaintainState =
+        resolveBoolOrNull(context, 'maintainState') ?? maintainState;
+    final resolvedDense =
+        resolveBoolOrNull(context, 'dense') ?? dense;
+    final resolvedShowTrailingIcon =
+        resolveBoolOrNull(context, 'showTrailingIcon') ?? showTrailingIcon;
+
     return ExpansionTile(
       title: titleWidget,
       subtitle: subtitle,
       leading: leading,
       trailing: trailing,
-      initiallyExpanded: initiallyExpanded,
-      maintainState: maintainState,
+      initiallyExpanded: resolvedInitiallyExpanded,
+      maintainState: resolvedMaintainState,
       tilePadding: resolvedTilePadding,
       expandedCrossAxisAlignment: expandedCrossAxisAlignment,
       expandedAlignment: expandedAlignment,
@@ -186,8 +202,8 @@ class TomExpansionTile extends TomContainerBase {
       clipBehavior: clipBehavior,
       controlAffinity: controlAffinity,
       onExpansionChanged: onExpansionChanged,
-      dense: dense,
-      showTrailingIcon: showTrailingIcon,
+      dense: resolvedDense,
+      showTrailingIcon: resolvedShowTrailingIcon,
       children: children,
     );
   }

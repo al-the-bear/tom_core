@@ -351,13 +351,19 @@ class TomActionChip extends TomChipBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedLabelPadding =
+        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     Widget chip = ActionChip(
       onPressed: onPressed,
       avatar: avatar,
       label: chipLabel,
       labelStyle: resolvedLabelStyle,
-      labelPadding: labelPadding,
-      padding: padding,
+      labelPadding: resolvedLabelPadding,
+      padding: resolvedPadding,
       tooltip: resolvedTooltip,
       backgroundColor: resolvedBackgroundColor,
       shadowColor: resolvedShadowColor,
@@ -494,6 +500,16 @@ class TomInputChip extends TomChipBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedLabelPadding =
+        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedDeleteButtonTooltipMessage =
+        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+    final resolvedShowCheckmark =
+        resolveBoolOrNull(context, 'showCheckmark') ?? showCheckmark;
+
     return InputChip(
       selected: selected,
       isEnabled: isEnabled,
@@ -503,12 +519,12 @@ class TomInputChip extends TomChipBase {
       avatar: avatar,
       label: chipLabel,
       labelStyle: resolvedLabelStyle,
-      labelPadding: labelPadding,
-      padding: padding,
+      labelPadding: resolvedLabelPadding,
+      padding: resolvedPadding,
       deleteIcon: deleteIcon,
       deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: deleteButtonTooltipMessage,
-      showCheckmark: showCheckmark,
+      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
+      showCheckmark: resolvedShowCheckmark,
       checkmarkColor: resolvedCheckmarkColor,
       selectedColor: resolvedSelectedColor,
       disabledColor: resolvedDisabledColor,
@@ -653,18 +669,26 @@ class TomRawChip extends TomChipBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedLabelPadding =
+        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedDeleteButtonTooltipMessage =
+        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+
     return RawChip(
       avatar: avatar,
       label: chipLabel,
       labelStyle: resolvedLabelStyle,
-      labelPadding: labelPadding,
+      labelPadding: resolvedLabelPadding,
       selected: selected,
       isEnabled: isEnabled,
       onSelected: onSelected,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
       deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: deleteButtonTooltipMessage,
+      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
       onPressed: onPressed,
       pressElevation: resolvedPressElevation,
       showCheckmark: showCheckmark,
@@ -678,7 +702,7 @@ class TomRawChip extends TomChipBase {
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      padding: padding,
+      padding: resolvedPadding,
       visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       materialTapTargetSize: materialTapTargetSize,
       elevation: resolvedElevation,
