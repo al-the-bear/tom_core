@@ -1179,7 +1179,7 @@ class TomCupertinoSearchTextField extends TomInputBase {
       placeholderStyle: resolvedPlaceholderStyle,
       decoration: decoration,
       backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
-      borderRadius: borderRadius,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? const BorderRadius.all(Radius.circular(8.0)),
       padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
       itemColor: itemColor ?? resolveColorOrNull(context, 'itemColor') ?? CupertinoColors.secondaryLabel,
       itemSize: itemSize ?? resolveDoubleOrNull(context, 'itemSize') ?? 20.0,
@@ -1200,6 +1200,12 @@ class TomCupertinoSearchTextField extends TomInputBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
