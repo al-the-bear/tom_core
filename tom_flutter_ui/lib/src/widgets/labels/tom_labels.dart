@@ -63,6 +63,9 @@ class TomText extends TomLabelBase {
 
     // Phase 2: Resolve optional parameter from resources
     final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedSoftWrap = softWrap ?? resolveBoolOrNull(context, 'softWrap');
+    final resolvedSemanticsLabel =
+        semanticsLabel ?? resolveResourceOrNull(context, 'semanticsLabel');
 
     return Text(
       resolvedText,
@@ -71,10 +74,10 @@ class TomText extends TomLabelBase {
       textAlign: textAlign,
       textDirection: textDirection,
       locale: locale,
-      softWrap: softWrap,
+      softWrap: resolvedSoftWrap,
       overflow: overflow,
       maxLines: resolvedMaxLines,
-      semanticsLabel: semanticsLabel,
+      semanticsLabel: resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
     );
@@ -177,6 +180,17 @@ class TomSelectableText extends TomLabelBase {
     final resolvedCursorColor =
         cursorColor ?? resolveColorOrNull(context, 'cursorColor');
     final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMinLines = minLines ?? resolveIntOrNull(context, 'minLines');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedShowCursor =
+        resolveBoolOrNull(context, 'showCursor') ?? showCursor;
+    final resolvedCursorWidth =
+        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+    final resolvedCursorHeight =
+        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+    final resolvedSemanticsLabel =
+        semanticsLabel ?? resolveResourceOrNull(context, 'semanticsLabel');
 
     return SelectableText(
       resolvedText,
@@ -186,16 +200,16 @@ class TomSelectableText extends TomLabelBase {
       textDirection: textDirection,
       maxLines: resolvedMaxLines,
       focusNode: focusNode,
-      autofocus: autofocus,
-      showCursor: showCursor,
-      minLines: minLines,
-      cursorWidth: cursorWidth,
-      cursorHeight: cursorHeight,
+      autofocus: resolvedAutofocus,
+      showCursor: resolvedShowCursor,
+      minLines: resolvedMinLines,
+      cursorWidth: resolvedCursorWidth,
+      cursorHeight: resolvedCursorHeight,
       cursorRadius: cursorRadius,
       cursorColor: resolvedCursorColor,
       onTap: onTap,
       scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
-      semanticsLabel: semanticsLabel,
+      semanticsLabel: resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
       contextMenuBuilder: contextMenuBuilder,
@@ -265,12 +279,14 @@ class TomRichText extends TomLabelBase {
     final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
     final resolvedSelectionColor =
         selectionColor ?? resolveColorOrNull(context, 'selectionColor');
+    final resolvedSoftWrap =
+        resolveBoolOrNull(context, 'softWrap') ?? softWrap;
 
     return RichText(
       text: text,
       textAlign: textAlign,
       textDirection: textDirection,
-      softWrap: softWrap,
+      softWrap: resolvedSoftWrap,
       overflow: overflow,
       maxLines: resolvedMaxLines,
       locale: locale,
@@ -359,7 +375,7 @@ class TomBadge extends TomLabelBase {
       padding: resolvedPadding,
       alignment: alignment ?? _resolveAlignment(context, 'alignment'),
       offset: offset ?? _resolveOffset(context, 'offset'),
-      isLabelVisible: isLabelVisible,
+      isLabelVisible: resolveBoolOrNull(context, 'isLabelVisible') ?? isLabelVisible,
       smallSize: resolvedSmallSize,
       largeSize: resolvedLargeSize,
       child: child,
