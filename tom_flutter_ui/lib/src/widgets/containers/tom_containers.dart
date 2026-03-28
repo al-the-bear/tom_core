@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../../groups/tom_widget_mixin.dart';
+import '../../resource_auth/tom_resources.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -278,6 +279,20 @@ class TomScaffold extends TomContainerBase {
     final resolvedDrawerEdgeDragWidth =
         drawerEdgeDragWidth ?? resolveDoubleOrNull(context, 'drawerEdgeDragWidth');
 
+    // Phase 3: Resolve remaining parameters from resources
+    final resolvedPrimary =
+        resolveBoolOrNull(context, 'primary') ?? primary;
+    final resolvedExtendBody =
+        resolveBoolOrNull(context, 'extendBody') ?? extendBody;
+    final resolvedExtendBodyBehindAppBar =
+        resolveBoolOrNull(context, 'extendBodyBehindAppBar') ?? extendBodyBehindAppBar;
+    final resolvedDrawerEnableOpenDragGesture =
+        resolveBoolOrNull(context, 'drawerEnableOpenDragGesture') ?? drawerEnableOpenDragGesture;
+    final resolvedEndDrawerEnableOpenDragGesture =
+        resolveBoolOrNull(context, 'endDrawerEnableOpenDragGesture') ?? endDrawerEnableOpenDragGesture;
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+
     return Scaffold(
       appBar: appBar,
       body: body,
@@ -292,14 +307,14 @@ class TomScaffold extends TomContainerBase {
       bottomSheet: bottomSheet,
       backgroundColor: resolvedBackgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-      primary: primary,
-      extendBody: extendBody,
-      extendBodyBehindAppBar: extendBodyBehindAppBar,
+      primary: resolvedPrimary,
+      extendBody: resolvedExtendBody,
+      extendBodyBehindAppBar: resolvedExtendBodyBehindAppBar,
       drawerScrimColor: resolvedDrawerScrimColor,
       drawerEdgeDragWidth: resolvedDrawerEdgeDragWidth,
-      drawerEnableOpenDragGesture: drawerEnableOpenDragGesture,
-      endDrawerEnableOpenDragGesture: endDrawerEnableOpenDragGesture,
-      restorationId: restorationId,
+      drawerEnableOpenDragGesture: resolvedDrawerEnableOpenDragGesture,
+      endDrawerEnableOpenDragGesture: resolvedEndDrawerEnableOpenDragGesture,
+      restorationId: resolvedRestorationId,
     );
   }
 }
@@ -392,12 +407,16 @@ class TomAppBar extends StatelessWidget
 
   @override
   Widget build(BuildContext context) {
+    final resolvedTitleText =
+        titleText ?? _resolveStringOrNull(context, 'titleText');
     final resolvedTitle =
-        titleText ?? (tomId != null ? getText(context, 'label') : null);
+        resolvedTitleText ?? (tomId != null ? getText(context, 'label') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
     // Phase 2: Resolve optional parameters from resources
+    final resolvedAutomaticallyImplyLeading =
+        resolveBoolOrNull(context, 'automaticallyImplyLeading') ?? automaticallyImplyLeading;
     final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
     final resolvedScrolledUnderElevation =
@@ -416,8 +435,24 @@ class TomAppBar extends StatelessWidget
         toolbarHeight ?? resolveDoubleOrNull(context, 'toolbarHeight');
     final resolvedLeadingWidth =
         leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
+    final resolvedPrimary =
+        resolveBoolOrNull(context, 'primary') ?? primary;
+    final resolvedCenterTitle =
+        centerTitle ?? resolveBoolOrNull(context, 'centerTitle');
+    final resolvedExcludeHeaderSemantics =
+        resolveBoolOrNull(context, 'excludeHeaderSemantics') ?? excludeHeaderSemantics;
+    final resolvedToolbarOpacity =
+        resolveDoubleOrNull(context, 'toolbarOpacity') ?? toolbarOpacity;
+    final resolvedBottomOpacity =
+        resolveDoubleOrNull(context, 'bottomOpacity') ?? bottomOpacity;
+    final resolvedForceMaterialTransparency =
+        resolveBoolOrNull(context, 'forceMaterialTransparency') ?? forceMaterialTransparency;
 
     // Phase 3: Resolve complex objects from resources
+    final resolvedIconTheme =
+        iconTheme ?? _resolveIconThemeData(context, 'iconTheme');
+    final resolvedActionsIconTheme =
+        actionsIconTheme ?? _resolveIconThemeData(context, 'actionsIconTheme');
     final resolvedToolbarTextStyle =
         toolbarTextStyle ?? _resolveTextStyle(context, 'toolbarTextStyle');
     final resolvedTitleTextStyle =
@@ -426,7 +461,7 @@ class TomAppBar extends StatelessWidget
 
     return AppBar(
       leading: leading,
-      automaticallyImplyLeading: automaticallyImplyLeading,
+      automaticallyImplyLeading: resolvedAutomaticallyImplyLeading,
       title: effectiveTitle,
       actions: actions,
       flexibleSpace: flexibleSpace,
@@ -437,24 +472,30 @@ class TomAppBar extends StatelessWidget
       surfaceTintColor: resolvedSurfaceTintColor,
       backgroundColor: resolvedBackgroundColor,
       foregroundColor: resolvedForegroundColor,
-      iconTheme: iconTheme,
-      actionsIconTheme: actionsIconTheme,
-      primary: primary,
-      centerTitle: centerTitle,
-      excludeHeaderSemantics: excludeHeaderSemantics,
+      iconTheme: resolvedIconTheme,
+      actionsIconTheme: resolvedActionsIconTheme,
+      primary: resolvedPrimary,
+      centerTitle: resolvedCenterTitle,
+      excludeHeaderSemantics: resolvedExcludeHeaderSemantics,
       titleSpacing: resolvedTitleSpacing,
-      toolbarOpacity: toolbarOpacity,
-      bottomOpacity: bottomOpacity,
+      toolbarOpacity: resolvedToolbarOpacity,
+      bottomOpacity: resolvedBottomOpacity,
       toolbarHeight: resolvedToolbarHeight,
       leadingWidth: resolvedLeadingWidth,
       toolbarTextStyle: resolvedToolbarTextStyle,
       titleTextStyle: resolvedTitleTextStyle,
       systemOverlayStyle: systemOverlayStyle,
-      forceMaterialTransparency: forceMaterialTransparency,
+      forceMaterialTransparency: resolvedForceMaterialTransparency,
       clipBehavior: clipBehavior,
       shape: resolvedShape,
       notificationPredicate: notificationPredicate,
     );
+  }
+
+  IconThemeData? _resolveIconThemeData(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
   }
 
   TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
@@ -467,6 +508,13 @@ class TomAppBar extends StatelessWidget
     final basePath = resolveFullPath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  String? _resolveStringOrNull(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    if (!TomUIResources.resourceExists(basePath, suffix)) return null;
+    return TomUIResources.resolveText(basePath, suffix);
   }
 }
 
@@ -512,14 +560,18 @@ class TomBottomAppBar extends TomContainerBase {
         shadowColor ?? resolveColorOrNull(context, 'shadowColor');
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedNotchMargin =
+        resolveDoubleOrNull(context, 'notchMargin') ?? notchMargin;
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
     return BottomAppBar(
       color: resolvedColor,
       elevation: resolvedElevation,
       shape: shape,
       clipBehavior: clipBehavior,
-      notchMargin: notchMargin,
-      padding: padding,
+      notchMargin: resolvedNotchMargin,
+      padding: resolvedPadding,
       height: resolvedHeight,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
