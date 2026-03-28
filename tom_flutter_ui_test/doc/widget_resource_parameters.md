@@ -1214,32 +1214,34 @@ No resource-loadable parameters.
 
 #### TomSnackBar
 
+> **Note:** TomSnackBar extends SnackBar directly with `super.` parameters and uses `TomWidgetMixin`, not `TomDialogBase`. It has no `buildContent()` method — params are passed via the super constructor. These params cannot use the standard resource resolution pattern.
+
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| showCloseIcon | bool? | resolveBoolOrNull | ⬜ |
-| closeIconColor | Color? | resolveColorOrNull | ⬜ |
-| actionOverflowThreshold | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⛔ |
+| elevation | double? | resolveDoubleOrNull | ⛔ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⛔ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⛔ |
+| width | double? | resolveDoubleOrNull | ⛔ |
+| shape | ShapeBorder? | resolveShapeBorder | ⛔ |
+| showCloseIcon | bool? | resolveBoolOrNull | ⛔ |
+| closeIconColor | Color? | resolveColorOrNull | ⛔ |
+| actionOverflowThreshold | double? | resolveDoubleOrNull | ⛔ |
 
 #### TomMaterialBanner
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| contentTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| dividerColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| leadingPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| forceActionsBelow | bool | resolveBoolOrNull | ⬜ |
+| contentTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| dividerColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| leadingPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| forceActionsBelow | bool | resolveBoolOrNull | ✅ |
 
 
 #### TomAboutDialog
@@ -1258,7 +1260,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| enableHapticFeedback | bool? | resolveBoolOrNull | ⬜ |
+| enableHapticFeedback | bool? | resolveBoolOrNull | ✅ |
 
 #### TomDatePickerDialog
 
@@ -1274,18 +1276,20 @@ No resource-loadable parameters.
 
 #### TomModalBottomSheet
 
+> **Note:** TomModalBottomSheet is a configuration holder whose `buildContent()` delegates directly to the builder callback. Params are used imperatively via `TomDialogs.showModalBottomSheet()`. These params cannot use the standard resource resolution pattern.
+
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⛔ |
+| elevation | double? | resolveDoubleOrNull | ⛔ |
+| shape | ShapeBorder? | resolveShapeBorder | ⛔ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ⛔ |
 
 #### TomSimpleDialogOption
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomTimePickerDialog
 
@@ -2699,7 +2703,7 @@ No resource-loadable parameters.
 | Chips | 5 | 83 | 83 | 0 | 0 |
 | Containers | 81 | 203 | 182 | 0 | 21 |
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
-| Dialogs | 17 | 75 | 44 | 0 | 31 |
+| Dialogs | 17 | 75 | 56 | 13 | 6 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 0 | 0 | 56 |
 | Inputs | 16 | 88 | 3 | 0 | 85 |
@@ -2714,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **454** | **17** | **660** |
+| **Total** | **291** | **1131** | **466** | **30** | **635** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
