@@ -1539,51 +1539,51 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
 
 #### TomCupertinoSearchTextField
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| placeholder | String? | resolveResourceOrNull | ⬜ |
-| style | TextStyle? | resolveTextStyle | ⬜ |
-| placeholderStyle | TextStyle? | resolveTextStyle | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| itemColor | Color? | resolveColorOrNull | ⬜ |
-| itemSize | double? | resolveDoubleOrNull | ⬜ |
+| placeholder | String? | resolveResourceOrNull | ✅ |
+| style | TextStyle? | resolveTextStyle | ✅ |
+| placeholderStyle | TextStyle? | resolveTextStyle | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| itemColor | Color? | resolveColorOrNull | ✅ |
+| itemSize | double? | resolveDoubleOrNull | ✅ |
 
 #### TomCupertinoTextField
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| placeholder | String? | resolveResourceOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| minLines | int? | resolveIntOrNull | ⬜ |
-| maxLength | int? | resolveIntOrNull | ⬜ |
-| style | TextStyle? | resolveTextStyle | ⬜ |
-| placeholderStyle | TextStyle? | resolveTextStyle | ⬜ |
+| placeholder | String? | resolveResourceOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| minLines | int? | resolveIntOrNull | ✅ |
+| maxLength | int? | resolveIntOrNull | ✅ |
+| style | TextStyle? | resolveTextStyle | ✅ |
+| placeholderStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomCupertinoTextFormFieldRow
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| placeholder | String? | resolveResourceOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| cursorWidth | double? | resolveDoubleOrNull | ⬜ |
-| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
-| cursorColor | Color? | resolveColorOrNull | ⬜ |
-| scrollPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| placeholder | String? | resolveResourceOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| cursorWidth | double? | resolveDoubleOrNull | ✅ |
+| cursorHeight | double? | resolveDoubleOrNull | ✅ |
+| cursorColor | Color? | resolveColorOrNull | ✅ |
+| scrollPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomCupertinoTimerPicker
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
 
 #### TomDropdownMenuFormField
 
@@ -2706,7 +2706,7 @@ No resource-loadable parameters.
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
-| Inputs | 16 | 88 | 43 | 0 | 45 |
+| Inputs | 16 | 88 | 68 | 0 | 20 |
 | Interactions | 10 | 38 | 11 | 0 | 27 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **568** | **30** | **533** |
+| **Total** | **291** | **1131** | **593** | **30** | **508** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
