@@ -1499,6 +1499,11 @@ class TomSliverAppBar extends TomContainerBase {
         leadingWidth ?? resolveDoubleOrNull(context, 'leadingWidth');
 
     // Phase 3: Resolve complex objects from resources
+    final resolvedIconTheme =
+        iconTheme ?? _resolveIconThemeData(context, 'iconTheme');
+    final resolvedActionsIconTheme =
+        actionsIconTheme ?? _resolveIconThemeData(context, 'actionsIconTheme');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
     final resolvedToolbarTextStyle =
         toolbarTextStyle ?? _resolveTextStyle(context, 'toolbarTextStyle');
     final resolvedTitleTextStyle =
@@ -1517,8 +1522,8 @@ class TomSliverAppBar extends TomContainerBase {
       surfaceTintColor: resolvedSurfaceTintColor,
       backgroundColor: resolvedBackgroundColor,
       foregroundColor: resolvedForegroundColor,
-      iconTheme: iconTheme,
-      actionsIconTheme: actionsIconTheme,
+      iconTheme: resolvedIconTheme,
+      actionsIconTheme: resolvedActionsIconTheme,
       primary: primary,
       centerTitle: centerTitle,
       excludeHeaderSemantics: excludeHeaderSemantics,
@@ -1532,7 +1537,7 @@ class TomSliverAppBar extends TomContainerBase {
       snap: snap,
       stretch: stretch,
       stretchTriggerOffset: stretchTriggerOffset,
-      shape: shape,
+      shape: resolvedShape,
       toolbarTextStyle: resolvedToolbarTextStyle,
       titleTextStyle: resolvedTitleTextStyle,
       systemOverlayStyle: systemOverlayStyle,
@@ -1545,6 +1550,18 @@ class TomSliverAppBar extends TomContainerBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  IconThemeData? _resolveIconThemeData(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -2139,18 +2156,30 @@ class TomSingleChildScrollView extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 3: Resolve complex objects from resources
+    final resolvedPhysics =
+        physics ?? _resolveScrollPhysics(context, 'physics');
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+
     return SingleChildScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
       padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
-      physics: physics,
+      physics: resolvedPhysics,
       controller: controller,
       dragStartBehavior: dragStartBehavior,
       clipBehavior: clipBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       keyboardDismissBehavior: keyboardDismissBehavior,
       child: child,
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
@@ -2869,17 +2898,26 @@ class TomTransform extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 3: Resolve complex objects from resources
+    final resolvedAlignment =
+        alignment ?? _resolveAlignment(context, 'alignment');
     final resolvedTransformHitTests =
         transformHitTests ?? resolveBoolOrNull(context, 'transformHitTests') ?? true;
 
     return Transform(
       transform: transform,
       origin: origin,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       transformHitTests: resolvedTransformHitTests,
       filterQuality: filterQuality,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
