@@ -902,15 +902,15 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| boundaryMargin | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
-| constrained | bool? | resolveBoolOrNull | ⬜ |
-| maxScale | double? | resolveDoubleOrNull | ⬜ |
-| minScale | double? | resolveDoubleOrNull | ⬜ |
-| interactionEndFrictionCoefficient | double? | resolveDoubleOrNull | ⬜ |
-| panEnabled | bool? | resolveBoolOrNull | ⬜ |
-| scaleEnabled | bool? | resolveBoolOrNull | ⬜ |
-| scaleFactor | double? | resolveDoubleOrNull | ⬜ |
-| alignment | Alignment? | resolveAlignment | ⬜ |
+| boundaryMargin | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| constrained | bool? | resolveBoolOrNull | ✅ |
+| maxScale | double? | resolveDoubleOrNull | ✅ |
+| minScale | double? | resolveDoubleOrNull | ✅ |
+| interactionEndFrictionCoefficient | double? | resolveDoubleOrNull | ✅ |
+| panEnabled | bool? | resolveBoolOrNull | ✅ |
+| scaleEnabled | bool? | resolveBoolOrNull | ✅ |
+| scaleFactor | double? | resolveDoubleOrNull | ✅ |
+| alignment | Alignment? | resolveAlignment | ✅ |
 
 #### TomIntrinsicHeight
 
@@ -920,33 +920,33 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| stepWidth | double? | resolveDoubleOrNull | ⬜ |
-| stepHeight | double? | resolveDoubleOrNull | ⬜ |
+| stepWidth | double? | resolveDoubleOrNull | ✅ |
+| stepHeight | double? | resolveDoubleOrNull | ✅ |
 
 #### TomLimitedBox
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| maxWidth | double? | resolveDoubleOrNull | ⬜ |
-| maxHeight | double? | resolveDoubleOrNull | ⬜ |
+| maxWidth | double? | resolveDoubleOrNull | ✅ |
+| maxHeight | double? | resolveDoubleOrNull | ✅ |
 
 #### TomListBody
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| reverse | bool? | resolveBoolOrNull | ⬜ |
+| reverse | bool? | resolveBoolOrNull | ✅ |
 
 #### TomMaterial
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
-| borderRadius | BorderRadiusGeometry? | resolveBorderRadius | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
+| borderRadius | BorderRadiusGeometry? | resolveBorderRadius | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
 
 #### TomNestedScrollView
 
@@ -2695,7 +2695,7 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 122 | 0 | 81 |
+| Containers | 81 | 203 | 143 | 0 | 60 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **350** | **12** | **769** |
+| **Total** | **291** | **1131** | **371** | **12** | **748** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
