@@ -6,6 +6,7 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 
 **Status key:**
 - ✅ = Currently resolved in `buildContent()` via resource resolution
+- ⛔ = Cannot use resource resolution (extension pattern or other constraint)
 - ⬜ = Has a matching resolver but not yet wired
 
 > **Note:** The ✅ status is based on source scanning and may not capture all resolved parameters. Verify against the actual `buildContent()` methods when in doubt.
@@ -110,16 +111,16 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomAnimatedPhysicalModel
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| elevation | double | resolveDoubleOrNull | ⬜ |
-| color | Color | resolveColorOrNull | ⬜ |
-| shadowColor | Color | resolveColorOrNull | ⬜ |
-| borderRadius | BorderRadius | resolveBorderRadius | ⬜ |
+| elevation | double | resolveDoubleOrNull | ✅ |
+| color | Color | resolveColorOrNull | ✅ |
+| shadowColor | Color | resolveColorOrNull | ✅ |
+| borderRadius | BorderRadius | resolveBorderRadius | ✅ |
 
 
 #### TomAnimatedBuilder
@@ -130,56 +131,60 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| excludeBottomFocus | bool? | resolveBoolOrNull | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| excludeBottomFocus | bool? | resolveBoolOrNull | ✅ |
 
 #### TomAnimatedPositioned
 
+> ⛔ **Extension pattern** — Uses `extends AnimatedPositioned with TomWidgetMixin` so Stack recognizes it as Positioned. Parameters pass to super constructor at construction time, not at build time. Resource resolution not possible.
+
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| left | double? | resolveDoubleOrNull | ⬜ |
-| top | double? | resolveDoubleOrNull | ⬜ |
-| right | double? | resolveDoubleOrNull | ⬜ |
-| bottom | double? | resolveDoubleOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| left | double? | resolveDoubleOrNull | ⛔ |
+| top | double? | resolveDoubleOrNull | ⛔ |
+| right | double? | resolveDoubleOrNull | ⛔ |
+| bottom | double? | resolveDoubleOrNull | ⛔ |
+| width | double? | resolveDoubleOrNull | ⛔ |
+| height | double? | resolveDoubleOrNull | ⛔ |
 
 #### TomAnimatedPositionedDirectional
 
+> ⛔ **Extension pattern** — Uses `extends AnimatedPositionedDirectional with TomWidgetMixin` so Stack recognizes it as Positioned. Parameters pass to super constructor at construction time, not at build time. Resource resolution not possible.
+
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| start | double? | resolveDoubleOrNull | ⬜ |
-| top | double? | resolveDoubleOrNull | ⬜ |
-| end | double? | resolveDoubleOrNull | ⬜ |
-| bottom | double? | resolveDoubleOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| start | double? | resolveDoubleOrNull | ⛔ |
+| top | double? | resolveDoubleOrNull | ⛔ |
+| end | double? | resolveDoubleOrNull | ⛔ |
+| bottom | double? | resolveDoubleOrNull | ⛔ |
+| width | double? | resolveDoubleOrNull | ⛔ |
+| height | double? | resolveDoubleOrNull | ⛔ |
 
 #### TomAnimatedRotation
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| turns | double? | resolveDoubleOrNull | ⬜ |
-| alignment | Alignment? | resolveAlignment | ⬜ |
+| turns | double? | resolveDoubleOrNull | ✅ |
+| alignment | Alignment? | resolveAlignment | ✅ |
 
 #### TomAnimatedScale
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| scale | double? | resolveDoubleOrNull | ⬜ |
-| alignment | Alignment? | resolveAlignment | ⬜ |
+| scale | double? | resolveDoubleOrNull | ✅ |
+| alignment | Alignment? | resolveAlignment | ✅ |
 
 #### TomAnimatedSize
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
 
 #### TomAnimatedSlide
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| offset | Offset | resolveOffset | ⬜ |
+| offset | Offset | resolveOffset | ✅ |
 
 #### TomAnimatedSwitcher
 
@@ -193,7 +198,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| transitionOnUserGestures | bool? | resolveBoolOrNull | ⬜ |
+| transitionOnUserGestures | bool? | resolveBoolOrNull | ✅ |
 
 #### TomRotationTransition
 
@@ -2683,30 +2688,35 @@ No resource-loadable parameters.
 
 ## Summary Statistics
 
-| Category | Widgets | Total Params | ✅ Resolved | ⬜ Remaining |
-|----------|---------|-------------|-------------|--------------|
-| Animated Widgets | 20 | 46 | 20 | 26 |
-| Builder Widgets | 8 | 0 | 0 | 0 |
-| Buttons | 23 | 71 | 4 | 67 |
-| Chips | 5 | 83 | 17 | 66 |
-| Containers | 81 | 203 | 35 | 168 |
-| ACL Container | 1 | 5 | 0 | 5 |
-| Dialogs | 17 | 75 | 0 | 75 |
-| Effects | 6 | 0 | 0 | 0 |
-| Images | 11 | 56 | 0 | 56 |
-| Inputs | 16 | 88 | 3 | 85 |
-| Interactions | 10 | 38 | 11 | 27 |
-| Labels | 15 | 79 | 12 | 67 |
-| Lists | 6 | 39 | 1 | 38 |
-| Navigation | 21 | 81 | 4 | 77 |
-| Progress | 6 | 30 | 0 | 30 |
-| Selects | 12 | 74 | 0 | 74 |
-| Sliders | 3 | 18 | 0 | 18 |
-| Slivers | 13 | 21 | 5 | 16 |
-| Tables | 6 | 46 | 1 | 45 |
-| Toggles | 8 | 71 | 1 | 70 |
-| Trees | 3 | 8 | 4 | 4 |
-| **Total** | **291** | **1132** | **118** | **1014** |
+| Category | Widgets | Total Params | ✅ Resolved | ⛔ Excluded | ⬜ Remaining |
+|----------|---------|-------------|-------------|-------------|--------------|
+| Animated Widgets | 20 | 46 | 34 | 12 | 0 |
+| Builder Widgets | 8 | 0 | 0 | 0 | 0 |
+| Buttons | 23 | 71 | 4 | 0 | 67 |
+| Chips | 5 | 83 | 17 | 0 | 66 |
+| Containers | 81 | 203 | 35 | 0 | 168 |
+| ACL Container | 1 | 5 | 0 | 0 | 5 |
+| Dialogs | 17 | 75 | 0 | 0 | 75 |
+| Effects | 6 | 0 | 0 | 0 | 0 |
+| Images | 11 | 56 | 0 | 0 | 56 |
+| Inputs | 16 | 88 | 3 | 0 | 85 |
+| Interactions | 10 | 38 | 11 | 0 | 27 |
+| Labels | 15 | 79 | 12 | 0 | 67 |
+| Lists | 6 | 39 | 1 | 0 | 38 |
+| Navigation | 21 | 81 | 4 | 0 | 77 |
+| Progress | 6 | 30 | 0 | 0 | 30 |
+| Selects | 12 | 74 | 0 | 0 | 74 |
+| Sliders | 3 | 18 | 0 | 0 | 18 |
+| Slivers | 13 | 21 | 5 | 0 | 16 |
+| Tables | 6 | 46 | 1 | 0 | 45 |
+| Toggles | 8 | 71 | 1 | 0 | 70 |
+| Trees | 3 | 8 | 4 | 0 | 4 |
+| **Total** | **291** | **1132** | **132** | **12** | **988** |
+
+**Status key:**
+- ✅ **Resolved** — Resource resolution implemented in `buildContent()`
+- ⛔ **Excluded** — Cannot use resource resolution (extension pattern or other constraint)
+- ⬜ **Remaining** — Has resolver but not yet wired
 
 ---
 

@@ -728,7 +728,7 @@ class TomAnimatedSize extends TomAnimatedBase {
 /// Animates position offset. Auth on sliding content.
 class TomAnimatedSlide extends TomAnimatedBase {
   final Widget? child;
-  final Offset offset;
+  final Offset? offset;
   final Duration duration;
   final Curve curve;
   final VoidCallback? onEnd;
@@ -738,7 +738,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.offset,
+    this.offset,
     required this.duration,
     this.curve = Curves.linear,
     this.onEnd,
@@ -746,13 +746,23 @@ class TomAnimatedSlide extends TomAnimatedBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOffset =
+        offset ?? _resolveOffset(context, 'offset') ?? Offset.zero;
+
     return AnimatedSlide(
-      offset: offset,
+      offset: resolvedOffset,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
