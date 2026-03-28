@@ -2494,52 +2494,52 @@ No resource-loadable parameters beyond inherited `tomId`/`tomGroup`.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| sortAscending | bool | resolveBoolOrNull | ⬜ |
-| sortColumnIndex | int? | resolveIntOrNull | ⬜ |
-| dataRowMinHeight | double? | resolveDoubleOrNull | ⬜ |
-| dataRowMaxHeight | double? | resolveDoubleOrNull | ⬜ |
-| headingRowHeight | double? | resolveDoubleOrNull | ⬜ |
-| horizontalMargin | double? | resolveDoubleOrNull | ⬜ |
-| columnSpacing | double? | resolveDoubleOrNull | ⬜ |
-| showCheckboxColumn | bool | resolveBoolOrNull | ⬜ |
-| showFirstLastButtons | bool | resolveBoolOrNull | ⬜ |
-| initialFirstRowIndex | int | resolveIntOrNull | ⬜ |
-| rowsPerPage | int | resolveIntOrNull | ⬜ |
-| checkboxHorizontalMargin | double? | resolveDoubleOrNull | ⬜ |
-| showEmptyRows | bool | resolveBoolOrNull | ⬜ |
+| sortAscending | bool | resolveBoolOrNull | ✅ |
+| sortColumnIndex | int? | resolveIntOrNull | ✅ |
+| dataRowMinHeight | double? | resolveDoubleOrNull | ✅ |
+| dataRowMaxHeight | double? | resolveDoubleOrNull | ✅ |
+| headingRowHeight | double? | resolveDoubleOrNull | ✅ |
+| horizontalMargin | double? | resolveDoubleOrNull | ✅ |
+| columnSpacing | double? | resolveDoubleOrNull | ✅ |
+| showCheckboxColumn | bool | resolveBoolOrNull | ✅ |
+| showFirstLastButtons | bool | resolveBoolOrNull | ✅ |
+| initialFirstRowIndex | int | resolveIntOrNull | ✅ |
+| rowsPerPage | int | resolveIntOrNull | ✅ |
+| checkboxHorizontalMargin | double? | resolveDoubleOrNull | ✅ |
+| showEmptyRows | bool | resolveBoolOrNull | ✅ |
 
 #### TomTable
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| border | TableBorder? | resolveTableBorder | ⬜ |
+| border | TableBorder? | resolveTableBorder | ✅ |
 
 #### TomGridView
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| reverse | bool | resolveBoolOrNull | ⬜ |
-| primary | bool? | resolveBoolOrNull | ⬜ |
-| shrinkWrap | bool | resolveBoolOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| cacheExtent | double? | resolveDoubleOrNull | ⬜ |
-| semanticChildCount | int? | resolveIntOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
+| reverse | bool | resolveBoolOrNull | ✅ |
+| primary | bool? | resolveBoolOrNull | ✅ |
+| shrinkWrap | bool | resolveBoolOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| cacheExtent | double? | resolveDoubleOrNull | ✅ |
+| semanticChildCount | int? | resolveIntOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
 
 #### TomReorderableListView
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| buildDefaultDragHandles | bool | resolveBoolOrNull | ⬜ |
-| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
-| reverse | bool | resolveBoolOrNull | ⬜ |
-| primary | bool? | resolveBoolOrNull | ⬜ |
-| shrinkWrap | bool | resolveBoolOrNull | ⬜ |
-| anchor | double? | resolveDoubleOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
-| autoScrollerVelocityScalar | double? | resolveDoubleOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
-| cacheExtent | double? | resolveDoubleOrNull | ⬜ |
+| buildDefaultDragHandles | bool | resolveBoolOrNull | ✅ |
+| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| reverse | bool | resolveBoolOrNull | ✅ |
+| primary | bool? | resolveBoolOrNull | ✅ |
+| shrinkWrap | bool | resolveBoolOrNull | ✅ |
+| anchor | double? | resolveDoubleOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
+| autoScrollerVelocityScalar | double? | resolveDoubleOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| cacheExtent | double? | resolveDoubleOrNull | ✅ |
 
 
 #### TomDataCell
@@ -2554,12 +2554,12 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| activeTrackColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveThumbColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveTrackColor | Color? | resolveColorOrNull | ⬜ |
-| splashRadius | double? | resolveDoubleOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| activeTrackColor | Color? | resolveColorOrNull | ✅ |
+| inactiveThumbColor | Color? | resolveColorOrNull | ✅ |
+| inactiveTrackColor | Color? | resolveColorOrNull | ✅ |
+| splashRadius | double? | resolveDoubleOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
 
 > **Note:** TomSwitch uses `WidgetStateProperty<Color?>` for thumbColor, trackColor, trackOutlineColor — these cannot be directly resource-resolved.
 
@@ -2715,10 +2715,10 @@ No resource-loadable parameters.
 | Selects | 12 | 74 | 74 | 0 | 0 |
 | Sliders | 3 | 18 | 18 | 0 | 0 |
 | Slivers | 13 | 21 | 21 | 0 | 0 |
-| Tables | 6 | 46 | 15 | 0 | 31 |
-| Toggles | 8 | 71 | 1 | 0 | 70 |
+| Tables | 6 | 46 | 46 | 0 | 0 |
+| Toggles | 8 | 71 | 7 | 0 | 64 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **996** | **30** | **105** |
+| **Total** | **291** | **1131** | **1033** | **30** | **68** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

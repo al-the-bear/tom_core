@@ -205,6 +205,10 @@ class TomPaginatedDataTable extends TomTableBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedSortColumnIndex =
+      sortColumnIndex ?? resolveIntOrNull(context, 'sortColumnIndex');
+    final resolvedSortAscending =
+      resolveBoolOrNull(context, 'sortAscending') ?? sortAscending;
     final resolvedDataRowMinHeight =
         dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight') ?? kMinInteractiveDimension;
     final resolvedDataRowMaxHeight =
@@ -217,29 +221,39 @@ class TomPaginatedDataTable extends TomTableBase {
         columnSpacing ?? resolveDoubleOrNull(context, 'columnSpacing') ?? 56.0;
     final resolvedCheckboxHorizontalMargin =
         checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+    final resolvedShowCheckboxColumn =
+        resolveBoolOrNull(context, 'showCheckboxColumn') ?? showCheckboxColumn;
+    final resolvedShowFirstLastButtons =
+        resolveBoolOrNull(context, 'showFirstLastButtons') ?? showFirstLastButtons;
+    final resolvedInitialFirstRowIndex =
+        initialFirstRowIndex ?? resolveIntOrNull(context, 'initialFirstRowIndex');
+    final resolvedRowsPerPage =
+        resolveIntOrNull(context, 'rowsPerPage') ?? rowsPerPage;
+    final resolvedShowEmptyRows =
+        resolveBoolOrNull(context, 'showEmptyRows') ?? showEmptyRows;
 
     return PaginatedDataTable(
       header: header,
       actions: actions,
       columns: columns,
-      sortColumnIndex: sortColumnIndex,
-      sortAscending: sortAscending,
+      sortColumnIndex: resolvedSortColumnIndex,
+      sortAscending: resolvedSortAscending,
       onSelectAll: onSelectAll,
       dataRowMinHeight: resolvedDataRowMinHeight,
       dataRowMaxHeight: resolvedDataRowMaxHeight,
       headingRowHeight: resolvedHeadingRowHeight,
       horizontalMargin: resolvedHorizontalMargin,
       columnSpacing: resolvedColumnSpacing,
-      showCheckboxColumn: showCheckboxColumn,
-      showFirstLastButtons: showFirstLastButtons,
-      initialFirstRowIndex: initialFirstRowIndex,
+      showCheckboxColumn: resolvedShowCheckboxColumn,
+      showFirstLastButtons: resolvedShowFirstLastButtons,
+      initialFirstRowIndex: resolvedInitialFirstRowIndex,
       onPageChanged: onPageChanged,
-      rowsPerPage: rowsPerPage,
+      rowsPerPage: resolvedRowsPerPage,
       availableRowsPerPage: availableRowsPerPage,
       onRowsPerPageChanged: onRowsPerPageChanged,
       dragStartBehavior: dragStartBehavior,
       checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
-      showEmptyRows: showEmptyRows,
+      showEmptyRows: resolvedShowEmptyRows,
       source: source,
     );
   }
@@ -334,26 +348,34 @@ class TomGridView extends TomTableBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedReverse = resolveBoolOrNull(context, 'reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+    final resolvedShrinkWrap =
+        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
     final resolvedCacheExtent =
         cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+    final resolvedSemanticChildCount =
+        semanticChildCount ?? resolveIntOrNull(context, 'semanticChildCount');
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
     return GridView.custom(
       scrollDirection: scrollDirection,
-      reverse: reverse,
+      reverse: resolvedReverse,
       controller: controller,
-      primary: primary,
+      primary: resolvedPrimary,
       physics: physics,
-      shrinkWrap: shrinkWrap,
+      shrinkWrap: resolvedShrinkWrap,
       padding: resolvedPadding,
       gridDelegate: gridDelegate,
       childrenDelegate: childrenDelegate,
       cacheExtent: resolvedCacheExtent,
-      semanticChildCount: semanticChildCount,
+      semanticChildCount: resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       clipBehavior: clipBehavior,
     );
   }
@@ -429,6 +451,14 @@ class TomReorderableListView extends TomTableBase {
         anchor ?? resolveDoubleOrNull(context, 'anchor') ?? 0.0;
     final resolvedAutoScrollerVelocityScalar =
         autoScrollerVelocityScalar ?? resolveDoubleOrNull(context, 'autoScrollerVelocityScalar');
+    final resolvedBuildDefaultDragHandles =
+      resolveBoolOrNull(context, 'buildDefaultDragHandles') ?? buildDefaultDragHandles;
+    final resolvedReverse = resolveBoolOrNull(context, 'reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+    final resolvedShrinkWrap =
+      resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+    final resolvedRestorationId =
+      restorationId ?? resolveResourceOrNull(context, 'restorationId');
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
@@ -439,21 +469,21 @@ class TomReorderableListView extends TomTableBase {
       itemExtent: resolvedItemExtent,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,
-      buildDefaultDragHandles: buildDefaultDragHandles,
+      buildDefaultDragHandles: resolvedBuildDefaultDragHandles,
       padding: resolvedPadding,
       header: header,
       footer: footer,
       scrollDirection: scrollDirection,
-      reverse: reverse,
+      reverse: resolvedReverse,
       scrollController: scrollController,
-      primary: primary,
+      primary: resolvedPrimary,
       physics: physics,
-      shrinkWrap: shrinkWrap,
+      shrinkWrap: resolvedShrinkWrap,
       anchor: resolvedAnchor,
       cacheExtent: resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       clipBehavior: clipBehavior,
       autoScrollerVelocityScalar: resolvedAutoScrollerVelocityScalar,
       children: children,

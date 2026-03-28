@@ -65,6 +65,8 @@ class TomSwitch extends TomToggleBase {
         inactiveTrackColor ?? resolveColorOrNull(context, 'inactiveTrackColor');
     final resolvedSplashRadius =
         splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+    final resolvedAutofocus =
+      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
 
     return Switch(
       value: value,
@@ -81,7 +83,7 @@ class TomSwitch extends TomToggleBase {
       trackOutlineWidth: trackOutlineWidth,
       thumbIcon: thumbIcon,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       overlayColor: overlayColor,
       splashRadius: resolvedSplashRadius,
     );
