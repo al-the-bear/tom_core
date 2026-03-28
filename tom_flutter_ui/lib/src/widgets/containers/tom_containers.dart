@@ -2272,8 +2272,12 @@ class TomOffstage extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedOffstage =
+        resolveBoolOrNull(context, 'offstage') ?? offstage;
+
     return Offstage(
-      offstage: offstage,
+      offstage: resolvedOffstage,
       child: child,
     );
   }
@@ -2467,22 +2471,35 @@ class TomNestedScrollView extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
     final resolvedFloatHeaderSlivers =
         floatHeaderSlivers ?? resolveBoolOrNull(context, 'floatHeaderSlivers') ?? false;
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+
+    // Phase 3: Resolve complex objects from resources
+    final resolvedPhysics =
+        physics ?? _resolveScrollPhysics(context, 'physics');
 
     return NestedScrollView(
       controller: controller,
       scrollDirection: scrollDirection,
       reverse: reverse,
-      physics: physics,
+      physics: resolvedPhysics,
       headerSliverBuilder: headerSliverBuilder,
       body: body,
       dragStartBehavior: dragStartBehavior,
       floatHeaderSlivers: resolvedFloatHeaderSlivers,
       clipBehavior: clipBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       scrollBehavior: scrollBehavior,
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
@@ -2964,6 +2981,7 @@ class TomOverflowBox extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
     final resolvedMinWidth =
         minWidth ?? resolveDoubleOrNull(context, 'minWidth');
     final resolvedMaxWidth =
@@ -2973,8 +2991,12 @@ class TomOverflowBox extends TomContainerBase {
     final resolvedMaxHeight =
         maxHeight ?? resolveDoubleOrNull(context, 'maxHeight');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+
     return OverflowBox(
-      alignment: alignment,
+      alignment: resolvedAlignment,
       minWidth: resolvedMinWidth,
       maxWidth: resolvedMaxWidth,
       minHeight: resolvedMinHeight,
@@ -2982,6 +3004,12 @@ class TomOverflowBox extends TomContainerBase {
       fit: fit,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
