@@ -486,6 +486,17 @@ class TomListTile extends TomLabelBase {
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional parameters from resources
+    final resolvedIsThreeLine =
+        resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+    final resolvedEnabled =
+        resolveBoolOrNull(context, 'enabled') ?? enabled;
+    final resolvedSelected =
+        resolveBoolOrNull(context, 'selected') ?? selected;
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedEnableFeedback =
+        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
     final resolvedSelectedColor =
         selectedColor ?? resolveColorOrNull(context, 'selectedColor');
     final resolvedIconColor =
@@ -513,7 +524,11 @@ class TomListTile extends TomLabelBase {
     final resolvedMinTileHeight =
         minTileHeight ?? resolveDoubleOrNull(context, 'minTileHeight');
 
-    // Phase 3: Resolve TextStyle from resources
+    // Phase 3: Resolve complex objects from resources
+    final resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+    final resolvedShape =
+        shape ?? _resolveShapeBorder(context, 'shape');
     final resolvedTitleTextStyle =
         titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
     final resolvedSubtitleTextStyle =
@@ -526,10 +541,10 @@ class TomListTile extends TomLabelBase {
       subtitle: subtitle,
       leading: leading,
       trailing: trailing,
-      isThreeLine: isThreeLine,
-      dense: dense,
-      visualDensity: visualDensity,
-      shape: shape,
+      isThreeLine: resolvedIsThreeLine,
+      dense: resolvedDense,
+      visualDensity: resolvedVisualDensity,
+      shape: resolvedShape,
       selectedColor: resolvedSelectedColor,
       iconColor: resolvedIconColor,
       textColor: resolvedTextColor,
@@ -537,18 +552,18 @@ class TomListTile extends TomLabelBase {
       subtitleTextStyle: resolvedSubtitleTextStyle,
       leadingAndTrailingTextStyle: resolvedLeadingAndTrailingTextStyle,
       contentPadding: resolvedContentPadding,
-      enabled: enabled,
+      enabled: resolvedEnabled,
       onTap: onTap,
       onLongPress: onLongPress,
-      selected: selected,
+      selected: resolvedSelected,
       focusColor: resolvedFocusColor,
       hoverColor: resolvedHoverColor,
       splashColor: resolvedSplashColor,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       tileColor: resolvedTileColor,
       selectedTileColor: resolvedSelectedTileColor,
-      enableFeedback: enableFeedback,
+      enableFeedback: resolvedEnableFeedback,
       horizontalTitleGap: resolvedHorizontalTitleGap,
       minVerticalPadding: resolvedMinVerticalPadding,
       minLeadingWidth: resolvedMinLeadingWidth,
@@ -562,6 +577,18 @@ class TomListTile extends TomLabelBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
