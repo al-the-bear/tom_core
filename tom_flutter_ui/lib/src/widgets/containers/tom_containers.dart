@@ -866,13 +866,23 @@ class TomStack extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 3: Resolve complex objects from resources
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+
     return Stack(
-      alignment: alignment,
+      alignment: resolvedAlignment,
       textDirection: textDirection,
       fit: fit,
       clipBehavior: clipBehavior,
       children: children,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -897,13 +907,26 @@ class TomIndexedStack extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedIndex = index ?? resolveIntOrNull(context, 'index');
+
+    // Phase 3: Resolve complex objects from resources
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+
     return IndexedStack(
-      index: index,
-      alignment: alignment,
+      index: resolvedIndex,
+      alignment: resolvedAlignment,
       textDirection: textDirection,
       sizing: sizing,
       children: children,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
