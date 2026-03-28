@@ -92,15 +92,25 @@ class TomFilterChip extends TomChipBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedLabelPadding =
+        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedShowCheckmark =
+        resolveBoolOrNull(context, 'showCheckmark') ?? showCheckmark;
+    final resolvedDeleteButtonTooltipMessage =
+        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+
     Widget chip = FilterChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
       label: chipLabel,
       labelStyle: resolvedLabelStyle,
-      labelPadding: labelPadding,
-      padding: padding,
-      showCheckmark: showCheckmark,
+      labelPadding: resolvedLabelPadding,
+      padding: resolvedPadding,
+      showCheckmark: resolvedShowCheckmark,
       checkmarkColor: resolvedCheckmarkColor,
       selectedColor: resolvedSelectedColor,
       disabledColor: resolvedDisabledColor,
@@ -116,7 +126,7 @@ class TomFilterChip extends TomChipBase {
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
       deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: deleteButtonTooltipMessage,
+      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
     );
 
     return chip;
@@ -220,14 +230,20 @@ class TomChoiceChip extends TomChipBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
 
+    // Phase 3: Resolve remaining optional parameters from resources
+    final resolvedLabelPadding =
+        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+
     Widget chip = ChoiceChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
       label: chipLabel,
       labelStyle: resolvedLabelStyle,
-      labelPadding: labelPadding,
-      padding: padding,
+      labelPadding: resolvedLabelPadding,
+      padding: resolvedPadding,
       selectedColor: resolvedSelectedColor,
       disabledColor: resolvedDisabledColor,
       backgroundColor: resolvedBackgroundColor,

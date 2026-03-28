@@ -843,6 +843,8 @@ class TomSubmenuButton extends TomButtonBase {
     // Phase 3: Resolve ButtonStyle and MenuStyle from resources
     final resolvedStyle = style ?? _resolveStyle(context);
     final resolvedMenuStyle = menuStyle ?? _resolveMenuStyle(context);
+    final resolvedAlignmentOffset =
+        alignmentOffset ?? _resolveOffset(context, 'alignmentOffset');
 
     return SubmenuButton(
       onOpen: onOpen,
@@ -850,7 +852,7 @@ class TomSubmenuButton extends TomButtonBase {
       focusNode: focusNode,
       style: resolvedStyle,
       menuStyle: resolvedMenuStyle,
-      alignmentOffset: alignmentOffset,
+      alignmentOffset: resolvedAlignmentOffset,
       clipBehavior: clipBehavior,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
@@ -871,6 +873,13 @@ class TomSubmenuButton extends TomButtonBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
+  }
+
+  /// Phase 3: Resolves Offset from resources.
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
