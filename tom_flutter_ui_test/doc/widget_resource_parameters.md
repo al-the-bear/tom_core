@@ -1665,13 +1665,13 @@ No resource-loadable parameters.
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
 | containedInkWell | bool? | resolveBoolOrNull | ✅ |
-| radius | double? | resolveDoubleOrNull | ⬜ |
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
-| customBorder | ShapeBorder? | resolveShapeBorder | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| highlightColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
+| radius | double? | resolveDoubleOrNull | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
+| customBorder | ShapeBorder? | resolveShapeBorder | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| highlightColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
 | enableFeedback | bool? | resolveBoolOrNull | ✅ |
 | excludeFromSemantics | bool? | resolveBoolOrNull | ✅ |
 | autofocus | bool? | resolveBoolOrNull | ✅ |
@@ -1681,7 +1681,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| feedbackOffset | Offset | resolveOffset | ⬜ |
+| feedbackOffset | Offset | resolveOffset | ✅ |
 | maxSimultaneousDrags | int? | resolveIntOrNull | ✅ |
 | ignoringFeedbackSemantics | bool? | resolveBoolOrNull | ✅ |
 | ignoringFeedbackPointer | bool? | resolveBoolOrNull | ✅ |
@@ -1692,7 +1692,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| absorbing | bool? | resolveBoolOrNull | ⬜ |
+| absorbing | bool? | resolveBoolOrNull | ✅ |
 
 #### TomCupertinoMagnifier
 
@@ -1706,16 +1706,16 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| ignoring | bool? | resolveBoolOrNull | ⬜ |
+| ignoring | bool? | resolveBoolOrNull | ✅ |
 
 #### TomLongPressDraggable
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| maxSimultaneousDrags | int? | resolveIntOrNull | ⬜ |
-| hapticFeedbackOnStart | bool? | resolveBoolOrNull | ⬜ |
-| ignoringFeedbackSemantics | bool? | resolveBoolOrNull | ⬜ |
-| ignoringFeedbackPointer | bool? | resolveBoolOrNull | ⬜ |
+| maxSimultaneousDrags | int? | resolveIntOrNull | ✅ |
+| hapticFeedbackOnStart | bool? | resolveBoolOrNull | ✅ |
+| ignoringFeedbackSemantics | bool? | resolveBoolOrNull | ✅ |
+| ignoringFeedbackPointer | bool? | resolveBoolOrNull | ✅ |
 
 #### TomMouseRegion
 
@@ -2707,7 +2707,7 @@ No resource-loadable parameters.
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
 | Inputs | 16 | 88 | 88 | 0 | 0 |
-| Interactions | 10 | 38 | 23 | 0 | 15 |
+| Interactions | 10 | 38 | 37 | 0 | 1 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
 | Navigation | 21 | 81 | 4 | 0 | 77 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **625** | **30** | **476** |
+| **Total** | **291** | **1131** | **639** | **30** | **462** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
