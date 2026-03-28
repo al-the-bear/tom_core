@@ -340,63 +340,64 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomDropdownMenuEntry
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+| style | ButtonStyle? | resolveButtonStyle | ✅ |
 
 #### TomExpandIcon
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| size | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| expandedColor | Color? | resolveColorOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| size | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| expandedColor | Color? | resolveColorOrNull | ✅ |
+
+> **Note:** `semanticLabel` was incorrectly listed — Flutter's `ExpandIcon` widget doesn't expose this parameter.
 
 #### TomIconButton
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| splashRadius | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| highlightColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
-| style | ButtonStyle? | resolveButtonStyle | ⬜ |
-| tooltip | String? | resolveResourceOrNull | ⬜ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| splashRadius | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| highlightColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
+| style | ButtonStyle? | resolveButtonStyle | ✅ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
 
 #### TomMaterialButton
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| textColor | Color? | resolveColorOrNull | ⬜ |
-| disabledTextColor | Color? | resolveColorOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| highlightColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| focusElevation | double? | resolveDoubleOrNull | ⬜ |
-| hoverElevation | double? | resolveDoubleOrNull | ⬜ |
-| highlightElevation | double? | resolveDoubleOrNull | ⬜ |
-| disabledElevation | double? | resolveDoubleOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| minWidth | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| textColor | Color? | resolveColorOrNull | ✅ |
+| disabledTextColor | Color? | resolveColorOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| highlightColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| focusElevation | double? | resolveDoubleOrNull | ✅ |
+| hoverElevation | double? | resolveDoubleOrNull | ✅ |
+| highlightElevation | double? | resolveDoubleOrNull | ✅ |
+| disabledElevation | double? | resolveDoubleOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| minWidth | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomMenuBar
 
@@ -2692,7 +2693,7 @@ No resource-loadable parameters.
 |----------|---------|-------------|-------------|-------------|--------------|
 | Animated Widgets | 20 | 46 | 34 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
-| Buttons | 23 | 71 | 30 | 0 | 41 |
+| Buttons | 23 | 70 | 66 | 0 | 4 |
 | Chips | 5 | 83 | 17 | 0 | 66 |
 | Containers | 81 | 203 | 35 | 0 | 168 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
@@ -2711,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1132** | **158** | **12** | **962** |
+| **Total** | **291** | **1131** | **194** | **12** | **925** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

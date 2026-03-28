@@ -1089,6 +1089,10 @@ class TomIconButton extends TomButtonBase {
         disabledColor ?? resolveColorOrNull(context, 'disabledColor');
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedAlignment =
+        alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center;
+    final resolvedConstraints =
+        constraints ?? _resolveBoxConstraints(context, 'constraints');
 
     // Phase 3: Resolve ButtonStyle from resources
     final resolvedStyle = style ?? _resolveStyle(context);
@@ -1100,7 +1104,7 @@ class TomIconButton extends TomButtonBase {
           iconSize: resolvedIconSize,
           visualDensity: visualDensity,
           padding: resolvedPadding,
-          alignment: alignment ?? Alignment.center,
+          alignment: resolvedAlignment,
           splashRadius: resolvedSplashRadius,
           color: resolvedColor,
           focusColor: resolvedFocusColor,
@@ -1109,7 +1113,7 @@ class TomIconButton extends TomButtonBase {
           splashColor: resolvedSplashColor,
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: constraints,
+          constraints: resolvedConstraints,
           style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
@@ -1124,7 +1128,7 @@ class TomIconButton extends TomButtonBase {
           iconSize: resolvedIconSize,
           visualDensity: visualDensity,
           padding: resolvedPadding,
-          alignment: alignment ?? Alignment.center,
+          alignment: resolvedAlignment,
           splashRadius: resolvedSplashRadius,
           color: resolvedColor,
           focusColor: resolvedFocusColor,
@@ -1133,7 +1137,7 @@ class TomIconButton extends TomButtonBase {
           splashColor: resolvedSplashColor,
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: constraints,
+          constraints: resolvedConstraints,
           style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
@@ -1148,7 +1152,7 @@ class TomIconButton extends TomButtonBase {
           iconSize: resolvedIconSize,
           visualDensity: visualDensity,
           padding: resolvedPadding,
-          alignment: alignment ?? Alignment.center,
+          alignment: resolvedAlignment,
           splashRadius: resolvedSplashRadius,
           color: resolvedColor,
           focusColor: resolvedFocusColor,
@@ -1157,7 +1161,7 @@ class TomIconButton extends TomButtonBase {
           splashColor: resolvedSplashColor,
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: constraints,
+          constraints: resolvedConstraints,
           style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
@@ -1172,7 +1176,7 @@ class TomIconButton extends TomButtonBase {
           iconSize: resolvedIconSize,
           visualDensity: visualDensity,
           padding: resolvedPadding,
-          alignment: alignment ?? Alignment.center,
+          alignment: resolvedAlignment,
           splashRadius: resolvedSplashRadius,
           color: resolvedColor,
           focusColor: resolvedFocusColor,
@@ -1181,7 +1185,7 @@ class TomIconButton extends TomButtonBase {
           splashColor: resolvedSplashColor,
           disabledColor: resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: constraints,
+          constraints: resolvedConstraints,
           style: resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
@@ -1197,6 +1201,20 @@ class TomIconButton extends TomButtonBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+  }
+
+  /// Phase 2: Resolves AlignmentGeometry from resources.
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+  }
+
+  /// Phase 2: Resolves BoxConstraints from resources.
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -1661,6 +1679,8 @@ class TomExpandIcon extends TomButtonBase {
         disabledColor ?? resolveColorOrNull(context, 'disabledColor');
     final resolvedExpandedColor =
         expandedColor ?? resolveColorOrNull(context, 'expandedColor');
+    // Note: ExpandIcon doesn't have a semanticLabel parameter in Flutter's API
+    // The widget's semantics are handled internally via Semantics wrapper
 
     return ExpandIcon(
       isExpanded: isExpanded,
@@ -1781,7 +1801,7 @@ class TomMaterialButton extends TomButtonBase {
       disabledElevation: disabledElevation ?? resolveDoubleOrNull(context, 'disabledElevation'),
       padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
       visualDensity: visualDensity,
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       clipBehavior: clipBehavior,
       focusNode: focusNode,
       autofocus: autofocus,
@@ -1791,6 +1811,12 @@ class TomMaterialButton extends TomButtonBase {
       enableFeedback: enableFeedback,
       child: buttonChild,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
