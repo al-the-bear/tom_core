@@ -407,7 +407,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+| style | ButtonStyle? | resolveButtonStyle | ✅ |
 
 #### TomRadioMenuButton
 
@@ -417,7 +417,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+| style | ButtonStyle? | resolveButtonStyle | ✅ |
 
 #### TomSnackBarAction
 
@@ -427,8 +427,8 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignmentOffset | Offset? | resolveOffset | ⬜ |
-| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+| alignmentOffset | Offset? | resolveOffset | ✅ |
+| style | ButtonStyle? | resolveButtonStyle | ✅ |
 
 ---
 
@@ -440,41 +440,41 @@ No resource-loadable parameters.
 |-----------|------|----------|--------|
 | labelText | String? | resolveResourceOrNull | ✅ |
 | labelStyle | TextStyle? | resolveTextStyle | ✅ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| showCheckmark | bool | resolveBoolOrNull | ⬜ |
-| checkmarkColor | Color? | resolveColorOrNull | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| selectedShadowColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| showCheckmark | bool | resolveBoolOrNull | ✅ |
+| checkmarkColor | Color? | resolveColorOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| selectedShadowColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| deleteIconColor | Color? | resolveColorOrNull | ✅ |
 | shape | OutlinedBorder? | resolveShapeBorder | ✅ |
 | side | BorderSide? | resolveBorderSide | ✅ |
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| pressElevation | double? | resolveDoubleOrNull | ⬜ |
-| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| pressElevation | double? | resolveDoubleOrNull | ✅ |
+| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ✅ |
 
 #### TomChoiceChip
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
 | labelStyle | TextStyle? | resolveTextStyle | ✅ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| disabledColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| selectedShadowColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| selectedShadowColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
 | shape | OutlinedBorder? | resolveShapeBorder | ✅ |
 | side | BorderSide? | resolveBorderSide | ✅ |
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| pressElevation | double? | resolveDoubleOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| pressElevation | double? | resolveDoubleOrNull | ✅ |
 
 #### TomActionChip
 
@@ -2693,8 +2693,8 @@ No resource-loadable parameters.
 |----------|---------|-------------|-------------|-------------|--------------|
 | Animated Widgets | 20 | 46 | 34 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
-| Buttons | 23 | 70 | 66 | 0 | 4 |
-| Chips | 5 | 83 | 17 | 0 | 66 |
+| Buttons | 23 | 70 | 70 | 0 | 0 |
+| Chips | 5 | 83 | 40 | 0 | 43 |
 | Containers | 81 | 203 | 35 | 0 | 168 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **194** | **12** | **925** |
+| **Total** | **291** | **1131** | **221** | **12** | **898** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
