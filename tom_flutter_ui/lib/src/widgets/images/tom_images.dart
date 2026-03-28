@@ -722,10 +722,18 @@ class TomFileImage extends TomImageBase {
     final resolvedSemanticLabel = semanticLabel ??
         (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedWidth =
+        width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedHeight =
+        height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedColor =
+        color ?? resolveColorOrNull(context, 'color');
+
     return Image(
       image: FileImage(File(filePath), scale: scale),
-      width: width,
-      height: height,
+      width: resolvedWidth,
+      height: resolvedHeight,
       fit: fit,
       alignment: alignment,
       repeat: repeat,
@@ -734,7 +742,7 @@ class TomFileImage extends TomImageBase {
       gaplessPlayback: gaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: color,
+      color: resolvedColor,
       colorBlendMode: colorBlendMode,
       semanticLabel: resolvedSemanticLabel,
       excludeFromSemantics: excludeFromSemantics,

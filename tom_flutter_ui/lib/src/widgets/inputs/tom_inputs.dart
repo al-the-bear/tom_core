@@ -167,6 +167,36 @@ class TomTextField extends TomInputBase {
         minLines ?? resolveIntOrNull(context, 'minLines');
     final resolvedMaxLength =
         maxLength ?? resolveIntOrNull(context, 'maxLength');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedObscureText =
+        resolveBoolOrNull(context, 'obscureText') ?? obscureText;
+    final resolvedAutocorrect =
+        resolveBoolOrNull(context, 'autocorrect') ?? autocorrect;
+    final resolvedEnableSuggestions =
+        resolveBoolOrNull(context, 'enableSuggestions') ?? enableSuggestions;
+    final resolvedExpands =
+        resolveBoolOrNull(context, 'expands') ?? expands;
+    final resolvedEnabled =
+        resolveBoolOrNull(context, 'enabled') ?? enabled;
+    final resolvedReadOnly =
+        resolveBoolOrNull(context, 'readOnly') ?? readOnly;
+    final resolvedShowCursor =
+        showCursor ?? resolveBoolOrNull(context, 'showCursor');
+    final resolvedObscuringCharacter =
+        obscuringCharacter ?? resolveResourceOrNull(context, 'obscuringCharacter') ?? '•';
+    final resolvedScrollPadding =
+        resolveEdgeInsetsOrNull(context, 'scrollPadding') ?? scrollPadding;
+    final resolvedEnableInteractiveSelection =
+        enableInteractiveSelection ?? resolveBoolOrNull(context, 'enableInteractiveSelection');
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+    final resolvedScribbleEnabled =
+        resolveBoolOrNull(context, 'scribbleEnabled') ?? scribbleEnabled;
+    final resolvedEnableIMEPersonalizedLearning =
+        resolveBoolOrNull(context, 'enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
+    final resolvedCanRequestFocus =
+        resolveBoolOrNull(context, 'canRequestFocus') ?? canRequestFocus;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
@@ -186,15 +216,16 @@ class TomTextField extends TomInputBase {
       textAlign: textAlign,
       textAlignVertical: textAlignVertical,
       textDirection: textDirection,
-      autofocus: autofocus,
-      obscureText: obscureText,
-      autocorrect: autocorrect,
+      autofocus: resolvedAutofocus,
+      obscureText: resolvedObscureText,
+      obscuringCharacter: resolvedObscuringCharacter,
+      autocorrect: resolvedAutocorrect,
       smartDashesType: smartDashesType,
       smartQuotesType: smartQuotesType,
-      enableSuggestions: enableSuggestions,
+      enableSuggestions: resolvedEnableSuggestions,
       maxLines: resolvedMaxLines,
       minLines: resolvedMinLines,
-      expands: expands,
+      expands: resolvedExpands,
       maxLength: resolvedMaxLength,
       maxLengthEnforcement: maxLengthEnforcement,
       onChanged: onChanged,
@@ -202,10 +233,10 @@ class TomTextField extends TomInputBase {
       onSubmitted: onSubmitted,
       onAppPrivateCommand: onAppPrivateCommand,
       inputFormatters: inputFormatters,
-      enabled: enabled,
+      enabled: resolvedEnabled,
       ignorePointers: ignorePointers,
-      readOnly: readOnly,
-      showCursor: showCursor,
+      readOnly: resolvedReadOnly,
+      showCursor: resolvedShowCursor,
       cursorWidth: resolvedCursorWidth,
       cursorHeight: resolvedCursorHeight,
       cursorRadius: cursorRadius,
@@ -214,9 +245,9 @@ class TomTextField extends TomInputBase {
       selectionHeightStyle: selectionHeightStyle,
       selectionWidthStyle: selectionWidthStyle,
       keyboardAppearance: keyboardAppearance,
-      scrollPadding: scrollPadding,
+      scrollPadding: resolvedScrollPadding,
       dragStartBehavior: dragStartBehavior,
-      enableInteractiveSelection: enableInteractiveSelection,
+      enableInteractiveSelection: resolvedEnableInteractiveSelection,
       selectionControls: selectionControls,
       onTap: onTap,
       onTapAlwaysCalled: onTapAlwaysCalled,
@@ -226,12 +257,12 @@ class TomTextField extends TomInputBase {
       scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
       autofillHints: autofillHints,
       clipBehavior: clipBehavior,
-      restorationId: restorationId,
-      scribbleEnabled: scribbleEnabled,
-      enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
+      restorationId: resolvedRestorationId,
+      scribbleEnabled: resolvedScribbleEnabled,
+      enableIMEPersonalizedLearning: resolvedEnableIMEPersonalizedLearning,
       contentInsertionConfiguration: contentInsertionConfiguration,
       contextMenuBuilder: contextMenuBuilder,
-      canRequestFocus: canRequestFocus,
+      canRequestFocus: resolvedCanRequestFocus,
       spellCheckConfiguration: spellCheckConfiguration,
       magnifierConfiguration: magnifierConfiguration,
       undoController: undoController,
@@ -369,6 +400,18 @@ class TomTextFormField extends TomInputBase {
         minLines ?? resolveIntOrNull(context, 'minLines');
     final resolvedMaxLength =
         maxLength ?? resolveIntOrNull(context, 'maxLength');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedObscureText =
+        resolveBoolOrNull(context, 'obscureText') ?? obscureText;
+    final resolvedAutocorrect =
+        resolveBoolOrNull(context, 'autocorrect') ?? autocorrect;
+    final resolvedInitialValue =
+        initialValue ?? resolveResourceOrNull(context, 'initialValue');
+    final resolvedEnabled =
+        resolveBoolOrNull(context, 'enabled') ?? enabled;
+    final resolvedReadOnly =
+        resolveBoolOrNull(context, 'readOnly') ?? readOnly;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
@@ -386,9 +429,9 @@ class TomTextFormField extends TomInputBase {
       style: resolvedStyle,
       textAlign: textAlign,
       textDirection: textDirection,
-      autofocus: autofocus,
-      obscureText: obscureText,
-      autocorrect: autocorrect,
+      autofocus: resolvedAutofocus,
+      obscureText: resolvedObscureText,
+      autocorrect: resolvedAutocorrect,
       maxLines: resolvedMaxLines,
       minLines: resolvedMinLines,
       maxLength: resolvedMaxLength,
@@ -397,9 +440,9 @@ class TomTextFormField extends TomInputBase {
       onFieldSubmitted: onFieldSubmitted,
       onSaved: onSaved,
       validator: validator,
-      initialValue: initialValue,
-      enabled: enabled,
-      readOnly: readOnly,
+      initialValue: resolvedInitialValue,
+      enabled: resolvedEnabled,
+      readOnly: resolvedReadOnly,
       autovalidateMode: autovalidateMode,
     );
   }
@@ -498,6 +541,10 @@ class TomSearchBar extends TomInputBase {
     final resolvedHint =
         hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedAutoFocus =
+        resolveBoolOrNull(context, 'autoFocus') ?? autoFocus;
+
     return SearchBar(
       controller: controller,
       focusNode: focusNode,
@@ -516,7 +563,7 @@ class TomSearchBar extends TomInputBase {
       textStyle: textStyle,
       hintStyle: hintStyle,
       constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
-      autoFocus: autoFocus,
+      autoFocus: resolvedAutoFocus,
       textCapitalization: textCapitalization,
     );
   }
