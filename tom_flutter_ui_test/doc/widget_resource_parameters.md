@@ -1721,7 +1721,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| opaque | bool? | resolveBoolOrNull | ⬜ |
+| opaque | bool? | resolveBoolOrNull | ✅ |
 
 ---
 
@@ -1735,9 +1735,9 @@ No resource-loadable parameters.
 | text | String? | resolveResourceOrNull | ✅ |
 | style | TextStyle? | resolveTextStyle | ✅ |
 | strutStyle | StrutStyle? | resolveStrutStyle | ✅ |
-| softWrap | bool? | resolveBoolOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| semanticsLabel | String? | resolveResourceOrNull | ⬜ |
+| softWrap | bool? | resolveBoolOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| semanticsLabel | String? | resolveResourceOrNull | ✅ |
 | textHeightBehavior | TextHeightBehavior? | resolveTextHeightBehavior | ✅ |
 
 #### TomSelectableText
@@ -1748,40 +1748,40 @@ No resource-loadable parameters.
 | text | String? | resolveResourceOrNull | ✅ |
 | style | TextStyle? | resolveTextStyle | ✅ |
 | strutStyle | StrutStyle? | resolveStrutStyle | ✅ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| minLines | int? | resolveIntOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| showCursor | bool | resolveBoolOrNull | ⬜ |
-| cursorWidth | double | resolveDoubleOrNull | ⬜ |
-| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
-| cursorColor | Color? | resolveColorOrNull | ⬜ |
-| semanticsLabel | String? | resolveResourceOrNull | ⬜ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| minLines | int? | resolveIntOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| showCursor | bool | resolveBoolOrNull | ✅ |
+| cursorWidth | double | resolveDoubleOrNull | ✅ |
+| cursorHeight | double? | resolveDoubleOrNull | ✅ |
+| cursorColor | Color? | resolveColorOrNull | ✅ |
+| semanticsLabel | String? | resolveResourceOrNull | ✅ |
 | textHeightBehavior | TextHeightBehavior? | resolveTextHeightBehavior | ✅ |
 
 #### TomRichText
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| softWrap | bool | resolveBoolOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
+| softWrap | bool | resolveBoolOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
 | strutStyle | StrutStyle? | resolveStrutStyle | ✅ |
 | textHeightBehavior | TextHeightBehavior? | resolveTextHeightBehavior | ✅ |
-| selectionColor | Color? | resolveColorOrNull | ⬜ |
+| selectionColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomBadge
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| textColor | Color? | resolveColorOrNull | ⬜ |
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| offset | Offset? | resolveOffset | ⬜ |
-| isLabelVisible | bool | resolveBoolOrNull | ⬜ |
-| smallSize | double? | resolveDoubleOrNull | ⬜ |
-| largeSize | double? | resolveDoubleOrNull | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| textColor | Color? | resolveColorOrNull | ✅ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| offset | Offset? | resolveOffset | ✅ |
+| isLabelVisible | bool | resolveBoolOrNull | ✅ |
+| smallSize | double? | resolveDoubleOrNull | ✅ |
+| largeSize | double? | resolveDoubleOrNull | ✅ |
 
 #### TomListTile
 
@@ -2707,8 +2707,8 @@ No resource-loadable parameters.
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
 | Inputs | 16 | 88 | 88 | 0 | 0 |
-| Interactions | 10 | 38 | 37 | 0 | 1 |
-| Labels | 15 | 79 | 12 | 0 | 67 |
+| Interactions | 10 | 38 | 38 | 0 | 0 |
+| Labels | 15 | 79 | 36 | 0 | 43 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
 | Navigation | 21 | 81 | 4 | 0 | 77 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **639** | **30** | **462** |
+| **Total** | **291** | **1131** | **664** | **30** | **437** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
