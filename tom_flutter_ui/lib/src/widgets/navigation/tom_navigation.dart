@@ -67,6 +67,19 @@ class TomNavigationRail extends TomNavigationBase {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
+
+  IconThemeData? _resolveIconThemeData(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+  }
+
+  @override
+  Widget buildContent(BuildContext context) {
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedBackgroundColor =
+        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+    final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
     final resolvedIndicatorColor =
         indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
@@ -102,8 +115,8 @@ class TomNavigationRail extends TomNavigationBase {
       groupAlignment: resolvedGroupAlignment,
       selectedLabelTextStyle: resolvedSelectedLabelTextStyle,
       unselectedLabelTextStyle: resolvedUnselectedLabelTextStyle,
-      selectedIconTheme: selectedIconTheme,
-      unselectedIconTheme: unselectedIconTheme,
+      selectedIconTheme: selectedIconTheme ?? _resolveIconThemeData(context, 'selectedIconTheme'),
+      unselectedIconTheme: unselectedIconTheme ?? _resolveIconThemeData(context, 'unselectedIconTheme'),
       extended: extended,
     );
   }
@@ -172,7 +185,7 @@ class TomNavigationBar extends TomNavigationBase {
       destinations: destinations,
       backgroundColor: resolvedBackgroundColor,
       indicatorColor: resolvedIndicatorColor,
-      indicatorShape: indicatorShape,
+      indicatorShape: indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape'),
       elevation: resolvedElevation,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
@@ -181,6 +194,12 @@ class TomNavigationBar extends TomNavigationBase {
       height: resolvedHeight,
       overlayColor: overlayColor,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 

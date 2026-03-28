@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom custom TreeView widget.
 ///
@@ -36,11 +37,17 @@ class TomTreeView extends TomTreeBase {
     return ListView(
       padding: padding,
       shrinkWrap: shrinkWrap,
-      physics: physics,
+      physics: physics ?? _resolveScrollPhysics(context, 'physics'),
       children: [
         for (final node in nodes) _TomTreeNodeWidget(node: node, depth: 0, indentation: resolvedIndentation),
       ],
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 

@@ -182,7 +182,7 @@ class TomTextField extends TomInputBase {
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
       style: resolvedStyle,
-      strutStyle: strutStyle,
+      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textAlign: textAlign,
       textAlignVertical: textAlignVertical,
       textDirection: textDirection,
@@ -223,7 +223,7 @@ class TomTextField extends TomInputBase {
       onTapOutside: onTapOutside,
       mouseCursor: mouseCursor,
       scrollController: scrollController,
-      scrollPhysics: scrollPhysics,
+      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
       autofillHints: autofillHints,
       clipBehavior: clipBehavior,
       restorationId: restorationId,
@@ -277,6 +277,18 @@ class TomTextField extends TomInputBase {
       labelText: resolvedLabel,
       hintText: resolvedHint,
     );
+  }
+
+  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 

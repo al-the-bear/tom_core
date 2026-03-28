@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';import 'package:flutter/cupertino.dart';import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [ListView].
 ///
@@ -180,6 +181,9 @@ class TomListView extends TomListBase {
     final resolvedCacheExtent =
         cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
 
+    // Phase 3: Resolve ScrollPhysics from resources
+    final resolvedPhysics = physics ?? _resolveScrollPhysics(context, 'physics');
+
     // If children list provided, use default ListView constructor
     if (_children != null) {
       return ListView(
@@ -187,7 +191,7 @@ class TomListView extends TomListBase {
         reverse: reverse,
         controller: controller,
         primary: primary,
-        physics: physics,
+        physics: resolvedPhysics,
         shrinkWrap: shrinkWrap,
         padding: padding,
         itemExtent: resolvedItemExtent,
@@ -210,7 +214,7 @@ class TomListView extends TomListBase {
       reverse: reverse,
       controller: controller,
       primary: primary,
-      physics: physics,
+      physics: resolvedPhysics,
       shrinkWrap: shrinkWrap,
       padding: padding,
       itemExtent: resolvedItemExtent,
@@ -223,6 +227,12 @@ class TomListView extends TomListBase {
       restorationId: restorationId,
       clipBehavior: clipBehavior,
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 

@@ -156,7 +156,7 @@ class TomCheckbox extends TomToggleBase {
       hoverColor: resolvedHoverColor,
       overlayColor: overlayColor,
       splashRadius: resolvedSplashRadius,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
       isError: isError,
@@ -175,6 +175,12 @@ class TomCheckbox extends TomToggleBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 

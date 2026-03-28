@@ -110,7 +110,7 @@ class TomFilterChip extends TomChipBase {
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
       deleteIcon: deleteIcon,
@@ -138,6 +138,12 @@ class TomFilterChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -230,7 +236,7 @@ class TomChoiceChip extends TomChipBase {
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
     );
@@ -254,6 +260,12 @@ class TomChoiceChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -337,7 +349,7 @@ class TomActionChip extends TomChipBase {
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
     );
@@ -361,6 +373,12 @@ class TomActionChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -484,7 +502,7 @@ class TomInputChip extends TomChipBase {
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
       tooltip: resolvedTooltip,
@@ -507,6 +525,12 @@ class TomInputChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -639,7 +663,7 @@ class TomRawChip extends TomChipBase {
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       padding: padding,
-      visualDensity: visualDensity,
+      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       materialTapTargetSize: materialTapTargetSize,
       elevation: resolvedElevation,
       tooltip: resolvedTooltip,
@@ -662,5 +686,11 @@ class TomRawChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }

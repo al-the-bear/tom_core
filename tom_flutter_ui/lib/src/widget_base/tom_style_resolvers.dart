@@ -580,6 +580,228 @@ class TomStyleResolvers {
   }
 
   // ===========================================================================
+  // VisualDensity Resolution
+  // ===========================================================================
+
+  /// Resolves a [VisualDensity] from a resource map or string.
+  ///
+  /// Supported formats:
+  /// - String: "comfortable", "compact", "standard", "adaptivePlatformDensity"
+  /// - Map: {horizontal: double, vertical: double}
+  ///
+  /// Returns `null` if value is null or parsing fails.
+  static VisualDensity? parseVisualDensity(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'comfortable':
+          return VisualDensity.comfortable;
+        case 'compact':
+          return VisualDensity.compact;
+        case 'standard':
+          return VisualDensity.standard;
+        case 'adaptiveplatformdensity':
+          return VisualDensity.adaptivePlatformDensity;
+      }
+      return null;
+    }
+
+    if (value is Map<String, dynamic>) {
+      final h = _parseDouble(value['horizontal']) ?? 0.0;
+      final v = _parseDouble(value['vertical']) ?? 0.0;
+      return VisualDensity(horizontal: h, vertical: v);
+    }
+
+    return null;
+  }
+
+  /// Resolves a [VisualDensity] from resources at [basePath].[suffix].
+  static VisualDensity? resolveVisualDensity(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null) return null;
+    if (map.containsKey('visualDensity')) {
+      return parseVisualDensity(map['visualDensity']);
+    }
+    return parseVisualDensity(map);
+  }
+
+  // ===========================================================================
+  // IconThemeData Resolution
+  // ===========================================================================
+
+  /// Resolves an [IconThemeData] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `color` (String): Color name or hex value
+  /// - `opacity` (double): Opacity value (0.0 - 1.0)
+  /// - `size` (double): Icon size in logical pixels
+  /// - `fill` (double): Fill value (0.0 - 1.0)
+  /// - `weight` (double): Icon weight
+  /// - `grade` (double): Icon grade
+  /// - `opticalSize` (double): Optical size
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static IconThemeData? parseIconThemeData(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    return IconThemeData(
+      color: _parseColor(map['color']),
+      opacity: _parseDouble(map['opacity']),
+      size: _parseDouble(map['size']),
+      fill: _parseDouble(map['fill']),
+      weight: _parseDouble(map['weight']),
+      grade: _parseDouble(map['grade']),
+      opticalSize: _parseDouble(map['opticalSize']),
+    );
+  }
+
+  /// Resolves an [IconThemeData] from resources at [basePath].[suffix].
+  static IconThemeData? resolveIconThemeData(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseIconThemeData(map);
+  }
+
+  // ===========================================================================
+  // StrutStyle Resolution
+  // ===========================================================================
+
+  /// Resolves a [StrutStyle] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `fontFamily` (String): Font family name
+  /// - `fontFamilyFallback` (`List<String>`): Fallback font families
+  /// - `fontSize` (double): Font size in logical pixels
+  /// - `height` (double): Line height multiplier
+  /// - `leading` (double): Leading distribution
+  /// - `fontWeight` (String): "normal", "bold", "w100"-"w900"
+  /// - `fontStyle` (String): "normal", "italic"
+  /// - `forceStrutHeight` (bool): Whether to force strut height
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static StrutStyle? parseStrutStyle(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    return StrutStyle(
+      fontFamily: map['fontFamily'] as String?,
+      fontFamilyFallback: (map['fontFamilyFallback'] as List<dynamic>?)
+          ?.cast<String>(),
+      fontSize: _parseDouble(map['fontSize']),
+      height: _parseDouble(map['height']),
+      leading: _parseDouble(map['leading']),
+      fontWeight: _parseFontWeight(map['fontWeight']),
+      fontStyle: _parseFontStyle(map['fontStyle']),
+      forceStrutHeight: map['forceStrutHeight'] as bool?,
+    );
+  }
+
+  /// Resolves a [StrutStyle] from resources at [basePath].[suffix].
+  static StrutStyle? resolveStrutStyle(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseStrutStyle(map);
+  }
+
+  // ===========================================================================
+  // TextHeightBehavior Resolution
+  // ===========================================================================
+
+  /// Resolves a [TextHeightBehavior] from a resource map or string.
+  ///
+  /// The resource map can contain:
+  /// - `applyHeightToFirstAscent` (bool): Apply height to first ascent (default true)
+  /// - `applyHeightToLastDescent` (bool): Apply height to last descent (default true)
+  /// - `leadingDistribution` (String): "proportional" or "even"
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static TextHeightBehavior? parseTextHeightBehavior(
+      Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    TextLeadingDistribution? leadingDistribution;
+    final ld = map['leadingDistribution'] as String?;
+    if (ld != null) {
+      switch (ld.toLowerCase()) {
+        case 'proportional':
+          leadingDistribution = TextLeadingDistribution.proportional;
+          break;
+        case 'even':
+          leadingDistribution = TextLeadingDistribution.even;
+          break;
+      }
+    }
+
+    return TextHeightBehavior(
+      applyHeightToFirstAscent:
+          map['applyHeightToFirstAscent'] as bool? ?? true,
+      applyHeightToLastDescent:
+          map['applyHeightToLastDescent'] as bool? ?? true,
+      leadingDistribution:
+          leadingDistribution ?? TextLeadingDistribution.proportional,
+    );
+  }
+
+  /// Resolves a [TextHeightBehavior] from resources at [basePath].[suffix].
+  static TextHeightBehavior? resolveTextHeightBehavior(
+      String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseTextHeightBehavior(map);
+  }
+
+  // ===========================================================================
+  // ScrollPhysics Resolution
+  // ===========================================================================
+
+  /// Resolves a [ScrollPhysics] from a string name.
+  ///
+  /// Supported values:
+  /// - "bouncing" / "bouncingScroll": [BouncingScrollPhysics]
+  /// - "clamping" / "clampingScroll": [ClampingScrollPhysics]
+  /// - "never" / "neverScrollable": [NeverScrollableScrollPhysics]
+  /// - "always" / "alwaysScrollable": [AlwaysScrollableScrollPhysics]
+  /// - "page": [PageScrollPhysics]
+  /// - "fixedExtent": [FixedExtentScrollPhysics]
+  ///
+  /// Returns `null` if value is null or unrecognized.
+  static ScrollPhysics? parseScrollPhysics(dynamic value) {
+    if (value == null) return null;
+
+    final name = (value is String) ? value : (value is Map<String, dynamic>)
+        ? value['type'] as String?
+        : null;
+    if (name == null) return null;
+
+    switch (name.toLowerCase()) {
+      case 'bouncing':
+      case 'bouncingscroll':
+        return const BouncingScrollPhysics();
+      case 'clamping':
+      case 'clampingscroll':
+        return const ClampingScrollPhysics();
+      case 'never':
+      case 'neverscrollable':
+        return const NeverScrollableScrollPhysics();
+      case 'always':
+      case 'alwaysscrollable':
+        return const AlwaysScrollableScrollPhysics();
+      case 'page':
+        return const PageScrollPhysics();
+      case 'fixedextent':
+        return const FixedExtentScrollPhysics();
+    }
+    return null;
+  }
+
+  /// Resolves a [ScrollPhysics] from resources at [basePath].[suffix].
+  static ScrollPhysics? resolveScrollPhysics(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null) return null;
+    if (map.containsKey('physics')) {
+      return parseScrollPhysics(map['physics']);
+    }
+    return parseScrollPhysics(map['type']);
+  }
+
+  // ===========================================================================
   // Private Parsing Helpers
   // ===========================================================================
 

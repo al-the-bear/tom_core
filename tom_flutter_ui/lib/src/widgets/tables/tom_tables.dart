@@ -105,7 +105,7 @@ class TomDataTable extends TomTableBase {
       showBottomBorder: showBottomBorder,
       dividerThickness: resolvedDividerThickness,
       checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
-      border: border,
+      border: border ?? _resolveTableBorder(context, 'border'),
       clipBehavior: clipBehavior,
       rows: rows,
     );
@@ -121,6 +121,12 @@ class TomDataTable extends TomTableBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveDecoration(basePath, suffix);
+  }
+
+  TableBorder? _resolveTableBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
 }
 

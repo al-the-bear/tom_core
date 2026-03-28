@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 // =============================================================================
 // Section II: Sliver Widgets
@@ -10,24 +11,41 @@ import '../../widget_base/tom_family_base.dart';
 /// Tom wrapper for [DecoratedSliver].
 ///
 /// Decoration around a sliver with sliver child. Auth on decorated sliver content.
+///
+/// If [decoration] is not provided, it will be resolved from resources.
+/// Throws if neither an explicit value nor a resource-based definition exists.
 class TomDecoratedSliver extends TomSliverBase {
-  final Decoration decoration;
+  final Decoration? decoration;
   final Widget sliver;
 
   const TomDecoratedSliver({
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.decoration,
+    this.decoration,
     required this.sliver,
   });
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedDecoration = decoration ?? _resolveDecoration(context, 'decoration');
+    if (resolvedDecoration == null) {
+      throw FlutterError(
+        'TomDecoratedSliver requires a decoration. '
+        'Provide it explicitly or define it in resources.',
+      );
+    }
+
     return DecoratedSliver(
-      decoration: decoration,
+      decoration: resolvedDecoration,
       sliver: sliver,
     );
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 }
 

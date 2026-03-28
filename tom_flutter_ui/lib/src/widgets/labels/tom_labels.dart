@@ -67,7 +67,7 @@ class TomText extends TomLabelBase {
     return Text(
       resolvedText,
       style: style,
-      strutStyle: strutStyle,
+      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
       locale: locale,
@@ -76,8 +76,20 @@ class TomText extends TomLabelBase {
       maxLines: resolvedMaxLines,
       semanticsLabel: semanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior,
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
     );
+  }
+
+  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+  }
+
+  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 }
 
@@ -169,7 +181,7 @@ class TomSelectableText extends TomLabelBase {
     return SelectableText(
       resolvedText,
       style: style,
-      strutStyle: strutStyle,
+      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
       maxLines: resolvedMaxLines,
@@ -182,15 +194,33 @@ class TomSelectableText extends TomLabelBase {
       cursorRadius: cursorRadius,
       cursorColor: resolvedCursorColor,
       onTap: onTap,
-      scrollPhysics: scrollPhysics,
+      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
       semanticsLabel: semanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior,
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
       contextMenuBuilder: contextMenuBuilder,
       magnifierConfiguration: magnifierConfiguration,
       selectionControls: selectionControls,
       onSelectionChanged: onSelectionChanged,
     );
+  }
+
+  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+  }
+
+  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
@@ -244,12 +274,24 @@ class TomRichText extends TomLabelBase {
       overflow: overflow,
       maxLines: resolvedMaxLines,
       locale: locale,
-      strutStyle: strutStyle,
+      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior,
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
       selectionRegistrar: selectionRegistrar,
       selectionColor: resolvedSelectionColor,
     );
+  }
+
+  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+  }
+
+  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 }
 
