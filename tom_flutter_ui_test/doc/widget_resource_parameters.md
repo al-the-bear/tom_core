@@ -1,6 +1,6 @@
 # Widget Resource Parameters — Complete Inventory
 
-Complete inventory of all Tom Flutter UI widget constructor parameters that can be loaded from resources. This document covers all 21 widget files and 80+ widget classes.
+Complete inventory of all Tom Flutter UI widget constructor parameters that can be loaded from resources. This document covers all 21 widget files and 291 widget classes.
 
 **Scope:** Only parameters with an existing resolution method are listed. Widget, Callback, Controller, and opaque object parameters (ImageProvider, delegates, etc.) are excluded as they cannot be resource-resolved.
 
@@ -121,11 +121,123 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 | shadowColor | Color | resolveColorOrNull | ⬜ |
 | borderRadius | BorderRadius | resolveBorderRadius | ⬜ |
 
+
+#### TomAnimatedBuilder
+
+No resource-loadable parameters.
+
+#### TomAnimatedCrossFade
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| excludeBottomFocus | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomAnimatedPositioned
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| left | double? | resolveDoubleOrNull | ⬜ |
+| top | double? | resolveDoubleOrNull | ⬜ |
+| right | double? | resolveDoubleOrNull | ⬜ |
+| bottom | double? | resolveDoubleOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomAnimatedPositionedDirectional
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| start | double? | resolveDoubleOrNull | ⬜ |
+| top | double? | resolveDoubleOrNull | ⬜ |
+| end | double? | resolveDoubleOrNull | ⬜ |
+| bottom | double? | resolveDoubleOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomAnimatedRotation
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| turns | double? | resolveDoubleOrNull | ⬜ |
+| alignment | Alignment? | resolveAlignment | ⬜ |
+
+#### TomAnimatedScale
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| scale | double? | resolveDoubleOrNull | ⬜ |
+| alignment | Alignment? | resolveAlignment | ⬜ |
+
+#### TomAnimatedSize
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+
+#### TomAnimatedSlide
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| offset | Offset | resolveOffset | ⬜ |
+
+#### TomAnimatedSwitcher
+
+No resource-loadable parameters.
+
+#### TomFadeTransition
+
+No resource-loadable parameters.
+
+#### TomHero
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| transitionOnUserGestures | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomRotationTransition
+
+No resource-loadable parameters.
+
+#### TomScaleTransition
+
+No resource-loadable parameters.
+
 ---
 
 ### Builder Widgets (`tom_builders.dart`)
 
-Builder widgets primarily use callbacks and have minimal resource-loadable parameters. No parameters with matching resolvers were identified.
+#### TomFutureBuilder
+
+No resource-loadable parameters.
+
+#### TomLayoutBuilder
+
+No resource-loadable parameters.
+
+#### TomListenableBuilder
+
+No resource-loadable parameters.
+
+#### TomOrientationBuilder
+
+No resource-loadable parameters.
+
+#### TomStatefulBuilder
+
+No resource-loadable parameters.
+
+#### TomStreamBuilder
+
+No resource-loadable parameters.
+
+#### TomTweenAnimationBuilder
+
+No resource-loadable parameters.
+
+#### TomValueListenableBuilder
+
+No resource-loadable parameters.
 
 ---
 
@@ -175,6 +287,142 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | isExtended | bool? | resolveBoolOrNull | ⬜ |
 | autofocus | bool | resolveBoolOrNull | ⬜ |
 | label | String? | resolveResourceOrNull | ⬜ |
+
+
+#### TomBackButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| color | Color? | resolveColorOrNull | ⬜ |
+
+#### TomButtonBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| buttonMinWidth | double? | resolveDoubleOrNull | ⬜ |
+| buttonHeight | double? | resolveDoubleOrNull | ⬜ |
+| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| overflowButtonSpacing | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomCheckboxMenuButton
+
+No resource-loadable parameters.
+
+#### TomCloseButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| color | Color? | resolveColorOrNull | ⬜ |
+
+#### TomCupertinoActionSheetAction
+
+No resource-loadable parameters.
+
+#### TomCupertinoButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| minSize | double? | resolveDoubleOrNull | ⬜ |
+| pressedOpacity | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomCupertinoContextMenuAction
+
+No resource-loadable parameters.
+
+#### TomCupertinoDialogAction
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomDropdownMenuEntry
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+
+#### TomExpandIcon
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| size | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| disabledColor | Color? | resolveColorOrNull | ⬜ |
+| expandedColor | Color? | resolveColorOrNull | ⬜ |
+| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+
+#### TomIconButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| iconSize | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| splashRadius | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ⬜ |
+| hoverColor | Color? | resolveColorOrNull | ⬜ |
+| highlightColor | Color? | resolveColorOrNull | ⬜ |
+| splashColor | Color? | resolveColorOrNull | ⬜ |
+| disabledColor | Color? | resolveColorOrNull | ⬜ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
+| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+| tooltip | String? | resolveResourceOrNull | ⬜ |
+
+#### TomMaterialButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| textColor | Color? | resolveColorOrNull | ⬜ |
+| disabledTextColor | Color? | resolveColorOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| disabledColor | Color? | resolveColorOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ⬜ |
+| hoverColor | Color? | resolveColorOrNull | ⬜ |
+| highlightColor | Color? | resolveColorOrNull | ⬜ |
+| splashColor | Color? | resolveColorOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| focusElevation | double? | resolveDoubleOrNull | ⬜ |
+| hoverElevation | double? | resolveDoubleOrNull | ⬜ |
+| highlightElevation | double? | resolveDoubleOrNull | ⬜ |
+| disabledElevation | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+| minWidth | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomMenuBar
+
+No resource-loadable parameters.
+
+#### TomMenuItemButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+
+#### TomRadioMenuButton
+
+No resource-loadable parameters.
+
+#### TomSegmentedButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| style | ButtonStyle? | resolveButtonStyle | ⬜ |
+
+#### TomSnackBarAction
+
+No resource-loadable parameters.
+
+#### TomSubmenuButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| alignmentOffset | Offset? | resolveOffset | ⬜ |
+| style | ButtonStyle? | resolveButtonStyle | ⬜ |
 
 ---
 
@@ -263,6 +511,31 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
 | elevation | double? | resolveDoubleOrNull | ⬜ |
 | pressElevation | double? | resolveDoubleOrNull | ⬜ |
+
+
+#### TomRawChip
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| labelText | String? | resolveResourceOrNull | ⬜ |
+| labelStyle | TextStyle? | resolveTextStyle | ⬜ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
+| deleteButtonTooltipMessage | String? | resolveResourceOrNull | ⬜ |
+| pressElevation | double? | resolveDoubleOrNull | ⬜ |
+| checkmarkColor | Color? | resolveColorOrNull | ⬜ |
+| shape | OutlinedBorder? | resolveShapeBorder | ⬜ |
+| side | BorderSide? | resolveBorderSide | ⬜ |
+| selectedColor | Color? | resolveColorOrNull | ⬜ |
+| disabledColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| selectedShadowColor | Color? | resolveColorOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| tooltip | String? | resolveResourceOrNull | ⬜ |
 
 ---
 
@@ -404,6 +677,451 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 |-----------|------|----------|--------|
 | alignment | AlignmentGeometry | resolveAlignment | ⬜ |
 
+
+#### TomAlign
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| widthFactor | double? | resolveDoubleOrNull | ✅ |
+| heightFactor | double? | resolveDoubleOrNull | ✅ |
+
+#### TomAspectRatio
+
+No resource-loadable parameters.
+
+#### TomBaseline
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| baseline | double? | resolveDoubleOrFail | ✅ |
+
+#### TomCarouselView
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| shrinkExtent | double? | resolveDoubleOrNull | ✅ |
+
+#### TomCenter
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| widthFactor | double? | resolveDoubleOrNull | ✅ |
+| heightFactor | double? | resolveDoubleOrNull | ✅ |
+
+#### TomClipOval
+
+No resource-loadable parameters.
+
+#### TomClipPath
+
+No resource-loadable parameters.
+
+#### TomClipRRect
+
+No resource-loadable parameters.
+
+#### TomClipRSuperellipse
+
+No resource-loadable parameters.
+
+#### TomClipRect
+
+No resource-loadable parameters.
+
+#### TomColoredBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| color | Color? | resolveColorOrFail | ✅ |
+
+#### TomConstrainedBox
+
+No resource-loadable parameters.
+
+#### TomConstraintsTransformBox
+
+No resource-loadable parameters.
+
+#### TomCupertinoExpansionTile
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| titleText | String? | resolveResourceOrFail | ✅ |
+
+#### TomCupertinoFormRow
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+
+#### TomCupertinoFormSection
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+
+#### TomCupertinoPageScaffold
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+
+#### TomCupertinoScrollbar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| thumbVisibility | bool? | resolveBoolOrNull | ✅ |
+| thickness | double? | resolveDoubleOrNull | ✅ |
+| thicknessWhileDragging | double? | resolveDoubleOrNull | ✅ |
+
+#### TomCupertinoTabScaffold
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+
+#### TomCupertinoTabView
+
+No resource-loadable parameters.
+
+#### TomCustomMultiChildLayout
+
+No resource-loadable parameters.
+
+#### TomCustomPaint
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| isComplex | bool? | resolveBoolOrNull | ✅ |
+| willChange | bool? | resolveBoolOrNull | ✅ |
+
+#### TomCustomScrollView
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| cacheExtent | double? | resolveDoubleOrNull | ✅ |
+
+#### TomCustomSingleChildLayout
+
+No resource-loadable parameters.
+
+#### TomDecoratedBox
+
+No resource-loadable parameters.
+
+#### TomDraggableScrollableSheet
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| initialChildSize | double? | resolveDoubleOrNull | ✅ |
+| minChildSize | double? | resolveDoubleOrNull | ✅ |
+| maxChildSize | double? | resolveDoubleOrNull | ✅ |
+| expand | bool? | resolveBoolOrNull | ✅ |
+| snap | bool? | resolveBoolOrNull | ✅ |
+| shouldCloseOnMinExtent | bool? | resolveBoolOrNull | ✅ |
+
+#### TomExpanded
+
+No resource-loadable parameters.
+
+#### TomExpansionPanel
+
+No resource-loadable parameters.
+
+#### TomExpansionPanelList
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| dividerColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| expandedHeaderPadding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+
+#### TomFittedBox
+
+No resource-loadable parameters.
+
+#### TomFlexible
+
+No resource-loadable parameters.
+
+#### TomFlow
+
+No resource-loadable parameters.
+
+#### TomFractionalTranslation
+
+No resource-loadable parameters.
+
+#### TomFractionallySizedBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| widthFactor | double? | resolveDoubleOrNull | ✅ |
+| heightFactor | double? | resolveDoubleOrNull | ✅ |
+
+#### TomGridTile
+
+No resource-loadable parameters.
+
+#### TomGridTileBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomIndexedStack
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| index | int? | resolveIntOrNull | ⬜ |
+| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
+
+#### TomInk
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| decoration | Decoration? | resolveDecoration | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomInteractiveViewer
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| boundaryMargin | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
+| constrained | bool? | resolveBoolOrNull | ⬜ |
+| maxScale | double? | resolveDoubleOrNull | ⬜ |
+| minScale | double? | resolveDoubleOrNull | ⬜ |
+| interactionEndFrictionCoefficient | double? | resolveDoubleOrNull | ⬜ |
+| panEnabled | bool? | resolveBoolOrNull | ⬜ |
+| scaleEnabled | bool? | resolveBoolOrNull | ⬜ |
+| scaleFactor | double? | resolveDoubleOrNull | ⬜ |
+| alignment | Alignment? | resolveAlignment | ⬜ |
+
+#### TomIntrinsicHeight
+
+No resource-loadable parameters.
+
+#### TomIntrinsicWidth
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| stepWidth | double? | resolveDoubleOrNull | ⬜ |
+| stepHeight | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomLimitedBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| maxWidth | double? | resolveDoubleOrNull | ⬜ |
+| maxHeight | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomListBody
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| reverse | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomMaterial
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+| borderRadius | BorderRadiusGeometry? | resolveBorderRadius | ⬜ |
+| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+
+#### TomNestedScrollView
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
+| floatHeaderSlivers | bool? | resolveBoolOrNull | ⬜ |
+| restorationId | String? | resolveResourceOrNull | ⬜ |
+
+#### TomOffstage
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| offstage | bool | resolveBoolOrNull | ⬜ |
+
+#### TomOpacity
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| opacity | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomOverflowBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| spacing | double? | resolveDoubleOrNull | ⬜ |
+| overflowSpacing | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomOverflowBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
+| minWidth | double? | resolveDoubleOrNull | ⬜ |
+| maxWidth | double? | resolveDoubleOrNull | ⬜ |
+| minHeight | double? | resolveDoubleOrNull | ⬜ |
+| maxHeight | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomPadding
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomPhysicalModel
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomPhysicalShape
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomPositioned
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| left | double? | resolveDoubleOrNull | ⬜ |
+| top | double? | resolveDoubleOrNull | ⬜ |
+| right | double? | resolveDoubleOrNull | ⬜ |
+| bottom | double? | resolveDoubleOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomPositionedDirectional
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| start | double? | resolveDoubleOrNull | ⬜ |
+| top | double? | resolveDoubleOrNull | ⬜ |
+| end | double? | resolveDoubleOrNull | ⬜ |
+| bottom | double? | resolveDoubleOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomRotatedBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| quarterTurns | int? | resolveIntOrNull | ⬜ |
+
+#### TomSafeArea
+
+No resource-loadable parameters.
+
+#### TomScrollbar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| thumbVisibility | bool? | resolveBoolOrNull | ⬜ |
+| trackVisibility | bool? | resolveBoolOrNull | ⬜ |
+| thickness | double? | resolveDoubleOrNull | ⬜ |
+| interactive | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomSingleChildScrollView
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
+| restorationId | String? | resolveResourceOrNull | ⬜ |
+
+#### TomSizedBox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomSizedOverflowBox
+
+No resource-loadable parameters.
+
+#### TomSliverAppBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| titleText | String? | resolveResourceOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| scrolledUnderElevation | double? | resolveDoubleOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| foregroundColor | Color? | resolveColorOrNull | ⬜ |
+| iconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
+| actionsIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
+| titleSpacing | double? | resolveDoubleOrNull | ⬜ |
+| expandedHeight | double? | resolveDoubleOrNull | ⬜ |
+| collapsedHeight | double? | resolveDoubleOrNull | ⬜ |
+| leadingWidth | double? | resolveDoubleOrNull | ⬜ |
+| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+| toolbarTextStyle | TextStyle? | resolveTextStyle | ⬜ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomSliverFillRemaining
+
+No resource-loadable parameters.
+
+#### TomSliverGrid
+
+No resource-loadable parameters.
+
+#### TomSliverList
+
+No resource-loadable parameters.
+
+#### TomSliverToBoxAdapter
+
+No resource-loadable parameters.
+
+#### TomSpacer
+
+No resource-loadable parameters.
+
+#### TomTableCell
+
+No resource-loadable parameters.
+
+#### TomTransform
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| transformHitTests | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomUnconstrainedBox
+
+No resource-loadable parameters.
+
+#### TomVisibility
+
+No resource-loadable parameters.
+
 ---
 
 ### ACL Container (`acl/tom_acl.dart`)
@@ -514,6 +1232,67 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
 | leadingPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
 | forceActionsBelow | bool | resolveBoolOrNull | ⬜ |
+
+
+#### TomAboutDialog
+
+No resource-loadable parameters.
+
+#### TomCupertinoActionSheet
+
+No resource-loadable parameters.
+
+#### TomCupertinoAlertDialog
+
+No resource-loadable parameters.
+
+#### TomCupertinoContextMenu
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| enableHapticFeedback | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomDatePickerDialog
+
+No resource-loadable parameters.
+
+#### TomDateRangePickerDialog
+
+No resource-loadable parameters.
+
+#### TomLicensePage
+
+No resource-loadable parameters.
+
+#### TomModalBottomSheet
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
+
+#### TomSimpleDialogOption
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomTimePickerDialog
+
+No resource-loadable parameters.
+
+#### TomTooltip
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| height | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| verticalOffset | double? | resolveDoubleOrNull | ⬜ |
+| decoration | Decoration? | resolveDecoration | ⬜ |
+| textStyle | TextStyle? | resolveTextStyle | ⬜ |
 
 ---
 
@@ -638,6 +1417,39 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | semanticLabel | String? | resolveResourceOrNull | ⬜ |
 | excludeFromSemantics | bool | resolveBoolOrNull | ⬜ |
 
+
+#### TomAnimatedIcon
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| color | Color? | resolveColorOrNull | ⬜ |
+| size | double? | resolveDoubleOrNull | ⬜ |
+| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+
+#### TomAssetImage
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| cacheWidth | int? | resolveIntOrNull | ⬜ |
+| cacheHeight | int? | resolveIntOrNull | ⬜ |
+
+#### TomFileImage
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| width | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+
+#### TomImageFiltered
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| enabled | bool? | resolveBoolOrNull | ⬜ |
+
 ---
 
 ### Inputs (`tom_inputs.dart`)
@@ -702,6 +1514,112 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 
 > **Note:** TomSearchBar uses `WidgetStateProperty<X>` for elevation, backgroundColor, surfaceTintColor, textStyle, etc. These are state-dependent wrappers and cannot be directly resource-resolved with current resolvers.
 
+
+#### TomAutocomplete
+
+No resource-loadable parameters.
+
+#### TomCalendarDatePicker
+
+No resource-loadable parameters.
+
+#### TomCupertinoDatePicker
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomCupertinoSearchTextField
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| placeholder | String? | resolveResourceOrNull | ⬜ |
+| style | TextStyle? | resolveTextStyle | ⬜ |
+| placeholderStyle | TextStyle? | resolveTextStyle | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| itemColor | Color? | resolveColorOrNull | ⬜ |
+| itemSize | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomCupertinoTextField
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| placeholder | String? | resolveResourceOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| maxLines | int? | resolveIntOrNull | ⬜ |
+| minLines | int? | resolveIntOrNull | ⬜ |
+| maxLength | int? | resolveIntOrNull | ⬜ |
+| style | TextStyle? | resolveTextStyle | ⬜ |
+| placeholderStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomCupertinoTextFormFieldRow
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| placeholder | String? | resolveResourceOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| cursorWidth | double? | resolveDoubleOrNull | ⬜ |
+| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
+| cursorColor | Color? | resolveColorOrNull | ⬜ |
+| scrollPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomCupertinoTimerPicker
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomDropdownMenuFormField
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| label | String? | resolveResourceOrNull | ⬜ |
+| hintText | String? | resolveResourceOrNull | ⬜ |
+| helperText | String? | resolveResourceOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ⬜ |
+| menuHeight | double? | resolveDoubleOrNull | ⬜ |
+| expandedInsets | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomEditableText
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundCursorColor | Color? | resolveColorOrNull | ⬜ |
+| selectionColor | Color? | resolveColorOrNull | ⬜ |
+| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
+| cursorWidth | double? | resolveDoubleOrNull | ⬜ |
+| maxLines | int? | resolveIntOrNull | ⬜ |
+| minLines | int? | resolveIntOrNull | ⬜ |
+
+#### TomForm
+
+No resource-loadable parameters.
+
+#### TomInputDatePickerFormField
+
+No resource-loadable parameters.
+
+#### TomSearchAnchor
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| viewHintText | String? | resolveResourceOrNull | ⬜ |
+| viewBackgroundColor | Color? | resolveColorOrNull | ⬜ |
+| viewElevation | double? | resolveDoubleOrNull | ⬜ |
+| viewSurfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| dividerColor | Color? | resolveColorOrNull | ⬜ |
+| headerTextStyle | TextStyle? | resolveTextStyle | ⬜ |
+| headerHintStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomYearPicker
+
+No resource-loadable parameters.
+
 ---
 
 ### Interactions (`tom_interactions.dart`)
@@ -756,6 +1674,42 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | ignoringFeedbackSemantics | bool? | resolveBoolOrNull | ✅ |
 | ignoringFeedbackPointer | bool? | resolveBoolOrNull | ✅ |
 | rootOverlay | bool? | resolveBoolOrNull | ✅ |
+
+
+#### TomAbsorbPointer
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| absorbing | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomCupertinoMagnifier
+
+No resource-loadable parameters.
+
+#### TomDragTarget
+
+No resource-loadable parameters.
+
+#### TomIgnorePointer
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| ignoring | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomLongPressDraggable
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| maxSimultaneousDrags | int? | resolveIntOrNull | ⬜ |
+| hapticFeedbackOnStart | bool? | resolveBoolOrNull | ⬜ |
+| ignoringFeedbackSemantics | bool? | resolveBoolOrNull | ⬜ |
+| ignoringFeedbackPointer | bool? | resolveBoolOrNull | ⬜ |
+
+#### TomMouseRegion
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| opaque | bool? | resolveBoolOrNull | ⬜ |
 
 ---
 
@@ -847,6 +1801,70 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | minLeadingWidth | double? | resolveDoubleOrNull | ⬜ |
 | minTileHeight | double? | resolveDoubleOrNull | ⬜ |
 
+
+#### TomAboutListTile
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| applicationName | String? | resolveResourceOrNull | ⬜ |
+| applicationVersion | String? | resolveResourceOrNull | ⬜ |
+| applicationLegalese | String? | resolveResourceOrNull | ⬜ |
+
+#### TomBanner
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| message | String? | resolveResourceOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+
+#### TomChip
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| labelText | String? | resolveResourceOrNull | ⬜ |
+| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| labelStyle | TextStyle? | resolveTextStyle | ⬜ |
+
+#### TomDefaultTextStyle
+
+No resource-loadable parameters.
+
+#### TomListTileTitle
+
+No resource-loadable parameters.
+
+#### TomListTileSubtitle
+
+No resource-loadable parameters.
+
+#### TomMenuAcceleratorLabel
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| label | String? | resolveResourceOrNull | ⬜ |
+
+#### TomMergeSemantics
+
+No resource-loadable parameters.
+
+#### TomSemantics
+
+No resource-loadable parameters.
+
+#### TomVerticalDivider
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| width | double? | resolveDoubleOrNull | ⬜ |
+| thickness | double? | resolveDoubleOrNull | ⬜ |
+| indent | double? | resolveDoubleOrNull | ⬜ |
+| endIndent | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+
 ---
 
 ### Lists (`tom_lists.dart`)
@@ -909,6 +1927,17 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
 | leadingSize | double? | resolveDoubleOrNull | ⬜ |
 | leadingToTitle | double? | resolveDoubleOrNull | ⬜ |
+
+
+#### TomCupertinoListSection
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| topMargin | double? | resolveDoubleOrNull | ⬜ |
+| hasLeading | bool? | resolveBoolOrNull | ⬜ |
+| additionalDividerMargin | double? | resolveDoubleOrNull | ⬜ |
 
 ---
 
@@ -1005,6 +2034,99 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | unselectedItemColor | Color? | resolveColorOrNull | ⬜ |
 | selectedIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
 | unselectedIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
+
+
+#### TomBreadcrumb
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomCupertinoNavigationBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomCupertinoNavigationBarBackButton
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| previousPageTitle | String? | resolveResourceOrNull | ⬜ |
+
+#### TomCupertinoSliverNavigationBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| previousPageTitle | String? | resolveResourceOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomCupertinoTabBar
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| activeColor | Color? | resolveColorOrNull | ⬜ |
+| iconSize | double? | resolveDoubleOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomDrawerHeader
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomFlexibleSpaceBar
+
+No resource-loadable parameters.
+
+#### TomNavigationDestination
+
+No resource-loadable parameters.
+
+#### TomNavigationDrawerDestination
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomPageView
+
+No resource-loadable parameters.
+
+#### TomStepper
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ⬜ |
+| connectorThickness | double? | resolveDoubleOrNull | ⬜ |
+| connectorColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomTab
+
+No resource-loadable parameters.
+
+#### TomTabBarView
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| viewportFraction | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomTabPageSelector
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| indicatorSize | double? | resolveDoubleOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ⬜ |
+| selectedColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomUserAccountsDrawerHeader
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| arrowColor | Color? | resolveColorOrNull | ⬜ |
 
 ---
 
@@ -1158,6 +2280,52 @@ Builder widgets primarily use callbacks and have minimal resource-loadable param
 | enableFeedback | bool? | resolveBoolOrNull | ⬜ |
 | alignment | AlignmentGeometry | resolveAlignment | ⬜ |
 | borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
+
+
+#### TomCheckedPopupMenuItem
+
+No resource-loadable parameters.
+
+#### TomCupertinoPicker
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| diameterRatio | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| offAxisFraction | double? | resolveDoubleOrNull | ⬜ |
+| magnification | double? | resolveDoubleOrNull | ⬜ |
+| squeeze | double? | resolveDoubleOrNull | ⬜ |
+| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+
+#### TomCupertinoSegmentedControl
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| unselectedColor | Color? | resolveColorOrNull | ⬜ |
+| selectedColor | Color? | resolveColorOrNull | ⬜ |
+| borderColor | Color? | resolveColorOrNull | ⬜ |
+| pressedColor | Color? | resolveColorOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomCupertinoSlidingSegmentedControl
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| thumbColor | Color? | resolveColorOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+
+#### TomDropdownMenuItem
+
+No resource-loadable parameters.
+
+#### TomPopupMenuDivider
+
+No resource-loadable parameters.
+
+#### TomPopupMenuItem
+
+No resource-loadable parameters.
 
 ---
 
@@ -1361,6 +2529,11 @@ No resource-loadable parameters beyond inherited `tomId`/`tomGroup`.
 | itemExtent | double? | resolveDoubleOrNull | ⬜ |
 | cacheExtent | double? | resolveDoubleOrNull | ⬜ |
 
+
+#### TomDataCell
+
+No resource-loadable parameters.
+
 ---
 
 ### Toggles (`tom_toggles.dart`)
@@ -1446,6 +2619,39 @@ No resource-loadable parameters beyond inherited `tomId`/`tomGroup`.
 | autofocus | bool | resolveBoolOrNull | ⬜ |
 | checkboxShape | OutlinedBorder? | resolveShapeBorder | ⬜ |
 
+
+#### TomCupertinoCheckbox
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| activeColor | Color? | resolveColorOrNull | ⬜ |
+| inactiveColor | Color? | resolveColorOrNull | ⬜ |
+| checkColor | Color? | resolveColorOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ⬜ |
+| side | BorderSide? | resolveBorderSide | ⬜ |
+| shape | OutlinedBorder? | resolveShapeBorder | ⬜ |
+| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+
+#### TomCupertinoRadio
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| activeColor | Color? | resolveColorOrNull | ⬜ |
+| inactiveColor | Color? | resolveColorOrNull | ⬜ |
+| fillColor | Color? | resolveColorOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ⬜ |
+
+#### TomCupertinoSwitch
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| activeTrackColor | Color? | resolveColorOrNull | ⬜ |
+| thumbColor | Color? | resolveColorOrNull | ⬜ |
+| trackColor | Color? | resolveColorOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ⬜ |
+| onLabelColor | Color? | resolveColorOrNull | ⬜ |
+| offLabelColor | Color? | resolveColorOrNull | ⬜ |
+
 ---
 
 ### Trees (`tom_trees.dart`)
@@ -1479,28 +2685,28 @@ No resource-loadable parameters beyond inherited `tomId`/`tomGroup`.
 
 | Category | Widgets | Total Params | ✅ Resolved | ⬜ Remaining |
 |----------|---------|-------------|-------------|--------------|
-| Animated | 6 | 22 | 0 | 22 |
-| Builders | 0 | 0 | 0 | 0 |
-| Buttons | 5 | 20 | 4 | 16 |
-| Chips | 4 | 64 | 16 | 48 |
-| Containers | 11 | 69 | 0 | 69 |
-| ACL | 1 | 5 | 0 | 5 |
-| Dialogs | 6 | 53 | 0 | 53 |
-| Effects | 5 | 2 | 0 | 2 |
-| Images | 7 | 38 | 0 | 38 |
-| Inputs | 3 | 49 | 3 | 46 |
-| Interactions | 4 | 30 | 9 | 21 |
-| Labels | 5 | 47 | 12 | 35 |
-| Lists | 5 | 34 | 1 | 33 |
-| Navigation | 6 | 47 | 4 | 43 |
-| Progress | 6 | 24 | 0 | 24 |
-| Selects | 5 | 54 | 0 | 54 |
-| Sliders | 3 | 17 | 0 | 17 |
-| Slivers | 14 | 22 | 5 | 17 |
-| Tables | 5 | 38 | 1 | 37 |
-| Toggles | 5 | 49 | 1 | 48 |
-| Trees | 3 | 7 | 4 | 3 |
-| **Total** | **108** | **~691** | **~60** | **~631** |
+| Animated Widgets | 20 | 46 | 0 | 46 |
+| Builder Widgets | 8 | 0 | 0 | 0 |
+| Buttons | 23 | 71 | 4 | 67 |
+| Chips | 5 | 83 | 17 | 66 |
+| Containers | 81 | 203 | 35 | 168 |
+| ACL Container | 1 | 5 | 0 | 5 |
+| Dialogs | 17 | 75 | 0 | 75 |
+| Effects | 6 | 0 | 0 | 0 |
+| Images | 11 | 56 | 0 | 56 |
+| Inputs | 16 | 88 | 3 | 85 |
+| Interactions | 10 | 38 | 11 | 27 |
+| Labels | 15 | 79 | 12 | 67 |
+| Lists | 6 | 39 | 1 | 38 |
+| Navigation | 21 | 81 | 4 | 77 |
+| Progress | 6 | 30 | 0 | 30 |
+| Selects | 12 | 74 | 0 | 74 |
+| Sliders | 3 | 18 | 0 | 18 |
+| Slivers | 13 | 21 | 5 | 16 |
+| Tables | 6 | 46 | 1 | 45 |
+| Toggles | 8 | 71 | 1 | 70 |
+| Trees | 3 | 8 | 4 | 4 |
+| **Total** | **291** | **1132** | **98** | **1034** |
 
 ---
 
