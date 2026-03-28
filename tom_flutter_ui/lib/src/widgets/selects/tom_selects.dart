@@ -111,7 +111,7 @@ class TomDropdownButton<T> extends TomSelectBase {
       menuMaxHeight: resolvedMenuMaxHeight,
       enableFeedback: enableFeedback,
       alignment: alignment,
-      borderRadius: borderRadius,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
       padding: padding,
       hint: resolvedHint != null ? Text(resolvedHint) : null,
     );
@@ -122,6 +122,12 @@ class TomDropdownButton<T> extends TomSelectBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -141,7 +147,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   final Widget? child;
   final Widget? icon;
   final double? iconSize;
-  final Offset offset;
+  final Offset? offset;
   final bool enabled;
   final ShapeBorder? shape;
   final Color? color;
@@ -166,7 +172,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     this.child,
     this.icon,
     this.iconSize,
-    this.offset = Offset.zero,
+    this.offset,
     this.enabled = true,
     this.shape,
     this.color,
@@ -204,16 +210,34 @@ class TomPopupMenuButton<T> extends TomSelectBase {
       padding: padding,
       icon: icon,
       iconSize: resolvedIconSize,
-      offset: offset,
+      offset: offset ?? _resolveOffset(context, 'offset') ?? Offset.zero,
       enabled: enabled,
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       color: resolvedColor,
       enableFeedback: enableFeedback,
-      constraints: constraints,
+      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
       position: position,
       clipBehavior: clipBehavior,
       child: child,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+  }
+
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 

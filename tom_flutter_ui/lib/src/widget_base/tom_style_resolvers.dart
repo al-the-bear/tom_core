@@ -8,7 +8,9 @@ import '../resource_auth/tom_resources.dart';
 /// Phase 3: Complex style resolution helpers for Tom UI widgets.
 ///
 /// Provides resolution of complex Flutter objects (TextStyle, ButtonStyle,
-/// InputDecoration) from JSON resource maps.
+/// InputDecoration, MenuStyle, ShapeBorder, BorderRadius, Decoration,
+/// BoxConstraints, AlignmentGeometry, BorderSide, Offset, TableBorder)
+/// from JSON resource maps.
 ///
 /// These helpers are separate from [TomNodeBase] because they require
 /// Material library imports.
@@ -224,6 +226,360 @@ class TomStyleResolvers {
   }
 
   // ===========================================================================
+  // ShapeBorder Resolution
+  // ===========================================================================
+
+  /// Resolves a [ShapeBorder] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `type` (String): "rounded", "beveled", "stadium", "circle",
+  ///   "continuous" (defaults to "rounded")
+  /// - `borderRadius` (dynamic): BorderRadius specification
+  /// - `side` (Map): BorderSide specification
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static ShapeBorder? parseShapeBorder(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    final type = (map['type'] as String?)?.toLowerCase() ?? 'rounded';
+    final side = parseBorderSide(map['side'] as Map<String, dynamic>?) ??
+        BorderSide.none;
+
+    switch (type) {
+      case 'stadium':
+        return StadiumBorder(side: side);
+      case 'circle':
+        return CircleBorder(side: side);
+      case 'beveled':
+        return BeveledRectangleBorder(
+          borderRadius: parseBorderRadius(map['borderRadius']) ??
+              BorderRadius.zero,
+          side: side,
+        );
+      case 'continuous':
+        return ContinuousRectangleBorder(
+          borderRadius: parseBorderRadius(map['borderRadius']) ??
+              BorderRadius.zero,
+          side: side,
+        );
+      case 'rounded':
+      default:
+        return RoundedRectangleBorder(
+          borderRadius: parseBorderRadius(map['borderRadius']) ??
+              BorderRadius.zero,
+          side: side,
+        );
+    }
+  }
+
+  /// Resolves a [ShapeBorder] from resources at [basePath].[suffix].
+  static ShapeBorder? resolveShapeBorder(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseShapeBorder(map);
+  }
+
+  // ===========================================================================
+  // BorderSide Resolution
+  // ===========================================================================
+
+  /// Resolves a [BorderSide] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `color` (String): Color name or hex value
+  /// - `width` (double): Border width (default 1.0)
+  /// - `style` (String): "solid" or "none"
+  /// - `strokeAlign` (double): -1.0 (inside), 0.0 (center), 1.0 (outside)
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static BorderSide? parseBorderSide(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    return BorderSide(
+      color: _parseColor(map['color']) ?? const Color(0xFF000000),
+      width: _parseDouble(map['width']) ?? 1.0,
+      style: _parseBorderStyle(map['style']),
+      strokeAlign: _parseDouble(map['strokeAlign']) ?? BorderSide.strokeAlignInside,
+    );
+  }
+
+  /// Resolves a [BorderSide] from resources at [basePath].[suffix].
+  static BorderSide? resolveBorderSide(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseBorderSide(map);
+  }
+
+  // ===========================================================================
+  // BorderRadius Resolution
+  // ===========================================================================
+
+  /// Resolves a [BorderRadius] from a dynamic value.
+  ///
+  /// Supported formats:
+  /// - Single number: uniform circular radius
+  /// - Map with `topLeft`, `topRight`, `bottomLeft`, `bottomRight` (each a
+  ///   number for circular radius)
+  /// - Map with `all` (number for uniform circular radius)
+  ///
+  /// Returns `null` if value is null or parsing fails.
+  static BorderRadius? parseBorderRadius(dynamic value) {
+    if (value == null) return null;
+
+    // Single number = uniform circular
+    if (value is num) return BorderRadius.circular(value.toDouble());
+
+    if (value is Map<String, dynamic>) {
+      if (value.containsKey('all')) {
+        return BorderRadius.circular(
+            (value['all'] as num).toDouble());
+      }
+      return BorderRadius.only(
+        topLeft: Radius.circular(
+            (value['topLeft'] as num?)?.toDouble() ?? 0),
+        topRight: Radius.circular(
+            (value['topRight'] as num?)?.toDouble() ?? 0),
+        bottomLeft: Radius.circular(
+            (value['bottomLeft'] as num?)?.toDouble() ?? 0),
+        bottomRight: Radius.circular(
+            (value['bottomRight'] as num?)?.toDouble() ?? 0),
+      );
+    }
+
+    return null;
+  }
+
+  /// Resolves a [BorderRadius] from resources at [basePath].[suffix].
+  static BorderRadius? resolveBorderRadius(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null) return null;
+    // If the map has a simple 'radius' key, treat as uniform
+    if (map.containsKey('radius')) {
+      return parseBorderRadius(map['radius']);
+    }
+    return parseBorderRadius(map);
+  }
+
+  // ===========================================================================
+  // Decoration Resolution
+  // ===========================================================================
+
+  /// Resolves a [Decoration] (specifically [BoxDecoration]) from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `color` (String): Color name or hex value
+  /// - `borderRadius` (dynamic): BorderRadius specification
+  /// - `border` (Map): Border specification with `color`, `width`
+  /// - `boxShadow` (List): List of shadow maps with `color`, `blurRadius`,
+  ///   `spreadRadius`, `offset`
+  /// - `shape` (String): "rectangle" or "circle" (default "rectangle")
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static Decoration? parseDecoration(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    final shapeStr = (map['shape'] as String?)?.toLowerCase() ?? 'rectangle';
+
+    return BoxDecoration(
+      color: _parseColor(map['color']),
+      borderRadius:
+          shapeStr == 'circle' ? null : parseBorderRadius(map['borderRadius']),
+      shape: shapeStr == 'circle' ? BoxShape.circle : BoxShape.rectangle,
+      border: _parseBoxBorder(map['border']),
+      boxShadow: _parseBoxShadowList(map['boxShadow']),
+    );
+  }
+
+  /// Resolves a [Decoration] from resources at [basePath].[suffix].
+  static Decoration? resolveDecoration(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseDecoration(map);
+  }
+
+  // ===========================================================================
+  // BoxConstraints Resolution
+  // ===========================================================================
+
+  /// Resolves [BoxConstraints] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `minWidth` (double): Minimum width (default 0.0)
+  /// - `maxWidth` (double): Maximum width (default infinity)
+  /// - `minHeight` (double): Minimum height (default 0.0)
+  /// - `maxHeight` (double): Maximum height (default infinity)
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static BoxConstraints? parseBoxConstraints(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    return BoxConstraints(
+      minWidth: _parseDouble(map['minWidth']) ?? 0.0,
+      maxWidth: _parseDouble(map['maxWidth']) ?? double.infinity,
+      minHeight: _parseDouble(map['minHeight']) ?? 0.0,
+      maxHeight: _parseDouble(map['maxHeight']) ?? double.infinity,
+    );
+  }
+
+  /// Resolves [BoxConstraints] from resources at [basePath].[suffix].
+  static BoxConstraints? resolveBoxConstraints(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseBoxConstraints(map);
+  }
+
+  // ===========================================================================
+  // AlignmentGeometry Resolution
+  // ===========================================================================
+
+  /// Resolves an [AlignmentGeometry] from a dynamic value.
+  ///
+  /// Supported formats:
+  /// - String: named alignment ("topLeft", "center", "bottomRight", etc.)
+  /// - Map: {x: double, y: double} for custom alignment
+  ///
+  /// Returns `null` if value is null or parsing fails.
+  static AlignmentGeometry? parseAlignment(dynamic value) {
+    if (value == null) return null;
+
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'topleft':
+        case 'top_left':
+          return Alignment.topLeft;
+        case 'topcenter':
+        case 'top_center':
+          return Alignment.topCenter;
+        case 'topright':
+        case 'top_right':
+          return Alignment.topRight;
+        case 'centerleft':
+        case 'center_left':
+          return Alignment.centerLeft;
+        case 'center':
+          return Alignment.center;
+        case 'centerright':
+        case 'center_right':
+          return Alignment.centerRight;
+        case 'bottomleft':
+        case 'bottom_left':
+          return Alignment.bottomLeft;
+        case 'bottomcenter':
+        case 'bottom_center':
+          return Alignment.bottomCenter;
+        case 'bottomright':
+        case 'bottom_right':
+          return Alignment.bottomRight;
+      }
+    }
+
+    if (value is Map<String, dynamic>) {
+      final x = _parseDouble(value['x']);
+      final y = _parseDouble(value['y']);
+      if (x != null && y != null) return Alignment(x, y);
+    }
+
+    return null;
+  }
+
+  /// Resolves an [AlignmentGeometry] from resources at [basePath].[suffix].
+  static AlignmentGeometry? resolveAlignment(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null) return null;
+    // Support both direct value and nested 'alignment' key
+    if (map.containsKey('alignment')) {
+      return parseAlignment(map['alignment']);
+    }
+    return parseAlignment(map);
+  }
+
+  // ===========================================================================
+  // Offset Resolution
+  // ===========================================================================
+
+  /// Resolves an [Offset] from a dynamic value.
+  ///
+  /// Supported formats:
+  /// - Map: {dx: double, dy: double} or {x: double, y: double}
+  /// - List: [dx, dy]
+  ///
+  /// Returns `null` if value is null or parsing fails.
+  static Offset? parseOffset(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Map<String, dynamic>) {
+      final dx = _parseDouble(value['dx'] ?? value['x']);
+      final dy = _parseDouble(value['dy'] ?? value['y']);
+      if (dx != null && dy != null) return Offset(dx, dy);
+    }
+
+    if (value is List && value.length == 2) {
+      final dx = _parseDouble(value[0]);
+      final dy = _parseDouble(value[1]);
+      if (dx != null && dy != null) return Offset(dx, dy);
+    }
+
+    return null;
+  }
+
+  /// Resolves an [Offset] from resources at [basePath].[suffix].
+  static Offset? resolveOffset(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null) return null;
+    return parseOffset(map);
+  }
+
+  // ===========================================================================
+  // TableBorder Resolution
+  // ===========================================================================
+
+  /// Resolves a [TableBorder] from a resource map.
+  ///
+  /// The resource map can contain:
+  /// - `top`, `right`, `bottom`, `left` (Map): BorderSide specifications
+  /// - `horizontalInside`, `verticalInside` (Map): BorderSide specifications
+  /// - `all` (Map): Uniform BorderSide for all sides
+  ///
+  /// Returns `null` if no map is found or parsing fails.
+  static TableBorder? parseTableBorder(Map<String, dynamic>? map) {
+    if (map == null || map.isEmpty) return null;
+
+    // Shorthand: 'all' applies to every side
+    if (map.containsKey('all')) {
+      final side =
+          parseBorderSide(map['all'] as Map<String, dynamic>?) ??
+              BorderSide.none;
+      return TableBorder(
+        top: side,
+        right: side,
+        bottom: side,
+        left: side,
+        horizontalInside: side,
+        verticalInside: side,
+      );
+    }
+
+    return TableBorder(
+      top: parseBorderSide(map['top'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+      right: parseBorderSide(map['right'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+      bottom: parseBorderSide(map['bottom'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+      left: parseBorderSide(map['left'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+      horizontalInside: parseBorderSide(
+              map['horizontalInside'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+      verticalInside: parseBorderSide(
+              map['verticalInside'] as Map<String, dynamic>?) ??
+          BorderSide.none,
+    );
+  }
+
+  /// Resolves a [TableBorder] from resources at [basePath].[suffix].
+  static TableBorder? resolveTableBorder(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    return parseTableBorder(map);
+  }
+
+  // ===========================================================================
   // Private Parsing Helpers
   // ===========================================================================
 
@@ -375,6 +731,57 @@ class TomStyleResolvers {
       }
     }
     return null;
+  }
+
+  static BorderStyle _parseBorderStyle(dynamic value) {
+    if (value is String) {
+      switch (value.toLowerCase()) {
+        case 'none':
+          return BorderStyle.none;
+        case 'solid':
+          return BorderStyle.solid;
+      }
+    }
+    return BorderStyle.solid;
+  }
+
+  static BoxBorder? _parseBoxBorder(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) {
+      // Shorthand: uniform border
+      if (value.containsKey('color') || value.containsKey('width')) {
+        final side = parseBorderSide(value) ?? BorderSide.none;
+        return Border.fromBorderSide(side);
+      }
+      // Per-side borders
+      return Border(
+        top: parseBorderSide(value['top'] as Map<String, dynamic>?) ??
+            BorderSide.none,
+        right: parseBorderSide(value['right'] as Map<String, dynamic>?) ??
+            BorderSide.none,
+        bottom: parseBorderSide(value['bottom'] as Map<String, dynamic>?) ??
+            BorderSide.none,
+        left: parseBorderSide(value['left'] as Map<String, dynamic>?) ??
+            BorderSide.none,
+      );
+    }
+    return null;
+  }
+
+  static List<BoxShadow>? _parseBoxShadowList(dynamic value) {
+    if (value == null) return null;
+    if (value is! List) return null;
+
+    return value
+        .whereType<Map<String, dynamic>>()
+        .map((shadow) => BoxShadow(
+              color: _parseColor(shadow['color']) ??
+                  const Color(0xFF000000),
+              blurRadius: _parseDouble(shadow['blurRadius']) ?? 0.0,
+              spreadRadius: _parseDouble(shadow['spreadRadius']) ?? 0.0,
+              offset: parseOffset(shadow['offset']) ?? Offset.zero,
+            ))
+        .toList();
   }
 
   static EdgeInsets? _parseEdgeInsets(dynamic value) {

@@ -139,8 +139,8 @@ class TomAlertDialog extends TomDialogBase {
       semanticLabel: semanticLabel,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,
-      shape: shape,
-      alignment: alignment,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
       scrollable: scrollable,
     );
   }
@@ -149,6 +149,18 @@ class TomAlertDialog extends TomDialogBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -226,8 +238,8 @@ class TomSimpleDialog extends TomDialogBase {
       semanticLabel: semanticLabel,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,
-      shape: shape,
-      alignment: alignment,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
       children: children,
     );
   }
@@ -236,6 +248,18 @@ class TomSimpleDialog extends TomDialogBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -287,10 +311,22 @@ class TomDialog extends TomDialogBase {
       surfaceTintColor: resolvedSurfaceTintColor,
       insetPadding: insetPadding,
       clipBehavior: clipBehavior,
-      shape: shape,
-      alignment: alignment,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
       child: child,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -343,14 +379,26 @@ class TomBottomSheet extends TomDialogBase {
       builder: builder,
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       clipBehavior: clipBehavior,
-      constraints: constraints,
+      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
       enableDrag: enableDrag,
       showDragHandle: showDragHandle,
       onDragStart: onDragStart,
       onDragEnd: onDragEnd,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 

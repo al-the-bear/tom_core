@@ -91,7 +91,7 @@ class TomDataTable extends TomTableBase {
       sortColumnIndex: sortColumnIndex,
       sortAscending: sortAscending,
       onSelectAll: onSelectAll,
-      decoration: decoration,
+      decoration: decoration ?? _resolveDecoration(context, 'decoration'),
       dataRowColor: dataRowColor,
       dataRowMinHeight: resolvedDataRowMinHeight,
       dataRowMaxHeight: resolvedDataRowMaxHeight,
@@ -115,6 +115,12 @@ class TomDataTable extends TomTableBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 }
 
@@ -257,10 +263,16 @@ class TomTable extends TomTableBase {
       columnWidths: columnWidths,
       defaultColumnWidth: defaultColumnWidth,
       textDirection: textDirection,
-      border: border,
+      border: border ?? _resolveTableBorder(context, 'border'),
       defaultVerticalAlignment: defaultVerticalAlignment,
       textBaseline: textBaseline,
     );
+  }
+
+  TableBorder? _resolveTableBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
 }
 

@@ -107,8 +107,8 @@ class TomFilterChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
       elevation: resolvedElevation,
@@ -126,6 +126,18 @@ class TomFilterChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 
@@ -215,8 +227,8 @@ class TomChoiceChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
       elevation: resolvedElevation,
@@ -230,6 +242,18 @@ class TomChoiceChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 
@@ -310,8 +334,8 @@ class TomActionChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
       elevation: resolvedElevation,
@@ -325,6 +349,18 @@ class TomActionChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 
@@ -445,8 +481,8 @@ class TomInputChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
       visualDensity: visualDensity,
       elevation: resolvedElevation,
@@ -459,6 +495,18 @@ class TomInputChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 
@@ -581,8 +629,8 @@ class TomRawChip extends TomChipBase {
       pressElevation: resolvedPressElevation,
       showCheckmark: showCheckmark,
       checkmarkColor: resolvedCheckmarkColor,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       clipBehavior: clipBehavior,
       selectedColor: resolvedSelectedColor,
       disabledColor: resolvedDisabledColor,
@@ -602,5 +650,17 @@ class TomRawChip extends TomChipBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }

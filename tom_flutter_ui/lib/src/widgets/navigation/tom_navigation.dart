@@ -62,12 +62,11 @@ class TomNavigationRail extends TomNavigationBase {
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  @override
-  Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
-    final resolvedElevation =
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
         elevation ?? resolveDoubleOrNull(context, 'elevation');
     final resolvedIndicatorColor =
         indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
@@ -83,6 +82,8 @@ class TomNavigationRail extends TomNavigationBase {
         selectedLabelTextStyle ?? _resolveTextStyle(context, 'selectedLabelTextStyle');
     final resolvedUnselectedLabelTextStyle =
         unselectedLabelTextStyle ?? _resolveTextStyle(context, 'unselectedLabelTextStyle');
+    final resolvedIndicatorShape =
+        indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape');
 
     return NavigationRail(
       selectedIndex: selectedIndex,
@@ -94,7 +95,7 @@ class TomNavigationRail extends TomNavigationBase {
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
       indicatorColor: resolvedIndicatorColor,
-      indicatorShape: indicatorShape,
+      indicatorShape: resolvedIndicatorShape,
       minWidth: resolvedMinWidth,
       minExtendedWidth: resolvedMinExtendedWidth,
       useIndicator: useIndicator,
@@ -279,6 +280,12 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     final resolvedUnselectedLabelStyle =
         unselectedLabelStyle ?? _resolveTextStyle(context, 'unselectedLabelStyle');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedIndicator =
+        indicator ?? _resolveDecoration(context, 'indicator');
+    final resolvedSplashBorderRadius =
+        splashBorderRadius ?? _resolveBorderRadius(context, 'splashBorderRadius');
+
     return TabBar(
       tabs: tabs,
       controller: controller,
@@ -287,7 +294,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
       indicatorColor: resolvedIndicatorColor,
       indicatorWeight: resolvedIndicatorWeight ?? 2.0,
       indicatorPadding: indicatorPadding ?? EdgeInsets.zero,
-      indicator: indicator,
+      indicator: resolvedIndicator,
       indicatorSize: indicatorSize,
       dividerColor: resolvedDividerColor,
       dividerHeight: resolvedDividerHeight,
@@ -301,10 +308,22 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
       automaticIndicatorColorAdjustment: automaticIndicatorColorAdjustment,
       physics: physics,
       splashFactory: splashFactory,
-      splashBorderRadius: splashBorderRadius,
+      splashBorderRadius: resolvedSplashBorderRadius,
       tabAlignment: tabAlignment,
       textScaler: textScaler,
     );
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -353,6 +372,10 @@ class TomNavigationDrawer extends TomNavigationBase {
     final resolvedIndicatorColor =
         indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedIndicatorShape =
+        indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape');
+
     return NavigationDrawer(
       selectedIndex: selectedIndex,
       onDestinationSelected: onDestinationSelected,
@@ -361,10 +384,16 @@ class TomNavigationDrawer extends TomNavigationBase {
       surfaceTintColor: resolvedSurfaceTintColor,
       elevation: resolvedElevation,
       indicatorColor: resolvedIndicatorColor,
-      indicatorShape: indicatorShape,
+      indicatorShape: resolvedIndicatorShape,
       tilePadding: tilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
       children: children,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -419,12 +448,18 @@ class TomDrawer extends TomNavigationBase {
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       elevation: resolvedElevation,
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       width: resolvedWidth,
       clipBehavior: clipBehavior,
       semanticLabel: resolvedLabel,
       child: child,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 

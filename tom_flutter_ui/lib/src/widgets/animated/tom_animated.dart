@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 // =============================================================================
 // Section II: Animated Widgets
@@ -11,7 +12,7 @@ import '../../widget_base/tom_family_base.dart';
 ///
 /// Animates alignment changes. Auth on animated content region.
 class TomAnimatedAlign extends TomAnimatedBase {
-  final AlignmentGeometry alignment;
+  final AlignmentGeometry? alignment;
   final Widget? child;
   final double? heightFactor;
   final double? widthFactor;
@@ -23,7 +24,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    required this.alignment,
+    this.alignment,
     this.child,
     this.heightFactor,
     this.widthFactor,
@@ -41,7 +42,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
         widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
 
     return AnimatedAlign(
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       child: child,
       heightFactor: resolvedHeightFactor,
       widthFactor: resolvedWidthFactor,
@@ -50,7 +51,11 @@ class TomAnimatedAlign extends TomAnimatedBase {
       onEnd: onEnd,
     );
   }
-}
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+  }}
 
 /// Tom wrapper for [AnimatedBuilder].
 ///
@@ -145,23 +150,41 @@ class TomAnimatedContainer extends TomAnimatedBase {
         height ?? resolveDoubleOrNull(context, 'height');
 
     return AnimatedContainer(
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
       padding: padding,
       color: resolvedColor,
-      decoration: decoration,
-      foregroundDecoration: foregroundDecoration,
-      constraints: constraints,
+      decoration: decoration ?? _resolveDecoration(context, 'decoration'),
+      foregroundDecoration: foregroundDecoration ?? _resolveDecoration(context, 'foregroundDecoration'),
+      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
       width: resolvedWidth,
       height: resolvedHeight,
       margin: margin,
       transform: transform,
-      transformAlignment: transformAlignment,
+      transformAlignment: transformAlignment ?? _resolveAlignment(context, 'transformAlignment'),
       clipBehavior: clipBehavior,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+  }
+
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 
@@ -177,7 +200,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   final Curve firstCurve;
   final Curve secondCurve;
   final Curve sizeCurve;
-  final AlignmentGeometry alignment;
+  final AlignmentGeometry? alignment;
   final AnimatedCrossFadeBuilder layoutBuilder;
   final bool? excludeBottomFocus;
 
@@ -193,7 +216,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     this.firstCurve = Curves.linear,
     this.secondCurve = Curves.linear,
     this.sizeCurve = Curves.linear,
-    this.alignment = Alignment.topCenter,
+    this.alignment,
     this.layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
     this.excludeBottomFocus,
   });
@@ -213,10 +236,16 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
       firstCurve: firstCurve,
       secondCurve: secondCurve,
       sizeCurve: sizeCurve,
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.topCenter,
       layoutBuilder: layoutBuilder,
       excludeBottomFocus: resolvedExcludeBottomFocus,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -281,7 +310,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
 ///
 /// Animates fractional sizing. Auth on sized content.
 class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
-  final AlignmentGeometry alignment;
+  final AlignmentGeometry? alignment;
   final double? widthFactor;
   final double? heightFactor;
   final Widget? child;
@@ -293,7 +322,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     super.key,
     super.tomId,
     super.tomGroup,
-    this.alignment = Alignment.center,
+    this.alignment,
     this.widthFactor,
     this.heightFactor,
     this.child,
@@ -311,7 +340,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
         heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
 
     return AnimatedFractionallySizedBox(
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       widthFactor: resolvedWidthFactor,
       heightFactor: resolvedHeightFactor,
       duration: duration,
@@ -319,6 +348,12 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -414,7 +449,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   final Widget child;
   final BoxShape shape;
   final Clip clipBehavior;
-  final BorderRadius borderRadius;
+  final BorderRadius? borderRadius;
   final double? elevation;
   final Color? color;
   final bool? animateColor;
@@ -431,7 +466,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     required this.child,
     required this.shape,
     this.clipBehavior = Clip.none,
-    this.borderRadius = BorderRadius.zero,
+    this.borderRadius,
     this.elevation,
     this.color,
     this.animateColor,
@@ -459,7 +494,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     return AnimatedPhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
-      borderRadius: borderRadius,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? BorderRadius.zero,
       elevation: resolvedElevation,
       color: resolvedColor,
       animateColor: resolvedAnimateColor,
@@ -470,6 +505,12 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
@@ -534,7 +575,7 @@ class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
 class TomAnimatedRotation extends TomAnimatedBase {
   final Widget? child;
   final double? turns;
-  final Alignment alignment;
+  final Alignment? alignment;
   final FilterQuality? filterQuality;
   final Duration duration;
   final Curve curve;
@@ -546,7 +587,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
     super.tomGroup,
     this.child,
     this.turns,
-    this.alignment = Alignment.center,
+    this.alignment,
     this.filterQuality,
     required this.duration,
     this.curve = Curves.linear,
@@ -561,13 +602,19 @@ class TomAnimatedRotation extends TomAnimatedBase {
 
     return AnimatedRotation(
       turns: resolvedTurns,
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       filterQuality: filterQuality,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  Alignment? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
 }
 
@@ -577,7 +624,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
 class TomAnimatedScale extends TomAnimatedBase {
   final Widget? child;
   final double? scale;
-  final Alignment alignment;
+  final Alignment? alignment;
   final FilterQuality? filterQuality;
   final Duration duration;
   final Curve curve;
@@ -589,7 +636,7 @@ class TomAnimatedScale extends TomAnimatedBase {
     super.tomGroup,
     this.child,
     this.scale,
-    this.alignment = Alignment.center,
+    this.alignment,
     this.filterQuality,
     required this.duration,
     this.curve = Curves.linear,
@@ -604,13 +651,19 @@ class TomAnimatedScale extends TomAnimatedBase {
 
     return AnimatedScale(
       scale: resolvedScale,
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       filterQuality: filterQuality,
       duration: duration,
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  Alignment? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
 }
 
@@ -619,7 +672,7 @@ class TomAnimatedScale extends TomAnimatedBase {
 /// Animates size changes. Auth on resizing content.
 class TomAnimatedSize extends TomAnimatedBase {
   final Widget? child;
-  final AlignmentGeometry alignment;
+  final AlignmentGeometry? alignment;
   final Duration duration;
   final Duration? reverseDuration;
   final Curve curve;
@@ -631,7 +684,7 @@ class TomAnimatedSize extends TomAnimatedBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    this.alignment = Alignment.center,
+    this.alignment,
     required this.duration,
     this.reverseDuration,
     this.curve = Curves.linear,
@@ -642,7 +695,7 @@ class TomAnimatedSize extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     return AnimatedSize(
-      alignment: alignment,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       duration: duration,
       reverseDuration: reverseDuration,
       curve: curve,
@@ -650,6 +703,12 @@ class TomAnimatedSize extends TomAnimatedBase {
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 

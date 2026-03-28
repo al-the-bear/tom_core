@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Switch].
 ///
@@ -156,12 +157,24 @@ class TomCheckbox extends TomToggleBase {
       overlayColor: overlayColor,
       splashRadius: resolvedSplashRadius,
       visualDensity: visualDensity,
-      shape: shape,
-      side: side,
+      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide(context, 'side'),
       isError: isError,
       focusNode: focusNode,
       autofocus: autofocus,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 
@@ -326,13 +339,19 @@ class TomSwitchListTile extends TomToggleBase {
       autofocus: autofocus,
       focusNode: focusNode,
       controlAffinity: controlAffinity,
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       tileColor: resolvedTileColor,
       selectedTileColor: resolvedSelectedTileColor,
       visualDensity: visualDensity,
       enableFeedback: enableFeedback,
       hoverColor: resolvedHoverColor,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 

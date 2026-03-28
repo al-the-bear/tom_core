@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [CircularProgressIndicator].
 ///
@@ -70,7 +71,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
   final double? minHeight;
   final String? semanticsLabel;
   final String? semanticsValue;
-  final BorderRadiusGeometry borderRadius;
+  final BorderRadiusGeometry? borderRadius;
 
   const TomLinearProgressIndicator({
     super.key,
@@ -83,7 +84,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
     this.minHeight,
     this.semanticsLabel,
     this.semanticsValue,
-    this.borderRadius = BorderRadius.zero,
+    this.borderRadius,
   });
 
   @override
@@ -106,8 +107,14 @@ class TomLinearProgressIndicator extends TomProgressBase {
       minHeight: resolvedMinHeight,
       semanticsLabel: resolvedLabel,
       semanticsValue: semanticsValue,
-      borderRadius: borderRadius,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? BorderRadius.zero,
     );
+  }
+
+  BorderRadiusGeometry? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 

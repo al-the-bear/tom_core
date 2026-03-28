@@ -503,10 +503,16 @@ class TomSearchBar extends TomInputBase {
       padding: padding,
       textStyle: textStyle,
       hintStyle: hintStyle,
-      constraints: constraints,
+      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
       autoFocus: autoFocus,
       textCapitalization: textCapitalization,
     );
+  }
+
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 }
 

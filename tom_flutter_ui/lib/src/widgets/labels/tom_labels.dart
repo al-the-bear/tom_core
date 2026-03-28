@@ -315,8 +315,8 @@ class TomBadge extends TomLabelBase {
       textColor: resolvedTextColor,
       textStyle: resolvedTextStyle,
       padding: resolvedPadding,
-      alignment: alignment,
-      offset: offset,
+      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
+      offset: offset ?? _resolveOffset(context, 'offset'),
       isLabelVisible: isLabelVisible,
       smallSize: resolvedSmallSize,
       largeSize: resolvedLargeSize,
@@ -328,6 +328,18 @@ class TomBadge extends TomLabelBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+  }
+
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 

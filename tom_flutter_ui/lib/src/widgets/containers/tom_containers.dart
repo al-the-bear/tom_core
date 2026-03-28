@@ -51,18 +51,27 @@ class TomCard extends TomContainerBase {
         elevation ?? resolveDoubleOrNull(context, 'elevation');
     final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+
     return Card(
       color: resolvedColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       elevation: resolvedElevation,
-      shape: shape,
+      shape: resolvedShape,
       borderOnForeground: borderOnForeground,
       margin: resolvedMargin,
       clipBehavior: clipBehavior,
       semanticContainer: semanticContainer,
       child: child,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -150,6 +159,11 @@ class TomExpansionTile extends TomContainerBase {
     final resolvedTilePadding =
         tilePadding ?? resolveEdgeInsetsOrNull(context, 'tilePadding');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+    final resolvedCollapsedShape =
+        collapsedShape ?? _resolveShapeBorder(context, 'collapsedShape');
+
     return ExpansionTile(
       title: titleWidget,
       subtitle: subtitle,
@@ -167,8 +181,8 @@ class TomExpansionTile extends TomContainerBase {
       collapsedTextColor: resolvedCollapsedTextColor,
       iconColor: resolvedIconColor,
       collapsedIconColor: resolvedCollapsedIconColor,
-      shape: shape,
-      collapsedShape: collapsedShape,
+      shape: resolvedShape,
+      collapsedShape: resolvedCollapsedShape,
       clipBehavior: clipBehavior,
       controlAffinity: controlAffinity,
       onExpansionChanged: onExpansionChanged,
@@ -176,6 +190,12 @@ class TomExpansionTile extends TomContainerBase {
       showTrailingIcon: showTrailingIcon,
       children: children,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -386,6 +406,7 @@ class TomAppBar extends StatelessWidget
         toolbarTextStyle ?? _resolveTextStyle(context, 'toolbarTextStyle');
     final resolvedTitleTextStyle =
         titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
 
     return AppBar(
       leading: leading,
@@ -415,7 +436,7 @@ class TomAppBar extends StatelessWidget
       systemOverlayStyle: systemOverlayStyle,
       forceMaterialTransparency: forceMaterialTransparency,
       clipBehavior: clipBehavior,
-      shape: shape,
+      shape: resolvedShape,
       notificationPredicate: notificationPredicate,
     );
   }
@@ -424,6 +445,12 @@ class TomAppBar extends StatelessWidget
     final basePath = resolveFullPath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveFullPath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -576,21 +603,51 @@ class TomContainer extends TomContainerBase {
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
     final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedDecoration =
+        decoration ?? _resolveDecoration(context, 'decoration');
+    final resolvedForegroundDecoration = foregroundDecoration ??
+        _resolveDecoration(context, 'foregroundDecoration');
+    final resolvedConstraints =
+        constraints ?? _resolveBoxConstraints(context, 'constraints');
+    final resolvedAlignment =
+        alignment ?? _resolveAlignment(context, 'alignment');
+    final resolvedTransformAlignment =
+        transformAlignment ?? _resolveAlignment(context, 'transformAlignment');
+
     return Container(
-      alignment: alignment,
+      alignment: resolvedAlignment,
       padding: resolvedPadding,
-      color: resolvedColor,
-      decoration: decoration,
-      foregroundDecoration: foregroundDecoration,
-      constraints: constraints,
+      color: resolvedDecoration != null ? null : resolvedColor,
+      decoration: resolvedDecoration,
+      foregroundDecoration: resolvedForegroundDecoration,
+      constraints: resolvedConstraints,
       margin: resolvedMargin,
       transform: transform,
-      transformAlignment: transformAlignment,
+      transformAlignment: resolvedTransformAlignment,
       clipBehavior: clipBehavior,
       width: resolvedWidth,
       height: resolvedHeight,
       child: child,
     );
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+  }
+
+  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -1099,6 +1156,9 @@ class TomMaterial extends TomContainerBase {
     // Phase 3: Resolve complex objects from resources
     final resolvedTextStyle =
         textStyle ?? _resolveTextStyle(context, 'textStyle');
+    final resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius(context, 'borderRadius');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
 
     return Material(
       type: type,
@@ -1107,8 +1167,8 @@ class TomMaterial extends TomContainerBase {
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       textStyle: resolvedTextStyle,
-      borderRadius: borderRadius,
-      shape: shape,
+      borderRadius: resolvedBorderRadius,
+      shape: resolvedShape,
       borderOnForeground: borderOnForeground,
       clipBehavior: clipBehavior,
       animationDuration: animationDuration,
@@ -1120,6 +1180,19 @@ class TomMaterial extends TomContainerBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  BorderRadiusGeometry? _resolveBorderRadius(
+      BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -1685,14 +1758,24 @@ class TomInk extends TomContainerBase {
     final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
     final resolvedHeight = height ?? resolveDoubleOrNull(context, 'height');
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedDecoration =
+        decoration ?? _resolveDecoration(context, 'decoration');
+
     return Ink(
       padding: resolvedPadding,
-      color: resolvedColor,
-      decoration: decoration,
+      color: resolvedDecoration != null ? null : resolvedColor,
+      decoration: resolvedDecoration,
       width: resolvedWidth,
       height: resolvedHeight,
       child: child,
     );
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 }
 
@@ -2021,7 +2104,7 @@ class TomCarouselView extends TomContainerBase {
       padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
       backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
       elevation: elevation ?? resolveDoubleOrNull(context, 'elevation'),
-      shape: shape,
+      shape: shape ?? _resolveShapeBorder(context, 'shape'),
       itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 200.0,
       shrinkExtent: shrinkExtent ?? resolveDoubleOrNull(context, 'shrinkExtent') ?? 0.0,
       controller: controller,
@@ -2030,6 +2113,12 @@ class TomCarouselView extends TomContainerBase {
       onTap: onTap,
       children: children,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -3131,15 +3220,25 @@ class TomPhysicalModel extends TomContainerBase {
     final resolvedShadowColor =
         shadowColor ?? resolveColorOrNull(context, 'shadowColor') ?? const Color(0xFF000000);
 
+    // Phase 3: Resolve complex objects from resources
+    final resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius(context, 'borderRadius');
+
     return PhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
-      borderRadius: borderRadius,
+      borderRadius: resolvedBorderRadius,
       elevation: resolvedElevation,
       color: resolvedColor,
       shadowColor: resolvedShadowColor,
       child: child,
     );
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 }
 
