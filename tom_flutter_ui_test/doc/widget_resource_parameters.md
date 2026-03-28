@@ -1452,15 +1452,15 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomImageFiltered
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| enabled | bool? | resolveBoolOrNull | ⬜ |
+| enabled | bool? | resolveBoolOrNull | ✅ |
 
 ---
 
@@ -1473,56 +1473,56 @@ No resource-loadable parameters.
 | decoration | InputDecoration? | resolveInputDecoration | ✅ |
 | style | TextStyle? | resolveTextStyle | ✅ |
 | strutStyle | StrutStyle? | resolveStrutStyle | ✅ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| obscureText | bool | resolveBoolOrNull | ⬜ |
-| autocorrect | bool | resolveBoolOrNull | ⬜ |
-| enableSuggestions | bool | resolveBoolOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| minLines | int? | resolveIntOrNull | ⬜ |
-| expands | bool | resolveBoolOrNull | ⬜ |
-| maxLength | int? | resolveIntOrNull | ⬜ |
-| enabled | bool | resolveBoolOrNull | ⬜ |
-| readOnly | bool | resolveBoolOrNull | ⬜ |
-| showCursor | bool? | resolveBoolOrNull | ⬜ |
-| obscuringCharacter | String? | resolveResourceOrNull | ⬜ |
-| cursorWidth | double? | resolveDoubleOrNull | ⬜ |
-| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
-| cursorColor | Color? | resolveColorOrNull | ⬜ |
-| cursorErrorColor | Color? | resolveColorOrNull | ⬜ |
-| scrollPadding | EdgeInsets | resolveEdgeInsetsOrNull | ⬜ |
-| enableInteractiveSelection | bool? | resolveBoolOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
-| scribbleEnabled | bool | resolveBoolOrNull | ⬜ |
-| enableIMEPersonalizedLearning | bool | resolveBoolOrNull | ⬜ |
-| canRequestFocus | bool | resolveBoolOrNull | ⬜ |
-| label | String? | resolveResourceOrNull | ⬜ |
-| hint | String? | resolveResourceOrNull | ⬜ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| obscureText | bool | resolveBoolOrNull | ✅ |
+| autocorrect | bool | resolveBoolOrNull | ✅ |
+| enableSuggestions | bool | resolveBoolOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| minLines | int? | resolveIntOrNull | ✅ |
+| expands | bool | resolveBoolOrNull | ✅ |
+| maxLength | int? | resolveIntOrNull | ✅ |
+| enabled | bool | resolveBoolOrNull | ✅ |
+| readOnly | bool | resolveBoolOrNull | ✅ |
+| showCursor | bool? | resolveBoolOrNull | ✅ |
+| obscuringCharacter | String? | resolveResourceOrNull | ✅ |
+| cursorWidth | double? | resolveDoubleOrNull | ✅ |
+| cursorHeight | double? | resolveDoubleOrNull | ✅ |
+| cursorColor | Color? | resolveColorOrNull | ✅ |
+| cursorErrorColor | Color? | resolveColorOrNull | ✅ |
+| scrollPadding | EdgeInsets | resolveEdgeInsetsOrNull | ✅ |
+| enableInteractiveSelection | bool? | resolveBoolOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
+| scribbleEnabled | bool | resolveBoolOrNull | ✅ |
+| enableIMEPersonalizedLearning | bool | resolveBoolOrNull | ✅ |
+| canRequestFocus | bool | resolveBoolOrNull | ✅ |
+| label | String? | resolveResourceOrNull | ✅ |
+| hint | String? | resolveResourceOrNull | ✅ |
 
 #### TomTextFormField
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| decoration | InputDecoration? | resolveInputDecoration | ⬜ |
-| style | TextStyle? | resolveTextStyle | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| obscureText | bool | resolveBoolOrNull | ⬜ |
-| autocorrect | bool | resolveBoolOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| minLines | int? | resolveIntOrNull | ⬜ |
-| maxLength | int? | resolveIntOrNull | ⬜ |
-| initialValue | String? | resolveResourceOrNull | ⬜ |
-| enabled | bool | resolveBoolOrNull | ⬜ |
-| readOnly | bool | resolveBoolOrNull | ⬜ |
-| label | String? | resolveResourceOrNull | ⬜ |
-| hint | String? | resolveResourceOrNull | ⬜ |
+| decoration | InputDecoration? | resolveInputDecoration | ✅ |
+| style | TextStyle? | resolveTextStyle | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| obscureText | bool | resolveBoolOrNull | ✅ |
+| autocorrect | bool | resolveBoolOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| minLines | int? | resolveIntOrNull | ✅ |
+| maxLength | int? | resolveIntOrNull | ✅ |
+| initialValue | String? | resolveResourceOrNull | ✅ |
+| enabled | bool | resolveBoolOrNull | ✅ |
+| readOnly | bool | resolveBoolOrNull | ✅ |
+| label | String? | resolveResourceOrNull | ✅ |
+| hint | String? | resolveResourceOrNull | ✅ |
 
 #### TomSearchBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| hintText | String? | resolveResourceOrNull | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
-| autoFocus | bool | resolveBoolOrNull | ⬜ |
+| hintText | String? | resolveResourceOrNull | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
+| autoFocus | bool | resolveBoolOrNull | ✅ |
 
 > **Note:** TomSearchBar uses `WidgetStateProperty<X>` for elevation, backgroundColor, surfaceTintColor, textStyle, etc. These are state-dependent wrappers and cannot be directly resource-resolved with current resolvers.
 
@@ -2705,8 +2705,8 @@ No resource-loadable parameters.
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
-| Images | 11 | 56 | 52 | 0 | 4 |
-| Inputs | 16 | 88 | 3 | 0 | 85 |
+| Images | 11 | 56 | 56 | 0 | 0 |
+| Inputs | 16 | 88 | 43 | 0 | 45 |
 | Interactions | 10 | 38 | 11 | 0 | 27 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **524** | **30** | **577** |
+| **Total** | **291** | **1131** | **568** | **30** | **533** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
