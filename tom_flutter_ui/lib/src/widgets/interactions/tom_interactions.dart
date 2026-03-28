@@ -431,8 +431,8 @@ class TomInkResponse extends TomInteractionBase {
       containedInkWell: resolvedContainedInkWell,
       highlightShape: highlightShape,
       radius: resolvedRadius,
-      borderRadius: borderRadius,
-      customBorder: customBorder,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
+      customBorder: customBorder ?? _resolveShapeBorder(context, 'customBorder'),
       focusColor: resolvedFocusColor,
       hoverColor: resolvedHoverColor,
       highlightColor: resolvedHighlightColor,
@@ -449,6 +449,18 @@ class TomInkResponse extends TomInteractionBase {
       hoverDuration: hoverDuration,
       child: child,
     );
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -517,7 +529,7 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
       data: data,
       axis: axis,
       childWhenDragging: childWhenDragging,
-      feedbackOffset: feedbackOffset,
+      feedbackOffset: _resolveOffset(context, 'feedbackOffset') ?? feedbackOffset,
       dragAnchorStrategy: dragAnchorStrategy,
       affinity: affinity,
       maxSimultaneousDrags: resolvedMaxSimultaneousDrags,
@@ -533,6 +545,12 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
       feedback: feedback,
       child: child,
     );
+  }
+
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
