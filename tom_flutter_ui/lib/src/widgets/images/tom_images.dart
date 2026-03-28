@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../resource_auth/tom_icons.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Icon].
 ///
@@ -165,6 +166,14 @@ class TomImage extends TomImageBase {
         height ?? resolveDoubleOrNull(context, 'height');
     final resolvedColor =
         color ?? resolveColorOrNull(context, 'color');
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+    final resolvedMatchTextDirection =
+        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+    final resolvedGaplessPlayback =
+        resolveBoolOrNull(context, 'gaplessPlayback') ?? gaplessPlayback;
+    final resolvedIsAntiAlias =
+        resolveBoolOrNull(context, 'isAntiAlias') ?? isAntiAlias;
 
     return Image(
       image: imageProvider,
@@ -173,15 +182,21 @@ class TomImage extends TomImageBase {
       color: resolvedColor,
       colorBlendMode: colorBlendMode,
       fit: fit,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       repeat: repeat,
       centerSlice: centerSlice,
-      matchTextDirection: matchTextDirection,
-      gaplessPlayback: gaplessPlayback,
-      isAntiAlias: isAntiAlias,
+      matchTextDirection: resolvedMatchTextDirection,
+      gaplessPlayback: resolvedGaplessPlayback,
+      isAntiAlias: resolvedIsAntiAlias,
       filterQuality: filterQuality,
       semanticLabel: resolvedSemanticLabel,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
@@ -308,6 +323,12 @@ class TomFadeInImage extends TomImageBase {
         height ?? resolveDoubleOrNull(context, 'height');
     final resolvedPlaceholderColor =
         placeholderColor ?? resolveColorOrNull(context, 'placeholderColor');
+    final resolvedAlignment =
+        _resolveAlignment(context, 'alignment') ?? alignment;
+    final resolvedMatchTextDirection =
+        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+    final resolvedExcludeFromSemantics =
+        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
 
     return FadeInImage(
       placeholder: placeholder,
@@ -320,16 +341,22 @@ class TomFadeInImage extends TomImageBase {
       height: resolvedHeight,
       fit: fit,
       placeholderFit: placeholderFit,
-      alignment: alignment,
+      alignment: resolvedAlignment,
       repeat: repeat,
-      matchTextDirection: matchTextDirection,
-      excludeFromSemantics: excludeFromSemantics,
+      matchTextDirection: resolvedMatchTextDirection,
+      excludeFromSemantics: resolvedExcludeFromSemantics,
       imageSemanticLabel: resolvedSemanticLabel,
       placeholderColor: resolvedPlaceholderColor,
       placeholderColorBlendMode: placeholderColorBlendMode,
       placeholderErrorBuilder: placeholderErrorBuilder,
       imageErrorBuilder: imageErrorBuilder,
     );
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 

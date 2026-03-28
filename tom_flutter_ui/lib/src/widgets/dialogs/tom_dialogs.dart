@@ -631,6 +631,8 @@ class TomTooltip extends TomDialogBase {
     // Phase 3: Resolve TextStyle from resources
     final resolvedTextStyle =
         textStyle ?? _resolveTextStyle(context, 'textStyle');
+    final resolvedDecoration =
+        decoration ?? _resolveDecoration(context, 'decoration');
 
     return Tooltip(
       message: resolvedMessage,
@@ -641,7 +643,7 @@ class TomTooltip extends TomDialogBase {
       verticalOffset: resolvedVerticalOffset,
       preferBelow: preferBelow,
       excludeFromSemantics: excludeFromSemantics,
-      decoration: decoration,
+      decoration: resolvedDecoration,
       textStyle: resolvedTextStyle,
       textAlign: textAlign,
       waitDuration: waitDuration,
@@ -659,6 +661,12 @@ class TomTooltip extends TomDialogBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+  }
+
+  Decoration? _resolveDecoration(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 }
 
