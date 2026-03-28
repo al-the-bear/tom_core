@@ -65,46 +65,46 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| heightFactor | double? | resolveDoubleOrNull | ⬜ |
-| widthFactor | double? | resolveDoubleOrNull | ⬜ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| heightFactor | double? | resolveDoubleOrNull | ✅ |
+| widthFactor | double? | resolveDoubleOrNull | ✅ |
 
 #### TomAnimatedContainer
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| decoration | Decoration? | resolveDecoration | ⬜ |
-| foregroundDecoration | Decoration? | resolveDecoration | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| transformAlignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| decoration | Decoration? | resolveDecoration | ✅ |
+| foregroundDecoration | Decoration? | resolveDecoration | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| transformAlignment | AlignmentGeometry? | resolveAlignment | ✅ |
 
 #### TomAnimatedDefaultTextStyle
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| style | TextStyle | resolveTextStyle | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| softWrap | bool | resolveBoolOrNull | ⬜ |
+| style | TextStyle | resolveTextStyle | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| softWrap | bool | resolveBoolOrNull | ✅ |
 
 #### TomAnimatedFractionallySizedBox
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| widthFactor | double? | resolveDoubleOrNull | ⬜ |
-| heightFactor | double? | resolveDoubleOrNull | ⬜ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| widthFactor | double? | resolveDoubleOrNull | ✅ |
+| heightFactor | double? | resolveDoubleOrNull | ✅ |
 
 #### TomAnimatedOpacity
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| opacity | double | resolveDoubleOrNull | ⬜ |
+| opacity | double | resolveDoubleOrNull | ✅ |
 
 #### TomAnimatedPadding
 
@@ -2685,7 +2685,7 @@ No resource-loadable parameters.
 
 | Category | Widgets | Total Params | ✅ Resolved | ⬜ Remaining |
 |----------|---------|-------------|-------------|--------------|
-| Animated Widgets | 20 | 46 | 0 | 46 |
+| Animated Widgets | 20 | 46 | 20 | 26 |
 | Builder Widgets | 8 | 0 | 0 | 0 |
 | Buttons | 23 | 71 | 4 | 67 |
 | Chips | 5 | 83 | 17 | 66 |
@@ -2706,7 +2706,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 45 |
 | Toggles | 8 | 71 | 1 | 70 |
 | Trees | 3 | 8 | 4 | 4 |
-| **Total** | **291** | **1132** | **98** | **1034** |
+| **Total** | **291** | **1132** | **118** | **1014** |
 
 ---
 

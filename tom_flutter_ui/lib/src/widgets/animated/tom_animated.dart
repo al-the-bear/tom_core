@@ -148,17 +148,21 @@ class TomAnimatedContainer extends TomAnimatedBase {
         width ?? resolveDoubleOrNull(context, 'width');
     final resolvedHeight =
         height ?? resolveDoubleOrNull(context, 'height');
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedMargin =
+        margin ?? resolveEdgeInsetsOrNull(context, 'margin');
 
     return AnimatedContainer(
       alignment: alignment ?? _resolveAlignment(context, 'alignment'),
-      padding: padding,
+      padding: resolvedPadding,
       color: resolvedColor,
       decoration: decoration ?? _resolveDecoration(context, 'decoration'),
       foregroundDecoration: foregroundDecoration ?? _resolveDecoration(context, 'foregroundDecoration'),
       constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
       width: resolvedWidth,
       height: resolvedHeight,
-      margin: margin,
+      margin: resolvedMargin,
       transform: transform,
       transformAlignment: transformAlignment ?? _resolveAlignment(context, 'transformAlignment'),
       clipBehavior: clipBehavior,
@@ -285,13 +289,14 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedStyle = _resolveTextStyle(context, 'style');
     final resolvedSoftWrap =
         softWrap ?? resolveBoolOrNull(context, 'softWrap') ?? true;
     final resolvedMaxLines =
         maxLines ?? resolveIntOrNull(context, 'maxLines');
 
     return AnimatedDefaultTextStyle(
-      style: style,
+      style: resolvedStyle ?? style,
       textAlign: textAlign,
       softWrap: resolvedSoftWrap,
       overflow: overflow,
@@ -303,6 +308,12 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
       onEnd: onEnd,
       child: child,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 }
 
