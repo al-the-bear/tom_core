@@ -2428,14 +2428,14 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomSliverPersistentHeader
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| pinned | bool? | resolveBoolOrNull | ⬜ |
-| floating | bool? | resolveBoolOrNull | ⬜ |
+| pinned | bool? | resolveBoolOrNull | ✅ |
+| floating | bool? | resolveBoolOrNull | ✅ |
 
 #### TomSliverResizingHeader
 
@@ -2447,20 +2447,20 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| left | bool? | resolveBoolOrNull | ⬜ |
-| top | bool? | resolveBoolOrNull | ⬜ |
-| right | bool? | resolveBoolOrNull | ⬜ |
-| bottom | bool? | resolveBoolOrNull | ⬜ |
-| minimum | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
+| left | bool? | resolveBoolOrNull | ✅ |
+| top | bool? | resolveBoolOrNull | ✅ |
+| right | bool? | resolveBoolOrNull | ✅ |
+| bottom | bool? | resolveBoolOrNull | ✅ |
+| minimum | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomSliverVisibility
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| visible | bool | resolveBoolOrNull | ⬜ |
-| maintainSize | bool | resolveBoolOrNull | ⬜ |
-| maintainAnimation | bool | resolveBoolOrNull | ⬜ |
-| maintainState | bool | resolveBoolOrNull | ⬜ |
+| visible | bool | resolveBoolOrNull | ✅ |
+| maintainSize | bool | resolveBoolOrNull | ✅ |
+| maintainAnimation | bool | resolveBoolOrNull | ✅ |
+| maintainState | bool | resolveBoolOrNull | ✅ |
 
 #### TomPinnedHeaderSliver, TomSliverCrossAxisGroup, TomSliverFloatingHeader, TomSliverMainAxisGroup, TomSliverPrototypeExtentList, TomSliverVariedExtentList
 
@@ -2474,20 +2474,20 @@ No resource-loadable parameters beyond inherited `tomId`/`tomGroup`.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| sortAscending | bool | resolveBoolOrNull | ⬜ |
-| sortColumnIndex | int? | resolveIntOrNull | ⬜ |
-| decoration | Decoration? | resolveDecoration | ⬜ |
-| dataRowMinHeight | double? | resolveDoubleOrNull | ⬜ |
-| dataRowMaxHeight | double? | resolveDoubleOrNull | ⬜ |
-| dataTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| headingRowHeight | double? | resolveDoubleOrNull | ⬜ |
-| headingTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| horizontalMargin | double? | resolveDoubleOrNull | ⬜ |
-| columnSpacing | double? | resolveDoubleOrNull | ⬜ |
-| showCheckboxColumn | bool | resolveBoolOrNull | ⬜ |
-| showBottomBorder | bool | resolveBoolOrNull | ⬜ |
-| dividerThickness | double? | resolveDoubleOrNull | ⬜ |
-| checkboxHorizontalMargin | double? | resolveDoubleOrNull | ⬜ |
+| sortAscending | bool | resolveBoolOrNull | ✅ |
+| sortColumnIndex | int? | resolveIntOrNull | ✅ |
+| decoration | Decoration? | resolveDecoration | ✅ |
+| dataRowMinHeight | double? | resolveDoubleOrNull | ✅ |
+| dataRowMaxHeight | double? | resolveDoubleOrNull | ✅ |
+| dataTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| headingRowHeight | double? | resolveDoubleOrNull | ✅ |
+| headingTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| horizontalMargin | double? | resolveDoubleOrNull | ✅ |
+| columnSpacing | double? | resolveDoubleOrNull | ✅ |
+| showCheckboxColumn | bool | resolveBoolOrNull | ✅ |
+| showBottomBorder | bool | resolveBoolOrNull | ✅ |
+| dividerThickness | double? | resolveDoubleOrNull | ✅ |
+| checkboxHorizontalMargin | double? | resolveDoubleOrNull | ✅ |
 | border | TableBorder? | resolveTableBorder | ✅ |
 
 #### TomPaginatedDataTable
@@ -2714,11 +2714,11 @@ No resource-loadable parameters.
 | Progress | 6 | 30 | 30 | 0 | 0 |
 | Selects | 12 | 74 | 74 | 0 | 0 |
 | Sliders | 3 | 18 | 18 | 0 | 0 |
-| Slivers | 13 | 21 | 9 | 0 | 12 |
-| Tables | 6 | 46 | 1 | 0 | 45 |
+| Slivers | 13 | 21 | 21 | 0 | 0 |
+| Tables | 6 | 46 | 15 | 0 | 31 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **970** | **30** | **131** |
+| **Total** | **291** | **1131** | **996** | **30** | **105** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

@@ -65,6 +65,10 @@ class TomDataTable extends TomTableBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedSortColumnIndex =
+      sortColumnIndex ?? resolveIntOrNull(context, 'sortColumnIndex');
+    final resolvedSortAscending =
+      resolveBoolOrNull(context, 'sortAscending') ?? sortAscending;
     final resolvedDataRowMinHeight =
         dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight');
     final resolvedDataRowMaxHeight =
@@ -79,6 +83,10 @@ class TomDataTable extends TomTableBase {
         dividerThickness ?? resolveDoubleOrNull(context, 'dividerThickness');
     final resolvedCheckboxHorizontalMargin =
         checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+    final resolvedShowCheckboxColumn =
+      resolveBoolOrNull(context, 'showCheckboxColumn') ?? showCheckboxColumn;
+    final resolvedShowBottomBorder =
+      resolveBoolOrNull(context, 'showBottomBorder') ?? showBottomBorder;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedDataTextStyle =
@@ -88,8 +96,8 @@ class TomDataTable extends TomTableBase {
 
     return DataTable(
       columns: columns,
-      sortColumnIndex: sortColumnIndex,
-      sortAscending: sortAscending,
+      sortColumnIndex: resolvedSortColumnIndex,
+      sortAscending: resolvedSortAscending,
       onSelectAll: onSelectAll,
       decoration: decoration ?? _resolveDecoration(context, 'decoration'),
       dataRowColor: dataRowColor,
@@ -101,8 +109,8 @@ class TomDataTable extends TomTableBase {
       headingTextStyle: resolvedHeadingTextStyle,
       horizontalMargin: resolvedHorizontalMargin,
       columnSpacing: resolvedColumnSpacing,
-      showCheckboxColumn: showCheckboxColumn,
-      showBottomBorder: showBottomBorder,
+      showCheckboxColumn: resolvedShowCheckboxColumn,
+      showBottomBorder: resolvedShowBottomBorder,
       dividerThickness: resolvedDividerThickness,
       checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
       border: border ?? _resolveTableBorder(context, 'border'),
