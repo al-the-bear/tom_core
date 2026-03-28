@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_style_resolvers.dart';
 
 // =============================================================================
 // Section II: Interaction Widgets
@@ -118,6 +119,8 @@ class TomGestureDetector extends TomInteractionBase {
       resolveBoolOrNull(context, 'excludeFromSemantics') ?? false;
     final resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ??
       resolveBoolOrNull(context, 'trackpadScrollCausesScale') ?? false;
+    final resolvedTrackpadScrollToScaleFactor =
+      _resolveOffset(context, 'trackpadScrollToScaleFactor') ?? trackpadScrollToScaleFactor;
 
     return GestureDetector(
       onTap: onTap,
@@ -164,9 +167,15 @@ class TomGestureDetector extends TomInteractionBase {
       dragStartBehavior: dragStartBehavior,
       supportedDevices: supportedDevices,
       trackpadScrollCausesScale: resolvedTrackpadScrollCausesScale,
-      trackpadScrollToScaleFactor: trackpadScrollToScaleFactor,
+      trackpadScrollToScaleFactor: resolvedTrackpadScrollToScaleFactor,
       child: child,
     );
+  }
+
+  Offset? _resolveOffset(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
 }
 
@@ -256,6 +265,18 @@ class TomInkWell extends TomInteractionBase {
         splashColor ?? resolveColorOrNull(context, 'splashColor');
     final resolvedRadius =
         radius ?? resolveDoubleOrNull(context, 'radius');
+    final resolvedBorderRadius =
+        borderRadius ?? _resolveBorderRadius(context, 'borderRadius');
+    final resolvedCustomBorder =
+        customBorder ?? _resolveShapeBorder(context, 'customBorder');
+    final resolvedEnableFeedback =
+        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback') ?? true;
+    final resolvedExcludeFromSemantics =
+        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
+    final resolvedCanRequestFocus =
+        resolveBoolOrNull(context, 'canRequestFocus') ?? canRequestFocus;
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
 
     return InkWell(
       onTap: onTap,
@@ -278,18 +299,30 @@ class TomInkWell extends TomInteractionBase {
       splashColor: resolvedSplashColor,
       splashFactory: splashFactory,
       radius: resolvedRadius,
-      borderRadius: borderRadius,
-      customBorder: customBorder,
-      enableFeedback: enableFeedback ?? true,
-      excludeFromSemantics: excludeFromSemantics,
+      borderRadius: resolvedBorderRadius,
+      customBorder: resolvedCustomBorder,
+      enableFeedback: resolvedEnableFeedback,
+      excludeFromSemantics: resolvedExcludeFromSemantics,
       focusNode: focusNode,
-      canRequestFocus: canRequestFocus,
+      canRequestFocus: resolvedCanRequestFocus,
       onFocusChange: onFocusChange,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       statesController: statesController,
       hoverDuration: hoverDuration,
       child: child,
     );
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
