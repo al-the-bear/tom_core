@@ -2101,7 +2101,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomPageView
 
@@ -2111,10 +2111,10 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| connectorThickness | double? | resolveDoubleOrNull | ⬜ |
-| connectorColor | Color? | resolveColorOrNull | ⬜ |
+| physics | ScrollPhysics? | resolveScrollPhysics | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| connectorThickness | double? | resolveDoubleOrNull | ✅ |
+| connectorColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomTab
 
@@ -2124,21 +2124,21 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| viewportFraction | double? | resolveDoubleOrNull | ⬜ |
+| viewportFraction | double? | resolveDoubleOrNull | ✅ |
 
 #### TomTabPageSelector
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| indicatorSize | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
+| indicatorSize | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomUserAccountsDrawerHeader
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| arrowColor | Color? | resolveColorOrNull | ⬜ |
+| arrowColor | Color? | resolveColorOrNull | ✅ |
 
 ---
 
@@ -2710,7 +2710,7 @@ No resource-loadable parameters.
 | Interactions | 10 | 38 | 38 | 0 | 0 |
 | Labels | 15 | 79 | 79 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
-| Navigation | 21 | 81 | 71 | 0 | 10 |
+| Navigation | 21 | 81 | 81 | 0 | 0 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **834** | **30** | **267** |
+| **Total** | **291** | **1131** | **844** | **30** | **257** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

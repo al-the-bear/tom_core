@@ -661,6 +661,8 @@ class TomStepper extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedPhysics =
+      physics ?? _resolveScrollPhysics(context, 'physics');
     final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
     final resolvedConnectorThickness =
@@ -672,7 +674,7 @@ class TomStepper extends TomNavigationBase {
       steps: steps,
       currentStep: currentStep,
       type: type,
-      physics: physics,
+      physics: resolvedPhysics,
       onStepContinue: onStepContinue,
       onStepCancel: onStepCancel,
       controlsBuilder: controlsBuilder,
@@ -681,6 +683,12 @@ class TomStepper extends TomNavigationBase {
       connectorThickness: resolvedConnectorThickness,
       connectorColor: resolvedConnectorColor != null ? WidgetStatePropertyAll<Color>(resolvedConnectorColor) : null,
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
