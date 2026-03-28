@@ -2201,8 +2201,8 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| refreshTriggerPullDistance | double? | resolveDoubleOrNull | ⬜ |
-| refreshIndicatorExtent | double? | resolveDoubleOrNull | ⬜ |
+| refreshTriggerPullDistance | double? | resolveDoubleOrNull | ✅ |
+| refreshIndicatorExtent | double? | resolveDoubleOrNull | ✅ |
 
 ---
 
@@ -2212,64 +2212,64 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| elevation | int? | resolveIntOrNull | ⬜ |
-| style | TextStyle? | resolveTextStyle | ⬜ |
-| iconDisabledColor | Color? | resolveColorOrNull | ⬜ |
-| iconEnabledColor | Color? | resolveColorOrNull | ⬜ |
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| isDense | bool | resolveBoolOrNull | ⬜ |
-| isExpanded | bool | resolveBoolOrNull | ⬜ |
-| itemHeight | double? | resolveDoubleOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| dropdownColor | Color? | resolveColorOrNull | ⬜ |
-| menuMaxHeight | double? | resolveDoubleOrNull | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| hint | String? | resolveResourceOrNull | ⬜ |
+| elevation | int? | resolveIntOrNull | ✅ |
+| style | TextStyle? | resolveTextStyle | ✅ |
+| iconDisabledColor | Color? | resolveColorOrNull | ✅ |
+| iconEnabledColor | Color? | resolveColorOrNull | ✅ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| isDense | bool | resolveBoolOrNull | ✅ |
+| isExpanded | bool | resolveBoolOrNull | ✅ |
+| itemHeight | double? | resolveDoubleOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| dropdownColor | Color? | resolveColorOrNull | ✅ |
+| menuMaxHeight | double? | resolveDoubleOrNull | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| hint | String? | resolveResourceOrNull | ✅ |
 
 #### TomPopupMenuButton
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| tooltip | String? | resolveResourceOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⬜ |
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| offset | Offset? | resolveOffset | ⬜ |
-| enabled | bool | resolveBoolOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ✅ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| offset | Offset? | resolveOffset | ✅ |
+| enabled | bool | resolveBoolOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
 
 #### TomDropdownMenu
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| enabled | bool | resolveBoolOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| menuHeight | double? | resolveDoubleOrNull | ⬜ |
-| label | String? | resolveResourceOrNull | ⬜ |
-| hintText | String? | resolveResourceOrNull | ⬜ |
-| helperText | String? | resolveResourceOrNull | ⬜ |
-| errorText | String? | resolveResourceOrNull | ⬜ |
-| enableFilter | bool | resolveBoolOrNull | ⬜ |
-| enableSearch | bool | resolveBoolOrNull | ⬜ |
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
-| expandedInsets | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
-| requestFocusOnTap | bool | resolveBoolOrNull | ⬜ |
+| enabled | bool | resolveBoolOrNull | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| menuHeight | double? | resolveDoubleOrNull | ✅ |
+| label | String? | resolveResourceOrNull | ✅ |
+| hintText | String? | resolveResourceOrNull | ✅ |
+| helperText | String? | resolveResourceOrNull | ✅ |
+| errorText | String? | resolveResourceOrNull | ✅ |
+| enableFilter | bool | resolveBoolOrNull | ✅ |
+| enableSearch | bool | resolveBoolOrNull | ✅ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
+| expandedInsets | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| requestFocusOnTap | bool | resolveBoolOrNull | ✅ |
 
 #### TomMenuAnchor
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignmentOffset | Offset? | resolveOffset | ⬜ |
-| consumeOutsideTap | bool | resolveBoolOrNull | ⬜ |
+| alignmentOffset | Offset? | resolveOffset | ✅ |
+| consumeOutsideTap | bool | resolveBoolOrNull | ✅ |
 
 #### TomDropdownButtonFormField
 
@@ -2711,14 +2711,14 @@ No resource-loadable parameters.
 | Labels | 15 | 79 | 79 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
 | Navigation | 21 | 81 | 81 | 0 | 0 |
-| Progress | 6 | 30 | 28 | 0 | 2 |
-| Selects | 12 | 74 | 0 | 0 | 74 |
+| Progress | 6 | 30 | 30 | 0 | 0 |
+| Selects | 12 | 74 | 43 | 0 | 31 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
 | Slivers | 13 | 21 | 5 | 0 | 16 |
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **872** | **30** | **229** |
+| **Total** | **291** | **1131** | **917** | **30** | **184** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
