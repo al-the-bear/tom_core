@@ -996,8 +996,11 @@ class TomPadding extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    final resolvedPadding =
+        resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+
     return Padding(
-      padding: padding,
+      padding: resolvedPadding,
       child: child,
     );
   }
@@ -1987,10 +1990,10 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final String? tomGroup;
 }
 
-/// Tom widget that EXTENDS [Positioned] with authorization.
+/// Tom wrapper for [Positioned] with authorization and resource resolution.
 ///
-/// This widget IS a [Positioned] — it passes `is Positioned` checks for use
-/// in [Stack].
+/// Wraps Flutter [Positioned] for use in [Stack], with resource-resolved
+/// positioning values.
 ///
 /// ```dart
 /// TomStack(
@@ -2000,64 +2003,94 @@ class TomSpacer extends Spacer with TomWidgetMixin {
 ///   ],
 /// )
 /// ```
-class TomPositioned extends Positioned with TomWidgetMixin {
+class TomPositioned extends TomContainerBase {
+  final double? left;
+  final double? top;
+  final double? right;
+  final double? bottom;
+  final double? width;
+  final double? height;
+  final Widget child;
+
   /// Creates a Tom Positioned widget.
   const TomPositioned({
-    this.tomId,
-    this.tomGroup,
     super.key,
-    super.left,
-    super.top,
-    super.right,
-    super.bottom,
-    super.width,
-    super.height,
-    required super.child,
+    super.tomId,
+    super.tomGroup,
+    this.left,
+    this.top,
+    this.right,
+    this.bottom,
+    this.width,
+    this.height,
+    required this.child,
   });
 
   /// Creates a Tom Positioned widget that fills the Stack.
   const TomPositioned.fill({
-    this.tomId,
-    this.tomGroup,
     super.key,
-    super.left = 0.0,
-    super.top = 0.0,
-    super.right = 0.0,
-    super.bottom = 0.0,
-    required super.child,
-  });
+    super.tomId,
+    super.tomGroup,
+    this.left = 0.0,
+    this.top = 0.0,
+    this.right = 0.0,
+    this.bottom = 0.0,
+    required this.child,
+  })  : width = null,
+        height = null;
 
   @override
-  final String? tomId;
-
-  @override
-  final String? tomGroup;
+  Widget buildContent(BuildContext context) {
+    return Positioned(
+      left: left ?? resolveDoubleOrNull(context, 'left'),
+      top: top ?? resolveDoubleOrNull(context, 'top'),
+      right: right ?? resolveDoubleOrNull(context, 'right'),
+      bottom: bottom ?? resolveDoubleOrNull(context, 'bottom'),
+      width: width ?? resolveDoubleOrNull(context, 'width'),
+      height: height ?? resolveDoubleOrNull(context, 'height'),
+      child: child,
+    );
+  }
 }
 
-/// Tom widget that EXTENDS [PositionedDirectional] with authorization.
+/// Tom wrapper for [PositionedDirectional] with authorization and resource resolution.
 ///
-/// This widget IS a [Positioned] — RTL-aware positioning in [Stack].
-class TomPositionedDirectional extends PositionedDirectional
-    with TomWidgetMixin {
+/// Wraps Flutter [PositionedDirectional] for RTL-aware positioning in [Stack].
+class TomPositionedDirectional extends TomContainerBase {
+  final double? start;
+  final double? top;
+  final double? end;
+  final double? bottom;
+  final double? width;
+  final double? height;
+  final Widget child;
+
   /// Creates a Tom PositionedDirectional widget.
   const TomPositionedDirectional({
-    this.tomId,
-    this.tomGroup,
     super.key,
-    super.start,
-    super.top,
-    super.end,
-    super.bottom,
-    super.width,
-    super.height,
-    required super.child,
+    super.tomId,
+    super.tomGroup,
+    this.start,
+    this.top,
+    this.end,
+    this.bottom,
+    this.width,
+    this.height,
+    required this.child,
   });
 
   @override
-  final String? tomId;
-
-  @override
-  final String? tomGroup;
+  Widget buildContent(BuildContext context) {
+    return PositionedDirectional(
+      start: start ?? resolveDoubleOrNull(context, 'start'),
+      top: top ?? resolveDoubleOrNull(context, 'top'),
+      end: end ?? resolveDoubleOrNull(context, 'end'),
+      bottom: bottom ?? resolveDoubleOrNull(context, 'bottom'),
+      width: width ?? resolveDoubleOrNull(context, 'width'),
+      height: height ?? resolveDoubleOrNull(context, 'height'),
+      child: child,
+    );
+  }
 }
 
 /// Tom widget that EXTENDS [TableCell] with authorization.
