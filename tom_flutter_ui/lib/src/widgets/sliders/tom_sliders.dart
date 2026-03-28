@@ -48,24 +48,33 @@ class TomSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel =
+      label ?? resolveResourceOrNull(context, 'label');
 
     // Phase 2: Resolve optional color parameters from resources
+    final resolvedMin =
+      resolveDoubleOrNull(context, 'min') ?? min;
+    final resolvedMax =
+      resolveDoubleOrNull(context, 'max') ?? max;
+    final resolvedDivisions =
+      divisions ?? resolveIntOrNull(context, 'divisions');
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedInactiveColor =
         inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
     final resolvedThumbColor =
         thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+    final resolvedAutofocus =
+      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
 
     return Slider(
       value: value,
       onChanged: onChanged,
       onChangeStart: onChangeStart,
       onChangeEnd: onChangeEnd,
-      min: min,
-      max: max,
-      divisions: divisions,
+      min: resolvedMin,
+      max: resolvedMax,
+      divisions: resolvedDivisions,
       label: resolvedLabel,
       activeColor: resolvedActiveColor,
       inactiveColor: resolvedInactiveColor,
@@ -73,7 +82,7 @@ class TomSlider extends TomSliderBase {
       overlayColor: overlayColor,
       semanticFormatterCallback: semanticFormatterCallback,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       allowedInteraction: allowedInteraction,
     );
   }

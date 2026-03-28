@@ -2275,23 +2275,23 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| decoration | InputDecoration? | resolveInputDecoration | ⬜ |
-| elevation | int? | resolveIntOrNull | ⬜ |
-| style | TextStyle? | resolveTextStyle | ⬜ |
-| iconDisabledColor | Color? | resolveColorOrNull | ⬜ |
-| iconEnabledColor | Color? | resolveColorOrNull | ⬜ |
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| isDense | bool | resolveBoolOrNull | ⬜ |
-| isExpanded | bool | resolveBoolOrNull | ⬜ |
-| itemHeight | double? | resolveDoubleOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| dropdownColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| menuMaxHeight | double? | resolveDoubleOrNull | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
+| decoration | InputDecoration? | resolveInputDecoration | ✅ |
+| elevation | int? | resolveIntOrNull | ✅ |
+| style | TextStyle? | resolveTextStyle | ✅ |
+| iconDisabledColor | Color? | resolveColorOrNull | ✅ |
+| iconEnabledColor | Color? | resolveColorOrNull | ✅ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| isDense | bool | resolveBoolOrNull | ✅ |
+| isExpanded | bool | resolveBoolOrNull | ✅ |
+| itemHeight | double? | resolveDoubleOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| dropdownColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| menuMaxHeight | double? | resolveDoubleOrNull | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
 
 
 #### TomCheckedPopupMenuItem
@@ -2302,30 +2302,30 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| diameterRatio | double? | resolveDoubleOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| offAxisFraction | double? | resolveDoubleOrNull | ⬜ |
-| magnification | double? | resolveDoubleOrNull | ⬜ |
-| squeeze | double? | resolveDoubleOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
+| diameterRatio | double? | resolveDoubleOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| offAxisFraction | double? | resolveDoubleOrNull | ✅ |
+| magnification | double? | resolveDoubleOrNull | ✅ |
+| squeeze | double? | resolveDoubleOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
 
 #### TomCupertinoSegmentedControl
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| unselectedColor | Color? | resolveColorOrNull | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| borderColor | Color? | resolveColorOrNull | ⬜ |
-| pressedColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| unselectedColor | Color? | resolveColorOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| borderColor | Color? | resolveColorOrNull | ✅ |
+| pressedColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomCupertinoSlidingSegmentedControl
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| thumbColor | Color? | resolveColorOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| thumbColor | Color? | resolveColorOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomDropdownMenuItem
 
@@ -2347,14 +2347,14 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| min | double | resolveDoubleOrNull | ⬜ |
-| max | double | resolveDoubleOrNull | ⬜ |
-| divisions | int? | resolveIntOrNull | ⬜ |
-| label | String? | resolveResourceOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveColor | Color? | resolveColorOrNull | ⬜ |
-| thumbColor | Color? | resolveColorOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
+| min | double | resolveDoubleOrNull | ✅ |
+| max | double | resolveDoubleOrNull | ✅ |
+| divisions | int? | resolveIntOrNull | ✅ |
+| label | String? | resolveResourceOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| inactiveColor | Color? | resolveColorOrNull | ✅ |
+| thumbColor | Color? | resolveColorOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
 
 #### TomRangeSlider
 
@@ -2712,13 +2712,13 @@ No resource-loadable parameters.
 | Lists | 6 | 39 | 39 | 0 | 0 |
 | Navigation | 21 | 81 | 81 | 0 | 0 |
 | Progress | 6 | 30 | 30 | 0 | 0 |
-| Selects | 12 | 74 | 43 | 0 | 31 |
-| Sliders | 3 | 18 | 0 | 0 | 18 |
+| Selects | 12 | 74 | 74 | 0 | 0 |
+| Sliders | 3 | 18 | 8 | 0 | 10 |
 | Slivers | 13 | 21 | 5 | 0 | 16 |
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **917** | **30** | **184** |
+| **Total** | **291** | **1131** | **956** | **30** | **145** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

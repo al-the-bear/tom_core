@@ -565,6 +565,16 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
         menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedIsDense =
+      resolveBoolOrNull(context, 'isDense') ?? isDense;
+    final resolvedIsExpanded =
+      resolveBoolOrNull(context, 'isExpanded') ?? isExpanded;
+    final resolvedAutofocus =
+      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedEnableFeedback =
+      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+    final resolvedAlignment =
+      _resolveAlignment(context, 'alignment') ?? alignment;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
@@ -583,18 +593,18 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       iconDisabledColor: resolvedIconDisabledColor,
       iconEnabledColor: resolvedIconEnabledColor,
       iconSize: resolvedIconSize,
-      isDense: isDense,
-      isExpanded: isExpanded,
+      isDense: resolvedIsDense,
+      isExpanded: resolvedIsExpanded,
       itemHeight: resolvedItemHeight,
       focusColor: resolvedFocusColor,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       dropdownColor: resolvedDropdownColor,
       padding: resolvedPadding,
       menuMaxHeight: resolvedMenuMaxHeight,
-      enableFeedback: enableFeedback,
-      alignment: alignment,
-      borderRadius: borderRadius,
+      enableFeedback: resolvedEnableFeedback,
+      alignment: resolvedAlignment,
+      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
       onSaved: onSaved,
       validator: validator,
       autovalidateMode: autovalidateMode,
@@ -613,6 +623,18 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+  }
+
+  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+  }
+
+  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 }
 
