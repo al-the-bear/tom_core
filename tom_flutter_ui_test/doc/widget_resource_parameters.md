@@ -1034,7 +1034,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| quarterTurns | int? | resolveIntOrNull | ⬜ |
+| quarterTurns | int? | resolveIntOrNull | ✅ |
 
 #### TomSafeArea
 
@@ -1787,59 +1787,59 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| isThreeLine | bool | resolveBoolOrNull | ⬜ |
-| dense | bool? | resolveBoolOrNull | ⬜ |
-| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| selectedColor | Color? | resolveColorOrNull | ⬜ |
-| iconColor | Color? | resolveColorOrNull | ⬜ |
-| textColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
-| tileColor | Color? | resolveColorOrNull | ⬜ |
-| selectedTileColor | Color? | resolveColorOrNull | ⬜ |
-| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| subtitleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| leadingAndTrailingTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| enabled | bool | resolveBoolOrNull | ⬜ |
-| selected | bool | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| horizontalTitleGap | double? | resolveDoubleOrNull | ⬜ |
-| minVerticalPadding | double? | resolveDoubleOrNull | ⬜ |
-| minLeadingWidth | double? | resolveDoubleOrNull | ⬜ |
-| minTileHeight | double? | resolveDoubleOrNull | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| isThreeLine | bool | resolveBoolOrNull | ✅ |
+| dense | bool? | resolveBoolOrNull | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| iconColor | Color? | resolveColorOrNull | ✅ |
+| textColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| tileColor | Color? | resolveColorOrNull | ✅ |
+| selectedTileColor | Color? | resolveColorOrNull | ✅ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| subtitleTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| leadingAndTrailingTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| enabled | bool | resolveBoolOrNull | ✅ |
+| selected | bool | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| horizontalTitleGap | double? | resolveDoubleOrNull | ✅ |
+| minVerticalPadding | double? | resolveDoubleOrNull | ✅ |
+| minLeadingWidth | double? | resolveDoubleOrNull | ✅ |
+| minTileHeight | double? | resolveDoubleOrNull | ✅ |
 
 
 #### TomAboutListTile
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| applicationName | String? | resolveResourceOrNull | ⬜ |
-| applicationVersion | String? | resolveResourceOrNull | ⬜ |
-| applicationLegalese | String? | resolveResourceOrNull | ⬜ |
+| applicationName | String? | resolveResourceOrNull | ✅ |
+| applicationVersion | String? | resolveResourceOrNull | ✅ |
+| applicationLegalese | String? | resolveResourceOrNull | ✅ |
 
 #### TomBanner
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| message | String? | resolveResourceOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
+| message | String? | resolveResourceOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomChip
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| labelText | String? | resolveResourceOrNull | ⬜ |
-| deleteIconColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| labelStyle | TextStyle? | resolveTextStyle | ⬜ |
+| labelText | String? | resolveResourceOrNull | ✅ |
+| deleteIconColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| labelStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomDefaultTextStyle
 
@@ -2701,14 +2701,14 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 202 | 0 | 1 |
+| Containers | 81 | 203 | 203 | 0 | 0 |
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
 | Inputs | 16 | 88 | 88 | 0 | 0 |
 | Interactions | 10 | 38 | 38 | 0 | 0 |
-| Labels | 15 | 79 | 36 | 0 | 43 |
+| Labels | 15 | 79 | 73 | 0 | 6 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
 | Navigation | 21 | 81 | 4 | 0 | 77 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **684** | **30** | **417** |
+| **Total** | **291** | **1131** | **722** | **30** | **379** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
