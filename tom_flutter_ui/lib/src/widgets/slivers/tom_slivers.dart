@@ -168,11 +168,12 @@ class TomSliverFillViewport extends TomSliverBase {
     // Phase 2: Resolve optional parameters from resources
     final resolvedViewportFraction =
         viewportFraction ?? resolveDoubleOrNull(context, 'viewportFraction') ?? 1.0;
+    final resolvedPadEnds = resolveBoolOrNull(context, 'padEnds') ?? padEnds;
 
     return SliverFillViewport(
       delegate: delegate,
       viewportFraction: resolvedViewportFraction,
-      padEnds: padEnds,
+      padEnds: resolvedPadEnds,
     );
   }
 }

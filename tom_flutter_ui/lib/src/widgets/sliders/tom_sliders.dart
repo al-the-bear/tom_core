@@ -125,7 +125,10 @@ class TomRangeSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional color parameters from resources
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMin = resolveDoubleOrNull(context, 'min') ?? min;
+    final resolvedMax = resolveDoubleOrNull(context, 'max') ?? max;
+    final resolvedDivisions = divisions ?? resolveIntOrNull(context, 'divisions');
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedInactiveColor =
@@ -136,9 +139,9 @@ class TomRangeSlider extends TomSliderBase {
       onChanged: onChanged,
       onChangeStart: onChangeStart,
       onChangeEnd: onChangeEnd,
-      min: min,
-      max: max,
-      divisions: divisions,
+      min: resolvedMin,
+      max: resolvedMax,
+      divisions: resolvedDivisions,
       labels: labels,
       activeColor: resolvedActiveColor,
       inactiveColor: resolvedInactiveColor,
@@ -180,20 +183,25 @@ class TomCupertinoSlider extends TomSliderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional color parameter from resources
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedMin = resolveDoubleOrNull(context, 'min') ?? min;
+    final resolvedMax = resolveDoubleOrNull(context, 'max') ?? max;
+    final resolvedDivisions = divisions ?? resolveIntOrNull(context, 'divisions');
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
+    final resolvedThumbColor =
+        resolveColorOrNull(context, 'thumbColor') ?? thumbColor;
 
     return CupertinoSlider(
       value: value,
       onChanged: onChanged,
       onChangeStart: onChangeStart,
       onChangeEnd: onChangeEnd,
-      min: min,
-      max: max,
-      divisions: divisions,
+      min: resolvedMin,
+      max: resolvedMax,
+      divisions: resolvedDivisions,
       activeColor: resolvedActiveColor,
-      thumbColor: thumbColor,
+      thumbColor: resolvedThumbColor,
     );
   }
 }

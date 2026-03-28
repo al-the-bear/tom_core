@@ -2360,21 +2360,21 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| min | double | resolveDoubleOrNull | ⬜ |
-| max | double | resolveDoubleOrNull | ⬜ |
-| divisions | int? | resolveIntOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveColor | Color? | resolveColorOrNull | ⬜ |
+| min | double | resolveDoubleOrNull | ✅ |
+| max | double | resolveDoubleOrNull | ✅ |
+| divisions | int? | resolveIntOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| inactiveColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoSlider
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| min | double | resolveDoubleOrNull | ⬜ |
-| max | double | resolveDoubleOrNull | ⬜ |
-| divisions | int? | resolveIntOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| thumbColor | Color | resolveColorOrNull | ⬜ |
+| min | double | resolveDoubleOrNull | ✅ |
+| max | double | resolveDoubleOrNull | ✅ |
+| divisions | int? | resolveIntOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| thumbColor | Color | resolveColorOrNull | ✅ |
 
 ---
 
@@ -2396,14 +2396,14 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| flex | int? | resolveIntOrNull | ⬜ |
+| flex | int? | resolveIntOrNull | ✅ |
 
 #### TomSliverFillViewport
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| viewportFraction | double? | resolveDoubleOrNull | ⬜ |
-| padEnds | bool | resolveBoolOrNull | ⬜ |
+| viewportFraction | double? | resolveDoubleOrNull | ✅ |
+| padEnds | bool | resolveBoolOrNull | ✅ |
 
 #### TomSliverFixedExtentList
 
@@ -2422,7 +2422,7 @@ No resource-loadable parameters.
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
 | opacity | double? | resolveDoubleOrNull | ✅ |
-| alwaysIncludeSemantics | bool? | resolveBoolOrNull | ⬜ |
+| alwaysIncludeSemantics | bool? | resolveBoolOrNull | ✅ |
 
 #### TomSliverPadding
 
@@ -2713,12 +2713,12 @@ No resource-loadable parameters.
 | Navigation | 21 | 81 | 81 | 0 | 0 |
 | Progress | 6 | 30 | 30 | 0 | 0 |
 | Selects | 12 | 74 | 74 | 0 | 0 |
-| Sliders | 3 | 18 | 8 | 0 | 10 |
-| Slivers | 13 | 21 | 5 | 0 | 16 |
+| Sliders | 3 | 18 | 18 | 0 | 0 |
+| Slivers | 13 | 21 | 9 | 0 | 12 |
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **956** | **30** | **145** |
+| **Total** | **291** | **1131** | **970** | **30** | **131** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
