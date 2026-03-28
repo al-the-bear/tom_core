@@ -533,6 +533,8 @@ class TomMaterialBanner extends TomDialogBase {
     final resolvedMargin = margin ?? resolveEdgeInsetsOrNull(context, 'margin');
     final resolvedLeadingPadding =
         leadingPadding ?? resolveEdgeInsetsOrNull(context, 'leadingPadding');
+    final resolvedForceActionsBelow =
+        resolveBoolOrNull(context, 'forceActionsBelow') ?? forceActionsBelow;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedContentTextStyle =
@@ -551,7 +553,7 @@ class TomMaterialBanner extends TomDialogBase {
       padding: resolvedPadding,
       margin: resolvedMargin,
       leadingPadding: resolvedLeadingPadding,
-      forceActionsBelow: forceActionsBelow,
+      forceActionsBelow: resolvedForceActionsBelow,
       overflowAlignment: overflowAlignment,
       animation: animation,
       onVisible: onVisible,
