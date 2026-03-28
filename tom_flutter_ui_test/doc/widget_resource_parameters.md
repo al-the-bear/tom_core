@@ -1044,25 +1044,25 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| thumbVisibility | bool? | resolveBoolOrNull | ⬜ |
-| trackVisibility | bool? | resolveBoolOrNull | ⬜ |
-| thickness | double? | resolveDoubleOrNull | ⬜ |
-| interactive | bool? | resolveBoolOrNull | ⬜ |
+| thumbVisibility | bool? | resolveBoolOrNull | ✅ |
+| trackVisibility | bool? | resolveBoolOrNull | ✅ |
+| thickness | double? | resolveDoubleOrNull | ✅ |
+| interactive | bool? | resolveBoolOrNull | ✅ |
 
 #### TomSingleChildScrollView
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| physics | ScrollPhysics? | resolveScrollPhysics | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
 
 #### TomSizedBox
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomSizedOverflowBox
 
@@ -1072,22 +1072,22 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| scrolledUnderElevation | double? | resolveDoubleOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| foregroundColor | Color? | resolveColorOrNull | ⬜ |
-| iconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
-| actionsIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
-| titleSpacing | double? | resolveDoubleOrNull | ⬜ |
-| expandedHeight | double? | resolveDoubleOrNull | ⬜ |
-| collapsedHeight | double? | resolveDoubleOrNull | ⬜ |
-| leadingWidth | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| toolbarTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| scrolledUnderElevation | double? | resolveDoubleOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| foregroundColor | Color? | resolveColorOrNull | ✅ |
+| iconTheme | IconThemeData? | resolveIconThemeData | ✅ |
+| actionsIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
+| titleSpacing | double? | resolveDoubleOrNull | ✅ |
+| expandedHeight | double? | resolveDoubleOrNull | ✅ |
+| collapsedHeight | double? | resolveDoubleOrNull | ✅ |
+| leadingWidth | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| toolbarTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomSliverFillRemaining
 
@@ -1117,8 +1117,8 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| transformHitTests | bool? | resolveBoolOrNull | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| transformHitTests | bool? | resolveBoolOrNull | ✅ |
 
 #### TomUnconstrainedBox
 
@@ -2695,7 +2695,7 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 155 | 0 | 48 |
+| Containers | 81 | 203 | 182 | 0 | 21 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **383** | **12** | **736** |
+| **Total** | **291** | **1131** | **410** | **12** | **709** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
