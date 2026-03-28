@@ -1134,13 +1134,15 @@ No resource-loadable parameters.
 
 #### TomAclBuilder
 
+> **Note:** TomAclBuilder is a builder class, not a standard Tom widget. It uses `TomUIResources.resolveText()` directly instead of `TomNodeBase` resolvers, and constructor parameters are passed to the internal `AclBuilder` before `build()` is called. These params cannot use the standard resource resolution pattern.
+
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| title | String? | resolveResourceOrNull | ⬜ |
-| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| titleStyle | TextStyle? | resolveTextStyle | ⬜ |
-| titleVerticalOffset | double | resolveDoubleOrNull | ⬜ |
+| title | String? | resolveResourceOrNull | ⛔ |
+| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⛔ |
+| backgroundColor | Color? | resolveColorOrNull | ⛔ |
+| titleStyle | TextStyle? | resolveTextStyle | ⛔ |
+| titleVerticalOffset | double | resolveDoubleOrNull | ⛔ |
 
 ---
 
@@ -1150,65 +1152,65 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| iconPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| iconColor | Color? | resolveColorOrNull | ⬜ |
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| titlePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| contentTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| actionsPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| actionsOverflowButtonSpacing | double? | resolveDoubleOrNull | ⬜ |
-| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
-| insetPadding | EdgeInsets | resolveEdgeInsetsOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| scrollable | bool | resolveBoolOrNull | ⬜ |
+| iconPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| iconColor | Color? | resolveColorOrNull | ✅ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| titlePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| contentTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| actionsPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| actionsOverflowButtonSpacing | double? | resolveDoubleOrNull | ✅ |
+| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
+| insetPadding | EdgeInsets | resolveEdgeInsetsOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| scrollable | bool | resolveBoolOrNull | ✅ |
 
 #### TomSimpleDialog
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| titlePadding | EdgeInsets | resolveEdgeInsetsOrNull | ⬜ |
-| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| contentPadding | EdgeInsets | resolveEdgeInsetsOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
-| insetPadding | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| titlePadding | EdgeInsets | resolveEdgeInsetsOrNull | ✅ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| contentPadding | EdgeInsets | resolveEdgeInsetsOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
+| insetPadding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
 
 #### TomDialog
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| insetPadding | EdgeInsets? | resolveEdgeInsetsOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| insetPadding | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
 
 #### TomBottomSheet
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
-| enableDrag | bool | resolveBoolOrNull | ⬜ |
-| showDragHandle | bool? | resolveBoolOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
+| enableDrag | bool | resolveBoolOrNull | ✅ |
+| showDragHandle | bool? | resolveBoolOrNull | ✅ |
 
 #### TomSnackBar
 
@@ -2696,8 +2698,8 @@ No resource-loadable parameters.
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
 | Containers | 81 | 203 | 182 | 0 | 21 |
-| ACL Container | 1 | 5 | 0 | 0 | 5 |
-| Dialogs | 17 | 75 | 0 | 0 | 75 |
+| ACL Container | 1 | 5 | 0 | 5 | 0 |
+| Dialogs | 17 | 75 | 44 | 0 | 31 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 0 | 0 | 56 |
 | Inputs | 16 | 88 | 3 | 0 | 85 |
@@ -2712,7 +2714,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **410** | **12** | **709** |
+| **Total** | **291** | **1131** | **454** | **17** | **660** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
