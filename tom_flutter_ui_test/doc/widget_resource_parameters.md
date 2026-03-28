@@ -584,79 +584,79 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| primary | bool | resolveBoolOrNull | ⬜ |
-| extendBody | bool | resolveBoolOrNull | ⬜ |
-| extendBodyBehindAppBar | bool | resolveBoolOrNull | ⬜ |
-| drawerScrimColor | Color? | resolveColorOrNull | ⬜ |
-| drawerEdgeDragWidth | double? | resolveDoubleOrNull | ⬜ |
-| drawerEnableOpenDragGesture | bool | resolveBoolOrNull | ⬜ |
-| endDrawerEnableOpenDragGesture | bool | resolveBoolOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| primary | bool | resolveBoolOrNull | ✅ |
+| extendBody | bool | resolveBoolOrNull | ✅ |
+| extendBodyBehindAppBar | bool | resolveBoolOrNull | ✅ |
+| drawerScrimColor | Color? | resolveColorOrNull | ✅ |
+| drawerEdgeDragWidth | double? | resolveDoubleOrNull | ✅ |
+| drawerEnableOpenDragGesture | bool | resolveBoolOrNull | ✅ |
+| endDrawerEnableOpenDragGesture | bool | resolveBoolOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
 
 #### TomAppBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| automaticallyImplyLeading | bool | resolveBoolOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| scrolledUnderElevation | double? | resolveDoubleOrNull | ⬜ |
-| titleSpacing | double? | resolveDoubleOrNull | ⬜ |
-| toolbarHeight | double? | resolveDoubleOrNull | ⬜ |
-| leadingWidth | double? | resolveDoubleOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| foregroundColor | Color? | resolveColorOrNull | ⬜ |
-| iconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
-| actionsIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
-| primary | bool | resolveBoolOrNull | ⬜ |
-| centerTitle | bool? | resolveBoolOrNull | ⬜ |
-| excludeHeaderSemantics | bool | resolveBoolOrNull | ⬜ |
-| toolbarOpacity | double | resolveDoubleOrNull | ⬜ |
-| bottomOpacity | double | resolveDoubleOrNull | ⬜ |
-| toolbarTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| titleTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| forceMaterialTransparency | bool | resolveBoolOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| automaticallyImplyLeading | bool | resolveBoolOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| scrolledUnderElevation | double? | resolveDoubleOrNull | ✅ |
+| titleSpacing | double? | resolveDoubleOrNull | ✅ |
+| toolbarHeight | double? | resolveDoubleOrNull | ✅ |
+| leadingWidth | double? | resolveDoubleOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| foregroundColor | Color? | resolveColorOrNull | ✅ |
+| iconTheme | IconThemeData? | resolveIconThemeData | ✅ |
+| actionsIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
+| primary | bool | resolveBoolOrNull | ✅ |
+| centerTitle | bool? | resolveBoolOrNull | ✅ |
+| excludeHeaderSemantics | bool | resolveBoolOrNull | ✅ |
+| toolbarOpacity | double | resolveDoubleOrNull | ✅ |
+| bottomOpacity | double | resolveDoubleOrNull | ✅ |
+| toolbarTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| titleTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| forceMaterialTransparency | bool | resolveBoolOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
 
 #### TomBottomAppBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| color | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| notchMargin | double | resolveDoubleOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| notchMargin | double | resolveDoubleOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomDivider
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| height | double? | resolveDoubleOrNull | ⬜ |
-| thickness | double? | resolveDoubleOrNull | ⬜ |
-| indent | double? | resolveDoubleOrNull | ⬜ |
-| endIndent | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| thickness | double? | resolveDoubleOrNull | ✅ |
+| indent | double? | resolveDoubleOrNull | ✅ |
+| endIndent | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomContainer
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| decoration | Decoration? | resolveDecoration | ⬜ |
-| foregroundDecoration | Decoration? | resolveDecoration | ⬜ |
-| constraints | BoxConstraints? | resolveBoxConstraints | ⬜ |
-| transformAlignment | AlignmentGeometry? | resolveAlignment | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| alignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| decoration | Decoration? | resolveDecoration | ✅ |
+| foregroundDecoration | Decoration? | resolveDecoration | ✅ |
+| constraints | BoxConstraints? | resolveBoxConstraints | ✅ |
+| transformAlignment | AlignmentGeometry? | resolveAlignment | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomColumn
 
@@ -2695,7 +2695,7 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 58 | 0 | 145 |
+| Containers | 81 | 203 | 111 | 0 | 92 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **286** | **12** | **833** |
+| **Total** | **291** | **1131** | **339** | **12** | **780** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
