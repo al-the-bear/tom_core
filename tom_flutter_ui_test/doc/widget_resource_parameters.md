@@ -989,46 +989,46 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsetsGeometry | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomPhysicalModel
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomPhysicalShape
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomPositioned
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| left | double? | resolveDoubleOrNull | ⬜ |
-| top | double? | resolveDoubleOrNull | ⬜ |
-| right | double? | resolveDoubleOrNull | ⬜ |
-| bottom | double? | resolveDoubleOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| left | double? | resolveDoubleOrNull | ✅ |
+| top | double? | resolveDoubleOrNull | ✅ |
+| right | double? | resolveDoubleOrNull | ✅ |
+| bottom | double? | resolveDoubleOrNull | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomPositionedDirectional
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| start | double? | resolveDoubleOrNull | ⬜ |
-| top | double? | resolveDoubleOrNull | ⬜ |
-| end | double? | resolveDoubleOrNull | ⬜ |
-| bottom | double? | resolveDoubleOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| start | double? | resolveDoubleOrNull | ✅ |
+| top | double? | resolveDoubleOrNull | ✅ |
+| end | double? | resolveDoubleOrNull | ✅ |
+| bottom | double? | resolveDoubleOrNull | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomRotatedBox
 
@@ -2701,7 +2701,7 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 182 | 0 | 21 |
+| Containers | 81 | 203 | 202 | 0 | 1 |
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **664** | **30** | **437** |
+| **Total** | **291** | **1131** | **684** | **30** | **417** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
