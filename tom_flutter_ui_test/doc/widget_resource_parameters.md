@@ -2148,54 +2148,54 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| value | double? | resolveDoubleOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| strokeWidth | double? | resolveDoubleOrNull | ⬜ |
-| strokeAlign | double | resolveDoubleOrNull | ⬜ |
-| semanticsLabel | String? | resolveResourceOrNull | ⬜ |
-| semanticsValue | String? | resolveResourceOrNull | ⬜ |
+| value | double? | resolveDoubleOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| strokeWidth | double? | resolveDoubleOrNull | ✅ |
+| strokeAlign | double | resolveDoubleOrNull | ✅ |
+| semanticsLabel | String? | resolveResourceOrNull | ✅ |
+| semanticsValue | String? | resolveResourceOrNull | ✅ |
 
 #### TomLinearProgressIndicator
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| value | double? | resolveDoubleOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| minHeight | double? | resolveDoubleOrNull | ⬜ |
-| semanticsLabel | String? | resolveResourceOrNull | ⬜ |
-| semanticsValue | String? | resolveResourceOrNull | ⬜ |
-| borderRadius | BorderRadiusGeometry? | resolveBorderRadius | ⬜ |
+| value | double? | resolveDoubleOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| minHeight | double? | resolveDoubleOrNull | ✅ |
+| semanticsLabel | String? | resolveResourceOrNull | ✅ |
+| semanticsValue | String? | resolveResourceOrNull | ✅ |
+| borderRadius | BorderRadiusGeometry? | resolveBorderRadius | ✅ |
 
 #### TomRefreshIndicator
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| displacement | double | resolveDoubleOrNull | ⬜ |
-| edgeOffset | double | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| semanticsLabel | String? | resolveResourceOrNull | ⬜ |
-| semanticsValue | String? | resolveResourceOrNull | ⬜ |
-| strokeWidth | double | resolveDoubleOrNull | ⬜ |
+| displacement | double | resolveDoubleOrNull | ✅ |
+| edgeOffset | double | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| semanticsLabel | String? | resolveResourceOrNull | ✅ |
+| semanticsValue | String? | resolveResourceOrNull | ✅ |
+| strokeWidth | double | resolveDoubleOrNull | ✅ |
 
 #### TomCupertinoActivityIndicator
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| animating | bool | resolveBoolOrNull | ⬜ |
-| radius | double | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
+| animating | bool | resolveBoolOrNull | ✅ |
+| radius | double | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoLinearActivityIndicator
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| value | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| trackHeight | double? | resolveDoubleOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| value | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| trackHeight | double? | resolveDoubleOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomCupertinoSliverRefreshControl
 
@@ -2711,14 +2711,14 @@ No resource-loadable parameters.
 | Labels | 15 | 79 | 79 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
 | Navigation | 21 | 81 | 81 | 0 | 0 |
-| Progress | 6 | 30 | 0 | 0 | 30 |
+| Progress | 6 | 30 | 28 | 0 | 2 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
 | Slivers | 13 | 21 | 5 | 0 | 16 |
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **844** | **30** | **257** |
+| **Total** | **291** | **1131** | **872** | **30** | **229** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
