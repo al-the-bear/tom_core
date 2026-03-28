@@ -176,10 +176,27 @@ class TomListView extends TomListBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedReverse =
+        resolveBoolOrNull(context, 'reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+    final resolvedShrinkWrap =
+        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
     final resolvedItemExtent =
         itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
     final resolvedCacheExtent =
         cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+    final resolvedSemanticChildCount =
+        semanticChildCount ?? resolveIntOrNull(context, 'semanticChildCount');
+    final resolvedRestorationId =
+        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+    final resolvedAddAutomaticKeepAlives =
+        resolveBoolOrNull(context, 'addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
+    final resolvedAddRepaintBoundaries =
+        resolveBoolOrNull(context, 'addRepaintBoundaries') ?? addRepaintBoundaries;
+    final resolvedAddSemanticIndexes =
+        resolveBoolOrNull(context, 'addSemanticIndexes') ?? addSemanticIndexes;
 
     // Phase 3: Resolve ScrollPhysics from resources
     final resolvedPhysics = physics ?? _resolveScrollPhysics(context, 'physics');
@@ -188,43 +205,43 @@ class TomListView extends TomListBase {
     if (_children != null) {
       return ListView(
         scrollDirection: scrollDirection,
-        reverse: reverse,
+        reverse: resolvedReverse,
         controller: controller,
-        primary: primary,
+        primary: resolvedPrimary,
         physics: resolvedPhysics,
-        shrinkWrap: shrinkWrap,
-        padding: padding,
+        shrinkWrap: resolvedShrinkWrap,
+        padding: resolvedPadding,
         itemExtent: resolvedItemExtent,
         prototypeItem: prototypeItem,
         cacheExtent: resolvedCacheExtent,
-        semanticChildCount: semanticChildCount,
+        semanticChildCount: resolvedSemanticChildCount,
         dragStartBehavior: dragStartBehavior,
         keyboardDismissBehavior: keyboardDismissBehavior,
-        restorationId: restorationId,
+        restorationId: resolvedRestorationId,
         clipBehavior: clipBehavior,
-        addAutomaticKeepAlives: addAutomaticKeepAlives,
-        addRepaintBoundaries: addRepaintBoundaries,
-        addSemanticIndexes: addSemanticIndexes,
+        addAutomaticKeepAlives: resolvedAddAutomaticKeepAlives,
+        addRepaintBoundaries: resolvedAddRepaintBoundaries,
+        addSemanticIndexes: resolvedAddSemanticIndexes,
         children: _children,
       );
     }
     // Otherwise use custom with delegate
     return ListView.custom(
       scrollDirection: scrollDirection,
-      reverse: reverse,
+      reverse: resolvedReverse,
       controller: controller,
-      primary: primary,
+      primary: resolvedPrimary,
       physics: resolvedPhysics,
-      shrinkWrap: shrinkWrap,
-      padding: padding,
+      shrinkWrap: resolvedShrinkWrap,
+      padding: resolvedPadding,
       itemExtent: resolvedItemExtent,
       prototypeItem: prototypeItem,
       childrenDelegate: _childrenDelegate!,
       cacheExtent: resolvedCacheExtent,
-      semanticChildCount: semanticChildCount,
+      semanticChildCount: resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: restorationId,
+      restorationId: resolvedRestorationId,
       clipBehavior: clipBehavior,
     );
   }
@@ -270,21 +287,37 @@ class TomAnimatedList extends TomListBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedInitialItemCount =
+        resolveIntOrNull(context, 'initialItemCount') ?? initialItemCount;
+    final resolvedReverse =
+        resolveBoolOrNull(context, 'reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+    final resolvedShrinkWrap =
+        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
     final resolvedPadding =
         padding ?? resolveEdgeInsetsOrNull(context, 'padding');
 
+    // Phase 3: Resolve ScrollPhysics from resources
+    final resolvedPhysics = physics ?? _resolveScrollPhysics(context, 'physics');
+
     return AnimatedList(
       itemBuilder: itemBuilder,
-      initialItemCount: initialItemCount,
+      initialItemCount: resolvedInitialItemCount,
       scrollDirection: scrollDirection,
-      reverse: reverse,
+      reverse: resolvedReverse,
       controller: controller,
-      primary: primary,
-      physics: physics,
-      shrinkWrap: shrinkWrap,
+      primary: resolvedPrimary,
+      physics: resolvedPhysics,
+      shrinkWrap: resolvedShrinkWrap,
       padding: resolvedPadding,
       clipBehavior: clipBehavior,
     );
+  }
+
+  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
 }
 
