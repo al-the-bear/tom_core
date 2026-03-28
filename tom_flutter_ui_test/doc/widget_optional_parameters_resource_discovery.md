@@ -700,12 +700,97 @@ itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
 itemExtent: itemExtent ?? resolveDoubleOrFail(context, 'itemExtent'),
 ```
 
-### Phase 3: Complex Structure Support
+### Phase 3: Complex Structure Support (IMPLEMENTED)
 
-1. Implement `TextStyle` parsing from maps
-2. Implement `EdgeInsets` parsing from maps/arrays
-3. Implement `BorderRadius` parsing from maps/arrays
-4. Add enum mapping support (TextAlign, TextOverflow, etc.)
+All 17 complex parameter types listed below are fully implemented in `TomStyleResolvers`. Each type has a `parseXxx()` method (constructs from `Map`/`dynamic`) and a `resolveXxx()` method (reads from resource map via `TomUIResources.resolveMap()`).
+
+#### Supported Complex Parameter Types
+
+| # | Type | Resolver Method | Parse Input | Map Keys |
+|---|------|----------------|-------------|----------|
+| 1 | `TextStyle` | `resolveTextStyle` | `Map<String, dynamic>` | fontSize, fontWeight, fontStyle, color, backgroundColor, letterSpacing, wordSpacing, height, decoration, decorationColor, decorationStyle, overflow |
+| 2 | `ButtonStyle` | `resolveButtonStyle` | `Map<String, dynamic>` | backgroundColor, foregroundColor, overlayColor, elevation, padding, minimumSize, maximumSize, fixedSize, shape, textStyle |
+| 3 | `InputDecoration` | `resolveInputDecoration` | `Map<String, dynamic>` | filled, fillColor, hintText, labelText, helperText, errorText, border, enabledBorder, focusedBorder, errorBorder, contentPadding, prefixText, suffixText |
+| 4 | `MenuStyle` | `resolveMenuStyle` | `Map<String, dynamic>` | backgroundColor, shadowColor, surfaceTintColor, elevation, padding, minimumSize, maximumSize, fixedSize, shape |
+| 5 | `ShapeBorder` | `resolveShapeBorder` | `Map<String, dynamic>` | type (rounded/beveled/stadium/circle/continuous), borderRadius, side |
+| 6 | `BorderSide` | `resolveBorderSide` | `Map<String, dynamic>` | color, width, style (solid/none), strokeAlign |
+| 7 | `BorderRadius` | `resolveBorderRadius` | `Map<String, dynamic>` | all, topLeft, topRight, bottomLeft, bottomRight (each a double radius) |
+| 8 | `Decoration` | `resolveDecoration` | `Map<String, dynamic>` | color, borderRadius, border, boxShadow, shape |
+| 9 | `BoxConstraints` | `resolveBoxConstraints` | `Map<String, dynamic>` | minWidth, maxWidth, minHeight, maxHeight |
+| 10 | `AlignmentGeometry` | `resolveAlignment` | `Map<String, dynamic>` or String | Named: "topLeft", "center", "bottomRight" etc., or {x: double, y: double} |
+| 11 | `Offset` | `resolveOffset` | `Map<String, dynamic>` | dx, dy |
+| 12 | `TableBorder` | `resolveTableBorder` | `Map<String, dynamic>` | top, right, bottom, left, horizontalInside, verticalInside (each a BorderSide map) |
+| 13 | `VisualDensity` | `resolveVisualDensity` | `Map<String, dynamic>` or String | Named: "comfortable", "compact", "standard", "adaptivePlatformDensity", or {horizontal: double, vertical: double} |
+| 14 | `IconThemeData` | `resolveIconThemeData` | `Map<String, dynamic>` | color, opacity, size, fill, weight, grade, opticalSize |
+| 15 | `StrutStyle` | `resolveStrutStyle` | `Map<String, dynamic>` | fontFamily, fontFamilyFallback, fontSize, height, leading, fontWeight, fontStyle, forceStrutHeight |
+| 16 | `TextHeightBehavior` | `resolveTextHeightBehavior` | `Map<String, dynamic>` | applyHeightToFirstAscent, applyHeightToLastDescent, leadingDistribution (proportional/even) |
+| 17 | `ScrollPhysics` | `resolveScrollPhysics` | `Map<String, dynamic>` or String | Named: "bouncing", "clamping", "never"/"neverScrollable", "always"/"alwaysScrollable", "page", "fixedExtent", or {type: string} |
+
+#### Primitive Resolution Methods (TomNodeBase)
+
+These are available in every widget via inheritance:
+
+| Method | Return Type | Source |
+|--------|-------------|--------|
+| `resolveResource(context, suffix)` | `String` | Returns key as fallback |
+| `resolveResourceOrNull(context, suffix)` | `String?` | Returns null if missing |
+| `resolveResourceOrFail(context, suffix)` | `String` | Throws if no tomId |
+| `resolveIcon(context)` | `IconData?` | Via TomUIIcons lookup |
+| `resolveColorOrNull(context, suffix)` | `Color?` | Via TomUIColors lookup |
+| `resolveColorOrFail(context, suffix)` | `Color` | Throws if missing |
+| `resolveDoubleOrNull(context, suffix)` | `double?` | Parses from resource |
+| `resolveDoubleOrFail(context, suffix)` | `double` | Throws if missing |
+| `resolveIntOrNull(context, suffix)` | `int?` | Parses from resource |
+
+### Handling Non-Optional (Required) Parameters
+
+When a widget constructor has a **required**, non-nullable parameter that should support resource resolution, use the following strategy:
+
+1. **Make the constructor parameter optional** (nullable, no default)
+2. **Remove `required`** from the constructor
+3. **Resolve in `buildContent()`** with fail-fast if neither explicit value nor resource exists
+
+```dart
+// BEFORE: required, non-nullable
+class TomDecoratedSliver extends TomSliverBase {
+  final Decoration decoration;
+  const TomDecoratedSliver({required this.decoration, ...});
+  
+  @override
+  Widget buildContent(BuildContext context) {
+    return DecoratedSliver(decoration: decoration, ...);
+  }
+}
+
+// AFTER: optional with resource fallback and fail-fast
+class TomDecoratedSliver extends TomSliverBase {
+  final Decoration? decoration;
+  const TomDecoratedSliver({this.decoration, ...});
+  
+  @override
+  Widget buildContent(BuildContext context) {
+    final resolvedDecoration = decoration ?? _resolveDecoration(context, 'decoration');
+    if (resolvedDecoration == null) {
+      throw FlutterError(
+        'TomDecoratedSliver requires a decoration. '
+        'Provide it explicitly or define it in resources.',
+      );
+    }
+    return DecoratedSliver(decoration: resolvedDecoration, ...);
+  }
+}
+```
+
+**Key rules for non-optional parameter migration:**
+
+| Rule | Description |
+|------|-------------|
+| **Make nullable** | Change `final T param;` to `final T? param;` |
+| **Remove required** | Change `required this.param` to `this.param` |
+| **Fail-fast in build** | If resolved value is still null, throw `FlutterError` with actionable message |
+| **Update doc comment** | Note that the parameter can be resolved from resources |
+| **Explicit wins** | Explicit constructor value always takes priority over resource |
+| **No silent null** | Never silently pass null to the underlying Flutter widget if it requires non-null |
 
 ### Phase 4: Auto-Assembling Components
 
