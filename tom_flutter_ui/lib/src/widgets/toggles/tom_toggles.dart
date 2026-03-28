@@ -146,11 +146,17 @@ class TomCheckbox extends TomToggleBase {
         hoverColor ?? resolveColorOrNull(context, 'hoverColor');
     final resolvedSplashRadius =
         splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+    final resolvedTristate =
+        resolveBoolOrNull(context, 'tristate') ?? tristate;
+    final resolvedIsError =
+        resolveBoolOrNull(context, 'isError') ?? isError;
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
 
     return Checkbox(
       value: value,
       onChanged: onChanged,
-      tristate: tristate,
+      tristate: resolvedTristate,
       activeColor: resolvedActiveColor,
       fillColor: fillColor,
       checkColor: resolvedCheckColor,
@@ -161,9 +167,9 @@ class TomCheckbox extends TomToggleBase {
       visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
       shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
       side: side ?? _resolveBorderSide(context, 'side'),
-      isError: isError,
+      isError: resolvedIsError,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
     );
   }
 
@@ -234,6 +240,12 @@ class TomRadio<T> extends TomToggleBase {
         hoverColor ?? resolveColorOrNull(context, 'hoverColor');
     final resolvedSplashRadius =
         splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+    final resolvedToggleable =
+      resolveBoolOrNull(context, 'toggleable') ?? toggleable;
+    final resolvedAutofocus =
+      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedVisualDensity =
+      visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
 
     return Radio<T>(
       value: value,
@@ -245,11 +257,17 @@ class TomRadio<T> extends TomToggleBase {
       hoverColor: resolvedHoverColor,
       overlayColor: overlayColor,
       splashRadius: resolvedSplashRadius,
-      visualDensity: visualDensity,
-      toggleable: toggleable,
+      visualDensity: resolvedVisualDensity,
+      toggleable: resolvedToggleable,
       focusNode: focusNode,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
     );
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -310,10 +328,15 @@ class TomSwitchListTile extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTitle = titleText ??
+      resolveResourceOrNull(context, 'titleText') ??
+      resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional color parameters from resources
+    final resolvedIsThreeLine =
+      resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedActiveTrackColor =
@@ -328,8 +351,15 @@ class TomSwitchListTile extends TomToggleBase {
         selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
     final resolvedHoverColor =
         hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedEnableFeedback =
+        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
     final resolvedContentPadding =
         contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+    final resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
 
     return SwitchListTile(
       value: value,
@@ -337,21 +367,21 @@ class TomSwitchListTile extends TomToggleBase {
       title: effectiveTitle,
       subtitle: subtitle,
       secondary: secondary,
-      isThreeLine: isThreeLine,
-      dense: dense,
+      isThreeLine: resolvedIsThreeLine,
+      dense: resolvedDense,
       contentPadding: resolvedContentPadding,
       activeColor: resolvedActiveColor,
       activeTrackColor: resolvedActiveTrackColor,
       inactiveThumbColor: resolvedInactiveThumbColor,
       inactiveTrackColor: resolvedInactiveTrackColor,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       focusNode: focusNode,
       controlAffinity: controlAffinity,
-      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      shape: resolvedShape,
       tileColor: resolvedTileColor,
       selectedTileColor: resolvedSelectedTileColor,
-      visualDensity: visualDensity,
-      enableFeedback: enableFeedback,
+      visualDensity: resolvedVisualDensity,
+      enableFeedback: resolvedEnableFeedback,
       hoverColor: resolvedHoverColor,
     );
   }
@@ -360,6 +390,12 @@ class TomSwitchListTile extends TomToggleBase {
     final basePath = resolveResourceBasePath(context);
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -420,10 +456,17 @@ class TomCheckboxListTile extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTitle = titleText ??
+      resolveResourceOrNull(context, 'titleText') ??
+      resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional color parameters from resources
+    final resolvedIsThreeLine =
+      resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+    final resolvedTristate =
+      resolveBoolOrNull(context, 'tristate') ?? tristate;
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedCheckColor =
@@ -432,8 +475,18 @@ class TomCheckboxListTile extends TomToggleBase {
         tileColor ?? resolveColorOrNull(context, 'tileColor');
     final resolvedSelectedTileColor =
         selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+    final resolvedEnableFeedback =
+        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
     final resolvedContentPadding =
         contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+    final resolvedSide = side ?? _resolveBorderSide(context, 'side');
+    final resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+    final resolvedCheckboxShape =
+        checkboxShape ?? _resolveShapeBorder(context, 'checkboxShape') as OutlinedBorder?;
 
     return CheckboxListTile(
       value: value,
@@ -441,23 +494,41 @@ class TomCheckboxListTile extends TomToggleBase {
       title: effectiveTitle,
       subtitle: subtitle,
       secondary: secondary,
-      isThreeLine: isThreeLine,
-      dense: dense,
+      isThreeLine: resolvedIsThreeLine,
+      dense: resolvedDense,
       contentPadding: resolvedContentPadding,
       activeColor: resolvedActiveColor,
       checkColor: resolvedCheckColor,
-      tristate: tristate,
-      shape: shape,
-      side: side,
+      tristate: resolvedTristate,
+      shape: resolvedShape,
+      side: resolvedSide,
       tileColor: resolvedTileColor,
       selectedTileColor: resolvedSelectedTileColor,
-      visualDensity: visualDensity,
-      enableFeedback: enableFeedback,
+      visualDensity: resolvedVisualDensity,
+      enableFeedback: resolvedEnableFeedback,
       controlAffinity: controlAffinity,
-      autofocus: autofocus,
+      autofocus: resolvedAutofocus,
       focusNode: focusNode,
-      checkboxShape: checkboxShape,
+      checkboxShape: resolvedCheckboxShape,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 
@@ -782,6 +853,11 @@ class TomCupertinoCheckbox extends TomToggleBase {
         checkColor ?? resolveColorOrNull(context, 'checkColor');
     final resolvedFocusColor =
         focusColor ?? resolveColorOrNull(context, 'focusColor');
+    final resolvedSemanticLabel =
+      semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
+    final resolvedSide = side ?? _resolveBorderSide(context, 'side');
+    final resolvedShape =
+      shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?;
 
     return CupertinoCheckbox(
       value: value,
@@ -793,10 +869,22 @@ class TomCupertinoCheckbox extends TomToggleBase {
       focusColor: resolvedFocusColor,
       focusNode: focusNode,
       autofocus: autofocus,
-      side: side,
-      shape: shape,
-      semanticLabel: semanticLabel,
+      side: resolvedSide,
+      shape: resolvedShape,
+      semanticLabel: resolvedSemanticLabel,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 }
 

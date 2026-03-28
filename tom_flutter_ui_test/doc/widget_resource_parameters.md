@@ -2567,82 +2567,82 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| tristate | bool | resolveBoolOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| checkColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| splashRadius | double? | resolveDoubleOrNull | ⬜ |
+| tristate | bool | resolveBoolOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| checkColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| splashRadius | double? | resolveDoubleOrNull | ✅ |
 | visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
-| shape | OutlinedBorder? | resolveShapeBorder | ⬜ |
-| side | BorderSide? | resolveBorderSide | ⬜ |
-| isError | bool | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
+| shape | OutlinedBorder? | resolveShapeBorder | ✅ |
+| side | BorderSide? | resolveBorderSide | ✅ |
+| isError | bool | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
 
 #### TomRadio
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| splashRadius | double? | resolveDoubleOrNull | ⬜ |
-| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
-| toggleable | bool | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| splashRadius | double? | resolveDoubleOrNull | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| toggleable | bool | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
 
 #### TomSwitchListTile
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| isThreeLine | bool | resolveBoolOrNull | ⬜ |
-| dense | bool? | resolveBoolOrNull | ⬜ |
-| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| activeTrackColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveThumbColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveTrackColor | Color? | resolveColorOrNull | ⬜ |
-| tileColor | Color? | resolveColorOrNull | ⬜ |
-| selectedTileColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| isThreeLine | bool | resolveBoolOrNull | ✅ |
+| dense | bool? | resolveBoolOrNull | ✅ |
+| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| activeTrackColor | Color? | resolveColorOrNull | ✅ |
+| inactiveThumbColor | Color? | resolveColorOrNull | ✅ |
+| inactiveTrackColor | Color? | resolveColorOrNull | ✅ |
+| tileColor | Color? | resolveColorOrNull | ✅ |
+| selectedTileColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
 
 #### TomCheckboxListTile
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| titleText | String? | resolveResourceOrNull | ⬜ |
-| isThreeLine | bool | resolveBoolOrNull | ⬜ |
-| dense | bool? | resolveBoolOrNull | ⬜ |
-| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| checkColor | Color? | resolveColorOrNull | ⬜ |
-| tristate | bool | resolveBoolOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| side | BorderSide? | resolveBorderSide | ⬜ |
-| tileColor | Color? | resolveColorOrNull | ⬜ |
-| selectedTileColor | Color? | resolveColorOrNull | ⬜ |
-| visualDensity | VisualDensity? | resolveVisualDensity | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| checkboxShape | OutlinedBorder? | resolveShapeBorder | ⬜ |
+| titleText | String? | resolveResourceOrNull | ✅ |
+| isThreeLine | bool | resolveBoolOrNull | ✅ |
+| dense | bool? | resolveBoolOrNull | ✅ |
+| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| checkColor | Color? | resolveColorOrNull | ✅ |
+| tristate | bool | resolveBoolOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| side | BorderSide? | resolveBorderSide | ✅ |
+| tileColor | Color? | resolveColorOrNull | ✅ |
+| selectedTileColor | Color? | resolveColorOrNull | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| checkboxShape | OutlinedBorder? | resolveShapeBorder | ✅ |
 
 
 #### TomCupertinoCheckbox
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveColor | Color? | resolveColorOrNull | ⬜ |
-| checkColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| side | BorderSide? | resolveBorderSide | ⬜ |
-| shape | OutlinedBorder? | resolveShapeBorder | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| inactiveColor | Color? | resolveColorOrNull | ✅ |
+| checkColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| side | BorderSide? | resolveBorderSide | ✅ |
+| shape | OutlinedBorder? | resolveShapeBorder | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomCupertinoRadio
 
@@ -2716,9 +2716,9 @@ No resource-loadable parameters.
 | Sliders | 3 | 18 | 18 | 0 | 0 |
 | Slivers | 13 | 21 | 21 | 0 | 0 |
 | Tables | 6 | 46 | 46 | 0 | 0 |
-| Toggles | 8 | 71 | 7 | 0 | 64 |
+| Toggles | 8 | 71 | 62 | 0 | 9 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **1033** | **30** | **68** |
+| **Total** | **291** | **1131** | **1088** | **30** | **13** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
