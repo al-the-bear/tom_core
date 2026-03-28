@@ -98,8 +98,20 @@ class TomAlertDialog extends TomDialogBase {
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
     // Phase 2: Resolve optional parameters from resources
+    final resolvedIconPadding =
+        iconPadding ?? resolveEdgeInsetsOrNull(context, 'iconPadding');
     final resolvedIconColor =
         iconColor ?? resolveColorOrNull(context, 'iconColor');
+    final resolvedTitlePadding =
+        titlePadding ?? resolveEdgeInsetsOrNull(context, 'titlePadding');
+    final resolvedContentPadding =
+        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+    final resolvedActionsPadding =
+        actionsPadding ?? resolveEdgeInsetsOrNull(context, 'actionsPadding');
+    final resolvedActionsOverflowButtonSpacing =
+        actionsOverflowButtonSpacing ?? resolveDoubleOrNull(context, 'actionsOverflowButtonSpacing');
+    final resolvedButtonPadding =
+        buttonPadding ?? resolveEdgeInsetsOrNull(context, 'buttonPadding');
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedElevation =
@@ -108,6 +120,12 @@ class TomAlertDialog extends TomDialogBase {
         shadowColor ?? resolveColorOrNull(context, 'shadowColor');
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedSemanticLabel =
+        semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
+    final resolvedInsetPadding =
+        resolveEdgeInsetsOrNull(context, 'insetPadding') ?? insetPadding;
+    final resolvedScrollable =
+        resolveBoolOrNull(context, 'scrollable') ?? scrollable;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedTitleTextStyle =
@@ -117,31 +135,31 @@ class TomAlertDialog extends TomDialogBase {
 
     return AlertDialog(
       icon: icon,
-      iconPadding: iconPadding,
+      iconPadding: resolvedIconPadding,
       iconColor: resolvedIconColor,
       title: effectiveTitle,
-      titlePadding: titlePadding,
+      titlePadding: resolvedTitlePadding,
       titleTextStyle: resolvedTitleTextStyle,
       content: content,
-      contentPadding: contentPadding,
+      contentPadding: resolvedContentPadding,
       contentTextStyle: resolvedContentTextStyle,
       actions: actions,
-      actionsPadding: actionsPadding,
+      actionsPadding: resolvedActionsPadding,
       actionsAlignment: actionsAlignment,
       actionsOverflowAlignment: actionsOverflowAlignment,
       actionsOverflowDirection: actionsOverflowDirection,
-      actionsOverflowButtonSpacing: actionsOverflowButtonSpacing,
-      buttonPadding: buttonPadding,
+      actionsOverflowButtonSpacing: resolvedActionsOverflowButtonSpacing,
+      buttonPadding: resolvedButtonPadding,
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      semanticLabel: semanticLabel,
-      insetPadding: insetPadding,
+      semanticLabel: resolvedSemanticLabel,
+      insetPadding: resolvedInsetPadding,
       clipBehavior: clipBehavior,
       shape: shape ?? _resolveShapeBorder(context, 'shape'),
       alignment: alignment ?? _resolveAlignment(context, 'alignment'),
-      scrollable: scrollable,
+      scrollable: resolvedScrollable,
     );
   }
 
@@ -213,6 +231,10 @@ class TomSimpleDialog extends TomDialogBase {
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 
     // Phase 2: Resolve optional parameters from resources
+    final resolvedTitlePadding =
+        resolveEdgeInsetsOrNull(context, 'titlePadding') ?? titlePadding;
+    final resolvedContentPadding =
+        resolveEdgeInsetsOrNull(context, 'contentPadding') ?? contentPadding;
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedElevation =
@@ -221,6 +243,10 @@ class TomSimpleDialog extends TomDialogBase {
         shadowColor ?? resolveColorOrNull(context, 'shadowColor');
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedSemanticLabel =
+        semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
+    final resolvedInsetPadding =
+        insetPadding ?? resolveEdgeInsetsOrNull(context, 'insetPadding');
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedTitleTextStyle =
@@ -228,15 +254,15 @@ class TomSimpleDialog extends TomDialogBase {
 
     return SimpleDialog(
       title: effectiveTitle,
-      titlePadding: titlePadding,
+      titlePadding: resolvedTitlePadding,
       titleTextStyle: resolvedTitleTextStyle,
-      contentPadding: contentPadding,
+      contentPadding: resolvedContentPadding,
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      semanticLabel: semanticLabel,
-      insetPadding: insetPadding,
+      semanticLabel: resolvedSemanticLabel,
+      insetPadding: resolvedInsetPadding,
       clipBehavior: clipBehavior,
       shape: shape ?? _resolveShapeBorder(context, 'shape'),
       alignment: alignment ?? _resolveAlignment(context, 'alignment'),
@@ -303,13 +329,15 @@ class TomDialog extends TomDialogBase {
         shadowColor ?? resolveColorOrNull(context, 'shadowColor');
     final resolvedSurfaceTintColor =
         surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+    final resolvedInsetPadding =
+        insetPadding ?? resolveEdgeInsetsOrNull(context, 'insetPadding');
 
     return Dialog(
       backgroundColor: resolvedBackgroundColor,
       elevation: resolvedElevation,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      insetPadding: insetPadding,
+      insetPadding: resolvedInsetPadding,
       clipBehavior: clipBehavior,
       shape: shape ?? _resolveShapeBorder(context, 'shape'),
       alignment: alignment ?? _resolveAlignment(context, 'alignment'),
@@ -372,6 +400,10 @@ class TomBottomSheet extends TomDialogBase {
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
     final resolvedElevation =
         elevation ?? resolveDoubleOrNull(context, 'elevation');
+    final resolvedEnableDrag =
+        resolveBoolOrNull(context, 'enableDrag') ?? enableDrag;
+    final resolvedShowDragHandle =
+        showDragHandle ?? resolveBoolOrNull(context, 'showDragHandle');
 
     return BottomSheet(
       animationController: animationController,
@@ -382,8 +414,8 @@ class TomBottomSheet extends TomDialogBase {
       shape: shape ?? _resolveShapeBorder(context, 'shape'),
       clipBehavior: clipBehavior,
       constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
-      enableDrag: enableDrag,
-      showDragHandle: showDragHandle,
+      enableDrag: resolvedEnableDrag,
+      showDragHandle: resolvedShowDragHandle,
       onDragStart: onDragStart,
       onDragEnd: onDragEnd,
     );
