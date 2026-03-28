@@ -572,6 +572,11 @@ class TomFloatingActionButton extends TomButtonBase {
         highlightElevation ?? resolveDoubleOrNull(context, 'highlightElevation');
     final resolvedDisabledElevation =
         disabledElevation ?? resolveDoubleOrNull(context, 'disabledElevation');
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedMini = resolveBoolOrNull(context, 'mini') ?? mini;
+    final resolvedIsExtended = isExtended ?? resolveBoolOrNull(context, 'isExtended');
 
     switch (_variant) {
       case _FABVariant.extended:
@@ -591,11 +596,11 @@ class TomFloatingActionButton extends TomButtonBase {
           hoverElevation: resolvedHoverElevation,
           highlightElevation: resolvedHighlightElevation,
           disabledElevation: resolvedDisabledElevation,
-          shape: shape,
+          shape: resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: autofocus,
+          autofocus: resolvedAutofocus,
           focusNode: focusNode,
-          isExtended: isExtended ?? true,
+          isExtended: resolvedIsExtended ?? true,
           icon: _resolveIconWidget(context),
           label: extendedIconLabelChild ?? Text(resolvedLabel),
         );
@@ -615,9 +620,9 @@ class TomFloatingActionButton extends TomButtonBase {
           hoverElevation: resolvedHoverElevation,
           highlightElevation: resolvedHighlightElevation,
           disabledElevation: resolvedDisabledElevation,
-          shape: shape,
+          shape: resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: autofocus,
+          autofocus: resolvedAutofocus,
           focusNode: focusNode,
           child: _resolveChild(context),
         );
@@ -637,9 +642,9 @@ class TomFloatingActionButton extends TomButtonBase {
           hoverElevation: resolvedHoverElevation,
           highlightElevation: resolvedHighlightElevation,
           disabledElevation: resolvedDisabledElevation,
-          shape: shape,
+          shape: resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: autofocus,
+          autofocus: resolvedAutofocus,
           focusNode: focusNode,
           child: _resolveChild(context),
         );
@@ -663,18 +668,18 @@ class TomFloatingActionButton extends TomButtonBase {
             hoverElevation: resolvedHoverElevation,
             highlightElevation: resolvedHighlightElevation,
             disabledElevation: resolvedDisabledElevation,
-            shape: shape,
+            shape: resolvedShape,
             clipBehavior: clipBehavior,
-            autofocus: autofocus,
+            autofocus: resolvedAutofocus,
             focusNode: focusNode,
-            isExtended: isExtended ?? true,
+            isExtended: resolvedIsExtended ?? true,
             icon: resolvedIcon,
             label: Text(resolvedLabel),
           );
         }
 
         // Legacy behavior: if mini is true, use small
-        if (mini) {
+        if (resolvedMini) {
           return FloatingActionButton.small(
             onPressed: onPressed,
             tooltip: resolvedTooltip,
@@ -689,9 +694,9 @@ class TomFloatingActionButton extends TomButtonBase {
             hoverElevation: resolvedHoverElevation,
             highlightElevation: resolvedHighlightElevation,
             disabledElevation: resolvedDisabledElevation,
-            shape: shape,
+            shape: resolvedShape,
             clipBehavior: clipBehavior,
-            autofocus: autofocus,
+            autofocus: resolvedAutofocus,
             focusNode: focusNode,
             child: _resolveChild(context),
           );
@@ -711,14 +716,20 @@ class TomFloatingActionButton extends TomButtonBase {
           hoverElevation: resolvedHoverElevation,
           highlightElevation: resolvedHighlightElevation,
           disabledElevation: resolvedDisabledElevation,
-          shape: shape,
+          shape: resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: autofocus,
+          autofocus: resolvedAutofocus,
           focusNode: focusNode,
-          mini: mini,
+          mini: resolvedMini,
           child: _resolveChild(context),
         );
     }
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 }
 
@@ -1346,14 +1357,23 @@ class TomCupertinoButton extends TomButtonBase {
     final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
     final buttonChild = child ?? Text(resolvedLabel);
 
+    // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedMinSize =
+        minSize ?? resolveDoubleOrNull(context, 'minSize');
+    final resolvedPressedOpacity =
+        pressedOpacity ?? resolveDoubleOrNull(context, 'pressedOpacity');
+
     if (filled) {
       return CupertinoButton.filled(
         onPressed: onPressed,
-        padding: padding,
+        padding: resolvedPadding,
         disabledColor: disabledColor,
         // ignore: deprecated_member_use
-        minSize: minSize,
-        pressedOpacity: pressedOpacity,
+        minSize: resolvedMinSize,
+        pressedOpacity: resolvedPressedOpacity,
         borderRadius: borderRadius,
         alignment: alignment,
         child: buttonChild,
@@ -1362,12 +1382,12 @@ class TomCupertinoButton extends TomButtonBase {
 
     return CupertinoButton(
       onPressed: onPressed,
-      padding: padding,
-      color: color,
+      padding: resolvedPadding,
+      color: resolvedColor,
       disabledColor: disabledColor,
       // ignore: deprecated_member_use
-      minSize: minSize,
-      pressedOpacity: pressedOpacity,
+      minSize: resolvedMinSize,
+      pressedOpacity: resolvedPressedOpacity,
       borderRadius: borderRadius,
       alignment: alignment,
       child: buttonChild,

@@ -276,38 +276,38 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| tooltip | String? | resolveResourceOrNull | ⬜ |
-| foregroundColor | Color? | resolveColorOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| focusElevation | double? | resolveDoubleOrNull | ⬜ |
-| hoverElevation | double? | resolveDoubleOrNull | ⬜ |
-| highlightElevation | double? | resolveDoubleOrNull | ⬜ |
-| disabledElevation | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| mini | bool | resolveBoolOrNull | ⬜ |
-| isExtended | bool? | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
-| label | String? | resolveResourceOrNull | ⬜ |
+| tooltip | String? | resolveResourceOrNull | ✅ |
+| foregroundColor | Color? | resolveColorOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| focusElevation | double? | resolveDoubleOrNull | ✅ |
+| hoverElevation | double? | resolveDoubleOrNull | ✅ |
+| highlightElevation | double? | resolveDoubleOrNull | ✅ |
+| disabledElevation | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| mini | bool | resolveBoolOrNull | ✅ |
+| isExtended | bool? | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| label | String? | resolveResourceOrNull | ✅ |
 
 
 #### TomBackButton
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| color | Color? | resolveColorOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomButtonBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| buttonMinWidth | double? | resolveDoubleOrNull | ⬜ |
-| buttonHeight | double? | resolveDoubleOrNull | ⬜ |
-| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| overflowButtonSpacing | double? | resolveDoubleOrNull | ⬜ |
+| buttonMinWidth | double? | resolveDoubleOrNull | ✅ |
+| buttonHeight | double? | resolveDoubleOrNull | ✅ |
+| buttonPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| overflowButtonSpacing | double? | resolveDoubleOrNull | ✅ |
 
 #### TomCheckboxMenuButton
 
@@ -317,7 +317,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| color | Color? | resolveColorOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoActionSheetAction
 
@@ -327,10 +327,10 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| minSize | double? | resolveDoubleOrNull | ⬜ |
-| pressedOpacity | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| minSize | double? | resolveDoubleOrNull | ✅ |
+| pressedOpacity | double? | resolveDoubleOrNull | ✅ |
 
 #### TomCupertinoContextMenuAction
 
@@ -2692,7 +2692,7 @@ No resource-loadable parameters.
 |----------|---------|-------------|-------------|-------------|--------------|
 | Animated Widgets | 20 | 46 | 34 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
-| Buttons | 23 | 71 | 4 | 0 | 67 |
+| Buttons | 23 | 71 | 30 | 0 | 41 |
 | Chips | 5 | 83 | 17 | 0 | 66 |
 | Containers | 81 | 203 | 35 | 0 | 168 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
@@ -2711,7 +2711,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1132** | **132** | **12** | **988** |
+| **Total** | **291** | **1132** | **158** | **12** | **962** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
