@@ -1401,52 +1401,52 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| size | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| size | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomInkImage
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomNetworkImage
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| src | String | resolveResource | ⬜ |
-| scale | double | resolveDoubleOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| matchTextDirection | bool | resolveBoolOrNull | ⬜ |
-| gaplessPlayback | bool | resolveBoolOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
-| excludeFromSemantics | bool | resolveBoolOrNull | ⬜ |
+| src | String | resolveResource | ✅ |
+| scale | double | resolveDoubleOrNull | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| matchTextDirection | bool | resolveBoolOrNull | ✅ |
+| gaplessPlayback | bool | resolveBoolOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
+| excludeFromSemantics | bool | resolveBoolOrNull | ✅ |
 
 
 #### TomAnimatedIcon
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| color | Color? | resolveColorOrNull | ⬜ |
-| size | double? | resolveDoubleOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| color | Color? | resolveColorOrNull | ✅ |
+| size | double? | resolveDoubleOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomAssetImage
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| cacheWidth | int? | resolveIntOrNull | ⬜ |
-| cacheHeight | int? | resolveIntOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| cacheWidth | int? | resolveIntOrNull | ✅ |
+| cacheHeight | int? | resolveIntOrNull | ✅ |
 
 #### TomFileImage
 
@@ -2705,7 +2705,7 @@ No resource-loadable parameters.
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
-| Images | 11 | 56 | 33 | 0 | 23 |
+| Images | 11 | 56 | 52 | 0 | 4 |
 | Inputs | 16 | 88 | 3 | 0 | 85 |
 | Interactions | 10 | 38 | 11 | 0 | 27 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **499** | **30** | **602** |
+| **Total** | **291** | **1131** | **524** | **30** | **577** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
