@@ -876,6 +876,8 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedPreviousPageTitle =
+        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
 
@@ -883,7 +885,7 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
       automaticallyImplyMiddle: automaticallyImplyMiddle,
-      previousPageTitle: previousPageTitle,
+      previousPageTitle: resolvedPreviousPageTitle,
       middle: middle,
       trailing: trailing,
       backgroundColor: resolvedBackgroundColor,

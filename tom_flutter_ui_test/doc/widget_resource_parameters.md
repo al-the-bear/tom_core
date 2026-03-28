@@ -2058,36 +2058,36 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoNavigationBarBackButton
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| previousPageTitle | String? | resolveResourceOrNull | ⬜ |
+| previousPageTitle | String? | resolveResourceOrNull | ✅ |
 
 #### TomCupertinoSliverNavigationBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| previousPageTitle | String? | resolveResourceOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| previousPageTitle | String? | resolveResourceOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoTabBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomDrawerHeader
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomFlexibleSpaceBar
 
@@ -2710,7 +2710,7 @@ No resource-loadable parameters.
 | Interactions | 10 | 38 | 38 | 0 | 0 |
 | Labels | 15 | 79 | 79 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
-| Navigation | 21 | 81 | 61 | 0 | 20 |
+| Navigation | 21 | 81 | 71 | 0 | 10 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **824** | **30** | **277** |
+| **Total** | **291** | **1131** | **834** | **30** | **267** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
