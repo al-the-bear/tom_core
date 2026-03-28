@@ -1299,12 +1299,12 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| height | double? | resolveDoubleOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| verticalOffset | double? | resolveDoubleOrNull | ⬜ |
-| decoration | Decoration? | resolveDecoration | ⬜ |
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| margin | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| verticalOffset | double? | resolveDoubleOrNull | ✅ |
+| decoration | Decoration? | resolveDecoration | ✅ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
 
 ---
 
@@ -1354,48 +1354,48 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| size | double? | resolveDoubleOrNull | ⬜ |
-| fill | double? | resolveDoubleOrNull | ⬜ |
-| weight | double? | resolveDoubleOrNull | ⬜ |
-| grade | double? | resolveDoubleOrNull | ⬜ |
-| opticalSize | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| size | double? | resolveDoubleOrNull | ✅ |
+| fill | double? | resolveDoubleOrNull | ✅ |
+| weight | double? | resolveDoubleOrNull | ✅ |
+| grade | double? | resolveDoubleOrNull | ✅ |
+| opticalSize | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomImage
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| matchTextDirection | bool | resolveBoolOrNull | ⬜ |
-| gaplessPlayback | bool | resolveBoolOrNull | ⬜ |
-| isAntiAlias | bool | resolveBoolOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| matchTextDirection | bool | resolveBoolOrNull | ✅ |
+| gaplessPlayback | bool | resolveBoolOrNull | ✅ |
+| isAntiAlias | bool | resolveBoolOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomCircleAvatar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| foregroundColor | Color? | resolveColorOrNull | ⬜ |
-| radius | double? | resolveDoubleOrNull | ⬜ |
-| minRadius | double? | resolveDoubleOrNull | ⬜ |
-| maxRadius | double? | resolveDoubleOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| foregroundColor | Color? | resolveColorOrNull | ✅ |
+| radius | double? | resolveDoubleOrNull | ✅ |
+| minRadius | double? | resolveDoubleOrNull | ✅ |
+| maxRadius | double? | resolveDoubleOrNull | ✅ |
 
 #### TomFadeInImage
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
-| matchTextDirection | bool | resolveBoolOrNull | ⬜ |
-| excludeFromSemantics | bool | resolveBoolOrNull | ⬜ |
-| imageSemanticLabel | String? | resolveResourceOrNull | ⬜ |
-| placeholderColor | Color? | resolveColorOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
+| matchTextDirection | bool | resolveBoolOrNull | ✅ |
+| excludeFromSemantics | bool | resolveBoolOrNull | ✅ |
+| imageSemanticLabel | String? | resolveResourceOrNull | ✅ |
+| placeholderColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomImageIcon
 
@@ -2703,9 +2703,9 @@ No resource-loadable parameters.
 | Chips | 5 | 83 | 83 | 0 | 0 |
 | Containers | 81 | 203 | 182 | 0 | 21 |
 | ACL Container | 1 | 5 | 0 | 5 | 0 |
-| Dialogs | 17 | 75 | 56 | 13 | 6 |
+| Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
-| Images | 11 | 56 | 0 | 0 | 56 |
+| Images | 11 | 56 | 33 | 0 | 23 |
 | Inputs | 16 | 88 | 3 | 0 | 85 |
 | Interactions | 10 | 38 | 11 | 0 | 27 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **466** | **30** | **635** |
+| **Total** | **291** | **1131** | **499** | **30** | **602** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
