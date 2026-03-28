@@ -1857,7 +1857,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| label | String? | resolveResourceOrNull | ⬜ |
+| label | String? | resolveResourceOrNull | ✅ |
 
 #### TomMergeSemantics
 
@@ -1871,11 +1871,11 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| width | double? | resolveDoubleOrNull | ⬜ |
-| thickness | double? | resolveDoubleOrNull | ⬜ |
-| indent | double? | resolveDoubleOrNull | ⬜ |
-| endIndent | double? | resolveDoubleOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| thickness | double? | resolveDoubleOrNull | ✅ |
+| indent | double? | resolveDoubleOrNull | ✅ |
+| endIndent | double? | resolveDoubleOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
 
 ---
 
@@ -1885,35 +1885,35 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| reverse | bool | resolveBoolOrNull | ⬜ |
-| primary | bool? | resolveBoolOrNull | ⬜ |
-| shrinkWrap | bool | resolveBoolOrNull | ⬜ |
+| reverse | bool | resolveBoolOrNull | ✅ |
+| primary | bool? | resolveBoolOrNull | ✅ |
+| shrinkWrap | bool | resolveBoolOrNull | ✅ |
 | physics | ScrollPhysics? | resolveScrollPhysics | ✅ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| itemExtent | double? | resolveDoubleOrNull | ⬜ |
-| cacheExtent | double? | resolveDoubleOrNull | ⬜ |
-| semanticChildCount | int? | resolveIntOrNull | ⬜ |
-| restorationId | String? | resolveResourceOrNull | ⬜ |
-| addAutomaticKeepAlives | bool | resolveBoolOrNull | ⬜ |
-| addRepaintBoundaries | bool | resolveBoolOrNull | ⬜ |
-| addSemanticIndexes | bool | resolveBoolOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| cacheExtent | double? | resolveDoubleOrNull | ✅ |
+| semanticChildCount | int? | resolveIntOrNull | ✅ |
+| restorationId | String? | resolveResourceOrNull | ✅ |
+| addAutomaticKeepAlives | bool | resolveBoolOrNull | ✅ |
+| addRepaintBoundaries | bool | resolveBoolOrNull | ✅ |
+| addSemanticIndexes | bool | resolveBoolOrNull | ✅ |
 
 #### TomAnimatedList
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| initialItemCount | int | resolveIntOrNull | ⬜ |
-| reverse | bool | resolveBoolOrNull | ⬜ |
-| primary | bool? | resolveBoolOrNull | ⬜ |
-| shrinkWrap | bool | resolveBoolOrNull | ⬜ |
-| physics | ScrollPhysics? | resolveScrollPhysics | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| initialItemCount | int | resolveIntOrNull | ✅ |
+| reverse | bool | resolveBoolOrNull | ✅ |
+| primary | bool? | resolveBoolOrNull | ✅ |
+| shrinkWrap | bool | resolveBoolOrNull | ✅ |
+| physics | ScrollPhysics? | resolveScrollPhysics | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomDismissible
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| crossAxisEndOffset | double? | resolveDoubleOrNull | ⬜ |
+| crossAxisEndOffset | double? | resolveDoubleOrNull | ✅ |
 
 #### TomListWheelScrollView
 
@@ -2708,8 +2708,8 @@ No resource-loadable parameters.
 | Images | 11 | 56 | 56 | 0 | 0 |
 | Inputs | 16 | 88 | 88 | 0 | 0 |
 | Interactions | 10 | 38 | 38 | 0 | 0 |
-| Labels | 15 | 79 | 73 | 0 | 6 |
-| Lists | 6 | 39 | 1 | 0 | 38 |
+| Labels | 15 | 79 | 79 | 0 | 0 |
+| Lists | 6 | 39 | 20 | 0 | 19 |
 | Navigation | 21 | 81 | 4 | 0 | 77 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **722** | **30** | **379** |
+| **Total** | **291** | **1131** | **747** | **30** | **354** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
