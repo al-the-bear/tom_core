@@ -2648,21 +2648,21 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| activeColor | Color? | resolveColorOrNull | ⬜ |
-| inactiveColor | Color? | resolveColorOrNull | ⬜ |
-| fillColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| inactiveColor | Color? | resolveColorOrNull | ✅ |
+| fillColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomCupertinoSwitch
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| activeTrackColor | Color? | resolveColorOrNull | ⬜ |
-| thumbColor | Color? | resolveColorOrNull | ⬜ |
-| trackColor | Color? | resolveColorOrNull | ⬜ |
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| onLabelColor | Color? | resolveColorOrNull | ⬜ |
-| offLabelColor | Color? | resolveColorOrNull | ⬜ |
+| activeTrackColor | Color? | resolveColorOrNull | ✅ |
+| thumbColor | Color? | resolveColorOrNull | ✅ |
+| trackColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| onLabelColor | Color? | resolveColorOrNull | ✅ |
+| offLabelColor | Color? | resolveColorOrNull | ✅ |
 
 ---
 
@@ -2672,16 +2672,16 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| indentation | double? | resolveDoubleOrNull | ⬜ |
-| shrinkWrap | bool | resolveBoolOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| indentation | double? | resolveDoubleOrNull | ✅ |
+| shrinkWrap | bool | resolveBoolOrNull | ✅ |
 | physics | ScrollPhysics? | resolveScrollPhysics | ✅ |
 
 #### TomTreeNode
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| initiallyExpanded | bool | resolveBoolOrNull | ⬜ |
+| initiallyExpanded | bool | resolveBoolOrNull | ✅ |
 
 #### TomTreeSliver
 
@@ -2716,9 +2716,9 @@ No resource-loadable parameters.
 | Sliders | 3 | 18 | 18 | 0 | 0 |
 | Slivers | 13 | 21 | 21 | 0 | 0 |
 | Tables | 6 | 46 | 46 | 0 | 0 |
-| Toggles | 8 | 71 | 62 | 0 | 9 |
-| Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **1088** | **30** | **13** |
+| Toggles | 8 | 71 | 71 | 0 | 0 |
+| Trees | 3 | 8 | 8 | 0 | 0 |
+| **Total** | **291** | **1131** | **1101** | **30** | **0** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

@@ -31,15 +31,27 @@ class TomTreeView extends TomTreeBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
+    final resolvedPadding =
+        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
     final resolvedIndentation =
         indentation ?? resolveDoubleOrNull(context, 'indentation') ?? 24.0;
+    final resolvedShrinkWrap =
+        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+    final resolvedInitiallyExpanded =
+        resolveBoolOrNull(context, 'initiallyExpanded');
 
     return ListView(
-      padding: padding,
-      shrinkWrap: shrinkWrap,
+      padding: resolvedPadding,
+      shrinkWrap: resolvedShrinkWrap,
       physics: physics ?? _resolveScrollPhysics(context, 'physics'),
       children: [
-        for (final node in nodes) _TomTreeNodeWidget(node: node, depth: 0, indentation: resolvedIndentation),
+        for (final node in nodes)
+          _TomTreeNodeWidget(
+            node: node,
+            depth: 0,
+            indentation: resolvedIndentation,
+            initiallyExpandedDefault: resolvedInitiallyExpanded,
+          ),
       ],
     );
   }
@@ -57,7 +69,7 @@ class TomTreeNode {
   final Widget? leading;
   final Widget? trailing;
   final List<TomTreeNode> children;
-  final bool initiallyExpanded;
+  final bool? initiallyExpanded;
   final VoidCallback? onTap;
 
   const TomTreeNode({
@@ -65,7 +77,7 @@ class TomTreeNode {
     this.leading,
     this.trailing,
     this.children = const [],
-    this.initiallyExpanded = false,
+    this.initiallyExpanded,
     this.onTap,
   });
 }
@@ -74,11 +86,13 @@ class _TomTreeNodeWidget extends StatefulWidget {
   final TomTreeNode node;
   final int depth;
   final double indentation;
+  final bool? initiallyExpandedDefault;
 
   const _TomTreeNodeWidget({
     required this.node,
     required this.depth,
     required this.indentation,
+    this.initiallyExpandedDefault,
   });
 
   @override
@@ -91,7 +105,7 @@ class _TomTreeNodeWidgetState extends State<_TomTreeNodeWidget> {
   @override
   void initState() {
     super.initState();
-    _expanded = widget.node.initiallyExpanded;
+    _expanded = widget.node.initiallyExpanded ?? widget.initiallyExpandedDefault ?? false;
   }
 
   @override
@@ -138,6 +152,7 @@ class _TomTreeNodeWidgetState extends State<_TomTreeNodeWidget> {
               node: child,
               depth: widget.depth + 1,
               indentation: widget.indentation,
+              initiallyExpandedDefault: widget.initiallyExpandedDefault,
             ),
       ],
     );
