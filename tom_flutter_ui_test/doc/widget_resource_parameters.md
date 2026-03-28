@@ -1589,24 +1589,24 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| label | String? | resolveResourceOrNull | ⬜ |
-| hintText | String? | resolveResourceOrNull | ⬜ |
-| helperText | String? | resolveResourceOrNull | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| menuHeight | double? | resolveDoubleOrNull | ⬜ |
-| expandedInsets | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| textStyle | TextStyle? | resolveTextStyle | ⬜ |
+| label | String? | resolveResourceOrNull | ✅ |
+| hintText | String? | resolveResourceOrNull | ✅ |
+| helperText | String? | resolveResourceOrNull | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| menuHeight | double? | resolveDoubleOrNull | ✅ |
+| expandedInsets | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| textStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomEditableText
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundCursorColor | Color? | resolveColorOrNull | ⬜ |
-| selectionColor | Color? | resolveColorOrNull | ⬜ |
-| cursorHeight | double? | resolveDoubleOrNull | ⬜ |
-| cursorWidth | double? | resolveDoubleOrNull | ⬜ |
-| maxLines | int? | resolveIntOrNull | ⬜ |
-| minLines | int? | resolveIntOrNull | ⬜ |
+| backgroundCursorColor | Color? | resolveColorOrNull | ✅ |
+| selectionColor | Color? | resolveColorOrNull | ✅ |
+| cursorHeight | double? | resolveDoubleOrNull | ✅ |
+| cursorWidth | double? | resolveDoubleOrNull | ✅ |
+| maxLines | int? | resolveIntOrNull | ✅ |
+| minLines | int? | resolveIntOrNull | ✅ |
 
 #### TomForm
 
@@ -1620,13 +1620,13 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| viewHintText | String? | resolveResourceOrNull | ⬜ |
-| viewBackgroundColor | Color? | resolveColorOrNull | ⬜ |
-| viewElevation | double? | resolveDoubleOrNull | ⬜ |
-| viewSurfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| dividerColor | Color? | resolveColorOrNull | ⬜ |
-| headerTextStyle | TextStyle? | resolveTextStyle | ⬜ |
-| headerHintStyle | TextStyle? | resolveTextStyle | ⬜ |
+| viewHintText | String? | resolveResourceOrNull | ✅ |
+| viewBackgroundColor | Color? | resolveColorOrNull | ✅ |
+| viewElevation | double? | resolveDoubleOrNull | ✅ |
+| viewSurfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| dividerColor | Color? | resolveColorOrNull | ✅ |
+| headerTextStyle | TextStyle? | resolveTextStyle | ✅ |
+| headerHintStyle | TextStyle? | resolveTextStyle | ✅ |
 
 #### TomYearPicker
 
@@ -1642,23 +1642,23 @@ No resource-loadable parameters.
 |-----------|------|----------|--------|
 | excludeFromSemantics | bool? | resolveBoolOrNull | ✅ |
 | trackpadScrollCausesScale | bool? | resolveBoolOrNull | ✅ |
-| trackpadScrollToScaleFactor | Offset | resolveOffset | ⬜ |
+| trackpadScrollToScaleFactor | Offset | resolveOffset | ✅ |
 
 #### TomInkWell
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| focusColor | Color? | resolveColorOrNull | ⬜ |
-| hoverColor | Color? | resolveColorOrNull | ⬜ |
-| highlightColor | Color? | resolveColorOrNull | ⬜ |
-| splashColor | Color? | resolveColorOrNull | ⬜ |
-| radius | double? | resolveDoubleOrNull | ⬜ |
-| borderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
-| customBorder | ShapeBorder? | resolveShapeBorder | ⬜ |
-| enableFeedback | bool? | resolveBoolOrNull | ⬜ |
-| excludeFromSemantics | bool | resolveBoolOrNull | ⬜ |
-| canRequestFocus | bool | resolveBoolOrNull | ⬜ |
-| autofocus | bool | resolveBoolOrNull | ⬜ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| highlightColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| radius | double? | resolveDoubleOrNull | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
+| customBorder | ShapeBorder? | resolveShapeBorder | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| excludeFromSemantics | bool | resolveBoolOrNull | ✅ |
+| canRequestFocus | bool | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
 
 #### TomInkResponse
 
@@ -2706,8 +2706,8 @@ No resource-loadable parameters.
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
-| Inputs | 16 | 88 | 68 | 0 | 20 |
-| Interactions | 10 | 38 | 11 | 0 | 27 |
+| Inputs | 16 | 88 | 88 | 0 | 0 |
+| Interactions | 10 | 38 | 23 | 0 | 15 |
 | Labels | 15 | 79 | 12 | 0 | 67 |
 | Lists | 6 | 39 | 1 | 0 | 38 |
 | Navigation | 21 | 81 | 4 | 0 | 77 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **593** | **30** | **508** |
+| **Total** | **291** | **1131** | **625** | **30** | **476** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
