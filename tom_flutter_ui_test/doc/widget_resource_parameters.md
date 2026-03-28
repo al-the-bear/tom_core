@@ -674,14 +674,14 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| spacing | double? | resolveDoubleOrNull | ⬜ |
-| runSpacing | double? | resolveDoubleOrNull | ⬜ |
+| spacing | double? | resolveDoubleOrNull | ✅ |
+| runSpacing | double? | resolveDoubleOrNull | ✅ |
 
 #### TomStack
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
 
 
 #### TomAlign
@@ -879,24 +879,24 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomIndexedStack
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| index | int? | resolveIntOrNull | ⬜ |
-| alignment | AlignmentGeometry | resolveAlignment | ⬜ |
+| index | int? | resolveIntOrNull | ✅ |
+| alignment | AlignmentGeometry | resolveAlignment | ✅ |
 
 #### TomInk
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| color | Color? | resolveColorOrNull | ⬜ |
-| decoration | Decoration? | resolveDecoration | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| height | double? | resolveDoubleOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| color | Color? | resolveColorOrNull | ✅ |
+| decoration | Decoration? | resolveDecoration | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| height | double? | resolveDoubleOrNull | ✅ |
 
 #### TomInteractiveViewer
 
@@ -2695,7 +2695,7 @@ No resource-loadable parameters.
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
-| Containers | 81 | 203 | 111 | 0 | 92 |
+| Containers | 81 | 203 | 122 | 0 | 81 |
 | ACL Container | 1 | 5 | 0 | 0 | 5 |
 | Dialogs | 17 | 75 | 0 | 0 | 75 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
@@ -2712,7 +2712,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **339** | **12** | **780** |
+| **Total** | **291** | **1131** | **350** | **12** | **769** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
