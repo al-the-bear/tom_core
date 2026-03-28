@@ -2710,7 +2710,10 @@ class TomInteractiveViewer extends TomContainerBase {
       scaleEnabled ?? resolveBoolOrNull(context, 'scaleEnabled') ?? true;
     final resolvedScaleFactor =
       scaleFactor ?? resolveDoubleOrNull(context, 'scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
-    final resolvedAlignment = alignment ?? Alignment.topLeft;
+
+    // Phase 3: Resolve complex objects from resources
+    final resolvedAlignment =
+        alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.topLeft;
 
     return InteractiveViewer(
       clipBehavior: clipBehavior,
@@ -2730,6 +2733,15 @@ class TomInteractiveViewer extends TomContainerBase {
       alignment: resolvedAlignment,
       child: child,
     );
+  }
+
+  Alignment? _resolveAlignment(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    final resolved = TomStyleResolvers.resolveAlignment(basePath, suffix);
+    // TomStyleResolvers returns AlignmentGeometry, but InteractiveViewer needs Alignment
+    if (resolved is Alignment) return resolved;
+    return null;
   }
 }
 
