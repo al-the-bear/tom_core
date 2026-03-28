@@ -1993,66 +1993,66 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| isScrollable | bool | resolveBoolOrNull | ⬜ |
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| indicatorColor | Color? | resolveColorOrNull | ⬜ |
-| indicatorWeight | double? | resolveDoubleOrNull | ⬜ |
-| indicatorPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| indicator | Decoration? | resolveDecoration | ⬜ |
-| dividerColor | Color? | resolveColorOrNull | ⬜ |
-| dividerHeight | double? | resolveDoubleOrNull | ⬜ |
-| labelColor | Color? | resolveColorOrNull | ⬜ |
-| unselectedLabelColor | Color? | resolveColorOrNull | ⬜ |
-| labelStyle | TextStyle? | resolveTextStyle | ⬜ |
-| unselectedLabelStyle | TextStyle? | resolveTextStyle | ⬜ |
-| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
-| automaticIndicatorColorAdjustment | bool | resolveBoolOrNull | ⬜ |
-| splashBorderRadius | BorderRadius? | resolveBorderRadius | ⬜ |
+| isScrollable | bool | resolveBoolOrNull | ✅ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| indicatorColor | Color? | resolveColorOrNull | ✅ |
+| indicatorWeight | double? | resolveDoubleOrNull | ✅ |
+| indicatorPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| indicator | Decoration? | resolveDecoration | ✅ |
+| dividerColor | Color? | resolveColorOrNull | ✅ |
+| dividerHeight | double? | resolveDoubleOrNull | ✅ |
+| labelColor | Color? | resolveColorOrNull | ✅ |
+| unselectedLabelColor | Color? | resolveColorOrNull | ✅ |
+| labelStyle | TextStyle? | resolveTextStyle | ✅ |
+| unselectedLabelStyle | TextStyle? | resolveTextStyle | ✅ |
+| labelPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| automaticIndicatorColorAdjustment | bool | resolveBoolOrNull | ✅ |
+| splashBorderRadius | BorderRadius? | resolveBorderRadius | ✅ |
 
 #### TomNavigationDrawer
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| selectedIndex | int? | resolveIntOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| indicatorColor | Color? | resolveColorOrNull | ⬜ |
-| indicatorShape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| tilePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| selectedIndex | int? | resolveIntOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| indicatorColor | Color? | resolveColorOrNull | ✅ |
+| indicatorShape | ShapeBorder? | resolveShapeBorder | ✅ |
+| tilePadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomDrawer
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| shadowColor | Color? | resolveColorOrNull | ⬜ |
-| surfaceTintColor | Color? | resolveColorOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| shape | ShapeBorder? | resolveShapeBorder | ⬜ |
-| width | double? | resolveDoubleOrNull | ⬜ |
-| semanticLabel | String? | resolveResourceOrNull | ⬜ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| shadowColor | Color? | resolveColorOrNull | ✅ |
+| surfaceTintColor | Color? | resolveColorOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+| width | double? | resolveDoubleOrNull | ✅ |
+| semanticLabel | String? | resolveResourceOrNull | ✅ |
 
 #### TomBottomNavigationBar
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| currentIndex | int | resolveIntOrNull | ⬜ |
-| elevation | double? | resolveDoubleOrNull | ⬜ |
-| backgroundColor | Color? | resolveColorOrNull | ⬜ |
-| iconSize | double? | resolveDoubleOrNull | ⬜ |
-| selectedItemColor | Color? | resolveColorOrNull | ⬜ |
-| unselectedItemColor | Color? | resolveColorOrNull | ⬜ |
-| selectedIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
-| unselectedIconTheme | IconThemeData? | resolveIconThemeData | ⬜ |
+| currentIndex | int | resolveIntOrNull | ✅ |
+| elevation | double? | resolveDoubleOrNull | ✅ |
+| backgroundColor | Color? | resolveColorOrNull | ✅ |
+| iconSize | double? | resolveDoubleOrNull | ✅ |
+| selectedItemColor | Color? | resolveColorOrNull | ✅ |
+| unselectedItemColor | Color? | resolveColorOrNull | ✅ |
+| selectedIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
+| unselectedIconTheme | IconThemeData? | resolveIconThemeData | ✅ |
 
 
 #### TomBreadcrumb
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ⬜ |
+| padding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
 
 #### TomCupertinoNavigationBar
 
@@ -2710,7 +2710,7 @@ No resource-loadable parameters.
 | Interactions | 10 | 38 | 38 | 0 | 0 |
 | Labels | 15 | 79 | 79 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
-| Navigation | 21 | 81 | 22 | 0 | 59 |
+| Navigation | 21 | 81 | 61 | 0 | 20 |
 | Progress | 6 | 30 | 0 | 0 | 30 |
 | Selects | 12 | 74 | 0 | 0 | 74 |
 | Sliders | 3 | 18 | 0 | 0 | 18 |
@@ -2718,7 +2718,7 @@ No resource-loadable parameters.
 | Tables | 6 | 46 | 1 | 0 | 45 |
 | Toggles | 8 | 71 | 1 | 0 | 70 |
 | Trees | 3 | 8 | 4 | 0 | 4 |
-| **Total** | **291** | **1131** | **785** | **30** | **316** |
+| **Total** | **291** | **1131** | **824** | **30** | **277** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`
