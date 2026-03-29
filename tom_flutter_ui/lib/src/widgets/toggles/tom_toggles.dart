@@ -590,7 +590,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
-    // Phase 2: Resolve optional color parameters from resources
+    // Phase 2: Resolve optional parameters from resources
     final resolvedActiveColor =
         activeColor ?? resolveColorOrNull(context, 'activeColor');
     final resolvedTileColor =
@@ -599,6 +599,18 @@ class TomRadioListTile<T> extends TomToggleBase {
         selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
     final resolvedContentPadding =
         contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+    final resolvedIsThreeLine =
+        resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
+    final resolvedVisualDensity =
+        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+    final resolvedEnableFeedback =
+        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+    final resolvedToggleable =
+        resolveBoolOrNull(context, 'toggleable') ?? toggleable;
+    final resolvedAutofocus =
+        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
 
     return RadioListTile<T>(
       value: value,
@@ -607,21 +619,33 @@ class TomRadioListTile<T> extends TomToggleBase {
       title: effectiveTitle,
       subtitle: subtitle,
       secondary: secondary,
-      isThreeLine: isThreeLine,
-      dense: dense,
+      isThreeLine: resolvedIsThreeLine,
+      dense: resolvedDense,
       contentPadding: resolvedContentPadding,
       activeColor: resolvedActiveColor,
       tileColor: resolvedTileColor,
       selectedTileColor: resolvedSelectedTileColor,
-      visualDensity: visualDensity,
-      enableFeedback: enableFeedback,
+      visualDensity: resolvedVisualDensity,
+      enableFeedback: resolvedEnableFeedback,
       controlAffinity: controlAffinity,
-      toggleable: toggleable,
-      autofocus: autofocus,
+      toggleable: resolvedToggleable,
+      autofocus: resolvedAutofocus,
       focusNode: focusNode,
-      shape: shape,
+      shape: resolvedShape,
       fillColor: fillColor,
     );
+  }
+
+  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+  }
+
+  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 }
 

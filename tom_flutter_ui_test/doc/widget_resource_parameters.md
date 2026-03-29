@@ -105,7 +105,8 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| opacity | double | resolveDoubleOrNull | ✅ |
+| opacity | double? | resolveDoubleOrFail | ✅ |
+| alwaysIncludeSemantics | bool? | resolveBoolOrNull | ✅ |
 
 #### TomAnimatedPadding
 
@@ -117,10 +118,10 @@ Complete inventory of all Tom Flutter UI widget constructor parameters that can 
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| elevation | double | resolveDoubleOrNull | ✅ |
-| color | Color | resolveColorOrNull | ✅ |
-| shadowColor | Color | resolveColorOrNull | ✅ |
-| borderRadius | BorderRadius | resolveBorderRadius | ✅ |
+| elevation | double? | resolveDoubleOrFail | ✅ |
+| color | Color? | resolveColorOrFail | ✅ |
+| shadowColor | Color? | resolveColorOrFail | ✅ |
+| borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
 
 
 #### TomAnimatedBuilder
@@ -164,14 +165,14 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| turns | double? | resolveDoubleOrNull | ✅ |
+| turns | double? | resolveDoubleOrFail | ✅ |
 | alignment | Alignment? | resolveAlignment | ✅ |
 
 #### TomAnimatedScale
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| scale | double? | resolveDoubleOrNull | ✅ |
+| scale | double? | resolveDoubleOrFail | ✅ |
 | alignment | Alignment? | resolveAlignment | ✅ |
 
 #### TomAnimatedSize
@@ -966,7 +967,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| opacity | double? | resolveDoubleOrNull | ✅ |
+| opacity | double? | resolveDoubleOrFail | ✅ |
 
 #### TomOverflowBar
 
@@ -997,7 +998,7 @@ No resource-loadable parameters.
 |-----------|------|----------|--------|
 | borderRadius | BorderRadius? | resolveBorderRadius | ✅ |
 | elevation | double? | resolveDoubleOrNull | ✅ |
-| color | Color? | resolveColorOrNull | ✅ |
+| color | Color? | resolveColorOrFail | ✅ |
 | shadowColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomPhysicalShape
@@ -1005,7 +1006,7 @@ No resource-loadable parameters.
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
 | elevation | double? | resolveDoubleOrNull | ✅ |
-| color | Color? | resolveColorOrNull | ✅ |
+| color | Color? | resolveColorOrFail | ✅ |
 | shadowColor | Color? | resolveColorOrNull | ✅ |
 
 #### TomPositioned
@@ -1034,7 +1035,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| quarterTurns | int? | resolveIntOrNull | ✅ |
+| quarterTurns | int? | resolveIntOrFail | ✅ |
 
 #### TomSafeArea
 
@@ -1495,6 +1496,7 @@ No resource-loadable parameters.
 | scribbleEnabled | bool | resolveBoolOrNull | ✅ |
 | enableIMEPersonalizedLearning | bool | resolveBoolOrNull | ✅ |
 | canRequestFocus | bool | resolveBoolOrNull | ✅ |
+| scrollPhysics | ScrollPhysics? | resolveScrollPhysics | ✅ |
 | label | String? | resolveResourceOrNull | ✅ |
 | hint | String? | resolveResourceOrNull | ✅ |
 
@@ -1722,6 +1724,7 @@ No resource-loadable parameters.
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
 | opaque | bool? | resolveBoolOrNull | ✅ |
+| hitTestBehavior | HitTestBehavior? | resolveResourceOrNull | ✅ |
 
 ---
 
@@ -1755,6 +1758,7 @@ No resource-loadable parameters.
 | cursorWidth | double | resolveDoubleOrNull | ✅ |
 | cursorHeight | double? | resolveDoubleOrNull | ✅ |
 | cursorColor | Color? | resolveColorOrNull | ✅ |
+| scrollPhysics | ScrollPhysics? | resolveScrollPhysics | ✅ |
 | semanticsLabel | String? | resolveResourceOrNull | ✅ |
 | textHeightBehavior | TextHeightBehavior? | resolveTextHeightBehavior | ✅ |
 
@@ -1925,7 +1929,7 @@ No resource-loadable parameters.
 | useMagnifier | bool | resolveBoolOrNull | ✅ |
 | magnification | double? | resolveDoubleOrNull | ✅ |
 | overAndUnderCenterOpacity | double? | resolveDoubleOrNull | ✅ |
-| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrFail | ✅ |
 | squeeze | double? | resolveDoubleOrNull | ✅ |
 | renderChildrenOutsideViewport | bool | resolveBoolOrNull | ✅ |
 | restorationId | String? | resolveResourceOrNull | ✅ |
@@ -2262,6 +2266,7 @@ No resource-loadable parameters.
 | enableSearch | bool | resolveBoolOrNull | ✅ |
 | textStyle | TextStyle? | resolveTextStyle | ✅ |
 | expandedInsets | EdgeInsets? | resolveEdgeInsetsOrNull | ✅ |
+| menuStyle | MenuStyle? | resolveMenuStyle | ✅ |
 | requestFocusOnTap | bool | resolveBoolOrNull | ✅ |
 
 #### TomMenuAnchor
@@ -2270,6 +2275,7 @@ No resource-loadable parameters.
 |-----------|------|----------|--------|
 | alignmentOffset | Offset? | resolveOffset | ✅ |
 | consumeOutsideTap | bool | resolveBoolOrNull | ✅ |
+| style | MenuStyle? | resolveMenuStyle | ✅ |
 
 #### TomDropdownButtonFormField
 
@@ -2390,7 +2396,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| maxExtent | double? | resolveDoubleOrNull | ✅ |
+| maxExtent | double? | resolveDoubleOrFail | ✅ |
 
 #### TomSliverCrossAxisExpanded
 
@@ -2409,7 +2415,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| itemExtent | double? | resolveDoubleOrNull | ✅ |
+| itemExtent | double? | resolveDoubleOrFail | ✅ |
 
 #### TomSliverOffstage
 
@@ -2421,7 +2427,7 @@ No resource-loadable parameters.
 
 | Parameter | Type | Resolver | Status |
 |-----------|------|----------|--------|
-| opacity | double? | resolveDoubleOrNull | ✅ |
+| opacity | double? | resolveDoubleOrFail | ✅ |
 | alwaysIncludeSemantics | bool? | resolveBoolOrNull | ✅ |
 
 #### TomSliverPadding
@@ -2664,6 +2670,40 @@ No resource-loadable parameters.
 | onLabelColor | Color? | resolveColorOrNull | ✅ |
 | offLabelColor | Color? | resolveColorOrNull | ✅ |
 
+#### TomRadioListTile
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| titleText | String? | resolveResourceOrFail | ✅ |
+| isThreeLine | bool | resolveBoolOrNull | ✅ |
+| dense | bool? | resolveBoolOrNull | ✅ |
+| contentPadding | EdgeInsetsGeometry? | resolveEdgeInsetsOrNull | ✅ |
+| activeColor | Color? | resolveColorOrNull | ✅ |
+| tileColor | Color? | resolveColorOrNull | ✅ |
+| selectedTileColor | Color? | resolveColorOrNull | ✅ |
+| visualDensity | VisualDensity? | resolveVisualDensity | ✅ |
+| enableFeedback | bool? | resolveBoolOrNull | ✅ |
+| toggleable | bool | resolveBoolOrNull | ✅ |
+| autofocus | bool | resolveBoolOrNull | ✅ |
+| shape | ShapeBorder? | resolveShapeBorder | ✅ |
+
+#### TomToggleButtons
+
+| Parameter | Type | Resolver | Status |
+|-----------|------|----------|--------|
+| color | Color? | resolveColorOrNull | ✅ |
+| selectedColor | Color? | resolveColorOrNull | ✅ |
+| disabledColor | Color? | resolveColorOrNull | ✅ |
+| fillColor | Color? | resolveColorOrNull | ✅ |
+| focusColor | Color? | resolveColorOrNull | ✅ |
+| highlightColor | Color? | resolveColorOrNull | ✅ |
+| hoverColor | Color? | resolveColorOrNull | ✅ |
+| splashColor | Color? | resolveColorOrNull | ✅ |
+| borderColor | Color? | resolveColorOrNull | ✅ |
+| selectedBorderColor | Color? | resolveColorOrNull | ✅ |
+| disabledBorderColor | Color? | resolveColorOrNull | ✅ |
+| borderWidth | double? | resolveDoubleOrNull | ✅ |
+
 ---
 
 ### Trees (`tom_trees.dart`)
@@ -2697,7 +2737,7 @@ No resource-loadable parameters.
 
 | Category | Widgets | Total Params | ✅ Resolved | ⛔ Excluded | ⬜ Remaining |
 |----------|---------|-------------|-------------|-------------|--------------|
-| Animated Widgets | 20 | 46 | 34 | 12 | 0 |
+| Animated Widgets | 20 | 47 | 35 | 12 | 0 |
 | Builder Widgets | 8 | 0 | 0 | 0 | 0 |
 | Buttons | 23 | 70 | 70 | 0 | 0 |
 | Chips | 5 | 83 | 83 | 0 | 0 |
@@ -2706,19 +2746,19 @@ No resource-loadable parameters.
 | Dialogs | 17 | 75 | 62 | 13 | 0 |
 | Effects | 6 | 0 | 0 | 0 | 0 |
 | Images | 11 | 56 | 56 | 0 | 0 |
-| Inputs | 16 | 88 | 88 | 0 | 0 |
-| Interactions | 10 | 38 | 38 | 0 | 0 |
-| Labels | 15 | 79 | 79 | 0 | 0 |
+| Inputs | 16 | 89 | 89 | 0 | 0 |
+| Interactions | 10 | 39 | 39 | 0 | 0 |
+| Labels | 15 | 80 | 80 | 0 | 0 |
 | Lists | 6 | 39 | 39 | 0 | 0 |
 | Navigation | 21 | 81 | 81 | 0 | 0 |
 | Progress | 6 | 30 | 30 | 0 | 0 |
-| Selects | 12 | 74 | 74 | 0 | 0 |
+| Selects | 12 | 76 | 76 | 0 | 0 |
 | Sliders | 3 | 18 | 18 | 0 | 0 |
 | Slivers | 13 | 21 | 21 | 0 | 0 |
 | Tables | 6 | 46 | 46 | 0 | 0 |
-| Toggles | 8 | 71 | 71 | 0 | 0 |
+| Toggles | 10 | 95 | 95 | 0 | 0 |
 | Trees | 3 | 8 | 8 | 0 | 0 |
-| **Total** | **291** | **1131** | **1101** | **30** | **0** |
+| **Total** | **293** | **1161** | **1131** | **30** | **0** |
 
 **Status key:**
 - ✅ **Resolved** — Resource resolution implemented in `buildContent()`

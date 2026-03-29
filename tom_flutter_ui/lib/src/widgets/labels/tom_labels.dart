@@ -69,7 +69,7 @@ class TomText extends TomLabelBase {
 
     return Text(
       resolvedText,
-      style: style,
+      style: style ?? _resolveTextStyle(context, 'style'),
       strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
@@ -81,6 +81,12 @@ class TomText extends TomLabelBase {
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
@@ -194,7 +200,7 @@ class TomSelectableText extends TomLabelBase {
 
     return SelectableText(
       resolvedText,
-      style: style,
+      style: style ?? _resolveTextStyle(context, 'style'),
       strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
@@ -217,6 +223,12 @@ class TomSelectableText extends TomLabelBase {
       selectionControls: selectionControls,
       onSelectionChanged: onSelectionChanged,
     );
+  }
+
+  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
+    final basePath = resolveResourceBasePath(context);
+    if (basePath == null) return null;
+    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
