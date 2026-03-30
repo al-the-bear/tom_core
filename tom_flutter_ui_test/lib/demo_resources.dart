@@ -1305,6 +1305,135 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo07.aclLayout.crossAxisLabel.label': 'Cross Axis:',
     'demo07.aclLayout.reset.label': 'Reset',
     'demo07.aclLayout.apply.label': 'Apply',
+
+    // =========================================================================
+    // Demo 08: Scrollable Containers
+    // =========================================================================
+
+    // Section headers
+    'demo08.section.basicScroll.title.label': 'Basic Scroll Views',
+    'demo08.section.basicScroll.subtitle.label':
+        'Single-child scrollable containers and scrollbars',
+    'demo08.section.nestedScroll.title.label': 'Nested Scroll Views',
+    'demo08.section.nestedScroll.subtitle.label':
+        'Coordinated scrolling between header and body',
+    'demo08.section.draggable.title.label': 'Draggable & Interactive',
+    'demo08.section.draggable.subtitle.label':
+        'User-resizable sheets and zoomable viewers',
+    'demo08.section.carousel.title.label': 'Carousel & Visibility',
+    'demo08.section.carousel.subtitle.label':
+        'Content carousels and visibility control widgets',
+    'demo08.section.acl.title.label': 'ACL Scroll Demo',
+    'demo08.section.acl.subtitle.label':
+        'Adaptive scroll controls with AclBuilder',
+
+    // 8.1 - SingleChildScrollView (vertical)
+    'demo08.singleChildScroll.icon.icon': 'swap_vert',
+    'demo08.singleChildScroll.title.label': 'TomSingleChildScrollView',
+    'demo08.singleChildScroll.description.label':
+        'Basic vertical scrolling container for long content.',
+    'demo08.singleChildScroll.verticalLabel.label': 'Vertical scroll',
+
+    // 8.1 - Horizontal scroll
+    'demo08.horizontalScroll.icon.icon': 'swap_horiz',
+    'demo08.horizontalScroll.title.label': 'Horizontal Scroll',
+    'demo08.horizontalScroll.description.label':
+        'Horizontal scrolling with SingleChildScrollView.',
+    'demo08.horizontalScroll.label.label': 'Horizontal scroll',
+
+    // 8.1 - Scrollbar
+    'demo08.scrollbar.icon.icon': 'view_sidebar',
+    'demo08.scrollbar.title.label': 'TomScrollbar',
+    'demo08.scrollbar.description.label':
+        'Material scrollbar with visible thumb and interactivity.',
+    'demo08.scrollbar.label.label': 'Always-visible interactive scrollbar',
+
+    // 8.1 - CupertinoScrollbar
+    'demo08.cupertinoScrollbar.icon.icon': 'phone_iphone',
+    'demo08.cupertinoScrollbar.title.label': 'TomCupertinoScrollbar',
+    'demo08.cupertinoScrollbar.description.label':
+        'iOS-style scrollbar with thin thumb.',
+    'demo08.cupertinoScrollbar.label.label': 'Cupertino-style scrollbar',
+
+    // 8.2 - NestedScrollView
+    'demo08.nestedScroll.icon.icon': 'vertical_split',
+    'demo08.nestedScroll.title.label': 'TomNestedScrollView',
+    'demo08.nestedScroll.description.label':
+        'Coordinated header collapse with tabbed body scrolling.',
+    'demo08.nestedScroll.label.label':
+        'Collapsible header with pinned tabs',
+
+    // 8.3 - DraggableScrollableSheet
+    'demo08.draggableSheet.icon.icon': 'drag_handle',
+    'demo08.draggableSheet.title.label': 'TomDraggableScrollableSheet',
+    'demo08.draggableSheet.description.label':
+        'Bottom sheet that can be dragged to resize with snap points.',
+    'demo08.draggableSheet.label.label':
+        'Draggable sheet with snap points (20%, 40%, 85%)',
+    'demo08.draggableSheet.backgroundText.label':
+        'Drag the sheet below to resize',
+    'demo08.draggableSheet.sheetTitle.label': 'Draggable Sheet',
+
+    // 8.3 - InteractiveViewer
+    'demo08.interactiveViewer.icon.icon': 'zoom_out_map',
+    'demo08.interactiveViewer.title.label': 'TomInteractiveViewer',
+    'demo08.interactiveViewer.description.label':
+        'Pan and zoom viewport with pinch gestures.',
+    'demo08.interactiveViewer.label.label':
+        'Pinch to zoom, drag to pan (0.5x – 4x)',
+    'demo08.interactiveViewer.contentText.label': 'Pan & Zoom Me',
+    'demo08.interactiveViewer.hintText.label':
+        'Pinch to zoom • Drag to pan',
+    'demo08.interactiveViewer.resetButton.label': 'Reset View',
+
+    // 8.4 - CarouselView
+    'demo08.carousel.icon.icon': 'view_carousel',
+    'demo08.carousel.title.label': 'TomCarouselView',
+    'demo08.carousel.description.label':
+        'Horizontal carousel with swipe navigation.',
+    'demo08.carousel.label.label': 'Swipe carousel with tap handler',
+
+    // 8.4 - Visibility
+    'demo08.visibility.icon.icon': 'visibility',
+    'demo08.visibility.title.label': 'TomVisibility',
+    'demo08.visibility.description.label':
+        'Logical visibility control with size maintenance options.',
+    'demo08.visibility.label.label': 'Toggle visibility and size behavior',
+    'demo08.visibility.beforeText.label': 'Content before',
+    'demo08.visibility.targetText.label':
+        'This content can be hidden!',
+    'demo08.visibility.afterText.label': 'Content after',
+
+    // 8.4 - Offstage
+    'demo08.offstage.icon.icon': 'visibility_off',
+    'demo08.offstage.title.label': 'TomOffstage',
+    'demo08.offstage.description.label':
+        'Removes widget from rendering entirely, no space occupied.',
+    'demo08.offstage.label.label': 'Toggle offstage (no space when hidden)',
+    'demo08.offstage.beforeText.label': 'Content before',
+    'demo08.offstage.targetText.label':
+        'This content goes completely offstage!',
+    'demo08.offstage.afterText.label': 'Content after',
+
+    // 8.4 - SafeArea
+    'demo08.safeArea.icon.icon': 'fit_screen',
+    'demo08.safeArea.title.label': 'TomSafeArea',
+    'demo08.safeArea.description.label':
+        'Insets child to avoid system UI (notch, status bar, etc.).',
+    'demo08.safeArea.label.label': 'SafeArea insets demonstration',
+    'demo08.safeArea.contentText.label': 'Safe area content',
+    'demo08.safeArea.hintText.label':
+        'On real devices, SafeArea avoids notch and system bars',
+
+    // 8.5 - ACL Scroll
+    'demo08.aclScroll.icon.icon': 'dashboard_customize',
+    'demo08.aclScroll.title.label': 'ACL Scroll Explorer',
+    'demo08.aclScroll.description.label':
+        'Interactive scroll sheet controls with AclBuilder layout.',
+    'demo08.aclScroll.sheetSizeLabel.label': 'Sheet Size:',
+    'demo08.aclScroll.snapLabel.label': 'Snap:',
+    'demo08.aclScroll.reset.label': 'Reset',
+    'demo08.aclScroll.apply.label': 'Apply',
   };
 
   @override
