@@ -2075,6 +2075,92 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo14.cupertinoLinear.indeterminate.label': 'Indeterminate',
     'demo14.cupertinoLinear.determinate.label': 'Determinate Values',
     'demo14.cupertinoLinear.custom.label': 'Custom Colors & Height',
+
+    // ==========================================================================
+    // Demo 15: List Views - Section Headers
+    // ==========================================================================
+    'demo15.section.basic.title.label': 'Basic ListView',
+    'demo15.section.basic.subtitle.label':
+        'Standard list views with static children, builder pattern, and separators',
+    'demo15.section.animated.title.label': 'Animated Lists',
+    'demo15.section.animated.subtitle.label':
+        'Lists with animated item insertion and removal',
+    'demo15.section.interactive.title.label': 'Interactive Lists',
+    'demo15.section.interactive.subtitle.label':
+        'Reorderable and dismissible list patterns',
+    'demo15.section.wheel.title.label': 'Wheel Scroll View',
+    'demo15.section.wheel.subtitle.label':
+        'iOS-style picker wheels for selection interfaces',
+
+    // ==========================================================================
+    // Demo 15: TomListView Card
+    // ==========================================================================
+    'demo15.listview.icon.icon': 'mList',
+    'demo15.listview.title.label': 'TomListView',
+    'demo15.listview.description.label':
+        'Scrollable list with multiple construction patterns: static children, builder, and separated.',
+    'demo15.listview.staticLabel.label': 'Static Children',
+    'demo15.listview.builderLabel.label': 'Builder Pattern (Lazy)',
+    'demo15.listview.separatedLabel.label': 'Separated with Dividers',
+    'demo15.listview.horizontalLabel.label': 'Horizontal Scrolling',
+
+    // ==========================================================================
+    // Demo 15: TomAnimatedList Card
+    // ==========================================================================
+    'demo15.animatedList.icon.icon': 'mAnimation',
+    'demo15.animatedList.title.label': 'TomAnimatedList',
+    'demo15.animatedList.description.label':
+        'List that animates items when they are inserted or removed.',
+    'demo15.animatedList.description.text':
+        'Add and remove items to see smooth slide and fade animations.',
+    'demo15.animatedList.add.label': 'Add Item',
+    'demo15.animatedList.add.icon': 'mAdd',
+    'demo15.animatedList.removeFirst.label': 'Remove First',
+    'demo15.animatedList.removeFirst.icon': 'mRemove',
+    'demo15.animatedList.removeLast.label': 'Remove Last',
+    'demo15.animatedList.removeLast.icon': 'mRemove',
+    'demo15.animatedList.hint.label':
+        'Items animate in from the right and out to the left',
+
+    // ==========================================================================
+    // Demo 15: TomReorderableListView Card
+    // ==========================================================================
+    'demo15.reorderable.icon.icon': 'mReorder',
+    'demo15.reorderable.title.label': 'TomReorderableListView',
+    'demo15.reorderable.description.label':
+        'List that allows users to reorder items by dragging.',
+    'demo15.reorderable.description.text':
+        'Long press and drag items to reorder them in the list.',
+    'demo15.reorderable.hint.label':
+        'Use the drag handle on the right or long-press the tile',
+
+    // ==========================================================================
+    // Demo 15: TomDismissible Card
+    // ==========================================================================
+    'demo15.dismissible.icon.icon': 'mSwipe',
+    'demo15.dismissible.title.label': 'TomDismissible',
+    'demo15.dismissible.description.label':
+        'List items that can be dismissed by swiping left or right.',
+    'demo15.dismissible.description.text':
+        'Swipe items horizontally to archive (right) or delete (left).',
+    'demo15.dismissible.reset.label': 'Reset Items',
+    'demo15.dismissible.reset.icon': 'mRefresh',
+    'demo15.dismissible.empty.label': 'All items dismissed!',
+    'demo15.dismissible.hint.label':
+        'Swipe right for green (archive), left for red (delete)',
+
+    // ==========================================================================
+    // Demo 15: TomListWheelScrollView Card
+    // ==========================================================================
+    'demo15.wheel.icon.icon': 'mTune',
+    'demo15.wheel.title.label': 'TomListWheelScrollView',
+    'demo15.wheel.description.label':
+        'iOS-style wheel picker with 3D cylindrical scroll effect.',
+    'demo15.wheel.description.text':
+        'Scroll to select items from a cylindrical wheel interface.',
+    'demo15.wheel.standard.label': 'Month Selector',
+    'demo15.wheel.magnified.label': 'With Magnifier',
+    'demo15.wheel.customLabel.label': 'Custom Styled Wheel',
   };
 
   @override
