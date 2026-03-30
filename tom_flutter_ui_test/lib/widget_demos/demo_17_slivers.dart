@@ -190,7 +190,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                           child: TomText(text: '${index + 1}'),
                         ),
                       ),
-                      title: Text('List Item ${index + 1}'),
+                      titleText: 'List Item ${index + 1}',
                       subtitle: const Text('Basic sliver list item'),
                     ),
                     childCount: 10,
@@ -274,7 +274,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                   delegate: SliverChildBuilderDelegate(
                     (context, index) => TomListTile(
                       leading: CircleAvatar(child: Text('${index + 1}')),
-                      title: Text('Item ${index + 1}'),
+                      titleText: 'Item ${index + 1}',
                       subtitle: const Text('Scroll up to see pinned behavior'),
                     ),
                     childCount: 15,
@@ -340,7 +340,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                         Icons.article,
                         color: Theme.of(context).colorScheme.tertiary,
                       ),
-                      title: Text('Article ${index + 1}'),
+                      titleText: 'Article ${index + 1}',
                       subtitle: const Text('Scroll down then up quickly'),
                     ),
                     childCount: 15,
@@ -413,7 +413,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                         Icons.touch_app,
                         color: Theme.of(context).colorScheme.secondary,
                       ),
-                      title: Text('Snap Item ${index + 1}'),
+                      titleText: 'Snap Item ${index + 1}',
                       subtitle: const Text('Partially scroll - watch it snap'),
                     ),
                     childCount: 15,
@@ -1451,7 +1451,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                 child: TomSwitchListTile(
                   value: _isSliver1Visible,
                   onChanged: (v) => setState(() => _isSliver1Visible = v),
-                  title: const TomText(text: 'Show Sliver 1'),
+                  titleText: 'Show Sliver 1',
                   dense: true,
                 ),
               ),
@@ -1459,7 +1459,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
                 child: TomSwitchListTile(
                   value: _isSliver2Visible,
                   onChanged: (v) => setState(() => _isSliver2Visible = v),
-                  title: const TomText(text: 'Show Sliver 2'),
+                  titleText: 'Show Sliver 2',
                   dense: true,
                 ),
               ),

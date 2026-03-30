@@ -492,26 +492,26 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               icon: Icons.settings,
               color: Theme.of(context).colorScheme.primary,
             ),
-            title: const TomText(text: 'General Settings'),
+            titleText: 'General Settings',
             subtitle: const TomText(text: 'App preferences and configuration'),
             children: [
               TomListTile(
                 leading: const TomIcon(icon: Icons.language),
-                title: const TomText(text: 'Language'),
+                titleText: 'Language',
                 subtitle: const TomText(text: 'English'),
                 trailing: const TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
                 leading: const TomIcon(icon: Icons.dark_mode),
-                title: const TomText(text: 'Theme'),
+                titleText: 'Theme',
                 subtitle: const TomText(text: 'System default'),
                 trailing: const TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
                 leading: const TomIcon(icon: Icons.notifications),
-                title: const TomText(text: 'Notifications'),
+                titleText: 'Notifications',
                 subtitle: const TomText(text: 'Enabled'),
                 trailing: TomSwitch(
                   value: true,
@@ -527,18 +527,18 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               icon: Icons.security,
               color: Theme.of(context).colorScheme.secondary,
             ),
-            title: const TomText(text: 'Privacy & Security'),
+            titleText: 'Privacy & Security',
             subtitle: const TomText(text: 'Account security options'),
             children: [
               TomListTile(
                 leading: const TomIcon(icon: Icons.lock),
-                title: const TomText(text: 'Change Password'),
+                titleText: 'Change Password',
                 trailing: const TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
                 leading: const TomIcon(icon: Icons.fingerprint),
-                title: const TomText(text: 'Biometric Login'),
+                titleText: 'Biometric Login',
                 trailing: TomSwitch(
                   value: false,
                   onChanged: (_) {},
@@ -546,7 +546,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ),
               TomListTile(
                 leading: const TomIcon(icon: Icons.verified_user),
-                title: const TomText(text: 'Two-Factor Authentication'),
+                titleText: 'Two-Factor Authentication',
                 trailing: const TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
@@ -567,40 +567,40 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               icon: Icons.school,
               color: Colors.indigo,
             ),
-            title: const TomText(text: 'Computer Science'),
+            titleText: 'Computer Science',
             children: [
               TomExpansionTile(
                 leading: const TomIcon(icon: Icons.code),
-                title: const TomText(text: 'Programming'),
+                titleText: 'Programming',
                 children: [
                   TomExpansionTile(
                     leading: const TomIcon(icon: Icons.flutter_dash),
-                    title: const TomText(text: 'Mobile Development'),
+                    titleText: 'Mobile Development',
                     children: const [
                       TomListTile(
-                        title: TomText(text: 'Flutter'),
+                        titleText: 'Flutter',
                         subtitle: TomText(text: 'Cross-platform framework'),
                       ),
                       TomListTile(
-                        title: TomText(text: 'React Native'),
+                        titleText: 'React Native',
                         subtitle: TomText(text: 'JavaScript framework'),
                       ),
                       TomListTile(
-                        title: TomText(text: 'Swift/SwiftUI'),
+                        titleText: 'Swift/SwiftUI',
                         subtitle: TomText(text: 'iOS native'),
                       ),
                     ],
                   ),
                   TomExpansionTile(
                     leading: const TomIcon(icon: Icons.web),
-                    title: const TomText(text: 'Web Development'),
+                    titleText: 'Web Development',
                     children: const [
                       TomListTile(
-                        title: TomText(text: 'React'),
+                        titleText: 'React',
                         subtitle: TomText(text: 'Frontend library'),
                       ),
                       TomListTile(
-                        title: TomText(text: 'Vue.js'),
+                        titleText: 'Vue.js',
                         subtitle: TomText(text: 'Progressive framework'),
                       ),
                     ],
@@ -609,14 +609,14 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ),
               TomExpansionTile(
                 leading: const TomIcon(icon: Icons.memory),
-                title: const TomText(text: 'Algorithms'),
+                titleText: 'Algorithms',
                 children: const [
                   TomListTile(
-                    title: TomText(text: 'Sorting'),
+                    titleText: 'Sorting',
                     subtitle: TomText(text: 'QuickSort, MergeSort, etc.'),
                   ),
                   TomListTile(
-                    title: TomText(text: 'Graph Theory'),
+                    titleText: 'Graph Theory',
                     subtitle: TomText(text: 'BFS, DFS, Dijkstra'),
                   ),
                 ],
@@ -790,6 +790,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
       title: TomText(text: name),
       leading: Icon(icon, color: color, size: 18),
       trailing: TomPopupMenuButton<String>(
+        tooltip: 'More actions',
         itemBuilder: (context) => [
           const PopupMenuItem(value: 'open', child: Text('Open')),
           const PopupMenuItem(value: 'rename', child: Text('Rename')),

@@ -948,30 +948,35 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                   spacing: 8,
                   children: [
                     TomIconButton.filled(
+                      tooltip: 'Slide left',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(-0.5, 0),
                       ),
                       icon: const TomIcon(icon: Icons.arrow_back),
                     ),
                     TomIconButton.filled(
+                      tooltip: 'Center',
                       onPressed: () => setState(
                         () => _slideOffset = Offset.zero,
                       ),
                       icon: const TomIcon(icon: Icons.center_focus_strong),
                     ),
                     TomIconButton.filled(
+                      tooltip: 'Slide right',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0.5, 0),
                       ),
                       icon: const TomIcon(icon: Icons.arrow_forward),
                     ),
                     TomIconButton.filled(
+                      tooltip: 'Slide up',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0, -0.5),
                       ),
                       icon: const TomIcon(icon: Icons.arrow_upward),
                     ),
                     TomIconButton.filled(
+                      tooltip: 'Slide down',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0, 0.5),
                       ),
