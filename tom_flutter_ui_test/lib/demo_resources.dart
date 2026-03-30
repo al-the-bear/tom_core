@@ -2161,6 +2161,82 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo15.wheel.standard.label': 'Month Selector',
     'demo15.wheel.magnified.label': 'With Magnifier',
     'demo15.wheel.customLabel.label': 'Custom Styled Wheel',
+
+    // ==========================================================================
+    // Demo 16: Tree & Hierarchy - Section Headers
+    // ==========================================================================
+    'demo16.section.simple.title.label': 'Simple Tree View',
+    'demo16.section.simple.subtitle.label':
+        'Basic tree structure with expand/collapse and custom nodes',
+    'demo16.section.sliver.title.label': 'TreeSliver (High Performance)',
+    'demo16.section.sliver.subtitle.label':
+        'Sliver-based tree for large datasets with lazy loading',
+    'demo16.section.expansion.title.label': 'Expansion Tiles',
+    'demo16.section.expansion.subtitle.label':
+        'Nested expansion patterns for settings and deep hierarchies',
+    'demo16.section.fileExplorer.title.label': 'File Explorer Pattern',
+    'demo16.section.fileExplorer.subtitle.label':
+        'Project structure navigation with file icons and context menus',
+    'demo16.section.organization.title.label': 'Organizational Hierarchy',
+    'demo16.section.organization.subtitle.label':
+        'Company org chart with reporting structure visualization',
+
+    // ==========================================================================
+    // Demo 16: TomTreeView Card
+    // ==========================================================================
+    'demo16.treeView.icon.icon': 'mAccountTree',
+    'demo16.treeView.title.label': 'TomTreeView',
+    'demo16.treeView.description.label':
+        'Simple tree view with recursive nodes, expand/collapse, and custom content.',
+    'demo16.treeView.basicLabel.label': 'Basic Tree Structure',
+    'demo16.treeView.hint.label':
+        'Tap nodes to select, tap expand icons to show/hide children',
+
+    // ==========================================================================
+    // Demo 16: TomTreeSliver Card
+    // ==========================================================================
+    'demo16.treeSliver.icon.icon': 'mLayers',
+    'demo16.treeSliver.title.label': 'TomTreeSliver',
+    'demo16.treeSliver.description.label':
+        'High-performance sliver-based tree for large datasets with lazy loading.',
+    'demo16.treeSliver.descriptionText.label':
+        'TreeSliver builds nodes on-demand for efficient memory usage with large trees.',
+    'demo16.treeSliver.expandAll.label': 'Expand All',
+    'demo16.treeSliver.expandAll.icon': 'mUnfoldMore',
+    'demo16.treeSliver.collapseAll.label': 'Collapse All',
+    'demo16.treeSliver.collapseAll.icon': 'mUnfoldLess',
+    'demo16.treeSliver.hint.label':
+        'Uses TreeSliverController for programmatic expand/collapse',
+
+    // ==========================================================================
+    // Demo 16: TomExpansionTile Card
+    // ==========================================================================
+    'demo16.expansionTile.icon.icon': 'mExpandMore',
+    'demo16.expansionTile.title.label': 'TomExpansionTile',
+    'demo16.expansionTile.description.label':
+        'Collapsible sections for settings, menus, and nested content hierarchies.',
+    'demo16.expansionTile.basicLabel.label': 'Settings Style',
+    'demo16.expansionTile.nestedLabel.label': 'Deeply Nested Hierarchy',
+
+    // ==========================================================================
+    // Demo 16: File Explorer Card
+    // ==========================================================================
+    'demo16.fileExplorer.icon.icon': 'mFolderOpen',
+    'demo16.fileExplorer.title.label': 'File Explorer Pattern',
+    'demo16.fileExplorer.description.label':
+        'Project structure tree with file/folder icons and context menus.',
+    'demo16.fileExplorer.hint.label':
+        'Right-click or use menu button for file actions',
+
+    // ==========================================================================
+    // Demo 16: Organization Hierarchy Card
+    // ==========================================================================
+    'demo16.organization.icon.icon': 'mGroups',
+    'demo16.organization.title.label': 'Organizational Hierarchy',
+    'demo16.organization.description.label':
+        'Visual org chart showing reporting structure and team hierarchy.',
+    'demo16.organization.hint.label':
+        'Cards can expand to show team members and details',
   };
 
   @override
