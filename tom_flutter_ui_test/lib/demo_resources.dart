@@ -1103,6 +1103,208 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
         'directions.',
     'demo06.aclCard.reset.label': 'Reset',
     'demo06.aclCard.apply.label': 'Apply',
+
+    // =========================================================================
+    // Demo 07: Layout Containers
+    // =========================================================================
+
+    // Section headers
+    'demo07.section.flex.title.label': 'Flex Layouts',
+    'demo07.section.flex.subtitle.label':
+        'Column, Row, and flex children for linear layouts',
+    'demo07.section.stack.title.label': 'Stack & Positioned',
+    'demo07.section.stack.subtitle.label':
+        'Layered positioning with stacks and absolute placement',
+    'demo07.section.size.title.label': 'Size & Constraints',
+    'demo07.section.size.subtitle.label':
+        'Controlling widget dimensions and layout bounds',
+    'demo07.section.alignment.title.label': 'Alignment & Spacing',
+    'demo07.section.alignment.subtitle.label':
+        'Positioning, padding, and divider utilities',
+    'demo07.section.acl.title.label': 'ACL Layout Demo',
+    'demo07.section.acl.subtitle.label':
+        'Adaptive layout controls with AclBuilder',
+
+    // 7.1 - Column
+    'demo07.column.icon.icon': 'view_agenda',
+    'demo07.column.title.label': 'TomColumn',
+    'demo07.column.description.label':
+        'Vertical flex layout with alignment options.',
+    'demo07.column.startLabel.label': 'MainAxisAlignment.start',
+    'demo07.column.centerLabel.label': 'MainAxisAlignment.center',
+    'demo07.column.spaceBetweenLabel.label': 'MainAxisAlignment.spaceBetween',
+
+    // 7.1 - Row
+    'demo07.row.icon.icon': 'view_week',
+    'demo07.row.title.label': 'TomRow',
+    'demo07.row.description.label':
+        'Horizontal flex layout with alignment options.',
+    'demo07.row.startLabel.label': 'MainAxisAlignment.start',
+    'demo07.row.spaceEvenlyLabel.label': 'MainAxisAlignment.spaceEvenly',
+    'demo07.row.endLabel.label': 'MainAxisAlignment.end',
+
+    // 7.1 - Expanded / Flexible
+    'demo07.expandedFlexible.icon.icon': 'expand',
+    'demo07.expandedFlexible.title.label': 'TomExpanded & TomFlexible',
+    'demo07.expandedFlexible.description.label':
+        'Flex children with expansion and fit controls.',
+    'demo07.expandedFlexible.fixedExpandedLabel.label': 'Fixed + Expanded',
+    'demo07.expandedFlexible.flexRatioLabel.label': 'Flex ratios (1:2:3)',
+    'demo07.expandedFlexible.flexibleLabel.label': 'FlexFit.loose vs .tight',
+
+    // 7.1 - Spacer
+    'demo07.spacer.icon.icon': 'space_bar',
+    'demo07.spacer.title.label': 'TomSpacer',
+    'demo07.spacer.description.label':
+        'Flexible spacer that fills available space.',
+    'demo07.spacer.demoLabel.label': 'Push items apart',
+    'demo07.spacer.ratioLabel.label': 'Spacer ratios (1:2)',
+
+    // 7.1 - Wrap
+    'demo07.wrap.icon.icon': 'wrap_text',
+    'demo07.wrap.title.label': 'TomWrap',
+    'demo07.wrap.description.label':
+        'Wrapping flow layout with spacing controls.',
+    'demo07.wrap.demoLabel.label': 'Auto-wrapping tags',
+
+    // 7.2 - Stack
+    'demo07.stack.icon.icon': 'layers',
+    'demo07.stack.title.label': 'TomStack',
+    'demo07.stack.description.label':
+        'Layered children with z-order stacking.',
+    'demo07.stack.layeredLabel.label': 'Layered stack with badge',
+    'demo07.stack.centeredText.label': 'Centered Content',
+
+    // 7.2 - Positioned
+    'demo07.positioned.icon.icon': 'control_camera',
+    'demo07.positioned.title.label': 'TomPositioned',
+    'demo07.positioned.description.label':
+        'Absolute positioning within a Stack.',
+    'demo07.positioned.cornersLabel.label': 'Corner positions',
+    'demo07.positioned.directionalLabel.label':
+        'PositionedDirectional (RTL-aware)',
+
+    // 7.2 - IndexedStack
+    'demo07.indexedStack.icon.icon': 'filter_none',
+    'demo07.indexedStack.title.label': 'TomIndexedStack',
+    'demo07.indexedStack.description.label':
+        'Shows one child at a time, others stay offstage.',
+    'demo07.indexedStack.selectorLabel.label': 'Select visible child:',
+
+    // 7.3 - SizedBox
+    'demo07.sizedBox.icon.icon': 'crop_free',
+    'demo07.sizedBox.title.label': 'TomSizedBox',
+    'demo07.sizedBox.description.label':
+        'Fixed-size box with explicit dimensions.',
+    'demo07.sizedBox.fixedLabel.label': 'Fixed dimensions',
+    'demo07.sizedBox.expandLabel.label': 'Full-width expand',
+    'demo07.sizedBox.expandText.label': 'Full width (double.infinity)',
+
+    // 7.3 - ConstrainedBox
+    'demo07.constrainedBox.icon.icon': 'settings_overscan',
+    'demo07.constrainedBox.title.label': 'TomConstrainedBox',
+    'demo07.constrainedBox.description.label':
+        'Applies min/max width and height constraints.',
+    'demo07.constrainedBox.demoLabel.label':
+        'minWidth: 100, maxWidth: 300, minHeight: 50',
+    'demo07.constrainedBox.contentText.label':
+        'Constrained to min/max bounds',
+
+    // 7.3 - FractionallySizedBox
+    'demo07.fractionallySized.icon.icon': 'photo_size_select_large',
+    'demo07.fractionallySized.title.label': 'TomFractionallySizedBox',
+    'demo07.fractionallySized.description.label':
+        'Sizes child as fraction of parent.',
+    'demo07.fractionallySized.demoLabel.label': 'Percentage-based widths',
+
+    // 7.3 - AspectRatio
+    'demo07.aspectRatio.icon.icon': 'aspect_ratio',
+    'demo07.aspectRatio.title.label': 'TomAspectRatio',
+    'demo07.aspectRatio.description.label':
+        'Maintains a fixed width-to-height ratio.',
+    'demo07.aspectRatio.demoLabel.label': 'Aspect ratios: 16:9 and 1:1',
+
+    // 7.3 - FittedBox
+    'demo07.fittedBox.icon.icon': 'fit_screen',
+    'demo07.fittedBox.title.label': 'TomFittedBox',
+    'demo07.fittedBox.description.label':
+        'Scales child to fit within bounds.',
+    'demo07.fittedBox.demoLabel.label': 'BoxFit.contain vs .scaleDown',
+
+    // 7.3 - Intrinsic
+    'demo07.intrinsic.icon.icon': 'height',
+    'demo07.intrinsic.title.label': 'TomIntrinsicHeight & Width',
+    'demo07.intrinsic.description.label':
+        'Sizes based on intrinsic child dimensions.',
+    'demo07.intrinsic.heightLabel.label': 'IntrinsicHeight (equal row height)',
+    'demo07.intrinsic.shortText.label': 'Short',
+    'demo07.intrinsic.tallText.label':
+        'Taller content that sets the intrinsic height for the entire row',
+    'demo07.intrinsic.widthLabel.label':
+        'IntrinsicWidth (equal column width)',
+    'demo07.intrinsic.wideText.label': 'This is wider content',
+
+    // 7.3 - Misc constraints
+    'demo07.miscConstraint.icon.icon': 'tune',
+    'demo07.miscConstraint.title.label': 'LimitedBox & OverflowBox',
+    'demo07.miscConstraint.description.label':
+        'Additional sizing and overflow controls.',
+    'demo07.miscConstraint.limitedLabel.label':
+        'TomLimitedBox (maxWidth: 100, maxHeight: 40)',
+    'demo07.miscConstraint.overflowLabel.label':
+        'TomOverflowBox (overflows parent)',
+    'demo07.miscConstraint.overflowText.label':
+        'I overflow my parent bounds!',
+
+    // 7.4 - Center & Align
+    'demo07.centerAlign.icon.icon': 'center_focus_strong',
+    'demo07.centerAlign.title.label': 'TomCenter & TomAlign',
+    'demo07.centerAlign.description.label':
+        'Alignment wrappers for child positioning.',
+    'demo07.centerAlign.centerLabel.label': 'TomCenter',
+    'demo07.centerAlign.centeredText.label': 'Centered!',
+    'demo07.centerAlign.alignLabel.label': 'TomAlign (various positions)',
+
+    // 7.4 - Padding
+    'demo07.padding.icon.icon': 'padding',
+    'demo07.padding.title.label': 'TomPadding',
+    'demo07.padding.description.label':
+        'Spacing wrapper using EdgeInsets patterns.',
+    'demo07.padding.uniformLabel.label': 'EdgeInsets.all(16)',
+    'demo07.padding.symmetricLabel.label':
+        'EdgeInsets.symmetric(h: 32, v: 8)',
+    'demo07.padding.onlyLabel.label': 'EdgeInsets.only(left: 40, top: 20)',
+
+    // 7.4 - Baseline
+    'demo07.baseline.icon.icon': 'format_line_spacing',
+    'demo07.baseline.title.label': 'TomBaseline',
+    'demo07.baseline.description.label':
+        'Text baseline alignment for mixed sizes.',
+    'demo07.baseline.demoLabel.label': 'Baseline-aligned text sizes',
+
+    // 7.4 - Divider
+    'demo07.divider.icon.icon': 'horizontal_rule',
+    'demo07.divider.title.label': 'TomDivider & TomVerticalDivider',
+    'demo07.divider.description.label':
+        'Horizontal and vertical separator lines.',
+    'demo07.divider.horizontalLabel.label': 'Horizontal dividers',
+    'demo07.divider.section1.label': 'Section 1 content',
+    'demo07.divider.section2.label': 'Section 2 content',
+    'demo07.divider.section3.label': 'Section 3 content',
+    'demo07.divider.verticalLabel.label': 'Vertical dividers',
+    'demo07.divider.col1.label': 'Column A',
+    'demo07.divider.col2.label': 'Column B',
+    'demo07.divider.col3.label': 'Column C',
+
+    // 7.5 - ACL Layout
+    'demo07.aclLayout.icon.icon': 'dashboard_customize',
+    'demo07.aclLayout.title.label': 'ACL Layout Explorer',
+    'demo07.aclLayout.description.label':
+        'Interactive alignment controls with AclBuilder layout.',
+    'demo07.aclLayout.mainAxisLabel.label': 'Main Axis:',
+    'demo07.aclLayout.crossAxisLabel.label': 'Cross Axis:',
+    'demo07.aclLayout.reset.label': 'Reset',
+    'demo07.aclLayout.apply.label': 'Apply',
   };
 
   @override

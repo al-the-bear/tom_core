@@ -167,7 +167,7 @@ class DemoCard extends StatelessWidget {
 | 4 | Toggle & Switch Suite | Toggle | 8 | Switches, checkboxes, radios, toggle buttons | ✅ | 2026-03-30 |
 | 5 | Slider & Range Controls | Slider | 3 | Sliders, range, Cupertino, custom tracks | ✅ | 2026-03-30 |
 | 6 | Card & Panel Layouts | Container | 5 | Cards, expansion tiles/panels, Material | ✅ | 2026-03-30 |
-| 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints | | |
+| 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints | ✅ | 2026-03-30 |
 | 8 | Scrollable Containers | Container | 10 | Scroll views, interactive viewer, draggable | | |
 | 9 | Dialog & Modal Gallery | Dialog | 10 | Dialogs, sheets, snackbars, tooltips | | |
 | 10 | Data Tables | Table | 5 | DataTable, paginated, Table, GridView | | |
