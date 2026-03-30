@@ -1841,6 +1841,144 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo12.imageFilter.description.label':
         'Apply blur, matrix, and other image filters to child widgets.',
     'demo12.imageFilter.blurLabel.label': 'Blur:',
+
+    // ==========================================================================
+    // Demo 13: Navigation - Section Headers
+    // ==========================================================================
+    'demo13.section.tabs.title.label': 'Tab Navigation',
+    'demo13.section.tabs.subtitle.label':
+        'Tab bars and tab views for content organization',
+    'demo13.section.bottomNav.title.label': 'Bottom Navigation',
+    'demo13.section.bottomNav.subtitle.label':
+        'Navigation bars for app-level destinations',
+    'demo13.section.railDrawer.title.label': 'Rail & Drawer Navigation',
+    'demo13.section.railDrawer.subtitle.label':
+        'Side navigation patterns for desktop and tablet layouts',
+    'demo13.section.sequential.title.label': 'Sequential Navigation',
+    'demo13.section.sequential.subtitle.label':
+        'Step-by-step and page-based navigation flows',
+    'demo13.section.cupertino.title.label': 'iOS Navigation',
+    'demo13.section.cupertino.subtitle.label':
+        'Cupertino-style navigation components',
+
+    // ==========================================================================
+    // Demo 13: TomTabBar Card
+    // ==========================================================================
+    'demo13.tabBar.icon.icon': 'mTab',
+    'demo13.tabBar.title.label': 'TomTabBar & TomTabBarView',
+    'demo13.tabBar.description.label':
+        'Material tab bars with synchronized content views.',
+    'demo13.tabBar.basicLabel.label': 'Basic Tabs',
+    'demo13.tabBar.tab.home.label': 'Home',
+    'demo13.tabBar.tab.search.label': 'Search',
+    'demo13.tabBar.tab.settings.label': 'Settings',
+    'demo13.tabBar.iconTabsLabel.label': 'Tabs with Icons',
+    'demo13.tabBar.iconTab.photos.label': 'Photos',
+    'demo13.tabBar.iconTab.videos.label': 'Videos',
+    'demo13.tabBar.iconTab.music.label': 'Music',
+
+    // ==========================================================================
+    // Demo 13: Scrollable TabBar Card
+    // ==========================================================================
+    'demo13.scrollableTabBar.icon.icon': 'mTabUnselected',
+    'demo13.scrollableTabBar.title.label': 'Scrollable TomTabBar',
+    'demo13.scrollableTabBar.description.label':
+        'Horizontally scrollable tabs for many categories.',
+    'demo13.scrollableTabBar.label.label': 'Scrollable Tabs',
+    'demo13.scrollableTabBar.tab.all.label': 'All',
+    'demo13.scrollableTabBar.tab.documents.label': 'Documents',
+    'demo13.scrollableTabBar.tab.images.label': 'Images',
+    'demo13.scrollableTabBar.tab.videos.label': 'Videos',
+    'demo13.scrollableTabBar.tab.audio.label': 'Audio',
+    'demo13.scrollableTabBar.tab.archives.label': 'Archives',
+
+    // ==========================================================================
+    // Demo 13: TomNavigationBar Card (Material 3)
+    // ==========================================================================
+    'demo13.navigationBar.icon.icon': 'mBottomNavigation',
+    'demo13.navigationBar.title.label': 'TomNavigationBar',
+    'demo13.navigationBar.description.label':
+        'Material 3 bottom navigation for primary destinations.',
+    'demo13.navigationBar.m3Label.label': 'Material 3 Navigation Bar',
+
+    // ==========================================================================
+    // Demo 13: TomBottomNavigationBar Card (Legacy)
+    // ==========================================================================
+    'demo13.bottomNavBar.icon.icon': 'mCallToAction',
+    'demo13.bottomNavBar.title.label': 'TomBottomNavigationBar',
+    'demo13.bottomNavBar.description.label':
+        'Legacy bottom navigation bar with fixed/shifting modes.',
+    'demo13.bottomNavBar.legacyLabel.label': 'Legacy Bottom Navigation',
+
+    // ==========================================================================
+    // Demo 13: TomCupertinoTabBar Card
+    // ==========================================================================
+    'demo13.cupertinoTabBar.icon.icon': 'cTabBarItem',
+    'demo13.cupertinoTabBar.title.label': 'TomCupertinoTabBar',
+    'demo13.cupertinoTabBar.description.label':
+        'iOS-style tab bar for bottom navigation.',
+    'demo13.cupertinoTabBar.iosLabel.label': 'iOS Tab Bar',
+
+    // ==========================================================================
+    // Demo 13: TomNavigationRail Card
+    // ==========================================================================
+    'demo13.navigationRail.icon.icon': 'mViewSidebar',
+    'demo13.navigationRail.title.label': 'TomNavigationRail',
+    'demo13.navigationRail.description.label':
+        'Side navigation rail for desktop and tablet layouts.',
+    'demo13.navigationRail.sideLabel.label': 'Navigation Rail',
+    'demo13.navigationRail.extendedLabel.label': 'Extended',
+
+    // ==========================================================================
+    // Demo 13: TomNavigationDrawer Card
+    // ==========================================================================
+    'demo13.navigationDrawer.icon.icon': 'mMenuOpen',
+    'demo13.navigationDrawer.title.label': 'TomNavigationDrawer',
+    'demo13.navigationDrawer.description.label':
+        'Material 3 navigation drawer with destinations.',
+    'demo13.navigationDrawer.m3DrawerLabel.label': 'Navigation Drawer',
+
+    // ==========================================================================
+    // Demo 13: TomDrawer Card
+    // ==========================================================================
+    'demo13.drawer.icon.icon': 'mMenu',
+    'demo13.drawer.title.label': 'TomDrawer',
+    'demo13.drawer.description.label':
+        'Standard Material drawer panel for side navigation.',
+    'demo13.drawer.standardLabel.label': 'Standard Drawer',
+    'demo13.drawer.openButton.label': 'Open Drawer',
+    'demo13.drawer.hint.label': 'Click to open a drawer dialog',
+
+    // ==========================================================================
+    // Demo 13: TomStepper Card
+    // ==========================================================================
+    'demo13.stepper.icon.icon': 'mLinearScale',
+    'demo13.stepper.title.label': 'TomStepper',
+    'demo13.stepper.description.label':
+        'Step-by-step navigation for multi-stage processes.',
+    'demo13.stepper.horizontalLabel.label': 'Horizontal Stepper',
+    'demo13.stepper.verticalLabel.label': 'Vertical Stepper',
+
+    // ==========================================================================
+    // Demo 13: TomPageView Card
+    // ==========================================================================
+    'demo13.pageView.icon.icon': 'mViewCarousel',
+    'demo13.pageView.title.label': 'TomPageView',
+    'demo13.pageView.description.label':
+        'Swipeable page-based navigation with page indicators.',
+    'demo13.pageView.swipeLabel.label': 'Swipeable Pages',
+
+    // ==========================================================================
+    // Demo 13: TomCupertinoNavigationBar Card
+    // ==========================================================================
+    'demo13.cupertinoNavBar.icon.icon': 'cNavArrowBack',
+    'demo13.cupertinoNavBar.title.label': 'TomCupertinoNavigationBar',
+    'demo13.cupertinoNavBar.description.label':
+        'iOS-style navigation bar with leading/trailing actions.',
+    'demo13.cupertinoNavBar.iosBarLabel.label': 'iOS Navigation Bar',
+    'demo13.cupertinoNavBar.basicLabel.label': 'Basic',
+    'demo13.cupertinoNavBar.withActionsLabel.label': 'With Actions',
+    'demo13.cupertinoNavBar.backButtonLabel.label': 'With Back Button',
   };
 
   @override
