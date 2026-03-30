@@ -2920,17 +2920,20 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
 
   };
 
+  /// Regex to strip any TomIdPrefix prefix from the basePath.
+  static final _prefixPattern = RegExp(r'^(w|c|f|r|a|ac|g)-');
+
   @override
   String resolveText(String basePath, String suffix) {
-    // Remove widget prefix (w-) for lookup
-    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    // Remove id prefix (w-, c-, f-, r-, a-, ac-, g-) for lookup
+    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
     final key = '$cleanPath.$suffix';
     return _resources[key] ?? '$basePath.$suffix';
   }
 
   @override
   bool resourceExists(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
     final key = '$cleanPath.$suffix';
     return _resources.containsKey(key) ||
         _structuredResources.containsKey(key);
@@ -2938,19 +2941,24 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
 
   @override
   dynamic resolveValue(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(RegExp(r'^w-'), '');
+    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
     final key = '$cleanPath.$suffix';
 
     // First check structured resources
     if (_structuredResources.containsKey(key)) {
-      return _structuredResources[key];
+      final value = _structuredResources[key];
+      print('[resolveValue] $basePath.$suffix → $key = $value');
+      return value;
     }
 
     // Fall back to string resources
     if (_resources.containsKey(key)) {
-      return _resources[key];
+      final value = _resources[key];
+      print('[resolveValue] $basePath.$suffix → $key = $value');
+      return value;
     }
 
+    print('[resolveValue] $basePath.$suffix → $key = NOT FOUND');
     return null;
   }
 
