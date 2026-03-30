@@ -781,7 +781,7 @@ class TomCupertinoSwitch extends TomToggleBase {
     super.tomId,
     super.tomGroup,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
     this.activeTrackColor,
     this.thumbColor,
     this.trackColor,

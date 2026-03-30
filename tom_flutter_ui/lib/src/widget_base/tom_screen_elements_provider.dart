@@ -12,7 +12,7 @@
 /// ```dart
 /// @tomReflect
 /// class LoginScreenElements implements TomScreenElementsProvider {
-///   TomText greeting = TomText(id: 'login_greeting');
+///   TomText greeting = TomText(tomId: 'login_greeting');
 ///   TomButton loginButton = TomButton(id: 'login_button', ...);
 /// }
 /// ```

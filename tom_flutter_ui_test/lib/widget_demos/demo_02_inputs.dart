@@ -390,7 +390,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           const TomSizedBox(height: 8),
           if (_selectedCountry != null)
             TomText(
-              'Selected: $_selectedCountry',
+              text: 'Selected: $_selectedCountry',
               style: Theme.of(context).textTheme.bodySmall,
             ),
         ],
@@ -439,7 +439,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           // Cupertino form field row
           TomCupertinoTextFormFieldRow(
             tomId: 'demo02.cupertino.formrow',
-            prefix: TomText(null, tomId: 'demo02.cupertino.formrowPrefix'),
+            prefix: TomText(tomId: 'demo02.cupertino.formrowPrefix'),
           ),
         ],
         ),
@@ -519,10 +519,10 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           // Selected date display
           TomRow(
             children: [
-              TomIcon(null, tomId: 'demo02.calendar.selectedIcon'),
+              TomIcon(tomId: 'demo02.calendar.selectedIcon'),
               const TomSizedBox(width: 8),
               TomText(
-                MaterialLocalizations.of(context).formatShortDate(_selectedDate),
+                text: MaterialLocalizations.of(context).formatShortDate(_selectedDate),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
@@ -573,7 +573,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cupertino date picker
-          TomText(null, tomId: 'demo02.cupertinoDateTime.dateLabel'),
+          TomText(tomId: 'demo02.cupertinoDateTime.dateLabel'),
           const TomSizedBox(height: 8),
           TomContainer(
             height: 200,
@@ -589,7 +589,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           const TomSizedBox(height: 24),
 
           // Cupertino timer picker
-          TomText(null, tomId: 'demo02.cupertinoDateTime.timerLabel'),
+          TomText(tomId: 'demo02.cupertinoDateTime.timerLabel'),
           const TomSizedBox(height: 8),
           TomContainer(
             height: 200,
@@ -607,10 +607,10 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           // Display selected duration
           TomRow(
             children: [
-              TomIcon(null, tomId: 'demo02.cupertinoDateTime.durationIcon'),
+              TomIcon(tomId: 'demo02.cupertinoDateTime.durationIcon'),
               const TomSizedBox(width: 8),
               TomText(
-                _formatDuration(_selectedDuration),
+                text: _formatDuration(_selectedDuration),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
@@ -630,7 +630,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
       tomId: 'demo02.aclTextField',
       child: AclBuilder()
           // Row 1: Label + TextField side by side
-          .append(TomText(null, tomId: 'demo02.aclTextField.nameLabel'))
+          .append(TomText(tomId: 'demo02.aclTextField.nameLabel'))
           .append(
             TomTextField(
               tomId: 'demo02.aclTextField.name',
@@ -641,7 +641,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           .expandX()
           .newRow(dist: 16)
           // Row 2: Label + TextField side by side
-          .append(TomText(null, tomId: 'demo02.aclTextField.emailLabel'))
+          .append(TomText(tomId: 'demo02.aclTextField.emailLabel'))
           .append(
             TomTextField(
               tomId: 'demo02.aclTextField.email',
@@ -675,14 +675,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
       tomId: 'demo02.aclDatePicker',
       child: AclBuilder()
           // Row 1: Date label with formatted date display
-          .append(TomIcon(null, tomId: 'demo02.aclDatePicker.icon'))
+          .append(TomIcon(tomId: 'demo02.aclDatePicker.icon'))
           .append(
-            TomText(null, tomId: 'demo02.aclDatePicker.label'),
+            TomText(tomId: 'demo02.aclDatePicker.label'),
             dist: 8,
           )
           .append(
             TomText(
-              MaterialLocalizations.of(context).formatShortDate(_selectedDate),
+              text: MaterialLocalizations.of(context).formatShortDate(_selectedDate),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             dist: 16,
@@ -690,14 +690,14 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           .gap()
           .newRow(dist: 16)
           // Row 2: Duration label with formatted duration
-          .append(TomIcon(null, tomId: 'demo02.aclDatePicker.timerIcon'))
+          .append(TomIcon(tomId: 'demo02.aclDatePicker.timerIcon'))
           .append(
-            TomText(null, tomId: 'demo02.aclDatePicker.durationLabel'),
+            TomText(tomId: 'demo02.aclDatePicker.durationLabel'),
             dist: 8,
           )
           .append(
             TomText(
-              _formatDuration(_selectedDuration),
+              text: _formatDuration(_selectedDuration),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             dist: 16,
@@ -744,7 +744,6 @@ class _SectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-          null,
           tomId: '$tomId.title',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
@@ -753,7 +752,6 @@ class _SectionHeader extends StatelessWidget {
         ),
         const TomSizedBox(height: 4),
         TomText(
-          null,
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -799,11 +797,10 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(null, tomId: '$tomId.icon'),
+                TomIcon(tomId: '$tomId.icon'),
                 const TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
-                    null,
                     tomId: '$tomId.title',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -815,7 +812,6 @@ class _DemoCard extends StatelessWidget {
             const TomSizedBox(height: 8),
             // Description
             TomText(
-              null,
               tomId: '$tomId.description',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

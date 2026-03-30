@@ -507,8 +507,8 @@ class TomReorderableListView extends TomTableBase {
 /// ```dart
 /// TomDataRow(
 ///   cells: [
-///     TomDataCell(tomId: 'name', child: TomText('John')),
-///     TomDataCell(tomId: 'email', child: TomText('john@example.com')),
+///     TomDataCell(tomId: 'name', child: TomText(text: 'John')),
+///     TomDataCell(tomId: 'email', child: TomText(text: 'john@example.com')),
 ///   ],
 /// )
 /// ```
@@ -578,7 +578,7 @@ class _TomAuthContent extends StatelessWidget {
 ///   columns: [...],
 ///   rows: [
 ///     DataRow(cells: [
-///       TomDataCell(tomId: 'salary', child: TomText('\$150,000')),
+///       TomDataCell(tomId: 'salary', child: TomText(text: '\$150,000')),
 ///     ]),
 ///   ],
 /// )
@@ -636,8 +636,8 @@ class TomDataCell extends DataCell {
 /// Usage:
 /// ```dart
 /// final columns = [
-///   TomDataColumn(tomId: 'name', label: TomText('Name')),
-///   TomDataColumn(tomId: 'salary', label: TomText('Salary')),
+///   TomDataColumn(tomId: 'name', label: TomText(text: 'Name')),
+///   TomDataColumn(tomId: 'salary', label: TomText(text: 'Salary')),
 /// ].where((c) => c.isVisible(context)).toList();
 /// ```
 class TomDataColumn extends DataColumn {
@@ -706,8 +706,8 @@ class TomDataColumn extends DataColumn {
 /// final rows = employees.map((e) => TomDataRow(
 ///   tomId: 'employee.${e.id}',
 ///   cells: [
-///     TomDataCell(tomId: 'name', child: TomText(e.name)),
-///     TomDataCell(tomId: 'salary', child: TomText('\$${e.salary}')),
+///     TomDataCell(tomId: 'name', child: TomText(text: e.name)),
+///     TomDataCell(tomId: 'salary', child: TomText(text: '\$${e.salary}')),
 ///   ],
 /// )).where((r) => r.isVisible(context)).toList();
 /// ```

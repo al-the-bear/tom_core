@@ -15,7 +15,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
   final Widget? child;
   final double? heightFactor;
   final double? widthFactor;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -27,7 +27,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
     this.child,
     this.heightFactor,
     this.widthFactor,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -45,7 +45,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
       child: child,
       heightFactor: resolvedHeightFactor,
       widthFactor: resolvedWidthFactor,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
     );
@@ -112,7 +112,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
   final AlignmentGeometry? transformAlignment;
   final Widget? child;
   final Clip clipBehavior;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -133,7 +133,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.transformAlignment,
     this.child,
     this.clipBehavior = Clip.none,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -165,7 +165,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
       transform: transform,
       transformAlignment: transformAlignment ?? _resolveAlignment(context, 'transformAlignment'),
       clipBehavior: clipBehavior,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -198,7 +198,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   final Widget firstChild;
   final Widget secondChild;
   final CrossFadeState crossFadeState;
-  final Duration duration;
+  final Duration? duration;
   final Duration? reverseDuration;
   final Curve firstCurve;
   final Curve secondCurve;
@@ -214,7 +214,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     required this.firstChild,
     required this.secondChild,
     required this.crossFadeState,
-    required this.duration,
+    this.duration,
     this.reverseDuration,
     this.firstCurve = Curves.linear,
     this.secondCurve = Curves.linear,
@@ -234,7 +234,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
       firstChild: firstChild,
       secondChild: secondChild,
       crossFadeState: crossFadeState,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       reverseDuration: reverseDuration,
       firstCurve: firstCurve,
       secondCurve: secondCurve,
@@ -264,7 +264,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   final int? maxLines;
   final TextWidthBasis textWidthBasis;
   final TextHeightBehavior? textHeightBehavior;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -280,7 +280,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     this.maxLines,
     this.textWidthBasis = TextWidthBasis.parent,
     this.textHeightBehavior,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -302,7 +302,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
       maxLines: resolvedMaxLines,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -324,7 +324,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
   final double? widthFactor;
   final double? heightFactor;
   final Widget? child;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -336,7 +336,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     this.widthFactor,
     this.heightFactor,
     this.child,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -353,7 +353,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
       alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       widthFactor: resolvedWidthFactor,
       heightFactor: resolvedHeightFactor,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -373,7 +373,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
 class TomAnimatedOpacity extends TomAnimatedBase {
   final Widget? child;
   final double? opacity;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
   final bool? alwaysIncludeSemantics;
@@ -384,7 +384,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
     super.tomGroup,
     this.child,
     this.opacity,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
     this.alwaysIncludeSemantics,
@@ -400,7 +400,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
 
     return AnimatedOpacity(
       opacity: resolvedOpacity,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       alwaysIncludeSemantics: resolvedAlwaysIncludeSemantics,
@@ -415,7 +415,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
 class TomAnimatedPadding extends TomAnimatedBase {
   final EdgeInsetsGeometry? padding;
   final Widget? child;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -425,7 +425,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
     super.tomGroup,
     this.padding,
     this.child,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -444,7 +444,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
 
     return AnimatedPadding(
       padding: resolvedPadding,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -465,7 +465,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   final bool? animateColor;
   final Color? shadowColor;
   final bool? animateShadowColor;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -482,7 +482,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     this.animateColor,
     this.shadowColor,
     this.animateShadowColor,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -510,7 +510,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
       animateColor: resolvedAnimateColor,
       shadowColor: resolvedShadowColor,
       animateShadowColor: resolvedAnimateShadowColor,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -578,7 +578,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
   final double? turns;
   final Alignment? alignment;
   final FilterQuality? filterQuality;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -590,7 +590,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
     this.turns,
     this.alignment,
     this.filterQuality,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -605,7 +605,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
       turns: resolvedTurns,
       alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       filterQuality: filterQuality,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -627,7 +627,7 @@ class TomAnimatedScale extends TomAnimatedBase {
   final double? scale;
   final Alignment? alignment;
   final FilterQuality? filterQuality;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -639,7 +639,7 @@ class TomAnimatedScale extends TomAnimatedBase {
     this.scale,
     this.alignment,
     this.filterQuality,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -654,7 +654,7 @@ class TomAnimatedScale extends TomAnimatedBase {
       scale: resolvedScale,
       alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
       filterQuality: filterQuality,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -674,7 +674,7 @@ class TomAnimatedScale extends TomAnimatedBase {
 class TomAnimatedSize extends TomAnimatedBase {
   final Widget? child;
   final AlignmentGeometry? alignment;
-  final Duration duration;
+  final Duration? duration;
   final Duration? reverseDuration;
   final Curve curve;
   final Clip clipBehavior;
@@ -686,7 +686,7 @@ class TomAnimatedSize extends TomAnimatedBase {
     super.tomGroup,
     this.child,
     this.alignment,
-    required this.duration,
+    this.duration,
     this.reverseDuration,
     this.curve = Curves.linear,
     this.clipBehavior = Clip.hardEdge,
@@ -697,7 +697,7 @@ class TomAnimatedSize extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     return AnimatedSize(
       alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       reverseDuration: reverseDuration,
       curve: curve,
       clipBehavior: clipBehavior,
@@ -719,7 +719,7 @@ class TomAnimatedSize extends TomAnimatedBase {
 class TomAnimatedSlide extends TomAnimatedBase {
   final Widget? child;
   final Offset? offset;
-  final Duration duration;
+  final Duration? duration;
   final Curve curve;
   final VoidCallback? onEnd;
 
@@ -729,7 +729,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
     super.tomGroup,
     this.child,
     this.offset,
-    required this.duration,
+    this.duration,
     this.curve = Curves.linear,
     this.onEnd,
   });
@@ -742,7 +742,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
 
     return AnimatedSlide(
       offset: resolvedOffset,
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -761,7 +761,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
 /// Animates child swap with transition. Auth on switched content.
 class TomAnimatedSwitcher extends TomAnimatedBase {
   final Widget? child;
-  final Duration duration;
+  final Duration? duration;
   final Duration? reverseDuration;
   final Curve switchInCurve;
   final Curve switchOutCurve;
@@ -773,7 +773,7 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
     super.tomId,
     super.tomGroup,
     this.child,
-    required this.duration,
+    this.duration,
     this.reverseDuration,
     this.switchInCurve = Curves.linear,
     this.switchOutCurve = Curves.linear,
@@ -784,7 +784,7 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     return AnimatedSwitcher(
-      duration: duration,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
       reverseDuration: reverseDuration,
       switchInCurve: switchInCurve,
       switchOutCurve: switchOutCurve,

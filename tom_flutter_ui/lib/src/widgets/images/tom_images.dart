@@ -13,8 +13,8 @@ import '../../widget_base/tom_style_resolvers.dart';
 ///
 /// Drop-in replacement for Flutter's [Icon] widget:
 /// ```dart
-/// TomIcon(Icons.save)           // Same as Icon(Icons.save)
-/// TomIcon(Icons.save, size: 24) // Same as Icon(Icons.save, size: 24)
+/// TomIcon(icon: Icons.save)           // Explicit icon
+/// TomIcon(icon: Icons.save, size: 24) // With size
 /// ```
 ///
 /// When icon is not provided, resolves via resource lookup:
@@ -42,12 +42,13 @@ class TomIcon extends TomImageBase {
 
   /// Creates a TomIcon widget.
   ///
-  /// Use positional [icon] for Flutter API compatibility:
+  /// Use [icon] for explicit icon, or omit for resource resolution:
   /// ```dart
-  /// TomIcon(Icons.save)  // Same as Icon(Icons.save)
+  /// TomIcon(icon: Icons.save)          // Explicit icon
+  /// TomIcon(tomId: 'app.saveBtn')      // Resolves from resources
   /// ```
-  const TomIcon(
-    this.icon, {
+  const TomIcon({
+    this.icon,
     super.key,
     super.tomId,
     super.tomGroup,

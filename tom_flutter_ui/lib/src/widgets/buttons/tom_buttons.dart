@@ -1667,7 +1667,7 @@ class TomExpandIcon extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     this.isExpanded = false,
-    required this.onPressed,
+    this.onPressed,
     this.size,
     this.padding = const EdgeInsets.all(8.0),
     this.color,

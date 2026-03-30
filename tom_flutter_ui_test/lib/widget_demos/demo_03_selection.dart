@@ -146,7 +146,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             // Basic dropdown
             TomRow(
               children: [
-                TomText(null, tomId: 'demo03.dropdownButton.categoryLabel'),
+                TomText(tomId: 'demo03.dropdownButton.categoryLabel'),
                 const TomSizedBox(width: 16),
                 TomExpanded(
                   child: TomDropdownButton<String>(
@@ -157,7 +157,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                         .map((key) => TomDropdownMenuItem<String>(
                               tomId: 'demo03.data.category.$key',
                               value: key,
-                              child: TomText(null, tomId: 'demo03.data.category.$key'),
+                              child: TomText(tomId: 'demo03.data.category.$key'),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -170,7 +170,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             const TomSizedBox(height: 24),
 
             // Dropdown with custom items (icons)
-            TomText(null, tomId: 'demo03.dropdownButton.colorLabel'),
+            TomText(tomId: 'demo03.dropdownButton.colorLabel'),
             const TomSizedBox(height: 8),
             TomDropdownButton<String>(
               tomId: 'demo03.dropdownButton.color',
@@ -184,7 +184,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                           children: [
                             Text(_resolveText('demo03.data.color.$key', 'emoji')),
                             const SizedBox(width: 8),
-                            TomText(null, tomId: 'demo03.data.color.$key'),
+                            TomText(tomId: 'demo03.data.color.$key'),
                           ],
                         ),
                       ))
@@ -209,7 +209,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                         .map((key) => TomDropdownMenuItem<String>(
                               tomId: 'demo03.data.country.$key',
                               value: key,
-                              child: TomText(null, tomId: 'demo03.data.country.$key'),
+                              child: TomText(tomId: 'demo03.data.country.$key'),
                             ))
                         .toList(),
                     onChanged: (value) {
@@ -329,7 +329,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             // Basic popup menu
             TomRow(
               children: [
-                TomText(null, tomId: 'demo03.popupMenu.basicLabel'),
+                TomText(tomId: 'demo03.popupMenu.basicLabel'),
                 const TomSizedBox(width: 16),
                 TomPopupMenuButton<String>(
                   tomId: 'demo03.popupMenu.basic',
@@ -339,9 +339,9 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                       tomId: 'demo03.popupMenu.copy',
                       child: TomRow(
                         children: [
-                          TomIcon(null, tomId: 'demo03.popupMenu.copy'),
+                          TomIcon(tomId: 'demo03.popupMenu.copy'),
                           const TomSizedBox(width: 12),
-                          TomText(null, tomId: 'demo03.popupMenu.copy'),
+                          TomText(tomId: 'demo03.popupMenu.copy'),
                         ],
                       ),
                     ),
@@ -350,9 +350,9 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                       tomId: 'demo03.popupMenu.cut',
                       child: TomRow(
                         children: [
-                          TomIcon(null, tomId: 'demo03.popupMenu.cut'),
+                          TomIcon(tomId: 'demo03.popupMenu.cut'),
                           const TomSizedBox(width: 12),
-                          TomText(null, tomId: 'demo03.popupMenu.cut'),
+                          TomText(tomId: 'demo03.popupMenu.cut'),
                         ],
                       ),
                     ),
@@ -361,9 +361,9 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                       tomId: 'demo03.popupMenu.paste',
                       child: TomRow(
                         children: [
-                          TomIcon(null, tomId: 'demo03.popupMenu.paste'),
+                          TomIcon(tomId: 'demo03.popupMenu.paste'),
                           const TomSizedBox(width: 12),
-                          TomText(null, tomId: 'demo03.popupMenu.paste'),
+                          TomText(tomId: 'demo03.popupMenu.paste'),
                         ],
                       ),
                     ),
@@ -373,9 +373,9 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                       tomId: 'demo03.popupMenu.delete',
                       child: TomRow(
                         children: [
-                          TomIcon(null, tomId: 'demo03.popupMenu.delete'),
+                          TomIcon(tomId: 'demo03.popupMenu.delete'),
                           const TomSizedBox(width: 12),
-                          TomText(null, tomId: 'demo03.popupMenu.delete'),
+                          TomText(tomId: 'demo03.popupMenu.delete'),
                         ],
                       ),
                     ),
@@ -402,7 +402,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 child: TomRow(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TomText(null, tomId: 'demo03.popupMenu.moreOptions'),
+                    TomText(tomId: 'demo03.popupMenu.moreOptions'),
                     const TomSizedBox(width: 8),
                     const Icon(Icons.arrow_drop_down),
                   ],
@@ -412,17 +412,17 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 TomPopupMenuItem<String>(
                   value: 'view',
                   tomId: 'demo03.popupMenu.view',
-                  child: TomText(null, tomId: 'demo03.popupMenu.view'),
+                  child: TomText(tomId: 'demo03.popupMenu.view'),
                 ),
                 TomPopupMenuItem<String>(
                   value: 'edit',
                   tomId: 'demo03.popupMenu.edit',
-                  child: TomText(null, tomId: 'demo03.popupMenu.edit'),
+                  child: TomText(tomId: 'demo03.popupMenu.edit'),
                 ),
                 TomPopupMenuItem<String>(
                   value: 'share',
                   tomId: 'demo03.popupMenu.share',
-                  child: TomText(null, tomId: 'demo03.popupMenu.share'),
+                  child: TomText(tomId: 'demo03.popupMenu.share'),
                 ),
               ],
               onSelected: (value) {},
@@ -446,16 +446,16 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           children: [
             TomRow(
               children: [
-                TomText(null, tomId: 'demo03.checkedPopup.viewLabel'),
+                TomText(tomId: 'demo03.checkedPopup.viewLabel'),
                 const TomSizedBox(width: 16),
                 TomPopupMenuButton<String>(
                   tomId: 'demo03.checkedPopup.view',
                   child: TomRow(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      TomIcon(null, tomId: 'demo03.checkedPopup.viewIcon'),
+                      TomIcon(tomId: 'demo03.checkedPopup.viewIcon'),
                       const TomSizedBox(width: 8),
-                      TomText(null, tomId: 'demo03.checkedPopup.viewText'),
+                      TomText(tomId: 'demo03.checkedPopup.viewText'),
                       const Icon(Icons.arrow_drop_down),
                     ],
                   ),
@@ -464,19 +464,19 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                       value: 'preview',
                       checked: _showPreview,
                       tomId: 'demo03.checkedPopup.preview',
-                      child: TomText(null, tomId: 'demo03.checkedPopup.preview'),
+                      child: TomText(tomId: 'demo03.checkedPopup.preview'),
                     ),
                     TomCheckedPopupMenuItem<String>(
                       value: 'details',
                       checked: _showDetails,
                       tomId: 'demo03.checkedPopup.details',
-                      child: TomText(null, tomId: 'demo03.checkedPopup.details'),
+                      child: TomText(tomId: 'demo03.checkedPopup.details'),
                     ),
                     TomCheckedPopupMenuItem<String>(
                       value: 'sidebar',
                       checked: _showSidebar,
                       tomId: 'demo03.checkedPopup.sidebar',
-                      child: TomText(null, tomId: 'demo03.checkedPopup.sidebar'),
+                      child: TomText(tomId: 'demo03.checkedPopup.sidebar'),
                     ),
                   ],
                   onSelected: (value) {
@@ -503,7 +503,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 final details = _showDetails ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
                 final sidebar = _showSidebar ? _resolveText('demo03.status.on', 'label') : _resolveText('demo03.status.off', 'label');
                 return TomText(
-                  'Preview: $preview, Details: $details, Sidebar: $sidebar',
+                  text: 'Preview: $preview, Details: $details, Sidebar: $sidebar',
                   style: Theme.of(context).textTheme.bodySmall,
                 );
               },
@@ -530,7 +530,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Menu anchor with checkbox items
-            TomText(null, tomId: 'demo03.menuAnchor.checkboxLabel'),
+            TomText(tomId: 'demo03.menuAnchor.checkboxLabel'),
             const TomSizedBox(height: 8),
             TomMenuAnchor(
               menuChildren: [
@@ -540,7 +540,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _showPreview = value ?? false);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.checkPreview'),
+                  child: TomText(tomId: 'demo03.menuAnchor.checkPreview'),
                 ),
                 TomCheckboxMenuButton(
                   tomId: 'demo03.menuAnchor.checkDetails',
@@ -548,7 +548,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _showDetails = value ?? false);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.checkDetails'),
+                  child: TomText(tomId: 'demo03.menuAnchor.checkDetails'),
                 ),
                 TomCheckboxMenuButton(
                   tomId: 'demo03.menuAnchor.checkSidebar',
@@ -556,7 +556,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _showSidebar = value ?? false);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.checkSidebar'),
+                  child: TomText(tomId: 'demo03.menuAnchor.checkSidebar'),
                 ),
               ],
               builder: (context, controller, child) {
@@ -576,7 +576,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             const TomSizedBox(height: 24),
 
             // Menu anchor with radio items
-            TomText(null, tomId: 'demo03.menuAnchor.radioLabel'),
+            TomText(tomId: 'demo03.menuAnchor.radioLabel'),
             const TomSizedBox(height: 8),
             TomMenuAnchor(
               menuChildren: [
@@ -587,7 +587,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _radioMenuValue = value!);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.radioOption1'),
+                  child: TomText(tomId: 'demo03.menuAnchor.radioOption1'),
                 ),
                 TomRadioMenuButton<String>(
                   tomId: 'demo03.menuAnchor.radioOption2',
@@ -596,7 +596,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _radioMenuValue = value!);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.radioOption2'),
+                  child: TomText(tomId: 'demo03.menuAnchor.radioOption2'),
                 ),
                 TomRadioMenuButton<String>(
                   tomId: 'demo03.menuAnchor.radioOption3',
@@ -605,7 +605,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                   onChanged: (value) {
                     setState(() => _radioMenuValue = value!);
                   },
-                  child: TomText(null, tomId: 'demo03.menuAnchor.radioOption3'),
+                  child: TomText(tomId: 'demo03.menuAnchor.radioOption3'),
                 ),
               ],
               builder: (context, controller, child) {
@@ -625,7 +625,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
 
             // Status display
             TomText(
-              'Selected: $_radioMenuValue',
+              text: 'Selected: $_radioMenuValue',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -650,17 +650,17 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Sliding segmented control
-            TomText(null, tomId: 'demo03.cupertinoSegmented.slidingLabel'),
+            TomText(tomId: 'demo03.cupertinoSegmented.slidingLabel'),
             const TomSizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: TomCupertinoSlidingSegmentedControl<int>(
                 groupValue: _slidingValue,
                 children: {
-                  0: TomText(null, tomId: 'demo03.cupertinoSegmented.day'),
-                  1: TomText(null, tomId: 'demo03.cupertinoSegmented.week'),
-                  2: TomText(null, tomId: 'demo03.cupertinoSegmented.month'),
-                  3: TomText(null, tomId: 'demo03.cupertinoSegmented.year'),
+                  0: TomText(tomId: 'demo03.cupertinoSegmented.day'),
+                  1: TomText(tomId: 'demo03.cupertinoSegmented.week'),
+                  2: TomText(tomId: 'demo03.cupertinoSegmented.month'),
+                  3: TomText(tomId: 'demo03.cupertinoSegmented.year'),
                 },
                 onValueChanged: (value) {
                   setState(() => _slidingValue = value!);
@@ -670,7 +670,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             const TomSizedBox(height: 24),
 
             // Classic segmented control
-            TomText(null, tomId: 'demo03.cupertinoSegmented.classicLabel'),
+            TomText(tomId: 'demo03.cupertinoSegmented.classicLabel'),
             const TomSizedBox(height: 8),
             SizedBox(
               width: double.infinity,
@@ -679,15 +679,15 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 children: {
                   0: TomPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TomText(null, tomId: 'demo03.cupertinoSegmented.first'),
+                    child: TomText(tomId: 'demo03.cupertinoSegmented.first'),
                   ),
                   1: TomPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TomText(null, tomId: 'demo03.cupertinoSegmented.second'),
+                    child: TomText(tomId: 'demo03.cupertinoSegmented.second'),
                   ),
                   2: TomPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: TomText(null, tomId: 'demo03.cupertinoSegmented.third'),
+                    child: TomText(tomId: 'demo03.cupertinoSegmented.third'),
                   ),
                 },
                 onValueChanged: (value) {
@@ -699,7 +699,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
 
             // Status display
             TomText(
-              'Sliding: ${_resolveText('demo03.cupertinoSegmented.${
+              text: 'Sliding: ${_resolveText('demo03.cupertinoSegmented.${
                 ['day', 'week', 'month', 'year'][_slidingValue]
               }', 'label')}, Classic: ${_resolveText('demo03.cupertinoSegmented.${
                 ['first', 'second', 'third'][_segmentedValue]
@@ -723,7 +723,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TomText(null, tomId: 'demo03.cupertinoPicker.fruitLabel'),
+            TomText(tomId: 'demo03.cupertinoPicker.fruitLabel'),
             const TomSizedBox(height: 8),
             TomContainer(
               height: 200,
@@ -739,7 +739,6 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                 children: _fruitKeys
                     .map((key) => Center(
                           child: TomText(
-                            null,
                             tomId: 'demo03.data.fruit.$key',
                             style: const TextStyle(fontSize: 18),
                           ),
@@ -752,10 +751,9 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
             // Selected fruit display
             TomRow(
               children: [
-                TomIcon(null, tomId: 'demo03.cupertinoPicker.selectedIcon'),
+                TomIcon(tomId: 'demo03.cupertinoPicker.selectedIcon'),
                 const TomSizedBox(width: 8),
                 TomText(
-                  null,
                   tomId: 'demo03.data.fruit.${_fruitKeys[_pickerValue]}',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
@@ -776,7 +774,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
       tomId: 'demo03.aclDropdown',
       child: AclBuilder()
           // Row 1: Label + Dropdown side by side
-          .append(TomText(null, tomId: 'demo03.aclDropdown.categoryLabel'))
+          .append(TomText(tomId: 'demo03.aclDropdown.categoryLabel'))
           .append(
             TomExpanded(
               child: TomDropdownButton<String>(
@@ -787,7 +785,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
                     .map((key) => TomDropdownMenuItem<String>(
                           tomId: 'demo03.data.category.$key',
                           value: key,
-                          child: TomText(null, tomId: 'demo03.data.category.$key'),
+                          child: TomText(tomId: 'demo03.data.category.$key'),
                         ))
                     .toList(),
                 onChanged: (value) {
@@ -799,7 +797,7 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           )
           .newRow(dist: 16)
           // Row 2: Label + Dropdown Menu
-          .append(TomText(null, tomId: 'demo03.aclDropdown.sizeLabel'))
+          .append(TomText(tomId: 'demo03.aclDropdown.sizeLabel'))
           .append(
             TomDropdownMenu<String>(
               tomId: 'demo03.aclDropdown.size',
@@ -826,15 +824,15 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
       tomId: 'demo03.aclSegmented',
       child: AclBuilder()
           // Row 1: Label + Sliding segmented
-          .append(TomText(null, tomId: 'demo03.aclSegmented.periodLabel'))
+          .append(TomText(tomId: 'demo03.aclSegmented.periodLabel'))
           .append(
             TomExpanded(
               child: TomCupertinoSlidingSegmentedControl<int>(
                 groupValue: _slidingValue,
                 children: {
-                  0: TomText(null, tomId: 'demo03.aclSegmented.day'),
-                  1: TomText(null, tomId: 'demo03.aclSegmented.week'),
-                  2: TomText(null, tomId: 'demo03.aclSegmented.month'),
+                  0: TomText(tomId: 'demo03.aclSegmented.day'),
+                  1: TomText(tomId: 'demo03.aclSegmented.week'),
+                  2: TomText(tomId: 'demo03.aclSegmented.month'),
                 },
                 onValueChanged: (value) {
                   setState(() => _slidingValue = value!);
@@ -889,7 +887,6 @@ class _SectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-          null,
           tomId: '$tomId.title',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
@@ -898,7 +895,6 @@ class _SectionHeader extends StatelessWidget {
         ),
         const TomSizedBox(height: 4),
         TomText(
-          null,
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -951,7 +947,6 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    null,
                     tomId: '$tomId.icon',
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -962,14 +957,12 @@ class _DemoCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TomText(
-                        null,
                         tomId: '$tomId.title',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       TomText(
-                        null,
                         tomId: '$tomId.description',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,

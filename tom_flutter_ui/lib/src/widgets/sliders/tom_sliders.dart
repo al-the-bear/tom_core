@@ -171,7 +171,7 @@ class TomCupertinoSlider extends TomSliderBase {
     super.tomId,
     super.tomGroup,
     required this.value,
-    required this.onChanged,
+    this.onChanged,
     this.onChangeStart,
     this.onChangeEnd,
     this.min = 0.0,

@@ -622,18 +622,18 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             segments: [
               ButtonSegment<String>(
                 value: 'day',
-                icon: TomIcon(null, tomId: 'demo01.segmented.day'),
-                label: TomText(null, tomId: 'demo01.segmented.day'),
+                icon: TomIcon(tomId: 'demo01.segmented.day'),
+                label: TomText(tomId: 'demo01.segmented.day'),
               ),
               ButtonSegment<String>(
                 value: 'week',
-                icon: TomIcon(null, tomId: 'demo01.segmented.week'),
-                label: TomText(null, tomId: 'demo01.segmented.week'),
+                icon: TomIcon(tomId: 'demo01.segmented.week'),
+                label: TomText(tomId: 'demo01.segmented.week'),
               ),
               ButtonSegment<String>(
                 value: 'month',
-                icon: TomIcon(null, tomId: 'demo01.segmented.month'),
-                label: TomText(null, tomId: 'demo01.segmented.month'),
+                icon: TomIcon(tomId: 'demo01.segmented.month'),
+                label: TomText(tomId: 'demo01.segmented.month'),
               ),
             ],
             selected: {_selectedView},
@@ -648,18 +648,18 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             segments: [
               ButtonSegment<String>(
                 value: 'bold',
-                icon: TomIcon(null, tomId: 'demo01.segmented.bold'),
-                label: TomText(null, tomId: 'demo01.segmented.bold'),
+                icon: TomIcon(tomId: 'demo01.segmented.bold'),
+                label: TomText(tomId: 'demo01.segmented.bold'),
               ),
               ButtonSegment<String>(
                 value: 'italic',
-                icon: TomIcon(null, tomId: 'demo01.segmented.italic'),
-                label: TomText(null, tomId: 'demo01.segmented.italic'),
+                icon: TomIcon(tomId: 'demo01.segmented.italic'),
+                label: TomText(tomId: 'demo01.segmented.italic'),
               ),
               ButtonSegment<String>(
                 value: 'underline',
-                icon: TomIcon(null, tomId: 'demo01.segmented.underline'),
-                label: TomText(null, tomId: 'demo01.segmented.underline'),
+                icon: TomIcon(tomId: 'demo01.segmented.underline'),
+                label: TomText(tomId: 'demo01.segmented.underline'),
               ),
             ],
             selected: _selectedFormats,
@@ -676,15 +676,15 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             segments: [
               ButtonSegment<String>(
                 value: 'list',
-                icon: TomIcon(null, tomId: 'demo01.segmented.list'),
+                icon: TomIcon(tomId: 'demo01.segmented.list'),
               ),
               ButtonSegment<String>(
                 value: 'grid',
-                icon: TomIcon(null, tomId: 'demo01.segmented.grid'),
+                icon: TomIcon(tomId: 'demo01.segmented.grid'),
               ),
               ButtonSegment<String>(
                 value: 'module',
-                icon: TomIcon(null, tomId: 'demo01.segmented.module'),
+                icon: TomIcon(tomId: 'demo01.segmented.module'),
               ),
             ],
             selected: const {'list'},
@@ -765,10 +765,10 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
                         onPressed: () {},
                       ),
                     ],
-                    child: TomText(null, tomId: 'demo01.submenu.open'),
+                    child: TomText(tomId: 'demo01.submenu.open'),
                   ),
                 ],
-                child: TomText(null, tomId: 'demo01.submenu.file'),
+                child: TomText(tomId: 'demo01.submenu.file'),
               ),
               TomSubmenuButton(
                 menuChildren: [
@@ -785,7 +785,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
                     onPressed: () {},
                   ),
                 ],
-                child: TomText(null, tomId: 'demo01.submenu.export'),
+                child: TomText(tomId: 'demo01.submenu.export'),
               ),
             ],
             builder: (context, controller, child) {
@@ -809,15 +809,15 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             itemBuilder: (context) => [
               PopupMenuItem<String>(
                 value: 'view',
-                child: TomText(null, tomId: 'demo01.popup.view'),
+                child: TomText(tomId: 'demo01.popup.view'),
               ),
               PopupMenuItem<String>(
                 value: 'edit',
-                child: TomText(null, tomId: 'demo01.popup.edit'),
+                child: TomText(tomId: 'demo01.popup.edit'),
               ),
               PopupMenuItem<String>(
                 value: 'delete',
-                child: TomText(null, tomId: 'demo01.popup.delete'),
+                child: TomText(tomId: 'demo01.popup.delete'),
               ),
             ],
             onSelected: (_) {},
@@ -871,7 +871,6 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
               ),
               const TomSizedBox(width: 8),
               TomText(
-                null,
                 tomId:
                     _isExpanded ? 'demo01.expand.collapse' : 'demo01.expand.expand',
               ),
@@ -891,7 +890,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
                   ),
                   const TomExpanded(
                     child: TomCenter(
-                      child: TomText(null, tomId: 'demo01.context.title'),
+                      child: TomText(tomId: 'demo01.context.title'),
                     ),
                   ),
                   TomIconButton(
@@ -917,7 +916,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
       tomId: 'demo01.aclButtons',
       child: AclBuilder()
           // Row 1: Label + Button side by side
-          .append(TomText(null, tomId: 'demo01.aclButtons.primaryLabel'))
+          .append(TomText(tomId: 'demo01.aclButtons.primaryLabel'))
           .append(
             TomElevatedButton(
               tomId: 'demo01.aclButtons.primary',
@@ -928,7 +927,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
           .gap()
           .newRow(dist: 16)
           // Row 2: Label + Button side by side
-          .append(TomText(null, tomId: 'demo01.aclButtons.secondaryLabel'))
+          .append(TomText(tomId: 'demo01.aclButtons.secondaryLabel'))
           .append(
             TomOutlinedButton(
               tomId: 'demo01.aclButtons.secondary',
@@ -967,7 +966,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
             onPressed: () {},
           ))
           .append(
-            TomText(null, tomId: 'demo01.aclIconRow.pageTitle'),
+            TomText(tomId: 'demo01.aclIconRow.pageTitle'),
             dist: 8,
           )
           .expandX()
@@ -984,7 +983,7 @@ class _ButtonsDemoContentState extends State<_ButtonsDemoContent> {
           )
           .newRow(dist: 24)
           // Row 2: FAB row
-          .append(TomText(null, tomId: 'demo01.aclIconRow.fabLabel'))
+          .append(TomText(tomId: 'demo01.aclIconRow.fabLabel'))
           .gap()
           .append(
             TomFloatingActionButton.small(
@@ -1018,7 +1017,6 @@ class _SectionHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-          null,
           tomId: '$tomId.title',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
@@ -1027,7 +1025,6 @@ class _SectionHeader extends StatelessWidget {
         ),
         const TomSizedBox(height: 4),
         TomText(
-          null,
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -1073,11 +1070,10 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(null, tomId: '$tomId.icon'),
+                TomIcon(tomId: '$tomId.icon'),
                 const TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
-                    null,
                     tomId: '$tomId.title',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
@@ -1089,7 +1085,6 @@ class _DemoCard extends StatelessWidget {
             const TomSizedBox(height: 8),
             // Description
             TomText(
-              null,
               tomId: '$tomId.description',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,

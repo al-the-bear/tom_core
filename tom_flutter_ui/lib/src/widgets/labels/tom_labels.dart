@@ -7,13 +7,10 @@ import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Text].
 ///
-/// Provides both positional [data] parameter (matching Flutter's Text API)
-/// and optional resource resolution when neither [data] nor [text] is provided.
+/// Provides optional [text] parameter and resource resolution
+/// when [text] is not provided.
 class TomText extends TomLabelBase {
-  /// The text to display (positional parameter for Flutter API compatibility).
-  final String? data;
-
-  /// Alternative named text parameter for resource-based resolution.
+  /// The text to display. When omitted, resolves from Tom resources.
   final String? text;
   final TextStyle? style;
   final StrutStyle? strutStyle;
@@ -29,17 +26,11 @@ class TomText extends TomLabelBase {
 
   /// Creates a TomText widget.
   ///
-  /// Use the positional [data] parameter for Flutter API compatibility:
   /// ```dart
-  /// TomText('Hello')  // Same as Text('Hello')
-  /// ```
-  ///
-  /// Or use named parameters for resource resolution:
-  /// ```dart
+  /// TomText(text: 'Hello')         // Explicit text
   /// TomText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
-  const TomText(
-    String? this.data, {
+  const TomText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -59,7 +50,7 @@ class TomText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
+    final resolvedText = text ?? resolveResourceOrFail(context, 'label');
 
     // Phase 2: Resolve optional parameter from resources
     final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
@@ -104,18 +95,15 @@ class TomText extends TomLabelBase {
 
 /// Tom wrapper for [SelectableText].
 ///
-/// Provides both positional [data] parameter (matching Flutter's SelectableText API)
-/// and optional resource resolution when neither [data] nor [text] is provided.
+/// Provides optional [text] parameter and resource resolution
+/// when [text] is not provided.
 ///
-/// Drop-in replacement for Flutter's [SelectableText] widget:
 /// ```dart
-/// TomSelectableText('Hello')  // Same as SelectableText('Hello')
+/// TomSelectableText(text: 'Hello')         // Explicit text
+/// TomSelectableText(tomId: 'app.greeting')  // Resolves from resources
 /// ```
 class TomSelectableText extends TomLabelBase {
-  /// The text to display (positional parameter for Flutter API compatibility).
-  final String? data;
-
-  /// Alternative named text parameter for resource-based resolution.
+  /// The text to display. When omitted, resolves from Tom resources.
   final String? text;
   final TextStyle? style;
   final StrutStyle? strutStyle;
@@ -143,12 +131,11 @@ class TomSelectableText extends TomLabelBase {
 
   /// Creates a TomSelectableText widget.
   ///
-  /// Use the positional [data] parameter for Flutter API compatibility:
   /// ```dart
-  /// TomSelectableText('Hello')  // Same as SelectableText('Hello')
+  /// TomSelectableText(text: 'Hello')         // Explicit text
+  /// TomSelectableText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
-  const TomSelectableText(
-    String? this.data, {
+  const TomSelectableText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -180,7 +167,7 @@ class TomSelectableText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = data ?? text ?? resolveResourceOrFail(context, 'label');
+    final resolvedText = text ?? resolveResourceOrFail(context, 'label');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedCursorColor =
