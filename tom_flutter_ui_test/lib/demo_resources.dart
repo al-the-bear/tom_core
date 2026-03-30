@@ -1660,6 +1660,112 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo10.reorderable.infoLabel.label':
         'Drag items by the handle to reorder. The current order is shown below.',
     'demo10.reorderable.reset.label': 'Reset Order',
+
+    // ==========================================================================
+    // Demo 11: Text & Label Display
+    // ==========================================================================
+
+    // Section Headers
+    'demo11.section.text.title.label': 'Text Styles',
+    'demo11.section.text.subtitle.label':
+        'TomText widget with various typography styles and text formatting.',
+    'demo11.section.rich.title.label': 'Rich & Selectable Text',
+    'demo11.section.rich.subtitle.label':
+        'TomRichText for styled spans and TomSelectableText for user selection.',
+    'demo11.section.badge.title.label': 'Badges',
+    'demo11.section.badge.subtitle.label':
+        'TomBadge for notification counts and status indicators.',
+    'demo11.section.listTile.title.label': 'List Tiles',
+    'demo11.section.listTile.subtitle.label':
+        'TomListTile for structured list items with icons and actions.',
+    'demo11.section.chips.title.label': 'Chips',
+    'demo11.section.chips.subtitle.label':
+        'Chip variants for tags, filters, choices, and actions with ACL support.',
+
+    // Demo Card: Text Styles
+    'demo11.text.icon.icon': 'mTextFields',
+    'demo11.text.title.label': 'TomText',
+    'demo11.text.description.label':
+        'Text widget with tomId-based resource resolution and typography styles.',
+    'demo11.text.display.label': 'Display Text',
+    'demo11.text.headline.label': 'Headline Text',
+    'demo11.text.title.label': 'Title Text',
+    'demo11.text.body.label': 'Body text for paragraphs and general content.',
+    'demo11.text.bodySmall.label': 'Smaller body text for captions and hints.',
+    'demo11.text.labelLarge.label': 'LABEL LARGE',
+    'demo11.text.labelSmall.label': 'LABEL SMALL',
+    'demo11.text.primary.label': 'Primary Color',
+    'demo11.text.error.label': 'Error Color',
+    'demo11.text.italic.label': 'Italic Style',
+    'demo11.text.underline.label': 'Underlined',
+    'demo11.text.overflow.label':
+        'This is a very long text that will be truncated with an ellipsis when it overflows the available width.',
+
+    // Demo Card: Rich Text
+    'demo11.richText.icon.icon': 'mFormatColorText',
+    'demo11.richText.title.label': 'TomRichText',
+    'demo11.richText.description.label':
+        'Rich text with multiple styles, colors, and formatting in a single text block.',
+
+    // Demo Card: Selectable Text
+    'demo11.selectableText.icon.icon': 'mSelectAll',
+    'demo11.selectableText.title.label': 'TomSelectableText',
+    'demo11.selectableText.description.label':
+        'Text that users can select and copy. Supports custom cursors and styling.',
+    'demo11.selectableText.basic.label':
+        'This text can be selected and copied. Try highlighting it!',
+    'demo11.selectableText.cursor.label':
+        'Text with custom cursor color and width for better visibility.',
+    'demo11.selectableText.multiline.label':
+        'Multi-line selectable text that wraps across multiple lines. This demonstrates how TomSelectableText handles longer content that spans several lines while maintaining selectability throughout the entire block.',
+
+    // Demo Card: Badges
+    'demo11.badge.icon.icon': 'mNotifications',
+    'demo11.badge.title.label': 'TomBadge',
+    'demo11.badge.description.label':
+        'Badges for displaying counts, notifications, and status indicators on icons.',
+    'demo11.badge.dot.button.icon': 'mAccountCircle',
+    'demo11.badge.custom.feature.label': 'Feature',
+    'demo11.badge.custom.product.label': 'Product',
+
+    // Demo Card: List Tiles
+    'demo11.listTile.icon.icon': 'mList',
+    'demo11.listTile.title.label': 'TomListTile',
+    'demo11.listTile.description.label':
+        'List tiles for displaying items with icons, titles, subtitles, and trailing widgets.',
+
+    // Demo Card: Basic Chip
+    'demo11.chip.icon.icon': 'mLabel',
+    'demo11.chip.title.label': 'TomChip',
+    'demo11.chip.description.label':
+        'Basic chips for displaying tags and labels with optional avatars and delete actions.',
+
+    // Demo Card: Filter Chip
+    'demo11.filterChip.icon.icon': 'mFilterList',
+    'demo11.filterChip.title.label': 'TomFilterChip',
+    'demo11.filterChip.description.label':
+        'Filter chips for multi-select filtering with checkmark indicators.',
+    'demo11.filterChip.instruction.label': 'Select technologies to filter:',
+
+    // Demo Card: Choice Chip
+    'demo11.choiceChip.icon.icon': 'mRadioButtonChecked',
+    'demo11.choiceChip.title.label': 'TomChoiceChip',
+    'demo11.choiceChip.description.label':
+        'Choice chips for single-select options like sizes or categories.',
+    'demo11.choiceChip.instruction.label': 'Select a size:',
+
+    // Demo Card: Action Chip
+    'demo11.actionChip.icon.icon': 'mTouchApp',
+    'demo11.actionChip.title.label': 'TomActionChip',
+    'demo11.actionChip.description.label':
+        'Action chips trigger operations like share, save, or copy.',
+
+    // Demo Card: Input Chip
+    'demo11.inputChip.icon.icon': 'mInput',
+    'demo11.inputChip.title.label': 'TomInputChip',
+    'demo11.inputChip.description.label':
+        'Input chips for user-entered tags with select and delete support. ACL-aware layout.',
+    'demo11.inputChip.instruction.label': 'Manage your tags (supports RTL):',
   };
 
   @override
