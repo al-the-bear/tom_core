@@ -2641,6 +2641,94 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
         'Flags content for special OS handling of sensitive data like passwords.',
     'demo19.sensitiveContent.hint.label':
         'Platform may hide content in app switcher or screenshots',
+
+    // ==========================================================================
+    // Demo 20: Interactions & Gestures
+    // ==========================================================================
+
+    // Section Headers
+    'demo20.section.gesture.title.label': 'Gesture Detection',
+    'demo20.section.gesture.subtitle.label':
+        'Tap, drag, pan, scale, and long press gestures',
+    'demo20.section.ink.title.label': 'Ink Effects',
+    'demo20.section.ink.subtitle.label':
+        'Material ink splash and ripple responses',
+    'demo20.section.dragdrop.title.label': 'Drag and Drop',
+    'demo20.section.dragdrop.subtitle.label':
+        'Draggable widgets and drop targets',
+    'demo20.section.longpress.title.label': 'Long Press Drag',
+    'demo20.section.longpress.subtitle.label':
+        'Long press activated drag and drop',
+    'demo20.section.pointer.title.label': 'Pointer Blocking',
+    'demo20.section.pointer.subtitle.label':
+        'Absorb or ignore pointer events',
+    'demo20.section.mouse.title.label': 'Mouse Region',
+    'demo20.section.mouse.subtitle.label':
+        'Track mouse position, hover, and cursor',
+
+    // GestureDetector Card
+    'demo20.gestureDetector.icon.icon': 'mTouchApp',
+    'demo20.gestureDetector.title.label': 'GestureDetector',
+    'demo20.gestureDetector.description.label':
+        'Detects taps, drags, pans, scales, and other touch/mouse gestures.',
+    'demo20.gestureDetector.hint.label':
+        'Supports single tap, double tap, long press, pan, scale, and force press',
+
+    // InkWell Card
+    'demo20.inkWell.icon.icon': 'mWaterDrop',
+    'demo20.inkWell.title.label': 'InkWell',
+    'demo20.inkWell.description.label':
+        'Material ink splash effect for tap feedback with customizable colors.',
+    'demo20.inkWell.hint.label':
+        'Provides visual and haptic feedback for touch interactions',
+
+    // InkResponse Card
+    'demo20.inkResponse.icon.icon': 'mLensBlur',
+    'demo20.inkResponse.title.label': 'InkResponse',
+    'demo20.inkResponse.description.label':
+        'Low-level ink splash with configurable shape, radius, and spread.',
+    'demo20.inkResponse.hint.label':
+        'Base widget for InkWell with more customization options',
+
+    // DragDrop Card
+    'demo20.dragDrop.icon.icon': 'mDragIndicator',
+    'demo20.dragDrop.title.label': 'Draggable & DragTarget',
+    'demo20.dragDrop.description.label':
+        'Drag-and-drop system with typed data transfer and visual feedback.',
+    'demo20.dragDrop.hint.label':
+        'Draggable provides the source, DragTarget provides the destination',
+
+    // LongPressDrag Card
+    'demo20.longPressDrag.icon.icon': 'mPanTool',
+    'demo20.longPressDrag.title.label': 'LongPressDraggable',
+    'demo20.longPressDrag.description.label':
+        'Drag-and-drop that activates after a long press with haptic feedback.',
+    'demo20.longPressDrag.hint.label':
+        'Useful for reorderable lists and tile-based interfaces',
+
+    // AbsorbPointer Card
+    'demo20.absorbPointer.icon.icon': 'mBlock',
+    'demo20.absorbPointer.title.label': 'AbsorbPointer',
+    'demo20.absorbPointer.description.label':
+        'Absorbs and blocks all pointer events from reaching child widgets.',
+    'demo20.absorbPointer.hint.label':
+        'Events are consumed but children below still render normally',
+
+    // IgnorePointer Card
+    'demo20.ignorePointer.icon.icon': 'mVisibilityOff',
+    'demo20.ignorePointer.title.label': 'IgnorePointer',
+    'demo20.ignorePointer.description.label':
+        'Makes child widgets invisible to pointer events, passing them through.',
+    'demo20.ignorePointer.hint.label':
+        'Unlike AbsorbPointer, events pass to widgets behind',
+
+    // MouseRegion Card
+    'demo20.mouseRegion.icon.icon': 'mMouse',
+    'demo20.mouseRegion.title.label': 'MouseRegion',
+    'demo20.mouseRegion.description.label':
+        'Tracks mouse enter, exit, and hover events with cursor customization.',
+    'demo20.mouseRegion.hint.label':
+        'Essential for desktop and web hover effects',
   };
 
   @override

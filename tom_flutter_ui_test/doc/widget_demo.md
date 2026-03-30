@@ -180,7 +180,7 @@ class DemoCard extends StatelessWidget {
 | 17 | Sliver Compositions | Sliver | 18 | All sliver widgets, complex layouts | ✅ | 2026-03-30 |
 | 18 | Animated Transitions | Animated | 19 | Implicit animations, heroes, transitions | ✅ | 2026-03-30 |
 | 19 | Effects & Filters | Effect | 6 | Backdrop, color filters, shaders, selection | ✅ | 2026-03-30 |
-| 20 | Interactions & Gestures | Interaction | 9 | Gestures, ink, drag-drop, pointer handling | | |
+| 20 | Interactions & Gestures | Interaction | 9 | Gestures, ink, drag-drop, pointer handling | ✅ | 2026-03-30 |
 
 ---
 
