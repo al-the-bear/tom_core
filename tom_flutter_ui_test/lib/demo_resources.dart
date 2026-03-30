@@ -1434,6 +1434,152 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo08.aclScroll.snapLabel.label': 'Snap:',
     'demo08.aclScroll.reset.label': 'Reset',
     'demo08.aclScroll.apply.label': 'Apply',
+
+    // ==========================================================================
+    // Demo 09: Dialogs - Section Headers
+    // ==========================================================================
+    'demo09.section.standard.title.label': 'Standard Dialogs',
+    'demo09.section.standard.subtitle.label':
+        'Alert and simple dialogs for user confirmation and selection',
+    'demo09.section.sheets.title.label': 'Bottom Sheets',
+    'demo09.section.sheets.subtitle.label':
+        'Persistent and modal bottom sheets for contextual actions',
+    'demo09.section.feedback.title.label': 'Feedback Overlays',
+    'demo09.section.feedback.subtitle.label':
+        'Snack bars, banners, and tooltips for transient feedback',
+    'demo09.section.pickers.title.label': 'Pickers & Cupertino',
+    'demo09.section.pickers.subtitle.label':
+        'Date/time pickers and iOS-style dialogs',
+    'demo09.section.acl.title.label': 'ACL Dialog Controls',
+    'demo09.section.acl.subtitle.label':
+        'Interactive dialog configuration with AclBuilder layout',
+
+    // ==========================================================================
+    // Demo 09: TomAlertDialog Card
+    // ==========================================================================
+    'demo09.alertDialog.icon.icon': 'mDialog',
+    'demo09.alertDialog.title.label': 'TomAlertDialog',
+    'demo09.alertDialog.description.label':
+        'Material alert dialogs with title, content, and action buttons.',
+    'demo09.alertDialog.resultLabel.label': 'Last action:',
+    'demo09.alertDialog.basic.label': 'Basic Alert',
+    'demo09.alertDialog.withIcon.label': 'With Icon',
+    'demo09.alertDialog.scrollable.label': 'Scrollable',
+    'demo09.alertDialog.cancel.label': 'Cancel',
+    'demo09.alertDialog.confirm.label': 'Confirm',
+    'demo09.alertDialog.dismiss.label': 'Dismiss',
+    'demo09.alertDialog.proceed.label': 'Proceed',
+    'demo09.alertDialog.decline.label': 'Decline',
+    'demo09.alertDialog.accept.label': 'Accept',
+
+    // ==========================================================================
+    // Demo 09: TomSimpleDialog Card
+    // ==========================================================================
+    'demo09.simpleDialog.icon.icon': 'mList',
+    'demo09.simpleDialog.title.label': 'TomSimpleDialog',
+    'demo09.simpleDialog.description.label':
+        'Simple selection dialog with a list of options.',
+    'demo09.simpleDialog.resultLabel.label': 'Selected language:',
+    'demo09.simpleDialog.show.label': 'Choose Language',
+
+    // ==========================================================================
+    // Demo 09: TomBottomSheet Card
+    // ==========================================================================
+    'demo09.bottomSheet.icon.icon': 'mDragHandle',
+    'demo09.bottomSheet.title.label': 'TomBottomSheet',
+    'demo09.bottomSheet.description.label':
+        'Persistent bottom sheet that stays until explicitly closed.',
+    'demo09.bottomSheet.resultLabel.label': 'Last selection:',
+    'demo09.bottomSheet.show.label': 'Show Bottom Sheet',
+
+    // ==========================================================================
+    // Demo 09: TomModalBottomSheet Card
+    // ==========================================================================
+    'demo09.modalSheet.icon.icon': 'mWebAsset',
+    'demo09.modalSheet.title.label': 'TomModalBottomSheet',
+    'demo09.modalSheet.description.label':
+        'Modal bottom sheets with barrier overlay and drag handle.',
+    'demo09.modalSheet.resultLabel.label': 'Last action:',
+    'demo09.modalSheet.basic.label': 'Basic Modal',
+    'demo09.modalSheet.scrollable.label': 'Scrollable',
+
+    // ==========================================================================
+    // Demo 09: TomSnackBar Card
+    // ==========================================================================
+    'demo09.snackBar.icon.icon': 'mNotifications',
+    'demo09.snackBar.title.label': 'TomSnackBar',
+    'demo09.snackBar.description.label':
+        'Transient feedback messages at the bottom of the screen.',
+    'demo09.snackBar.countLabel.label': 'Snack bars shown:',
+    'demo09.snackBar.basic.label': 'Basic',
+    'demo09.snackBar.action.label': 'With Action',
+    'demo09.snackBar.floating.label': 'Floating',
+
+    // ==========================================================================
+    // Demo 09: TomMaterialBanner Card
+    // ==========================================================================
+    'demo09.banner.icon.icon': 'mCampaign',
+    'demo09.banner.title.label': 'TomMaterialBanner',
+    'demo09.banner.description.label':
+        'Persistent banner displayed at the top of the screen.',
+    'demo09.banner.statusLabel.label': 'Banner status:',
+    'demo09.banner.show.label': 'Show Banner',
+    'demo09.banner.hide.label': 'Hide Banner',
+
+    // ==========================================================================
+    // Demo 09: TomTooltip Card
+    // ==========================================================================
+    'demo09.tooltip.icon.icon': 'mTooltip',
+    'demo09.tooltip.title.label': 'TomTooltip',
+    'demo09.tooltip.description.label':
+        'Hover or long-press tooltips with plain or rich text.',
+    'demo09.tooltip.hintLabel.label':
+        'Hover or long-press the icons below to see tooltips.',
+
+    // ==========================================================================
+    // Demo 09: TomDatePickerDialog Card
+    // ==========================================================================
+    'demo09.datePicker.icon.icon': 'mCalendarMonth',
+    'demo09.datePicker.title.label': 'TomDatePickerDialog',
+    'demo09.datePicker.description.label':
+        'Material date and time picker dialogs.',
+    'demo09.datePicker.pickDate.label': 'Pick Date',
+    'demo09.datePicker.pickTime.label': 'Pick Time',
+
+    // ==========================================================================
+    // Demo 09: TomCupertinoAlertDialog Card
+    // ==========================================================================
+    'demo09.cupertinoAlert.icon.icon': 'mPhoneIphone',
+    'demo09.cupertinoAlert.title.label': 'TomCupertinoAlertDialog',
+    'demo09.cupertinoAlert.description.label':
+        'iOS-style alert dialogs with Cupertino styling.',
+    'demo09.cupertinoAlert.infoLabel.label':
+        'Cupertino dialogs follow iOS design patterns.',
+    'demo09.cupertinoAlert.show.label': 'Standard',
+    'demo09.cupertinoAlert.showDestructive.label': 'Destructive',
+
+    // ==========================================================================
+    // Demo 09: TomCupertinoActionSheet Card
+    // ==========================================================================
+    'demo09.cupertinoSheet.icon.icon': 'mViewAgenda',
+    'demo09.cupertinoSheet.title.label': 'TomCupertinoActionSheet',
+    'demo09.cupertinoSheet.description.label':
+        'iOS-style action sheets with cancel button.',
+    'demo09.cupertinoSheet.infoLabel.label':
+        'Action sheets slide up from the bottom with iOS styling.',
+    'demo09.cupertinoSheet.show.label': 'Show Action Sheet',
+
+    // ==========================================================================
+    // Demo 09: ACL Dialog Controls Card
+    // ==========================================================================
+    'demo09.aclDialog.icon.icon': 'dashboard_customize',
+    'demo09.aclDialog.title.label': 'ACL Dialog Explorer',
+    'demo09.aclDialog.description.label':
+        'Interactive dialog controls with AclBuilder layout.',
+    'demo09.aclDialog.typeLabel.label': 'Dialog Type:',
+    'demo09.aclDialog.barrierLabel.label': 'Barrier Dismissible:',
+    'demo09.aclDialog.launch.label': 'Launch Dialog',
+    'demo09.aclDialog.reset.label': 'Reset',
   };
 
   @override

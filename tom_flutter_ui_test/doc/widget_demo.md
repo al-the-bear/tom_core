@@ -169,7 +169,7 @@ class DemoCard extends StatelessWidget {
 | 6 | Card & Panel Layouts | Container | 5 | Cards, expansion tiles/panels, Material | ✅ | 2026-03-30 |
 | 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints | ✅ | 2026-03-30 |
 | 8 | Scrollable Containers | Container | 10 | Scroll views, interactive viewer, draggable | ✅ | 2026-03-30 |
-| 9 | Dialog & Modal Gallery | Dialog | 10 | Dialogs, sheets, snackbars, tooltips | | |
+| 9 | Dialog & Modal Gallery | Dialog | 10 | Dialogs, sheets, snackbars, tooltips | ✅ | 2026-03-30 |
 | 10 | Data Tables | Table | 5 | DataTable, paginated, Table, GridView | | |
 | 11 | Text & Label Display | Label | 6 | Text styles, badges, list tiles, chips | | |
 | 12 | Image & Icon Gallery | Image | 5 | Images, icons, avatars, animated icons | | |
