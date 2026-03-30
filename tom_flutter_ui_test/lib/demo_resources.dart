@@ -714,6 +714,175 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo03.card.padding': [16, 12, 16, 12],
     // Example: Color configuration
     'demo03.card.backgroundColor': 'mBlue50',
+
+    // ==========================================================================
+    // Demo 04: Toggles - Section Headers
+    // ==========================================================================
+    'demo04.section.switch.title.label': 'Switch Controls',
+    'demo04.section.switch.subtitle.label':
+        'Binary on/off toggles for settings and preferences',
+    'demo04.section.checkbox.title.label': 'Checkbox Controls',
+    'demo04.section.checkbox.subtitle.label':
+        'Multi-select and boolean option controls',
+    'demo04.section.radio.title.label': 'Radio Controls',
+    'demo04.section.radio.subtitle.label':
+        'Single selection from multiple options',
+    'demo04.section.toggleButtons.title.label': 'Toggle Button Groups',
+    'demo04.section.toggleButtons.subtitle.label':
+        'Grouped toggle selections with single and multi-select modes',
+    'demo04.section.acl.title.label': 'ACL Toggle Layout',
+    'demo04.section.acl.subtitle.label':
+        'Toggle controls with RTL/LTR adaptive layout',
+
+    // ==========================================================================
+    // Demo 04: TomSwitch Card
+    // ==========================================================================
+    'demo04.switch.icon': 'mToggleOn',
+    'demo04.switch.title.label': 'TomSwitch',
+    'demo04.switch.description.label':
+        'Material switch control with customizable colors and thumb icons.',
+    'demo04.switch.defaultLabel.label': 'Default state:',
+    'demo04.switch.thumbIconLabel.label': 'With thumb icon:',
+    'demo04.switch.disabledLabel.label': 'Disabled:',
+    'demo04.switch.customColorLabel.label': 'Custom colors:',
+
+    // ==========================================================================
+    // Demo 04: TomSwitchListTile Card
+    // ==========================================================================
+    'demo04.switchListTile.icon': 'mList',
+    'demo04.switchListTile.title.label': 'TomSwitchListTile',
+    'demo04.switchListTile.description.label':
+        'Switch integrated in a list tile with title and subtitle.',
+    'demo04.switchListTile.notifications.label': 'Notifications',
+    'demo04.switchListTile.notifications.subtitle.label':
+        'Receive push notifications',
+    'demo04.switchListTile.darkMode.label': 'Dark Mode',
+    'demo04.switchListTile.darkMode.subtitle.label': 'Enable dark theme',
+    'demo04.switchListTile.location.label': 'Location Services',
+    'demo04.switchListTile.location.subtitle.label':
+        'Allow location tracking',
+
+    // ==========================================================================
+    // Demo 04: TomCupertinoSwitch Card
+    // ==========================================================================
+    'demo04.cupertinoSwitch.icon': 'mPhoneIphone',
+    'demo04.cupertinoSwitch.title.label': 'TomCupertinoSwitch',
+    'demo04.cupertinoSwitch.description.label':
+        'iOS-style switch control with platform-native appearance.',
+    'demo04.cupertinoSwitch.defaultLabel.label': 'Default Cupertino switch:',
+    'demo04.cupertinoSwitch.themedLabel.label': 'Themed Cupertino switch:',
+
+    // ==========================================================================
+    // Demo 04: TomCheckbox Card
+    // ==========================================================================
+    'demo04.checkbox.icon': 'mCheckBox',
+    'demo04.checkbox.title.label': 'TomCheckbox',
+    'demo04.checkbox.description.label':
+        'Boolean checkbox with tristate, custom colors, and shapes.',
+    'demo04.checkbox.statesLabel.label': 'States:',
+    'demo04.checkbox.variantsLabel.label': 'Variants:',
+    'demo04.checkbox.customColor.label': 'Custom color',
+    'demo04.checkbox.rounded.label': 'Rounded',
+    'demo04.checkbox.disabled.label': 'Disabled',
+
+    // ==========================================================================
+    // Demo 04: TomCheckboxListTile Card
+    // ==========================================================================
+    'demo04.checkboxListTile.icon': 'mChecklist',
+    'demo04.checkboxListTile.title.label': 'TomCheckboxListTile',
+    'demo04.checkboxListTile.description.label':
+        'Checkbox integrated in list tile with title and subtitle.',
+    'demo04.checkboxListTile.categoriesLabel.label': 'Select categories:',
+    'demo04.checkboxListTile.technology.label': 'Technology',
+    'demo04.checkboxListTile.technology.subtitle.label':
+        'Latest tech news and reviews',
+    'demo04.checkboxListTile.science.label': 'Science',
+    'demo04.checkboxListTile.science.subtitle.label':
+        'Scientific discoveries and research',
+    'demo04.checkboxListTile.business.label': 'Business',
+    'demo04.checkboxListTile.business.subtitle.label':
+        'Market updates and analysis',
+    'demo04.checkboxListTile.positionLabel.label':
+        'Leading checkbox position:',
+    'demo04.checkboxListTile.leading.label': 'Leading checkbox',
+
+    // ==========================================================================
+    // Demo 04: TomCupertinoCheckbox Card
+    // ==========================================================================
+    'demo04.cupertinoCheckbox.icon': 'mCheckBoxOutlineBlank',
+    'demo04.cupertinoCheckbox.title.label': 'TomCupertinoCheckbox',
+    'demo04.cupertinoCheckbox.description.label':
+        'iOS-style checkbox with Cupertino design language.',
+
+    // ==========================================================================
+    // Demo 04: TomRadio Card
+    // ==========================================================================
+    'demo04.radio.icon': 'mRadioButtonChecked',
+    'demo04.radio.title.label': 'TomRadio',
+    'demo04.radio.description.label':
+        'Mutually exclusive radio buttons for single selection.',
+    'demo04.radio.paymentLabel.label': 'Payment method:',
+    'demo04.radio.payment.credit.label': 'Credit Card',
+    'demo04.radio.payment.paypal.label': 'PayPal',
+    'demo04.radio.payment.bank.label': 'Bank Transfer',
+    'demo04.radio.payment.cash.label': 'Cash on Delivery',
+    'demo04.radio.sizeLabel.label': 'Shirt size (horizontal):',
+
+    // ==========================================================================
+    // Demo 04: TomRadioListTile Card
+    // ==========================================================================
+    'demo04.radioListTile.icon': 'mLocalShipping',
+    'demo04.radioListTile.title.label': 'TomRadioListTile',
+    'demo04.radioListTile.description.label':
+        'Radio button integrated in list tile with description.',
+    'demo04.radioListTile.shippingLabel.label': 'Shipping method:',
+    'demo04.radioListTile.standard.label': 'Standard Shipping',
+    'demo04.radioListTile.standard.subtitle.label':
+        '5-7 business days \u2022 Free',
+    'demo04.radioListTile.express.label': 'Express Shipping',
+    'demo04.radioListTile.express.subtitle.label':
+        '2-3 business days \u2022 \$9.99',
+    'demo04.radioListTile.nextDay.label': 'Next Day Delivery',
+    'demo04.radioListTile.nextDay.subtitle.label':
+        '1 business day \u2022 \$19.99',
+
+    // ==========================================================================
+    // Demo 04: TomCupertinoRadio Card
+    // ==========================================================================
+    'demo04.cupertinoRadio.icon': 'mRadioButtonUnchecked',
+    'demo04.cupertinoRadio.title.label': 'TomCupertinoRadio',
+    'demo04.cupertinoRadio.description.label':
+        'iOS-style radio button with Cupertino appearance.',
+
+    // ==========================================================================
+    // Demo 04: TomToggleButtons Card
+    // ==========================================================================
+    'demo04.toggleButtons.icon': 'mViewWeek',
+    'demo04.toggleButtons.title.label': 'TomToggleButtons',
+    'demo04.toggleButtons.description.label':
+        'Grouped toggle selection with single/multi-select and custom styling.',
+    'demo04.toggleButtons.singleLabel.label':
+        'Single select (exclusive):',
+    'demo04.toggleButtons.multiLabel.label':
+        'Multi select (non-exclusive) \u2014 text formatting:',
+    'demo04.toggleButtons.verticalLabel.label': 'Vertical layout:',
+    'demo04.toggleButtons.customLabel.label': 'Custom styling:',
+
+    // ==========================================================================
+    // Demo 04: ACL Toggle Layout Card
+    // ==========================================================================
+    'demo04.aclToggle.icon': 'mSwapHoriz',
+    'demo04.aclToggle.title.label': 'ACL Toggle Layout',
+    'demo04.aclToggle.description.label':
+        'Toggle controls with RTL/LTR adaptive layout using AclBuilder.',
+    'demo04.aclToggle.enableLabel.label': 'Enable feature:',
+    'demo04.aclToggle.agreeLabel.label': 'I agree to terms:',
+    'demo04.aclToggle.chooseLabel.label': 'Choose option:',
+    'demo04.aclToggle.option1.label': 'Option 1',
+    'demo04.aclToggle.option2.label': 'Option 2',
+    'demo04.aclToggle.option3.label': 'Option 3',
+    'demo04.aclToggle.reset.label': 'Reset',
+    'demo04.aclToggle.apply.label': 'Apply',
   };
 
   @override
