@@ -839,6 +839,8 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           .append(
             TomRangeSlider(
               values: _aclRange,
+              min: 0,
+              max: 100,
               divisions: 20,
               labels: RangeLabels(
                 '${_aclRange.start.round()}',
