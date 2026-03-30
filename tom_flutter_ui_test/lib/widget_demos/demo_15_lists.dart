@@ -212,7 +212,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                         style: const TextStyle(color: Colors.white),
                       ),
                     ),
-                    title: TomText(text: 'Contact ${index + 1}'),
+                    titleText: 'Contact ${index + 1}',
                     subtitle: const TomText(text: 'Separated with dividers'),
                     trailing: const TomIcon(icon: Icons.chevron_right),
                   ),
@@ -452,7 +452,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                           ),
                         ),
                       ),
-                      title: TomText(text: _reorderableItems[i]),
+                      titleText: _reorderableItems[i],
                       subtitle:
                           const TomText(text: 'Long press and drag to reorder'),
                       trailing: ReorderableDragStartListener(
@@ -602,7 +602,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                                     .onSecondaryContainer,
                               ),
                             ),
-                            title: TomText(text: item),
+                            titleText: item,
                             subtitle: const TomText(
                               text: 'Swipe left to delete, right to archive',
                             ),
@@ -874,7 +874,7 @@ class _ListTileItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: TomListTile(
         leading: leading,
-        title: TomText(text: title),
+        titleText: title,
         subtitle: TomText(text: subtitle),
       ),
     );
@@ -903,7 +903,7 @@ class _AnimatedListItem extends StatelessWidget {
             color: Theme.of(context).colorScheme.onTertiaryContainer,
           ),
         ),
-        title: TomText(text: title),
+        titleText: title,
         subtitle: const TomText(text: 'Animated entry/exit'),
         trailing: TomIconButton(
           tooltip: 'Remove item',
