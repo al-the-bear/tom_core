@@ -1979,6 +1979,102 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo13.cupertinoNavBar.basicLabel.label': 'Basic',
     'demo13.cupertinoNavBar.withActionsLabel.label': 'With Actions',
     'demo13.cupertinoNavBar.backButtonLabel.label': 'With Back Button',
+
+    // ==========================================================================
+    // Demo 14: Progress - Section Headers
+    // ==========================================================================
+    'demo14.section.circular.title.label': 'Circular Progress',
+    'demo14.section.circular.subtitle.label':
+        'Spinning and determinate circular progress indicators',
+    'demo14.section.linear.title.label': 'Linear Progress',
+    'demo14.section.linear.subtitle.label':
+        'Horizontal bar progress indicators with customization',
+    'demo14.section.refresh.title.label': 'Refresh Indicators',
+    'demo14.section.refresh.subtitle.label':
+        'Pull-to-refresh patterns for list content',
+    'demo14.section.cupertino.title.label': 'Cupertino Indicators',
+    'demo14.section.cupertino.subtitle.label':
+        'iOS-style activity indicators and progress bars',
+
+    // ==========================================================================
+    // Demo 14: TomCircularProgressIndicator Card
+    // ==========================================================================
+    'demo14.circular.icon.icon': 'mRefresh',
+    'demo14.circular.title.label': 'TomCircularProgressIndicator',
+    'demo14.circular.description.label':
+        'Circular spinning and determinate progress indicators.',
+    'demo14.circular.indeterminateLabel.label': 'Indeterminate (Spinning)',
+    'demo14.circular.default.label': 'Default',
+    'demo14.circular.colored.label': 'Colored',
+    'demo14.circular.thick.label': 'Thick',
+    'demo14.circular.thin.label': 'Thin',
+    'demo14.circular.determinateLabel.label': 'Determinate (Progress)',
+    'demo14.circular.start.label': 'Start Animation',
+    'demo14.circular.start.icon': 'mPlayArrow',
+    'demo14.circular.reset.label': 'Reset',
+    'demo14.circular.reset.icon': 'mReplay',
+    'demo14.circular.strokeCapLabel.label': 'Stroke Cap Styles',
+    'demo14.circular.capButt.label': 'Butt',
+    'demo14.circular.capRound.label': 'Round',
+    'demo14.circular.capSquare.label': 'Square',
+
+    // ==========================================================================
+    // Demo 14: TomLinearProgressIndicator Card
+    // ==========================================================================
+    'demo14.linear.icon.icon': 'mLinearScale',
+    'demo14.linear.title.label': 'TomLinearProgressIndicator',
+    'demo14.linear.description.label':
+        'Horizontal bar indicators for progress visualization.',
+    'demo14.linear.indeterminateLabel.label': 'Indeterminate',
+    'demo14.linear.default.label': 'Default',
+    'demo14.linear.colored.label': 'Custom Colors',
+    'demo14.linear.thick.label': 'Thick Bar (12px)',
+    'demo14.linear.determinateLabel.label': 'Determinate',
+    'demo14.linear.start.label': 'Start Animation',
+    'demo14.linear.start.icon': 'mPlayArrow',
+    'demo14.linear.reset.label': 'Reset',
+    'demo14.linear.reset.icon': 'mReplay',
+    'demo14.linear.roundedLabel.label': 'Rounded Corners',
+    'demo14.linear.roundedSmall.label': 'Small radius (4px)',
+    'demo14.linear.roundedLarge.label': 'Large radius (8px)',
+    'demo14.linear.pill.label': 'Pill shape (full)',
+
+    // ==========================================================================
+    // Demo 14: TomRefreshIndicator Card
+    // ==========================================================================
+    'demo14.refresh.icon.icon': 'mSwipeDown',
+    'demo14.refresh.title.label': 'TomRefreshIndicator',
+    'demo14.refresh.description.label':
+        'Pull-to-refresh wrapper for scrollable content.',
+    'demo14.refresh.pullLabel.label': 'Pull to Refresh',
+    'demo14.refresh.hint.label': 'Pull down on the list to trigger refresh',
+    'demo14.refresh.customLabel.label': 'Custom Styling',
+
+    // ==========================================================================
+    // Demo 14: TomCupertinoActivityIndicator Card
+    // ==========================================================================
+    'demo14.cupertinoActivity.icon.icon': 'cActivityIndicator',
+    'demo14.cupertinoActivity.title.label': 'TomCupertinoActivityIndicator',
+    'demo14.cupertinoActivity.description.label':
+        'iOS-style spinning activity indicator.',
+    'demo14.cupertinoActivity.spinnerLabel.label': 'Activity Spinner Sizes',
+    'demo14.cupertinoActivity.default.label': 'Default',
+    'demo14.cupertinoActivity.large.label': 'Large (20)',
+    'demo14.cupertinoActivity.small.label': 'Small (8)',
+    'demo14.cupertinoActivity.colored.label': 'Colored',
+    'demo14.cupertinoActivity.animationLabel.label': 'Animation Control',
+
+    // ==========================================================================
+    // Demo 14: TomCupertinoLinearActivityIndicator Card
+    // ==========================================================================
+    'demo14.cupertinoLinear.icon.icon': 'cTrackpadSlideHorizontal',
+    'demo14.cupertinoLinear.title.label': 'TomCupertinoLinearActivityIndicator',
+    'demo14.cupertinoLinear.description.label':
+        'iOS-style linear progress bar indicator.',
+    'demo14.cupertinoLinear.barLabel.label': 'iOS Linear Progress',
+    'demo14.cupertinoLinear.indeterminate.label': 'Indeterminate',
+    'demo14.cupertinoLinear.determinate.label': 'Determinate Values',
+    'demo14.cupertinoLinear.custom.label': 'Custom Colors & Height',
   };
 
   @override

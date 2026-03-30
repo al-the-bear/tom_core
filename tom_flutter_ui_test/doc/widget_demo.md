@@ -174,7 +174,7 @@ class DemoCard extends StatelessWidget {
 | 11 | Text & Label Display | Label | 6 | Text styles, badges, list tiles, chips | ✅ | 2026-03-30 |
 | 12 | Image & Icon Gallery | Image | 5 | Images, icons, avatars, animated icons | ✅ | 2026-03-30 |
 | 13 | Navigation Patterns | Navigation | 11 | Tabs, bars, rails, drawers, steppers | ✅ | 2026-03-30 |
-| 14 | Progress Indicators | Progress | 4 | Circular, linear, refresh, Cupertino | | |
+| 14 | Progress Indicators | Progress | 4 | Circular, linear, refresh, Cupertino | ✅ | 2026-03-30 |
 | 15 | List Views | List | 5 | ListView, animated, reorderable, dismissible | | |
 | 16 | Tree & Hierarchy | Tree | 2 | TreeSliver, nested expansion tiles | | |
 | 17 | Sliver Compositions | Sliver | 18 | All sliver widgets, complex layouts | | |
