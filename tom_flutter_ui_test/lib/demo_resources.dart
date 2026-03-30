@@ -2704,191 +2704,122 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
         'Essential for desktop and web hover effects',
 
     // ==========================================================================
-    // Demo 21: Resource Resolution
+    // Demo 21: Resource Resolution — Visual Styling Parameters
     // ==========================================================================
+    // All text and icons resolved from resources to demonstrate
+    // complete resource resolution pattern.
 
-    // Section Headers
+    // --- Section Headers ---
     'demo21.section.intro.title.label': 'Resource Resolution',
-    'demo21.section.intro.subtitle.label':
-        'How Tom UI widgets resolve parameters from resources',
-    'demo21.section.text.title.label': 'Text Resources',
-    'demo21.section.text.subtitle.label':
-        'Labels, titles, subtitles, descriptions via tomId',
-    'demo21.section.icons.title.label': 'Icon Resources',
-    'demo21.section.icons.subtitle.label':
-        'Icons, sizes, and semantic labels from resources',
-    'demo21.section.buttons.title.label': 'Button Resources',
-    'demo21.section.buttons.subtitle.label':
-        'Labels, icons, and tooltips for buttons',
-    'demo21.section.inputs.title.label': 'Input Resources',
-    'demo21.section.inputs.subtitle.label':
-        'Hints, helpers, and error messages from resources',
-    'demo21.section.lists.title.label': 'List & Tile Resources',
-    'demo21.section.lists.subtitle.label':
-        'Titles, subtitles, and leading icons for list items',
-    'demo21.section.interactive.title.label': 'Interactive Resources',
-    'demo21.section.interactive.subtitle.label':
-        'Tooltips, banners, and user feedback messages',
+    'demo21.section.intro.subtitle.label': 'Visual styling parameters from resources',
+    'demo21.section.container.title.label': 'Container Parameters',
+    'demo21.section.container.subtitle.label': 'padding, margin, width, height from resources',
+    'demo21.section.textStyle.title.label': 'Text Style Parameters',
+    'demo21.section.textStyle.subtitle.label': 'fontSize, fontWeight, color from resources',
+    'demo21.section.colors.title.label': 'Color Parameters',
+    'demo21.section.colors.subtitle.label': 'icon color, progress colors from resources',
+    'demo21.section.numeric.title.label': 'Numeric Parameters',
+    'demo21.section.numeric.subtitle.label': 'elevation, size, opacity from resources',
+    'demo21.section.toggle.title.label': 'Toggle Colors',
+    'demo21.section.toggle.subtitle.label': 'activeColor, checkColor from resources',
 
-    // Introduction Card
+    // --- Introduction Card ---
     'demo21.intro.icon.icon': 'mAutoAwesome',
-    'demo21.intro.title.label': 'How Resource Resolution Works',
-    'demo21.intro.description.label':
-        'All widgets use tomId to resolve their parameters from a central resource adapter.',
+    'demo21.intro.title.label': 'Visual Parameter Resolution',
+    'demo21.intro.subtitle.label': 'How styling parameters are resolved',
     'demo21.intro.explanation.label':
-        'Instead of hardcoding labels, icons, and other parameters directly in your widgets, '
-        'you provide a tomId and the widget looks up all its parameters from the resource adapter. '
-        'This enables internationalization, theming, and easy content updates.',
-    'demo21.intro.tip.message':
-        'Tip: All text you see in this demo is resolved from resources, not hardcoded!',
+        'Visual parameters like padding, colors, textStyle, and elevation '
+        'can be resolved from resources using tomId. This enables theme '
+        'customization, white-labeling, and runtime configuration.',
+    'demo21.intro.formats.label':
+        'Formats: EdgeInsets as maps, colors as hex strings, '
+        'TextStyle as maps with fontSize/fontWeight/color.',
 
-    // Text Resources Demo Card
-    'demo21.textDemo.icon.icon': 'mTextFields',
-    'demo21.textDemo.title.label': 'TomText & TomBadge',
-    'demo21.textDemo.description.label':
-        'Text widgets resolve their content from the .label suffix.',
-    'demo21.textDemo.display.label': 'Display Text from Resources',
-    'demo21.textDemo.body.label':
-        'This body text is resolved from demo21.textDemo.body.label in the resource adapter.',
-    'demo21.textDemo.caption.label':
-        'Caption text demonstrating smaller text resolution',
+    // --- Container Section ---
+    'demo21.paddingDemo.icon.icon': 'mPadding',
+    'demo21.paddingDemo.title.label': 'TomContainer with Padding',
+    'demo21.paddingDemo.subtitle.label': 'padding resolved from resources',
+    'demo21.paddingDemo.info.label':
+        'Resource: demo21.paddedBox.padding → {left: 24, top: 16, right: 24, bottom: 16}',
+    'demo21.paddedBox.content.label': 'Padded content',
 
-    // Badge Demo Card
-    'demo21.badgeDemo.icon.icon': 'mLabel',
-    'demo21.badgeDemo.title.label': 'TomBadge Examples',
-    'demo21.badgeDemo.description.label':
-        'Badges resolve their label from resources.',
-    'demo21.badgeDemo.new.label': 'NEW',
-    'demo21.badgeDemo.featured.label': 'FEATURED',
-    'demo21.badgeDemo.sale.label': 'SALE',
+    'demo21.sizeDemo.icon.icon': 'mAspectRatio',
+    'demo21.sizeDemo.title.label': 'TomContainer with Dimensions',
+    'demo21.sizeDemo.subtitle.label': 'width, height resolved from resources',
+    'demo21.sizeDemo.info.label': 'Resources: demo21.sizedBox.width → 150, height → 100',
+    'demo21.sizedBox.content.label': '150×100',
 
-    // Icon Resources Demo Card
-    'demo21.iconDemo.icon.icon': 'mCategory',
-    'demo21.iconDemo.title.label': 'TomIcon',
-    'demo21.iconDemo.description.label':
-        'Icons resolve icon name, size, and alt text from resources.',
-    'demo21.iconDemo.home.icon': 'mHome',
-    'demo21.iconDemo.home.alt': 'Navigate to home',
-    'demo21.iconDemo.settings.icon': 'mSettings',
-    'demo21.iconDemo.settings.alt': 'Open settings',
-    'demo21.iconDemo.user.icon': 'mPerson',
-    'demo21.iconDemo.user.alt': 'User profile',
-    'demo21.iconDemo.notification.icon': 'mNotifications',
-    'demo21.iconDemo.notification.alt': 'View notifications',
-    'demo21.iconDemo.sizeLabel.label': 'Icons with size from resources:',
-    'demo21.iconDemo.small.icon': 'mStar',
-    'demo21.iconDemo.small.size': '16',
-    'demo21.iconDemo.medium.icon': 'mStar',
-    'demo21.iconDemo.medium.size': '24',
-    'demo21.iconDemo.large.icon': 'mStar',
-    'demo21.iconDemo.large.size': '36',
+    'demo21.marginDemo.icon.icon': 'mMargin',
+    'demo21.marginDemo.title.label': 'TomContainer with Margin',
+    'demo21.marginDemo.subtitle.label': 'margin resolved from resources',
+    'demo21.marginDemo.info.label': 'Resource: demo21.marginedBox.margin → {all: 16}',
+    'demo21.marginedBox.content.label': 'Margined content',
 
-    // Elevated Button Demo Card
-    'demo21.elevatedDemo.icon.icon': 'mSmartButton',
-    'demo21.elevatedDemo.title.label': 'TomElevatedButton',
-    'demo21.elevatedDemo.description.label':
-        'Buttons resolve label and icon from resources.',
-    'demo21.elevatedDemo.save.label': 'Save',
-    'demo21.elevatedDemo.save.icon': 'mSave',
-    'demo21.elevatedDemo.cancel.label': 'Cancel',
-    'demo21.elevatedDemo.cancel.icon': 'mCancel',
-    'demo21.elevatedDemo.submit.label': 'Submit',
-    'demo21.elevatedDemo.submit.icon': 'mSend',
+    // --- TextStyle Section ---
+    'demo21.textStyleDemo.icon.icon': 'mTextFormat',
+    'demo21.textStyleDemo.title.label': 'TomAnimatedDefaultTextStyle',
+    'demo21.textStyleDemo.subtitle.label': 'style resolved from resources',
+    'demo21.textStyleDemo.info.label':
+        'Resources resolve fontSize, fontWeight, fontStyle, color, letterSpacing',
+    'demo21.styledText1.content.label': 'Large Bold Blue',
+    'demo21.styledText2.content.label': 'Italic Purple with Spacing',
+    'demo21.styledText3.content.label': 'Medium Green Underlined',
 
-    // Filled Button Demo Card
-    'demo21.filledDemo.icon.icon': 'mRectangle',
-    'demo21.filledDemo.title.label': 'TomFilledButton',
-    'demo21.filledDemo.description.label':
-        'Filled buttons with label and icon from resources.',
-    'demo21.filledDemo.add.label': 'Add Item',
-    'demo21.filledDemo.add.icon': 'mAdd',
-    'demo21.filledDemo.edit.label': 'Edit',
-    'demo21.filledDemo.edit.icon': 'mEdit',
-    'demo21.filledDemo.delete.label': 'Delete',
-    'demo21.filledDemo.delete.icon': 'mDelete',
+    // --- Icon Color Section ---
+    'demo21.iconColorDemo.icon.icon': 'mPalette',
+    'demo21.iconColorDemo.title.label': 'TomIcon Colors',
+    'demo21.iconColorDemo.subtitle.label': 'color resolved from resources',
+    'demo21.iconColorDemo.info.label':
+        'Resources: demo21.coloredIcon1.color → #E91E63, etc.',
+    'demo21.coloredIcon1.icon': 'mFavorite',
+    'demo21.coloredIcon2.icon': 'mStar',
+    'demo21.coloredIcon3.icon': 'mThumbUp',
+    'demo21.coloredIcon4.icon': 'mLightbulb',
 
-    // Icon Button Demo Card
-    'demo21.iconButtonDemo.icon.icon': 'mTouchApp',
-    'demo21.iconButtonDemo.title.label': 'TomIconButton',
-    'demo21.iconButtonDemo.description.label':
-        'Icon buttons resolve icon and tooltip from resources.',
-    'demo21.iconButtonDemo.refresh.icon': 'mRefresh',
-    'demo21.iconButtonDemo.refresh.tooltip': 'Refresh content',
-    'demo21.iconButtonDemo.search.icon': 'mSearch',
-    'demo21.iconButtonDemo.search.tooltip': 'Search',
-    'demo21.iconButtonDemo.filter.icon': 'mFilterList',
-    'demo21.iconButtonDemo.filter.tooltip': 'Filter results',
-    'demo21.iconButtonDemo.add.icon': 'mAdd',
-    'demo21.iconButtonDemo.add.tooltip': 'Add new item',
+    // --- Progress Color Section ---
+    'demo21.progressColorDemo.icon.icon': 'mRefresh',
+    'demo21.progressColorDemo.title.label': 'Progress Indicator Colors',
+    'demo21.progressColorDemo.subtitle.label': 'color, backgroundColor from resources',
+    'demo21.progressColorDemo.info.label':
+        'Resources: demo21.progress1.color → #9C27B0, backgroundColor → #E1BEE7',
 
-    // Input Demo Card
-    'demo21.inputDemo.icon.icon': 'mInput',
-    'demo21.inputDemo.title.label': 'TomTextField',
-    'demo21.inputDemo.description.label':
-        'Inputs resolve label, hint, helper, and error messages from resources.',
-    'demo21.inputDemo.username.label': 'Username',
-    'demo21.inputDemo.username.hint': 'Enter your username',
-    'demo21.inputDemo.username.helper': 'Letters and numbers only',
-    'demo21.inputDemo.email.label': 'Email Address',
-    'demo21.inputDemo.email.hint': 'Enter your email',
-    'demo21.inputDemo.email.helper': 'We will never share your email',
-    'demo21.inputDemo.email.errorFormat': 'Email is required',
-    'demo21.inputDemo.email.errorInvalid': 'Please enter a valid email address',
-    'demo21.inputDemo.password.label': 'Password',
-    'demo21.inputDemo.password.hint': 'Enter your password',
-    'demo21.inputDemo.password.helper': 'At least 8 characters',
-    'demo21.inputDemo.validate.label': 'Validate Form',
+    // --- Card Elevation Section ---
+    'demo21.elevationDemo.icon.icon': 'mLayers',
+    'demo21.elevationDemo.title.label': 'TomCard Elevation',
+    'demo21.elevationDemo.subtitle.label': 'elevation resolved from resources',
+    'demo21.elevationDemo.info.label': 'Resources: demo21.card1.elevation → 2, 8, 16',
+    'demo21.card1.content.label': 'Elev 2',
+    'demo21.card2.content.label': 'Elev 8',
+    'demo21.card3.content.label': 'Elev 16',
 
-    // List Demo Card
-    'demo21.listDemo.icon.icon': 'mList',
-    'demo21.listDemo.title.label': 'TomListTile',
-    'demo21.listDemo.description.label':
-        'List tiles resolve title, subtitle, and leading icon from resources.',
-    'demo21.listDemo.profile.titleText': 'Profile',
-    'demo21.listDemo.profile.subtitle': 'View and edit your profile',
-    'demo21.listDemo.profile.leading.icon': 'mPerson',
-    'demo21.listDemo.settings.titleText': 'Settings',
-    'demo21.listDemo.settings.subtitle': 'App preferences and configuration',
-    'demo21.listDemo.settings.leading.icon': 'mSettings',
-    'demo21.listDemo.help.titleText': 'Help & Support',
-    'demo21.listDemo.help.subtitle': 'FAQ, documentation, and contact',
-    'demo21.listDemo.help.leading.icon': 'mHelp',
+    // --- Icon Size Section ---
+    'demo21.iconSizeDemo.icon.icon': 'mFormatSize',
+    'demo21.iconSizeDemo.title.label': 'TomIcon Size',
+    'demo21.iconSizeDemo.subtitle.label': 'size resolved from resources',
+    'demo21.iconSizeDemo.info.label': 'Resources: demo21.sizedIcon1.size → 16, 32, 48',
+    'demo21.sizedIcon1.icon': 'mHome',
+    'demo21.sizedIcon2.icon': 'mHome',
+    'demo21.sizedIcon3.icon': 'mHome',
 
-    // Expansion Demo Card
-    'demo21.expansionDemo.icon.icon': 'mExpandMore',
-    'demo21.expansionDemo.title.label': 'TomExpansionTile',
-    'demo21.expansionDemo.description.label':
-        'Expansion tiles resolve title and children from resources.',
-    'demo21.expansionDemo.general.titleText': 'General Settings',
-    'demo21.expansionDemo.general.leading.icon': 'mTune',
-    'demo21.expansionDemo.general.theme.titleText': 'Theme',
-    'demo21.expansionDemo.general.theme.subtitle': 'Light, dark, or system',
-    'demo21.expansionDemo.general.language.titleText': 'Language',
-    'demo21.expansionDemo.general.language.subtitle': 'Select your language',
-    'demo21.expansionDemo.privacy.titleText': 'Privacy Settings',
-    'demo21.expansionDemo.privacy.leading.icon': 'mSecurity',
-    'demo21.expansionDemo.privacy.data.titleText': 'Data Collection',
-    'demo21.expansionDemo.privacy.data.subtitle': 'Manage your data preferences',
-    'demo21.expansionDemo.privacy.cookies.titleText': 'Cookie Settings',
-    'demo21.expansionDemo.privacy.cookies.subtitle': 'Control cookie usage',
+    // --- Opacity Section ---
+    'demo21.opacityDemo.icon.icon': 'mOpacity',
+    'demo21.opacityDemo.title.label': 'TomAnimatedOpacity',
+    'demo21.opacityDemo.subtitle.label': 'opacity resolved from resources',
+    'demo21.opacityDemo.info.label': 'Resources: demo21.opacity1.opacity → 1.0, 0.6, 0.3',
+    'demo21.opacity1.content.label': '100%',
+    'demo21.opacity2.content.label': '60%',
+    'demo21.opacity3.content.label': '30%',
 
-    // Interactive Demo Card
-    'demo21.interactiveDemo.icon.icon': 'mTouchApp',
-    'demo21.interactiveDemo.title.label': 'Interactive Widgets',
-    'demo21.interactiveDemo.description.label':
-        'Tooltips and banners resolve their messages from resources.',
-    'demo21.interactiveDemo.tooltipLabel.label': 'Hover over these items:',
-    'demo21.interactiveDemo.tooltip1.message':
-        'This tooltip message comes from resources!',
-    'demo21.interactiveDemo.tooltip1.content.label': 'Hover me (tooltip 1)',
-    'demo21.interactiveDemo.tooltip2.message':
-        'Another tooltip with resource-based content',
-    'demo21.interactiveDemo.tooltip2.content.label': 'Hover me (tooltip 2)',
-    'demo21.interactiveDemo.bannerLabel.label': 'Banner messages from resources:',
-    'demo21.interactiveDemo.success.message':
-        'Success! Operation completed successfully.',
-    'demo21.interactiveDemo.warning.message':
-        'Warning: Please review before continuing.',
+    // --- Toggle Section ---
+    'demo21.toggleDemo.icon.icon': 'mToggleOn',
+    'demo21.toggleDemo.title.label': 'Switch & Checkbox Colors',
+    'demo21.toggleDemo.subtitle.label': 'activeColor, trackColor from resources',
+    'demo21.toggleDemo.info.label':
+        'Resources: demo21.switch1.activeColor → #4CAF50, activeTrackColor → #A5D6A7',
+    'demo21.switch1.label.label': 'Green switch',
+    'demo21.switch2.label.label': 'Blue switch',
+    'demo21.checkbox1.label.label': 'Purple checkbox',
+    'demo21.checkbox2.label.label': 'Orange checkbox',
   };
 
   /// Structured data resources (lists, maps) for Phase 1 typed resolution.
@@ -2918,6 +2849,74 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo03.card.padding': [16, 12, 16, 12],
     // Example: Color configuration
     'demo03.card.backgroundColor': 'mBlue50',
+
+    // ==========================================================================
+    // Demo 21: Visual Styling Resources (EdgeInsets, TextStyle, Colors, etc.)
+    // ==========================================================================
+
+    // --- Container Parameters (padding, margin, dimensions) ---
+    'demo21.paddedBox.padding': {'left': 24.0, 'top': 16.0, 'right': 24.0, 'bottom': 16.0},
+    'demo21.sizedBox.width': 150.0,
+    'demo21.sizedBox.height': 100.0,
+    'demo21.marginedBox.margin': {'all': 16.0},
+
+    // --- TextStyle Parameters ---
+    'demo21.styledText1.style': {
+      'fontSize': 28.0,
+      'fontWeight': 'bold',
+      'color': '#1565C0',  // Blue 800
+    },
+    'demo21.styledText2.style': {
+      'fontSize': 18.0,
+      'fontStyle': 'italic',
+      'color': '#6A1B9A',  // Purple 800
+      'letterSpacing': 1.5,
+    },
+    'demo21.styledText3.style': {
+      'fontSize': 14.0,
+      'fontWeight': 'w500',
+      'color': '#2E7D32',  // Green 800
+      'decoration': 'underline',
+    },
+
+    // --- Icon Color Parameters ---
+    'demo21.coloredIcon1.color': '#E91E63',  // Pink
+    'demo21.coloredIcon2.color': '#FF9800',  // Orange
+    'demo21.coloredIcon3.color': '#4CAF50',  // Green
+    'demo21.coloredIcon4.color': '#2196F3',  // Blue
+
+    // --- Progress Indicator Colors ---
+    'demo21.progress1.color': '#9C27B0',  // Purple
+    'demo21.progress1.backgroundColor': '#E1BEE7',  // Purple 100
+    'demo21.progress2.color': '#00BCD4',  // Cyan
+    'demo21.progress2.backgroundColor': '#B2EBF2',  // Cyan 100
+    'demo21.progress3.color': '#FF5722',  // Deep Orange
+    'demo21.progress3.backgroundColor': '#FFCCBC',  // Deep Orange 100
+
+    // --- Card Elevation ---
+    'demo21.card1.elevation': 2.0,
+    'demo21.card2.elevation': 8.0,
+    'demo21.card3.elevation': 16.0,
+
+    // --- Icon Size ---
+    'demo21.sizedIcon1.size': 16.0,
+    'demo21.sizedIcon2.size': 32.0,
+    'demo21.sizedIcon3.size': 48.0,
+
+    // --- Opacity ---
+    'demo21.opacity1.opacity': 1.0,
+    'demo21.opacity2.opacity': 0.6,
+    'demo21.opacity3.opacity': 0.3,
+
+    // --- Toggle Widget Colors ---
+    'demo21.switch1.activeColor': '#4CAF50',  // Green
+    'demo21.switch1.activeTrackColor': '#A5D6A7',  // Green 200
+    'demo21.switch2.activeColor': '#2196F3',  // Blue
+    'demo21.switch2.activeTrackColor': '#90CAF9',  // Blue 200
+    'demo21.checkbox1.activeColor': '#9C27B0',  // Purple
+    'demo21.checkbox1.checkColor': '#FFFFFF',
+    'demo21.checkbox2.activeColor': '#FF5722',  // Deep Orange
+    'demo21.checkbox2.checkColor': '#FFFFFF',
 
   };
 

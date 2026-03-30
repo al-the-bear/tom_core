@@ -1,21 +1,10 @@
-/// Demo 21: Resource Resolution
+/// Demo 21: Resource Resolution — Visual Styling Parameters
 ///
-/// Comprehensive demonstration of the Tom UI resource resolution system.
-/// This demo shows how widgets resolve all their parameters (labels, icons,
-/// tooltips, hints, colors, sizes, etc.) from resources using tomId lookup
-/// instead of hardcoding values.
+/// Demonstrates that visual styling parameters like padding, colors, textStyle,
+/// elevation, etc. can be resolved from resources using tomId.
 ///
-/// Widgets covered: TomText, TomIcon, TomElevatedButton, TomFilledButton,
-/// TomTextField, TomBadge, TomCard, TomListTile, TomTooltip, TomIconButton,
-/// TomExpansionTile, TomBanner.
-///
-/// Resource suffixes demonstrated:
-/// - Text: label, title, subtitle, description, hint, helper, message
-/// - Icons: icon, alt
-/// - Interactive: tooltip
-/// - Validation: errorFormat, errorInvalid
-/// - Numeric: size, fill, weight, grade, opticalSize
-/// - Colors: color (as named color strings)
+/// All text in this demo is resolved from resources to demonstrate
+/// the complete resource resolution pattern.
 library;
 
 import 'package:flutter/material.dart';
@@ -45,8 +34,11 @@ class _ResourceResolutionDemoContent extends StatefulWidget {
 
 class _ResourceResolutionDemoContentState
     extends State<_ResourceResolutionDemoContent> {
-  // State for interactive demos
-  final _formKey = GlobalKey<FormState>();
+  // State for toggle demos
+  bool _switchValue1 = true;
+  bool _switchValue2 = false;
+  bool _checkboxValue1 = true;
+  bool _checkboxValue2 = false;
 
   @override
   Widget build(BuildContext context) {
@@ -59,43 +51,37 @@ class _ResourceResolutionDemoContentState
             // Introduction
             _SectionHeader(tomId: 'demo21.section.intro'),
             const TomSizedBox(height: 16),
-            _buildIntroductionSection(),
+            _buildIntroCard(),
             const TomSizedBox(height: 32),
 
-            // Section 1: Text Resources (label, title, subtitle, description)
-            _SectionHeader(tomId: 'demo21.section.text'),
+            // Section 1: Container Parameters
+            _SectionHeader(tomId: 'demo21.section.container'),
             const TomSizedBox(height: 16),
-            _buildTextResourcesSection(),
+            _buildContainerSection(),
             const TomSizedBox(height: 32),
 
-            // Section 2: Icon Resources (icon, alt, size, color)
-            _SectionHeader(tomId: 'demo21.section.icons'),
+            // Section 2: Text Style Parameters
+            _SectionHeader(tomId: 'demo21.section.textStyle'),
             const TomSizedBox(height: 16),
-            _buildIconResourcesSection(),
+            _buildTextStyleSection(),
             const TomSizedBox(height: 32),
 
-            // Section 3: Button Resources (label, icon, tooltip)
-            _SectionHeader(tomId: 'demo21.section.buttons'),
+            // Section 3: Color Parameters
+            _SectionHeader(tomId: 'demo21.section.colors'),
             const TomSizedBox(height: 16),
-            _buildButtonResourcesSection(),
+            _buildColorSection(),
             const TomSizedBox(height: 32),
 
-            // Section 4: Input Resources (hint, helper, errorFormat)
-            _SectionHeader(tomId: 'demo21.section.inputs'),
+            // Section 4: Numeric Parameters
+            _SectionHeader(tomId: 'demo21.section.numeric'),
             const TomSizedBox(height: 16),
-            _buildInputResourcesSection(),
+            _buildNumericSection(),
             const TomSizedBox(height: 32),
 
-            // Section 5: List & Tile Resources (title, subtitle, leading)
-            _SectionHeader(tomId: 'demo21.section.lists'),
+            // Section 5: Toggle Widget Colors
+            _SectionHeader(tomId: 'demo21.section.toggle'),
             const TomSizedBox(height: 16),
-            _buildListResourcesSection(),
-            const TomSizedBox(height: 32),
-
-            // Section 6: Interactive Resources (tooltip, message)
-            _SectionHeader(tomId: 'demo21.section.interactive'),
-            const TomSizedBox(height: 16),
-            _buildInteractiveResourcesSection(),
+            _buildToggleSection(),
             const TomSizedBox(height: 48),
           ],
         ),
@@ -104,419 +90,387 @@ class _ResourceResolutionDemoContentState
   }
 
   // ===========================================================================
-  // Introduction Section
+  // Introduction
   // ===========================================================================
 
-  Widget _buildIntroductionSection() {
+  Widget _buildIntroCard() {
     return _DemoCard(
       tomId: 'demo21.intro',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(
-            tomId: 'demo21.intro.explanation',
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const TomSizedBox(height: 16),
-          _InfoBox(tomId: 'demo21.intro.tip'),
+          TomText(tomId: 'demo21.intro.explanation'),
+          const TomSizedBox(height: 12),
+          TomText(tomId: 'demo21.intro.formats'),
         ],
       ),
     );
   }
 
   // ===========================================================================
-  // Section 1: Text Resources
+  // Section 1: Container Parameters (padding, margin, color, size)
   // ===========================================================================
 
-  Widget _buildTextResourcesSection() {
-    final theme = Theme.of(context);
+  Widget _buildContainerSection() {
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // TomText with label suffix
+        // Container with padding from resources
         _DemoCard(
-          tomId: 'demo21.textDemo',
+          tomId: 'demo21.paddingDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Display various text styles - all resolved from resources
-              TomText(
-                tomId: 'demo21.textDemo.display',
-                style: theme.textTheme.headlineMedium,
-              ),
+              TomText(tomId: 'demo21.paddingDemo.info'),
               const TomSizedBox(height: 12),
-              TomText(
-                tomId: 'demo21.textDemo.body',
-                style: theme.textTheme.bodyLarge,
-              ),
-              const TomSizedBox(height: 12),
-              TomText(
-                tomId: 'demo21.textDemo.caption',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const TomSizedBox(height: 16),
-
-        // TomBadge with label suffix
-        _DemoCard(
-          tomId: 'demo21.badgeDemo',
-          child: TomWrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              TomBadge(tomId: 'demo21.badgeDemo.new'),
-              TomBadge(
-                tomId: 'demo21.badgeDemo.featured',
-                backgroundColor: Theme.of(context).colorScheme.secondary,
-              ),
-              TomBadge(
-                tomId: 'demo21.badgeDemo.sale',
-                backgroundColor: Theme.of(context).colorScheme.error,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // Section 2: Icon Resources
-  // ===========================================================================
-
-  Widget _buildIconResourcesSection() {
-    return _DemoCard(
-      tomId: 'demo21.iconDemo',
-      child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Icons resolved from resources (icon, alt suffixes)
-          TomWrap(
-            spacing: 24,
-            runSpacing: 16,
-            children: [
-              // Basic icon resolution
-              _IconShowcase(
-                tomId: 'demo21.iconDemo.home',
-                description: 'Home icon',
-              ),
-              _IconShowcase(
-                tomId: 'demo21.iconDemo.settings',
-                description: 'Settings icon',
-              ),
-              _IconShowcase(
-                tomId: 'demo21.iconDemo.user',
-                description: 'User icon',
-              ),
-              _IconShowcase(
-                tomId: 'demo21.iconDemo.notification',
-                description: 'Notification icon',
-              ),
-            ],
-          ),
-          const TomSizedBox(height: 24),
-
-          // Icon with size parameter resolved from resource
-          TomText(
-            tomId: 'demo21.iconDemo.sizeLabel',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const TomSizedBox(height: 8),
-          TomRow(
-            children: [
-              // These icons get their size from resources
-              TomIcon(tomId: 'demo21.iconDemo.small'),
-              const TomSizedBox(width: 16),
-              TomIcon(tomId: 'demo21.iconDemo.medium'),
-              const TomSizedBox(width: 16),
-              TomIcon(tomId: 'demo21.iconDemo.large'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // Section 3: Button Resources
-  // ===========================================================================
-
-  Widget _buildButtonResourcesSection() {
-    return TomColumn(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Elevated buttons - label and icon from resources
-        _DemoCard(
-          tomId: 'demo21.elevatedDemo',
-          child: TomWrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              TomElevatedButton(
-                tomId: 'demo21.elevatedDemo.save',
-                onPressed: () {},
-              ),
-              TomElevatedButton(
-                tomId: 'demo21.elevatedDemo.cancel',
-                onPressed: () {},
-              ),
-              TomElevatedButton(
-                tomId: 'demo21.elevatedDemo.submit',
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-        const TomSizedBox(height: 16),
-
-        // Filled buttons - with icons
-        _DemoCard(
-          tomId: 'demo21.filledDemo',
-          child: TomWrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              TomFilledButton(
-                tomId: 'demo21.filledDemo.add',
-                onPressed: () {},
-              ),
-              TomFilledButton(
-                tomId: 'demo21.filledDemo.edit',
-                onPressed: () {},
-              ),
-              TomFilledButton(
-                tomId: 'demo21.filledDemo.delete',
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-        const TomSizedBox(height: 16),
-
-        // Icon buttons - tooltip from resources
-        _DemoCard(
-          tomId: 'demo21.iconButtonDemo',
-          child: TomWrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              TomIconButton(
-                tomId: 'demo21.iconButtonDemo.refresh',
-                onPressed: () {},
-              ),
-              TomIconButton(
-                tomId: 'demo21.iconButtonDemo.search',
-                onPressed: () {},
-              ),
-              TomIconButton(
-                tomId: 'demo21.iconButtonDemo.filter',
-                onPressed: () {},
-              ),
-              TomIconButton.filled(
-                tomId: 'demo21.iconButtonDemo.add',
-                onPressed: () {},
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // Section 4: Input Resources
-  // ===========================================================================
-
-  Widget _buildInputResourcesSection() {
-    return _DemoCard(
-      tomId: 'demo21.inputDemo',
-      child: Form(
-        key: _formKey,
-        child: TomColumn(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // TextFormField with label, hint, helper from resources
-            TomTextFormField(
-              tomId: 'demo21.inputDemo.username',
-            ),
-            const TomSizedBox(height: 20),
-
-            // TextFormField with error format from resources
-            TomTextFormField(
-              tomId: 'demo21.inputDemo.email',
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  // Error message is resolved from resources
-                  return TomUIResources.resolveText(
-                    'demo21.inputDemo.email',
-                    'errorFormat',
-                  );
-                }
-                if (!value.contains('@')) {
-                  return TomUIResources.resolveText(
-                    'demo21.inputDemo.email',
-                    'errorInvalid',
-                  );
-                }
-                return null;
-              },
-            ),
-            const TomSizedBox(height: 20),
-
-            // TextFormField with password styling
-            TomTextFormField(
-              tomId: 'demo21.inputDemo.password',
-              obscureText: true,
-            ),
-            const TomSizedBox(height: 16),
-
-            // Validate button
-            TomFilledButton(
-              tomId: 'demo21.inputDemo.validate',
-              onPressed: () {
-                _formKey.currentState!.validate();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
-  // Section 5: List & Tile Resources
-  // ===========================================================================
-
-  Widget _buildListResourcesSection() {
-    return TomColumn(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ListTile with titleText from resources
-        _DemoCard(
-          tomId: 'demo21.listDemo',
-          child: TomColumn(
-            children: [
-              TomListTile(
-                tomId: 'demo21.listDemo.profile',
-              ),
-              const TomDivider(),
-              TomListTile(
-                tomId: 'demo21.listDemo.settings',
-              ),
-              const TomDivider(),
-              TomListTile(
-                tomId: 'demo21.listDemo.help',
-              ),
-            ],
-          ),
-        ),
-        const TomSizedBox(height: 16),
-
-        // ExpansionTile with title from resources
-        _DemoCard(
-          tomId: 'demo21.expansionDemo',
-          child: TomColumn(
-            children: [
-              TomExpansionTile(
-                tomId: 'demo21.expansionDemo.general',
-                children: [
-                  TomListTile(
-                    tomId: 'demo21.expansionDemo.general.theme',
-                  ),
-                  TomListTile(
-                    tomId: 'demo21.expansionDemo.general.language',
-                  ),
-                ],
-              ),
-              TomExpansionTile(
-                tomId: 'demo21.expansionDemo.privacy',
-                children: [
-                  TomListTile(
-                    tomId: 'demo21.expansionDemo.privacy.data',
-                  ),
-                  TomListTile(
-                    tomId: 'demo21.expansionDemo.privacy.cookies',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ===========================================================================
-  // Section 6: Interactive Resources
-  // ===========================================================================
-
-  Widget _buildInteractiveResourcesSection() {
-    return _DemoCard(
-      tomId: 'demo21.interactiveDemo',
-      child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tooltip with message from resources
-          TomText(
-            tomId: 'demo21.interactiveDemo.tooltipLabel',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const TomSizedBox(height: 12),
-          TomWrap(
-            spacing: 16,
-            runSpacing: 12,
-            children: [
-              TomTooltip(
-                tomId: 'demo21.interactiveDemo.tooltip1',
+              TomContainer(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: TomContainer(
-                  padding: const EdgeInsets.all(12),
+                  tomId: 'demo21.paddedBox',
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: TomText(
-                    tomId: 'demo21.interactiveDemo.tooltip1.content',
-                  ),
-                ),
-              ),
-              TomTooltip(
-                tomId: 'demo21.interactiveDemo.tooltip2',
-                child: TomContainer(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TomText(
-                    tomId: 'demo21.interactiveDemo.tooltip2.content',
-                  ),
+                  child: TomText(tomId: 'demo21.paddedBox.content'),
                 ),
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+        ),
+        const TomSizedBox(height: 16),
 
-          // Info boxes with messages from resources
-          TomText(
-            tomId: 'demo21.interactiveDemo.bannerLabel',
-            style: Theme.of(context).textTheme.titleSmall,
+        // Container with dimensions from resources
+        _DemoCard(
+          tomId: 'demo21.sizeDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.sizeDemo.info'),
+              const TomSizedBox(height: 12),
+              TomContainer(
+                tomId: 'demo21.sizedBox',
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TomCenter(child: TomText(tomId: 'demo21.sizedBox.content')),
+              ),
+            ],
+          ),
+        ),
+        const TomSizedBox(height: 16),
+
+        // Container with margin from resources
+        _DemoCard(
+          tomId: 'demo21.marginDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.marginDemo.info'),
+              const TomSizedBox(height: 12),
+              TomContainer(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                padding: const EdgeInsets.all(4),
+                child: TomContainer(
+                  tomId: 'demo21.marginedBox',
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TomText(tomId: 'demo21.marginedBox.content'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // Section 2: Text Style Parameters
+  // ===========================================================================
+
+  Widget _buildTextStyleSection() {
+    return _DemoCard(
+      tomId: 'demo21.textStyleDemo',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TomText(tomId: 'demo21.textStyleDemo.info'),
+          const TomSizedBox(height: 16),
+
+          // Styled text 1: Large bold blue
+          TomAnimatedDefaultTextStyle(
+            tomId: 'demo21.styledText1',
+            style: const TextStyle(fontSize: 12), // Fallback if no resource
+            duration: const Duration(milliseconds: 300),
+            child: TomText(tomId: 'demo21.styledText1.content'),
           ),
           const TomSizedBox(height: 12),
-          _InfoBox(
-            tomId: 'demo21.interactiveDemo.success',
-            color: Theme.of(context).colorScheme.primaryContainer,
-            icon: Icons.check_circle,
+
+          // Styled text 2: Italic purple
+          TomAnimatedDefaultTextStyle(
+            tomId: 'demo21.styledText2',
+            style: const TextStyle(fontSize: 12),
+            duration: const Duration(milliseconds: 300),
+            child: TomText(tomId: 'demo21.styledText2.content'),
           ),
-          const TomSizedBox(height: 8),
-          _InfoBox(
-            tomId: 'demo21.interactiveDemo.warning',
-            color: Theme.of(context).colorScheme.tertiaryContainer,
-            icon: Icons.warning_amber,
+          const TomSizedBox(height: 12),
+
+          // Styled text 3: Spaced green
+          TomAnimatedDefaultTextStyle(
+            tomId: 'demo21.styledText3',
+            style: const TextStyle(fontSize: 12),
+            duration: const Duration(milliseconds: 300),
+            child: TomText(tomId: 'demo21.styledText3.content'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Section 3: Color Parameters
+  // ===========================================================================
+
+  Widget _buildColorSection() {
+    return TomColumn(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Icon colors
+        _DemoCard(
+          tomId: 'demo21.iconColorDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.iconColorDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                children: [
+                  TomIcon(tomId: 'demo21.coloredIcon1', size: 32),
+                  const TomSizedBox(width: 16),
+                  TomIcon(tomId: 'demo21.coloredIcon2', size: 32),
+                  const TomSizedBox(width: 16),
+                  TomIcon(tomId: 'demo21.coloredIcon3', size: 32),
+                  const TomSizedBox(width: 16),
+                  TomIcon(tomId: 'demo21.coloredIcon4', size: 32),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const TomSizedBox(height: 16),
+
+        // Progress indicator colors
+        _DemoCard(
+          tomId: 'demo21.progressColorDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.progressColorDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                children: [
+                  TomCircularProgressIndicator(tomId: 'demo21.progress1', value: 0.7),
+                  const TomSizedBox(width: 24),
+                  TomCircularProgressIndicator(tomId: 'demo21.progress2', value: 0.5),
+                  const TomSizedBox(width: 24),
+                  TomExpanded(
+                    child: TomLinearProgressIndicator(tomId: 'demo21.progress3', value: 0.6),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // Section 4: Numeric Parameters (elevation, size, opacity)
+  // ===========================================================================
+
+  Widget _buildNumericSection() {
+    return TomColumn(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Card elevation
+        _DemoCard(
+          tomId: 'demo21.elevationDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.elevationDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                children: [
+                  TomExpanded(
+                    child: TomCard(
+                      tomId: 'demo21.card1',
+                      child: TomPadding(
+                        padding: const EdgeInsets.all(16),
+                        child: TomText(tomId: 'demo21.card1.content'),
+                      ),
+                    ),
+                  ),
+                  const TomSizedBox(width: 16),
+                  TomExpanded(
+                    child: TomCard(
+                      tomId: 'demo21.card2',
+                      child: TomPadding(
+                        padding: const EdgeInsets.all(16),
+                        child: TomText(tomId: 'demo21.card2.content'),
+                      ),
+                    ),
+                  ),
+                  const TomSizedBox(width: 16),
+                  TomExpanded(
+                    child: TomCard(
+                      tomId: 'demo21.card3',
+                      child: TomPadding(
+                        padding: const EdgeInsets.all(16),
+                        child: TomText(tomId: 'demo21.card3.content'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const TomSizedBox(height: 16),
+
+        // Icon sizes
+        _DemoCard(
+          tomId: 'demo21.iconSizeDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.iconSizeDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TomIcon(tomId: 'demo21.sizedIcon1'),
+                  const TomSizedBox(width: 16),
+                  TomIcon(tomId: 'demo21.sizedIcon2'),
+                  const TomSizedBox(width: 16),
+                  TomIcon(tomId: 'demo21.sizedIcon3'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const TomSizedBox(height: 16),
+
+        // Opacity
+        _DemoCard(
+          tomId: 'demo21.opacityDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.opacityDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                children: [
+                  TomAnimatedOpacity(
+                    tomId: 'demo21.opacity1',
+                    duration: const Duration(milliseconds: 300),
+                    child: TomContainer(
+                      width: 60,
+                      height: 60,
+                      color: Theme.of(context).colorScheme.primary,
+                      child: TomCenter(child: TomText(tomId: 'demo21.opacity1.content')),
+                    ),
+                  ),
+                  const TomSizedBox(width: 16),
+                  TomAnimatedOpacity(
+                    tomId: 'demo21.opacity2',
+                    duration: const Duration(milliseconds: 300),
+                    child: TomContainer(
+                      width: 60,
+                      height: 60,
+                      color: Theme.of(context).colorScheme.primary,
+                      child: TomCenter(child: TomText(tomId: 'demo21.opacity2.content')),
+                    ),
+                  ),
+                  const TomSizedBox(width: 16),
+                  TomAnimatedOpacity(
+                    tomId: 'demo21.opacity3',
+                    duration: const Duration(milliseconds: 300),
+                    child: TomContainer(
+                      width: 60,
+                      height: 60,
+                      color: Theme.of(context).colorScheme.primary,
+                      child: TomCenter(child: TomText(tomId: 'demo21.opacity3.content')),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ===========================================================================
+  // Section 5: Toggle Widget Colors
+  // ===========================================================================
+
+  Widget _buildToggleSection() {
+    return _DemoCard(
+      tomId: 'demo21.toggleDemo',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TomText(tomId: 'demo21.toggleDemo.info'),
+          const TomSizedBox(height: 16),
+
+          // Switches with colors from resources
+          TomRow(
+            children: [
+              TomSwitch(
+                tomId: 'demo21.switch1',
+                value: _switchValue1,
+                onChanged: (v) => setState(() => _switchValue1 = v),
+              ),
+              const TomSizedBox(width: 8),
+              TomText(tomId: 'demo21.switch1.label'),
+              const TomSizedBox(width: 32),
+              TomSwitch(
+                tomId: 'demo21.switch2',
+                value: _switchValue2,
+                onChanged: (v) => setState(() => _switchValue2 = v),
+              ),
+              const TomSizedBox(width: 8),
+              TomText(tomId: 'demo21.switch2.label'),
+            ],
+          ),
+          const TomSizedBox(height: 16),
+
+          // Checkboxes with colors from resources
+          TomRow(
+            children: [
+              TomCheckbox(
+                tomId: 'demo21.checkbox1',
+                value: _checkboxValue1,
+                onChanged: (v) => setState(() => _checkboxValue1 = v ?? false),
+              ),
+              const TomSizedBox(width: 8),
+              TomText(tomId: 'demo21.checkbox1.label'),
+              const TomSizedBox(width: 32),
+              TomCheckbox(
+                tomId: 'demo21.checkbox2',
+                value: _checkboxValue2,
+                onChanged: (v) => setState(() => _checkboxValue2 = v ?? false),
+              ),
+              const TomSizedBox(width: 8),
+              TomText(tomId: 'demo21.checkbox2.label'),
+            ],
           ),
         ],
       ),
@@ -571,7 +525,7 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Demo card with title, description, and icon from resources.
+/// Demo card with title, subtitle, and icon from resources.
 class _DemoCard extends StatelessWidget {
   final String tomId;
   final Widget child;
@@ -585,15 +539,15 @@ class _DemoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
+      margin: const EdgeInsets.only(bottom: 8),
       child: TomPadding(
         padding: const EdgeInsets.all(16),
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Card header with icon and title from resources
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
+                TomIcon(tomId: '$tomId.icon', size: 24),
                 const TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
@@ -606,7 +560,7 @@ class _DemoCard extends StatelessWidget {
                         ),
                       ),
                       TomText(
-                        tomId: '$tomId.description',
+                        tomId: '$tomId.subtitle',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -617,83 +571,9 @@ class _DemoCard extends StatelessWidget {
               ],
             ),
             const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
             child,
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Icon showcase widget showing icon with description.
-class _IconShowcase extends StatelessWidget {
-  final String tomId;
-  final String description;
-
-  const _IconShowcase({
-    required this.tomId,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TomColumn(
-      children: [
-        TomContainer(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TomIcon(tomId: tomId),
-        ),
-        const TomSizedBox(height: 4),
-        TomText(
-          text: description,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-/// Info box showing a message from resources with colored background.
-class _InfoBox extends StatelessWidget {
-  final String tomId;
-  final Color? color;
-  final IconData? icon;
-
-  const _InfoBox({
-    required this.tomId,
-    this.color,
-    this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final boxColor = color ?? theme.colorScheme.primaryContainer;
-    final iconWidget = icon ?? Icons.info;
-    
-    return TomContainer(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: boxColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: TomRow(
-        children: [
-          Icon(iconWidget, size: 20),
-          const TomSizedBox(width: 12),
-          TomExpanded(
-            child: TomText(
-              tomId: '$tomId.message',
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
-        ],
       ),
     );
   }
