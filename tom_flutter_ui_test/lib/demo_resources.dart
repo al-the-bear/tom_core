@@ -1766,6 +1766,81 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo11.inputChip.description.label':
         'Input chips for user-entered tags with select and delete support. ACL-aware layout.',
     'demo11.inputChip.instruction.label': 'Manage your tags (supports RTL):',
+
+    // ==========================================================================
+    // Demo 12: Image & Icon Gallery
+    // ==========================================================================
+
+    // Section Headers
+    'demo12.section.icons.title.label': 'Icons',
+    'demo12.section.icons.subtitle.label':
+        'TomIcon widget with sizes, colors, and tomId-based resolution.',
+    'demo12.section.images.title.label': 'Images',
+    'demo12.section.images.subtitle.label':
+        'TomNetworkImage for loading images from URLs with fit modes.',
+    'demo12.section.avatars.title.label': 'Circle Avatars',
+    'demo12.section.avatars.subtitle.label':
+        'TomCircleAvatar for user profiles with initials, icons, or images.',
+    'demo12.section.fadeIn.title.label': 'FadeIn Images',
+    'demo12.section.fadeIn.subtitle.label':
+        'TomFadeInImage for smooth placeholder-to-image transitions.',
+    'demo12.section.animated.title.label': 'Animated Icons & Effects',
+    'demo12.section.animated.subtitle.label':
+        'TomAnimatedIcon and TomImageFiltered for dynamic effects with ACL support.',
+
+    // Demo Card: Icons
+    'demo12.icon.icon.icon': 'mAutoAwesome',
+    'demo12.icon.title.label': 'TomIcon',
+    'demo12.icon.description.label':
+        'Icon widget with tomId-based resolution, sizes, and colors.',
+    'demo12.icon.sizeLabel.label': 'Icon Sizes',
+    'demo12.icon.colorLabel.label': 'Colored Icons',
+    'demo12.icon.categoriesLabel.label': 'Icon Categories',
+    'demo12.icon.resolvedLabel.label': 'TomId-Resolved Icons',
+    'demo12.icon.resolved.save.icon': 'mSave',
+    'demo12.icon.resolved.edit.icon': 'mEdit',
+    'demo12.icon.resolved.delete.icon': 'mDelete',
+    'demo12.icon.resolved.settings.icon': 'mSettings',
+
+    // Demo Card: Network Images
+    'demo12.networkImage.icon.icon': 'mImage',
+    'demo12.networkImage.title.label': 'TomNetworkImage',
+    'demo12.networkImage.description.label':
+        'Network image loading with placeholder, error handling, and fit modes.',
+    'demo12.networkImage.examplesLabel.label': 'Network Image Examples',
+    'demo12.networkImage.fitModesLabel.label': 'Image Fit Modes',
+
+    // Demo Card: Circle Avatars
+    'demo12.avatar.icon.icon': 'mAccountCircle',
+    'demo12.avatar.title.label': 'TomCircleAvatar',
+    'demo12.avatar.description.label':
+        'Circular avatars with initials, icons, or background images.',
+    'demo12.avatar.sizesLabel.label': 'Avatar Sizes',
+    'demo12.avatar.initialsLabel.label': 'With Initials',
+    'demo12.avatar.iconsLabel.label': 'With Icons',
+    'demo12.avatar.imagesLabel.label': 'With Network Images',
+
+    // Demo Card: FadeIn Images
+    'demo12.fadeInImage.icon.icon': 'mBlurOn',
+    'demo12.fadeInImage.title.label': 'TomFadeInImage',
+    'demo12.fadeInImage.description.label':
+        'Smooth fade transition from placeholder to loaded image.',
+    'demo12.fadeInImage.descriptionLabel.label':
+        'Images fade in smoothly from a placeholder as they load from the network.',
+
+    // Demo Card: Animated Icons
+    'demo12.animatedIcon.icon.icon': 'mAnimation',
+    'demo12.animatedIcon.title.label': 'TomAnimatedIcon',
+    'demo12.animatedIcon.description.label':
+        'Animated icons that transition between two icon states.',
+    'demo12.animatedIcon.toggle.label': 'Animate',
+
+    // Demo Card: Image Filters
+    'demo12.imageFilter.icon.icon': 'mFilterBAndW',
+    'demo12.imageFilter.title.label': 'TomImageFiltered',
+    'demo12.imageFilter.description.label':
+        'Apply blur, matrix, and other image filters to child widgets.',
+    'demo12.imageFilter.blurLabel.label': 'Blur:',
   };
 
   @override
