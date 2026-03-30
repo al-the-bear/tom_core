@@ -343,7 +343,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       ),
                       const TomSizedBox(height: 4),
                       TomText(
-                        tomId: 'demo06.productCard.description',
+                        tomId: 'demo06.productCard.productDescription',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

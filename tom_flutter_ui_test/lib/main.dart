@@ -17,24 +17,23 @@ import 'locale_settings.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
 import 'widget_demos/demo_03_selection.dart';
-// TODO: Import remaining demos as they are created
-// import 'widget_demos/demo_04_toggles.dart';
-// import 'widget_demos/demo_05_sliders.dart';
-// import 'widget_demos/demo_06_cards_panels.dart';
-// import 'widget_demos/demo_07_layout.dart';
-// import 'widget_demos/demo_08_scrollable.dart';
-// import 'widget_demos/demo_09_dialogs.dart';
-// import 'widget_demos/demo_10_tables.dart';
-// import 'widget_demos/demo_11_labels.dart';
-// import 'widget_demos/demo_12_images.dart';
-// import 'widget_demos/demo_13_navigation.dart';
-// import 'widget_demos/demo_14_progress.dart';
-// import 'widget_demos/demo_15_lists.dart';
-// import 'widget_demos/demo_16_trees.dart';
-// import 'widget_demos/demo_17_slivers.dart';
-// import 'widget_demos/demo_18_animated.dart';
-// import 'widget_demos/demo_19_effects.dart';
-// import 'widget_demos/demo_20_interactions.dart';
+import 'widget_demos/demo_04_toggles.dart';
+import 'widget_demos/demo_05_sliders.dart';
+import 'widget_demos/demo_06_cards_panels.dart';
+import 'widget_demos/demo_07_layout.dart';
+import 'widget_demos/demo_08_scrollable.dart';
+import 'widget_demos/demo_09_dialogs.dart';
+import 'widget_demos/demo_10_tables.dart';
+import 'widget_demos/demo_11_labels.dart';
+import 'widget_demos/demo_12_images.dart';
+import 'widget_demos/demo_13_navigation.dart';
+import 'widget_demos/demo_14_progress.dart';
+import 'widget_demos/demo_15_lists.dart';
+import 'widget_demos/demo_16_trees.dart';
+import 'widget_demos/demo_17_slivers.dart';
+import 'widget_demos/demo_18_animated.dart';
+import 'widget_demos/demo_19_effects.dart';
+import 'widget_demos/demo_20_interactions.dart';
 
 /// Global locale settings service instance.
 final localeSettingsService = LocaleSettingsService();
@@ -327,54 +326,98 @@ class WidgetDemosTab extends StatelessWidget {
           description: 'Dropdowns, Popup Menus, Menu Anchors, Segmented Controls',
           screen: SelectionDemo(),
         ),
-        // TODO: Add remaining demos as they are created
-        _buildComingSoonTile(context, 'Toggles & Options'),
-        _buildComingSoonTile(context, 'Sliders & Ranges'),
+        const DemoTile(
+          title: 'Toggles & Options',
+          description: 'Checkbox, Switch, Radio, ToggleButtons, ExpansionTile',
+          screen: ToggleDemo(),
+        ),
+        const DemoTile(
+          title: 'Sliders & Ranges',
+          description: 'Slider, RangeSlider, CupertinoSlider, Stepper',
+          screen: SliderDemo(),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Layout & Structure', Icons.dashboard),
-        _buildComingSoonTile(context, 'Cards & Panels'),
-        _buildComingSoonTile(context, 'Layout Widgets'),
-        _buildComingSoonTile(context, 'Scrollable Containers'),
-        _buildComingSoonTile(context, 'Dialogs & Overlays'),
-        _buildComingSoonTile(context, 'Tables & Data'),
+        const DemoTile(
+          title: 'Cards & Panels',
+          description: 'Card, ExpansionPanel, ListTile variants, Material surfaces',
+          screen: CardPanelDemo(),
+        ),
+        const DemoTile(
+          title: 'Layout Widgets',
+          description: 'Row, Column, Stack, Wrap, Flow, Flex, Table',
+          screen: LayoutContainersDemo(),
+        ),
+        const DemoTile(
+          title: 'Scrollable Containers',
+          description: 'ListView, GridView, SingleChildScrollView, PageView',
+          screen: ScrollableContainersDemo(),
+        ),
+        const DemoTile(
+          title: 'Dialogs & Overlays',
+          description: 'AlertDialog, BottomSheet, SnackBar, Tooltip, Banner',
+          screen: DialogModalGalleryDemo(),
+        ),
+        const DemoTile(
+          title: 'Tables & Data',
+          description: 'DataTable, PaginatedDataTable, sorting and selection',
+          screen: DataTablesDemo(),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Display & Info', Icons.info),
-        _buildComingSoonTile(context, 'Labels & Text'),
-        _buildComingSoonTile(context, 'Images & Media'),
-        _buildComingSoonTile(context, 'Navigation'),
-        _buildComingSoonTile(context, 'Progress Indicators'),
-        _buildComingSoonTile(context, 'Lists & Items'),
+        const DemoTile(
+          title: 'Labels & Text',
+          description: 'Text, RichText, SelectableText, Badge, Chip',
+          screen: LabelsDemo(),
+        ),
+        const DemoTile(
+          title: 'Images & Media',
+          description: 'Image, Icon, CircleAvatar, FadeInImage, decorations',
+          screen: ImagesDemo(),
+        ),
+        const DemoTile(
+          title: 'Navigation',
+          description: 'AppBar, TabBar, BottomNavigationBar, Drawer, NavigationRail',
+          screen: NavigationDemo(),
+        ),
+        const DemoTile(
+          title: 'Progress Indicators',
+          description: 'CircularProgressIndicator, LinearProgressIndicator, RefreshIndicator',
+          screen: ProgressDemo(),
+        ),
+        const DemoTile(
+          title: 'Lists & Items',
+          description: 'ListTile, CheckboxListTile, SwitchListTile, Dismissible',
+          screen: ListsDemo(),
+        ),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Advanced', Icons.auto_awesome),
-        _buildComingSoonTile(context, 'Trees & Hierarchies'),
-        _buildComingSoonTile(context, 'Slivers'),
-        _buildComingSoonTile(context, 'Animated Widgets'),
-        _buildComingSoonTile(context, 'Visual Effects'),
-        _buildComingSoonTile(context, 'Interactions'),
+        const DemoTile(
+          title: 'Trees & Hierarchies',
+          description: 'TreeView, expandable tree nodes, drag-and-drop trees',
+          screen: TreesDemo(),
+        ),
+        const DemoTile(
+          title: 'Slivers',
+          description: 'SliverAppBar, SliverList, SliverGrid, SliverPersistentHeader',
+          screen: SliversDemo(),
+        ),
+        const DemoTile(
+          title: 'Animated Widgets',
+          description: 'AnimatedContainer, AnimatedOpacity, Hero, AnimatedSwitcher',
+          screen: AnimatedDemo(),
+        ),
+        const DemoTile(
+          title: 'Visual Effects',
+          description: 'BackdropFilter, ShaderMask, ColorFiltered, ClipPath',
+          screen: EffectsDemo(),
+        ),
+        const DemoTile(
+          title: 'Interactions',
+          description: 'GestureDetector, Draggable, InkWell, MouseRegion',
+          screen: InteractionsDemo(),
+        ),
       ],
-    );
-  }
-
-  Widget _buildComingSoonTile(BuildContext context, String title) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(
-          Icons.construction,
-          color: Theme.of(context).colorScheme.outline,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(color: Theme.of(context).colorScheme.outline),
-        ),
-        subtitle: Text(
-          'Coming soon',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.7),
-          ),
-        ),
-        enabled: false,
-      ),
     );
   }
 
@@ -436,8 +479,8 @@ class RoadmapTab extends StatelessWidget {
         _buildRoadmapSection(
           context,
           title: 'Phase 2: Widget Demos',
-          status: 'In Progress',
-          statusColor: Colors.orange,
+          status: 'Completed',
+          statusColor: Colors.green,
           items: [
             'Button variants and states',
             'Input components with validation',
@@ -445,6 +488,7 @@ class RoadmapTab extends StatelessWidget {
             'Layout composition patterns',
             'Navigation widgets',
             'Animation showcases',
+            'All 20 demo categories implemented',
           ],
         ),
         _buildRoadmapSection(

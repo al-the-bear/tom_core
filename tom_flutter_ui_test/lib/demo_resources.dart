@@ -11,7 +11,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Resource keys follow the pattern: `<tomId>.<suffix>`
 /// - `demo01.elevated.basic.label` → "Basic"
 /// - `demo01.elevated.save.icon` → "mSave"
-class DemoResourceAdapter implements TomUIResourceAdapter {
+class DemoResourceAdapter extends TomUIResourceAdapter {
   /// All text resources for the demo app.
   ///
   /// Keys are `<tomId>.<suffix>` where suffix is typically:
@@ -1029,7 +1029,7 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo06.productCard.imagePlaceholder.label': 'Product Image',
     'demo06.productCard.productName.label': 'Wireless Headphones',
     'demo06.productCard.price.label': '\$99.99',
-    'demo06.productCard.description.label':
+    'demo06.productCard.productDescription.label':
         'Premium noise-cancelling wireless headphones with 30h battery.',
     'demo06.productCard.rating.label': '(4.2)',
     'demo06.productCard.addToCart.label': 'Add to Cart',
@@ -1689,7 +1689,7 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
         'Text widget with tomId-based resource resolution and typography styles.',
     'demo11.text.display.label': 'Display Text',
     'demo11.text.headline.label': 'Headline Text',
-    'demo11.text.title.label': 'Title Text',
+    'demo11.text.titleStyle.label': 'Title Text',
     'demo11.text.body.label': 'Body text for paragraphs and general content.',
     'demo11.text.bodySmall.label': 'Smaller body text for captions and hints.',
     'demo11.text.labelLarge.label': 'LABEL LARGE',

@@ -32,9 +32,9 @@ class _LabelsDemoContent extends StatefulWidget {
 
 class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   // State for interactive demos
-  Set<String> _selectedFilterChips = {'dart', 'flutter'};
+  final Set<String> _selectedFilterChips = {'dart', 'flutter'};
   String _selectedChoiceChip = 'medium';
-  Set<String> _selectedInputChips = {'tag1'};
+  final Set<String> _selectedInputChips = {'tag1'};
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +126,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
 
           // Title styles
           TomText(
-            tomId: 'demo11.text.title',
+            tomId: 'demo11.text.titleStyle',
             style: theme.textTheme.titleLarge,
           ),
           const TomSizedBox(height: 12),
