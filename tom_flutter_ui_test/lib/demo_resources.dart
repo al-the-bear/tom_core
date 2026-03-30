@@ -2237,6 +2237,144 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
         'Visual org chart showing reporting structure and team hierarchy.',
     'demo16.organization.hint.label':
         'Cards can expand to show team members and details',
+
+    // ==========================================================================
+    // Demo 17: Sliver Compositions
+    // ==========================================================================
+
+    // Section Headers
+    'demo17.section.customScroll.title.label': 'CustomScrollView',
+    'demo17.section.customScroll.subtitle.label':
+        'Foundation for sliver-based scrollable layouts',
+    'demo17.section.appBar.title.label': 'SliverAppBar Styles',
+    'demo17.section.appBar.subtitle.label':
+        'Pinned, floating, and snap behaviors for app bars',
+    'demo17.section.listGrid.title.label': 'SliverList & SliverGrid',
+    'demo17.section.listGrid.subtitle.label':
+        'Efficient scrollable lists and grids within slivers',
+    'demo17.section.mixed.title.label': 'Mixed Content',
+    'demo17.section.mixed.subtitle.label':
+        'Combining different sliver types in one view',
+    'demo17.section.headers.title.label': 'Pinned & Floating Headers',
+    'demo17.section.headers.subtitle.label':
+        'Headers that stay visible or reappear on scroll',
+    'demo17.section.groups.title.label': 'Sliver Groups',
+    'demo17.section.groups.subtitle.label':
+        'Main axis and cross axis sliver grouping',
+    'demo17.section.decorated.title.label': 'Decorated Slivers',
+    'demo17.section.decorated.subtitle.label':
+        'Slivers with decorations, padding, and safe areas',
+    'demo17.section.visibility.title.label': 'Sliver Visibility',
+    'demo17.section.visibility.subtitle.label':
+        'Control sliver visibility and opacity',
+
+    // CustomScrollView Card
+    'demo17.customScroll.icon.icon': 'mViewList',
+    'demo17.customScroll.title.label': 'CustomScrollView Basics',
+    'demo17.customScroll.description.label':
+        'CustomScrollView is the foundation for sliver-based scrolling with composable sliver children.',
+    'demo17.customScroll.basicLabel.label': 'Basic CustomScrollView with SliverAppBar and SliverList',
+    'demo17.customScroll.hint.label':
+        'CustomScrollView accepts slivers as children, not regular widgets',
+
+    // Pinned AppBar Card
+    'demo17.pinnedAppBar.icon.icon': 'mPushPin',
+    'demo17.pinnedAppBar.title.label': 'Pinned SliverAppBar',
+    'demo17.pinnedAppBar.description.label':
+        'SliverAppBar with pinned=true stays visible at the top when scrolling.',
+    'demo17.pinnedAppBar.demoLabel.label': 'Pinned AppBar with gradient and actions',
+    'demo17.pinnedAppBar.hint.label':
+        'The app bar shrinks but stays pinned at the top',
+
+    // Floating AppBar Card
+    'demo17.floatingAppBar.icon.icon': 'mVerticalAlignTop',
+    'demo17.floatingAppBar.title.label': 'Floating SliverAppBar',
+    'demo17.floatingAppBar.description.label':
+        'SliverAppBar with floating=true reappears immediately when scrolling up.',
+    'demo17.floatingAppBar.demoLabel.label': 'Floating AppBar - scrolls away, returns on scroll up',
+    'demo17.floatingAppBar.hint.label':
+        'Scroll down then up quickly to see floating behavior',
+
+    // Snap AppBar Card
+    'demo17.snapAppBar.icon.icon': 'mTouchApp',
+    'demo17.snapAppBar.title.label': 'Snap SliverAppBar',
+    'demo17.snapAppBar.description.label':
+        'SliverAppBar with snap=true (requires floating) animates to fully show/hide.',
+    'demo17.snapAppBar.demoLabel.label': 'Snap AppBar with stretch effect',
+    'demo17.snapAppBar.hint.label':
+        'Partial scrolls snap to fully visible or hidden state',
+
+    // SliverList Card
+    'demo17.sliverList.icon.icon': 'mList',
+    'demo17.sliverList.title.label': 'SliverList Types',
+    'demo17.sliverList.description.label':
+        'Different SliverList variants for various performance and sizing needs.',
+    'demo17.sliverList.typesLabel.label': 'Regular, Fixed Extent, and Prototype Extent lists',
+    'demo17.sliverList.hint.label':
+        'Use fixed/prototype extent for better performance with uniform items',
+
+    // SliverGrid Card
+    'demo17.sliverGrid.icon.icon': 'mGridView',
+    'demo17.sliverGrid.title.label': 'SliverGrid Gallery',
+    'demo17.sliverGrid.description.label':
+        'SliverGrid displays items in a grid within a CustomScrollView.',
+    'demo17.sliverGrid.demoLabel.label': 'Grid with fixed cross axis count',
+    'demo17.sliverGrid.hint.label':
+        'SliverGrid uses gridDelegate like regular GridView',
+
+    // Mixed Content Card
+    'demo17.mixedContent.icon.icon': 'mDashboard',
+    'demo17.mixedContent.title.label': 'Mixed Sliver Content',
+    'demo17.mixedContent.description.label':
+        'SliverToBoxAdapter wraps regular widgets for use in sliver contexts.',
+    'demo17.mixedContent.demoLabel.label': 'Dashboard with hero, stats, list, and grid sections',
+    'demo17.mixedContent.hint.label':
+        'Use SliverToBoxAdapter to insert non-sliver widgets',
+
+    // Fill Remaining Card
+    'demo17.fillRemaining.icon.icon': 'mExpand',
+    'demo17.fillRemaining.title.label': 'SliverFillRemaining',
+    'demo17.fillRemaining.description.label':
+        'SliverFillRemaining expands to fill remaining viewport space.',
+    'demo17.fillRemaining.demoLabel.label': 'Footer that fills remaining space',
+    'demo17.fillRemaining.hint.label':
+        'Great for centering content or creating footer sections',
+
+    // Pinned/Floating Headers Card
+    'demo17.pinnedFloating.icon.icon': 'mVerticalSplit',
+    'demo17.pinnedFloating.title.label': 'Pinned & Floating Headers',
+    'demo17.pinnedFloating.description.label':
+        'PinnedHeaderSliver stays at top; FloatingHeader reappears on scroll up.',
+    'demo17.pinnedFloating.demoLabel.label': 'Multiple header types in action',
+    'demo17.pinnedFloating.hint.label':
+        'Notice how each header type behaves differently on scroll',
+
+    // Groups Card
+    'demo17.groups.icon.icon': 'mViewColumn',
+    'demo17.groups.title.label': 'Sliver Groups',
+    'demo17.groups.description.label':
+        'SliverMainAxisGroup for sequential slivers; SliverCrossAxisGroup for side-by-side.',
+    'demo17.groups.demoLabel.label': 'Main axis and cross axis group examples',
+    'demo17.groups.hint.label':
+        'Groups help organize slivers with pinned headers per section',
+
+    // Decorated Card
+    'demo17.decorated.icon.icon': 'mAutoAwesome',
+    'demo17.decorated.title.label': 'Decorated Slivers',
+    'demo17.decorated.description.label':
+        'DecoratedSliver adds decorations; SliverPadding adds spacing around slivers.',
+    'demo17.decorated.demoLabel.label': 'Gradient, border, and shadow decorations',
+    'demo17.decorated.hint.label':
+        'Decorations apply to the entire sliver, not individual items',
+
+    // Visibility Card
+    'demo17.visibility.icon.icon': 'mVisibility',
+    'demo17.visibility.title.label': 'Sliver Visibility Control',
+    'demo17.visibility.description.label':
+        'SliverVisibility and SliverOpacity control sliver rendering.',
+    'demo17.visibility.demoLabel.label': 'Toggle visibility and opacity of slivers',
+    'demo17.visibility.hint.label':
+        'maintainState keeps widget state even when invisible',
   };
 
   @override
