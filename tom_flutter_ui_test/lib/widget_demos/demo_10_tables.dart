@@ -699,6 +699,7 @@ class _ReorderableItem extends StatelessWidget {
     return TomCard(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: TomListTile(
+        titleText: title,
         leading: CircleAvatar(
           backgroundColor: Colors.primaries[index % Colors.primaries.length],
           child: TomText(
@@ -706,7 +707,6 @@ class _ReorderableItem extends StatelessWidget {
             style: const TextStyle(color: Colors.white),
           ),
         ),
-        title: TomText(text: title),
         subtitle: const TomText(text: 'Drag to reorder'),
         trailing: Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
       ),
