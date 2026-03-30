@@ -2561,6 +2561,86 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo18.hero.demoLabel.label': 'Tap a card to see hero animation',
     'demo18.hero.hint.label':
         'Hero widgets with matching tags animate together',
+
+    // ==========================================================================
+    // Demo 19: Effects & Filters
+    // ==========================================================================
+
+    // Section Headers
+    'demo19.section.backdrop.title.label': 'Backdrop Filters',
+    'demo19.section.backdrop.subtitle.label':
+        'Apply blur and filter effects behind content',
+    'demo19.section.image.title.label': 'Image Filters',
+    'demo19.section.image.subtitle.label':
+        'Apply blur and matrix filters to images',
+    'demo19.section.color.title.label': 'Color Filters',
+    'demo19.section.color.subtitle.label':
+        'Color matrix transformations and blend modes',
+    'demo19.section.shader.title.label': 'Shader Masks',
+    'demo19.section.shader.subtitle.label':
+        'Apply gradient and custom shader effects',
+    'demo19.section.selection.title.label': 'Text Selection',
+    'demo19.section.selection.subtitle.label':
+        'Enable text selection in widget subtrees',
+    'demo19.section.sensitive.title.label': 'Sensitive Content',
+    'demo19.section.sensitive.subtitle.label':
+        'Flag content as sensitive for platform handling',
+
+    // BackdropFilter Card
+    'demo19.backdropFilter.icon.icon': 'mBlurOn',
+    'demo19.backdropFilter.title.label': 'BackdropFilter',
+    'demo19.backdropFilter.description.label':
+        'Applies blur effect to everything painted beneath the widget.',
+    'demo19.backdropFilter.hint.label':
+        'Use ClipRRect to constrain the blur region',
+
+    // ImageFilter Card
+    'demo19.imageFilter.icon.icon': 'mFilterBAndW',
+    'demo19.imageFilter.title.label': 'ImageFiltered',
+    'demo19.imageFilter.description.label':
+        'Applies ImageFilter effects like blur and matrix transforms to child.',
+    'demo19.imageFilter.hint.label':
+        'Toggle enabled to compare filtered vs original',
+
+    // ColorFilter Card
+    'demo19.colorFilter.icon.icon': 'mColorLens',
+    'demo19.colorFilter.title.label': 'ColorFiltered',
+    'demo19.colorFilter.description.label':
+        'Applies color matrix transformations for effects like grayscale, sepia, and invert.',
+    'demo19.colorFilter.hint.label':
+        'Color matrices can create complex visual effects',
+
+    // ShaderMask Card
+    'demo19.shaderMask.icon.icon': 'mGradient',
+    'demo19.shaderMask.title.label': 'ShaderMask',
+    'demo19.shaderMask.description.label':
+        'Applies a shader as a mask, enabling gradient fades and custom effects.',
+    'demo19.shaderMask.hint.label':
+        'Different blend modes create different visual results',
+
+    // SelectionArea Card
+    'demo19.selectionArea.icon.icon': 'mSelectAll',
+    'demo19.selectionArea.title.label': 'SelectionArea',
+    'demo19.selectionArea.description.label':
+        'Enables text selection for all descendant Text widgets automatically.',
+    'demo19.selectionArea.hint.label':
+        'Ideal for making entire content areas selectable',
+
+    // SelectableRegion Card
+    'demo19.selectableRegion.icon.icon': 'mTextFieldsRounded',
+    'demo19.selectableRegion.title.label': 'SelectableRegion',
+    'demo19.selectableRegion.description.label':
+        'Lower-level widget for custom text selection with explicit controls.',
+    'demo19.selectableRegion.hint.label':
+        'Requires explicit selectionControls parameter',
+
+    // SensitiveContent Card
+    'demo19.sensitiveContent.icon.icon': 'mSecurity',
+    'demo19.sensitiveContent.title.label': 'SensitiveContent',
+    'demo19.sensitiveContent.description.label':
+        'Flags content for special OS handling of sensitive data like passwords.',
+    'demo19.sensitiveContent.hint.label':
+        'Platform may hide content in app switcher or screenshots',
   };
 
   @override
