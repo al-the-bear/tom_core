@@ -1844,8 +1844,11 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo13.tabBar.tab.settings.label': 'Settings',
     'demo13.tabBar.iconTabsLabel.label': 'Tabs with Icons',
     'demo13.tabBar.iconTab.photos.label': 'Photos',
+    'demo13.tabBar.iconTab.photos.text': 'Photos',
     'demo13.tabBar.iconTab.videos.label': 'Videos',
+    'demo13.tabBar.iconTab.videos.text': 'Videos',
     'demo13.tabBar.iconTab.music.label': 'Music',
+    'demo13.tabBar.iconTab.music.text': 'Music',
 
     // ==========================================================================
     // Demo 13: Scrollable TabBar Card
