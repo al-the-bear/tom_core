@@ -9,8 +9,20 @@
 /// TomSafeArea.
 library;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+/// ScrollBehavior that allows mouse drag for desktop/web platforms.
+class _MouseDragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
+      };
+}
 
 // =============================================================================
 // Main Demo Page
@@ -524,10 +536,12 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
                           ),
                         ],
                       ),
-                      child: ListView.builder(
-                        controller: scrollController,
-                        itemCount: 15,
-                        itemBuilder: (context, i) {
+                      child: ScrollConfiguration(
+                        behavior: _MouseDragScrollBehavior(),
+                        child: ListView.builder(
+                          controller: scrollController,
+                          itemCount: 15,
+                          itemBuilder: (context, i) {
                           if (i == 0) {
                             return TomColumn(
                               children: [
@@ -572,6 +586,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
                             subtitle: const Text('Drag handle to resize'),
                           );
                         },
+                      ),
                       ),
                     );
                   },
@@ -700,12 +715,14 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
           const TomSizedBox(height: 8),
           TomSizedBox(
             height: 160,
-            child: TomCarouselView(
-              itemExtent: 280,
-              shrinkExtent: 200,
-              onTap: (i) => setState(() => _carouselTapIndex = i),
-              children: List.generate(5, (i) {
-                return TomContainer(
+            child: ScrollConfiguration(
+              behavior: _MouseDragScrollBehavior(),
+              child: TomCarouselView(
+                itemExtent: 280,
+                shrinkExtent: 200,
+                onTap: (i) => setState(() => _carouselTapIndex = i),
+                children: List.generate(5, (i) {
+                  return TomContainer(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -738,6 +755,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
                   ),
                 );
               }),
+              ),
             ),
           ),
           if (_carouselTapIndex >= 0) ...[
