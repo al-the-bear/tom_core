@@ -34,6 +34,7 @@ import 'widget_demos/demo_17_slivers.dart';
 import 'widget_demos/demo_18_animated.dart';
 import 'widget_demos/demo_19_effects.dart';
 import 'widget_demos/demo_20_interactions.dart';
+import 'widget_demos/demo_21_resource_resolution.dart';
 
 /// Global locale settings service instance.
 final localeSettingsService = LocaleSettingsService();
@@ -416,6 +417,11 @@ class WidgetDemosTab extends StatelessWidget {
           title: 'Interactions',
           description: 'GestureDetector, Draggable, InkWell, MouseRegion',
           screen: InteractionsDemo(),
+        ),
+        const DemoTile(
+          title: 'Resource Resolution',
+          description: 'How widgets resolve labels, icons, tooltips from resources',
+          screen: ResourceResolutionDemo(),
         ),
       ],
     );

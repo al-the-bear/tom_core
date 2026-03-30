@@ -2702,6 +2702,193 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
         'Tracks mouse enter, exit, and hover events with cursor customization.',
     'demo20.mouseRegion.hint.label':
         'Essential for desktop and web hover effects',
+
+    // ==========================================================================
+    // Demo 21: Resource Resolution
+    // ==========================================================================
+
+    // Section Headers
+    'demo21.section.intro.title.label': 'Resource Resolution',
+    'demo21.section.intro.subtitle.label':
+        'How Tom UI widgets resolve parameters from resources',
+    'demo21.section.text.title.label': 'Text Resources',
+    'demo21.section.text.subtitle.label':
+        'Labels, titles, subtitles, descriptions via tomId',
+    'demo21.section.icons.title.label': 'Icon Resources',
+    'demo21.section.icons.subtitle.label':
+        'Icons, sizes, and semantic labels from resources',
+    'demo21.section.buttons.title.label': 'Button Resources',
+    'demo21.section.buttons.subtitle.label':
+        'Labels, icons, and tooltips for buttons',
+    'demo21.section.inputs.title.label': 'Input Resources',
+    'demo21.section.inputs.subtitle.label':
+        'Hints, helpers, and error messages from resources',
+    'demo21.section.lists.title.label': 'List & Tile Resources',
+    'demo21.section.lists.subtitle.label':
+        'Titles, subtitles, and leading icons for list items',
+    'demo21.section.interactive.title.label': 'Interactive Resources',
+    'demo21.section.interactive.subtitle.label':
+        'Tooltips, banners, and user feedback messages',
+
+    // Introduction Card
+    'demo21.intro.icon.icon': 'mAutoAwesome',
+    'demo21.intro.title.label': 'How Resource Resolution Works',
+    'demo21.intro.description.label':
+        'All widgets use tomId to resolve their parameters from a central resource adapter.',
+    'demo21.intro.explanation.label':
+        'Instead of hardcoding labels, icons, and other parameters directly in your widgets, '
+        'you provide a tomId and the widget looks up all its parameters from the resource adapter. '
+        'This enables internationalization, theming, and easy content updates.',
+    'demo21.intro.tip.message':
+        'Tip: All text you see in this demo is resolved from resources, not hardcoded!',
+
+    // Text Resources Demo Card
+    'demo21.textDemo.icon.icon': 'mTextFields',
+    'demo21.textDemo.title.label': 'TomText & TomBadge',
+    'demo21.textDemo.description.label':
+        'Text widgets resolve their content from the .label suffix.',
+    'demo21.textDemo.display.label': 'Display Text from Resources',
+    'demo21.textDemo.body.label':
+        'This body text is resolved from demo21.textDemo.body.label in the resource adapter.',
+    'demo21.textDemo.caption.label':
+        'Caption text demonstrating smaller text resolution',
+
+    // Badge Demo Card
+    'demo21.badgeDemo.icon.icon': 'mLabel',
+    'demo21.badgeDemo.title.label': 'TomBadge Examples',
+    'demo21.badgeDemo.description.label':
+        'Badges resolve their label from resources.',
+    'demo21.badgeDemo.new.label': 'NEW',
+    'demo21.badgeDemo.featured.label': 'FEATURED',
+    'demo21.badgeDemo.sale.label': 'SALE',
+
+    // Icon Resources Demo Card
+    'demo21.iconDemo.icon.icon': 'mCategory',
+    'demo21.iconDemo.title.label': 'TomIcon',
+    'demo21.iconDemo.description.label':
+        'Icons resolve icon name, size, and alt text from resources.',
+    'demo21.iconDemo.home.icon': 'mHome',
+    'demo21.iconDemo.home.alt': 'Navigate to home',
+    'demo21.iconDemo.settings.icon': 'mSettings',
+    'demo21.iconDemo.settings.alt': 'Open settings',
+    'demo21.iconDemo.user.icon': 'mPerson',
+    'demo21.iconDemo.user.alt': 'User profile',
+    'demo21.iconDemo.notification.icon': 'mNotifications',
+    'demo21.iconDemo.notification.alt': 'View notifications',
+    'demo21.iconDemo.sizeLabel.label': 'Icons with size from resources:',
+    'demo21.iconDemo.small.icon': 'mStar',
+    'demo21.iconDemo.small.size': '16',
+    'demo21.iconDemo.medium.icon': 'mStar',
+    'demo21.iconDemo.medium.size': '24',
+    'demo21.iconDemo.large.icon': 'mStar',
+    'demo21.iconDemo.large.size': '36',
+
+    // Elevated Button Demo Card
+    'demo21.elevatedDemo.icon.icon': 'mSmartButton',
+    'demo21.elevatedDemo.title.label': 'TomElevatedButton',
+    'demo21.elevatedDemo.description.label':
+        'Buttons resolve label and icon from resources.',
+    'demo21.elevatedDemo.save.label': 'Save',
+    'demo21.elevatedDemo.save.icon': 'mSave',
+    'demo21.elevatedDemo.cancel.label': 'Cancel',
+    'demo21.elevatedDemo.cancel.icon': 'mCancel',
+    'demo21.elevatedDemo.submit.label': 'Submit',
+    'demo21.elevatedDemo.submit.icon': 'mSend',
+
+    // Filled Button Demo Card
+    'demo21.filledDemo.icon.icon': 'mRectangle',
+    'demo21.filledDemo.title.label': 'TomFilledButton',
+    'demo21.filledDemo.description.label':
+        'Filled buttons with label and icon from resources.',
+    'demo21.filledDemo.add.label': 'Add Item',
+    'demo21.filledDemo.add.icon': 'mAdd',
+    'demo21.filledDemo.edit.label': 'Edit',
+    'demo21.filledDemo.edit.icon': 'mEdit',
+    'demo21.filledDemo.delete.label': 'Delete',
+    'demo21.filledDemo.delete.icon': 'mDelete',
+
+    // Icon Button Demo Card
+    'demo21.iconButtonDemo.icon.icon': 'mTouchApp',
+    'demo21.iconButtonDemo.title.label': 'TomIconButton',
+    'demo21.iconButtonDemo.description.label':
+        'Icon buttons resolve icon and tooltip from resources.',
+    'demo21.iconButtonDemo.refresh.icon': 'mRefresh',
+    'demo21.iconButtonDemo.refresh.tooltip': 'Refresh content',
+    'demo21.iconButtonDemo.search.icon': 'mSearch',
+    'demo21.iconButtonDemo.search.tooltip': 'Search',
+    'demo21.iconButtonDemo.filter.icon': 'mFilterList',
+    'demo21.iconButtonDemo.filter.tooltip': 'Filter results',
+    'demo21.iconButtonDemo.add.icon': 'mAdd',
+    'demo21.iconButtonDemo.add.tooltip': 'Add new item',
+
+    // Input Demo Card
+    'demo21.inputDemo.icon.icon': 'mInput',
+    'demo21.inputDemo.title.label': 'TomTextField',
+    'demo21.inputDemo.description.label':
+        'Inputs resolve label, hint, helper, and error messages from resources.',
+    'demo21.inputDemo.username.label': 'Username',
+    'demo21.inputDemo.username.hint': 'Enter your username',
+    'demo21.inputDemo.username.helper': 'Letters and numbers only',
+    'demo21.inputDemo.email.label': 'Email Address',
+    'demo21.inputDemo.email.hint': 'Enter your email',
+    'demo21.inputDemo.email.helper': 'We will never share your email',
+    'demo21.inputDemo.email.errorFormat': 'Email is required',
+    'demo21.inputDemo.email.errorInvalid': 'Please enter a valid email address',
+    'demo21.inputDemo.password.label': 'Password',
+    'demo21.inputDemo.password.hint': 'Enter your password',
+    'demo21.inputDemo.password.helper': 'At least 8 characters',
+    'demo21.inputDemo.validate.label': 'Validate Form',
+
+    // List Demo Card
+    'demo21.listDemo.icon.icon': 'mList',
+    'demo21.listDemo.title.label': 'TomListTile',
+    'demo21.listDemo.description.label':
+        'List tiles resolve title, subtitle, and leading icon from resources.',
+    'demo21.listDemo.profile.titleText': 'Profile',
+    'demo21.listDemo.profile.subtitle': 'View and edit your profile',
+    'demo21.listDemo.profile.leading.icon': 'mPerson',
+    'demo21.listDemo.settings.titleText': 'Settings',
+    'demo21.listDemo.settings.subtitle': 'App preferences and configuration',
+    'demo21.listDemo.settings.leading.icon': 'mSettings',
+    'demo21.listDemo.help.titleText': 'Help & Support',
+    'demo21.listDemo.help.subtitle': 'FAQ, documentation, and contact',
+    'demo21.listDemo.help.leading.icon': 'mHelp',
+
+    // Expansion Demo Card
+    'demo21.expansionDemo.icon.icon': 'mExpandMore',
+    'demo21.expansionDemo.title.label': 'TomExpansionTile',
+    'demo21.expansionDemo.description.label':
+        'Expansion tiles resolve title and children from resources.',
+    'demo21.expansionDemo.general.titleText': 'General Settings',
+    'demo21.expansionDemo.general.leading.icon': 'mTune',
+    'demo21.expansionDemo.general.theme.titleText': 'Theme',
+    'demo21.expansionDemo.general.theme.subtitle': 'Light, dark, or system',
+    'demo21.expansionDemo.general.language.titleText': 'Language',
+    'demo21.expansionDemo.general.language.subtitle': 'Select your language',
+    'demo21.expansionDemo.privacy.titleText': 'Privacy Settings',
+    'demo21.expansionDemo.privacy.leading.icon': 'mSecurity',
+    'demo21.expansionDemo.privacy.data.titleText': 'Data Collection',
+    'demo21.expansionDemo.privacy.data.subtitle': 'Manage your data preferences',
+    'demo21.expansionDemo.privacy.cookies.titleText': 'Cookie Settings',
+    'demo21.expansionDemo.privacy.cookies.subtitle': 'Control cookie usage',
+
+    // Interactive Demo Card
+    'demo21.interactiveDemo.icon.icon': 'mTouchApp',
+    'demo21.interactiveDemo.title.label': 'Interactive Widgets',
+    'demo21.interactiveDemo.description.label':
+        'Tooltips and banners resolve their messages from resources.',
+    'demo21.interactiveDemo.tooltipLabel.label': 'Hover over these items:',
+    'demo21.interactiveDemo.tooltip1.message':
+        'This tooltip message comes from resources!',
+    'demo21.interactiveDemo.tooltip1.content.label': 'Hover me (tooltip 1)',
+    'demo21.interactiveDemo.tooltip2.message':
+        'Another tooltip with resource-based content',
+    'demo21.interactiveDemo.tooltip2.content.label': 'Hover me (tooltip 2)',
+    'demo21.interactiveDemo.bannerLabel.label': 'Banner messages from resources:',
+    'demo21.interactiveDemo.success.message':
+        'Success! Operation completed successfully.',
+    'demo21.interactiveDemo.warning.message':
+        'Warning: Please review before continuing.',
   };
 
   /// Structured data resources (lists, maps) for Phase 1 typed resolution.
