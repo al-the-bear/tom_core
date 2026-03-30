@@ -491,6 +491,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             ),
             isThreeLine: true,
             trailing: TomIconButton(
+              tooltip: 'More options',
               icon: const Icon(Icons.more_vert),
               onPressed: () {},
             ),

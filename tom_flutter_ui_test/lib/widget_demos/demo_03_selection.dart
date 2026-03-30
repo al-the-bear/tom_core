@@ -776,25 +776,24 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           // Row 1: Label + Dropdown side by side
           .append(TomText(tomId: 'demo03.aclDropdown.categoryLabel'))
           .append(
-            TomExpanded(
-              child: TomDropdownButton<String>(
-                tomId: 'demo03.aclDropdown.category',
-                value: _selectedCategory,
-                isExpanded: true,
-                items: _categoryKeys
-                    .map((key) => TomDropdownMenuItem<String>(
-                          tomId: 'demo03.data.category.$key',
-                          value: key,
-                          child: TomText(tomId: 'demo03.data.category.$key'),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() => _selectedCategory = value);
-                },
-              ),
+            TomDropdownButton<String>(
+              tomId: 'demo03.aclDropdown.category',
+              value: _selectedCategory,
+              isExpanded: true,
+              items: _categoryKeys
+                  .map((key) => TomDropdownMenuItem<String>(
+                        tomId: 'demo03.data.category.$key',
+                        value: key,
+                        child: TomText(tomId: 'demo03.data.category.$key'),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => _selectedCategory = value);
+              },
             ),
             dist: 16,
           )
+          .expandX()
           .newRow(dist: 16)
           // Row 2: Label + Dropdown Menu
           .append(TomText(tomId: 'demo03.aclDropdown.sizeLabel'))
@@ -826,21 +825,20 @@ class _SelectionDemoContentState extends State<_SelectionDemoContent> {
           // Row 1: Label + Sliding segmented
           .append(TomText(tomId: 'demo03.aclSegmented.periodLabel'))
           .append(
-            TomExpanded(
-              child: TomCupertinoSlidingSegmentedControl<int>(
-                groupValue: _slidingValue,
-                children: {
-                  0: TomText(tomId: 'demo03.aclSegmented.day'),
-                  1: TomText(tomId: 'demo03.aclSegmented.week'),
-                  2: TomText(tomId: 'demo03.aclSegmented.month'),
-                },
-                onValueChanged: (value) {
-                  setState(() => _slidingValue = value!);
-                },
-              ),
+            TomCupertinoSlidingSegmentedControl<int>(
+              groupValue: _slidingValue,
+              children: {
+                0: TomText(tomId: 'demo03.aclSegmented.day'),
+                1: TomText(tomId: 'demo03.aclSegmented.week'),
+                2: TomText(tomId: 'demo03.aclSegmented.month'),
+              },
+              onValueChanged: (value) {
+                setState(() => _slidingValue = value!);
+              },
             ),
             dist: 16,
           )
+          .expandX()
           .newRow(dist: 24)
           // Row 2: Action buttons
           .append(

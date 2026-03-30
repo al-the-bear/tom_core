@@ -692,6 +692,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
           const TomSizedBox(height: 12),
           if (_droppedColors.isNotEmpty)
             TomFilledButton(
+              label: 'Reset',
               tonal: true,
               onPressed: () => setState(() {
                 _droppedColors.clear();
@@ -888,11 +889,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                       runSpacing: 12,
                       children: [
                         TomFilledButton(
+                          label: 'Button 1',
                           onPressed: () =>
                               setState(() => _blockedTapCount++),
                           child: const TomText(text: 'Button 1'),
                         ),
                         TomFilledButton(
+                          label: 'Button 2',
                           tonal: true,
                           onPressed: () =>
                               setState(() => _blockedTapCount++),

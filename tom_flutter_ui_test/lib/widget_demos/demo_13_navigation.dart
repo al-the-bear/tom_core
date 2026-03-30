@@ -996,6 +996,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomIconButton(
+                tooltip: 'Previous page',
                 icon: const Icon(Icons.chevron_left),
                 onPressed: _currentPage > 0
                     ? () {
@@ -1008,6 +1009,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ),
               const TomSizedBox(width: 16),
               TomIconButton(
+                tooltip: 'Next page',
                 icon: const Icon(Icons.chevron_right),
                 onPressed: _currentPage < 3
                     ? () {

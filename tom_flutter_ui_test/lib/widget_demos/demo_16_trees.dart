@@ -642,19 +642,23 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
           TomRow(
             children: [
               TomIconButton(
+                tooltip: 'New folder',
                 icon: const Icon(Icons.create_new_folder),
                 onPressed: () {},
               ),
               TomIconButton(
+                tooltip: 'New file',
                 icon: const Icon(Icons.note_add),
                 onPressed: () {},
               ),
               const TomSpacer(),
               TomIconButton(
+                tooltip: 'List view',
                 icon: const Icon(Icons.view_list),
                 onPressed: () {},
               ),
               TomIconButton(
+                tooltip: 'Grid view',
                 icon: const Icon(Icons.grid_view),
                 onPressed: () {},
               ),

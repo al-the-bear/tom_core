@@ -906,6 +906,7 @@ class _AnimatedListItem extends StatelessWidget {
         title: TomText(text: title),
         subtitle: const TomText(text: 'Animated entry/exit'),
         trailing: TomIconButton(
+          tooltip: 'Remove item',
           icon: const Icon(Icons.close),
           onPressed: onRemove,
         ),

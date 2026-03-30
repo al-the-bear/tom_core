@@ -376,6 +376,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                           ),
                           const TomSizedBox(width: 8),
                           TomIconButton(
+                            tooltip: 'Favorite',
                             icon: const Icon(Icons.favorite_border),
                             onPressed: () {},
                           ),
@@ -1037,18 +1038,17 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
           // Row 1: Label + Card with elevation slider
           .append(TomText(tomId: 'demo06.aclCard.elevationLabel'))
           .append(
-            TomExpanded(
-              child: TomSlider(
-                value: _aclElevation,
-                min: 0,
-                max: 12,
-                divisions: 12,
-                label: _aclElevation.round().toString(),
-                onChanged: (v) => setState(() => _aclElevation = v),
-              ),
+            TomSlider(
+              value: _aclElevation,
+              min: 0,
+              max: 12,
+              divisions: 12,
+              label: _aclElevation.round().toString(),
+              onChanged: (v) => setState(() => _aclElevation = v),
             ),
             dist: 16,
           )
+          .expandX()
           .append(
             TomText(
               text: '${_aclElevation.round()}dp',
@@ -1061,51 +1061,49 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
           .newRow(dist: 16)
           // Row 2: Preview card
           .append(
-            TomExpanded(
-              child: TomCard(
-                elevation: _aclElevation,
-                child: TomPadding(
-                  padding: const EdgeInsets.all(16),
-                  child: TomRow(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      TomIcon(
-                        icon: Icons.auto_awesome,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const TomSizedBox(width: 8),
-                      TomText(
-                        tomId: 'demo06.aclCard.previewText',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
+            TomCard(
+              elevation: _aclElevation,
+              child: TomPadding(
+                padding: const EdgeInsets.all(16),
+                child: TomRow(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TomIcon(
+                      icon: Icons.auto_awesome,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const TomSizedBox(width: 8),
+                    TomText(
+                      tomId: 'demo06.aclCard.previewText',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
                 ),
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 16)
           // Row 3: Expansion tile
           .append(
-            TomExpanded(
-              child: TomExpansionTile(
-                leading: const Icon(Icons.info_outline),
-                titleText: 'More Information',
-                initiallyExpanded: _aclExpanded,
-                onExpansionChanged: (v) =>
-                    setState(() => _aclExpanded = v),
-                children: [
-                  TomPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    child: TomText(
-                      tomId: 'demo06.aclCard.moreInfo',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+            TomExpansionTile(
+              leading: const Icon(Icons.info_outline),
+              titleText: 'More Information',
+              initiallyExpanded: _aclExpanded,
+              onExpansionChanged: (v) =>
+                  setState(() => _aclExpanded = v),
+              children: [
+                TomPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: TomText(
+                    tomId: 'demo06.aclCard.moreInfo',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           )
+          .expandX()
           .newRow(dist: 16)
           // Row 4: Buttons
           .append(

@@ -754,6 +754,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               return TomPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: TomFilledButton(
+                  label: '$i',
                   tonal: _indexedStackIndex != i,
                   onPressed: () => setState(() => _indexedStackIndex = i),
                   child: TomText(text: '$i'),
@@ -1556,72 +1557,71 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           // Row 1: Main axis alignment selector
           .append(TomText(tomId: 'demo07.aclLayout.mainAxisLabel'))
           .append(
-            TomExpanded(
-              child: TomWrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: mainAxisOptions.map((alignment) {
-                  final isSelected = alignment == _aclMainAxis;
-                  return TomFilledButton(
-                    tonal: !isSelected,
-                    onPressed: () =>
-                        setState(() => _aclMainAxis = alignment),
-                    child: TomText(
-                      text: alignment.name,
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  );
-                }).toList(),
-              ),
+            TomWrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: mainAxisOptions.map((alignment) {
+                final isSelected = alignment == _aclMainAxis;
+                return TomFilledButton(
+                  label: alignment.name,
+                  tonal: !isSelected,
+                  onPressed: () =>
+                      setState(() => _aclMainAxis = alignment),
+                  child: TomText(
+                    text: alignment.name,
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              }).toList(),
             ),
             dist: 8,
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 2: Cross axis alignment selector
           .append(TomText(tomId: 'demo07.aclLayout.crossAxisLabel'))
           .append(
-            TomExpanded(
-              child: TomWrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: crossAxisOptions.map((alignment) {
-                  final isSelected = alignment == _aclCrossAxis;
-                  return TomFilledButton(
-                    tonal: !isSelected,
-                    onPressed: () =>
-                        setState(() => _aclCrossAxis = alignment),
-                    child: TomText(
-                      text: alignment.name,
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  );
-                }).toList(),
-              ),
+            TomWrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: crossAxisOptions.map((alignment) {
+                final isSelected = alignment == _aclCrossAxis;
+                return TomFilledButton(
+                  label: alignment.name,
+                  tonal: !isSelected,
+                  onPressed: () =>
+                      setState(() => _aclCrossAxis = alignment),
+                  child: TomText(
+                    text: alignment.name,
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                );
+              }).toList(),
             ),
             dist: 8,
           )
+          .expandX()
           .newRow(dist: 16)
           // Row 3: Preview
           .append(
-            TomExpanded(
-              child: TomContainer(
-                height: 120,
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.outline),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomRow(
-                  mainAxisAlignment: _aclMainAxis,
-                  crossAxisAlignment: _aclCrossAxis,
-                  children: [
-                    _buildColorBox('A', theme.colorScheme.primary, size: 30),
-                    _buildColorBox('B', theme.colorScheme.secondary, size: 45),
-                    _buildColorBox('C', theme.colorScheme.tertiary, size: 35),
-                  ],
-                ),
+            TomContainer(
+              height: 120,
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outline),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TomRow(
+                mainAxisAlignment: _aclMainAxis,
+                crossAxisAlignment: _aclCrossAxis,
+                children: [
+                  _buildColorBox('A', theme.colorScheme.primary, size: 30),
+                  _buildColorBox('B', theme.colorScheme.secondary, size: 45),
+                  _buildColorBox('C', theme.colorScheme.tertiary, size: 35),
+                ],
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 4: Reset button
           .append(

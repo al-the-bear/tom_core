@@ -722,6 +722,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
               TomTooltip(
                 message: 'Save your work',
                 child: TomIconButton(
+                  tooltip: 'Save your work',
                   icon: const Icon(Icons.save),
                   onPressed: () {},
                 ),
@@ -730,6 +731,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                 message: 'Share with others',
                 waitDuration: const Duration(milliseconds: 500),
                 child: TomIconButton(
+                  tooltip: 'Share with others',
                   icon: const Icon(Icons.share),
                   onPressed: () {},
                 ),
@@ -738,6 +740,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                 message: 'Delete permanently',
                 preferBelow: false,
                 child: TomIconButton(
+                  tooltip: 'Delete permanently',
                   icon: Icon(
                     Icons.delete_outline,
                     color: theme.colorScheme.error,
@@ -746,6 +749,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                 ),
               ),
               TomTooltip(
+                message: 'Rich tooltip with styled text',
                 richMessage: TextSpan(
                   children: [
                     const TextSpan(
@@ -762,6 +766,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   ],
                 ),
                 child: TomIconButton(
+                  tooltip: 'Info',
                   icon: const Icon(Icons.info_outline),
                   onPressed: () {},
                 ),
@@ -1001,20 +1006,19 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           // Row 1: Dialog type selector
           .append(TomText(tomId: 'demo09.aclDialog.typeLabel'))
           .append(
-            TomExpanded(
-              child: TomSegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'alert', label: Text('Alert')),
-                  ButtonSegment(value: 'simple', label: Text('Simple')),
-                  ButtonSegment(value: 'sheet', label: Text('Sheet')),
-                ],
-                selected: {_aclDialogType},
-                onSelectionChanged: (v) =>
-                    setState(() => _aclDialogType = v.first),
-              ),
+            TomSegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'alert', label: Text('Alert')),
+                ButtonSegment(value: 'simple', label: Text('Simple')),
+                ButtonSegment(value: 'sheet', label: Text('Sheet')),
+              ],
+              selected: {_aclDialogType},
+              onSelectionChanged: (v) =>
+                  setState(() => _aclDialogType = v.first),
             ),
             dist: 8,
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 2: Barrier dismissible toggle
           .append(TomText(tomId: 'demo09.aclDialog.barrierLabel'))
@@ -1028,24 +1032,23 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           .newRow(dist: 12)
           // Row 3: Preview of current settings
           .append(
-            TomExpanded(
-              child: TomContainer(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomText(
-                  text: 'Type: $_aclDialogType | '
-                      'Dismissible: $_aclBarrierDismissible',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontFamily: 'monospace',
-                      ),
-                ),
+            TomContainer(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TomText(
+                text: 'Type: $_aclDialogType | '
+                    'Dismissible: $_aclBarrierDismissible',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 4: Launch button
           .append(

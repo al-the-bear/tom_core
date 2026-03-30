@@ -655,6 +655,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomFilledButton(
+                label: 'Reset Zoom',
                 tonal: true,
                 onPressed: () {
                   _transformationController.value = Matrix4.identity();
@@ -766,6 +767,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
           TomRow(
             children: [
               TomFilledButton(
+                label: 'Toggle Visibility',
                 tonal: _isVisible,
                 onPressed: () => setState(() => _isVisible = !_isVisible),
                 child: TomText(
@@ -774,6 +776,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
               ),
               const TomSizedBox(width: 8),
               TomFilledButton(
+                label: 'Toggle Maintain Size',
                 tonal: _maintainSize,
                 onPressed: () =>
                     setState(() => _maintainSize = !_maintainSize),
@@ -847,6 +850,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
           TomRow(
             children: [
               TomFilledButton(
+                label: 'Toggle Offstage',
                 tonal: !_isOffstage,
                 onPressed: () => setState(() => _isOffstage = !_isOffstage),
                 child: TomText(
@@ -960,18 +964,17 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
           // Row 1: Sheet size control
           .append(TomText(tomId: 'demo08.aclScroll.sheetSizeLabel'))
           .append(
-            TomExpanded(
-              child: TomSlider(
-                value: _aclSheetSize,
-                min: 0.2,
-                max: 1.0,
-                divisions: 8,
-                label: '${(_aclSheetSize * 100).round()}%',
-                onChanged: (v) => setState(() => _aclSheetSize = v),
-              ),
+            TomSlider(
+              value: _aclSheetSize,
+              min: 0.2,
+              max: 1.0,
+              divisions: 8,
+              label: '${(_aclSheetSize * 100).round()}%',
+              onChanged: (v) => setState(() => _aclSheetSize = v),
             ),
             dist: 8,
           )
+          .expandX()
           .append(
             TomText(
               text: '${(_aclSheetSize * 100).round()}%',
@@ -994,74 +997,73 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
           .newRow(dist: 16)
           // Row 3: Preview area with scroll view
           .append(
-            TomExpanded(
-              child: TomContainer(
-                height: 120,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
+            TomContainer(
+              height: 120,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outline,
                 ),
-                clipBehavior: Clip.hardEdge,
-                child: TomStack(
-                  children: [
-                    TomSingleChildScrollView(
-                      child: TomPadding(
-                        padding: const EdgeInsets.all(8),
-                        child: TomColumn(
-                          children: List.generate(8, (i) {
-                            return TomPadding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: TomText(
-                                text: 'Background row ${i + 1}',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: 0.5),
-                                    ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ),
-                    ),
-                    TomAlign(
-                      alignment: Alignment.bottomCenter,
-                      child: TomContainer(
-                        height: 120 * _aclSheetSize,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(12),
-                          ),
-                        ),
-                        child: TomCenter(
-                          child: TomText(
-                            text:
-                                'Sheet: ${(_aclSheetSize * 100).round()}% '
-                                '${_aclSnap ? "(snap)" : "(free)"}',
-                            style: TextStyle(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: TomStack(
+                children: [
+                  TomSingleChildScrollView(
+                    child: TomPadding(
+                      padding: const EdgeInsets.all(8),
+                      child: TomColumn(
+                        children: List.generate(8, (i) {
+                          return TomPadding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: TomText(
+                              text: 'Background row ${i + 1}',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant
+                                        .withValues(alpha: 0.5),
+                                  ),
                             ),
+                          );
+                        }),
+                      ),
+                    ),
+                  ),
+                  TomAlign(
+                    alignment: Alignment.bottomCenter,
+                    child: TomContainer(
+                      height: 120 * _aclSheetSize,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      child: TomCenter(
+                        child: TomText(
+                          text:
+                              'Sheet: ${(_aclSheetSize * 100).round()}% '
+                              '${_aclSnap ? "(snap)" : "(free)"}',
+                          style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 4: Buttons
           .append(

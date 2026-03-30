@@ -373,6 +373,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 ),
                 const TomSizedBox(height: 16),
                 TomFilledButton(
+                  label: 'Toggle Day/Night',
                   onPressed: () => setState(() {
                     _crossFadeState = _crossFadeState == CrossFadeState.showFirst
                         ? CrossFadeState.showSecond
@@ -467,6 +468,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     (index) => Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: TomIconButton(
+                        tooltip: 'Switch to icon ${index + 1}',
                         onPressed: () => setState(() => _switcherIndex = index),
                         style: IconButton.styleFrom(
                           backgroundColor: _switcherIndex == index
@@ -728,19 +730,25 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 TomWrap(
                   spacing: 8,
                   children: [
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Small',
+                      tonal: true,
                       onPressed: () => setState(
                         () => _padding = const EdgeInsets.all(8),
                       ),
                       child: const TomText(text: 'Small'),
                     ),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Medium',
+                      tonal: true,
                       onPressed: () => setState(
                         () => _padding = const EdgeInsets.all(24),
                       ),
                       child: const TomText(text: 'Medium'),
                     ),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Asymmetric',
+                      tonal: true,
                       onPressed: () => setState(
                         () => _padding = const EdgeInsets.symmetric(
                           horizontal: 40,
@@ -812,6 +820,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 ),
                 const TomSizedBox(height: 16),
                 TomFilledButton(
+                  label: 'Toggle Size',
                   onPressed: () => setState(() => _sizeExpanded = !_sizeExpanded),
                   child: TomText(text: _sizeExpanded ? 'Collapse' : 'Expand'),
                 ),
@@ -1034,18 +1043,22 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
             spacing: 8,
             children: [
               TomFilledButton(tonal: true,
+                label: '0°',
                 onPressed: () => setState(() => _turns = 0),
                 child: const TomText(text: '0°'),
               ),
               TomFilledButton(tonal: true,
+                label: '90°',
                 onPressed: () => setState(() => _turns = 0.25),
                 child: const TomText(text: '90°'),
               ),
               TomFilledButton(tonal: true,
+                label: '180°',
                 onPressed: () => setState(() => _turns = 0.5),
                 child: const TomText(text: '180°'),
               ),
               TomFilledButton(tonal: true,
+                label: '360°',
                 onPressed: () => setState(() => _turns = 1),
                 child: const TomText(text: '360°'),
               ),
@@ -1227,17 +1240,22 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Fade In',
+                      tonal: true,
                       onPressed: () => _fadeController.forward(),
                       child: const TomText(text: 'Fade In'),
                     ),
                     const TomSizedBox(width: 8),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Fade Out',
+                      tonal: true,
                       onPressed: () => _fadeController.reverse(),
                       child: const TomText(text: 'Fade Out'),
                     ),
                     const TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
+                      tooltip: 'Replay fade animation',
                       onPressed: () {
                         if (_fadeController.isCompleted) {
                           _fadeController.reverse();
@@ -1302,17 +1320,22 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Scale Up',
+                      tonal: true,
                       onPressed: () => _scaleController.forward(),
                       child: const TomText(text: 'Scale Up'),
                     ),
                     const TomSizedBox(width: 8),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Scale Down',
+                      tonal: true,
                       onPressed: () => _scaleController.reverse(),
                       child: const TomText(text: 'Scale Down'),
                     ),
                     const TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
+                      tooltip: 'Replay scale animation',
                       onPressed: () => _scaleController
                         ..reset()
                         ..forward(),
@@ -1373,22 +1396,29 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Rotate',
+                      tonal: true,
                       onPressed: () => _rotationController.forward(),
                       child: const TomText(text: 'Rotate'),
                     ),
                     const TomSizedBox(width: 8),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Reverse',
+                      tonal: true,
                       onPressed: () => _rotationController.reverse(),
                       child: const TomText(text: 'Reverse'),
                     ),
                     const TomSizedBox(width: 8),
-                    TomFilledButton(tonal: true,
+                    TomFilledButton(
+                      label: 'Loop',
+                      tonal: true,
                       onPressed: () => _rotationController.repeat(),
                       child: const TomText(text: 'Loop'),
                     ),
                     const TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
+                      tooltip: 'Stop rotation',
                       onPressed: () => _rotationController.stop(),
                       icon: const TomIcon(icon: Icons.stop),
                     ),
@@ -1548,7 +1578,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const TomSizedBox(height: 16),
-          TomFilledButton(tonal: true,
+          TomFilledButton(
+            label: 'Back to Grid',
+            tonal: true,
             onPressed: () => setState(() => _showHeroDetail = false),
             child: const TomText(text: 'Back to Grid'),
           ),

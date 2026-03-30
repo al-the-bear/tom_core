@@ -242,7 +242,10 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
                     TomDataCell(child: TomText(text: '${p.id}')),
                     TomDataCell(child: TomText(text: p.name)),
                     TomDataCell(
-                      child: TomChip(label: Text(p.category)),
+                      child: TomChip(
+                        labelText: p.category,
+                        label: Text(p.category),
+                      ),
                     ),
                     TomDataCell(
                       child: TomText(
@@ -296,6 +299,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
               ),
               actions: [
                 TomIconButton(
+                  tooltip: 'Refresh data',
                   icon: const Icon(Icons.refresh),
                   onPressed: () {
                     setState(() {
@@ -516,70 +520,67 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
       child: AclBuilder()
           // Row 1: Info text
           .append(
-            TomExpanded(
-              child: TomText(
-                tomId: 'demo10.reorderable.infoLabel',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+            TomText(
+              tomId: 'demo10.reorderable.infoLabel',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 2: Reorderable list
           .append(
-            TomExpanded(
-              child: TomContainer(
-                height: 300,
-                decoration: BoxDecoration(
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                clipBehavior: Clip.hardEdge,
-                child: TomReorderableListView(
-                  tomId: 'demo10.reorderable.list',
-                  padding: const EdgeInsets.all(8),
-                  onReorder: (oldIndex, newIndex) {
-                    setState(() {
-                      if (newIndex > oldIndex) {
-                        newIndex -= 1;
-                      }
-                      final item = _reorderableItems.removeAt(oldIndex);
-                      _reorderableItems.insert(newIndex, item);
-                    });
-                  },
-                  children: [
-                    for (int i = 0; i < _reorderableItems.length; i++)
-                      _ReorderableItem(
-                        key: ValueKey(_reorderableItems[i]),
-                        title: _reorderableItems[i],
-                        index: i,
-                      ),
-                  ],
-                ),
+            TomContainer(
+              height: 300,
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outlineVariant),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: TomReorderableListView(
+                tomId: 'demo10.reorderable.list',
+                padding: const EdgeInsets.all(8),
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) {
+                      newIndex -= 1;
+                    }
+                    final item = _reorderableItems.removeAt(oldIndex);
+                    _reorderableItems.insert(newIndex, item);
+                  });
+                },
+                children: [
+                  for (int i = 0; i < _reorderableItems.length; i++)
+                    _ReorderableItem(
+                      key: ValueKey(_reorderableItems[i]),
+                      title: _reorderableItems[i],
+                      index: i,
+                    ),
+                ],
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 3: Current order display
           .append(
-            TomExpanded(
-              child: TomContainer(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TomText(
-                  text: 'Order: ${_reorderableItems.join(', ')}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
+            TomContainer(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: TomText(
+                text: 'Order: ${_reorderableItems.join(', ')}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
                 ),
               ),
             ),
           )
+          .expandX()
           .newRow(dist: 12)
           // Row 4: Reset button
           .append(

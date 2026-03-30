@@ -811,18 +811,17 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           // Row 1: Label + Slider
           .append(TomText(tomId: 'demo05.aclSlider.sliderLabel'))
           .append(
-            TomExpanded(
-              child: TomSlider(
-                value: _aclSlider,
-                min: 0,
-                max: 100,
-                divisions: 100,
-                label: _aclSlider.round().toString(),
-                onChanged: (v) => setState(() => _aclSlider = v),
-              ),
+            TomSlider(
+              value: _aclSlider,
+              min: 0,
+              max: 100,
+              divisions: 100,
+              label: _aclSlider.round().toString(),
+              onChanged: (v) => setState(() => _aclSlider = v),
             ),
             dist: 16,
           )
+          .expandX()
           .append(
             TomText(
               text: '${_aclSlider.round()}',
@@ -836,31 +835,29 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           // Row 2: Label + Range slider
           .append(TomText(tomId: 'demo05.aclSlider.rangeLabel'))
           .append(
-            TomExpanded(
-              child: TomRangeSlider(
-                values: _aclRange,
-                divisions: 20,
-                labels: RangeLabels(
-                  '${_aclRange.start.round()}',
-                  '${_aclRange.end.round()}',
-                ),
-                onChanged: (v) => setState(() => _aclRange = v),
+            TomRangeSlider(
+              values: _aclRange,
+              divisions: 20,
+              labels: RangeLabels(
+                '${_aclRange.start.round()}',
+                '${_aclRange.end.round()}',
               ),
+              onChanged: (v) => setState(() => _aclRange = v),
             ),
             dist: 16,
           )
+          .expandX()
           .newRow(dist: 16)
           // Row 3: Label + Cupertino slider
           .append(TomText(tomId: 'demo05.aclSlider.cupertinoLabel'))
           .append(
-            TomExpanded(
-              child: TomCupertinoSlider(
-                value: _aclCupertino,
-                onChanged: (v) => setState(() => _aclCupertino = v),
-              ),
+            TomCupertinoSlider(
+              value: _aclCupertino,
+              onChanged: (v) => setState(() => _aclCupertino = v),
             ),
             dist: 16,
           )
+          .expandX()
           .append(
             TomText(
               text: '${(_aclCupertino * 100).round()}%',
