@@ -1580,6 +1580,86 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo09.aclDialog.barrierLabel.label': 'Barrier Dismissible:',
     'demo09.aclDialog.launch.label': 'Launch Dialog',
     'demo09.aclDialog.reset.label': 'Reset',
+
+    // ==========================================================================
+    // Demo 10: Data Tables - Section Headers
+    // ==========================================================================
+    'demo10.section.dataTable.title.label': 'Data Tables',
+    'demo10.section.dataTable.subtitle.label':
+        'Sortable and selectable data tables with column headers',
+    'demo10.section.paginated.title.label': 'Paginated Tables',
+    'demo10.section.paginated.subtitle.label':
+        'Large datasets with pagination and row-per-page controls',
+    'demo10.section.table.title.label': 'Table Layouts',
+    'demo10.section.table.subtitle.label':
+        'Low-level table widget for custom grid layouts',
+    'demo10.section.grid.title.label': 'Grid Views',
+    'demo10.section.grid.subtitle.label':
+        'Grid layouts with configurable cross-axis count',
+    'demo10.section.acl.title.label': 'Reorderable Lists',
+    'demo10.section.acl.subtitle.label':
+        'Drag-and-drop reorderable lists with ACL builder layout',
+
+    // ==========================================================================
+    // Demo 10: TomDataTable Card
+    // ==========================================================================
+    'demo10.dataTable.icon.icon': 'mTableChart',
+    'demo10.dataTable.title.label': 'TomDataTable',
+    'demo10.dataTable.description.label':
+        'Material design data table with sorting, selection, and custom cells.',
+    'demo10.dataTable.selectedLabel.label': 'Selected:',
+    'demo10.dataTable.clearSelection.label': 'Clear',
+    'demo10.dataTable.col.id.label': 'ID',
+    'demo10.dataTable.col.name.label': 'Name',
+    'demo10.dataTable.col.category.label': 'Category',
+    'demo10.dataTable.col.price.label': 'Price',
+    'demo10.dataTable.col.stock.label': 'Stock',
+    'demo10.dataTable.col.status.label': 'Status',
+
+    // ==========================================================================
+    // Demo 10: TomPaginatedDataTable Card
+    // ==========================================================================
+    'demo10.paginatedTable.icon.icon': 'mViewList',
+    'demo10.paginatedTable.title.label': 'TomPaginatedDataTable',
+    'demo10.paginatedTable.description.label':
+        'Paginated data table for large datasets with navigation controls.',
+    'demo10.paginatedTable.infoLabel.label':
+        'Use pagination controls to navigate through data. Supports row-per-page selection.',
+    'demo10.paginatedTable.header.label': 'Product Inventory',
+    'demo10.paginatedTable.col.id.label': 'ID',
+    'demo10.paginatedTable.col.name.label': 'Product',
+    'demo10.paginatedTable.col.category.label': 'Category',
+    'demo10.paginatedTable.col.price.label': 'Price',
+
+    // ==========================================================================
+    // Demo 10: TomTable Card
+    // ==========================================================================
+    'demo10.table.icon.icon': 'mGridOn',
+    'demo10.table.title.label': 'TomTable',
+    'demo10.table.description.label':
+        'Low-level table widget for custom grid layouts with borders.',
+    'demo10.table.infoLabel.label':
+        'TomTable provides fine-grained control over table structure and styling.',
+
+    // ==========================================================================
+    // Demo 10: TomGridView Card
+    // ==========================================================================
+    'demo10.gridView.icon.icon': 'mApps',
+    'demo10.gridView.title.label': 'TomGridView',
+    'demo10.gridView.description.label':
+        'Scrollable grid of widgets with configurable layout.',
+    'demo10.gridView.columnsLabel.label': 'Columns:',
+
+    // ==========================================================================
+    // Demo 10: TomReorderableListView Card (ACL section)
+    // ==========================================================================
+    'demo10.reorderable.icon.icon': 'mDragIndicator',
+    'demo10.reorderable.title.label': 'TomReorderableListView',
+    'demo10.reorderable.description.label':
+        'Drag-and-drop reorderable list with AclBuilder controls.',
+    'demo10.reorderable.infoLabel.label':
+        'Drag items by the handle to reorder. The current order is shown below.',
+    'demo10.reorderable.reset.label': 'Reset Order',
   };
 
   @override
