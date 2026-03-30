@@ -159,28 +159,28 @@ class DemoCard extends StatelessWidget {
 
 ## Demo Views Overview
 
-| # | Demo Name | Widget Family | Widgets Covered | Key Features |
-|---|-----------|--------------|-----------------|--------------|
-| 1 | Button Showcase | Button | 12 | All button variants, states, sizes, icons |
-| 2 | Text Input Gallery | Input | 7 | Text fields, search, autocomplete, Cupertino |
-| 3 | Selection Controls | Select | 6 | Dropdowns, menus, pickers, segments |
-| 4 | Toggle & Switch Suite | Toggle | 8 | Switches, checkboxes, radios, toggle buttons |
-| 5 | Slider & Range Controls | Slider | 3 | Sliders, range, Cupertino, custom tracks |
-| 6 | Card & Panel Layouts | Container | 5 | Cards, expansion tiles/panels, Material |
-| 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints |
-| 8 | Scrollable Containers | Container | 10 | Scroll views, interactive viewer, draggable |
-| 9 | Dialog & Modal Gallery | Dialog | 10 | Dialogs, sheets, snackbars, tooltips |
-| 10 | Data Tables | Table | 5 | DataTable, paginated, Table, GridView |
-| 11 | Text & Label Display | Label | 6 | Text styles, badges, list tiles, chips |
-| 12 | Image & Icon Gallery | Image | 5 | Images, icons, avatars, animated icons |
-| 13 | Navigation Patterns | Navigation | 11 | Tabs, bars, rails, drawers, steppers |
-| 14 | Progress Indicators | Progress | 4 | Circular, linear, refresh, Cupertino |
-| 15 | List Views | List | 5 | ListView, animated, reorderable, dismissible |
-| 16 | Tree & Hierarchy | Tree | 2 | TreeSliver, nested expansion tiles |
-| 17 | Sliver Compositions | Sliver | 18 | All sliver widgets, complex layouts |
-| 18 | Animated Transitions | Animated | 19 | Implicit animations, heroes, transitions |
-| 19 | Effects & Filters | Effect | 6 | Backdrop, color filters, shaders, selection |
-| 20 | Interactions & Gestures | Interaction | 9 | Gestures, ink, drag-drop, pointer handling |
+| # | Demo Name | Widget Family | Widgets Covered | Key Features | Done | Implemented on |
+|---|-----------|--------------|-----------------|--------------|:----:|----------------|
+| 1 | Button Showcase | Button | 12 | All button variants, states, sizes, icons | ✅ | 2026-03-24 |
+| 2 | Text Input Gallery | Input | 7 | Text fields, search, autocomplete, Cupertino | ✅ | 2026-03-24 |
+| 3 | Selection Controls | Select | 6 | Dropdowns, menus, pickers, segments | ✅ | 2026-03-24 |
+| 4 | Toggle & Switch Suite | Toggle | 8 | Switches, checkboxes, radios, toggle buttons | | |
+| 5 | Slider & Range Controls | Slider | 3 | Sliders, range, Cupertino, custom tracks | | |
+| 6 | Card & Panel Layouts | Container | 5 | Cards, expansion tiles/panels, Material | | |
+| 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints | | |
+| 8 | Scrollable Containers | Container | 10 | Scroll views, interactive viewer, draggable | | |
+| 9 | Dialog & Modal Gallery | Dialog | 10 | Dialogs, sheets, snackbars, tooltips | | |
+| 10 | Data Tables | Table | 5 | DataTable, paginated, Table, GridView | | |
+| 11 | Text & Label Display | Label | 6 | Text styles, badges, list tiles, chips | | |
+| 12 | Image & Icon Gallery | Image | 5 | Images, icons, avatars, animated icons | | |
+| 13 | Navigation Patterns | Navigation | 11 | Tabs, bars, rails, drawers, steppers | | |
+| 14 | Progress Indicators | Progress | 4 | Circular, linear, refresh, Cupertino | | |
+| 15 | List Views | List | 5 | ListView, animated, reorderable, dismissible | | |
+| 16 | Tree & Hierarchy | Tree | 2 | TreeSliver, nested expansion tiles | | |
+| 17 | Sliver Compositions | Sliver | 18 | All sliver widgets, complex layouts | | |
+| 18 | Animated Transitions | Animated | 19 | Implicit animations, heroes, transitions | | |
+| 19 | Effects & Filters | Effect | 6 | Backdrop, color filters, shaders, selection | | |
+| 20 | Interactions & Gestures | Interaction | 9 | Gestures, ink, drag-drop, pointer handling | | |
 
 ---
 
