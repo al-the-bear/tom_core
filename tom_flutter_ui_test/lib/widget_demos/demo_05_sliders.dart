@@ -379,6 +379,8 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           const TomSizedBox(height: 8),
           TomRangeSlider(
             values: const RangeValues(30, 70),
+            min: 0,
+            max: 100,
             onChanged: null,
           ),
         ],
