@@ -103,9 +103,14 @@ class _DemoScaffoldState extends State<DemoScaffold> {
               ]
             : null,
       ),
-      body: AclDirectionScope(
-        direction: _direction!,
-        child: body,
+      body: Directionality(
+        textDirection: _direction == AclDirection.rtl
+            ? TextDirection.rtl
+            : TextDirection.ltr,
+        child: AclDirectionScope(
+          direction: _direction!,
+          child: body,
+        ),
       ),
     );
   }
