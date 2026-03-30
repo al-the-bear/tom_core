@@ -289,59 +289,49 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
             ),
           ),
           const TomSizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return TomSingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: TomPaginatedDataTable(
-                    tomId: 'demo10.paginatedTable.table',
-                    header: TomText(
-                      tomId: 'demo10.paginatedTable.header',
-                      style: theme.textTheme.titleMedium,
-                    ),
-                    actions: [
-                      TomIconButton(
-                        tooltip: 'Refresh data',
-                        icon: const Icon(Icons.refresh),
-                        onPressed: () {
-                          setState(() {
-                            _initSampleData();
-                            _productDataSource = _ProductDataSource(_products);
-                          });
-                        },
-                      ),
-                    ],
-                    rowsPerPage: _rowsPerPage,
-                    availableRowsPerPage: const [5, 10],
-                    onRowsPerPageChanged: (value) {
-                      if (value != null) {
-                        setState(() => _rowsPerPage = value);
-                      }
-                    },
-                    showFirstLastButtons: true,
-                    columns: [
-                      TomDataColumn(
-                        label: TomText(tomId: 'demo10.paginatedTable.col.id'),
-                        numeric: true,
-                      ),
-                      TomDataColumn(
-                        label: TomText(tomId: 'demo10.paginatedTable.col.name'),
-                      ),
-                      TomDataColumn(
-                        label: TomText(tomId: 'demo10.paginatedTable.col.category'),
-                      ),
-                      TomDataColumn(
-                        label: TomText(tomId: 'demo10.paginatedTable.col.price'),
-                        numeric: true,
-                      ),
-                    ],
-                    source: _productDataSource,
-                  ),
-                ),
-              );
+          TomPaginatedDataTable(
+            tomId: 'demo10.paginatedTable.table',
+            header: TomText(
+              tomId: 'demo10.paginatedTable.header',
+              style: theme.textTheme.titleMedium,
+            ),
+            actions: [
+              TomIconButton(
+                tooltip: 'Refresh data',
+                icon: const Icon(Icons.refresh),
+                onPressed: () {
+                  setState(() {
+                    _initSampleData();
+                    _productDataSource = _ProductDataSource(_products);
+                  });
+                },
+              ),
+            ],
+            rowsPerPage: _rowsPerPage,
+            availableRowsPerPage: const [5, 10],
+            onRowsPerPageChanged: (value) {
+              if (value != null) {
+                setState(() => _rowsPerPage = value);
+              }
             },
+            showFirstLastButtons: true,
+            columns: [
+              TomDataColumn(
+                label: TomText(tomId: 'demo10.paginatedTable.col.id'),
+                numeric: true,
+              ),
+              TomDataColumn(
+                label: TomText(tomId: 'demo10.paginatedTable.col.name'),
+              ),
+              TomDataColumn(
+                label: TomText(tomId: 'demo10.paginatedTable.col.category'),
+              ),
+              TomDataColumn(
+                label: TomText(tomId: 'demo10.paginatedTable.col.price'),
+                numeric: true,
+              ),
+            ],
+            source: _productDataSource,
           ),
         ],
       ),
