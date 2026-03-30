@@ -165,7 +165,7 @@ class DemoCard extends StatelessWidget {
 | 2 | Text Input Gallery | Input | 7 | Text fields, search, autocomplete, Cupertino | ✅ | 2026-03-24 |
 | 3 | Selection Controls | Select | 6 | Dropdowns, menus, pickers, segments | ✅ | 2026-03-24 |
 | 4 | Toggle & Switch Suite | Toggle | 8 | Switches, checkboxes, radios, toggle buttons | ✅ | 2026-03-30 |
-| 5 | Slider & Range Controls | Slider | 3 | Sliders, range, Cupertino, custom tracks | | |
+| 5 | Slider & Range Controls | Slider | 3 | Sliders, range, Cupertino, custom tracks | ✅ | 2026-03-30 |
 | 6 | Card & Panel Layouts | Container | 5 | Cards, expansion tiles/panels, Material | | |
 | 7 | Layout Containers | Container | 25 | Column, Row, Stack, Wrap, constraints | | |
 | 8 | Scrollable Containers | Container | 10 | Scroll views, interactive viewer, draggable | | |

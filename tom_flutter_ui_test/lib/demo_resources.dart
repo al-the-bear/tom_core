@@ -883,6 +883,103 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo04.aclToggle.option3.label': 'Option 3',
     'demo04.aclToggle.reset.label': 'Reset',
     'demo04.aclToggle.apply.label': 'Apply',
+
+    // =========================================================================
+    // Demo 05: Slider & Range Controls
+    // =========================================================================
+
+    // Section headers
+    'demo05.section.basic.title.label': 'Basic Sliders',
+    'demo05.section.basic.subtitle.label':
+        'Single-value continuous and discrete sliders',
+    'demo05.section.range.title.label': 'Range Sliders',
+    'demo05.section.range.subtitle.label':
+        'Dual-value range selection controls',
+    'demo05.section.cupertino.title.label': 'Cupertino Sliders',
+    'demo05.section.cupertino.subtitle.label':
+        'iOS-style slider controls',
+    'demo05.section.applications.title.label': 'Slider Applications',
+    'demo05.section.applications.subtitle.label':
+        'Real-world slider use cases',
+    'demo05.section.acl.title.label': 'ACL Layout',
+    'demo05.section.acl.subtitle.label':
+        'Slider controls with RTL/LTR adaptive layout',
+
+    // Card: Basic Sliders
+    'demo05.basicSlider.icon.icon': 'tune',
+    'demo05.basicSlider.title.label': 'TomSlider',
+    'demo05.basicSlider.description.label':
+        'Standard Material slider with continuous and discrete modes.',
+    'demo05.basicSlider.basicLabel.label': 'Basic continuous slider:',
+    'demo05.basicSlider.volumeLabel.label': 'With label:',
+    'demo05.basicSlider.volumeName.label': 'Volume',
+    'demo05.basicSlider.discreteLabel.label':
+        'With divisions (discrete):',
+    'demo05.basicSlider.valueLabelTitle.label':
+        'With value label overlay:',
+    'demo05.basicSlider.customLabel.label':
+        'Custom track and thumb styling:',
+    'demo05.basicSlider.disabledLabel.label': 'Disabled slider:',
+
+    // Card: Range Sliders
+    'demo05.rangeSlider.icon.icon': 'compare_arrows',
+    'demo05.rangeSlider.title.label': 'TomRangeSlider',
+    'demo05.rangeSlider.description.label':
+        'Dual-thumb range selection for price, age, and time.',
+    'demo05.rangeSlider.priceLabel.label': 'Price range:',
+    'demo05.rangeSlider.priceRangeLabel.label': 'to',
+    'demo05.rangeSlider.ageLabel.label': 'Age range (discrete):',
+    'demo05.rangeSlider.timeLabel.label': 'Time range:',
+    'demo05.rangeSlider.disabledLabel.label': 'Disabled range slider:',
+
+    // Card: Cupertino Sliders
+    'demo05.cupertinoSlider.icon.icon': 'phone_iphone',
+    'demo05.cupertinoSlider.title.label': 'TomCupertinoSlider',
+    'demo05.cupertinoSlider.description.label':
+        'iOS-style slider with min/max icons and custom colors.',
+    'demo05.cupertinoSlider.brightnessLabel.label': 'Brightness:',
+    'demo05.cupertinoSlider.volumeLabel.label': 'Volume:',
+    'demo05.cupertinoSlider.customLabel.label': 'Custom colors:',
+    'demo05.cupertinoSlider.displayLabel.label': 'With value display:',
+
+    // Card: Audio Player
+    'demo05.audioPlayer.icon.icon': 'music_note',
+    'demo05.audioPlayer.title.label': 'Audio Player',
+    'demo05.audioPlayer.description.label':
+        'Music player with progress and volume sliders.',
+    'demo05.audioPlayer.nowPlaying.label': 'Now Playing',
+    'demo05.audioPlayer.trackInfo.label':
+        'Summer Breeze — The Wanderers',
+    'demo05.audioPlayer.volumeName.label': 'Volume:',
+
+    // Card: Color Picker
+    'demo05.colorPicker.icon.icon': 'palette',
+    'demo05.colorPicker.title.label': 'RGB Color Picker',
+    'demo05.colorPicker.description.label':
+        'Color selection with individual R, G, B channel sliders.',
+    'demo05.colorPicker.previewLabel.label': 'Preview:',
+
+    // Card: Image Adjustments
+    'demo05.imageAdjust.icon.icon': 'photo_filter',
+    'demo05.imageAdjust.title.label': 'Image Adjustments',
+    'demo05.imageAdjust.description.label':
+        'Brightness, contrast, saturation, and exposure controls.',
+    'demo05.imageAdjust.brightness.label': 'Brightness',
+    'demo05.imageAdjust.contrast.label': 'Contrast',
+    'demo05.imageAdjust.saturation.label': 'Saturation',
+    'demo05.imageAdjust.exposure.label': 'Exposure',
+    'demo05.imageAdjust.reset.label': 'Reset All',
+
+    // Card: ACL Slider Layout
+    'demo05.aclSlider.icon.icon': 'swap_horiz',
+    'demo05.aclSlider.title.label': 'ACL Slider Layout',
+    'demo05.aclSlider.description.label':
+        'Slider controls with RTL/LTR adaptive layout using AclBuilder.',
+    'demo05.aclSlider.sliderLabel.label': 'Value:',
+    'demo05.aclSlider.rangeLabel.label': 'Range:',
+    'demo05.aclSlider.cupertinoLabel.label': 'iOS:',
+    'demo05.aclSlider.reset.label': 'Reset',
+    'demo05.aclSlider.apply.label': 'Apply',
   };
 
   @override
