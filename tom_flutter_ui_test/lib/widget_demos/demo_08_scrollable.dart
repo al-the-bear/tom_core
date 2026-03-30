@@ -231,10 +231,12 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
               borderRadius: BorderRadius.circular(8),
             ),
             clipBehavior: Clip.hardEdge,
-            child: TomSingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              controller: _horizontalScrollController,
-              child: TomRow(
+            child: ScrollConfiguration(
+              behavior: _MouseDragScrollBehavior(),
+              child: TomSingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                controller: _horizontalScrollController,
+                child: TomRow(
                 children: List.generate(10, (i) {
                   final colors = [
                     theme.colorScheme.primary,
@@ -269,6 +271,7 @@ class _ScrollableDemoContentState extends State<_ScrollableDemoContent>
                   );
                 }),
               ),
+            ),
             ),
           ),
         ],
