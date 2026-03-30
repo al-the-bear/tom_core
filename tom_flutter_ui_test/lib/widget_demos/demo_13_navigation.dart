@@ -766,8 +766,10 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const TomSizedBox(height: 12),
-          TomStepper(
-            type: StepperType.horizontal,
+          TomSizedBox(
+            height: 200,
+            child: TomStepper(
+              type: StepperType.horizontal,
             currentStep: _currentStep,
             onStepContinue: () {
               if (_currentStep < 2) {
@@ -820,6 +822,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                 isActive: _currentStep >= 2,
               ),
             ],
+          ),
           ),
           const TomSizedBox(height: 24),
 
