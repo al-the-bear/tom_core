@@ -404,6 +404,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               ),
               // Small dot badge (no label)
               TomBadge(
+                labelText: '',
                 isLabelVisible: false,
                 child: TomIconButton(
                   tomId: 'demo11.badge.dot.button',
