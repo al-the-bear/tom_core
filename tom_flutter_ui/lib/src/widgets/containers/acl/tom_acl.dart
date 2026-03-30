@@ -4,6 +4,7 @@ import '../../../resource_auth/tom_auth_state.dart';
 import '../../../resource_auth/tom_id_prefix.dart';
 import '../../../resource_auth/tom_resources.dart';
 import '../../../theme/tom_theme.dart';
+import '../../../widget_base/tom_style_resolvers.dart';
 import '../../../advanced_container_layout/acl_builder.dart';
 import '../../../advanced_container_layout/acl_container.dart';
 import '../../../advanced_container_layout/acl_group_visibility.dart';
@@ -25,32 +26,48 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   final T elementProvider;
   final AclBuilder _builder;
   final String? _explicitTitle;
+  final bool _explicitPadding;
+  final bool _explicitBackgroundColor;
+  final bool _explicitTitleStyle;
+  final bool _explicitTitleVerticalOffset;
+  final bool _explicitBorderStyle;
+  final bool _explicitFocusedBorderStyle;
+  final bool _explicitTitlePosition;
+  final bool _explicitTitleBorderAlign;
 
   TomAclBuilder({
     required this.id,
     required this.elementProvider,
     String? title,
     Widget? titleWidget,
-    AclBorderStyle borderStyle = const AclBorderStyle.none(),
+    AclBorderStyle? borderStyle,
     AclBorderStyle? focusedBorderStyle,
-    EdgeInsetsGeometry padding = EdgeInsets.zero,
+    EdgeInsetsGeometry? padding,
     Color? backgroundColor,
     TextStyle? titleStyle,
-    AclTitlePosition titlePosition = AclTitlePosition.topLeft,
-    AclTitleBorderAlign titleBorderAlign = AclTitleBorderAlign.bottom,
-    double titleVerticalOffset = 0.0,
+    AclTitlePosition? titlePosition,
+    AclTitleBorderAlign? titleBorderAlign,
+    double? titleVerticalOffset,
   })  : _explicitTitle = title,
+        _explicitPadding = padding != null,
+        _explicitBackgroundColor = backgroundColor != null,
+        _explicitTitleStyle = titleStyle != null,
+        _explicitTitleVerticalOffset = titleVerticalOffset != null,
+        _explicitBorderStyle = borderStyle != null,
+        _explicitFocusedBorderStyle = focusedBorderStyle != null,
+        _explicitTitlePosition = titlePosition != null,
+        _explicitTitleBorderAlign = titleBorderAlign != null,
         _builder = AclBuilder(
           title: title,
           titleWidget: titleWidget,
-          borderStyle: borderStyle,
+          borderStyle: borderStyle ?? const AclBorderStyle.none(),
           focusedBorderStyle: focusedBorderStyle,
-          padding: padding,
+          padding: padding ?? EdgeInsets.zero,
           backgroundColor: backgroundColor,
           titleStyle: titleStyle,
-          titlePosition: titlePosition,
-          titleBorderAlign: titleBorderAlign,
-          titleVerticalOffset: titleVerticalOffset,
+          titlePosition: titlePosition ?? AclTitlePosition.topLeft,
+          titleBorderAlign: titleBorderAlign ?? AclTitleBorderAlign.bottom,
+          titleVerticalOffset: titleVerticalOffset ?? 0.0,
         ) {
     _builder.setAclId(id);
   }
@@ -287,13 +304,50 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     final auth = TomUIAuthorization.resolveAuth(containerPath);
     if (!auth.visible) return const SizedBox.shrink();
 
-    // Resolve title from resources if not explicitly set
+    // Resolve unset parameters from resources
     if (_explicitTitle == null) {
       final resourceTitle = TomUIResources.resolveText(containerPath, 'title');
       // Only use resource title if it doesn't look like a missing-key fallback
       if (!resourceTitle.startsWith('c-')) {
         _builder.setAclTitle(resourceTitle);
       }
+    }
+    if (!_explicitPadding) {
+      final resPadding =
+          TomUIResources.resolveEdgeInsets(containerPath, 'padding');
+      if (resPadding != null) _builder.setAclPadding(resPadding);
+    }
+    if (!_explicitBackgroundColor) {
+      final resBg =
+          TomUIResources.resolveColor(containerPath, 'backgroundColor');
+      if (resBg != null) _builder.setAclBackgroundColor(resBg);
+    }
+    if (!_explicitTitleStyle) {
+      final resStyle =
+          TomStyleResolvers.resolveTextStyle(containerPath, 'titleStyle');
+      if (resStyle != null) _builder.setAclTitleStyle(resStyle);
+    }
+    if (!_explicitTitleVerticalOffset) {
+      final resOffset = TomUIResources.resolveDouble(
+          containerPath, 'titleVerticalOffset');
+      if (resOffset != null) _builder.setAclTitleVerticalOffset(resOffset);
+    }
+    if (!_explicitBorderStyle) {
+      final resBorder = _resolveBorderStyle(containerPath, 'borderStyle');
+      if (resBorder != null) _builder.setAclBorderStyle(resBorder);
+    }
+    if (!_explicitFocusedBorderStyle) {
+      final resFocused =
+          _resolveBorderStyle(containerPath, 'focusedBorderStyle');
+      if (resFocused != null) _builder.setAclFocusedBorderStyle(resFocused);
+    }
+    if (!_explicitTitlePosition) {
+      final resPos = _resolveTitlePosition(containerPath);
+      if (resPos != null) _builder.setAclTitlePosition(resPos);
+    }
+    if (!_explicitTitleBorderAlign) {
+      final resAlign = _resolveTitleBorderAlign(containerPath);
+      if (resAlign != null) _builder.setAclTitleBorderAlign(resAlign);
     }
 
     final acl = _builder.build();
@@ -311,5 +365,55 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       containerId: id,
       child: result,
     );
+  }
+
+  /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
+  AclBorderStyle? _resolveBorderStyle(String basePath, String suffix) {
+    final map = TomUIResources.resolveMap(basePath, suffix);
+    if (map == null || map.isEmpty) return null;
+    return AclBorderStyle(
+      kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
+      color: TomUIResources.resolveColor(basePath, '$suffix.color') ??
+          const Color(0x00000000),
+      lineWidth:
+          TomUIResources.resolveDouble(basePath, '$suffix.lineWidth') ?? 1.0,
+      rounded: TomUIResources.resolveBool(basePath, '$suffix.rounded') ?? false,
+      borderRadius:
+          TomUIResources.resolveDouble(basePath, '$suffix.borderRadius') ?? 0.0,
+      borderInsets:
+          TomUIResources.resolveEdgeInsets(basePath, '$suffix.borderInsets') ??
+              EdgeInsets.zero,
+    );
+  }
+
+  /// Parses a string to [AclBorderKind], or returns null if unrecognized.
+  static AclBorderKind? _parseBorderKind(String? value) {
+    if (value == null) return null;
+    for (final kind in AclBorderKind.values) {
+      if (kind.name == value) return kind;
+    }
+    return null;
+  }
+
+  /// Resolves an [AclTitlePosition] from a resource text at [basePath]/titlePosition.
+  AclTitlePosition? _resolveTitlePosition(String basePath) {
+    final value = TomUIResources.resolveValue(basePath, 'titlePosition');
+    if (value == null) return null;
+    final text = value.toString();
+    for (final pos in AclTitlePosition.values) {
+      if (pos.name == text) return pos;
+    }
+    return null;
+  }
+
+  /// Resolves an [AclTitleBorderAlign] from a resource text at [basePath]/titleBorderAlign.
+  AclTitleBorderAlign? _resolveTitleBorderAlign(String basePath) {
+    final value = TomUIResources.resolveValue(basePath, 'titleBorderAlign');
+    if (value == null) return null;
+    final text = value.toString();
+    for (final align in AclTitleBorderAlign.values) {
+      if (align.name == text) return align;
+    }
+    return null;
   }
 }

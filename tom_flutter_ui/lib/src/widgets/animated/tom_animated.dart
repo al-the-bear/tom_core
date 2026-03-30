@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -527,18 +526,14 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
 
 /// Tom wrapper for [AnimatedPositioned].
 ///
-/// Animates position in Stack. Auth on positioned content.
+/// Animates position in Stack.
 /// Uses extension pattern because Stack checks `is Positioned`.
-class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
-  @override
-  final String? tomId;
-  @override
-  final String? tomGroup;
-
+/// Note: No TomWidgetMixin — parameters are forwarded to super at
+/// construction time (before BuildContext is available), so resource
+/// resolution is structurally impossible.
+class TomAnimatedPositioned extends AnimatedPositioned {
   const TomAnimatedPositioned({
     super.key,
-    this.tomId,
-    this.tomGroup,
     required super.child,
     super.left,
     super.top,
@@ -554,19 +549,14 @@ class TomAnimatedPositioned extends AnimatedPositioned with TomWidgetMixin {
 
 /// Tom wrapper for [AnimatedPositionedDirectional].
 ///
-/// RTL-aware animated position. Auth on positioned content.
+/// RTL-aware animated position.
 /// Uses extension pattern because Stack checks `is Positioned`.
-class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional
-    with TomWidgetMixin {
-  @override
-  final String? tomId;
-  @override
-  final String? tomGroup;
-
+/// Note: No TomWidgetMixin — parameters are forwarded to super at
+/// construction time (before BuildContext is available), so resource
+/// resolution is structurally impossible.
+class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional {
   const TomAnimatedPositionedDirectional({
     super.key,
-    this.tomId,
-    this.tomGroup,
     required super.child,
     super.start,
     super.top,

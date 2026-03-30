@@ -18,7 +18,6 @@ import 'package:flutter/material.dart' as material
         showMenu,
         showSearch;
 
-import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -436,14 +435,15 @@ class TomBottomSheet extends TomDialogBase {
 
 /// Tom wrapper for [SnackBar].
 ///
-/// Adds ID, group, authorization, and resource resolution.
-class TomSnackBar extends SnackBar with TomWidgetMixin {
+/// Thin wrapper kept for API completeness.
+/// Note: No TomWidgetMixin — parameters are forwarded to super at
+/// construction time (before BuildContext is available), so resource
+/// resolution is structurally impossible.
+class TomSnackBar extends SnackBar {
   /// Creates a Tom SnackBar that extends SnackBar directly.
   ///
   /// Can be used with ScaffoldMessenger.showSnackBar().
   TomSnackBar({
-    this.tomId,
-    this.tomGroup,
     super.key,
     required super.content,
     super.backgroundColor,
@@ -464,12 +464,6 @@ class TomSnackBar extends SnackBar with TomWidgetMixin {
     super.dismissDirection = DismissDirection.down,
     super.clipBehavior = Clip.hardEdge,
   });
-
-  @override
-  final String? tomId;
-
-  @override
-  final String? tomGroup;
 }
 
 /// Tom wrapper for [MaterialBanner].

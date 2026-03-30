@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -1887,31 +1886,25 @@ class TomButtonBar extends TomButtonBase {
 // EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
 // ============================================================================
 
-/// Tom widget that EXTENDS [SnackBarAction] with authorization.
-///
-/// This widget IS a [SnackBarAction] — fits in `SnackBar(action:)`.
+/// Tom wrapper for [SnackBarAction] — fits in `SnackBar(action:)`.
 ///
 /// ```dart
-/// SnackBar(
+/// TomSnackBar(
 ///   content: Text('Message'),
-///   action: TomSnackBarAction(tomId: 'undo', label: 'Undo', onPressed: () {}),
+///   action: TomSnackBarAction(label: 'Undo', onPressed: () {}),
 /// )
 /// ```
-class TomSnackBarAction extends SnackBarAction with TomWidgetMixin {
+///
+/// Note: No TomWidgetMixin — parameters are forwarded to super at
+/// construction time (before BuildContext is available), so resource
+/// resolution is structurally impossible.
+class TomSnackBarAction extends SnackBarAction {
   /// Creates a Tom SnackBarAction.
   TomSnackBarAction({
-    this.tomId,
-    this.tomGroup,
     super.key,
     super.textColor,
     super.disabledTextColor,
     required super.label,
     required super.onPressed,
   });
-
-  @override
-  final String? tomId;
-
-  @override
-  final String? tomGroup;
 }
