@@ -980,6 +980,129 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo05.aclSlider.cupertinoLabel.label': 'iOS:',
     'demo05.aclSlider.reset.label': 'Reset',
     'demo05.aclSlider.apply.label': 'Apply',
+
+    // =========================================================================
+    // Demo 06: Card & Panel Layouts
+    // =========================================================================
+
+    // Section headers
+    'demo06.section.cards.title.label': 'Material Cards',
+    'demo06.section.cards.subtitle.label':
+        'Content containers with elevation and styling',
+    'demo06.section.expansionTiles.title.label': 'Expansion Tiles',
+    'demo06.section.expansionTiles.subtitle.label':
+        'Expandable content sections',
+    'demo06.section.expansionPanels.title.label': 'Expansion Panel Lists',
+    'demo06.section.expansionPanels.subtitle.label':
+        'Accordion-style panel groups',
+    'demo06.section.materialInk.title.label': 'Material & Ink',
+    'demo06.section.materialInk.subtitle.label':
+        'Material Design surface widgets and ink effects',
+    'demo06.section.acl.title.label': 'ACL Layout',
+    'demo06.section.acl.subtitle.label':
+        'Card controls with RTL/LTR adaptive layout',
+
+    // Card: Card Variants
+    'demo06.cardVariants.icon.icon': 'style',
+    'demo06.cardVariants.title.label': 'TomCard',
+    'demo06.cardVariants.description.label':
+        'Standard Material card with elevated, outlined, and filled variants.',
+    'demo06.cardVariants.elevatedLabel.label': 'Elevated card:',
+    'demo06.cardVariants.elevatedTitle.label': 'Elevated Card',
+    'demo06.cardVariants.elevatedDesc.label':
+        'Card content with shadow elevation',
+    'demo06.cardVariants.outlinedLabel.label': 'Outlined card:',
+    'demo06.cardVariants.outlinedTitle.label': 'Outlined Card',
+    'demo06.cardVariants.outlinedDesc.label':
+        'Card with border outline',
+    'demo06.cardVariants.filledLabel.label': 'Filled card:',
+    'demo06.cardVariants.filledTitle.label': 'Filled Card',
+    'demo06.cardVariants.filledDesc.label':
+        'Card with filled surface color',
+    'demo06.cardVariants.elevationLabel.label': 'Elevation comparison:',
+
+    // Card: Product Card
+    'demo06.productCard.icon.icon': 'shopping_bag',
+    'demo06.productCard.title.label': 'Product Card',
+    'demo06.productCard.description.label':
+        'Composed card layouts with images, text, and actions.',
+    'demo06.productCard.imagePlaceholder.label': 'Product Image',
+    'demo06.productCard.productName.label': 'Wireless Headphones',
+    'demo06.productCard.price.label': '\$99.99',
+    'demo06.productCard.description.label':
+        'Premium noise-cancelling wireless headphones with 30h battery.',
+    'demo06.productCard.rating.label': '(4.2)',
+    'demo06.productCard.addToCart.label': 'Add to Cart',
+    'demo06.productCard.actionCardLabel.label': 'Action card with horizontal layout:',
+    'demo06.productCard.shippingTitle.label': 'Free Shipping',
+    'demo06.productCard.shippingDesc.label':
+        'Orders over \$50 ship free. Estimated delivery 3-5 days.',
+
+    // Card: Expansion Tiles
+    'demo06.expansionTile.icon.icon': 'expand_more',
+    'demo06.expansionTile.title.label': 'TomExpansionTile',
+    'demo06.expansionTile.description.label':
+        'Expandable sections with leading icons and nested tiles.',
+    'demo06.expansionTile.addressName.label': 'John Doe',
+    'demo06.expansionTile.addressLine1.label': '123 Main Street',
+    'demo06.expansionTile.addressLine2.label': 'New York, NY 10001',
+    'demo06.expansionTile.addressCountry.label': 'United States',
+    'demo06.expansionTile.editAddress.label': 'Edit Address',
+    'demo06.expansionTile.cardInfo.label': 'Visa ending in 4242',
+    'demo06.expansionTile.cardExpiry.label': 'Expires 12/2027',
+    'demo06.expansionTile.nestedLabel.label': 'Nested expansion tiles:',
+    'demo06.expansionTile.notifContent.label':
+        'Configure push notifications, email alerts, and in-app messages.',
+    'demo06.expansionTile.privacyContent.label':
+        'Manage data sharing, cookie preferences, and account visibility.',
+
+    // Card: Cupertino Expansion Tiles
+    'demo06.cupertinoExpansion.icon.icon': 'phone_iphone',
+    'demo06.cupertinoExpansion.title.label': 'TomCupertinoExpansionTile',
+    'demo06.cupertinoExpansion.description.label':
+        'iOS-style expansion tile with fade transitions.',
+
+    // Card: Expansion Panel Lists
+    'demo06.expansionPanel.icon.icon': 'view_agenda',
+    'demo06.expansionPanel.title.label': 'TomExpansionPanelList',
+    'demo06.expansionPanel.description.label':
+        'Grouped expandable panels with accordion behavior.',
+    'demo06.expansionPanel.faqTitle.label': 'Frequently Asked Questions:',
+
+    // Card: Material
+    'demo06.material.icon.icon': 'layers',
+    'demo06.material.title.label': 'TomMaterial',
+    'demo06.material.description.label':
+        'Material surface with elevation, shape, and type variants.',
+    'demo06.material.elevationLabel.label': 'Elevation levels:',
+    'demo06.material.typesLabel.label': 'Material types:',
+    'demo06.material.shapesLabel.label': 'Material shapes:',
+
+    // Card: Ink
+    'demo06.ink.icon.icon': 'water_drop',
+    'demo06.ink.title.label': 'TomInk',
+    'demo06.ink.description.label':
+        'Ink splash effects and decorated surfaces.',
+    'demo06.ink.splashLabel.label': 'Ink splash on tap:',
+    'demo06.ink.tapHere.label': 'Tap to see ink splash',
+    'demo06.ink.decorationLabel.label': 'Ink decoration:',
+    'demo06.ink.decoratedInk.label': 'Ink with color decoration',
+    'demo06.ink.gradientLabel.label': 'Ink with gradient:',
+    'demo06.ink.gradientText.label': 'Gradient Ink Surface',
+
+    // Card: ACL Layout
+    'demo06.aclCard.icon.icon': 'swap_horiz',
+    'demo06.aclCard.title.label': 'ACL Card Layout',
+    'demo06.aclCard.description.label':
+        'Card controls with RTL/LTR adaptive layout using AclBuilder.',
+    'demo06.aclCard.elevationLabel.label': 'Elevation:',
+    'demo06.aclCard.previewText.label': 'Preview Card',
+    'demo06.aclCard.moreInfo.label':
+        'This section demonstrates cards and expansion tiles within an '
+        'AclBuilder layout that adapts automatically for RTL and LTR text '
+        'directions.',
+    'demo06.aclCard.reset.label': 'Reset',
+    'demo06.aclCard.apply.label': 'Apply',
   };
 
   @override
