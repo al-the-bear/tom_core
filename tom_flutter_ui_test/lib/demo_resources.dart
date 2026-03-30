@@ -2722,6 +2722,8 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.section.numeric.subtitle.label': 'elevation, size, opacity from resources',
     'demo21.section.toggle.title.label': 'Toggle Colors',
     'demo21.section.toggle.subtitle.label': 'activeColor, checkColor from resources',
+    'demo21.section.lookup.title.label': 'Lookup Type Coverage',
+    'demo21.section.lookup.subtitle.label': 'explicit checks for text/color/icon/double/int/bool/edgeInsets/list/map',
 
     // --- Introduction Card ---
     'demo21.intro.icon.icon': 'mAutoAwesome',
@@ -2776,6 +2778,16 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.coloredIcon3.icon': 'mThumbUp',
     'demo21.coloredIcon4.icon': 'mLightbulb',
 
+    // --- Container Color Section ---
+    'demo21.containerColorDemo.icon.icon': 'mViewModule',
+    'demo21.containerColorDemo.title.label': 'TomContainer Colors',
+    'demo21.containerColorDemo.subtitle.label': 'color resolved from resources (hex, named, int)',
+    'demo21.containerColorDemo.info.label':
+        'Resources: colorBox1=#D32F2F, colorBox2=mTeal700, colorBox3=0xFF5E35B1',
+    'demo21.colorBox1.content.label': 'HEX',
+    'demo21.colorBox2.content.label': 'NAME',
+    'demo21.colorBox3.content.label': 'INT',
+
     // --- Progress Color Section ---
     'demo21.progressColorDemo.icon.icon': 'mRefresh',
     'demo21.progressColorDemo.title.label': 'Progress Indicator Colors',
@@ -2820,6 +2832,16 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.switch2.label.label': 'Blue switch',
     'demo21.checkbox1.label.label': 'Purple checkbox',
     'demo21.checkbox2.label.label': 'Orange checkbox',
+
+    // --- Lookup Type Coverage Section ---
+    'demo21.lookupDemo.icon.icon': 'mFactCheck',
+    'demo21.lookupDemo.title.label': 'Core Lookup API Coverage',
+    'demo21.lookupDemo.subtitle.label': 'all supported lookup types resolved at least once',
+    'demo21.lookupDemo.info.label':
+        'This card reads each typed API directly from TomUIResources.',
+
+    // Text sample for direct resolveText(basePath, suffix)
+    'demo21.lookup.text': 'Hello from resolveText',
   };
 
   /// Structured data resources (lists, maps) for Phase 1 typed resolution.
@@ -2885,6 +2907,11 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.coloredIcon3.color': '#4CAF50',  // Green
     'demo21.coloredIcon4.color': '#2196F3',  // Blue
 
+    // --- Container Color Parameters ---
+    'demo21.colorBox1.color': '#D32F2F',  // Red 700
+    'demo21.colorBox2.color': 'mTeal700',
+    'demo21.colorBox3.color': 0xFF5E35B1,  // Deep Purple 600
+
     // --- Progress Indicator Colors ---
     'demo21.progress1.color': '#9C27B0',  // Purple
     'demo21.progress1.backgroundColor': '#E1BEE7',  // Purple 100
@@ -2918,22 +2945,43 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.checkbox2.activeColor': '#FF5722',  // Deep Orange
     'demo21.checkbox2.checkColor': '#FFFFFF',
 
+        // --- Explicit Lookup Type Coverage ---
+        'demo21.lookup.color': '#3F51B5',
+        'demo21.lookup.icon': 'mScience',
+        'demo21.lookup.double': 42.5,
+        'demo21.lookup.int': 7,
+        'demo21.lookup.bool': true,
+        'demo21.lookup.edgeInsets': {
+            'left': 4.0,
+            'top': 8.0,
+            'right': 12.0,
+            'bottom': 16.0,
+        },
+        'demo21.lookup.list': ['alpha', 'beta', 'gamma'],
+        'demo21.lookup.map': {'status': 'ok', 'count': 3, 'source': 'demo21'},
+
   };
 
-  /// Regex to strip any TomIdPrefix prefix from the basePath.
-  static final _prefixPattern = RegExp(r'^(w|c|f|r|a|ac|g)-');
+    /// Regex to strip TomIdPrefix prefixes from any path segment.
+    static final _prefixPattern = RegExp(r'^(ac|w|c|f|r|a|g)-');
+
+    static String _normalizeBasePath(String basePath) {
+        return basePath
+                .split('.')
+                .map((segment) => segment.replaceFirst(_prefixPattern, ''))
+                .join('.');
+    }
 
   @override
   String resolveText(String basePath, String suffix) {
-    // Remove id prefix (w-, c-, f-, r-, a-, ac-, g-) for lookup
-    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
+        final cleanPath = _normalizeBasePath(basePath);
     final key = '$cleanPath.$suffix';
     return _resources[key] ?? '$basePath.$suffix';
   }
 
   @override
   bool resourceExists(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
+        final cleanPath = _normalizeBasePath(basePath);
     final key = '$cleanPath.$suffix';
     return _resources.containsKey(key) ||
         _structuredResources.containsKey(key);
@@ -2941,24 +2989,19 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
 
   @override
   dynamic resolveValue(String basePath, String suffix) {
-    final cleanPath = basePath.replaceFirst(_prefixPattern, '');
+        final cleanPath = _normalizeBasePath(basePath);
     final key = '$cleanPath.$suffix';
 
     // First check structured resources
     if (_structuredResources.containsKey(key)) {
-      final value = _structuredResources[key];
-      print('[resolveValue] $basePath.$suffix → $key = $value');
-      return value;
+            return _structuredResources[key];
     }
 
     // Fall back to string resources
     if (_resources.containsKey(key)) {
-      final value = _resources[key];
-      print('[resolveValue] $basePath.$suffix → $key = $value');
-      return value;
+            return _resources[key];
     }
 
-    print('[resolveValue] $basePath.$suffix → $key = NOT FOUND');
     return null;
   }
 

@@ -82,6 +82,12 @@ class _ResourceResolutionDemoContentState
             _SectionHeader(tomId: 'demo21.section.toggle'),
             const TomSizedBox(height: 16),
             _buildToggleSection(),
+            const TomSizedBox(height: 32),
+
+            // Section 6: Type Lookup Coverage
+            _SectionHeader(tomId: 'demo21.section.lookup'),
+            const TomSizedBox(height: 16),
+            _buildLookupCoverageSection(),
             const TomSizedBox(height: 48),
           ],
         ),
@@ -263,6 +269,70 @@ class _ResourceResolutionDemoContentState
         ),
         const TomSizedBox(height: 16),
 
+        // Container colors from resources
+        _DemoCard(
+          tomId: 'demo21.containerColorDemo',
+          child: TomColumn(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(tomId: 'demo21.containerColorDemo.info'),
+              const TomSizedBox(height: 12),
+              TomRow(
+                children: [
+                  TomExpanded(
+                    child: TomContainer(
+                      tomId: 'demo21.colorBox1',
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TomCenter(
+                        child: TomText(
+                          tomId: 'demo21.colorBox1.content',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const TomSizedBox(width: 12),
+                  TomExpanded(
+                    child: TomContainer(
+                      tomId: 'demo21.colorBox2',
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TomCenter(
+                        child: TomText(
+                          tomId: 'demo21.colorBox2.content',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const TomSizedBox(width: 12),
+                  TomExpanded(
+                    child: TomContainer(
+                      tomId: 'demo21.colorBox3',
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TomCenter(
+                        child: TomText(
+                          tomId: 'demo21.colorBox3.content',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const TomSizedBox(height: 16),
+
         // Progress indicator colors
         _DemoCard(
           tomId: 'demo21.progressColorDemo',
@@ -278,7 +348,11 @@ class _ResourceResolutionDemoContentState
                   TomCircularProgressIndicator(tomId: 'demo21.progress2', value: 0.5),
                   const TomSizedBox(width: 24),
                   TomExpanded(
-                    child: TomLinearProgressIndicator(tomId: 'demo21.progress3', value: 0.6),
+                    child: TomLinearProgressIndicator(
+                      tomId: 'demo21.progress3',
+                      value: 0.6,
+                      minHeight: 10,
+                    ),
                   ),
                 ],
               ),
@@ -472,6 +546,58 @@ class _ResourceResolutionDemoContentState
               TomText(tomId: 'demo21.checkbox2.label'),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  // ===========================================================================
+  // Section 6: Explicit Lookup Type Coverage
+  // ===========================================================================
+
+  Widget _buildLookupCoverageSection() {
+    const basePath = 'demo21.lookup';
+
+    final textValue = TomUIResources.resolveText(basePath, 'text');
+    final colorValue = TomUIResources.resolveColor(basePath, 'color');
+    final iconValue = TomUIResources.resolveIcon(basePath, 'icon');
+    final doubleValue = TomUIResources.resolveDouble(basePath, 'double');
+    final intValue = TomUIResources.resolveInt(basePath, 'int');
+    final boolValue = TomUIResources.resolveBool(basePath, 'bool');
+    final edgeInsetsValue = TomUIResources.resolveEdgeInsets(basePath, 'edgeInsets');
+    final listValue = TomUIResources.resolveList(basePath, 'list');
+    final mapValue = TomUIResources.resolveMap(basePath, 'map');
+
+    final colorHex = colorValue == null
+        ? 'null'
+        : '#${colorValue.toARGB32().toRadixString(16).toUpperCase()}';
+
+    return _DemoCard(
+      tomId: 'demo21.lookupDemo',
+      child: TomColumn(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TomText(tomId: 'demo21.lookupDemo.info'),
+          const TomSizedBox(height: 12),
+          if (iconValue != null)
+            TomRow(
+              children: [
+                TomIcon(icon: iconValue, size: 18, color: colorValue),
+                const TomSizedBox(width: 8),
+                TomText(text: 'icon resolved: $iconValue'),
+              ],
+            )
+          else
+            const TomText(text: 'icon resolved: null'),
+          const TomSizedBox(height: 8),
+          TomText(text: 'text: $textValue'),
+          TomText(text: 'color: $colorHex'),
+          TomText(text: 'double: $doubleValue'),
+          TomText(text: 'int: $intValue'),
+          TomText(text: 'bool: $boolValue'),
+          TomText(text: 'edgeInsets: $edgeInsetsValue'),
+          TomText(text: 'list: $listValue'),
+          TomText(text: 'map: $mapValue'),
         ],
       ),
     );
