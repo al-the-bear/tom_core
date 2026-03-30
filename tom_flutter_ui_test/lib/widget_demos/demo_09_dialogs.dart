@@ -749,7 +749,6 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                 ),
               ),
               TomTooltip(
-                message: 'Rich tooltip with styled text',
                 richMessage: TextSpan(
                   children: [
                     const TextSpan(
