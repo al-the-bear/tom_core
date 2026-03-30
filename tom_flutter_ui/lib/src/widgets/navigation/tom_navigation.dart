@@ -889,6 +889,27 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
     final resolvedBackgroundColor =
         backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
 
+    // When transitionBetweenRoutes is true, Flutter asserts heroTag must be
+    // identical to its internal _defaultHeroTag. We can't access that constant,
+    // so we omit heroTag entirely (letting Flutter use its default).
+    // When transitions are disabled, we can safely pass a custom heroTag.
+    if (!transitionBetweenRoutes && heroTag != null) {
+      return CupertinoNavigationBar(
+        leading: leading,
+        automaticallyImplyLeading: automaticallyImplyLeading,
+        automaticallyImplyMiddle: automaticallyImplyMiddle,
+        previousPageTitle: resolvedPreviousPageTitle,
+        middle: middle,
+        trailing: trailing,
+        backgroundColor: resolvedBackgroundColor,
+        brightness: brightness,
+        padding: padding,
+        border: border,
+        transitionBetweenRoutes: transitionBetweenRoutes,
+        heroTag: heroTag!,
+      );
+    }
+
     return CupertinoNavigationBar(
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
@@ -901,12 +922,9 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
       padding: padding,
       border: border,
       transitionBetweenRoutes: transitionBetweenRoutes,
-      heroTag: heroTag ?? _defaultHeroTag,
     );
   }
 }
-
-const _defaultHeroTag = 'tom_cupertino_nav_bar';
 
 /// Tom wrapper for a custom Breadcrumb navigation widget.
 ///
