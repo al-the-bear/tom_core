@@ -902,6 +902,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                           child: const TomText(text: 'Button 2'),
                         ),
                         TomOutlinedButton(
+                          label: 'Button 3',
                           onPressed: () =>
                               setState(() => _blockedTapCount++),
                           child: const TomText(text: 'Button 3'),
