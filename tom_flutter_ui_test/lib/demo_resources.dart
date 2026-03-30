@@ -685,36 +685,6 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo03.status.selected.label': 'Selected',
     'demo03.status.sliding.label': 'Sliding',
     'demo03.status.classic.label': 'Classic',
-  };
-
-  /// Structured data resources (lists, maps) for Phase 1 typed resolution.
-  ///
-  /// These demonstrate how complex resources can be stored for widgets
-  /// to auto-assemble their content.
-  static final Map<String, dynamic> _structuredResources = {
-    // Example: Countries list for auto-assembling dropdowns
-    'demo03.dropdown.countries.items': [
-      {'value': 'us', 'label': '🇺🇸 United States', 'icon': 'mFlag'},
-      {'value': 'uk', 'label': '🇬🇧 United Kingdom', 'icon': 'mFlag'},
-      {'value': 'de', 'label': '🇩🇪 Germany', 'icon': 'mFlag'},
-      {'value': 'fr', 'label': '🇫🇷 France', 'icon': 'mFlag'},
-      {'value': 'jp', 'label': '🇯🇵 Japan', 'icon': 'mFlag'},
-    ],
-    // Example: Categories list
-    'demo03.dropdown.categories.items': [
-      {'value': 'electronics', 'label': 'Electronics', 'icon': 'mDevices'},
-      {'value': 'clothing', 'label': 'Clothing', 'icon': 'mCheckroom'},
-      {'value': 'homeGarden', 'label': 'Home & Garden', 'icon': 'mHome'},
-      {'value': 'books', 'label': 'Books', 'icon': 'mMenuBook'},
-      {'value': 'sports', 'label': 'Sports', 'icon': 'mSportsBaseball'},
-    ],
-    // Example: Numeric configuration
-    'demo03.card.elevation': 4.0,
-    'demo03.card.margin': {'all': 16},
-    'demo03.card.padding': [16, 12, 16, 12],
-    // Example: Color configuration
-    'demo03.card.backgroundColor': 'mBlue50',
-
     // ==========================================================================
     // Demo 04: Toggles - Section Headers
     // ==========================================================================
@@ -2729,6 +2699,36 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
         'Tracks mouse enter, exit, and hover events with cursor customization.',
     'demo20.mouseRegion.hint.label':
         'Essential for desktop and web hover effects',
+  };
+
+  /// Structured data resources (lists, maps) for Phase 1 typed resolution.
+  ///
+  /// These demonstrate how complex resources can be stored for widgets
+  /// to auto-assemble their content.
+  static final Map<String, dynamic> _structuredResources = {
+    // Example: Countries list for auto-assembling dropdowns
+    'demo03.dropdown.countries.items': [
+      {'value': 'us', 'label': '🇺🇸 United States', 'icon': 'mFlag'},
+      {'value': 'uk', 'label': '🇬🇧 United Kingdom', 'icon': 'mFlag'},
+      {'value': 'de', 'label': '🇩🇪 Germany', 'icon': 'mFlag'},
+      {'value': 'fr', 'label': '🇫🇷 France', 'icon': 'mFlag'},
+      {'value': 'jp', 'label': '🇯🇵 Japan', 'icon': 'mFlag'},
+    ],
+    // Example: Categories list
+    'demo03.dropdown.categories.items': [
+      {'value': 'electronics', 'label': 'Electronics', 'icon': 'mDevices'},
+      {'value': 'clothing', 'label': 'Clothing', 'icon': 'mCheckroom'},
+      {'value': 'homeGarden', 'label': 'Home & Garden', 'icon': 'mHome'},
+      {'value': 'books', 'label': 'Books', 'icon': 'mMenuBook'},
+      {'value': 'sports', 'label': 'Sports', 'icon': 'mSportsBaseball'},
+    ],
+    // Example: Numeric configuration
+    'demo03.card.elevation': 4.0,
+    'demo03.card.margin': {'all': 16},
+    'demo03.card.padding': [16, 12, 16, 12],
+    // Example: Color configuration
+    'demo03.card.backgroundColor': 'mBlue50',
+
   };
 
   @override
