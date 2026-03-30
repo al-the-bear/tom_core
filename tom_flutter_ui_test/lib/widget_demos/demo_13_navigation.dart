@@ -1064,6 +1064,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               clipBehavior: Clip.antiAlias,
               child: const TomCupertinoNavigationBar(
                 middle: Text('Page Title'),
+                transitionBetweenRoutes: false,
               ),
             ),
             const TomSizedBox(height: 16),
@@ -1094,6 +1095,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                   child: const Text('Save'),
                   onPressed: () {},
                 ),
+                transitionBetweenRoutes: false,
               ),
             ),
             const TomSizedBox(height: 16),
@@ -1130,6 +1132,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                   child: const Icon(CupertinoIcons.share),
                   onPressed: () {},
                 ),
+                transitionBetweenRoutes: false,
               ),
             ),
           ],
