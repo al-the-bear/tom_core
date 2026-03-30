@@ -1206,7 +1206,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           const TomSizedBox(height: 8),
           TomSizedBox(
             height: 60,
-            width: double.infinity,
+            width: 300,
             child: TomContainer(
               decoration: BoxDecoration(
                 border: Border.all(color: theme.colorScheme.outline),
