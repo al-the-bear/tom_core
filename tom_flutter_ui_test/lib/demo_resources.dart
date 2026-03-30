@@ -2375,6 +2375,192 @@ class DemoResourceAdapter implements TomUIResourceAdapter {
     'demo17.visibility.demoLabel.label': 'Toggle visibility and opacity of slivers',
     'demo17.visibility.hint.label':
         'maintainState keeps widget state even when invisible',
+
+    // ==========================================================================
+    // Demo 18: Animated Transitions
+    // ==========================================================================
+
+    // Section Headers
+    'demo18.section.container.title.label': 'AnimatedContainer',
+    'demo18.section.container.subtitle.label':
+        'Smoothly animate container property changes',
+    'demo18.section.opacity.title.label': 'Opacity & CrossFade',
+    'demo18.section.opacity.subtitle.label':
+        'Fade animations and smooth content transitions',
+    'demo18.section.switcher.title.label': 'AnimatedSwitcher',
+    'demo18.section.switcher.subtitle.label':
+        'Automatic transitions between child widgets',
+    'demo18.section.position.title.label': 'Position & Alignment',
+    'demo18.section.position.subtitle.label':
+        'Animate widget position and alignment changes',
+    'demo18.section.padding.title.label': 'Padding & Size',
+    'demo18.section.padding.subtitle.label':
+        'Smooth padding and size transitions',
+    'demo18.section.transform.title.label': 'Transform Animations',
+    'demo18.section.transform.subtitle.label':
+        'Scale, slide, and rotation animations',
+    'demo18.section.text.title.label': 'Text & Physical Model',
+    'demo18.section.text.subtitle.label':
+        'Text style and elevation animations',
+    'demo18.section.transitions.title.label': 'Transition Widgets',
+    'demo18.section.transitions.subtitle.label':
+        'Controller-driven transition animations',
+    'demo18.section.hero.title.label': 'Hero Transitions',
+    'demo18.section.hero.subtitle.label':
+        'Shared element transitions between views',
+
+    // AnimatedContainer Card
+    'demo18.animatedContainer.icon.icon': 'mAutoAwesome',
+    'demo18.animatedContainer.title.label': 'AnimatedContainer',
+    'demo18.animatedContainer.description.label':
+        'Automatically animates changes to size, color, decoration, padding, and more.',
+    'demo18.animatedContainer.demoLabel.label': 'Tap the container to see animated property changes',
+    'demo18.animatedContainer.hint.label':
+        'AnimatedContainer interpolates between old and new values',
+
+    // AnimatedOpacity Card
+    'demo18.animatedOpacity.icon.icon': 'mOpacity',
+    'demo18.animatedOpacity.title.label': 'AnimatedOpacity',
+    'demo18.animatedOpacity.description.label':
+        'Smoothly animates opacity changes over a specified duration.',
+    'demo18.animatedOpacity.demoLabel.label': 'Adjust slider to change opacity',
+    'demo18.animatedOpacity.hint.label':
+        'Use alwaysIncludeSemantics for accessibility',
+
+    // CrossFade Card
+    'demo18.crossFade.icon.icon': 'mSwapHoriz',
+    'demo18.crossFade.title.label': 'AnimatedCrossFade',
+    'demo18.crossFade.description.label':
+        'Cross-fades between two children while animating size changes.',
+    'demo18.crossFade.demoLabel.label': 'Toggle between day and night mode',
+    'demo18.crossFade.hint.label':
+        'CrossFadeState determines which child is visible',
+
+    // Switcher Card
+    'demo18.switcher.icon.icon': 'mAutorenew',
+    'demo18.switcher.title.label': 'AnimatedSwitcher',
+    'demo18.switcher.description.label':
+        'Automatically animates transitions when child widget changes.',
+    'demo18.switcher.demoLabel.label': 'Select an icon to see animated transition',
+    'demo18.switcher.hint.label':
+        'Use unique keys on children to trigger transitions',
+
+    // Positioned Card
+    'demo18.positioned.icon.icon': 'mOpenWith',
+    'demo18.positioned.title.label': 'AnimatedPositioned',
+    'demo18.positioned.description.label':
+        'Animates position changes within a Stack.',
+    'demo18.positioned.demoLabel.label': 'Tap widget to animate position',
+    'demo18.positioned.hint.label':
+        'Must be a descendant of Stack widget',
+
+    // Align Card
+    'demo18.align.icon.icon': 'mFormatAlignCenter',
+    'demo18.align.title.label': 'AnimatedAlign',
+    'demo18.align.description.label':
+        'Smoothly animates alignment changes within parent.',
+    'demo18.align.demoLabel.label': 'Click grid positions to animate alignment',
+    'demo18.align.hint.label':
+        'Works with any Alignment value including fractional',
+
+    // Padding Card
+    'demo18.padding.icon.icon': 'mPadding',
+    'demo18.padding.title.label': 'AnimatedPadding',
+    'demo18.padding.description.label':
+        'Animates padding changes around child widget.',
+    'demo18.padding.demoLabel.label': 'Change padding with preset buttons',
+    'demo18.padding.hint.label':
+        'Outer border shows container, inner shows content',
+
+    // Size Card
+    'demo18.size.icon.icon': 'mAspectRatio',
+    'demo18.size.title.label': 'AnimatedSize',
+    'demo18.size.description.label':
+        'Automatically animates size changes of its child.',
+    'demo18.size.demoLabel.label': 'Expand/collapse to see smooth size animation',
+    'demo18.size.hint.label':
+        'Great for expandable sections and accordions',
+
+    // Scale Card
+    'demo18.scale.icon.icon': 'mZoomIn',
+    'demo18.scale.title.label': 'AnimatedScale',
+    'demo18.scale.description.label':
+        'Animates scale transformation of child widget.',
+    'demo18.scale.demoLabel.label': 'Adjust slider to scale the widget',
+    'demo18.scale.hint.label':
+        'Scale uses center alignment by default',
+
+    // Slide Card
+    'demo18.slide.icon.icon': 'mSwipeRight',
+    'demo18.slide.title.label': 'AnimatedSlide',
+    'demo18.slide.description.label':
+        'Animates position offset as a fraction of widget size.',
+    'demo18.slide.demoLabel.label': 'Use arrows to slide the widget',
+    'demo18.slide.hint.label':
+        'Offset(1,0) moves widget by its full width',
+
+    // Rotation Card
+    'demo18.rotation.icon.icon': 'mRotateRight',
+    'demo18.rotation.title.label': 'AnimatedRotation',
+    'demo18.rotation.description.label':
+        'Animates rotation in turns (1 turn = 360 degrees).',
+    'demo18.rotation.demoLabel.label': 'Adjust slider or use preset angles',
+    'demo18.rotation.hint.label':
+        'Values greater than 1 rotate multiple times',
+
+    // TextStyle Card
+    'demo18.textStyle.icon.icon': 'mTextFields',
+    'demo18.textStyle.title.label': 'AnimatedDefaultTextStyle',
+    'demo18.textStyle.description.label':
+        'Animates text style changes including size, weight, and color.',
+    'demo18.textStyle.demoLabel.label': 'Toggle to animate text style',
+    'demo18.textStyle.hint.label':
+        'Wraps Text widgets to animate their default style',
+
+    // PhysicalModel Card
+    'demo18.physicalModel.icon.icon': 'mLayers',
+    'demo18.physicalModel.title.label': 'AnimatedPhysicalModel',
+    'demo18.physicalModel.description.label':
+        'Animates elevation, color, and shadow changes.',
+    'demo18.physicalModel.demoLabel.label': 'Adjust elevation with slider',
+    'demo18.physicalModel.hint.label':
+        'Creates Material Design elevation effects',
+
+    // FadeTransition Card
+    'demo18.fadeTransition.icon.icon': 'mBlurOn',
+    'demo18.fadeTransition.title.label': 'FadeTransition',
+    'demo18.fadeTransition.description.label':
+        'Controller-driven fade animation for precise control.',
+    'demo18.fadeTransition.demoLabel.label': 'Use buttons to control fade animation',
+    'demo18.fadeTransition.hint.label':
+        'Requires AnimationController for the opacity',
+
+    // ScaleTransition Card
+    'demo18.scaleTransition.icon.icon': 'mZoomOutMap',
+    'demo18.scaleTransition.title.label': 'ScaleTransition',
+    'demo18.scaleTransition.description.label':
+        'Controller-driven scale animation with curves.',
+    'demo18.scaleTransition.demoLabel.label': 'Control scale with animation controller',
+    'demo18.scaleTransition.hint.label':
+        'Elastic curves create bouncy scale effects',
+
+    // RotationTransition Card
+    'demo18.rotationTransition.icon.icon': 'mSync',
+    'demo18.rotationTransition.title.label': 'RotationTransition',
+    'demo18.rotationTransition.description.label':
+        'Controller-driven rotation with loop support.',
+    'demo18.rotationTransition.demoLabel.label': 'Control rotation with precise timing',
+    'demo18.rotationTransition.hint.label':
+        'Use repeat() for continuous spinning',
+
+    // Hero Card
+    'demo18.hero.icon.icon': 'mFlightTakeoff',
+    'demo18.hero.title.label': 'Hero Transitions',
+    'demo18.hero.description.label':
+        'Shared element transitions between different views.',
+    'demo18.hero.demoLabel.label': 'Tap a card to see hero animation',
+    'demo18.hero.hint.label':
+        'Hero widgets with matching tags animate together',
   };
 
   @override

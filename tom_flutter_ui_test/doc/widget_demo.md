@@ -178,7 +178,7 @@ class DemoCard extends StatelessWidget {
 | 15 | List Views | List | 5 | ListView, animated, reorderable, dismissible | ✅ | 2026-03-30 |
 | 16 | Tree & Hierarchy | Tree | 2 | TreeSliver, nested expansion tiles | ✅ | 2026-03-30 |
 | 17 | Sliver Compositions | Sliver | 18 | All sliver widgets, complex layouts | ✅ | 2026-03-30 |
-| 18 | Animated Transitions | Animated | 19 | Implicit animations, heroes, transitions | | |
+| 18 | Animated Transitions | Animated | 19 | Implicit animations, heroes, transitions | ✅ | 2026-03-30 |
 | 19 | Effects & Filters | Effect | 6 | Backdrop, color filters, shaders, selection | | |
 | 20 | Interactions & Gestures | Interaction | 9 | Gestures, ink, drag-drop, pointer handling | | |
 
