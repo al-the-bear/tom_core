@@ -2827,7 +2827,7 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.toggleDemo.title.label': 'Switch & Checkbox Colors',
     'demo21.toggleDemo.subtitle.label': 'activeColor, trackColor from resources',
     'demo21.toggleDemo.info.label':
-        'Resources: demo21.switch1.activeColor → #4CAF50, activeTrackColor → #A5D6A7',
+        'Resources include active + inactive switch colors and checkbox side styling.',
     'demo21.switch1.label.label': 'Green switch',
     'demo21.switch2.label.label': 'Blue switch',
     'demo21.checkbox1.label.label': 'Purple checkbox',
@@ -2940,10 +2940,17 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
     'demo21.switch1.activeTrackColor': '#A5D6A7',  // Green 200
     'demo21.switch2.activeColor': '#2196F3',  // Blue
     'demo21.switch2.activeTrackColor': '#90CAF9',  // Blue 200
+        'demo21.switch2.inactiveThumbColor': '#1E88E5',  // Blue 600 (visible when off)
+        'demo21.switch2.inactiveTrackColor': '#BBDEFB',  // Blue 100 (visible when off)
     'demo21.checkbox1.activeColor': '#9C27B0',  // Purple
     'demo21.checkbox1.checkColor': '#FFFFFF',
     'demo21.checkbox2.activeColor': '#FF5722',  // Deep Orange
     'demo21.checkbox2.checkColor': '#FFFFFF',
+        'demo21.checkbox2.side': {
+            'color': '#FF5722',
+            'width': 2.0,
+            'style': 'solid',
+        },
 
         // --- Explicit Lookup Type Coverage ---
         'demo21.lookup.color': '#3F51B5',
