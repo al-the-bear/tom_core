@@ -5,9 +5,10 @@ class RowBreakpointsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Row breakpoints split a single row into multiple at narrow widths:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -75,7 +76,8 @@ AclBuilder()
     .append(Item4, dist: 8)
     .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 }

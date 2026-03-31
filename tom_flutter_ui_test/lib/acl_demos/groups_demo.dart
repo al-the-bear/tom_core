@@ -5,9 +5,10 @@ class GroupsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'AclBuilder groups - bordered containers with titles:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -265,7 +266,8 @@ AclBuilder(
         )
             .append(const DemoBox('Chip as Title', Colors.green))
             .build(),
-      ],
+        ],
+      ),
     );
   }
 }

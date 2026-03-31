@@ -34,9 +34,10 @@ class BreakpointExpansionDemo extends StatelessWidget {
       child: const Text('D'),
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           '4 expanding components that contract, then break into more rows:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -107,7 +108,8 @@ AclBuilder(padding: EdgeInsets.all(8))
     .expandX()
     .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 }

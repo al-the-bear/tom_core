@@ -5,9 +5,10 @@ class FluentApiDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Using convenience extension methods:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -92,7 +93,8 @@ AclColumn([
     AclRowDef(children: [...], gapBefore: 16),
 ])
 '''),
-      ],
+        ],
+      ),
     );
   }
 }

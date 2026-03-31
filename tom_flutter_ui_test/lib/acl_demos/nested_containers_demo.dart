@@ -5,9 +5,10 @@ class NestedContainersDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Nested ACL containers:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -146,7 +147,8 @@ AclBuilder()
     .expandX()
     .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 

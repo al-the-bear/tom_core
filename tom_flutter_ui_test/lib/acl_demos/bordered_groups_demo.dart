@@ -5,9 +5,10 @@ class BorderedGroupsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Single-line bordered groups with title positions:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -113,7 +114,8 @@ AclBuilder(
   .append(textField).expandX()
   .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 }

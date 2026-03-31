@@ -5,9 +5,10 @@ class InlineVariantsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Inline variants: different components shown in the same row at different widths.',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -239,7 +240,8 @@ AclBuilder()
               .endVariant()
               .build(),
         ),
-      ],
+        ],
+      ),
     );
   }
 }

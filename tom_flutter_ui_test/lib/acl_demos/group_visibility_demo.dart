@@ -38,9 +38,10 @@ class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Binary visibility toggle (Switch → hide/show):',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -198,7 +199,8 @@ final inputCtrl = AclCallbackVisibilityController<String>(
       : AclGroupVisibilityMode.hidden,
 );
 '''),
-      ],
+        ],
+      ),
     );
   }
 }
