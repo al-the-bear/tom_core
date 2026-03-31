@@ -1024,6 +1024,8 @@ class _AclContainerState extends State<AclContainer> {
         // ── Assemble Flutter widget tree from pre-computed values ────────
         final List<Widget> rowWidgets = [];
         int contentRowIndex = 0;
+        final rowCanExpandVertically =
+          canExpandVertically && !widget.scrollableY;
 
         for (final row in effectiveRows) {
           if (row.isGapRow) {
@@ -1074,7 +1076,7 @@ class _AclContainerState extends State<AclContainer> {
               row: row,
               layout: layout,
               canExpandHorizontally: canExpandHorizontally,
-              canExpandVertically: canExpandVertically,
+              canExpandVertically: rowCanExpandVertically,
               availableWidth: canExpandHorizontally ? effectiveMaxW : null,
             ),
           );
