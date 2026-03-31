@@ -2,6 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../resource_auth/tom_auth_state.dart';
+import '../resource_auth/tom_id_prefix.dart';
+import '../theme/tom_theme.dart';
+import '../widget_base/tom_node_base.dart';
 import 'acl_flags.dart';
 import 'acl_device_context.dart';
 import 'acl_group_visibility.dart';
@@ -51,7 +55,9 @@ class AclDirectionScope extends InheritedWidget {
   });
 
   static AclDirection? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<AclDirectionScope>()?.direction;
+    return context
+        .dependOnInheritedWidgetOfExactType<AclDirectionScope>()
+        ?.direction;
   }
 
   @override
@@ -100,12 +106,12 @@ class AclBorderStyle {
   });
 
   const AclBorderStyle.none()
-      : kind = AclBorderKind.none,
-        color = Colors.transparent,
-        lineWidth = 0,
-        rounded = false,
-        borderRadius = 0,
-        borderInsets = EdgeInsets.zero;
+    : kind = AclBorderKind.none,
+      color = Colors.transparent,
+      lineWidth = 0,
+      rounded = false,
+      borderRadius = 0,
+      borderInsets = EdgeInsets.zero;
 
   const AclBorderStyle.solid({
     this.color = const Color(0xFF9E9E9E),
@@ -395,7 +401,10 @@ class _AclContainerState extends State<AclContainer> {
   void didUpdateWidget(AclContainer oldWidget) {
     super.didUpdateWidget(oldWidget);
     // Re-subscribe if controllers changed.
-    if (!identical(oldWidget.groupVisibilityControllers, widget.groupVisibilityControllers)) {
+    if (!identical(
+      oldWidget.groupVisibilityControllers,
+      widget.groupVisibilityControllers,
+    )) {
       _unsubscribeVisibilityControllers(oldWidget.groupVisibilityControllers);
       _subscribeVisibilityControllers();
     }
@@ -406,14 +415,20 @@ class _AclContainerState extends State<AclContainer> {
     _remapNaturalSizeCacheByPosition(oldWidget.rows, widget.rows);
   }
 
-  void _subscribeVisibilityControllers([Map<String, AclGroupVisibilityController>? controllers]) {
-    for (final ctrl in (controllers ?? widget.groupVisibilityControllers).values) {
+  void _subscribeVisibilityControllers([
+    Map<String, AclGroupVisibilityController>? controllers,
+  ]) {
+    for (final ctrl
+        in (controllers ?? widget.groupVisibilityControllers).values) {
       ctrl.modeNotifier.addListener(_onVisibilityChanged);
     }
   }
 
-  void _unsubscribeVisibilityControllers([Map<String, AclGroupVisibilityController>? controllers]) {
-    for (final ctrl in (controllers ?? widget.groupVisibilityControllers).values) {
+  void _unsubscribeVisibilityControllers([
+    Map<String, AclGroupVisibilityController>? controllers,
+  ]) {
+    for (final ctrl
+        in (controllers ?? widget.groupVisibilityControllers).values) {
       ctrl.modeNotifier.removeListener(_onVisibilityChanged);
     }
   }
@@ -470,10 +485,9 @@ class _AclContainerState extends State<AclContainer> {
         continue;
       }
       // Collect active breakpoints (sorted smallest atWidth first).
-      final active = row.breakpoints
-          .where((bp) => availableWidth < bp.atWidth)
-          .toList()
-        ..sort((a, b) => a.splitAfter.compareTo(b.splitAfter));
+      final active =
+          row.breakpoints.where((bp) => availableWidth < bp.atWidth).toList()
+            ..sort((a, b) => a.splitAfter.compareTo(b.splitAfter));
       if (active.isEmpty) {
         result.add(row);
         continue;
@@ -488,25 +502,36 @@ class _AclContainerState extends State<AclContainer> {
       for (int i = 0; i < sorted.length; i++) {
         final end = sorted[i];
         if (end <= start || end > row.components.length) continue;
-        final dist = i == 0 ? row.gapBefore : active.firstWhere((b) => b.splitAfter == end, orElse: () => active.first).splitRowDist;
-        result.add(AclRow(
-          components: row.components.sublist(start, end),
-          alignment: row.alignment,
-          gapBefore: i == 0 ? row.gapBefore : dist,
-          id: i == 0 ? row.id : null,
-          group: row.group,
-          breakpoints: const [],
-        ));
+        final dist = i == 0
+            ? row.gapBefore
+            : active
+                  .firstWhere(
+                    (b) => b.splitAfter == end,
+                    orElse: () => active.first,
+                  )
+                  .splitRowDist;
+        result.add(
+          AclRow(
+            components: row.components.sublist(start, end),
+            alignment: row.alignment,
+            gapBefore: i == 0 ? row.gapBefore : dist,
+            id: i == 0 ? row.id : null,
+            group: row.group,
+            breakpoints: const [],
+          ),
+        );
         start = end;
       }
       if (start < row.components.length) {
-        result.add(AclRow(
-          components: row.components.sublist(start),
-          alignment: row.alignment,
-          gapBefore: active.last.splitRowDist,
-          group: row.group,
-          breakpoints: const [],
-        ));
+        result.add(
+          AclRow(
+            components: row.components.sublist(start),
+            alignment: row.alignment,
+            gapBefore: active.last.splitRowDist,
+            group: row.group,
+            breakpoints: const [],
+          ),
+        );
       }
     }
     return result;
@@ -568,18 +593,20 @@ class _AclContainerState extends State<AclContainer> {
       }).toList();
 
       if (filtered.isEmpty) continue;
-      result.add(AclRow(
-        components: filtered,
-        alignment: row.alignment,
-        gapBefore: row.gapBefore,
-        isGapRow: row.isGapRow,
-        gapRowWeight: row.gapRowWeight,
-        separator: row.separator,
-        gapRowMinSize: row.gapRowMinSize,
-        id: row.id,
-        group: row.group,
-        breakpoints: row.breakpoints,
-      ));
+      result.add(
+        AclRow(
+          components: filtered,
+          alignment: row.alignment,
+          gapBefore: row.gapBefore,
+          isGapRow: row.isGapRow,
+          gapRowWeight: row.gapRowWeight,
+          separator: row.separator,
+          gapRowMinSize: row.gapRowMinSize,
+          id: row.id,
+          group: row.group,
+          breakpoints: row.breakpoints,
+        ),
+      );
     }
     return result;
   }
@@ -592,28 +619,91 @@ class _AclContainerState extends State<AclContainer> {
     return ctrl?.mode ?? AclGroupVisibilityMode.visible;
   }
 
-  /// Wraps a component with [AclScope] to provide ID/group metadata.
-  Widget _wrapWithScope(Widget child, AclComponent comp, AclRow row) {
-    final containerId = widget.aclId;
-    final parentPath = widget.parentIdPath;
-    String? fullPath;
-    if (comp.id != null) {
-      final parts = <String>[
-        ?parentPath,
-        ?containerId,
-        if (row.id != null) row.id!,
-        comp.id!,
-      ];
-      fullPath = parts.join('.');
+  /// Builds the canonical policy path for an ACL component ID.
+  ///
+  /// Paths use Tom prefixes and include route/container/group context when
+  /// available so ACL IDs participate in the same auth namespace as Tom widgets.
+  String _buildComponentPolicyPath({
+    required String componentId,
+    String? groupName,
+  }) {
+    final scope = TomNodeScope.of(context);
+    final segments = <String>[];
+
+    final routeId = scope?.routeId;
+    if (routeId != null && routeId.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.route, routeId));
     }
-    return AclScope(
+
+    // Preserve an outer container scope when this ACL has its own container ID.
+    final outerContainerId = scope?.containerId;
+    if (widget.aclId != null &&
+        outerContainerId != null &&
+        outerContainerId != widget.aclId) {
+      segments.add(
+        TomIdPrefix.prefixed(TomIdPrefix.container, outerContainerId),
+      );
+    }
+
+    final effectiveContainerId = widget.aclId ?? outerContainerId;
+    if (effectiveContainerId != null && effectiveContainerId.isNotEmpty) {
+      segments.add(
+        TomIdPrefix.prefixed(TomIdPrefix.container, effectiveContainerId),
+      );
+    }
+
+    final effectiveGroupName = (groupName != null && groupName.isNotEmpty)
+        ? groupName
+        : scope?.groupId;
+    if (effectiveGroupName != null && effectiveGroupName.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, effectiveGroupName));
+    }
+
+    segments.add(TomIdPrefix.prefixed(TomIdPrefix.widget, componentId));
+    return segments.join('.');
+  }
+
+  /// Wraps a component with [AclScope] to provide ID/group metadata.
+  Widget _wrapWithScope(
+    Widget child,
+    AclComponent comp,
+    AclRow row, {
+    String? groupName,
+    String? fullPath,
+  }) {
+    final containerId = widget.aclId;
+    final resolvedGroup = groupName ?? comp.group ?? row.group;
+    final resolvedPath =
+        fullPath ??
+        (comp.id != null
+            ? _buildComponentPolicyPath(
+                componentId: comp.id!,
+                groupName: resolvedGroup,
+              )
+            : null);
+
+    Widget wrapped = AclScope(
       containerId: containerId,
       componentId: comp.id,
       rowId: row.id,
-      groupName: comp.group ?? row.group,
-      fullIdPath: fullPath,
+      groupName: resolvedGroup,
+      fullIdPath: resolvedPath,
       child: child,
     );
+
+    if (resolvedPath != null) {
+      final parentScope = TomNodeScope.of(context);
+      wrapped = TomNodeScope(
+        routeId: parentScope?.routeId,
+        containerId: containerId ?? parentScope?.containerId,
+        groupId: resolvedGroup ?? parentScope?.groupId,
+        formId: parentScope?.formId,
+        fullIdPath: resolvedPath,
+        child: wrapped,
+      );
+    }
+
+    return wrapped;
   }
 
   @override
@@ -622,7 +712,8 @@ class _AclContainerState extends State<AclContainer> {
 
     // Container-level height/width constraints. minContW is handled inside
     // _buildContent (inside LayoutBuilder) so expandX/gap use the correct width.
-    final minContH = widget.minimumContainerSize?.height ??
+    final minContH =
+        widget.minimumContainerSize?.height ??
         widget.preferredContainerSize?.height;
     final maxContW = widget.maximumContainerSize?.width;
     final maxContH = widget.maximumContainerSize?.height;
@@ -643,8 +734,8 @@ class _AclContainerState extends State<AclContainer> {
 
     final activeBorderStyle =
         _hasFocusWithin && widget.focusedBorderStyle != null
-            ? widget.focusedBorderStyle!
-            : widget.borderStyle;
+        ? widget.focusedBorderStyle!
+        : widget.borderStyle;
 
     final hasExplicitPadding = widget.padding != EdgeInsets.zero;
     if (hasExplicitPadding) {
@@ -744,10 +835,14 @@ class _AclContainerState extends State<AclContainer> {
       final comp = row.components[i];
       if (skip(comp)) continue;
 
-      final linkedW = linkedWidths[i] ??
-          (comp.useOtherDimX ? crossRowVirtualRects[comp.referenceKey]?.width : null);
+      final linkedW =
+          linkedWidths[i] ??
+          (comp.useOtherDimX
+              ? crossRowVirtualRects[comp.referenceKey]?.width
+              : null);
 
-      final bool collapseToVisual = comp.alignXToKey == null && maxHX < plannedX;
+      final bool collapseToVisual =
+          comp.alignXToKey == null && maxHX < plannedX;
       if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
 
       final delta = collapseToVisual
@@ -768,9 +863,8 @@ class _AclContainerState extends State<AclContainer> {
               .clamp(0.0, double.infinity);
       prefWidths[i] = pref;
 
-      final h =
-          (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
-              .clamp(0.0, double.infinity);
+      final h = (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
+          .clamp(0.0, double.infinity);
       final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
       minHX = math.min(minHX, shiftedLeft);
       maxHX = math.max(maxHX, shiftedLeft + pref);
@@ -786,8 +880,9 @@ class _AclContainerState extends State<AclContainer> {
     if (naturalWidth <= availableWidth) {
       // ── Grow phase ─────────────────────────────────────────────────────
       // Natural-sized (no-hint) components use cached size as seed.
-      final hasRowFiller =
-          row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
+      final hasRowFiller = row.components.any(
+        (c) => (c.expandX && !c.isGap) || c.isGap,
+      );
       if (!hasRowFiller) {
         double naturalExcludedWidth = 0;
         for (int i = 0; i < row.components.length; i++) {
@@ -800,7 +895,8 @@ class _AclContainerState extends State<AclContainer> {
             continue;
           }
           // Use cached natural width as seed; falls back to 0 on first frame.
-          naturalExcludedWidth += _naturalWidth(comp) ??
+          naturalExcludedWidth +=
+              _naturalWidth(comp) ??
               (comp.child is SizedBox
                   ? ((comp.child as SizedBox).width ?? 0.0)
                   : 0.0);
@@ -900,12 +996,11 @@ class _AclContainerState extends State<AclContainer> {
         // no explicit borderInsets were configured. Suppressed when the
         // container has explicit padding (which replaces the default insets).
         : (style.enabled && !suppressDefaultInsets)
-            ? Padding(padding: const EdgeInsets.all(4), child: content)
-            : content;
+        ? Padding(padding: const EdgeInsets.all(4), child: content)
+        : content;
 
     if (style.kind == AclBorderKind.solidDouble) {
-      final innerRadius =
-          radius > 0 ? (radius - 2.0).clamp(0.0, radius) : 0.0;
+      final innerRadius = radius > 0 ? (radius - 2.0).clamp(0.0, radius) : 0.0;
       return Container(
         decoration: BoxDecoration(
           color: widget.backgroundColor,
@@ -928,22 +1023,26 @@ class _AclContainerState extends State<AclContainer> {
 
     final Border? border = switch (style.kind) {
       AclBorderKind.solid => Border.all(color: color, width: style.lineWidth),
-      AclBorderKind.top =>
-        Border(top: BorderSide(color: color, width: style.lineWidth)),
-      AclBorderKind.bottom =>
-        Border(bottom: BorderSide(color: color, width: style.lineWidth)),
-      AclBorderKind.left =>
-        Border(left: BorderSide(color: color, width: style.lineWidth)),
-      AclBorderKind.right =>
-        Border(right: BorderSide(color: color, width: style.lineWidth)),
+      AclBorderKind.top => Border(
+        top: BorderSide(color: color, width: style.lineWidth),
+      ),
+      AclBorderKind.bottom => Border(
+        bottom: BorderSide(color: color, width: style.lineWidth),
+      ),
+      AclBorderKind.left => Border(
+        left: BorderSide(color: color, width: style.lineWidth),
+      ),
+      AclBorderKind.right => Border(
+        right: BorderSide(color: color, width: style.lineWidth),
+      ),
       AclBorderKind.horizontal => Border(
-          top: BorderSide(color: color, width: style.lineWidth),
-          bottom: BorderSide(color: color, width: style.lineWidth),
-        ),
+        top: BorderSide(color: color, width: style.lineWidth),
+        bottom: BorderSide(color: color, width: style.lineWidth),
+      ),
       AclBorderKind.vertical => Border(
-          left: BorderSide(color: color, width: style.lineWidth),
-          right: BorderSide(color: color, width: style.lineWidth),
-        ),
+        left: BorderSide(color: color, width: style.lineWidth),
+        right: BorderSide(color: color, width: style.lineWidth),
+      ),
       _ => null,
     };
 
@@ -960,15 +1059,17 @@ class _AclContainerState extends State<AclContainer> {
   // ── Content building ───────────────────────────────────────────────────────
 
   Widget _buildContent(BuildContext context) {
-    final minContW = (widget.minimumContainerSize?.width ??
-            widget.preferredContainerSize?.width ??
-            0.0)
-        .clamp(0.0, double.maxFinite);
+    final minContW =
+        (widget.minimumContainerSize?.width ??
+                widget.preferredContainerSize?.width ??
+                0.0)
+            .clamp(0.0, double.maxFinite);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final rawMaxW =
-            constraints.hasBoundedWidth ? constraints.maxWidth : 0.0;
+        final rawMaxW = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 0.0;
         final effectiveMaxW = math.max(rawMaxW, minContW);
         final canExpandHorizontally = effectiveMaxW > 0;
         final canExpandVertically = constraints.hasBoundedHeight;
@@ -994,7 +1095,10 @@ class _AclContainerState extends State<AclContainer> {
           parentAcl = context.findAncestorWidgetOfExactType<Acl>();
         }
         final inlineFilteredRows = _applyInlineVariants(
-          variantRows, deviceCtx, parentAcl, context,
+          variantRows,
+          deviceCtx,
+          parentAcl,
+          context,
         );
         final effectiveRows = _applyRowBreakpoints(
           inlineFilteredRows,
@@ -1025,24 +1129,22 @@ class _AclContainerState extends State<AclContainer> {
         final List<Widget> rowWidgets = [];
         int contentRowIndex = 0;
         final rowCanExpandVertically =
-          canExpandVertically && !widget.scrollableY;
+            canExpandVertically && !widget.scrollableY;
 
         for (final row in effectiveRows) {
           if (row.isGapRow) {
             if (!widget.scrollableY && canExpandVertically) {
               if (!hasExpandY) {
                 // No expandY rows in layout: gap rows expand proportionally.
-                final weight =
-                    (row.gapRowWeight * 1000).round().clamp(1, 1000000);
+                final weight = (row.gapRowWeight * 1000).round().clamp(
+                  1,
+                  1000000,
+                );
                 final gapContent = row.separator != null
                     ? _buildSeparatorWidget(row.separator!)
                     : const SizedBox.expand();
                 rowWidgets.add(
-                  Flexible(
-                    flex: weight,
-                    fit: FlexFit.tight,
-                    child: gapContent,
-                  ),
+                  Flexible(flex: weight, fit: FlexFit.tight, child: gapContent),
                 );
               } else {
                 // expandY rows are present: gap rows do NOT compete for the
@@ -1082,10 +1184,9 @@ class _AclContainerState extends State<AclContainer> {
           );
         }
 
-        final columnMainAxisSize =
-            widget.scrollableY || !useMaxVertical
-                ? MainAxisSize.min
-                : MainAxisSize.max;
+        final columnMainAxisSize = widget.scrollableY || !useMaxVertical
+            ? MainAxisSize.min
+            : MainAxisSize.max;
 
         Widget column = Column(
           mainAxisSize: columnMainAxisSize,
@@ -1096,7 +1197,10 @@ class _AclContainerState extends State<AclContainer> {
         );
 
         if (!canExpandHorizontally) {
-          column = UnconstrainedBox(alignment: Alignment.topLeft, child: column);
+          column = UnconstrainedBox(
+            alignment: Alignment.topLeft,
+            child: column,
+          );
         }
 
         if (needsHorizontalScroll) {
@@ -1132,8 +1236,7 @@ class _AclContainerState extends State<AclContainer> {
     List<AclRow>? overrideRows,
   }) {
     final rows = overrideRows ?? widget.rows;
-    final contentRows =
-        rows.where((r) => !r.isGapRow).toList(growable: false);
+    final contentRows = rows.where((r) => !r.isGapRow).toList(growable: false);
 
     List<_AclRowLayout>? prev;
 
@@ -1240,14 +1343,14 @@ class _AclContainerState extends State<AclContainer> {
       for (int i = 0; i < row.components.length; i++) {
         final comp = row.components[i];
         if (comp.isGap) continue;
-        totalFitted += fittedWidths[i] ??
+        totalFitted +=
+            fittedWidths[i] ??
             linkedWidths[i] ??
             comp.preferredSize?.width ??
             _naturalWidth(comp) ??
             0;
       }
-      final gapRemaining =
-          math.max(0.0, availableWidth - totalFitted);
+      final gapRemaining = math.max(0.0, availableWidth - totalFitted);
       final gapWeightSum = row.components
           .where((c) => c.isGap)
           .fold(0.0, (s, c) => s + c.gapWeight);
@@ -1255,9 +1358,8 @@ class _AclContainerState extends State<AclContainer> {
         for (int i = 0; i < row.components.length; i++) {
           final comp = row.components[i];
           if (!comp.isGap) continue;
-          gapSlotWidths[i] =
-              (gapRemaining * comp.gapWeight / gapWeightSum)
-                  .clamp(0.0, double.infinity);
+          gapSlotWidths[i] = (gapRemaining * comp.gapWeight / gapWeightSum)
+              .clamp(0.0, double.infinity);
         }
       }
     }
@@ -1278,7 +1380,8 @@ class _AclContainerState extends State<AclContainer> {
         continue;
       }
 
-      final isFlexNative = comp.child is Flexible ||
+      final isFlexNative =
+          comp.child is Flexible ||
           comp.child is Expanded ||
           comp.child is Spacer;
 
@@ -1300,7 +1403,9 @@ class _AclContainerState extends State<AclContainer> {
       final linkedH = linkedHeights[i];
 
       // Horizontal alignment delta
-      if (!isFlexNative && !hasExplicitXAlignment && maxHorizontalX < priorPlannedX) {
+      if (!isFlexNative &&
+          !hasExplicitXAlignment &&
+          maxHorizontalX < priorPlannedX) {
         // collapseToVisual: maxHX lags behind the natural planned position.
         // Place component at maxHX + gapBefore by using priorPlannedX as base.
         hDelta = maxHorizontalX - priorPlannedX;
@@ -1310,8 +1415,9 @@ class _AclContainerState extends State<AclContainer> {
         // ConstrainedBox(maxWidth: constraints.maxWidth). The actual rendered
         // width is therefore min(preferredWidth, containerWidth). Feed the same
         // effective width into _calcHorizontalDelta so the centre point is right.
-        final rowFillsWidth =
-            row.components.any((c) => (c.expandX && !c.isGap) || c.isGap);
+        final rowFillsWidth = row.components.any(
+          (c) => (c.expandX && !c.isGap) || c.isGap,
+        );
         double? alignLinkedW = linkedW;
         if (!rowFillsWidth &&
             alignLinkedW == null &&
@@ -1344,8 +1450,7 @@ class _AclContainerState extends State<AclContainer> {
 
       final key = comp.componentKey;
       if (key != null) {
-        final vRect =
-            Rect.fromLTWH(shiftedLeft, 0, estimatedW, estimatedH);
+        final vRect = Rect.fromLTWH(shiftedLeft, 0, estimatedW, estimatedH);
         virtualRects[key] = vRect;
         sameRowVirtualRects[key] = vRect;
       }
@@ -1371,21 +1476,21 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       final selfRect = virtualRects[comp.componentKey];
-      final refRect = sameRowVirtualRects[comp.alignYToKey] ??
+      final refRect =
+          sameRowVirtualRects[comp.alignYToKey] ??
           virtualRects[comp.alignYToKey];
       if (selfRect == null || refRect == null) continue;
 
       // When the row has expandY components, baseTopInRow = 0; otherwise
       // each component defaults to (rowH - compH) / 2 (centred).
-      double defaultTop(Rect r) => hasRowExpandY
-          ? 0.0
-          : (rowEstimatedHeight - r.height) / 2;
+      double defaultTop(Rect r) =>
+          hasRowExpandY ? 0.0 : (rowEstimatedHeight - r.height) / 2;
 
       final adjSelfRect = selfRect.translate(0, defaultTop(selfRect));
-      final adjRefRect  = refRect.translate(0, defaultTop(refRect));
+      final adjRefRect = refRect.translate(0, defaultTop(refRect));
 
       final selfPoint = _verticalPoint(adjSelfRect, comp.alignYFrom!);
-      final refPoint  = _verticalPoint(adjRefRect,  comp.alignYTo!);
+      final refPoint = _verticalPoint(adjRefRect, comp.alignYTo!);
       final delta = (refPoint - comp.alignYGap) - selfPoint;
       verticalDeltas[i] = delta;
     }
@@ -1408,9 +1513,7 @@ class _AclContainerState extends State<AclContainer> {
     final key = comp.componentKey;
     if (key == null) return null;
     return _naturalSizeCache[key]?.width ??
-        (comp.child is SizedBox
-            ? (comp.child as SizedBox).width
-            : null);
+        (comp.child is SizedBox ? (comp.child as SizedBox).width : null);
   }
 
   double? _naturalHeight(AclComponent comp) {
@@ -1459,11 +1562,11 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     final key = comp.alignXToKey!;
-    final refRect =
-        crossRowVirtualRects[key] ?? virtualRects[key];
+    final refRect = crossRowVirtualRects[key] ?? virtualRects[key];
     if (refRect == null) return 0;
 
-    final widthEstimate = linkedWidth ??
+    final widthEstimate =
+        linkedWidth ??
         (comp.preferredSize?.width ??
             comp.minimumSize?.width ??
             _naturalWidth(comp) ??
@@ -1475,33 +1578,35 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   Widget _buildSeparatorWidget(AclSeparator separator) {
-    return LayoutBuilder(builder: (context, _) {
-      final theme = Theme.of(context);
-      final lineColor = separator.color ?? theme.dividerColor;
-      Widget line = Container(height: separator.lineWidth, color: lineColor);
+    return LayoutBuilder(
+      builder: (context, _) {
+        final theme = Theme.of(context);
+        final lineColor = separator.color ?? theme.dividerColor;
+        Widget line = Container(height: separator.lineWidth, color: lineColor);
 
-      Widget content;
-      if (separator.style == AclSeparatorStyle.doubleLine) {
-        content = Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            line,
-            SizedBox(height: separator.lineWidth * 2),
-            Container(height: separator.lineWidth, color: lineColor),
-          ],
-        );
-      } else {
-        content = line;
-      }
+        Widget content;
+        if (separator.style == AclSeparatorStyle.doubleLine) {
+          content = Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              line,
+              SizedBox(height: separator.lineWidth * 2),
+              Container(height: separator.lineWidth, color: lineColor),
+            ],
+          );
+        } else {
+          content = line;
+        }
 
-      final alignment = switch (separator.alignment) {
-        AclSeparatorAlignment.top => Alignment.topCenter,
-        AclSeparatorAlignment.middle => Alignment.center,
-        AclSeparatorAlignment.bottom => Alignment.bottomCenter,
-      };
+        final alignment = switch (separator.alignment) {
+          AclSeparatorAlignment.top => Alignment.topCenter,
+          AclSeparatorAlignment.middle => Alignment.center,
+          AclSeparatorAlignment.bottom => Alignment.bottomCenter,
+        };
 
-      return Align(alignment: alignment, child: content);
-    });
+        return Align(alignment: alignment, child: content);
+      },
+    );
   }
 
   // ── Row widget assembly (Flutter tree only — all values pre-computed) ───────
@@ -1513,7 +1618,10 @@ class _AclContainerState extends State<AclContainer> {
     required bool canExpandVertically,
     double? availableWidth,
   }) {
-    final isRtl = (widget.direction ?? AclDirectionScope.maybeOf(context) ?? AclDirection.ltr) ==
+    final isRtl =
+        (widget.direction ??
+            AclDirectionScope.maybeOf(context) ??
+            AclDirection.ltr) ==
         AclDirection.rtl;
     final mainAxisAlignment = switch (row.alignment) {
       RowAlignment.left => MainAxisAlignment.start,
@@ -1527,7 +1635,9 @@ class _AclContainerState extends State<AclContainer> {
     final rowFillsWidth = hasExpandX || hasGapSlots;
 
     final gapWeightSum = hasGapSlots
-        ? row.components.where((c) => c.isGap).fold(0.0, (s, c) => s + c.gapWeight)
+        ? row.components
+              .where((c) => c.isGap)
+              .fold(0.0, (s, c) => s + c.gapWeight)
         : 0.0;
 
     final children = <Widget>[];
@@ -1548,7 +1658,10 @@ class _AclContainerState extends State<AclContainer> {
         if (!widget.scrollableX && gapWeightSum > 0) {
           if (rowFillsWidth) {
             final totalExpandXFlex = hasExpandX
-                ? row.components.where((c) => c.expandX && !c.isGap).fold(0.0, (s, c) {
+                ? row.components.where((c) => c.expandX && !c.isGap).fold(0.0, (
+                    s,
+                    c,
+                  ) {
                     final pref = c.preferredSize?.width ?? 0.0;
                     final min = c.minimumSize?.width ?? 0.0;
                     final diff = pref - min;
@@ -1557,15 +1670,21 @@ class _AclContainerState extends State<AclContainer> {
                 : 0.0;
             final int flex;
             if (totalExpandXFlex > 0) {
-              flex =
-                  ((component.gapWeight / gapWeightSum) * totalExpandXFlex).round().clamp(1, 100000);
+              flex = ((component.gapWeight / gapWeightSum) * totalExpandXFlex)
+                  .round()
+                  .clamp(1, 100000);
             } else {
-              flex = (component.gapWeight / gapWeightSum * 10000).round().clamp(1, 10000);
+              flex = (component.gapWeight / gapWeightSum * 10000).round().clamp(
+                1,
+                10000,
+              );
             }
             children.add(Spacer(flex: flex));
           } else {
-            final gapWidth =
-                (layout.gapSlotWidths[componentIndex] ?? 0).clamp(0.0, double.infinity);
+            final gapWidth = (layout.gapSlotWidths[componentIndex] ?? 0).clamp(
+              0.0,
+              double.infinity,
+            );
             if (gapWidth > 0) children.add(SizedBox(width: gapWidth));
             plannedX += gapWidth;
             maxHorizontalX = math.max(maxHorizontalX, plannedX);
@@ -1581,7 +1700,8 @@ class _AclContainerState extends State<AclContainer> {
           component.child is Spacer;
 
       final alignmentDelta = layout.horizontalDeltas[componentIndex] ?? 0.0;
-      final verticalAlignmentOffset = layout.verticalDeltas[componentIndex] ?? 0.0;
+      final verticalAlignmentOffset =
+          layout.verticalDeltas[componentIndex] ?? 0.0;
 
       // Always emit gapBefore — the pre-calc always accounts for it in plannedX
       // so the alignmentDelta is always measured from after the gap.
@@ -1606,13 +1726,37 @@ class _AclContainerState extends State<AclContainer> {
         continue;
       }
 
+      String? componentPolicyPath;
+      TomAuthState? authState;
+      if (component.id != null && component.id!.isNotEmpty) {
+        componentPolicyPath = _buildComponentPolicyPath(
+          componentId: component.id!,
+          groupName: compGroup,
+        );
+        authState = TomUIAuthorization.resolveAuth(componentPolicyPath);
+        if (!authState.visible) {
+          children.add(const SizedBox.shrink());
+          continue;
+        }
+      }
+
       // Wrap with AclScope to provide ID/group metadata.
-      child = _wrapWithScope(child, component, row);
+      child = _wrapWithScope(
+        child,
+        component,
+        row,
+        groupName: compGroup,
+        fullPath: componentPolicyPath,
+      );
+
+      if (authState?.readonly == true) {
+        final style = TomThemeScope.readonlyStyleOf(context);
+        child = style.apply(child);
+      }
+
       // Apply disabled treatment if needed.
       if (visMode == AclGroupVisibilityMode.disabled) {
-        child = IgnorePointer(
-          child: Opacity(opacity: 0.4, child: child),
-        );
+        child = IgnorePointer(child: Opacity(opacity: 0.4, child: child));
       }
 
       final linkedWidth = layout.linkedWidths[componentIndex];
@@ -1620,25 +1764,32 @@ class _AclContainerState extends State<AclContainer> {
       final fittedWidth = layout.fittedWidths[componentIndex];
 
       final minWidth = component.useOtherDimX
-          ? (linkedWidth ?? component.minimumSize?.width ?? component.preferredSize?.width)
+          ? (linkedWidth ??
+                component.minimumSize?.width ??
+                component.preferredSize?.width)
           : (component.minimumSize?.width ?? component.preferredSize?.width);
       final minHeight = component.useOtherDimY
-          ? (linkedHeight ?? component.minimumSize?.height ?? component.preferredSize?.height)
+          ? (linkedHeight ??
+                component.minimumSize?.height ??
+                component.preferredSize?.height)
           : (component.minimumSize?.height ?? component.preferredSize?.height);
       // For useOtherDimX components whose reference is not yet resolved (first frame),
       // fall back to availableWidth as maxWidth — prevents TextField/Dropdown
       // "unbounded width" assertion inside Row(mainAxisSize.max) rows.
       final maxWidth = component.useOtherDimX
           ? (linkedWidth ??
-              component.maximumSize?.width ??
-              (availableWidth?.isFinite == true ? availableWidth : null))
+                component.maximumSize?.width ??
+                (availableWidth?.isFinite == true ? availableWidth : null))
           : component.maximumSize?.width;
       final maxHeight = component.useOtherDimY
           ? (linkedHeight ?? component.maximumSize?.height)
           : component.maximumSize?.height;
 
       if (!isFlexNativeChild &&
-          (minWidth != null || minHeight != null || maxWidth != null || maxHeight != null)) {
+          (minWidth != null ||
+              minHeight != null ||
+              maxWidth != null ||
+              maxHeight != null)) {
         child = ConstrainedBox(
           constraints: BoxConstraints(
             minWidth: minWidth ?? 0,
@@ -1650,7 +1801,8 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!isFlexNativeChild && (!component.expandX || !canExpandHorizontally)) {
+      if (!isFlexNativeChild &&
+          (!component.expandX || !canExpandHorizontally)) {
         final effectiveWidth = fittedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
           child = SizedBox(width: effectiveWidth, child: child);
@@ -1664,19 +1816,27 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
-      final hasFiniteMaxWidth = (component.maximumSize?.width ?? double.infinity).isFinite;
-      if (!isFlexNativeChild && component.expandX && canExpandHorizontally && !hasFiniteMaxWidth) {
+      final hasFiniteMaxWidth =
+          (component.maximumSize?.width ?? double.infinity).isFinite;
+      if (!isFlexNativeChild &&
+          component.expandX &&
+          canExpandHorizontally &&
+          !hasFiniteMaxWidth) {
         child = SizedBox(width: double.infinity, child: child);
       }
 
       final estimatedWidth = _estimateW(component, linkedWidth, fittedWidth);
       final estimatedHeight = _estimateH(component, linkedHeight);
 
-      final shiftedLeftInRow = plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
+      final shiftedLeftInRow =
+          plannedX + (alignmentDelta < 0 ? alignmentDelta : 0);
       final shiftedRightInRow = shiftedLeftInRow + estimatedWidth;
       minHorizontalX = math.min(minHorizontalX, shiftedLeftInRow);
       maxHorizontalX = math.max(maxHorizontalX, shiftedRightInRow);
-      rowEstimatedWidth = math.max(rowEstimatedWidth, plannedX + estimatedWidth);
+      rowEstimatedWidth = math.max(
+        rowEstimatedWidth,
+        plannedX + estimatedWidth,
+      );
 
       if (!isFlexNativeChild && component.componentKey != null) {
         if (component.expandY && canExpandVertically) {
@@ -1703,7 +1863,10 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       if (!isFlexNativeChild && alignmentDelta < 0) {
-        child = Transform.translate(offset: Offset(alignmentDelta, 0), child: child);
+        child = Transform.translate(
+          offset: Offset(alignmentDelta, 0),
+          child: child,
+        );
       }
 
       final baseTopInRow = hasExpandY && canExpandVertically
@@ -1725,12 +1888,17 @@ class _AclContainerState extends State<AclContainer> {
       if (component.expandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
-          final minW =
-              (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(0.0, double.maxFinite);
-          final prefW =
-              (fittedWidth ?? component.preferredSize?.width ?? minW).clamp(minW, double.maxFinite);
+          final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
+            0.0,
+            double.maxFinite,
+          );
+          final prefW = (fittedWidth ?? component.preferredSize?.width ?? minW)
+              .clamp(minW, double.maxFinite);
           final diff = prefW - minW;
-          final flexWeight = (diff.isFinite ? diff.round() : 1000).clamp(1, 10000);
+          final flexWeight = (diff.isFinite ? diff.round() : 1000).clamp(
+            1,
+            10000,
+          );
           child = Flexible(flex: flexWeight, fit: FlexFit.tight, child: child);
         }
       }
@@ -1752,7 +1920,9 @@ class _AclContainerState extends State<AclContainer> {
                 (child) => child is Flexible || child is Spacer
                     ? child
                     : ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                        constraints: BoxConstraints(
+                          maxWidth: constraints.maxWidth,
+                        ),
                         child: child,
                       ),
               )
@@ -1771,8 +1941,7 @@ class _AclContainerState extends State<AclContainer> {
             MainAxisAlignment.end ||
             MainAxisAlignment.spaceBetween ||
             MainAxisAlignment.spaceAround ||
-            MainAxisAlignment.spaceEvenly =>
-              AlignmentDirectional.centerEnd,
+            MainAxisAlignment.spaceEvenly => AlignmentDirectional.centerEnd,
             MainAxisAlignment.center => Alignment.center,
             _ => AlignmentDirectional.centerStart,
           };
@@ -1788,12 +1957,15 @@ class _AclContainerState extends State<AclContainer> {
       );
     } else {
       rowWidget = Row(
-        mainAxisAlignment: hasGapSlots ? MainAxisAlignment.start : mainAxisAlignment,
+        mainAxisAlignment: hasGapSlots
+            ? MainAxisAlignment.start
+            : mainAxisAlignment,
         crossAxisAlignment: hasExpandY && canExpandVertically
             ? CrossAxisAlignment.stretch
             : CrossAxisAlignment.center,
-        mainAxisSize:
-            rowFillsWidth && canExpandHorizontally ? MainAxisSize.max : MainAxisSize.min,
+        mainAxisSize: rowFillsWidth && canExpandHorizontally
+            ? MainAxisSize.max
+            : MainAxisSize.min,
         children: children,
       );
     }
@@ -1830,8 +2002,14 @@ class _AclContainerState extends State<AclContainer> {
       for (final component in row.components) {
         if (!component.expandY) continue;
         final linkedH = layout.linkedHeights[row.components.indexOf(component)];
-        final minH = (component.minimumSize?.height ?? linkedH ?? 0).clamp(0, double.infinity);
-        final prefH = (component.preferredSize?.height ?? minH).clamp(minH, double.infinity);
+        final minH = (component.minimumSize?.height ?? linkedH ?? 0).clamp(
+          0,
+          double.infinity,
+        );
+        final prefH = (component.preferredSize?.height ?? minH).clamp(
+          minH,
+          double.infinity,
+        );
         rowFlex = (rowFlex + (prefH - minH).round()).clamp(1, 10000);
       }
       return Flexible(flex: rowFlex, fit: FlexFit.tight, child: rowWidget);
@@ -1849,22 +2027,28 @@ class _AclContainerState extends State<AclContainer> {
       AclRowCrossAlignment.center => Alignment.center,
       AclRowCrossAlignment.bottom => Alignment.bottomCenter,
     };
-    return Align(alignment: alignment, widthFactor: 1, heightFactor: 1, child: child);
+    return Align(
+      alignment: alignment,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: child,
+    );
   }
 
   double _horizontalPoint(Rect rect, AclAxisPointX point) => switch (point) {
-        AclAxisPointX.left => rect.left,
-        AclAxisPointX.center => rect.center.dx,
-        AclAxisPointX.right => rect.right,
-      };
+    AclAxisPointX.left => rect.left,
+    AclAxisPointX.center => rect.center.dx,
+    AclAxisPointX.right => rect.right,
+  };
 
   double _verticalPoint(Rect rect, AclAxisPointY point) => switch (point) {
-        AclAxisPointY.top => rect.top,
-        AclAxisPointY.center => rect.center.dy,
-        AclAxisPointY.bottom => rect.bottom,
-      };
+    AclAxisPointY.top => rect.top,
+    AclAxisPointY.center => rect.center.dy,
+    AclAxisPointY.bottom => rect.bottom,
+  };
 
-  double _horizontalOffset(AclAxisPointX point, double width) => switch (point) {
+  double _horizontalOffset(AclAxisPointX point, double width) =>
+      switch (point) {
         AclAxisPointX.left => 0,
         AclAxisPointX.center => width / 2,
         AclAxisPointX.right => width,
@@ -1984,11 +2168,12 @@ class Acl extends AclLayout {
 
   @override
   Widget build(BuildContext context) {
-    final hasTitle = titleWidget != null ||
-        (title != null && title!.isNotEmpty);
+    final hasTitle =
+        titleWidget != null || (title != null && title!.isNotEmpty);
     if (!hasTitle) return super.build(context);
 
-    final isRtl = (direction ?? AclDirectionScope.maybeOf(context) ?? AclDirection.ltr) ==
+    final isRtl =
+        (direction ?? AclDirectionScope.maybeOf(context) ?? AclDirection.ltr) ==
         AclDirection.rtl;
 
     final theme = Theme.of(context);
@@ -2008,9 +2193,12 @@ class Acl extends AclLayout {
         child: titleWidget,
       );
     } else {
-      final titleTextStyle = (titleStyle ??
-          theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))
-          ?.copyWith(height: 1.0);
+      final titleTextStyle =
+          (titleStyle ??
+                  theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ))
+              ?.copyWith(height: 1.0);
       titleLabel = Container(
         color: bg,
         padding: const EdgeInsets.symmetric(
@@ -2032,10 +2220,9 @@ class Acl extends AclLayout {
     // For solidDouble borders the title should centre on the midpoint
     // between the outer and inner border lines rather than the outer edge.
     // Outer centre = w/2, inner centre = 2.5w + 2, midpoint = 1.5w + 1.
-    final borderCenterOffset =
-        borderStyle.kind == AclBorderKind.solidDouble
-            ? 1.5 * borderStyle.lineWidth + 1.0
-            : 0.0;
+    final borderCenterOffset = borderStyle.kind == AclBorderKind.solidDouble
+        ? 1.5 * borderStyle.lineWidth + 1.0
+        : 0.0;
 
     // The anchor Y position is shifted per-alignment so the bg-coloured
     // Container always overlaps the full border width:
@@ -2044,12 +2231,19 @@ class Acl extends AclLayout {
     //   middle → anchor at border top; the bg straddles it naturally.
     //   top    → anchor pulled _kBorderMask above border top so bg
     //            (whose top edge = anchor Y) starts before the border.
-    final titleY = switch (titleBorderAlign) {
-      AclTitleBorderAlign.bottom =>
-        _kTitleReserve + borderCenterOffset + _kBorderMask + _kBaselineDescentAdjust + 1.0,
-      AclTitleBorderAlign.middle => _kTitleReserve + borderCenterOffset,
-      AclTitleBorderAlign.top => _kTitleReserve + borderCenterOffset - _kBorderMask - 5.0,
-    } + titleVerticalOffset;
+    final titleY =
+        switch (titleBorderAlign) {
+          AclTitleBorderAlign.bottom =>
+            _kTitleReserve +
+                borderCenterOffset +
+                _kBorderMask +
+                _kBaselineDescentAdjust +
+                1.0,
+          AclTitleBorderAlign.middle => _kTitleReserve + borderCenterOffset,
+          AclTitleBorderAlign.top =>
+            _kTitleReserve + borderCenterOffset - _kBorderMask - 5.0,
+        } +
+        titleVerticalOffset;
 
     return Stack(
       clipBehavior: Clip.none,
@@ -2058,9 +2252,15 @@ class Acl extends AclLayout {
           padding: const EdgeInsets.only(top: _kTitleReserve),
           child: AclContainer(
             rows: rows,
-            borderStyle: _titleAdjustedBorderStyle(borderStyle, titleBorderAlign),
+            borderStyle: _titleAdjustedBorderStyle(
+              borderStyle,
+              titleBorderAlign,
+            ),
             focusedBorderStyle: focusedBorderStyle != null
-                ? _titleAdjustedBorderStyle(focusedBorderStyle!, titleBorderAlign)
+                ? _titleAdjustedBorderStyle(
+                    focusedBorderStyle!,
+                    titleBorderAlign,
+                  )
                 : null,
             padding: padding,
             backgroundColor: backgroundColor,
@@ -2110,9 +2310,7 @@ class Acl extends AclLayout {
       AclTitleBorderAlign.middle => 10.0,
       AclTitleBorderAlign.top => 18.0,
     };
-    return style.copyWith(
-      borderInsets: EdgeInsets.fromLTRB(4, topInset, 4, 4),
-    );
+    return style.copyWith(borderInsets: EdgeInsets.fromLTRB(4, topInset, 4, 4));
   }
 
   /// Effective title position after RTL mirroring: topLeft ↔ topRight.
@@ -2126,22 +2324,22 @@ class Acl extends AclLayout {
   }
 
   Alignment _alignment(bool isRtl) => switch (_effectivePosition(isRtl)) {
-        AclTitlePosition.topLeft => Alignment.centerLeft,
-        AclTitlePosition.topCenter => Alignment.center,
-        AclTitlePosition.topRight => Alignment.centerRight,
-      };
+    AclTitlePosition.topLeft => Alignment.centerLeft,
+    AclTitlePosition.topCenter => Alignment.center,
+    AclTitlePosition.topRight => Alignment.centerRight,
+  };
 
   double? _left(bool isRtl) => switch (_effectivePosition(isRtl)) {
-        AclTitlePosition.topLeft => 12,
-        AclTitlePosition.topCenter => 0,
-        AclTitlePosition.topRight => null,
-      };
+    AclTitlePosition.topLeft => 12,
+    AclTitlePosition.topCenter => 0,
+    AclTitlePosition.topRight => null,
+  };
 
   double? _right(bool isRtl) => switch (_effectivePosition(isRtl)) {
-        AclTitlePosition.topLeft => null,
-        AclTitlePosition.topCenter => 0,
-        AclTitlePosition.topRight => 12,
-      };
+    AclTitlePosition.topLeft => null,
+    AclTitlePosition.topCenter => 0,
+    AclTitlePosition.topRight => 12,
+  };
 }
 
 enum AclTitlePosition { topLeft, topCenter, topRight }

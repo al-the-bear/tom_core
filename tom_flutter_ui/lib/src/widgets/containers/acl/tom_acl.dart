@@ -48,42 +48,46 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     AclTitlePosition? titlePosition,
     AclTitleBorderAlign? titleBorderAlign,
     double? titleVerticalOffset,
-  })  : _explicitTitle = title,
-        _explicitPadding = padding != null,
-        _explicitBackgroundColor = backgroundColor != null,
-        _explicitTitleStyle = titleStyle != null,
-        _explicitTitleVerticalOffset = titleVerticalOffset != null,
-        _explicitBorderStyle = borderStyle != null,
-        _explicitFocusedBorderStyle = focusedBorderStyle != null,
-        _explicitTitlePosition = titlePosition != null,
-        _explicitTitleBorderAlign = titleBorderAlign != null,
-        _builder = AclBuilder(
-          title: title,
-          titleWidget: titleWidget,
-          borderStyle: borderStyle ?? const AclBorderStyle.none(),
-          focusedBorderStyle: focusedBorderStyle,
-          padding: padding ?? EdgeInsets.zero,
-          backgroundColor: backgroundColor,
-          titleStyle: titleStyle,
-          titlePosition: titlePosition ?? AclTitlePosition.topLeft,
-          titleBorderAlign: titleBorderAlign ?? AclTitleBorderAlign.bottom,
-          titleVerticalOffset: titleVerticalOffset ?? 0.0,
-        ) {
+  }) : _explicitTitle = title,
+       _explicitPadding = padding != null,
+       _explicitBackgroundColor = backgroundColor != null,
+       _explicitTitleStyle = titleStyle != null,
+       _explicitTitleVerticalOffset = titleVerticalOffset != null,
+       _explicitBorderStyle = borderStyle != null,
+       _explicitFocusedBorderStyle = focusedBorderStyle != null,
+       _explicitTitlePosition = titlePosition != null,
+       _explicitTitleBorderAlign = titleBorderAlign != null,
+       _builder = AclBuilder(
+         title: title,
+         titleWidget: titleWidget,
+         borderStyle: borderStyle ?? const AclBorderStyle.none(),
+         focusedBorderStyle: focusedBorderStyle,
+         padding: padding ?? EdgeInsets.zero,
+         backgroundColor: backgroundColor,
+         titleStyle: titleStyle,
+         titlePosition: titlePosition ?? AclTitlePosition.topLeft,
+         titleBorderAlign: titleBorderAlign ?? AclTitleBorderAlign.bottom,
+         titleVerticalOffset: titleVerticalOffset ?? 0.0,
+       ) {
     _builder.setAclId(id);
   }
 
   // ── Element provider methods ──────────────────────────────────────────────
 
   /// Appends a widget selected from the element provider.
-  TomAclBuilder<T> append(Widget Function(T provider) selector,
-      {double dist = 0}) {
+  TomAclBuilder<T> append(
+    Widget Function(T provider) selector, {
+    double dist = 0,
+  }) {
     _builder.append(selector(elementProvider), dist: dist);
     return this;
   }
 
   /// Appends a form widget from the element provider.
-  TomAclBuilder<T> appendForm(Widget Function(T provider) selector,
-      {double dist = 0}) {
+  TomAclBuilder<T> appendForm(
+    Widget Function(T provider) selector, {
+    double dist = 0,
+  }) {
     _builder.append(selector(elementProvider), dist: dist);
     return this;
   }
@@ -116,8 +120,11 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Inserts an elastic vertical gap row.
-  TomAclBuilder<T> gapRow(
-      {double weight = 1, AclSeparator? separator, double minSize = 0}) {
+  TomAclBuilder<T> gapRow({
+    double weight = 1,
+    AclSeparator? separator,
+    double minSize = 0,
+  }) {
     _builder.gapRow(weight: weight, separator: separator, minSize: minSize);
     return this;
   }
@@ -190,7 +197,9 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Sets a group visibility controller.
   TomAclBuilder<T> setGroupVisibilityController(
-      String groupName, AclGroupVisibilityController controller) {
+    String groupName,
+    AclGroupVisibilityController controller,
+  ) {
     _builder.setGroupVisibilityController(groupName, controller);
     return this;
   }
@@ -214,16 +223,20 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Adds a responsive variant.
-  TomAclBuilder<T> addVariant(String name,
-      {required double atWidth,
-      required void Function(AclBuilder) builder}) {
+  TomAclBuilder<T> addVariant(
+    String name, {
+    required double atWidth,
+    required void Function(AclBuilder) builder,
+  }) {
     _builder.addVariant(name, atWidth: atWidth, builder: builder);
     return this;
   }
 
   /// Adds a row breakpoint.
-  TomAclBuilder<T> addRowBreakpoint(
-      {required double atWidth, double splitRowDist = 0}) {
+  TomAclBuilder<T> addRowBreakpoint({
+    required double atWidth,
+    double splitRowDist = 0,
+  }) {
     _builder.addRowBreakpoint(atWidth: atWidth, splitRowDist: splitRowDist);
     return this;
   }
@@ -298,7 +311,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// The returned widget must be placed in a [BuildContext] that has a
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
   Widget build(BuildContext context) {
-    final containerPath = TomIdPrefix.prefixed(TomIdPrefix.container, id);
+    final parentScope = TomNodeScope.of(context);
+    final containerPath =
+        parentScope?.appendContainer(id) ??
+        TomIdPrefix.prefixed(TomIdPrefix.container, id);
 
     // Container-level authorization
     final auth = TomUIAuthorization.resolveAuth(containerPath);
@@ -313,23 +329,31 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       }
     }
     if (!_explicitPadding) {
-      final resPadding =
-          TomUIResources.resolveEdgeInsets(containerPath, 'padding');
+      final resPadding = TomUIResources.resolveEdgeInsets(
+        containerPath,
+        'padding',
+      );
       if (resPadding != null) _builder.setAclPadding(resPadding);
     }
     if (!_explicitBackgroundColor) {
-      final resBg =
-          TomUIResources.resolveColor(containerPath, 'backgroundColor');
+      final resBg = TomUIResources.resolveColor(
+        containerPath,
+        'backgroundColor',
+      );
       if (resBg != null) _builder.setAclBackgroundColor(resBg);
     }
     if (!_explicitTitleStyle) {
-      final resStyle =
-          TomStyleResolvers.resolveTextStyle(containerPath, 'titleStyle');
+      final resStyle = TomStyleResolvers.resolveTextStyle(
+        containerPath,
+        'titleStyle',
+      );
       if (resStyle != null) _builder.setAclTitleStyle(resStyle);
     }
     if (!_explicitTitleVerticalOffset) {
       final resOffset = TomUIResources.resolveDouble(
-          containerPath, 'titleVerticalOffset');
+        containerPath,
+        'titleVerticalOffset',
+      );
       if (resOffset != null) _builder.setAclTitleVerticalOffset(resOffset);
     }
     if (!_explicitBorderStyle) {
@@ -337,8 +361,10 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       if (resBorder != null) _builder.setAclBorderStyle(resBorder);
     }
     if (!_explicitFocusedBorderStyle) {
-      final resFocused =
-          _resolveBorderStyle(containerPath, 'focusedBorderStyle');
+      final resFocused = _resolveBorderStyle(
+        containerPath,
+        'focusedBorderStyle',
+      );
       if (resFocused != null) _builder.setAclFocusedBorderStyle(resFocused);
     }
     if (!_explicitTitlePosition) {
@@ -360,11 +386,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       result = style.apply(result);
     }
 
-    return TomNodeScope.extend(
-      context,
-      containerId: id,
-      child: result,
-    );
+    return TomNodeScope.extend(context, containerId: id, child: result);
   }
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
@@ -373,7 +395,8 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     if (map == null || map.isEmpty) return null;
     return AclBorderStyle(
       kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
-      color: TomUIResources.resolveColor(basePath, '$suffix.color') ??
+      color:
+          TomUIResources.resolveColor(basePath, '$suffix.color') ??
           const Color(0x00000000),
       lineWidth:
           TomUIResources.resolveDouble(basePath, '$suffix.lineWidth') ?? 1.0,
@@ -382,7 +405,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
           TomUIResources.resolveDouble(basePath, '$suffix.borderRadius') ?? 0.0,
       borderInsets:
           TomUIResources.resolveEdgeInsets(basePath, '$suffix.borderInsets') ??
-              EdgeInsets.zero,
+          EdgeInsets.zero,
     );
   }
 
