@@ -5,9 +5,10 @@ class ExpandDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'EXPANDX - horizontal expansion:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -83,7 +84,8 @@ AclBuilder()
     // or use: .setAttr(AclFlags.expand)
     .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 }

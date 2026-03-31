@@ -5,9 +5,10 @@ class BorderStylesDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Available border styles:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -88,7 +89,8 @@ AclBuilder()
     .append(child)
     .build()
 '''),
-      ],
+        ],
+      ),
     );
   }
 

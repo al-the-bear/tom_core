@@ -42,9 +42,10 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
       width: 220,
       child: DemoBox('Anchor (bottom->top)', Colors.blueGrey),
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Old + new reference constraints: anchors in the first row define width/edges; later rows link size and alignment.',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -299,7 +300,8 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           'Both can be set on the same component as long as each reference satisfies its row constraint.',
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
