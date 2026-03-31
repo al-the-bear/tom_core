@@ -16,6 +16,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 8),
         ResizableBox(
           child: AclBuilder()
+            .setAclScrollableY()
               .append(const DemoBox('expandX()', Colors.red))
               .expandX()
               .append(const DemoBox('Fixed', Colors.blue))
@@ -24,6 +25,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 16),
         ResizableBox(
           child: AclBuilder()
+            .setAclScrollableY()
               .append(const DemoBox('alignCenter()', Colors.green))
               .setRowAlignCenter()
               .build(),
@@ -36,6 +38,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 8),
         ResizableBox(
           child: AclBuilder()
+            .setAclScrollableY()
               .append(const DemoBox('A', Colors.red))
               .append(const DemoBox('B', Colors.green), dist: 10)
               .append(const DemoBox('C', Colors.blue), dist: 10)
@@ -50,6 +53,7 @@ class FluentApiDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 100,
           child: AclBuilder()
+              .setAclScrollableY()
               .append(const Text('Label:'))
               .append(
                 const TextField(

@@ -29,6 +29,7 @@ class InlineVariantsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Items:')))
               // Default variant: three items
               .startVariant()
@@ -75,6 +76,7 @@ class InlineVariantsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               // Row 1: Name — inline variants
               .append(const SizedBox(width: 80, child: Text('Name:')))
               .startVariant()
@@ -171,6 +173,7 @@ AclBuilder()
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Device:')))
               .startVariant(formFactor: AclFormFactor.phone)
               .append(

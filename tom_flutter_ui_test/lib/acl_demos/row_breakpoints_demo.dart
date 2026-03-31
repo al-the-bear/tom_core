@@ -29,6 +29,7 @@ class RowBreakpointsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .append(const DemoBox('1', Colors.red), dist: 8)
               .append(const DemoBox('2', Colors.green), dist: 8)
               .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
@@ -57,6 +58,7 @@ class RowBreakpointsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .append(const DemoBox('A', Colors.red), dist: 8)
               .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
               .append(const DemoBox('B', Colors.green), dist: 8)

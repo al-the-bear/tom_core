@@ -59,6 +59,7 @@ class BreakpointExpansionDemo extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(8),
           )
+              .setAclScrollableY()
               .setAclPaddingRight(8)
               .setAclPaddingLeft(0)
               .append(a, dist: 8)

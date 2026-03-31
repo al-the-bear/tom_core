@@ -74,6 +74,7 @@ class NestedContainersDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 160,
           child: AclBuilder()
+              .setAclScrollableY()
               .setAclPadding(const EdgeInsets.all(12))
               .append(
                 AclBuilder(

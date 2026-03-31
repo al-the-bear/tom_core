@@ -83,6 +83,7 @@ class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .setGroupVisibilityController('address', _addressCtrl)
               .setGroupVisibilityController('notes', _notesCtrl)
               // Row 1: always visible
@@ -157,6 +158,7 @@ class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
               borderRadius: 8,
             ),
           )
+              .setAclScrollableY()
               .setGroupVisibilityController('details', _inputCtrl)
               .append(const Text('Summary is always shown'))
               .expandX()

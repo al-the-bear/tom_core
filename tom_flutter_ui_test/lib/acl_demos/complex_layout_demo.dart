@@ -5,9 +5,10 @@ class ComplexLayoutDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Text(
           'Complex layout combining multiple features:',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -16,6 +17,7 @@ class ComplexLayoutDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 400,
           child: AclBuilder()
+              .setAclScrollableY()
               .setAclPadding(const EdgeInsets.all(8))
               .append(
                 const Text(
@@ -82,13 +84,14 @@ class ComplexLayoutDemo extends StatelessWidget {
               .setAttr(AclFlags.expandY)
               .newRow(dist: 8)
               .append(const Text('Status: Ready'))
-              .append(const Spacer())
+              .append(const SizedBox.shrink())
               .setAttr(AclFlags.expandX)
               .append(const Text('v1.0.0'))
               .setRowAlignment(RowAlignment.left)
               .build(),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
