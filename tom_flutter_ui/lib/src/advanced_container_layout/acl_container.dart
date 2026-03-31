@@ -1080,8 +1080,13 @@ class _AclContainerState extends State<AclContainer> {
           );
         }
 
+        final columnMainAxisSize =
+            widget.scrollableY || !useMaxVertical
+                ? MainAxisSize.min
+                : MainAxisSize.max;
+
         Widget column = Column(
-          mainAxisSize: useMaxVertical ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisSize: columnMainAxisSize,
           crossAxisAlignment: canExpandHorizontally
               ? CrossAxisAlignment.stretch
               : CrossAxisAlignment.start,
