@@ -626,6 +626,7 @@ class _AclContainerState extends State<AclContainer> {
   String _buildComponentPolicyPath({
     required String componentId,
     String? groupName,
+    String? rowId,
   }) {
     final scope = TomNodeScope.of(context);
     final segments = <String>[];
@@ -659,7 +660,48 @@ class _AclContainerState extends State<AclContainer> {
       segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, effectiveGroupName));
     }
 
+    if (rowId != null && rowId.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.row, rowId));
+    }
+
     segments.add(TomIdPrefix.prefixed(TomIdPrefix.widget, componentId));
+    return segments.join('.');
+  }
+
+  /// Builds the canonical policy path for an ACL row ID.
+  String _buildRowPolicyPath({required String rowId, String? groupName}) {
+    final scope = TomNodeScope.of(context);
+    final segments = <String>[];
+
+    final routeId = scope?.routeId;
+    if (routeId != null && routeId.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.route, routeId));
+    }
+
+    final outerContainerId = scope?.containerId;
+    if (widget.aclId != null &&
+        outerContainerId != null &&
+        outerContainerId != widget.aclId) {
+      segments.add(
+        TomIdPrefix.prefixed(TomIdPrefix.container, outerContainerId),
+      );
+    }
+
+    final effectiveContainerId = widget.aclId ?? outerContainerId;
+    if (effectiveContainerId != null && effectiveContainerId.isNotEmpty) {
+      segments.add(
+        TomIdPrefix.prefixed(TomIdPrefix.container, effectiveContainerId),
+      );
+    }
+
+    final effectiveGroupName = (groupName != null && groupName.isNotEmpty)
+        ? groupName
+        : scope?.groupId;
+    if (effectiveGroupName != null && effectiveGroupName.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, effectiveGroupName));
+    }
+
+    segments.add(TomIdPrefix.prefixed(TomIdPrefix.row, rowId));
     return segments.join('.');
   }
 
@@ -679,6 +721,7 @@ class _AclContainerState extends State<AclContainer> {
             ? _buildComponentPolicyPath(
                 componentId: comp.id!,
                 groupName: resolvedGroup,
+                rowId: row.id,
               )
             : null);
 
@@ -1168,6 +1211,19 @@ class _AclContainerState extends State<AclContainer> {
             continue;
           }
 
+          TomAuthState? rowAuthState;
+          if (row.id != null && row.id!.isNotEmpty) {
+            final rowPath = _buildRowPolicyPath(
+              rowId: row.id!,
+              groupName: row.group,
+            );
+            rowAuthState = TomUIAuthorization.resolveAuth(rowPath);
+            if (!rowAuthState.visible) {
+              contentRowIndex++;
+              continue;
+            }
+          }
+
           if (row.gapBefore > 0) {
             rowWidgets.add(SizedBox(height: row.gapBefore));
           }
@@ -1180,6 +1236,7 @@ class _AclContainerState extends State<AclContainer> {
               canExpandHorizontally: canExpandHorizontally,
               canExpandVertically: rowCanExpandVertically,
               availableWidth: canExpandHorizontally ? effectiveMaxW : null,
+              rowAuthState: rowAuthState,
             ),
           );
         }
@@ -1617,6 +1674,7 @@ class _AclContainerState extends State<AclContainer> {
     required bool canExpandHorizontally,
     required bool canExpandVertically,
     double? availableWidth,
+    TomAuthState? rowAuthState,
   }) {
     final isRtl =
         (widget.direction ??
@@ -1732,6 +1790,7 @@ class _AclContainerState extends State<AclContainer> {
         componentPolicyPath = _buildComponentPolicyPath(
           componentId: component.id!,
           groupName: compGroup,
+          rowId: row.id,
         );
         authState = TomUIAuthorization.resolveAuth(componentPolicyPath);
         if (!authState.visible) {
@@ -1749,7 +1808,7 @@ class _AclContainerState extends State<AclContainer> {
         fullPath: componentPolicyPath,
       );
 
-      if (authState?.readonly == true) {
+      if (rowAuthState?.readonly == true || authState?.readonly == true) {
         final style = TomThemeScope.readonlyStyleOf(context);
         child = style.apply(child);
       }
