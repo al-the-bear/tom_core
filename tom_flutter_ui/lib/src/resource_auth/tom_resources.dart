@@ -196,6 +196,15 @@ abstract class TomUIResourceAdapter {
 /// labels, hints, error messages, colors, icons, and other values through
 /// this — no [InheritedWidget] or [BuildContext] needed.
 ///
+/// Resources are resolved using a 4-level fallback chain:
+/// 1. Full identity path (e.g., `r-checkout.c-shipping.f-address.w-street`)
+/// 2. Without route prefix (e.g., `c-shipping.f-address.w-street`)
+/// 3. Form + widget only (e.g., `f-address.w-street`)
+/// 4. Widget only (e.g., `w-street`)
+///
+/// Text resources fall back to the full key string when no entry is found.
+/// Value resources (color, icon, etc.) fall back to `null`.
+///
 /// ```dart
 /// // App startup
 /// TomUIResources.adapter = TomKernelResourceAdapter();
@@ -212,104 +221,253 @@ class TomUIResources {
   static set adapter(TomUIResourceAdapter adapter) => _adapter = adapter;
 
   // ===========================================================================
+  // Fallback Path Generation
+  // ===========================================================================
+
+  /// Generates the fallback path sequence for resource resolution.
+  ///
+  /// Order: full path → without route → form+widget → widget only.
+  /// Only yields paths that differ from the full path.
+  static Iterable<String> _fallbackPaths(String basePath) sync* {
+    yield basePath;
+
+    // Level 2: strip route prefix (r-xxx.)
+    final noRoute = _stripRoutePrefix(basePath);
+    if (noRoute != null) yield noRoute;
+
+    // Level 3: form + widget (f-xxx.w-xxx or f-xxx.a-xxx etc.)
+    final formWidget = _extractFormAndBeyond(basePath);
+    if (formWidget != null) yield formWidget;
+
+    // Level 4: widget/action only (w-xxx or a-xxx etc.)
+    final leafOnly = _extractLeaf(basePath);
+    if (leafOnly != null) yield leafOnly;
+  }
+
+  /// Strips the route prefix (r-<id>.) from the start of a path.
+  /// Returns null if there's no route prefix or if the result would be empty.
+  static String? _stripRoutePrefix(String path) {
+    if (!path.startsWith('r-')) return null;
+    final dotIndex = path.indexOf('.');
+    if (dotIndex < 0 || dotIndex + 1 >= path.length) return null;
+    return path.substring(dotIndex + 1);
+  }
+
+  /// Extracts form + leaf segments (f-xxx.w-xxx) from the path.
+  /// Returns null if there's no form segment or the result equals the full path.
+  static String? _extractFormAndBeyond(String path) {
+    final formIndex = path.indexOf('f-');
+    if (formIndex < 0) return null;
+    final result = path.substring(formIndex);
+    if (result == path) return null; // No shorter path
+    return result;
+  }
+
+  /// Extracts the leaf segment (w-xxx, a-xxx, ac-xxx) from the path.
+  /// Returns null if there's no leaf or the result equals the full path.
+  static String? _extractLeaf(String path) {
+    // Find the last segment that starts with w-, a-, or ac-
+    // by searching for the rightmost leaf prefix.
+    int leafIndex = -1;
+    for (final prefix in ['w-', 'a-', 'ac-']) {
+      final idx = path.lastIndexOf('.$prefix');
+      if (idx >= 0 && idx > leafIndex) {
+        leafIndex = idx + 1; // skip the dot
+      }
+    }
+    // Also check if path starts with a leaf prefix (no dot before it)
+    if (leafIndex < 0) {
+      for (final prefix in ['w-', 'a-', 'ac-']) {
+        if (path.startsWith(prefix)) {
+          return null; // Already just the leaf
+        }
+      }
+      return null;
+    }
+    final result = path.substring(leafIndex);
+    if (result == path) return null;
+    return result;
+  }
+
+  // ===========================================================================
   // Core Resolution Methods
   // ===========================================================================
 
   /// Resolves the text resource for [basePath] + [suffix].
   ///
-  /// If no adapter is set, returns the full key (`basePath.suffix`) as a
-  /// visible indicator that a resource is missing.
+  /// Uses the 4-level fallback chain. If no resource is found at any level,
+  /// returns the full key (`basePath.suffix`) as a visible development
+  /// indicator.
   static String resolveText(String basePath, String suffix) {
-    return _adapter?.resolveText(basePath, suffix) ?? '$basePath.$suffix';
+    if (_adapter == null) return '$basePath.$suffix';
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveText(path, suffix);
+      }
+    }
+
+    // Text fallback: return the full key as displayed value
+    return '$basePath.$suffix';
   }
 
   /// Whether a resource exists for [basePath] + [suffix].
+  ///
+  /// Checks all 4 fallback levels.
   static bool resourceExists(String basePath, String suffix) {
-    return _adapter?.resourceExists(basePath, suffix) ?? false;
+    if (_adapter == null) return false;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) return true;
+    }
+    return false;
   }
 
   // ===========================================================================
-  // Type-Aware Resolution Methods (NEW - Phase 1)
+  // Type-Aware Resolution Methods
   // ===========================================================================
 
   /// Resolves any value from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set or the resource doesn't exist.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found.
   static dynamic resolveValue(String basePath, String suffix) {
-    return _adapter?.resolveValue(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveValue(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves a list from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set, no resource exists, or the
-  /// resource is not a list.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the resource is not a list.
   static List<dynamic>? resolveList(String basePath, String suffix) {
-    return _adapter?.resolveList(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveList(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves a map from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set, no resource exists, or the
-  /// resource is not a map.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the resource is not a map.
   static Map<String, dynamic>? resolveMap(String basePath, String suffix) {
-    return _adapter?.resolveMap(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveMap(path, suffix);
+      }
+    }
+    return null;
   }
 
   // ===========================================================================
-  // Typed Resolution Helpers (NEW - Phase 1)
+  // Typed Resolution Helpers
   // ===========================================================================
 
   /// Resolves a color from resources for [basePath] + [suffix].
   ///
-  /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
-  /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
-  ///
-  /// Returns `null` if no adapter is set or the color cannot be resolved.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the color cannot be resolved.
   static Color? resolveColor(String basePath, String suffix) {
-    return _adapter?.resolveColor(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveColor(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves an icon from resources for [basePath] + [suffix].
   ///
-  /// The resource value should be an icon name (e.g., "mAdd", "mSettings")
-  /// that [TomUIIcons] can resolve.
-  ///
-  /// Returns `null` if no adapter is set or the icon cannot be resolved.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the icon cannot be resolved.
   static IconData? resolveIcon(String basePath, String suffix) {
-    return _adapter?.resolveIcon(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveIcon(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves a double from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set or the value is not numeric.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the value is not numeric.
   static double? resolveDouble(String basePath, String suffix) {
-    return _adapter?.resolveDouble(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveDouble(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves an int from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set or the value is not numeric.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the value is not numeric.
   static int? resolveInt(String basePath, String suffix) {
-    return _adapter?.resolveInt(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveInt(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves a bool from resources for [basePath] + [suffix].
   ///
-  /// Returns `null` if no adapter is set or the value is not boolean-like.
+  /// Uses the 4-level fallback chain. Returns `null` if no resource found
+  /// or the value is not boolean-like.
   static bool? resolveBool(String basePath, String suffix) {
-    return _adapter?.resolveBool(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveBool(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resolves edge insets from resources for [basePath] + [suffix].
   ///
-  /// Accepts various formats in the JSON resource:
+  /// Uses the 4-level fallback chain. Accepts various formats in the
+  /// JSON resource:
   /// - A single number for uniform insets
   /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
   ///
-  /// Returns `null` if no adapter is set or the format is not recognized.
+  /// Returns `null` if no resource found or the format is not recognized.
   static EdgeInsets? resolveEdgeInsets(String basePath, String suffix) {
-    return _adapter?.resolveEdgeInsets(basePath, suffix);
+    if (_adapter == null) return null;
+
+    for (final path in _fallbackPaths(basePath)) {
+      if (_adapter!.resourceExists(path, suffix)) {
+        return _adapter!.resolveEdgeInsets(path, suffix);
+      }
+    }
+    return null;
   }
 
   /// Resets the adapter. Intended for testing only.

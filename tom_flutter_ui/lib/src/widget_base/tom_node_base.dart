@@ -327,6 +327,11 @@ abstract class TomNodeBase extends StatelessWidget {
 /// Propagates route, container, group, and form IDs down the widget tree.
 /// Each ID segment is optional and contributes to the canonical path.
 ///
+/// The [fullIdPath] contains only identity-scoped segments. Layout containers
+/// (those with `idScope: false`) do NOT appear in descendant paths — they
+/// resolve their own resources via [selfPathForContainer] but leave
+/// [fullIdPath] unchanged for descendants.
+///
 /// Canonical path format:
 /// ```
 /// r-<route>.c-<container>.g-<group>.f-<form>.w-<widget>
@@ -344,7 +349,10 @@ class TomNodeScope extends InheritedWidget {
   /// The form ID (without prefix).
   final String? formId;
 
-  /// Legacy: full pre-computed ID path (for backwards compatibility).
+  /// The canonical identity path for this scope.
+  ///
+  /// Contains only identity-scoped segments (route, identity containers,
+  /// groups, forms). Layout containers are excluded.
   final String? fullIdPath;
 
   const TomNodeScope({
@@ -358,63 +366,122 @@ class TomNodeScope extends InheritedWidget {
   });
 
   /// Creates a scope that extends the parent scope with additional IDs.
+  ///
+  /// When [containerId] is provided:
+  /// - If [containerIdScope] is `true` (identity container), the container ID
+  ///   is appended to [fullIdPath] for descendants.
+  /// - If [containerIdScope] is `false` (layout container, default), the
+  ///   container ID is stored in [containerId] for self-path resolution but
+  ///   does NOT modify [fullIdPath].
   factory TomNodeScope.extend(
     BuildContext context, {
     Key? key,
     required Widget child,
     String? routeId,
     String? containerId,
+    bool containerIdScope = false,
     String? groupId,
     String? formId,
   }) {
     final parent = TomNodeScope.of(context);
+    final effectiveRouteId = routeId ?? parent?.routeId;
+    final effectiveContainerId = containerId ?? parent?.containerId;
+    final effectiveGroupId = groupId ?? parent?.groupId;
+    final effectiveFormId = formId ?? parent?.formId;
+
+    // Build fullIdPath: only include identity-scoped container IDs.
+    String? newFullIdPath;
+    if (containerId != null && containerIdScope) {
+      // Identity container — append to path.
+      final parentPath = parent?.fullIdPath;
+      final segment = TomIdPrefix.prefixed(TomIdPrefix.container, containerId);
+      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
+          ? '$parentPath.$segment'
+          : segment;
+    } else if (routeId != null && routeId != parent?.routeId) {
+      // New route — rebuild path with route prefix.
+      final segment = TomIdPrefix.prefixed(TomIdPrefix.route, routeId);
+      final parentPath = parent?.fullIdPath;
+      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
+          ? '$parentPath.$segment'
+          : segment;
+    } else if (groupId != null && groupId != parent?.groupId) {
+      // New group — append to path.
+      final parentPath = parent?.fullIdPath;
+      final segment = TomIdPrefix.prefixed(TomIdPrefix.group, groupId);
+      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
+          ? '$parentPath.$segment'
+          : segment;
+    } else if (formId != null && formId != parent?.formId) {
+      // New form — append to path.
+      final parentPath = parent?.fullIdPath;
+      final segment = TomIdPrefix.prefixed(TomIdPrefix.form, formId);
+      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
+          ? '$parentPath.$segment'
+          : segment;
+    } else {
+      newFullIdPath = parent?.fullIdPath;
+    }
+
     return TomNodeScope(
       key: key,
-      routeId: routeId ?? parent?.routeId,
-      containerId: containerId ?? parent?.containerId,
-      groupId: groupId ?? parent?.groupId,
-      formId: formId ?? parent?.formId,
+      routeId: effectiveRouteId,
+      containerId: effectiveContainerId,
+      groupId: effectiveGroupId,
+      formId: effectiveFormId,
+      fullIdPath: newFullIdPath,
       child: child,
     );
   }
 
-  /// Appends a widget ID to create the canonical path.
+  /// Appends a widget ID to create the canonical widget path.
+  ///
+  /// Uses [fullIdPath] as the base (identity-only path), then appends
+  /// the widget's prefixed ID.
   String appendWidget(String widgetId) {
-    final parts = <String>[];
-    if (routeId != null) parts.add('r-$routeId');
-    if (containerId != null) parts.add('c-$containerId');
-    if (groupId != null) parts.add('g-$groupId');
-    if (formId != null) parts.add('f-$formId');
-    parts.add('w-$widgetId');
-    return parts.join('.');
+    final base = fullIdPath;
+    final segment = '${TomIdPrefix.widget}$widgetId';
+    if (base != null && base.isNotEmpty) return '$base.$segment';
+    return segment;
   }
 
   /// Appends a group ID to create the canonical group path.
   String appendGroup(String gId) {
-    final parts = <String>[];
-    if (routeId != null) parts.add('r-$routeId');
-    if (containerId != null) parts.add('c-$containerId');
-    parts.add('g-$gId');
-    return parts.join('.');
+    final base = fullIdPath;
+    final segment = '${TomIdPrefix.group}$gId';
+    if (base != null && base.isNotEmpty) return '$base.$segment';
+    return segment;
   }
 
-  /// Appends a container ID to create the canonical container path.
-  String appendContainer(String cId) {
-    final parts = <String>[];
-    if (routeId != null) parts.add('r-$routeId');
-    if (containerId != null) parts.add('c-$containerId');
-    parts.add('c-$cId');
-    return parts.join('.');
+  /// Returns the self-path for a container: identity path + c-<id>.
+  ///
+  /// This is used by containers to resolve their OWN resources and auth,
+  /// regardless of whether they are identity or layout containers.
+  /// Does NOT modify the scope.
+  String selfPathForContainer(String cId) {
+    final base = fullIdPath;
+    final segment = TomIdPrefix.prefixed(TomIdPrefix.container, cId);
+    if (base != null && base.isNotEmpty) return '$base.$segment';
+    return segment;
+  }
+
+  /// Returns the self-path for a row: identity path + rw-<id>.
+  ///
+  /// Used by rows to resolve their OWN resources and auth.
+  /// Does NOT modify the scope.
+  String selfPathForRow(String rowId) {
+    final base = fullIdPath;
+    final segment = TomIdPrefix.prefixed(TomIdPrefix.row, rowId);
+    if (base != null && base.isNotEmpty) return '$base.$segment';
+    return segment;
   }
 
   /// Appends a form ID to create the canonical form path.
   String appendForm(String fId) {
-    final parts = <String>[];
-    if (routeId != null) parts.add('r-$routeId');
-    if (containerId != null) parts.add('c-$containerId');
-    if (groupId != null) parts.add('g-$groupId');
-    parts.add('f-$fId');
-    return parts.join('.');
+    final base = fullIdPath;
+    final segment = '${TomIdPrefix.form}$fId';
+    if (base != null && base.isNotEmpty) return '$base.$segment';
+    return segment;
   }
 
   static TomNodeScope? of(BuildContext context) {

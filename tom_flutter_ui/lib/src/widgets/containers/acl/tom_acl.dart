@@ -23,6 +23,13 @@ import '../../../widget_base/tom_screen_elements_provider.dart';
 /// This keeps the layout engine independent of Tom-specific concerns.
 class TomAclBuilder<T extends TomScreenElementsProvider> {
   final String id;
+
+  /// Whether this container contributes its ID to descendant paths.
+  ///
+  /// - `true` — identity container: ID appears in descendant paths.
+  /// - `false` — layout container (default): ID is for own resources only.
+  final bool idScope;
+
   final T elementProvider;
   final AclBuilder _builder;
   final String? _explicitTitle;
@@ -37,6 +44,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   TomAclBuilder({
     required this.id,
+    this.idScope = false,
     required this.elementProvider,
     String? title,
     Widget? titleWidget,
@@ -70,6 +78,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
          titleVerticalOffset: titleVerticalOffset ?? 0.0,
        ) {
     _builder.setAclId(id);
+    _builder.setAclIdScope(idScope);
   }
 
   // ── Element provider methods ──────────────────────────────────────────────
@@ -210,6 +219,12 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
+  /// Sets whether the current row's ID contributes to descendant paths.
+  TomAclBuilder<T> setRowIdScope(bool idScope) {
+    _builder.setRowIdScope(idScope);
+    return this;
+  }
+
   /// Sets the row group.
   TomAclBuilder<T> setRowGroup(String name) {
     _builder.setRowGroup(name);
@@ -312,8 +327,11 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
   Widget build(BuildContext context) {
     final parentScope = TomNodeScope.of(context);
+
+    // Self-path: always includes own ID (for own resources and auth),
+    // regardless of whether this is an identity or layout container.
     final containerPath =
-        parentScope?.appendContainer(id) ??
+        parentScope?.selfPathForContainer(id) ??
         TomIdPrefix.prefixed(TomIdPrefix.container, id);
 
     // Container-level authorization
@@ -386,7 +404,12 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       result = style.apply(result);
     }
 
-    return TomNodeScope.extend(context, containerId: id, child: result);
+    return TomNodeScope.extend(
+      context,
+      containerId: id,
+      containerIdScope: idScope,
+      child: result,
+    );
   }
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].

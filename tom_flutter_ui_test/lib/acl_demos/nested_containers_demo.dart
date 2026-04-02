@@ -85,6 +85,9 @@ class NestedContainersDemo extends StatelessWidget {
                         borderInsets: EdgeInsets.fromLTRB(10, 18, 10, 10),
                       ),
                     )
+                    // Identity container: ID propagates to descendant paths
+                    .setAclId('outerGroup')
+                    .setAclIdScope(true)
                     .setAclPadding(const EdgeInsets.all(10))
                     .append(
                       AclBuilder(
@@ -95,10 +98,14 @@ class NestedContainersDemo extends StatelessWidget {
                               borderInsets: EdgeInsets.fromLTRB(8, 16, 8, 8),
                             ),
                           )
+                          // Layout container (default): ID for own resources only
+                          .setAclId('innerA')
                           .setAclPadding(const EdgeInsets.all(8))
                           .append(const Text('Content A1'))
+                          .setId('a1')
                           .newRow(dist: 4)
                           .append(const Text('Content A2'))
+                          .setId('a2')
                           .build(),
                     )
                     .expandX()
@@ -111,10 +118,14 @@ class NestedContainersDemo extends StatelessWidget {
                               borderInsets: EdgeInsets.fromLTRB(8, 16, 8, 8),
                             ),
                           )
+                          // Layout container (default): ID for own resources only
+                          .setAclId('innerB')
                           .setAclPadding(const EdgeInsets.all(8))
                           .append(const Text('Content B1'))
+                          .setId('b1')
                           .newRow(dist: 4)
                           .append(const Text('Content B2'))
+                          .setId('b2')
                           .build(),
                       dist: 8,
                     )
@@ -127,20 +138,22 @@ class NestedContainersDemo extends StatelessWidget {
         const SizedBox(height: 24),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const CodeBlock('''
-// Outer container with nested inner containers
+// Outer identity container (idScope: true) — ID propagates to descendants
 AclBuilder()
+    .setAclId('outerGroup')
+    .setAclIdScope(true)     // descendants see c-outerGroup in their paths
     .append(
         AclBuilder()
-            .setAclBorderStyle(kind: AclBorderKind.solid,
-        AclBorderStyle(color: Colors.grey),
-            )
-            .append(child1)
-            .append(child2)
+            .setAclId('innerA') // layout container (default) — own resources only
+            .setAclBorderStyle(...)
+            .append(child1).setId('a1')
+            .append(child2).setId('a2')
             .build()
     )
     .expandX()
     .append(
         AclBuilder(title: 'Group')
+          .setAclId('innerB') // layout container (default) — own resources only
           .append(innerContent)
           .build(),
         dist: 8

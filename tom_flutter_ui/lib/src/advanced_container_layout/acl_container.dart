@@ -241,6 +241,12 @@ class AclRow {
   /// Optional group name this row belongs to (see §25).
   final String? group;
 
+  /// Whether this row contributes its ID to descendant paths.
+  ///
+  /// - `true` — identity row: ID appears in descendant component paths.
+  /// - `false` — layout row (default): ID is for own resources/auth only.
+  final bool idScope;
+
   /// Row breakpoints for responsive splitting (see §28).
   final List<AclRowBreakpoint> breakpoints;
 
@@ -254,6 +260,7 @@ class AclRow {
     this.gapRowMinSize = 0,
     this.id,
     this.group,
+    this.idScope = false,
     this.breakpoints = const [],
   });
 }
@@ -331,6 +338,12 @@ class AclContainer extends StatefulWidget {
   /// Optional identifier for this container (see §24).
   final String? aclId;
 
+  /// Whether this container contributes its ID to descendant paths.
+  ///
+  /// - `true` — identity container: ID appears in descendant paths.
+  /// - `false` — layout container (default): ID is for own resources only.
+  final bool idScope;
+
   /// Optional group name for the entire container (see §25).
   final String? aclGroup;
 
@@ -360,6 +373,7 @@ class AclContainer extends StatefulWidget {
     this.minimumContainerSize,
     this.maximumContainerSize,
     this.aclId,
+    this.idScope = false,
     this.aclGroup,
     this.parentIdPath,
     this.groupVisibilityControllers = const {},
@@ -621,43 +635,29 @@ class _AclContainerState extends State<AclContainer> {
 
   /// Builds the canonical policy path for an ACL component ID.
   ///
-  /// Paths use Tom prefixes and include route/container/group context when
-  /// available so ACL IDs participate in the same auth namespace as Tom widgets.
+  /// Uses [TomNodeScope.fullIdPath] as the identity base, then appends
+  /// group/row/widget segments. Layout container IDs are already excluded
+  /// from [fullIdPath] by the scope system.
   String _buildComponentPolicyPath({
     required String componentId,
     String? groupName,
     String? rowId,
   }) {
     final scope = TomNodeScope.of(context);
+    final base = scope?.fullIdPath;
     final segments = <String>[];
 
-    final routeId = scope?.routeId;
-    if (routeId != null && routeId.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.route, routeId));
-    }
+    if (base != null && base.isNotEmpty) segments.add(base);
 
-    // Preserve an outer container scope when this ACL has its own container ID.
-    final outerContainerId = scope?.containerId;
-    if (widget.aclId != null &&
-        outerContainerId != null &&
-        outerContainerId != widget.aclId) {
+    // Add container self-segment if this ACL has its own ID
+    if (widget.aclId != null && widget.aclId!.isNotEmpty) {
       segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, outerContainerId),
+        TomIdPrefix.prefixed(TomIdPrefix.container, widget.aclId!),
       );
     }
 
-    final effectiveContainerId = widget.aclId ?? outerContainerId;
-    if (effectiveContainerId != null && effectiveContainerId.isNotEmpty) {
-      segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, effectiveContainerId),
-      );
-    }
-
-    final effectiveGroupName = (groupName != null && groupName.isNotEmpty)
-        ? groupName
-        : scope?.groupId;
-    if (effectiveGroupName != null && effectiveGroupName.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, effectiveGroupName));
+    if (groupName != null && groupName.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, groupName));
     }
 
     if (rowId != null && rowId.isNotEmpty) {
@@ -669,36 +669,23 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   /// Builds the canonical policy path for an ACL row ID.
+  ///
+  /// Uses [TomNodeScope.fullIdPath] as the identity base.
   String _buildRowPolicyPath({required String rowId, String? groupName}) {
     final scope = TomNodeScope.of(context);
+    final base = scope?.fullIdPath;
     final segments = <String>[];
 
-    final routeId = scope?.routeId;
-    if (routeId != null && routeId.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.route, routeId));
-    }
+    if (base != null && base.isNotEmpty) segments.add(base);
 
-    final outerContainerId = scope?.containerId;
-    if (widget.aclId != null &&
-        outerContainerId != null &&
-        outerContainerId != widget.aclId) {
+    if (widget.aclId != null && widget.aclId!.isNotEmpty) {
       segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, outerContainerId),
+        TomIdPrefix.prefixed(TomIdPrefix.container, widget.aclId!),
       );
     }
 
-    final effectiveContainerId = widget.aclId ?? outerContainerId;
-    if (effectiveContainerId != null && effectiveContainerId.isNotEmpty) {
-      segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, effectiveContainerId),
-      );
-    }
-
-    final effectiveGroupName = (groupName != null && groupName.isNotEmpty)
-        ? groupName
-        : scope?.groupId;
-    if (effectiveGroupName != null && effectiveGroupName.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, effectiveGroupName));
+    if (groupName != null && groupName.isNotEmpty) {
+      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, groupName));
     }
 
     segments.add(TomIdPrefix.prefixed(TomIdPrefix.row, rowId));
@@ -725,7 +712,10 @@ class _AclContainerState extends State<AclContainer> {
               )
             : null);
 
-    Widget wrapped = AclScope(
+    // AclScope provides ACL-specific metadata for descendant lookups.
+    // TomNodeScope propagation is handled at the container level
+    // (by TomAclBuilder / TomContainerBase) — no need to duplicate here.
+    return AclScope(
       containerId: containerId,
       componentId: comp.id,
       rowId: row.id,
@@ -733,20 +723,6 @@ class _AclContainerState extends State<AclContainer> {
       fullIdPath: resolvedPath,
       child: child,
     );
-
-    if (resolvedPath != null) {
-      final parentScope = TomNodeScope.of(context);
-      wrapped = TomNodeScope(
-        routeId: parentScope?.routeId,
-        containerId: containerId ?? parentScope?.containerId,
-        groupId: resolvedGroup ?? parentScope?.groupId,
-        formId: parentScope?.formId,
-        fullIdPath: resolvedPath,
-        child: wrapped,
-      );
-    }
-
-    return wrapped;
   }
 
   @override
@@ -1229,16 +1205,33 @@ class _AclContainerState extends State<AclContainer> {
           }
 
           final layout = rowLayouts[contentRowIndex++];
-          rowWidgets.add(
-            _buildRow(
-              row: row,
-              layout: layout,
-              canExpandHorizontally: canExpandHorizontally,
-              canExpandVertically: rowCanExpandVertically,
-              availableWidth: canExpandHorizontally ? effectiveMaxW : null,
-              rowAuthState: rowAuthState,
-            ),
+          Widget builtRow = _buildRow(
+            row: row,
+            layout: layout,
+            canExpandHorizontally: canExpandHorizontally,
+            canExpandVertically: rowCanExpandVertically,
+            availableWidth: canExpandHorizontally ? effectiveMaxW : null,
+            rowAuthState: rowAuthState,
           );
+
+          // Identity rows push their rw-<id> into the scope so nested
+          // containers inside this row see the row ID in their paths.
+          if (row.id != null && row.idScope) {
+            final scope = TomNodeScope.of(context);
+            final rowIdPath = scope != null
+                ? scope.selfPathForRow(row.id!)
+                : TomIdPrefix.prefixed(TomIdPrefix.row, row.id!);
+            builtRow = TomNodeScope(
+              routeId: scope?.routeId,
+              containerId: scope?.containerId,
+              groupId: scope?.groupId,
+              formId: scope?.formId,
+              fullIdPath: rowIdPath,
+              child: builtRow,
+            );
+          }
+
+          rowWidgets.add(builtRow);
         }
 
         final columnMainAxisSize = widget.scrollableY || !useMaxVertical
@@ -2128,6 +2121,7 @@ class AclLayout extends StatelessWidget {
   final Size? minimumContainerSize;
   final Size? maximumContainerSize;
   final String? aclId;
+  final bool idScope;
   final String? aclGroup;
   final String? parentIdPath;
   final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
@@ -2147,6 +2141,7 @@ class AclLayout extends StatelessWidget {
     this.minimumContainerSize,
     this.maximumContainerSize,
     this.aclId,
+    this.idScope = false,
     this.aclGroup,
     this.parentIdPath,
     this.groupVisibilityControllers = const {},
@@ -2168,6 +2163,7 @@ class AclLayout extends StatelessWidget {
       minimumContainerSize: minimumContainerSize,
       maximumContainerSize: maximumContainerSize,
       aclId: aclId,
+      idScope: idScope,
       aclGroup: aclGroup,
       parentIdPath: parentIdPath,
       groupVisibilityControllers: groupVisibilityControllers,
@@ -2198,6 +2194,7 @@ class Acl extends AclLayout {
     super.minimumContainerSize,
     super.maximumContainerSize,
     super.aclId,
+    super.idScope = false,
     super.aclGroup,
     super.parentIdPath,
     super.groupVisibilityControllers = const {},

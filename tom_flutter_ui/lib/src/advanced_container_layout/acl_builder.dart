@@ -78,6 +78,7 @@ class _RowData {
   double gapRowMinSize = 0;
   String? id;
   String? group;
+  bool idScope = false;
   List<AclRowBreakpoint> breakpoints = [];
 
   AclRow toRow() {
@@ -91,6 +92,7 @@ class _RowData {
       gapRowMinSize: gapRowMinSize,
       id: id,
       group: group,
+      idScope: idScope,
       breakpoints: breakpoints,
     );
   }
@@ -126,6 +128,7 @@ class AclBuilder {
   // §24 IDs
   String? _aclId;
   String? _parentIdPath;
+  bool _idScope = false;
 
   // §25 Groups
   String? _aclGroup;
@@ -674,8 +677,26 @@ class AclBuilder {
     return this;
   }
 
+  /// Sets whether this container's ID contributes to descendant paths.
+  ///
+  /// - `true` — identity container: descendants see `c-<id>` in their paths.
+  /// - `false` — layout container (default): ID is for own resources/auth only.
+  AclBuilder setAclIdScope(bool idScope) {
+    _idScope = idScope;
+    return this;
+  }
+
   AclBuilder setRowId(String id) {
     _currentRow.id = id;
+    return this;
+  }
+
+  /// Sets whether the current row's ID contributes to descendant paths.
+  ///
+  /// - `true` — identity row: components inside see `rw-<id>` in their paths.
+  /// - `false` — layout row (default): ID is for own resources/auth only.
+  AclBuilder setRowIdScope(bool idScope) {
+    _currentRow.idScope = idScope;
     return this;
   }
 
@@ -863,6 +884,7 @@ class AclBuilder {
       minimumContainerSize: _minimumContainerSize,
       maximumContainerSize: _maximumContainerSize,
       aclId: _aclId,
+      idScope: _idScope,
       aclGroup: _aclGroup,
       parentIdPath: _parentIdPath,
       groupVisibilityControllers: Map.unmodifiable(_groupVisibilityControllers),

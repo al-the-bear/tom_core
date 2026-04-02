@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../resource_auth/tom_auth_state.dart';
+import '../resource_auth/tom_id_prefix.dart';
 import 'tom_node_base.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';
@@ -95,15 +96,28 @@ abstract class TomSliderBase extends TomFamilyBase {
 
 /// Base for the Container family (structural wrapper widgets).
 ///
-/// Containers propagate their ID to descendants via [TomNodeScope],
-/// enabling child widgets to resolve their full canonical path
-/// (e.g., `c-shipping.w-street`). This is the key mechanism that
-/// allows authorization and resource lookup to work hierarchically.
+/// Containers propagate their ID to descendants via [TomNodeScope].
+///
+/// When [idScope] is `true` (identity container), the container's ID is
+/// appended to the descendant path — child widgets see it in their
+/// canonical path (e.g., `c-shipping.w-street`).
+///
+/// When [idScope] is `false` (layout container, default), the container
+/// resolves its OWN resources and auth using its self-path, but does NOT
+/// modify the descendant path. This is the key mechanism that keeps
+/// identity paths stable under UI restructuring.
 abstract class TomContainerBase extends TomFamilyBase {
+  /// Whether this container contributes its ID to descendant paths.
+  ///
+  /// - `true` — identity container: ID appears in descendant paths.
+  /// - `false` — layout container (default): ID is for own resources only.
+  final bool idScope;
+
   const TomContainerBase({
     super.key,
     super.tomId,
     super.tomGroup,
+    this.idScope = false,
   });
 
   @override
@@ -114,10 +128,15 @@ abstract class TomContainerBase extends TomFamilyBase {
 
   @override
   Widget build(BuildContext context) {
-    final resourceKeyPath = resolveResourceBasePath(context);
+    // Self-path: always includes own ID (for own resources and auth).
+    final scope = TomNodeScope.of(context);
+    final selfPath = tomId != null
+        ? (scope?.selfPathForContainer(tomId!) ??
+            TomIdPrefix.prefixed(TomIdPrefix.container, tomId!))
+        : null;
 
-    final authState = resourceKeyPath != null
-        ? TomUIAuthorization.resolveAuth(resourceKeyPath)
+    final authState = selfPath != null
+        ? TomUIAuthorization.resolveAuth(selfPath)
         : TomAuthState.fullAccess;
 
     if (!authState.visible) return const SizedBox.shrink();
@@ -129,12 +148,12 @@ abstract class TomContainerBase extends TomFamilyBase {
       content = buildContent(context);
     }
 
-    // Containers propagate their ID to descendants so child widgets
-    // can build their full canonical path (e.g., c-panel.w-field).
+    // Scope propagation: only include ID in descendant path if idScope is true.
     if (tomId != null) {
       return TomNodeScope.extend(
         context,
         containerId: tomId,
+        containerIdScope: idScope,
         groupId: tomGroup,
         child: content,
       );
