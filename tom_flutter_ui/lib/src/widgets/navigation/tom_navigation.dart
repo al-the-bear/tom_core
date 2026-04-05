@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
@@ -1015,6 +1016,7 @@ class TomTab extends Tab with TomWidgetMixin {
   const TomTab({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     super.text,
     super.icon,
@@ -1028,6 +1030,9 @@ class TomTab extends Tab with TomWidgetMixin {
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   Widget build(BuildContext context) {
@@ -1070,6 +1075,7 @@ class TomNavigationDestination extends NavigationDestination
   const TomNavigationDestination({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     required super.icon,
     super.selectedIcon,
@@ -1083,6 +1089,9 @@ class TomNavigationDestination extends NavigationDestination
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   Widget build(BuildContext context) {
@@ -1126,6 +1135,7 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   const TomNavigationDrawerDestination({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     required super.icon,
     super.selectedIcon,
@@ -1139,6 +1149,9 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   Widget build(BuildContext context) {

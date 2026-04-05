@@ -368,11 +368,14 @@ class TomAppBar extends StatelessWidget
   final String? tomId;
   @override
   final TomUIGroup? tomGroup;
+  @override
+  final TomScope? scope;
 
   const TomAppBar({
     super.key,
     this.tomId,
     this.tomGroup,
+    this.scope,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.title,
@@ -3755,10 +3758,14 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   @override
   final TomUIGroup? tomGroup;
 
+  @override
+  final TomScope? scope;
+
   TomCupertinoTabView({
     super.key,
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.builder,
     super.navigatorKey,
     super.defaultTitle,

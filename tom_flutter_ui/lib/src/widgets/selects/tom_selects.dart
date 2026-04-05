@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
@@ -725,6 +726,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   const TomPopupMenuItem({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     super.value,
     super.onTap,
@@ -742,6 +744,9 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   PopupMenuItemState<T, TomPopupMenuItem<T>> createState() =>
@@ -780,6 +785,7 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   const TomPopupMenuDivider({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     super.height,
   });
@@ -789,6 +795,9 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   State<PopupMenuDivider> createState() => _TomPopupMenuDividerState();
@@ -833,6 +842,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
   const TomCheckedPopupMenuItem({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     super.value,
     super.checked,
@@ -849,6 +859,9 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 
   @override
   PopupMenuItemState<T, CheckedPopupMenuItem<T>> createState() =>
@@ -996,6 +1009,7 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
   const TomDropdownMenuItem({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     super.onTap,
     super.value,
@@ -1009,4 +1023,7 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomUIGroup? tomGroup;
+
+  @override
+  final TomScope? scope;
 }

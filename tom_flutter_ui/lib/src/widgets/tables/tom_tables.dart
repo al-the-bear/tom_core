@@ -533,18 +533,22 @@ class _TomAuthContent extends StatelessWidget {
   const _TomAuthContent({
     required this.tomId,
     this.tomGroup,
+    this.scope,
     required this.child,
   });
 
   final String? tomId;
   final TomUIGroup? tomGroup;
+  final TomScope? scope;
   final Widget child;
+
+  TomScope get effectiveScope => scope ?? TomScope.current;
 
   @override
   Widget build(BuildContext context) {
     if (tomId == null) return child;
 
-    final scopePath = TomScope.current.getScopePath();
+    final scopePath = effectiveScope.getScopePath();
     final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     final auth = TomUIAuthorization.resolveAuth(fullPath);
 

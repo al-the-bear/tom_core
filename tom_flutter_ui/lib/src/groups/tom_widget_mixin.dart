@@ -50,13 +50,25 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   @override
   TomUIGroup? get tomGroup => null;
 
+  /// Optional explicit scope for resource/auth lookups.
+  ///
+  /// When provided, this scope is used instead of [TomScope.current].
+  /// This is useful when the implicit zone-based scope isn't available,
+  /// such as when creating widgets outside of a TomScope zone.
+  TomScope? get scope => null;
+
+  /// The effective scope for this widget.
+  ///
+  /// Returns [scope] if provided, otherwise [TomScope.current].
+  TomScope get effectiveScope => scope ?? TomScope.current;
+
   /// Resolves the full canonical path including scope path.
   ///
-  /// Uses [TomScope.current] to build the path.
+  /// Uses [effectiveScope] to build the path.
   /// Returns null if tomId is null.
   String? resolveFullPath() {
     if (tomId == null) return null;
-    final scopePath = TomScope.current.getScopePath();
+    final scopePath = effectiveScope.getScopePath();
     if (scopePath.isNotEmpty) {
       return '$scopePath.$tomId';
     }
