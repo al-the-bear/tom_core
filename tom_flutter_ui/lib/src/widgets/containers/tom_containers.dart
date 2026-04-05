@@ -368,6 +368,8 @@ class TomAppBar extends StatelessWidget
   final TomUIGroup? tomGroup;
   @override
   final TomScope? scope;
+  @override
+  final String? basePath;
 
   TomAppBar({
     super.key,
@@ -404,7 +406,9 @@ class TomAppBar extends StatelessWidget
     this.clipBehavior,
     this.shape,
     this.notificationPredicate = defaultScrollNotificationPredicate,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 
   @override
   Size get preferredSize {
@@ -500,25 +504,21 @@ class TomAppBar extends StatelessWidget
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   String? _resolveStringOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
     if (!TomUIResources.resourceExists(basePath!, suffix)) return null;
     return TomUIResources.resolveText(basePath!, suffix);
@@ -1949,8 +1949,11 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   @override
   final TomUIGroup? tomGroup;
 
-  /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   /// Creates a Tom Expanded widget with optional resource resolution.
   TomExpanded({
@@ -1960,7 +1963,10 @@ class TomExpanded extends Expanded with TomWidgetMixin {
     super.key,
     super.flex,
     Widget? child,
-  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
+  }
 }
 
 /// Tom widget that EXTENDS [Flexible] with authorization and resource resolution.
@@ -1986,8 +1992,11 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   @override
   final TomUIGroup? tomGroup;
 
-  /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   /// Creates a Tom Flexible widget with optional resource resolution.
   TomFlexible({
@@ -1998,7 +2007,10 @@ class TomFlexible extends Flexible with TomWidgetMixin {
     super.flex,
     super.fit,
     Widget? child,
-  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
+  }
 }
 
 /// Tom widget that EXTENDS [Spacer] with authorization.
@@ -2020,8 +2032,11 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   @override
   final TomUIGroup? tomGroup;
 
-  /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   /// Creates a Tom Spacer widget.
   TomSpacer({
@@ -2030,7 +2045,9 @@ class TomSpacer extends Spacer with TomWidgetMixin {
     this.scope,
     super.key,
     super.flex,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 }
 
 /// Tom wrapper for [Positioned] with authorization and resource resolution.
@@ -2152,8 +2169,11 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   @override
   final TomUIGroup? tomGroup;
 
-  /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   /// Creates a Tom TableCell widget with optional resource resolution.
   TomTableCell({
@@ -2163,7 +2183,10 @@ class TomTableCell extends TableCell with TomWidgetMixin {
     super.key,
     super.verticalAlignment,
     Widget? child,
-  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
+  }
 }
 
 // ============================================================================
@@ -3740,6 +3763,9 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   @override
   final TomScope? scope;
 
+  @override
+  final String? basePath;
+
   TomCupertinoTabView({
     super.key,
     this.tomId,
@@ -3753,5 +3779,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
     super.onUnknownRoute,
     super.navigatorObservers,
     super.restorationScopeId,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 }

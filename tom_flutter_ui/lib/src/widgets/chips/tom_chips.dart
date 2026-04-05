@@ -33,6 +33,27 @@ class TomFilterChip extends TomChipBase {
   final Color? deleteIconColor;
   final String? deleteButtonTooltipMessage;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget _chipLabel;
+  late final Color? _resolvedCheckmarkColor;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedSelectedShadowColor;
+  late final Color? _resolvedShadowColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedPressElevation;
+  late final Color? _resolvedDeleteIconColor;
+  late final TextStyle? _resolvedLabelStyle;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final bool _resolvedShowCheckmark;
+  late final String? _resolvedDeleteButtonTooltipMessage;
+  late final OutlinedBorder? _resolvedShape;
+  late final BorderSide? _resolvedSide;
+  late final VisualDensity? _resolvedVisualDensity;
+
   TomFilterChip({
     super.key,
     super.tomId,
@@ -63,74 +84,56 @@ class TomFilterChip extends TomChipBase {
     this.onDeleted,
     this.deleteIconColor,
     this.deleteButtonTooltipMessage,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _chipLabel = label ?? Text(_resolvedLabel);
+    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedShowCheckmark = resolveBoolOrNull('showCheckmark') ?? showCheckmark;
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
+    _resolvedSide = side ?? _resolveBorderSide('side');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final chipLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull('pressElevation');
-    final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedShowCheckmark =
-        resolveBoolOrNull('showCheckmark') ?? showCheckmark;
-    final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
-
-    Widget chip = FilterChip(
+    return FilterChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
-      label: chipLabel,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
-      padding: resolvedPadding,
-      showCheckmark: resolvedShowCheckmark,
-      checkmarkColor: resolvedCheckmarkColor,
-      selectedColor: resolvedSelectedColor,
-      disabledColor: resolvedDisabledColor,
-      backgroundColor: resolvedBackgroundColor,
-      selectedShadowColor: resolvedSelectedShadowColor,
-      shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide('side'),
+      label: _chipLabel,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
+      padding: _resolvedPadding,
+      showCheckmark: _resolvedShowCheckmark,
+      checkmarkColor: _resolvedCheckmarkColor,
+      selectedColor: _resolvedSelectedColor,
+      disabledColor: _resolvedDisabledColor,
+      backgroundColor: _resolvedBackgroundColor,
+      selectedShadowColor: _resolvedSelectedShadowColor,
+      shadowColor: _resolvedShadowColor,
+      shape: _resolvedShape,
+      side: _resolvedSide,
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
-      elevation: resolvedElevation,
-      pressElevation: resolvedPressElevation,
+      visualDensity: _resolvedVisualDensity,
+      elevation: _resolvedElevation,
+      pressElevation: _resolvedPressElevation,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
+      deleteIconColor: _resolvedDeleteIconColor,
+      deleteButtonTooltipMessage: _resolvedDeleteButtonTooltipMessage,
     );
-
-    return chip;
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
@@ -178,6 +181,23 @@ class TomChoiceChip extends TomChipBase {
   final double? elevation;
   final double? pressElevation;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget _chipLabel;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedSelectedShadowColor;
+  late final Color? _resolvedShadowColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedPressElevation;
+  late final TextStyle? _resolvedLabelStyle;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final OutlinedBorder? _resolvedShape;
+  late final BorderSide? _resolvedSide;
+  late final VisualDensity? _resolvedVisualDensity;
+
   TomChoiceChip({
     super.key,
     super.tomId,
@@ -202,60 +222,46 @@ class TomChoiceChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _chipLabel = label ?? Text(_resolvedLabel);
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
+    _resolvedSide = side ?? _resolveBorderSide('side');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final chipLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull('pressElevation');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
-    Widget chip = ChoiceChip(
+    return ChoiceChip(
       selected: selected,
       onSelected: onSelected,
       avatar: avatar,
-      label: chipLabel,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
-      padding: resolvedPadding,
-      selectedColor: resolvedSelectedColor,
-      disabledColor: resolvedDisabledColor,
-      backgroundColor: resolvedBackgroundColor,
-      selectedShadowColor: resolvedSelectedShadowColor,
-      shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide('side'),
+      label: _chipLabel,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
+      padding: _resolvedPadding,
+      selectedColor: _resolvedSelectedColor,
+      disabledColor: _resolvedDisabledColor,
+      backgroundColor: _resolvedBackgroundColor,
+      selectedShadowColor: _resolvedSelectedShadowColor,
+      shadowColor: _resolvedShadowColor,
+      shape: _resolvedShape,
+      side: _resolvedSide,
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
-      elevation: resolvedElevation,
-      pressElevation: resolvedPressElevation,
+      visualDensity: _resolvedVisualDensity,
+      elevation: _resolvedElevation,
+      pressElevation: _resolvedPressElevation,
     );
-
-    return chip;
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
@@ -301,6 +307,22 @@ class TomActionChip extends TomChipBase {
   final double? elevation;
   final double? pressElevation;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String _resolvedTooltip;
+  late final Widget _chipLabel;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedPressElevation;
+  late final TextStyle? _resolvedLabelStyle;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final OutlinedBorder? _resolvedShape;
+  late final BorderSide? _resolvedSide;
+  late final VisualDensity? _resolvedVisualDensity;
+
   TomActionChip({
     super.key,
     super.tomId,
@@ -323,55 +345,43 @@ class TomActionChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _chipLabel = label ?? Text(_resolvedLabel);
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
+    _resolvedSide = side ?? _resolveBorderSide('side');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    final chipLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull('pressElevation');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
-    Widget chip = ActionChip(
+    return ActionChip(
       onPressed: onPressed,
       avatar: avatar,
-      label: chipLabel,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
-      padding: resolvedPadding,
-      tooltip: resolvedTooltip,
-      backgroundColor: resolvedBackgroundColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide('side'),
+      label: _chipLabel,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
+      padding: _resolvedPadding,
+      tooltip: _resolvedTooltip,
+      backgroundColor: _resolvedBackgroundColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      shape: _resolvedShape,
+      side: _resolvedSide,
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
-      elevation: resolvedElevation,
-      pressElevation: resolvedPressElevation,
+      visualDensity: _resolvedVisualDensity,
+      elevation: _resolvedElevation,
+      pressElevation: _resolvedPressElevation,
     );
-
-    return chip;
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
@@ -428,6 +438,28 @@ class TomInputChip extends TomChipBase {
   final double? pressElevation;
   final String? tooltip;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String _resolvedTooltip;
+  late final Widget _chipLabel;
+  late final Color? _resolvedDeleteIconColor;
+  late final Color? _resolvedCheckmarkColor;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedSelectedShadowColor;
+  late final Color? _resolvedShadowColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedPressElevation;
+  late final TextStyle? _resolvedLabelStyle;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final String? _resolvedDeleteButtonTooltipMessage;
+  late final bool _resolvedShowCheckmark;
+  late final OutlinedBorder? _resolvedShape;
+  late final BorderSide? _resolvedSide;
+  late final VisualDensity? _resolvedVisualDensity;
+
   TomInputChip({
     super.key,
     super.tomId,
@@ -461,47 +493,31 @@ class TomInputChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
     this.tooltip,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _chipLabel = label ?? Text(_resolvedLabel);
+    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
+    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
+    _resolvedShowCheckmark = resolveBoolOrNull('showCheckmark') ?? showCheckmark;
+    _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
+    _resolvedSide = side ?? _resolveBorderSide('side');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    final chipLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull('pressElevation');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
-    final resolvedShowCheckmark =
-        resolveBoolOrNull('showCheckmark') ?? showCheckmark;
-
     return InputChip(
       selected: selected,
       isEnabled: isEnabled,
@@ -509,27 +525,27 @@ class TomInputChip extends TomChipBase {
       onDeleted: onDeleted,
       onPressed: onPressed,
       avatar: avatar,
-      label: chipLabel,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
-      padding: resolvedPadding,
+      label: _chipLabel,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
+      padding: _resolvedPadding,
       deleteIcon: deleteIcon,
-      deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
-      showCheckmark: resolvedShowCheckmark,
-      checkmarkColor: resolvedCheckmarkColor,
-      selectedColor: resolvedSelectedColor,
-      disabledColor: resolvedDisabledColor,
-      backgroundColor: resolvedBackgroundColor,
-      selectedShadowColor: resolvedSelectedShadowColor,
-      shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide('side'),
+      deleteIconColor: _resolvedDeleteIconColor,
+      deleteButtonTooltipMessage: _resolvedDeleteButtonTooltipMessage,
+      showCheckmark: _resolvedShowCheckmark,
+      checkmarkColor: _resolvedCheckmarkColor,
+      selectedColor: _resolvedSelectedColor,
+      disabledColor: _resolvedDisabledColor,
+      backgroundColor: _resolvedBackgroundColor,
+      selectedShadowColor: _resolvedSelectedShadowColor,
+      shadowColor: _resolvedShadowColor,
+      shape: _resolvedShape,
+      side: _resolvedSide,
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
-      elevation: resolvedElevation,
-      pressElevation: resolvedPressElevation,
-      tooltip: resolvedTooltip,
+      visualDensity: _resolvedVisualDensity,
+      elevation: _resolvedElevation,
+      pressElevation: _resolvedPressElevation,
+      tooltip: _resolvedTooltip,
     );
   }
 
@@ -589,6 +605,28 @@ class TomRawChip extends TomChipBase {
   final double? elevation;
   final String? tooltip;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String _resolvedTooltip;
+  late final Widget _chipLabel;
+  late final Color? _resolvedDeleteIconColor;
+  late final double? _resolvedPressElevation;
+  late final Color? _resolvedCheckmarkColor;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedSelectedShadowColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final TextStyle? _resolvedLabelStyle;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final String? _resolvedDeleteButtonTooltipMessage;
+  late final OutlinedBorder? _resolvedShape;
+  late final BorderSide? _resolvedSide;
+  late final VisualDensity? _resolvedVisualDensity;
+
   TomRawChip({
     super.key,
     super.tomId,
@@ -624,78 +662,61 @@ class TomRawChip extends TomChipBase {
     this.materialTapTargetSize,
     this.elevation,
     this.tooltip,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _chipLabel = label ?? Text(_resolvedLabel);
+    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
+    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
+    _resolvedSide = side ?? _resolveBorderSide('side');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final chipLabel = label ?? Text(resolvedLabel);
-    final resolvedTooltip =
-      tooltip ?? resolveResourceOrFail('tooltip');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull('pressElevation');
-    final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
-
     return RawChip(
       avatar: avatar,
-      label: chipLabel,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
+      label: _chipLabel,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
       selected: selected,
       isEnabled: isEnabled,
       onSelected: onSelected,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: resolvedDeleteIconColor,
-      deleteButtonTooltipMessage: resolvedDeleteButtonTooltipMessage,
+      deleteIconColor: _resolvedDeleteIconColor,
+      deleteButtonTooltipMessage: _resolvedDeleteButtonTooltipMessage,
       onPressed: onPressed,
-      pressElevation: resolvedPressElevation,
+      pressElevation: _resolvedPressElevation,
       showCheckmark: showCheckmark,
-      checkmarkColor: resolvedCheckmarkColor,
-      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide('side'),
+      checkmarkColor: _resolvedCheckmarkColor,
+      shape: _resolvedShape,
+      side: _resolvedSide,
       clipBehavior: clipBehavior,
-      selectedColor: resolvedSelectedColor,
-      disabledColor: resolvedDisabledColor,
-      backgroundColor: resolvedBackgroundColor,
-      selectedShadowColor: resolvedSelectedShadowColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      padding: resolvedPadding,
-      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
+      selectedColor: _resolvedSelectedColor,
+      disabledColor: _resolvedDisabledColor,
+      backgroundColor: _resolvedBackgroundColor,
+      selectedShadowColor: _resolvedSelectedShadowColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      padding: _resolvedPadding,
+      visualDensity: _resolvedVisualDensity,
       materialTapTargetSize: materialTapTargetSize,
-      elevation: resolvedElevation,
-      tooltip: resolvedTooltip,
+      elevation: _resolvedElevation,
+      tooltip: _resolvedTooltip,
     );
   }
 

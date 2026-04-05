@@ -27,7 +27,7 @@ import 'tom_ui_group.dart';
 /// The mixin provides:
 /// - [tomId] — abstract, must be implemented
 /// - [tomGroup] — optional group membership (TomUIGroup object)
-/// - [resolveFullPath] — canonical path via [TomScope]
+/// - [basePath] — canonical resource base path
 /// - [getAuth] — authorization state lookup
 /// - [getText] — text resource lookup
 /// - [checkHidden] — returns `SizedBox.shrink()` if hidden
@@ -57,17 +57,18 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// such as when creating widgets outside of a TomScope zone.
   TomScope? get scope => null;
 
-  /// The effective scope for this widget.
+  /// The resolved canonical resource base path for this widget.
   ///
-  /// Returns [scope] if provided, otherwise [TomScope.current].
-  TomScope get effectiveScope => scope ?? TomScope.current;
-
-  /// Resolves the full canonical path including scope path.
+  /// Computed as `<scopePath>.<tomId>` where scopePath comes from
+  /// either [scope] or [TomScope.current].
   ///
-  /// Uses [effectiveScope] to build the path.
-  /// Returns null if tomId is null.
-  String? resolveFullPath() {
+  /// `null` if this widget has no [tomId].
+  ///
+  /// Concrete classes should override this with a `final` field
+  /// for one-time computation in the constructor initializer list.
+  String? get basePath {
     if (tomId == null) return null;
+    final effectiveScope = scope ?? TomScope.current;
     final scopePath = effectiveScope.getScopePath();
     if (scopePath.isNotEmpty) {
       return '$scopePath.$tomId';
@@ -77,18 +78,16 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
 
   /// Gets authorization state for this widget.
   TomAuthState getAuth() {
-    final path = resolveFullPath();
-    if (path == null) return TomAuthState.fullAccess;
-    return TomUIAuthorization.resolveAuth(path);
+    if (basePath == null) return TomAuthState.fullAccess;
+    return TomUIAuthorization.resolveAuth(basePath!);
   }
 
   /// Gets a text resource for this widget.
   ///
   /// Resolves `<canonical-path>.<suffix>` from [TomUIResources].
   String getText(String suffix) {
-    final path = resolveFullPath();
-    if (path == null) return '';
-    return TomUIResources.resolveText(path, suffix);
+    if (basePath == null) return '';
+    return TomUIResources.resolveText(basePath!, suffix);
   }
 
   /// Returns `SizedBox.shrink()` if authorization says hidden, `null` otherwise.
@@ -172,9 +171,8 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
   /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
   Color? resolveColorOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomUIResources.resolveColor(basePath, suffix);
+    return TomUIResources.resolveColor(basePath!, suffix);
   }
 
   /// Resolves a double from resources relative to this widget's canonical path.
@@ -184,9 +182,8 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// - No resource exists for this suffix
   /// - The value is not numeric
   double? resolveDoubleOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomUIResources.resolveDouble(basePath, suffix);
+    return TomUIResources.resolveDouble(basePath!, suffix);
   }
 
   /// Resolves a required double from resources relative to this widget's canonical path.
@@ -196,20 +193,19 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// - No resource exists for this suffix
   /// - The value exists but is not numeric
   double resolveDoubleOrFail(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
         'resource lookup. Widget: $runtimeType',
       );
     }
-    if (!TomUIResources.resourceExists(basePath, suffix)) {
+    if (!TomUIResources.resourceExists(basePath!, suffix)) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a numeric '
         'resource value at $basePath.$suffix. Widget: $runtimeType',
       );
     }
-    final value = TomUIResources.resolveDouble(basePath, suffix);
+    final value = TomUIResources.resolveDouble(basePath!, suffix);
     if (value == null) {
       throw StateError(
         'Resource $basePath.$suffix must be numeric for widget $runtimeType.',
@@ -225,9 +221,8 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// - No resource exists for this suffix
   /// - The value is not numeric
   int? resolveIntOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomUIResources.resolveInt(basePath, suffix);
+    return TomUIResources.resolveInt(basePath!, suffix);
   }
 
   /// Resolves a bool from resources relative to this widget's canonical path.
@@ -237,9 +232,8 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// - No resource exists for this suffix
   /// - The value is not boolean-like
   bool? resolveBoolOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomUIResources.resolveBool(basePath, suffix);
+    return TomUIResources.resolveBool(basePath!, suffix);
   }
 
   /// Resolves edge insets from resources relative to this widget's canonical path.
@@ -254,8 +248,7 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
   EdgeInsets? resolveEdgeInsetsOrNull(String suffix) {
-    final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomUIResources.resolveEdgeInsets(basePath, suffix);
+    return TomUIResources.resolveEdgeInsets(basePath!, suffix);
   }
 }

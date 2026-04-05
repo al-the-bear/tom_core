@@ -526,27 +526,24 @@ class TomReorderableListView extends TomTableBase {
 /// - Readonly: applies readonly styling
 /// - Full access: renders the child normally
 class _TomAuthContent extends StatelessWidget {
-  const _TomAuthContent({
+  _TomAuthContent({
     required this.tomId,
     this.tomGroup,
     this.scope,
     required this.child,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope);
 
   final String? tomId;
   final TomUIGroup? tomGroup;
   final TomScope? scope;
   final Widget child;
-
-  TomScope get effectiveScope => scope ?? TomScope.current;
+  final String? basePath;
 
   @override
   Widget build(BuildContext context) {
-    if (tomId == null) return child;
+    if (basePath == null) return child;
 
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
-    final auth = TomUIAuthorization.resolveAuth(fullPath);
+    final auth = TomUIAuthorization.resolveAuth(basePath!);
 
     // Hidden: return empty
     if (!auth.visible) {
@@ -601,6 +598,9 @@ class TomDataCell extends DataCell {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// The resolved canonical resource base path.
+  final String? basePath;
+
   /// Creates a Tom DataCell with authorization support.
   ///
   /// The [child] content is automatically wrapped to check authorization
@@ -618,7 +618,8 @@ class TomDataCell extends DataCell {
     GestureTapCallback? onDoubleTap,
     GestureTapCancelCallback? onTapCancel,
     GestureTapDownCallback? onTapDown,
-  }) : super(
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(
           _TomAuthContent(
             tomId: tomId,
             tomGroup: tomGroup,
@@ -635,7 +636,8 @@ class TomDataCell extends DataCell {
 
   /// Creates an empty/placeholder cell.
   TomDataCell.empty({this.tomId, this.tomGroup, this.scope})
-      : super(const SizedBox.shrink(), placeholder: true);
+      : basePath = TomCtr.resolvePath(tomId, scope),
+        super(const SizedBox.shrink(), placeholder: true);
 }
 
 /// Tom extension of [DataColumn] with built-in authorization and resource resolution.
@@ -671,6 +673,9 @@ class TomDataColumn extends DataColumn {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// The resolved canonical resource base path.
+  final String? basePath;
+
   /// Creates a Tom DataColumn with authorization support.
   ///
   /// The [label] content is automatically wrapped to check authorization
@@ -685,7 +690,8 @@ class TomDataColumn extends DataColumn {
     bool numeric = false,
     DataColumnSortCallback? onSort,
     WidgetStateProperty<MouseCursor?>? mouseCursor,
-  }) : super(
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(
           label: _TomAuthContent(
             tomId: tomId,
             tomGroup: tomGroup,
@@ -710,20 +716,14 @@ class TomDataColumn extends DataColumn {
   /// columns.where((c) => c is! TomDataColumn || c.isVisible(context)).toList()
   /// ```
   bool isVisible(BuildContext context) {
-    if (tomId == null) return true;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
-    return TomUIAuthorization.resolveAuth(fullPath).visible;
+    if (basePath == null) return true;
+    return TomUIAuthorization.resolveAuth(basePath!).visible;
   }
 
   /// Returns true if this column should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
-    if (tomId == null) return false;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
-    return TomUIAuthorization.resolveAuth(fullPath).readonly;
+    if (basePath == null) return false;
+    return TomUIAuthorization.resolveAuth(basePath!).readonly;
   }
 }
 
@@ -757,6 +757,9 @@ class TomDataRow extends DataRow {
   /// Optional explicit scope for resource resolution.
   final TomScope? scope;
 
+  /// The resolved canonical resource base path.
+  final String? basePath;
+
   /// Creates a Tom DataRow with authorization support.
   TomDataRow({
     this.tomId,
@@ -769,7 +772,8 @@ class TomDataRow extends DataRow {
     WidgetStateProperty<Color?>? color,
     required List<DataCell> cells,
     WidgetStateProperty<MouseCursor?>? mouseCursor,
-  }) : super(
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(
           selected: selected,
           onSelectChanged: onSelectChanged,
           onLongPress: onLongPress,
@@ -785,19 +789,13 @@ class TomDataRow extends DataRow {
   /// rows.where((r) => r is! TomDataRow || r.isVisible(context)).toList()
   /// ```
   bool isVisible(BuildContext context) {
-    if (tomId == null) return true;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
-    return TomUIAuthorization.resolveAuth(fullPath).visible;
+    if (basePath == null) return true;
+    return TomUIAuthorization.resolveAuth(basePath!).visible;
   }
 
   /// Returns true if this row should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
-    if (tomId == null) return false;
-    final effectiveScope = scope ?? TomScope.current;
-    final scopePath = effectiveScope.getScopePath();
-    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
-    return TomUIAuthorization.resolveAuth(fullPath).readonly;
+    if (basePath == null) return false;
+    return TomUIAuthorization.resolveAuth(basePath!).readonly;
   }
 }

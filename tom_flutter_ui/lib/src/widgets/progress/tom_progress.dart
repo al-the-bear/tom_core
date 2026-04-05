@@ -341,8 +341,11 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   @override
   final TomUIGroup? tomGroup;
 
-  /// Optional explicit scope for resource resolution.
+  @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   TomRefreshProgressIndicator({
     super.key,
@@ -358,14 +361,17 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     String? semanticsLabel,
     String? semanticsValue,
     super.strokeCap,
-  }) : super(
+  }) : basePath = TomCtr.resolvePath(tomId, scope),
+       super(
           value: value,
           backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
           color: color ?? TomCtr.color(_p(tomId, scope, 'color')),
           strokeWidth: strokeWidth ?? TomCtr.doubleVal(_p(tomId, scope, 'strokeWidth')) ?? RefreshProgressIndicator.defaultStrokeWidth,
           semanticsLabel: semanticsLabel ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsLabel')),
           semanticsValue: semanticsValue ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
-        );
+        ) {
+    tomGroup?.register(this);
+  }
 
   /// Helper to build full path with suffix.
   static String? _p(String? tomId, TomScope? scope, String suffix) {

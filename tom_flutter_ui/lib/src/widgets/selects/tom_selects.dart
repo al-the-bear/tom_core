@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -723,7 +724,9 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
     super.labelTextStyle,
     super.mouseCursor,
     required super.child,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 
   @override
   final String? tomId;
@@ -733,6 +736,9 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   @override
   PopupMenuItemState<T, TomPopupMenuItem<T>> createState() =>
@@ -774,7 +780,9 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
     this.scope,
     super.key,
     super.height,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 
   @override
   final String? tomId;
@@ -784,6 +792,9 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   @override
   State<PopupMenuDivider> createState() => _TomPopupMenuDividerState();
@@ -838,7 +849,9 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     super.labelTextStyle,
     super.mouseCursor,
     super.child,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 
   @override
   final String? tomId;
@@ -848,6 +861,9 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
 
   @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 
   @override
   PopupMenuItemState<T, CheckedPopupMenuItem<T>> createState() =>
@@ -1002,7 +1018,9 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
     super.enabled,
     super.alignment,
     required super.child,
-  });
+  }) : basePath = TomCtr.resolvePath(tomId, scope) {
+    tomGroup?.register(this);
+  }
 
   @override
   final String? tomId;
@@ -1012,4 +1030,7 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final String? basePath;
 }
