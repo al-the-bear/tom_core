@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_ui_group.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -524,50 +527,104 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   }
 }
 
-/// Tom wrapper for [AnimatedPositioned].
+/// Tom wrapper for [AnimatedPositioned] with construction-time resource resolution.
 ///
 /// Animates position in Stack.
 /// Uses extension pattern because Stack checks `is Positioned`.
-/// Note: No TomWidgetMixin — parameters are forwarded to super at
-/// construction time (before BuildContext is available), so resource
-/// resolution is structurally impossible.
+///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
+/// - [left], [top], [right], [bottom], [width], [height] — resolved from resources
 class TomAnimatedPositioned extends AnimatedPositioned {
-  const TomAnimatedPositioned({
+  /// Tom ID for resource resolution.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  TomAnimatedPositioned({
     super.key,
-    required super.child,
-    super.left,
-    super.top,
-    super.right,
-    super.bottom,
-    super.width,
-    super.height,
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    Widget? child,
+    double? left,
+    double? top,
+    double? right,
+    double? bottom,
+    double? width,
+    double? height,
     required super.duration,
     super.curve,
     super.onEnd,
-  });
+  }) : super(
+          child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          left: left ?? TomCtr.doubleVal(_p(tomId, scope, 'left')),
+          top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
+          right: right ?? TomCtr.doubleVal(_p(tomId, scope, 'right')),
+          bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
+          width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
+          height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
+        );
+
+  /// Helper to build full path with suffix (for value resolution).
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 }
 
-/// Tom wrapper for [AnimatedPositionedDirectional].
+/// Tom wrapper for [AnimatedPositionedDirectional] with construction-time resource resolution.
 ///
 /// RTL-aware animated position.
 /// Uses extension pattern because Stack checks `is Positioned`.
-/// Note: No TomWidgetMixin — parameters are forwarded to super at
-/// construction time (before BuildContext is available), so resource
-/// resolution is structurally impossible.
+///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
+/// - [start], [top], [end], [bottom], [width], [height] — resolved from resources
 class TomAnimatedPositionedDirectional extends AnimatedPositionedDirectional {
-  const TomAnimatedPositionedDirectional({
+  /// Tom ID for resource resolution.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  TomAnimatedPositionedDirectional({
     super.key,
-    required super.child,
-    super.start,
-    super.top,
-    super.end,
-    super.bottom,
-    super.width,
-    super.height,
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    Widget? child,
+    double? start,
+    double? top,
+    double? end,
+    double? bottom,
+    double? width,
+    double? height,
     required super.duration,
     super.curve,
     super.onEnd,
-  });
+  }) : super(
+          child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          start: start ?? TomCtr.doubleVal(_p(tomId, scope, 'start')),
+          top: top ?? TomCtr.doubleVal(_p(tomId, scope, 'top')),
+          end: end ?? TomCtr.doubleVal(_p(tomId, scope, 'end')),
+          bottom: bottom ?? TomCtr.doubleVal(_p(tomId, scope, 'bottom')),
+          width: width ?? TomCtr.doubleVal(_p(tomId, scope, 'width')),
+          height: height ?? TomCtr.doubleVal(_p(tomId, scope, 'height')),
+        );
+
+  /// Helper to build full path with suffix (for value resolution).
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 }
 
 /// Tom wrapper for [AnimatedRotation].

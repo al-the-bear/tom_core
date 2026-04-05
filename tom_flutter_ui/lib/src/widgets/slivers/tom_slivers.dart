@@ -22,6 +22,7 @@ class TomDecoratedSliver extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.decoration,
     required this.sliver,
   });
@@ -59,6 +60,7 @@ class TomPinnedHeaderSliver extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.child,
   });
 
@@ -81,6 +83,7 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.maxExtent,
     required this.sliver,
   });
@@ -109,6 +112,7 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.flex,
     required this.sliver,
   });
@@ -135,6 +139,7 @@ class TomSliverCrossAxisGroup extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.slivers,
   });
 
@@ -158,6 +163,7 @@ class TomSliverFillViewport extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.delegate,
     this.viewportFraction,
     this.padEnds = true,
@@ -189,6 +195,7 @@ class TomSliverFixedExtentList extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.delegate,
     this.itemExtent,
   });
@@ -216,6 +223,7 @@ class TomSliverFloatingHeader extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.child,
   });
 
@@ -237,6 +245,7 @@ class TomSliverMainAxisGroup extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.slivers,
   });
 
@@ -259,6 +268,7 @@ class TomSliverOffstage extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.offstage,
     required this.sliver,
   });
@@ -288,6 +298,7 @@ class TomSliverOpacity extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.opacity,
     this.alwaysIncludeSemantics,
     required this.sliver,
@@ -320,6 +331,7 @@ class TomSliverPadding extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.padding,
     required this.sliver,
   });
@@ -355,6 +367,7 @@ class TomSliverPersistentHeader extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.delegate,
     this.pinned,
     this.floating,
@@ -386,6 +399,7 @@ class TomSliverPrototypeExtentList extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.delegate,
     required this.prototypeItem,
   });
@@ -411,6 +425,7 @@ class TomSliverResizingHeader extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.child,
     this.minExtentPrototype = 0.0,
     this.maxExtentPrototype = double.infinity,
@@ -439,6 +454,7 @@ class TomSliverSafeArea extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.left,
     this.top,
     this.right,
@@ -480,6 +496,7 @@ class TomSliverVariedExtentList extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.delegate,
     required this.itemExtentBuilder,
   });
@@ -510,6 +527,7 @@ class TomSliverVisibility extends TomSliverBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.sliver,
     this.replacementSliver = const SliverToBoxAdapter(child: SizedBox.shrink()),
     this.visible,

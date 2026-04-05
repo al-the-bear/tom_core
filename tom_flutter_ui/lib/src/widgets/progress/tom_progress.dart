@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -316,10 +318,17 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
   }
 }
 
-/// Tom wrapper for [RefreshProgressIndicator].
+/// Tom wrapper for [RefreshProgressIndicator] with construction-time resource resolution.
 ///
 /// Circular indicator used by RefreshIndicator. Auth controls refresh progress.
 /// Uses extension pattern because parent may check `is CircularProgressIndicator`.
+///
+/// Resources are resolved at construction time:
+/// - [semanticsLabel] — resolved from `$tomId.semanticsLabel`
+/// - [semanticsValue] — resolved from `$tomId.semanticsValue`
+/// - [color] — resolved from `$tomId.color`
+/// - [backgroundColor] — resolved from `$tomId.backgroundColor`
+/// - [strokeWidth] — resolved from `$tomId.strokeWidth`
 class TomRefreshProgressIndicator extends RefreshProgressIndicator
     with TomWidgetMixin {
   @override
@@ -327,18 +336,35 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   @override
   final TomUIGroup? tomGroup;
 
-  const TomRefreshProgressIndicator({
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  TomRefreshProgressIndicator({
     super.key,
     this.tomId,
     this.tomGroup,
-    super.value,
-    super.backgroundColor,
-    super.color,
+    this.scope,
+    double? value,
+    Color? backgroundColor,
+    Color? color,
     super.valueColor,
-    super.strokeWidth,
+    double? strokeWidth,
     super.strokeAlign,
-    super.semanticsLabel,
-    super.semanticsValue,
+    String? semanticsLabel,
+    String? semanticsValue,
     super.strokeCap,
-  });
+  }) : super(
+          value: value,
+          backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
+          color: color ?? TomCtr.color(_p(tomId, scope, 'color')),
+          strokeWidth: strokeWidth ?? TomCtr.doubleVal(_p(tomId, scope, 'strokeWidth')) ?? RefreshProgressIndicator.defaultStrokeWidth,
+          semanticsLabel: semanticsLabel ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsLabel')),
+          semanticsValue: semanticsValue ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
+        );
+
+  /// Helper to build full path with suffix.
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 }

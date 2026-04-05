@@ -4,6 +4,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../resource_auth/tom_auth_state.dart';
 import '../../theme/tom_theme.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -562,7 +563,7 @@ class _TomAuthContent extends StatelessWidget {
 // TOM DATA TABLE CLASSES
 // =============================================================================
 
-/// Tom extension of [DataCell] with built-in authorization.
+/// Tom extension of [DataCell] with built-in authorization and resource resolution.
 ///
 /// Extends DataCell directly, preserving type identity (`TomDataCell is DataCell`).
 /// Authorization is checked at render time via an internal wrapper widget.
@@ -571,26 +572,40 @@ class _TomAuthContent extends StatelessWidget {
 /// - **Readonly**: Cell content has readonly styling, interactions disabled
 /// - **Full access**: Normal rendering and behavior
 ///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
+///
 /// Usage:
 /// ```dart
 /// TomDataTable(
 ///   columns: [...],
 ///   rows: [
 ///     DataRow(cells: [
-///       TomDataCell(tomId: 'salary', child: TomText(text: '\$150,000')),
+///       TomDataCell(tomId: 'salary'),  // Resolves child from resources
 ///     ]),
 ///   ],
 /// )
 /// ```
 class TomDataCell extends DataCell {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
   /// Creates a Tom DataCell with authorization support.
   ///
   /// The [child] content is automatically wrapped to check authorization
-  /// at render time based on [tomId].
+  /// at render time based on [tomId]. If [child] is null and [tomId] is
+  /// provided, creates a default `TomText(tomId: '$tomId.child')`.
   TomDataCell({
     this.tomId,
     this.tomGroup,
-    required Widget child,
+    this.scope,
+    Widget? child,
     bool placeholder = false,
     bool showEditIcon = false,
     GestureTapCallback? onTap,
@@ -599,7 +614,11 @@ class TomDataCell extends DataCell {
     GestureTapCancelCallback? onTapCancel,
     GestureTapDownCallback? onTapDown,
   }) : super(
-          _TomAuthContent(tomId: tomId, tomGroup: tomGroup, child: child),
+          _TomAuthContent(
+            tomId: tomId,
+            tomGroup: tomGroup,
+            child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup),
+          ),
           placeholder: placeholder,
           showEditIcon: showEditIcon,
           onTap: onTap,
@@ -610,17 +629,11 @@ class TomDataCell extends DataCell {
         );
 
   /// Creates an empty/placeholder cell.
-  TomDataCell.empty({this.tomId, this.tomGroup})
+  TomDataCell.empty({this.tomId, this.tomGroup, this.scope})
       : super(const SizedBox.shrink(), placeholder: true);
-
-  /// Tom ID for resource resolution and authorization.
-  final String? tomId;
-
-  /// Optional group membership.
-  final TomUIGroup? tomGroup;
 }
 
-/// Tom extension of [DataColumn] with built-in authorization.
+/// Tom extension of [DataColumn] with built-in authorization and resource resolution.
 ///
 /// Extends DataColumn directly, preserving type identity (`TomDataColumn is DataColumn`).
 /// Authorization is checked at render time via an internal wrapper widget.
@@ -629,42 +642,61 @@ class TomDataCell extends DataCell {
 /// - **Readonly**: Column header has readonly styling
 /// - **Full access**: Normal rendering
 ///
+/// Resources are resolved at construction time:
+/// - [label] — if null, creates `TomText(tomId: '$tomId.label')`
+/// - [tooltip] — resolved from `$tomId.tooltip`
+///
 /// Note: To completely remove a column from the table when hidden,
 /// use [isVisible] to filter before passing to TomDataTable.
 ///
 /// Usage:
 /// ```dart
 /// final columns = [
-///   TomDataColumn(tomId: 'name', label: TomText(text: 'Name')),
-///   TomDataColumn(tomId: 'salary', label: TomText(text: 'Salary')),
+///   TomDataColumn(tomId: 'name'),  // Resolves label/tooltip from resources
+///   TomDataColumn(tomId: 'salary'),
 /// ].where((c) => c.isVisible(context)).toList();
 /// ```
 class TomDataColumn extends DataColumn {
-  /// Creates a Tom DataColumn with authorization support.
-  ///
-  /// The [label] content is automatically wrapped to check authorization
-  /// at render time based on [tomId].
-  TomDataColumn({
-    this.tomId,
-    this.tomGroup,
-    required Widget label,
-    String? tooltip,
-    bool numeric = false,
-    DataColumnSortCallback? onSort,
-    WidgetStateProperty<MouseCursor?>? mouseCursor,
-  }) : super(
-          label: _TomAuthContent(tomId: tomId, tomGroup: tomGroup, child: label),
-          tooltip: tooltip,
-          numeric: numeric,
-          onSort: onSort,
-          mouseCursor: mouseCursor,
-        );
-
   /// Tom ID for resource resolution and authorization.
   final String? tomId;
 
   /// Optional group membership.
   final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom DataColumn with authorization support.
+  ///
+  /// The [label] content is automatically wrapped to check authorization
+  /// at render time based on [tomId]. If [label] is null and [tomId] is
+  /// provided, creates a default `TomText(tomId: '$tomId.label')`.
+  TomDataColumn({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    Widget? label,
+    String? tooltip,
+    bool numeric = false,
+    DataColumnSortCallback? onSort,
+    WidgetStateProperty<MouseCursor?>? mouseCursor,
+  }) : super(
+          label: _TomAuthContent(
+            tomId: tomId,
+            tomGroup: tomGroup,
+            child: label ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
+          ),
+          tooltip: tooltip ?? TomCtr.textOrNull(_p(tomId, scope, 'tooltip')),
+          numeric: numeric,
+          onSort: onSort,
+          mouseCursor: mouseCursor,
+        );
+
+  /// Helper to build full path with suffix (for value resolution).
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 
   /// Returns true if this column should be visible based on authorization.
   ///
@@ -674,7 +706,8 @@ class TomDataColumn extends DataColumn {
   /// ```
   bool isVisible(BuildContext context) {
     if (tomId == null) return true;
-    final scopePath = TomScope.current.getScopePath();
+    final effectiveScope = scope ?? TomScope.current;
+    final scopePath = effectiveScope.getScopePath();
     final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).visible;
   }
@@ -682,7 +715,8 @@ class TomDataColumn extends DataColumn {
   /// Returns true if this column should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (tomId == null) return false;
-    final scopePath = TomScope.current.getScopePath();
+    final effectiveScope = scope ?? TomScope.current;
+    final scopePath = effectiveScope.getScopePath();
     final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).readonly;
   }
@@ -703,16 +737,26 @@ class TomDataColumn extends DataColumn {
 /// final rows = employees.map((e) => TomDataRow(
 ///   tomId: 'employee.${e.id}',
 ///   cells: [
-///     TomDataCell(tomId: 'name', child: TomText(text: e.name)),
-///     TomDataCell(tomId: 'salary', child: TomText(text: '\$${e.salary}')),
+///     TomDataCell(tomId: 'name'),  // Resolves from resources
+///     TomDataCell(tomId: 'salary'),
 ///   ],
 /// )).where((r) => r.isVisible(context)).toList();
 /// ```
 class TomDataRow extends DataRow {
+  /// Tom ID for resource resolution and authorization.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
   /// Creates a Tom DataRow with authorization support.
   TomDataRow({
     this.tomId,
     this.tomGroup,
+    this.scope,
     super.key,
     bool selected = false,
     ValueChanged<bool?>? onSelectChanged,
@@ -729,12 +773,6 @@ class TomDataRow extends DataRow {
           mouseCursor: mouseCursor,
         );
 
-  /// Tom ID for resource resolution and authorization.
-  final String? tomId;
-
-  /// Optional group membership.
-  final TomUIGroup? tomGroup;
-
   /// Returns true if this row should be visible based on authorization.
   ///
   /// Use this to filter rows before passing to DataTable:
@@ -743,7 +781,8 @@ class TomDataRow extends DataRow {
   /// ```
   bool isVisible(BuildContext context) {
     if (tomId == null) return true;
-    final scopePath = TomScope.current.getScopePath();
+    final effectiveScope = scope ?? TomScope.current;
+    final scopePath = effectiveScope.getScopePath();
     final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).visible;
   }
@@ -751,7 +790,8 @@ class TomDataRow extends DataRow {
   /// Returns true if this row should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (tomId == null) return false;
-    final scopePath = TomScope.current.getScopePath();
+    final effectiveScope = scope ?? TomScope.current;
+    final scopePath = effectiveScope.getScopePath();
     final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).readonly;
   }

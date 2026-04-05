@@ -34,6 +34,7 @@ class TomText extends TomLabelBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.text,
     this.style,
     this.strutStyle,

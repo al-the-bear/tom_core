@@ -22,6 +22,7 @@ class TomStatefulBuilder extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.builder,
   });
 
@@ -49,6 +50,7 @@ class TomStreamBuilder<T> extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.initialData,
     this.stream,
     required this.builder,
@@ -86,6 +88,7 @@ class TomFutureBuilder<T> extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     this.initialData,
     this.future,
     required this.builder,
@@ -123,6 +126,7 @@ class TomValueListenableBuilder<T> extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.valueListenable,
     required this.builder,
     this.child,
@@ -160,6 +164,7 @@ class TomListenableBuilder extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.listenable,
     required this.builder,
     this.child,
@@ -197,6 +202,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.tween,
     required this.duration,
     this.curve,
@@ -253,6 +259,7 @@ class TomOrientationBuilder extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.builder,
   });
 
@@ -280,6 +287,7 @@ class TomLayoutBuilder extends TomBuilderBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
     required this.builder,
   });
 

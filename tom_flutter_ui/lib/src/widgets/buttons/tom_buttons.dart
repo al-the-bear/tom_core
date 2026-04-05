@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_ui_group.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -1886,25 +1889,56 @@ class TomButtonBar extends TomButtonBase {
 // EXTENSION-BASED WIDGETS (extends Flutter widget + TomWidgetMixin)
 // ============================================================================
 
-/// Tom wrapper for [SnackBarAction] — fits in `SnackBar(action:)`.
+/// Tom wrapper for [SnackBarAction] with construction-time resource resolution.
+///
+/// Extends [SnackBarAction] directly to fit in `SnackBar(action:)`.
+///
+/// Resources are resolved at construction time:
+/// - [label] — if null, resolved from `$tomId.label`
+/// - [textColor] — resolved from `$tomId.textColor`
+/// - [disabledTextColor] — resolved from `$tomId.disabledTextColor`
 ///
 /// ```dart
 /// TomSnackBar(
-///   content: Text('Message'),
-///   action: TomSnackBarAction(label: 'Undo', onPressed: () {}),
+///   tomId: 'saveSuccess',
+///   action: TomSnackBarAction(
+///     tomId: 'undo',  // Resolves label from resources
+///     onPressed: () => handleUndo(),
+///   ),
 /// )
 /// ```
-///
-/// Note: No TomWidgetMixin — parameters are forwarded to super at
-/// construction time (before BuildContext is available), so resource
-/// resolution is structurally impossible.
 class TomSnackBarAction extends SnackBarAction {
-  /// Creates a Tom SnackBarAction.
+  /// Tom ID for resource resolution.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom SnackBarAction with optional resource resolution.
+  ///
+  /// If [label] is null and [tomId] is provided, resolves the label from
+  /// resources at `$tomId.label`.
   TomSnackBarAction({
     super.key,
-    super.textColor,
-    super.disabledTextColor,
-    required super.label,
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    Color? textColor,
+    Color? disabledTextColor,
+    String? label,
     required super.onPressed,
-  });
+  }) : super(
+          label: label ?? TomCtr.text(_p(tomId, scope, 'label')),
+          textColor: textColor ?? TomCtr.color(_p(tomId, scope, 'textColor')),
+          disabledTextColor: disabledTextColor ?? TomCtr.color(_p(tomId, scope, 'disabledTextColor')),
+        );
+
+  /// Helper to build full path with suffix.
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 }

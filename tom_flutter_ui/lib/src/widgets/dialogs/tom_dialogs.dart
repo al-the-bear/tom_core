@@ -17,7 +17,10 @@ import 'package:flutter/material.dart' as material
         showDateRangePicker,
         showMenu,
         showSearch;
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../groups/tom_ui_group.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -433,23 +436,53 @@ class TomBottomSheet extends TomDialogBase {
   }
 }
 
-/// Tom wrapper for [SnackBar].
+/// Tom wrapper for [SnackBar] with construction-time resource resolution.
 ///
-/// Thin wrapper kept for API completeness.
-/// Note: No TomWidgetMixin — parameters are forwarded to super at
-/// construction time (before BuildContext is available), so resource
-/// resolution is structurally impossible.
+/// Extends [SnackBar] directly to pass `is SnackBar` checks.
+///
+/// Resources are resolved at construction time using [TomScope.current]
+/// (or an explicit [scope] if provided). The following parameters support
+/// resource resolution:
+///
+/// - [content] — if null, creates `TomText(tomId: '$tomId.content')`
+/// - [backgroundColor] — resolved from `$tomId.backgroundColor`
+/// - [elevation] — resolved from `$tomId.elevation`
+/// - [margin] — resolved from `$tomId.margin`
+/// - [padding] — resolved from `$tomId.padding`
+/// - [closeIconColor] — resolved from `$tomId.closeIconColor`
+///
+/// ```dart
+/// ScaffoldMessenger.of(context).showSnackBar(
+///   TomSnackBar(
+///     tomId: 'saveSuccess',  // Resolves content, colors from resources
+///     action: TomSnackBarAction(tomId: 'undo', onPressed: handleUndo),
+///   ),
+/// );
+/// ```
 class TomSnackBar extends SnackBar {
-  /// Creates a Tom SnackBar that extends SnackBar directly.
+  /// Tom ID for resource resolution.
+  final String? tomId;
+
+  /// Optional group membership.
+  final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom SnackBar with optional resource resolution.
   ///
-  /// Can be used with ScaffoldMessenger.showSnackBar().
+  /// If [content] is null and [tomId] is provided, creates a default
+  /// `TomText(tomId: '$tomId.content')` for the content.
   TomSnackBar({
     super.key,
-    required super.content,
-    super.backgroundColor,
-    super.elevation,
-    super.margin,
-    super.padding,
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    Widget? content,
+    Color? backgroundColor,
+    double? elevation,
+    EdgeInsetsGeometry? margin,
+    EdgeInsetsGeometry? padding,
     super.width,
     super.shape,
     super.hitTestBehavior,
@@ -457,13 +490,26 @@ class TomSnackBar extends SnackBar {
     super.action,
     super.actionOverflowThreshold,
     super.showCloseIcon,
-    super.closeIconColor,
+    Color? closeIconColor,
     super.duration = const Duration(milliseconds: 4000),
     super.animation,
     super.onVisible,
     super.dismissDirection = DismissDirection.down,
     super.clipBehavior = Clip.hardEdge,
-  });
+  }) : super(
+          content: content ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'content'), scope, tomGroup),
+          backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
+          elevation: elevation ?? TomCtr.doubleVal(_p(tomId, scope, 'elevation')),
+          margin: margin ?? TomCtr.edgeInsets(_p(tomId, scope, 'margin')),
+          padding: padding ?? TomCtr.edgeInsets(_p(tomId, scope, 'padding')),
+          closeIconColor: closeIconColor ?? TomCtr.color(_p(tomId, scope, 'closeIconColor')),
+        );
+
+  /// Helper to build full path with suffix (for value resolution).
+  static String? _p(String? tomId, TomScope? scope, String suffix) {
+    final base = TomCtr.resolvePath(tomId, scope);
+    return base != null ? '$base.$suffix' : null;
+  }
 }
 
 /// Tom wrapper for [MaterialBanner].

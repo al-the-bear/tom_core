@@ -3,10 +3,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../resource_auth/tom_resources.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
@@ -1895,10 +1897,13 @@ class TomInk extends TomContainerBase {
 // These preserve type identity for Flutter's runtime `is`-checks.
 // ============================================================================
 
-/// Tom widget that EXTENDS [Expanded] with authorization.
+/// Tom widget that EXTENDS [Expanded] with authorization and resource resolution.
 ///
 /// This widget IS an [Expanded] (and IS a [Flexible]) — it passes `is Expanded`
 /// and `is Flexible` checks for use in [Row], [Column], and [Flex].
+///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
 ///
 /// **ParentDataWidget pattern:**
 /// - ParentDataWidgets have no `build()` method — they apply parent data
@@ -1909,57 +1914,68 @@ class TomInk extends TomContainerBase {
 /// TomRow(
 ///   tomId: 'mainRow',
 ///   children: [
-///     TomExpanded(tomId: 'content', child: ContentWidget()),
-///     TomExpanded(tomId: 'sidebar', child: SidebarWidget()),
+///     TomExpanded(tomId: 'content'),  // Resolves child from resources
+///     TomExpanded(tomId: 'sidebar'),
 ///   ],
 /// )
 /// ```
 class TomExpanded extends Expanded with TomWidgetMixin {
-  /// Creates a Tom Expanded widget.
-  const TomExpanded({
-    this.tomId,
-    this.tomGroup,
-    super.key,
-    super.flex,
-    required super.child,
-  });
-
   @override
   final String? tomId;
 
   @override
   final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom Expanded widget with optional resource resolution.
+  TomExpanded({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    super.key,
+    super.flex,
+    Widget? child,
+  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
 }
 
-/// Tom widget that EXTENDS [Flexible] with authorization.
+/// Tom widget that EXTENDS [Flexible] with authorization and resource resolution.
 ///
 /// This widget IS a [Flexible] — it passes `is Flexible` checks.
+///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
 ///
 /// ```dart
 /// TomRow(
 ///   tomId: 'flexRow',
 ///   children: [
-///     TomFlexible(tomId: 'flex1', flex: 2, child: Widget1()),
-///     TomFlexible(tomId: 'flex2', flex: 1, child: Widget2()),
+///     TomFlexible(tomId: 'flex1', flex: 2),  // Resolves child from resources
+///     TomFlexible(tomId: 'flex2', flex: 1),
 ///   ],
 /// )
 /// ```
 class TomFlexible extends Flexible with TomWidgetMixin {
-  /// Creates a Tom Flexible widget.
-  const TomFlexible({
-    this.tomId,
-    this.tomGroup,
-    super.key,
-    super.flex,
-    super.fit,
-    required super.child,
-  });
-
   @override
   final String? tomId;
 
   @override
   final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom Flexible widget with optional resource resolution.
+  TomFlexible({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    super.key,
+    super.flex,
+    super.fit,
+    Widget? child,
+  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
 }
 
 /// Tom widget that EXTENDS [Spacer] with authorization.
@@ -1975,19 +1991,23 @@ class TomFlexible extends Flexible with TomWidgetMixin {
 /// ])
 /// ```
 class TomSpacer extends Spacer with TomWidgetMixin {
-  /// Creates a Tom Spacer widget.
-  const TomSpacer({
-    this.tomId,
-    this.tomGroup,
-    super.key,
-    super.flex,
-  });
-
   @override
   final String? tomId;
 
   @override
   final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom Spacer widget.
+  const TomSpacer({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    super.key,
+    super.flex,
+  });
 }
 
 /// Tom wrapper for [Positioned] with authorization and resource resolution.
@@ -2093,24 +2113,31 @@ class TomPositionedDirectional extends TomContainerBase {
   }
 }
 
-/// Tom widget that EXTENDS [TableCell] with authorization.
+/// Tom widget that EXTENDS [TableCell] with authorization and resource resolution.
 ///
 /// This widget IS a [TableCell] — used in [Table] with vertical alignment.
+///
+/// Resources are resolved at construction time:
+/// - [child] — if null, creates `TomText(tomId: '$tomId.child')`
 class TomTableCell extends TableCell with TomWidgetMixin {
-  /// Creates a Tom TableCell widget.
-  const TomTableCell({
-    this.tomId,
-    this.tomGroup,
-    super.key,
-    super.verticalAlignment,
-    required super.child,
-  });
-
   @override
   final String? tomId;
 
   @override
   final TomUIGroup? tomGroup;
+
+  /// Optional explicit scope for resource resolution.
+  final TomScope? scope;
+
+  /// Creates a Tom TableCell widget with optional resource resolution.
+  TomTableCell({
+    this.tomId,
+    this.tomGroup,
+    this.scope,
+    super.key,
+    super.verticalAlignment,
+    Widget? child,
+  }) : super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup));
 }
 
 // ============================================================================
