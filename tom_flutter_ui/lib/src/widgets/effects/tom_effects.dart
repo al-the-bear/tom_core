@@ -18,6 +18,9 @@ class TomBackdropFilter extends TomEffectBase {
   final BlendMode? blendMode;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final BlendMode _resolvedBlendMode;
+
   TomBackdropFilter({
     super.key,
     super.tomId,
@@ -26,18 +29,15 @@ class TomBackdropFilter extends TomEffectBase {
     required this.filter,
     this.blendMode,
     this.child,
-  });
+  }) {
+    _resolvedBlendMode = blendMode ?? _resolveBlendMode(resolveResourceOrNull('blendMode')) ?? BlendMode.srcOver;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBlendMode = blendMode ??
-        _resolveBlendMode(resolveResourceOrNull('blendMode')) ??
-        BlendMode.srcOver;
-
     return BackdropFilter(
       filter: filter,
-      blendMode: resolvedBlendMode,
+      blendMode: _resolvedBlendMode,
       child: child,
     );
   }
@@ -76,6 +76,9 @@ class TomShaderMask extends TomEffectBase {
   final BlendMode? blendMode;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final BlendMode _resolvedBlendMode;
+
   TomShaderMask({
     super.key,
     super.tomId,
@@ -84,18 +87,15 @@ class TomShaderMask extends TomEffectBase {
     required this.shaderCallback,
     this.blendMode,
     this.child,
-  });
+  }) {
+    _resolvedBlendMode = blendMode ?? _resolveBlendMode(resolveResourceOrNull('blendMode')) ?? BlendMode.modulate;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBlendMode = blendMode ??
-        _resolveBlendMode(resolveResourceOrNull('blendMode')) ??
-        BlendMode.modulate;
-
     return ShaderMask(
       shaderCallback: shaderCallback,
-      blendMode: resolvedBlendMode,
+      blendMode: _resolvedBlendMode,
       child: child,
     );
   }
@@ -257,6 +257,9 @@ class TomSensitiveContent extends TomEffectBase {
   final ContentSensitivity? sensitivity;
   final Widget child;
 
+  // Pre-resolved resource values
+  late final ContentSensitivity _resolvedSensitivity;
+
   TomSensitiveContent({
     super.key,
     super.tomId,
@@ -264,17 +267,14 @@ class TomSensitiveContent extends TomEffectBase {
     super.scope,
     this.sensitivity,
     required this.child,
-  });
+  }) {
+    _resolvedSensitivity = sensitivity ?? _resolveContentSensitivity(resolveResourceOrNull('sensitivity')) ?? ContentSensitivity.autoSensitive;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSensitivity = sensitivity ??
-        _resolveContentSensitivity(resolveResourceOrNull('sensitivity')) ??
-      ContentSensitivity.autoSensitive;
-
     return SensitiveContent(
-      sensitivity: resolvedSensitivity,
+      sensitivity: _resolvedSensitivity,
       child: child,
     );
   }

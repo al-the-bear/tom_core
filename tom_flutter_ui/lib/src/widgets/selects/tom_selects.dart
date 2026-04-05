@@ -37,6 +37,25 @@ class TomDropdownButton<T> extends TomSelectBase {
   final EdgeInsetsGeometry? padding;
   final String? hint;
 
+  // Pre-resolved resource values
+  late final String? _resolvedHint;
+  late final int _resolvedElevation;
+  late final Color? _resolvedIconDisabledColor;
+  late final Color? _resolvedIconEnabledColor;
+  late final double _resolvedIconSize;
+  late final double? _resolvedItemHeight;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedDropdownColor;
+  late final double? _resolvedMenuMaxHeight;
+  late final bool _resolvedIsDense;
+  late final bool _resolvedIsExpanded;
+  late final bool _resolvedAutofocus;
+  late final bool? _resolvedEnableFeedback;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final TextStyle? _resolvedStyle;
+  late final BorderRadius? _resolvedBorderRadius;
+
   TomDropdownButton({
     super.key,
     super.tomId,
@@ -66,78 +85,58 @@ class TomDropdownButton<T> extends TomSelectBase {
     this.borderRadius,
     this.padding,
     this.hint,
-  });
+  }) {
+    _resolvedHint = hint ?? resolveResourceOrNull('hint') ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedElevation = elevation ?? resolveIntOrNull('elevation') ?? 8;
+    _resolvedIconDisabledColor = iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
+    _resolvedIconEnabledColor = iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
+    _resolvedItemHeight = itemHeight ?? resolveDoubleOrNull('itemHeight');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedDropdownColor = dropdownColor ?? resolveColorOrNull('dropdownColor');
+    _resolvedMenuMaxHeight = menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
+    _resolvedIsDense = resolveBoolOrNull('isDense') ?? isDense;
+    _resolvedIsExpanded = resolveBoolOrNull('isExpanded') ?? isExpanded;
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedStyle = style ?? _resolveTextStyle();
+    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedHint =
-      hint ??
-        resolveResourceOrNull('hint') ??
-        (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-        elevation ?? resolveIntOrNull('elevation') ?? 8;
-    final resolvedIconDisabledColor =
-        iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
-    final resolvedIconEnabledColor =
-        iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
-    final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
-    final resolvedItemHeight =
-        itemHeight ?? resolveDoubleOrNull('itemHeight');
-    final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull('focusColor');
-    final resolvedDropdownColor =
-        dropdownColor ?? resolveColorOrNull('dropdownColor');
-    final resolvedMenuMaxHeight =
-        menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
-    final resolvedIsDense =
-      resolveBoolOrNull('isDense') ?? isDense;
-    final resolvedIsExpanded =
-      resolveBoolOrNull('isExpanded') ?? isExpanded;
-    final resolvedAutofocus =
-      resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull('enableFeedback');
-    final resolvedAlignment =
-      _resolveAlignment('alignment') ?? alignment;
-    final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull('padding');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context);
-
     return DropdownButton<T>(
       value: value,
       items: items,
       onChanged: onChanged,
       onTap: onTap,
-      elevation: resolvedElevation,
-      style: resolvedStyle,
+      elevation: _resolvedElevation,
+      style: _resolvedStyle,
       underline: underline,
       icon: icon,
-      iconDisabledColor: resolvedIconDisabledColor,
-      iconEnabledColor: resolvedIconEnabledColor,
-      iconSize: resolvedIconSize,
-      isDense: resolvedIsDense,
-      isExpanded: resolvedIsExpanded,
-      itemHeight: resolvedItemHeight,
-      focusColor: resolvedFocusColor,
+      iconDisabledColor: _resolvedIconDisabledColor,
+      iconEnabledColor: _resolvedIconEnabledColor,
+      iconSize: _resolvedIconSize,
+      isDense: _resolvedIsDense,
+      isExpanded: _resolvedIsExpanded,
+      itemHeight: _resolvedItemHeight,
+      focusColor: _resolvedFocusColor,
       focusNode: focusNode,
-      autofocus: resolvedAutofocus,
-      dropdownColor: resolvedDropdownColor,
-      menuMaxHeight: resolvedMenuMaxHeight,
-      enableFeedback: resolvedEnableFeedback,
-      alignment: resolvedAlignment,
-      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius'),
-      padding: resolvedPadding,
-      hint: resolvedHint != null ? Text(resolvedHint) : null,
+      autofocus: _resolvedAutofocus,
+      dropdownColor: _resolvedDropdownColor,
+      menuMaxHeight: _resolvedMenuMaxHeight,
+      enableFeedback: _resolvedEnableFeedback,
+      alignment: _resolvedAlignment,
+      borderRadius: _resolvedBorderRadius,
+      padding: _resolvedPadding,
+      hint: _resolvedHint != null ? Text(_resolvedHint) : null,
     );
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context) {
+  TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
@@ -178,6 +177,20 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   final PopupMenuPosition? position;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final String _resolvedTooltip;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final EdgeInsetsGeometry _resolvedPadding;
+  late final double? _resolvedIconSize;
+  late final bool _resolvedEnabled;
+  late final Color? _resolvedColor;
+  late final bool? _resolvedEnableFeedback;
+  late final ShapeBorder? _resolvedShape;
+  late final BoxConstraints? _resolvedConstraints;
+  late final Offset _resolvedOffset;
+
   TomPopupMenuButton({
     super.key,
     super.tomId,
@@ -203,48 +216,41 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     this.constraints,
     this.position,
     this.clipBehavior = Clip.none,
-  });
+  }) {
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedPadding = resolveEdgeInsetsOrNull('padding') ?? padding;
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
+    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+    _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedPadding =
-      resolveEdgeInsetsOrNull('padding') ?? padding;
-    final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull('iconSize');
-    final resolvedEnabled =
-      resolveBoolOrNull('enabled') ?? enabled;
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull('enableFeedback');
-
     return PopupMenuButton<T>(
       itemBuilder: itemBuilder,
       initialValue: initialValue,
       onSelected: onSelected,
       onCanceled: onCanceled,
-      tooltip: resolvedTooltip,
-      elevation: resolvedElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      padding: resolvedPadding,
+      tooltip: _resolvedTooltip,
+      elevation: _resolvedElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      padding: _resolvedPadding,
       icon: icon,
-      iconSize: resolvedIconSize,
-      offset: offset ?? _resolveOffset('offset') ?? Offset.zero,
-      enabled: resolvedEnabled,
-      shape: shape ?? _resolveShapeBorder('shape'),
-      color: resolvedColor,
-      enableFeedback: resolvedEnableFeedback,
-      constraints: constraints ?? _resolveBoxConstraints('constraints'),
+      iconSize: _resolvedIconSize,
+      offset: _resolvedOffset,
+      enabled: _resolvedEnabled,
+      shape: _resolvedShape,
+      color: _resolvedColor,
+      enableFeedback: _resolvedEnableFeedback,
+      constraints: _resolvedConstraints,
       position: position,
       clipBehavior: clipBehavior,
       child: child,
@@ -297,6 +303,21 @@ class TomDropdownMenu<T> extends TomSelectBase {
   final EdgeInsets? expandedInsets;
   final SearchCallback<T>? searchCallback;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String? _resolvedHint;
+  late final String? _resolvedHelperText;
+  late final String? _resolvedErrorText;
+  late final bool _resolvedEnabled;
+  late final double? _resolvedWidth;
+  late final double? _resolvedMenuHeight;
+  late final bool _resolvedEnableFilter;
+  late final bool _resolvedEnableSearch;
+  late final EdgeInsets? _resolvedExpandedInsets;
+  late final bool _resolvedRequestFocusOnTap;
+  late final TextStyle? _resolvedTextStyle;
+  late final MenuStyle? _resolvedMenuStyle;
+
   TomDropdownMenu({
     super.key,
     super.tomId,
@@ -326,76 +347,60 @@ class TomDropdownMenu<T> extends TomSelectBase {
     this.requestFocusOnTap = true,
     this.expandedInsets,
     this.searchCallback,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrNull('label') ?? resolveResourceOrFail('label');
+    _resolvedHint = hintText ?? resolveResourceOrNull('hintText') ?? resolveResourceOrNull('hint') ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedHelperText = helperText ?? resolveResourceOrNull('helperText');
+    _resolvedErrorText = errorText ?? resolveResourceOrNull('errorText');
+    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedMenuHeight = menuHeight ?? resolveDoubleOrNull('menuHeight');
+    _resolvedEnableFilter = resolveBoolOrNull('enableFilter') ?? enableFilter;
+    _resolvedEnableSearch = resolveBoolOrNull('enableSearch') ?? enableSearch;
+    _resolvedExpandedInsets = expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
+    _resolvedRequestFocusOnTap = resolveBoolOrNull('requestFocusOnTap') ?? requestFocusOnTap;
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle();
+    _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-      label ??
-        resolveResourceOrNull('label') ??
-        resolveResourceOrFail('label');
-    final resolvedHint =
-      hintText ??
-        resolveResourceOrNull('hintText') ??
-        resolveResourceOrNull('hint') ??
-        (tomId != null ? resolveResourceOrFail('hint') : null);
-    final resolvedHelperText =
-      helperText ?? resolveResourceOrNull('helperText');
-    final resolvedErrorText =
-      errorText ?? resolveResourceOrNull('errorText');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedEnabled =
-      resolveBoolOrNull('enabled') ?? enabled;
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedMenuHeight =
-        menuHeight ?? resolveDoubleOrNull('menuHeight');
-    final resolvedEnableFilter =
-      resolveBoolOrNull('enableFilter') ?? enableFilter;
-    final resolvedEnableSearch =
-      resolveBoolOrNull('enableSearch') ?? enableSearch;
-    final resolvedExpandedInsets =
-      expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
-    final resolvedRequestFocusOnTap =
-      resolveBoolOrNull('requestFocusOnTap') ?? requestFocusOnTap;
-
     return DropdownMenu<T>(
       initialSelection: initialSelection,
       onSelected: onSelected,
       dropdownMenuEntries: dropdownMenuEntries,
-      enabled: resolvedEnabled,
-      width: resolvedWidth,
-      menuHeight: resolvedMenuHeight,
+      enabled: _resolvedEnabled,
+      width: _resolvedWidth,
+      menuHeight: _resolvedMenuHeight,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
-      label: Text(resolvedLabel),
-      hintText: resolvedHint,
-      helperText: resolvedHelperText,
-      errorText: resolvedErrorText,
+      label: Text(_resolvedLabel),
+      hintText: _resolvedHint,
+      helperText: _resolvedHelperText,
+      errorText: _resolvedErrorText,
       selectedTrailingIcon: selectedTrailingIcon,
-      enableFilter: resolvedEnableFilter,
-      enableSearch: resolvedEnableSearch,
-      textStyle: textStyle ?? _resolveTextStyle(context),
+      enableFilter: _resolvedEnableFilter,
+      enableSearch: _resolvedEnableSearch,
+      textStyle: _resolvedTextStyle,
       textAlign: textAlign,
       inputDecorationTheme: inputDecorationTheme,
-      menuStyle: menuStyle ?? _resolveMenuStyle(context),
+      menuStyle: _resolvedMenuStyle,
       controller: controller,
       focusNode: focusNode,
-      requestFocusOnTap: resolvedRequestFocusOnTap,
-      expandedInsets: resolvedExpandedInsets,
+      requestFocusOnTap: _resolvedRequestFocusOnTap,
+      expandedInsets: _resolvedExpandedInsets,
       searchCallback: searchCallback,
     );
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context) {
+  TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'textStyle');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
-  MenuStyle? _resolveMenuStyle(BuildContext context) {
+  MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
   }
@@ -417,6 +422,11 @@ class TomMenuAnchor extends TomSelectBase {
   final bool consumeOutsideTap;
   final Widget Function(BuildContext, MenuController, Widget?)? builder;
 
+  // Pre-resolved resource values
+  late final Offset? _resolvedAlignmentOffset;
+  late final bool _resolvedConsumeOutsideTap;
+  late final MenuStyle? _resolvedStyle;
+
   TomMenuAnchor({
     super.key,
     super.tomId,
@@ -433,32 +443,31 @@ class TomMenuAnchor extends TomSelectBase {
     this.onClose,
     this.consumeOutsideTap = false,
     this.builder,
-  });
+  }) {
+    _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
+    _resolvedConsumeOutsideTap = resolveBoolOrNull('consumeOutsideTap') ?? consumeOutsideTap;
+    _resolvedStyle = style ?? _resolveMenuStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedAlignmentOffset =
-        alignmentOffset ?? _resolveOffset('alignmentOffset');
-    final resolvedConsumeOutsideTap =
-        resolveBoolOrNull('consumeOutsideTap') ?? consumeOutsideTap;
-
     return MenuAnchor(
       menuChildren: menuChildren,
       controller: controller,
       childFocusNode: childFocusNode,
-      style: style ?? _resolveMenuStyle(context),
-      alignmentOffset: resolvedAlignmentOffset,
+      style: _resolvedStyle,
+      alignmentOffset: _resolvedAlignmentOffset,
       clipBehavior: clipBehavior,
       onOpen: onOpen,
       onClose: onClose,
-      consumeOutsideTap: resolvedConsumeOutsideTap,
+      consumeOutsideTap: _resolvedConsumeOutsideTap,
       builder: builder,
       child: child,
     );
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
-  MenuStyle? _resolveMenuStyle(BuildContext context) {
+  MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'style');
   }
@@ -502,6 +511,26 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   final FormFieldValidator<T>? validator;
   final AutovalidateMode? autovalidateMode;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final InputDecoration? _effectiveDecoration;
+  late final int _resolvedElevation;
+  late final Color? _resolvedIconDisabledColor;
+  late final Color? _resolvedIconEnabledColor;
+  late final double _resolvedIconSize;
+  late final double? _resolvedItemHeight;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedDropdownColor;
+  late final double? _resolvedMenuMaxHeight;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final bool _resolvedIsDense;
+  late final bool _resolvedIsExpanded;
+  late final bool _resolvedAutofocus;
+  late final bool? _resolvedEnableFeedback;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final TextStyle? _resolvedStyle;
+  late final BorderRadius? _resolvedBorderRadius;
+
   TomDropdownButtonFormField({
     super.key,
     super.tomId,
@@ -535,74 +564,55 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     this.onSaved,
     this.validator,
     this.autovalidateMode,
-  });
+  }) {
+    _resolvedLabel = resolveResourceOrFail('label');
+    _effectiveDecoration = decoration ?? _resolveInputDecoration() ?? InputDecoration(labelText: _resolvedLabel);
+    _resolvedElevation = elevation ?? resolveIntOrNull('elevation') ?? 8;
+    _resolvedIconDisabledColor = iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
+    _resolvedIconEnabledColor = iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
+    _resolvedItemHeight = itemHeight ?? resolveDoubleOrNull('itemHeight');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedDropdownColor = dropdownColor ?? resolveColorOrNull('dropdownColor');
+    _resolvedMenuMaxHeight = menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedIsDense = resolveBoolOrNull('isDense') ?? isDense;
+    _resolvedIsExpanded = resolveBoolOrNull('isExpanded') ?? isExpanded;
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedStyle = style ?? _resolveTextStyle();
+    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = resolveResourceOrFail('label');
-    // Phase 3: Resolve InputDecoration from resources
-    final effectiveDecoration =
-      decoration ?? _resolveInputDecoration(context) ?? InputDecoration(labelText: resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-        elevation ?? resolveIntOrNull('elevation') ?? 8;
-    final resolvedIconDisabledColor =
-        iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
-    final resolvedIconEnabledColor =
-        iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
-    final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
-    final resolvedItemHeight =
-        itemHeight ?? resolveDoubleOrNull('itemHeight');
-    final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull('focusColor');
-    final resolvedDropdownColor =
-        dropdownColor ?? resolveColorOrNull('dropdownColor');
-    final resolvedMenuMaxHeight =
-        menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedIsDense =
-      resolveBoolOrNull('isDense') ?? isDense;
-    final resolvedIsExpanded =
-      resolveBoolOrNull('isExpanded') ?? isExpanded;
-    final resolvedAutofocus =
-      resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull('enableFeedback');
-    final resolvedAlignment =
-      _resolveAlignment('alignment') ?? alignment;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context);
-
     return DropdownButtonFormField<T>(
       items: items,
       value: value,
       onChanged: onChanged,
       onTap: onTap,
-      decoration: effectiveDecoration,
+      decoration: _effectiveDecoration,
       hint: hint,
       disabledHint: disabledHint,
-      elevation: resolvedElevation,
-      style: resolvedStyle,
+      elevation: _resolvedElevation,
+      style: _resolvedStyle,
       icon: icon,
-      iconDisabledColor: resolvedIconDisabledColor,
-      iconEnabledColor: resolvedIconEnabledColor,
-      iconSize: resolvedIconSize,
-      isDense: resolvedIsDense,
-      isExpanded: resolvedIsExpanded,
-      itemHeight: resolvedItemHeight,
-      focusColor: resolvedFocusColor,
+      iconDisabledColor: _resolvedIconDisabledColor,
+      iconEnabledColor: _resolvedIconEnabledColor,
+      iconSize: _resolvedIconSize,
+      isDense: _resolvedIsDense,
+      isExpanded: _resolvedIsExpanded,
+      itemHeight: _resolvedItemHeight,
+      focusColor: _resolvedFocusColor,
       focusNode: focusNode,
-      autofocus: resolvedAutofocus,
-      dropdownColor: resolvedDropdownColor,
-      padding: resolvedPadding,
-      menuMaxHeight: resolvedMenuMaxHeight,
-      enableFeedback: resolvedEnableFeedback,
-      alignment: resolvedAlignment,
-      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius'),
+      autofocus: _resolvedAutofocus,
+      dropdownColor: _resolvedDropdownColor,
+      padding: _resolvedPadding,
+      menuMaxHeight: _resolvedMenuMaxHeight,
+      enableFeedback: _resolvedEnableFeedback,
+      alignment: _resolvedAlignment,
+      borderRadius: _resolvedBorderRadius,
       onSaved: onSaved,
       validator: validator,
       autovalidateMode: autovalidateMode,
@@ -610,13 +620,13 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context) {
+  TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources.
-  InputDecoration? _resolveInputDecoration(BuildContext context) {
+  InputDecoration? _resolveInputDecoration() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
   }
@@ -645,6 +655,11 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
   final EdgeInsetsGeometry? padding;
   final Color? backgroundColor;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedThumbColor;
+  late final EdgeInsetsGeometry _resolvedPadding;
+
   TomCupertinoSlidingSegmentedControl({
     super.key,
     super.tomId,
@@ -656,22 +671,18 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     this.thumbColor,
     this.padding,
     this.backgroundColor,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedThumbColor = thumbColor ?? resolveColorOrNull('thumbColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedThumbColor =
-        thumbColor ?? resolveColorOrNull('thumbColor');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
-
-    final effectiveBg = resolvedBackgroundColor ??
+    final effectiveBg = _resolvedBackgroundColor ??
         CupertinoDynamicColor.resolve(
           CupertinoColors.tertiarySystemFill, context);
-    final effectiveThumb = resolvedThumbColor ??
+    final effectiveThumb = _resolvedThumbColor ??
         CupertinoDynamicColor.resolve(
           CupertinoColors.white, context);
 
@@ -680,7 +691,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
       groupValue: groupValue,
       onValueChanged: onValueChanged,
       thumbColor: effectiveThumb,
-      padding: resolvedPadding,
+      padding: _resolvedPadding,
       backgroundColor: effectiveBg,
     );
   }
@@ -913,6 +924,14 @@ class TomCupertinoPicker extends TomSelectBase {
   final Widget? selectionOverlay;
   final bool looping;
 
+  // Pre-resolved resource values
+  late final double? _resolvedDiameterRatio;
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedOffAxisFraction;
+  late final double? _resolvedMagnification;
+  late final double? _resolvedSqueeze;
+  late final double? _resolvedItemExtent;
+
   TomCupertinoPicker({
     super.key,
     super.tomId,
@@ -929,18 +948,25 @@ class TomCupertinoPicker extends TomSelectBase {
     required this.children,
     this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
     this.looping = false,
-  });
+  }) {
+    _resolvedDiameterRatio = diameterRatio ?? resolveDoubleOrNull('diameterRatio');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedOffAxisFraction = offAxisFraction ?? resolveDoubleOrNull('offAxisFraction');
+    _resolvedMagnification = magnification ?? resolveDoubleOrNull('magnification');
+    _resolvedSqueeze = squeeze ?? resolveDoubleOrNull('squeeze');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return CupertinoPicker(
-      diameterRatio: diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? 1.07,
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
-      offAxisFraction: offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0,
+      diameterRatio: _resolvedDiameterRatio ?? 1.07,
+      backgroundColor: _resolvedBackgroundColor,
+      offAxisFraction: _resolvedOffAxisFraction ?? 0.0,
       useMagnifier: useMagnifier,
-      magnification: magnification ?? resolveDoubleOrNull('magnification') ?? 1.0,
-      squeeze: squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.45,
-      itemExtent: itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0,
+      magnification: _resolvedMagnification ?? 1.0,
+      squeeze: _resolvedSqueeze ?? 1.45,
+      itemExtent: _resolvedItemExtent ?? 32.0,
       onSelectedItemChanged: onSelectedItemChanged,
       selectionOverlay: selectionOverlay,
       looping: looping,
@@ -962,6 +988,13 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
   final Color? pressedColor;
   final EdgeInsetsGeometry? padding;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedUnselectedColor;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedBorderColor;
+  late final Color? _resolvedPressedColor;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomCupertinoSegmentedControl({
     super.key,
     super.tomId,
@@ -975,7 +1008,13 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     this.borderColor,
     this.pressedColor,
     this.padding,
-  });
+  }) {
+    _resolvedUnselectedColor = unselectedColor ?? resolveColorOrNull('unselectedColor');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedBorderColor = borderColor ?? resolveColorOrNull('borderColor');
+    _resolvedPressedColor = pressedColor ?? resolveColorOrNull('pressedColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -983,11 +1022,11 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
       children: children,
       groupValue: groupValue,
       onValueChanged: onValueChanged,
-      unselectedColor: unselectedColor ?? resolveColorOrNull('unselectedColor'),
-      selectedColor: selectedColor ?? resolveColorOrNull('selectedColor'),
-      borderColor: borderColor ?? resolveColorOrNull('borderColor'),
-      pressedColor: pressedColor ?? resolveColorOrNull('pressedColor'),
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
+      unselectedColor: _resolvedUnselectedColor,
+      selectedColor: _resolvedSelectedColor,
+      borderColor: _resolvedBorderColor,
+      pressedColor: _resolvedPressedColor,
+      padding: _resolvedPadding,
     );
   }
 }

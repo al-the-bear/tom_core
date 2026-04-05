@@ -17,6 +17,13 @@ class TomTreeView extends TomTreeBase {
   final bool shrinkWrap;
   final ScrollPhysics? physics;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final double _resolvedIndentation;
+  late final bool _resolvedShrinkWrap;
+  late final bool? _resolvedInitiallyExpanded;
+  late final ScrollPhysics? _resolvedPhysics;
+
   TomTreeView({
     super.key,
     super.tomId,
@@ -27,31 +34,27 @@ class TomTreeView extends TomTreeBase {
     this.indentation,
     this.shrinkWrap = false,
     this.physics,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedIndentation = indentation ?? resolveDoubleOrNull('indentation') ?? 24.0;
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedInitiallyExpanded = resolveBoolOrNull('initiallyExpanded');
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedIndentation =
-        indentation ?? resolveDoubleOrNull('indentation') ?? 24.0;
-    final resolvedShrinkWrap =
-        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    final resolvedInitiallyExpanded =
-        resolveBoolOrNull('initiallyExpanded');
-
     return ListView(
-      padding: resolvedPadding,
-      shrinkWrap: resolvedShrinkWrap,
-      physics: physics ?? _resolveScrollPhysics('physics'),
+      padding: _resolvedPadding,
+      shrinkWrap: _resolvedShrinkWrap,
+      physics: _resolvedPhysics,
       children: [
         for (final node in nodes)
           _TomTreeNodeWidget(
             node: node,
             depth: 0,
-            indentation: resolvedIndentation,
-            initiallyExpandedDefault: resolvedInitiallyExpanded,
+            indentation: _resolvedIndentation,
+            initiallyExpandedDefault: _resolvedInitiallyExpanded,
           ),
       ],
     );
@@ -179,6 +182,11 @@ class TomTreeSliver<T> extends TomTreeBase {
   final bool? addRepaintBoundaries;
   final bool? addSemanticIndexes;
 
+  // Pre-resolved resource values
+  late final bool _resolvedAddAutomaticKeepAlives;
+  late final bool _resolvedAddRepaintBoundaries;
+  late final bool _resolvedAddSemanticIndexes;
+
   TomTreeSliver({
     super.key,
     super.tomId,
@@ -194,18 +202,14 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.addAutomaticKeepAlives,
     this.addRepaintBoundaries,
     this.addSemanticIndexes,
-  });
+  }) {
+    _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
+    _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? resolveBoolOrNull('addRepaintBoundaries') ?? true;
+    _resolvedAddSemanticIndexes = addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ??
-        resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
-    final resolvedAddRepaintBoundaries = addRepaintBoundaries ??
-        resolveBoolOrNull('addRepaintBoundaries') ?? true;
-    final resolvedAddSemanticIndexes =
-        addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;
-
     return TreeSliver<T>(
       tree: tree,
       treeNodeBuilder: treeNodeBuilder,
@@ -214,9 +218,9 @@ class TomTreeSliver<T> extends TomTreeBase {
       onNodeToggle: onNodeToggle,
       toggleAnimationStyle: toggleAnimationStyle,
       indentation: indentation,
-      addAutomaticKeepAlives: resolvedAddAutomaticKeepAlives,
-      addRepaintBoundaries: resolvedAddRepaintBoundaries,
-      addSemanticIndexes: resolvedAddSemanticIndexes,
+      addAutomaticKeepAlives: _resolvedAddAutomaticKeepAlives,
+      addRepaintBoundaries: _resolvedAddRepaintBoundaries,
+      addSemanticIndexes: _resolvedAddSemanticIndexes,
     );
   }
 }

@@ -27,6 +27,16 @@ class TomCard extends TomContainerBase {
   final bool semanticContainer;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final EdgeInsetsGeometry? _resolvedMargin;
+  late final ShapeBorder? _resolvedShape;
+  late final bool _resolvedBorderOnForeground;
+  late final bool _resolvedSemanticContainer;
+
   TomCard({
     super.key,
     super.tomId,
@@ -42,39 +52,29 @@ class TomCard extends TomContainerBase {
     this.clipBehavior,
     this.semanticContainer = true,
     this.child,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedBorderOnForeground = resolveBoolOrNull('borderOnForeground') ?? borderOnForeground;
+    _resolvedSemanticContainer = resolveBoolOrNull('semanticContainer') ?? semanticContainer;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedShape = shape ?? _resolveShapeBorder('shape');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedBorderOnForeground =
-        resolveBoolOrNull('borderOnForeground') ?? borderOnForeground;
-    final resolvedSemanticContainer =
-        resolveBoolOrNull('semanticContainer') ?? semanticContainer;
-
     return Card(
-      color: resolvedColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      elevation: resolvedElevation,
-      shape: resolvedShape,
-      borderOnForeground: resolvedBorderOnForeground,
-      margin: resolvedMargin,
+      color: _resolvedColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      elevation: _resolvedElevation,
+      shape: _resolvedShape,
+      borderOnForeground: _resolvedBorderOnForeground,
+      margin: _resolvedMargin,
       clipBehavior: clipBehavior,
-      semanticContainer: resolvedSemanticContainer,
+      semanticContainer: _resolvedSemanticContainer,
       child: child,
     );
   }
@@ -115,6 +115,23 @@ class TomExpansionTile extends TomContainerBase {
   final bool dense;
   final bool showTrailingIcon;
 
+  // Pre-resolved resource values
+  late final String _resolvedTitle;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedCollapsedBackgroundColor;
+  late final Color? _resolvedTextColor;
+  late final Color? _resolvedCollapsedTextColor;
+  late final Color? _resolvedIconColor;
+  late final Color? _resolvedCollapsedIconColor;
+  late final EdgeInsetsGeometry? _resolvedChildrenPadding;
+  late final EdgeInsetsGeometry? _resolvedTilePadding;
+  late final ShapeBorder? _resolvedShape;
+  late final ShapeBorder? _resolvedCollapsedShape;
+  late final bool _resolvedInitiallyExpanded;
+  late final bool _resolvedMaintainState;
+  late final bool _resolvedDense;
+  late final bool _resolvedShowTrailingIcon;
+
   TomExpansionTile({
     super.key,
     super.tomId,
@@ -145,70 +162,52 @@ class TomExpansionTile extends TomContainerBase {
     this.children = const [],
     this.dense = false,
     this.showTrailingIcon = true,
-  });
+  }) {
+    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedCollapsedBackgroundColor = collapsedBackgroundColor ?? resolveColorOrNull('collapsedBackgroundColor');
+    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
+    _resolvedCollapsedTextColor = collapsedTextColor ?? resolveColorOrNull('collapsedTextColor');
+    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
+    _resolvedCollapsedIconColor = collapsedIconColor ?? resolveColorOrNull('collapsedIconColor');
+    _resolvedChildrenPadding = childrenPadding ?? resolveEdgeInsetsOrNull('childrenPadding');
+    _resolvedTilePadding = tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedCollapsedShape = collapsedShape ?? _resolveShapeBorder('collapsedShape');
+    _resolvedInitiallyExpanded = resolveBoolOrNull('initiallyExpanded') ?? initiallyExpanded;
+    _resolvedMaintainState = resolveBoolOrNull('maintainState') ?? maintainState;
+    _resolvedDense = resolveBoolOrNull('dense') ?? dense;
+    _resolvedShowTrailingIcon = resolveBoolOrNull('showTrailingIcon') ?? showTrailingIcon;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    final titleWidget = title ?? Text(resolvedTitle);
-
-    // Phase 2: Resolve optional color parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedCollapsedBackgroundColor = collapsedBackgroundColor ??
-        resolveColorOrNull('collapsedBackgroundColor');
-    final resolvedTextColor =
-        textColor ?? resolveColorOrNull('textColor');
-    final resolvedCollapsedTextColor =
-        collapsedTextColor ?? resolveColorOrNull('collapsedTextColor');
-    final resolvedIconColor =
-        iconColor ?? resolveColorOrNull('iconColor');
-    final resolvedCollapsedIconColor =
-        collapsedIconColor ?? resolveColorOrNull('collapsedIconColor');
-    final resolvedChildrenPadding =
-        childrenPadding ?? resolveEdgeInsetsOrNull('childrenPadding');
-    final resolvedTilePadding =
-        tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedShape = shape ?? _resolveShapeBorder('shape');
-    final resolvedCollapsedShape =
-        collapsedShape ?? _resolveShapeBorder('collapsedShape');
-
-    // Phase 3: Resolve remaining optional parameters from resources
-    final resolvedInitiallyExpanded =
-        resolveBoolOrNull('initiallyExpanded') ?? initiallyExpanded;
-    final resolvedMaintainState =
-        resolveBoolOrNull('maintainState') ?? maintainState;
-    final resolvedDense =
-        resolveBoolOrNull('dense') ?? dense;
-    final resolvedShowTrailingIcon =
-        resolveBoolOrNull('showTrailingIcon') ?? showTrailingIcon;
+    final titleWidget = title ?? Text(_resolvedTitle);
 
     return ExpansionTile(
       title: titleWidget,
       subtitle: subtitle,
       leading: leading,
       trailing: trailing,
-      initiallyExpanded: resolvedInitiallyExpanded,
-      maintainState: resolvedMaintainState,
-      tilePadding: resolvedTilePadding,
+      initiallyExpanded: _resolvedInitiallyExpanded,
+      maintainState: _resolvedMaintainState,
+      tilePadding: _resolvedTilePadding,
       expandedCrossAxisAlignment: expandedCrossAxisAlignment,
       expandedAlignment: expandedAlignment,
-      childrenPadding: resolvedChildrenPadding,
-      backgroundColor: resolvedBackgroundColor,
-      collapsedBackgroundColor: resolvedCollapsedBackgroundColor,
-      textColor: resolvedTextColor,
-      collapsedTextColor: resolvedCollapsedTextColor,
-      iconColor: resolvedIconColor,
-      collapsedIconColor: resolvedCollapsedIconColor,
-      shape: resolvedShape,
-      collapsedShape: resolvedCollapsedShape,
+      childrenPadding: _resolvedChildrenPadding,
+      backgroundColor: _resolvedBackgroundColor,
+      collapsedBackgroundColor: _resolvedCollapsedBackgroundColor,
+      textColor: _resolvedTextColor,
+      collapsedTextColor: _resolvedCollapsedTextColor,
+      iconColor: _resolvedIconColor,
+      collapsedIconColor: _resolvedCollapsedIconColor,
+      shape: _resolvedShape,
+      collapsedShape: _resolvedCollapsedShape,
       clipBehavior: clipBehavior,
       controlAffinity: controlAffinity,
       onExpansionChanged: onExpansionChanged,
-      dense: resolvedDense,
-      showTrailingIcon: resolvedShowTrailingIcon,
+      dense: _resolvedDense,
+      showTrailingIcon: _resolvedShowTrailingIcon,
       children: children,
     );
   }
@@ -245,6 +244,17 @@ class TomScaffold extends TomContainerBase {
   final bool endDrawerEnableOpenDragGesture;
   final String? restorationId;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedDrawerScrimColor;
+  late final double? _resolvedDrawerEdgeDragWidth;
+  late final bool _resolvedPrimary;
+  late final bool _resolvedExtendBody;
+  late final bool _resolvedExtendBodyBehindAppBar;
+  late final bool _resolvedDrawerEnableOpenDragGesture;
+  late final bool _resolvedEndDrawerEnableOpenDragGesture;
+  late final String? _resolvedRestorationId;
+
   TomScaffold({
     super.key,
     super.tomId,
@@ -271,32 +281,20 @@ class TomScaffold extends TomContainerBase {
     this.drawerEnableOpenDragGesture = true,
     this.endDrawerEnableOpenDragGesture = true,
     this.restorationId,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedDrawerScrimColor = drawerScrimColor ?? resolveColorOrNull('drawerScrimColor');
+    _resolvedDrawerEdgeDragWidth = drawerEdgeDragWidth ?? resolveDoubleOrNull('drawerEdgeDragWidth');
+    _resolvedPrimary = resolveBoolOrNull('primary') ?? primary;
+    _resolvedExtendBody = resolveBoolOrNull('extendBody') ?? extendBody;
+    _resolvedExtendBodyBehindAppBar = resolveBoolOrNull('extendBodyBehindAppBar') ?? extendBodyBehindAppBar;
+    _resolvedDrawerEnableOpenDragGesture = resolveBoolOrNull('drawerEnableOpenDragGesture') ?? drawerEnableOpenDragGesture;
+    _resolvedEndDrawerEnableOpenDragGesture = resolveBoolOrNull('endDrawerEnableOpenDragGesture') ?? endDrawerEnableOpenDragGesture;
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedDrawerScrimColor =
-        drawerScrimColor ?? resolveColorOrNull('drawerScrimColor');
-    final resolvedDrawerEdgeDragWidth =
-        drawerEdgeDragWidth ?? resolveDoubleOrNull('drawerEdgeDragWidth');
-
-    // Phase 3: Resolve remaining parameters from resources
-    final resolvedPrimary =
-        resolveBoolOrNull('primary') ?? primary;
-    final resolvedExtendBody =
-        resolveBoolOrNull('extendBody') ?? extendBody;
-    final resolvedExtendBodyBehindAppBar =
-        resolveBoolOrNull('extendBodyBehindAppBar') ?? extendBodyBehindAppBar;
-    final resolvedDrawerEnableOpenDragGesture =
-        resolveBoolOrNull('drawerEnableOpenDragGesture') ?? drawerEnableOpenDragGesture;
-    final resolvedEndDrawerEnableOpenDragGesture =
-        resolveBoolOrNull('endDrawerEnableOpenDragGesture') ?? endDrawerEnableOpenDragGesture;
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-
     return Scaffold(
       appBar: appBar,
       body: body,
@@ -309,16 +307,16 @@ class TomScaffold extends TomContainerBase {
       endDrawer: endDrawer,
       bottomNavigationBar: bottomNavigationBar,
       bottomSheet: bottomSheet,
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-      primary: resolvedPrimary,
-      extendBody: resolvedExtendBody,
-      extendBodyBehindAppBar: resolvedExtendBodyBehindAppBar,
-      drawerScrimColor: resolvedDrawerScrimColor,
-      drawerEdgeDragWidth: resolvedDrawerEdgeDragWidth,
-      drawerEnableOpenDragGesture: resolvedDrawerEnableOpenDragGesture,
-      endDrawerEnableOpenDragGesture: resolvedEndDrawerEnableOpenDragGesture,
-      restorationId: resolvedRestorationId,
+      primary: _resolvedPrimary,
+      extendBody: _resolvedExtendBody,
+      extendBodyBehindAppBar: _resolvedExtendBodyBehindAppBar,
+      drawerScrimColor: _resolvedDrawerScrimColor,
+      drawerEdgeDragWidth: _resolvedDrawerEdgeDragWidth,
+      drawerEnableOpenDragGesture: _resolvedDrawerEnableOpenDragGesture,
+      endDrawerEnableOpenDragGesture: _resolvedEndDrawerEnableOpenDragGesture,
+      restorationId: _resolvedRestorationId,
     );
   }
 }
@@ -540,6 +538,15 @@ class TomBottomAppBar extends TomContainerBase {
   final Color? shadowColor;
   final Color? surfaceTintColor;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedHeight;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double _resolvedNotchMargin;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomBottomAppBar({
     super.key,
     super.tomId,
@@ -555,34 +562,28 @@ class TomBottomAppBar extends TomContainerBase {
     this.height,
     this.shadowColor,
     this.surfaceTintColor,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedNotchMargin = resolveDoubleOrNull('notchMargin') ?? notchMargin;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedNotchMargin =
-        resolveDoubleOrNull('notchMargin') ?? notchMargin;
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
     return BottomAppBar(
-      color: resolvedColor,
-      elevation: resolvedElevation,
+      color: _resolvedColor,
+      elevation: _resolvedElevation,
       shape: shape,
       clipBehavior: clipBehavior,
-      notchMargin: resolvedNotchMargin,
-      padding: resolvedPadding,
-      height: resolvedHeight,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
+      notchMargin: _resolvedNotchMargin,
+      padding: _resolvedPadding,
+      height: _resolvedHeight,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
       child: child,
     );
   }
@@ -598,6 +599,13 @@ class TomDivider extends TomContainerBase {
   final double? endIndent;
   final Color? color;
 
+  // Pre-resolved resource values
+  late final double? _resolvedHeight;
+  late final double? _resolvedThickness;
+  late final double? _resolvedIndent;
+  late final double? _resolvedEndIndent;
+  late final Color? _resolvedColor;
+
   TomDivider({
     super.key,
     super.tomId,
@@ -608,25 +616,22 @@ class TomDivider extends TomContainerBase {
     this.indent,
     this.endIndent,
     this.color,
-  });
+  }) {
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
+    _resolvedIndent = indent ?? resolveDoubleOrNull('indent');
+    _resolvedEndIndent = endIndent ?? resolveDoubleOrNull('endIndent');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-    final resolvedThickness =
-        thickness ?? resolveDoubleOrNull('thickness');
-    final resolvedIndent = indent ?? resolveDoubleOrNull('indent');
-    final resolvedEndIndent =
-        endIndent ?? resolveDoubleOrNull('endIndent');
-    final resolvedColor = color ?? resolveColorOrNull('color');
-
     return Divider(
-      height: resolvedHeight,
-      thickness: resolvedThickness,
-      indent: resolvedIndent,
-      endIndent: resolvedEndIndent,
-      color: resolvedColor,
+      height: _resolvedHeight,
+      thickness: _resolvedThickness,
+      indent: _resolvedIndent,
+      endIndent: _resolvedEndIndent,
+      color: _resolvedColor,
     );
   }
 }
@@ -651,6 +656,18 @@ class TomContainer extends TomContainerBase {
   final double? width;
   final double? height;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedColor;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final EdgeInsetsGeometry? _resolvedMargin;
+  late final Decoration? _resolvedDecoration;
+  late final Decoration? _resolvedForegroundDecoration;
+  late final BoxConstraints? _resolvedConstraints;
+  late final AlignmentGeometry? _resolvedAlignment;
+  late final AlignmentGeometry? _resolvedTransformAlignment;
+
   TomContainer({
     super.key,
     super.tomId,
@@ -669,43 +686,34 @@ class TomContainer extends TomContainerBase {
     this.clipBehavior = Clip.none,
     this.width,
     this.height,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
+    _resolvedForegroundDecoration = foregroundDecoration ?? _resolveDecoration('foregroundDecoration');
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+    _resolvedTransformAlignment = transformAlignment ?? _resolveAlignment('transformAlignment');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedWidth = width ?? resolveDoubleOrNull('width');
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedDecoration =
-        decoration ?? _resolveDecoration('decoration');
-    final resolvedForegroundDecoration = foregroundDecoration ??
-        _resolveDecoration('foregroundDecoration');
-    final resolvedConstraints =
-        constraints ?? _resolveBoxConstraints('constraints');
-    final resolvedAlignment =
-        alignment ?? _resolveAlignment('alignment');
-    final resolvedTransformAlignment =
-        transformAlignment ?? _resolveAlignment('transformAlignment');
-
     return Container(
-      alignment: resolvedAlignment,
-      padding: resolvedPadding,
-      color: resolvedDecoration != null ? null : resolvedColor,
-      decoration: resolvedDecoration,
-      foregroundDecoration: resolvedForegroundDecoration,
-      constraints: resolvedConstraints,
-      margin: resolvedMargin,
+      alignment: _resolvedAlignment,
+      padding: _resolvedPadding,
+      color: _resolvedDecoration != null ? null : _resolvedColor,
+      decoration: _resolvedDecoration,
+      foregroundDecoration: _resolvedForegroundDecoration,
+      constraints: _resolvedConstraints,
+      margin: _resolvedMargin,
       transform: transform,
-      transformAlignment: resolvedTransformAlignment,
+      transformAlignment: _resolvedTransformAlignment,
       clipBehavior: clipBehavior,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -815,6 +823,10 @@ class TomWrap extends TomContainerBase {
   final Clip clipBehavior;
   final List<Widget> children;
 
+  // Pre-resolved resource values
+  late final double _resolvedSpacing;
+  late final double _resolvedRunSpacing;
+
   TomWrap({
     super.key,
     super.tomId,
@@ -830,22 +842,19 @@ class TomWrap extends TomContainerBase {
     this.verticalDirection = VerticalDirection.down,
     this.clipBehavior = Clip.none,
     this.children = const [],
-  });
+  }) {
+    _resolvedSpacing = spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
+    _resolvedRunSpacing = runSpacing ?? resolveDoubleOrNull('runSpacing') ?? 0.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSpacing =
-      spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
-    final resolvedRunSpacing =
-      runSpacing ?? resolveDoubleOrNull('runSpacing') ?? 0.0;
-
     return Wrap(
       direction: direction,
       alignment: alignment,
-      spacing: resolvedSpacing,
+      spacing: _resolvedSpacing,
       runAlignment: runAlignment,
-      runSpacing: resolvedRunSpacing,
+      runSpacing: _resolvedRunSpacing,
       crossAxisAlignment: crossAxisAlignment,
       textDirection: textDirection,
       verticalDirection: verticalDirection,
@@ -863,6 +872,9 @@ class TomStack extends TomContainerBase {
   final Clip clipBehavior;
   final List<Widget> children;
 
+  // Pre-resolved resource values
+  late final AlignmentGeometry _resolvedAlignment;
+
   TomStack({
     super.key,
     super.tomId,
@@ -873,16 +885,14 @@ class TomStack extends TomContainerBase {
     this.fit = StackFit.loose,
     this.clipBehavior = Clip.hardEdge,
     this.children = const [],
-  });
+  }) {
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 3: Resolve complex objects from resources
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-
     return Stack(
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       textDirection: textDirection,
       fit: fit,
       clipBehavior: clipBehavior,
@@ -904,6 +914,10 @@ class TomIndexedStack extends TomContainerBase {
   final StackFit sizing;
   final List<Widget> children;
 
+  // Pre-resolved resource values
+  late final int? _resolvedIndex;
+  late final AlignmentGeometry _resolvedAlignment;
+
   TomIndexedStack({
     super.key,
     super.tomId,
@@ -914,20 +928,16 @@ class TomIndexedStack extends TomContainerBase {
     this.textDirection,
     this.sizing = StackFit.loose,
     this.children = const [],
-  });
+  }) {
+    _resolvedIndex = index ?? resolveIntOrNull('index');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedIndex = index ?? resolveIntOrNull('index');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-
     return IndexedStack(
-      index: resolvedIndex,
-      alignment: resolvedAlignment,
+      index: _resolvedIndex,
+      alignment: _resolvedAlignment,
       textDirection: textDirection,
       sizing: sizing,
       children: children,
@@ -946,6 +956,10 @@ class TomSizedBox extends TomContainerBase {
   final double? height;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+
   TomSizedBox({
     super.key,
     super.tomId,
@@ -954,17 +968,16 @@ class TomSizedBox extends TomContainerBase {
     this.width,
     this.height,
     this.child,
-  });
+  }) {
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidth = width ?? resolveDoubleOrNull('width');
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-
     return SizedBox(
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -998,6 +1011,9 @@ class TomPadding extends TomContainerBase {
   final EdgeInsetsGeometry padding;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry _resolvedPadding;
+
   TomPadding({
     super.key,
     super.tomId,
@@ -1005,15 +1021,14 @@ class TomPadding extends TomContainerBase {
     super.scope,
     required this.padding,
     this.child,
-  });
+  }) {
+    _resolvedPadding = resolveEdgeInsetsOrNull('padding') ?? padding;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPadding =
-        resolveEdgeInsetsOrNull('padding') ?? padding;
-
     return Padding(
-      padding: resolvedPadding,
+      padding: _resolvedPadding,
       child: child,
     );
   }
@@ -1025,6 +1040,10 @@ class TomCenter extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedWidthFactor;
+  late final double? _resolvedHeightFactor;
+
   TomCenter({
     super.key,
     super.tomId,
@@ -1033,19 +1052,16 @@ class TomCenter extends TomContainerBase {
     this.widthFactor,
     this.heightFactor,
     this.child,
-  });
+  }) {
+    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
+    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidthFactor =
-        widthFactor ?? resolveDoubleOrNull('widthFactor');
-    final resolvedHeightFactor =
-        heightFactor ?? resolveDoubleOrNull('heightFactor');
-
     return Center(
-      widthFactor: resolvedWidthFactor,
-      heightFactor: resolvedHeightFactor,
+      widthFactor: _resolvedWidthFactor,
+      heightFactor: _resolvedHeightFactor,
       child: child,
     );
   }
@@ -1058,6 +1074,10 @@ class TomAlign extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedWidthFactor;
+  late final double? _resolvedHeightFactor;
+
   TomAlign({
     super.key,
     super.tomId,
@@ -1067,20 +1087,17 @@ class TomAlign extends TomContainerBase {
     this.widthFactor,
     this.heightFactor,
     this.child,
-  });
+  }) {
+    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
+    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidthFactor =
-        widthFactor ?? resolveDoubleOrNull('widthFactor');
-    final resolvedHeightFactor =
-        heightFactor ?? resolveDoubleOrNull('heightFactor');
-
     return Align(
       alignment: alignment,
-      widthFactor: resolvedWidthFactor,
-      heightFactor: resolvedHeightFactor,
+      widthFactor: _resolvedWidthFactor,
+      heightFactor: _resolvedHeightFactor,
       child: child,
     );
   }
@@ -1145,6 +1162,10 @@ class TomFractionallySizedBox extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedWidthFactor;
+  late final double? _resolvedHeightFactor;
+
   TomFractionallySizedBox({
     super.key,
     super.tomId,
@@ -1154,20 +1175,17 @@ class TomFractionallySizedBox extends TomContainerBase {
     this.widthFactor,
     this.heightFactor,
     this.child,
-  });
+  }) {
+    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
+    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidthFactor =
-        widthFactor ?? resolveDoubleOrNull('widthFactor');
-    final resolvedHeightFactor =
-        heightFactor ?? resolveDoubleOrNull('heightFactor');
-
     return FractionallySizedBox(
       alignment: alignment,
-      widthFactor: resolvedWidthFactor,
-      heightFactor: resolvedHeightFactor,
+      widthFactor: _resolvedWidthFactor,
+      heightFactor: _resolvedHeightFactor,
       child: child,
     );
   }
@@ -1197,6 +1215,10 @@ class TomIntrinsicWidth extends TomContainerBase {
   final double? stepHeight;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedStepWidth;
+  late final double? _resolvedStepHeight;
+
   TomIntrinsicWidth({
     super.key,
     super.tomId,
@@ -1205,19 +1227,16 @@ class TomIntrinsicWidth extends TomContainerBase {
     this.stepWidth,
     this.stepHeight,
     this.child,
-  });
+  }) {
+    _resolvedStepWidth = stepWidth ?? resolveDoubleOrNull('stepWidth');
+    _resolvedStepHeight = stepHeight ?? resolveDoubleOrNull('stepHeight');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedStepWidth =
-        stepWidth ?? resolveDoubleOrNull('stepWidth');
-    final resolvedStepHeight =
-        stepHeight ?? resolveDoubleOrNull('stepHeight');
-
     return IntrinsicWidth(
-      stepWidth: resolvedStepWidth,
-      stepHeight: resolvedStepHeight,
+      stepWidth: _resolvedStepWidth,
+      stepHeight: _resolvedStepHeight,
       child: child,
     );
   }
@@ -1238,6 +1257,15 @@ class TomMaterial extends TomContainerBase {
   final Duration animationDuration;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedElevation;
+  late final Color? _resolvedColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final TextStyle? _resolvedTextStyle;
+  late final BorderRadiusGeometry? _resolvedBorderRadius;
+  late final ShapeBorder? _resolvedShape;
+
   TomMaterial({
     super.key,
     super.tomId,
@@ -1255,35 +1283,27 @@ class TomMaterial extends TomContainerBase {
     this.clipBehavior = Clip.none,
     this.animationDuration = kThemeChangeDuration,
     this.child,
-  });
+  }) {
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
+    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-      elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedTextStyle =
-        textStyle ?? _resolveTextStyle('textStyle');
-    final resolvedBorderRadius =
-        borderRadius ?? _resolveBorderRadius('borderRadius');
-    final resolvedShape = shape ?? _resolveShapeBorder('shape');
-
     return Material(
       type: type,
-      elevation: resolvedElevation,
-      color: resolvedColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      textStyle: resolvedTextStyle,
-      borderRadius: resolvedBorderRadius,
-      shape: resolvedShape,
+      elevation: _resolvedElevation,
+      color: _resolvedColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      textStyle: _resolvedTextStyle,
+      borderRadius: _resolvedBorderRadius,
+      shape: _resolvedShape,
       borderOnForeground: borderOnForeground,
       clipBehavior: clipBehavior,
       animationDuration: animationDuration,
@@ -1455,6 +1475,24 @@ class TomSliverAppBar extends TomContainerBase {
   final bool forceMaterialTransparency;
   final Clip? clipBehavior;
 
+  // Pre-resolved resource values
+  late final String _resolvedTitle;
+  late final double? _resolvedElevation;
+  late final double? _resolvedScrolledUnderElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedForegroundColor;
+  late final double? _resolvedTitleSpacing;
+  late final double? _resolvedExpandedHeight;
+  late final double? _resolvedCollapsedHeight;
+  late final double? _resolvedLeadingWidth;
+  late final IconThemeData? _resolvedIconTheme;
+  late final IconThemeData? _resolvedActionsIconTheme;
+  late final ShapeBorder? _resolvedShape;
+  late final TextStyle? _resolvedToolbarTextStyle;
+  late final TextStyle? _resolvedTitleTextStyle;
+
   TomSliverAppBar({
     super.key,
     super.tomId,
@@ -1494,45 +1532,28 @@ class TomSliverAppBar extends TomContainerBase {
     this.systemOverlayStyle,
     this.forceMaterialTransparency = false,
     this.clipBehavior,
-  });
+  }) {
+    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedScrolledUnderElevation = scrolledUnderElevation ?? resolveDoubleOrNull('scrolledUnderElevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedTitleSpacing = titleSpacing ?? resolveDoubleOrNull('titleSpacing');
+    _resolvedExpandedHeight = expandedHeight ?? resolveDoubleOrNull('expandedHeight');
+    _resolvedCollapsedHeight = collapsedHeight ?? resolveDoubleOrNull('collapsedHeight');
+    _resolvedLeadingWidth = leadingWidth ?? resolveDoubleOrNull('leadingWidth');
+    _resolvedIconTheme = iconTheme ?? _resolveIconThemeData('iconTheme');
+    _resolvedActionsIconTheme = actionsIconTheme ?? _resolveIconThemeData('actionsIconTheme');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedToolbarTextStyle = toolbarTextStyle ?? _resolveTextStyle('toolbarTextStyle');
+    _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    final effectiveTitle = title ?? Text(resolvedTitle);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedScrolledUnderElevation =
-        scrolledUnderElevation ?? resolveDoubleOrNull('scrolledUnderElevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull('foregroundColor');
-    final resolvedTitleSpacing =
-        titleSpacing ?? resolveDoubleOrNull('titleSpacing');
-    final resolvedExpandedHeight =
-        expandedHeight ?? resolveDoubleOrNull('expandedHeight');
-    final resolvedCollapsedHeight =
-        collapsedHeight ?? resolveDoubleOrNull('collapsedHeight');
-    final resolvedLeadingWidth =
-        leadingWidth ?? resolveDoubleOrNull('leadingWidth');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedIconTheme =
-        iconTheme ?? _resolveIconThemeData('iconTheme');
-    final resolvedActionsIconTheme =
-        actionsIconTheme ?? _resolveIconThemeData('actionsIconTheme');
-    final resolvedShape = shape ?? _resolveShapeBorder('shape');
-    final resolvedToolbarTextStyle =
-        toolbarTextStyle ?? _resolveTextStyle('toolbarTextStyle');
-    final resolvedTitleTextStyle =
-        titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+    final effectiveTitle = title ?? Text(_resolvedTitle);
 
     return SliverAppBar(
       leading: leading,
@@ -1541,30 +1562,30 @@ class TomSliverAppBar extends TomContainerBase {
       actions: actions,
       flexibleSpace: flexibleSpace,
       bottom: bottom,
-      elevation: resolvedElevation,
-      scrolledUnderElevation: resolvedScrolledUnderElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      backgroundColor: resolvedBackgroundColor,
-      foregroundColor: resolvedForegroundColor,
-      iconTheme: resolvedIconTheme,
-      actionsIconTheme: resolvedActionsIconTheme,
+      elevation: _resolvedElevation,
+      scrolledUnderElevation: _resolvedScrolledUnderElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      backgroundColor: _resolvedBackgroundColor,
+      foregroundColor: _resolvedForegroundColor,
+      iconTheme: _resolvedIconTheme,
+      actionsIconTheme: _resolvedActionsIconTheme,
       primary: primary,
       centerTitle: centerTitle,
       excludeHeaderSemantics: excludeHeaderSemantics,
-      titleSpacing: resolvedTitleSpacing,
-      expandedHeight: resolvedExpandedHeight,
-      collapsedHeight: resolvedCollapsedHeight,
+      titleSpacing: _resolvedTitleSpacing,
+      expandedHeight: _resolvedExpandedHeight,
+      collapsedHeight: _resolvedCollapsedHeight,
       toolbarHeight: toolbarHeight,
-      leadingWidth: resolvedLeadingWidth,
+      leadingWidth: _resolvedLeadingWidth,
       floating: floating,
       pinned: pinned,
       snap: snap,
       stretch: stretch,
       stretchTriggerOffset: stretchTriggerOffset,
-      shape: resolvedShape,
-      toolbarTextStyle: resolvedToolbarTextStyle,
-      titleTextStyle: resolvedTitleTextStyle,
+      shape: _resolvedShape,
+      toolbarTextStyle: _resolvedToolbarTextStyle,
+      titleTextStyle: _resolvedTitleTextStyle,
       systemOverlayStyle: systemOverlayStyle,
       forceMaterialTransparency: forceMaterialTransparency,
       clipBehavior: clipBehavior,
@@ -1691,6 +1712,9 @@ class TomCustomScrollView extends TomContainerBase {
   final String? restorationId;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final double? _resolvedCacheExtent;
+
   TomCustomScrollView({
     super.key,
     super.tomId,
@@ -1712,14 +1736,12 @@ class TomCustomScrollView extends TomContainerBase {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
-  });
+  }) {
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-
     return CustomScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -1730,7 +1752,7 @@ class TomCustomScrollView extends TomContainerBase {
       shrinkWrap: shrinkWrap,
       center: center,
       anchor: anchor,
-      cacheExtent: resolvedCacheExtent,
+      cacheExtent: _resolvedCacheExtent,
       slivers: slivers,
       semanticChildCount: semanticChildCount,
       dragStartBehavior: dragStartBehavior,
@@ -1826,6 +1848,11 @@ class TomExpansionPanelList extends TomContainerBase {
   final Color? dividerColor;
   final double? elevation;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedDividerColor;
+  late final double _resolvedElevation;
+  late final EdgeInsets _resolvedExpandedHeaderPadding;
+
   TomExpansionPanelList({
     super.key,
     super.tomId,
@@ -1837,25 +1864,21 @@ class TomExpansionPanelList extends TomContainerBase {
     this.expandedHeaderPadding,
     this.dividerColor,
     this.elevation,
-  });
+  }) {
+    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 2;
+    _resolvedExpandedHeaderPadding = expandedHeaderPadding ?? resolveEdgeInsetsOrNull('expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull('dividerColor');
-    final resolvedElevation =
-      elevation ?? resolveDoubleOrNull('elevation') ?? 2;
-    final resolvedExpandedHeaderPadding =
-      expandedHeaderPadding ?? resolveEdgeInsetsOrNull('expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0);
-
     return ExpansionPanelList(
       children: children,
       expansionCallback: expansionCallback,
       animationDuration: animationDuration,
-      expandedHeaderPadding: resolvedExpandedHeaderPadding,
-      dividerColor: resolvedDividerColor,
-      elevation: resolvedElevation,
+      expandedHeaderPadding: _resolvedExpandedHeaderPadding,
+      dividerColor: _resolvedDividerColor,
+      elevation: _resolvedElevation,
     );
   }
 }
@@ -1873,6 +1896,13 @@ class TomInk extends TomContainerBase {
   final double? height;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final Color? _resolvedColor;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final Decoration? _resolvedDecoration;
+
   TomInk({
     super.key,
     super.tomId,
@@ -1884,27 +1914,22 @@ class TomInk extends TomContainerBase {
     this.width,
     this.height,
     this.child,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedWidth = width ?? resolveDoubleOrNull('width');
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedDecoration =
-        decoration ?? _resolveDecoration('decoration');
-
     return Ink(
-      padding: resolvedPadding,
-      color: resolvedDecoration != null ? null : resolvedColor,
-      decoration: resolvedDecoration,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      padding: _resolvedPadding,
+      color: _resolvedDecoration != null ? null : _resolvedColor,
+      decoration: _resolvedDecoration,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -2073,6 +2098,14 @@ class TomPositioned extends TomContainerBase {
   final Widget child;
 
   /// Creates a Tom Positioned widget.
+  // Pre-resolved resource values
+  late final double? _resolvedLeft;
+  late final double? _resolvedTop;
+  late final double? _resolvedRight;
+  late final double? _resolvedBottom;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+
   TomPositioned({
     super.key,
     super.tomId,
@@ -2085,7 +2118,14 @@ class TomPositioned extends TomContainerBase {
     this.width,
     this.height,
     required this.child,
-  });
+  }) {
+    _resolvedLeft = left ?? resolveDoubleOrNull('left');
+    _resolvedTop = top ?? resolveDoubleOrNull('top');
+    _resolvedRight = right ?? resolveDoubleOrNull('right');
+    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   /// Creates a Tom Positioned widget that fills the Stack.
   TomPositioned.fill({
@@ -2104,12 +2144,12 @@ class TomPositioned extends TomContainerBase {
   @override
   Widget buildContent(BuildContext context) {
     return Positioned(
-      left: left ?? resolveDoubleOrNull('left'),
-      top: top ?? resolveDoubleOrNull('top'),
-      right: right ?? resolveDoubleOrNull('right'),
-      bottom: bottom ?? resolveDoubleOrNull('bottom'),
-      width: width ?? resolveDoubleOrNull('width'),
-      height: height ?? resolveDoubleOrNull('height'),
+      left: _resolvedLeft,
+      top: _resolvedTop,
+      right: _resolvedRight,
+      bottom: _resolvedBottom,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -2128,6 +2168,14 @@ class TomPositionedDirectional extends TomContainerBase {
   final Widget child;
 
   /// Creates a Tom PositionedDirectional widget.
+  // Pre-resolved resource values
+  late final double? _resolvedStart;
+  late final double? _resolvedTop;
+  late final double? _resolvedEnd;
+  late final double? _resolvedBottom;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+
   TomPositionedDirectional({
     super.key,
     super.tomId,
@@ -2140,17 +2188,24 @@ class TomPositionedDirectional extends TomContainerBase {
     this.width,
     this.height,
     required this.child,
-  });
+  }) {
+    _resolvedStart = start ?? resolveDoubleOrNull('start');
+    _resolvedTop = top ?? resolveDoubleOrNull('top');
+    _resolvedEnd = end ?? resolveDoubleOrNull('end');
+    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return PositionedDirectional(
-      start: start ?? resolveDoubleOrNull('start'),
-      top: top ?? resolveDoubleOrNull('top'),
-      end: end ?? resolveDoubleOrNull('end'),
-      bottom: bottom ?? resolveDoubleOrNull('bottom'),
-      width: width ?? resolveDoubleOrNull('width'),
-      height: height ?? resolveDoubleOrNull('height'),
+      start: _resolvedStart,
+      top: _resolvedTop,
+      end: _resolvedEnd,
+      bottom: _resolvedBottom,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -2248,6 +2303,11 @@ class TomSingleChildScrollView extends TomContainerBase {
   final String? restorationId;
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
 
+  // Pre-resolved resource values
+  late final ScrollPhysics? _resolvedPhysics;
+  late final String? _resolvedRestorationId;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomSingleChildScrollView({
     super.key,
     super.tomId,
@@ -2263,25 +2323,23 @@ class TomSingleChildScrollView extends TomContainerBase {
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
-  });
+  }) {
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 3: Resolve complex objects from resources
-    final resolvedPhysics =
-        physics ?? _resolveScrollPhysics('physics');
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-
     return SingleChildScrollView(
       scrollDirection: scrollDirection,
       reverse: reverse,
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
-      physics: resolvedPhysics,
+      padding: _resolvedPadding,
+      physics: _resolvedPhysics,
       controller: controller,
       dragStartBehavior: dragStartBehavior,
       clipBehavior: clipBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       keyboardDismissBehavior: keyboardDismissBehavior,
       child: child,
     );
@@ -2310,6 +2368,14 @@ class TomCarouselView extends TomContainerBase {
   final bool reverse;
   final ValueChanged<int>? onTap;
 
+  // Pre-resolved resource values
+  late final EdgeInsets? _resolvedPadding;
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final ShapeBorder? _resolvedShape;
+  late final double? _resolvedItemExtent;
+  late final double? _resolvedShrinkExtent;
+
   TomCarouselView({
     super.key,
     super.tomId,
@@ -2327,17 +2393,24 @@ class TomCarouselView extends TomContainerBase {
     this.scrollDirection = Axis.horizontal,
     this.reverse = false,
     this.onTap,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedShrinkExtent = shrinkExtent ?? resolveDoubleOrNull('shrinkExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return CarouselView(
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
-      elevation: elevation ?? resolveDoubleOrNull('elevation'),
-      shape: shape ?? _resolveShapeBorder('shape'),
-      itemExtent: itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 200.0,
-      shrinkExtent: shrinkExtent ?? resolveDoubleOrNull('shrinkExtent') ?? 0.0,
+      padding: _resolvedPadding,
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      shape: _resolvedShape,
+      itemExtent: _resolvedItemExtent ?? 200.0,
+      shrinkExtent: _resolvedShrinkExtent ?? 0.0,
       controller: controller,
       scrollDirection: scrollDirection,
       reverse: reverse,
@@ -2402,6 +2475,9 @@ class TomOffstage extends TomContainerBase {
   final bool offstage;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final bool _resolvedOffstage;
+
   TomOffstage({
     super.key,
     super.tomId,
@@ -2409,16 +2485,14 @@ class TomOffstage extends TomContainerBase {
     super.scope,
     this.offstage = true,
     this.child,
-  });
+  }) {
+    _resolvedOffstage = resolveBoolOrNull('offstage') ?? offstage;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedOffstage =
-        resolveBoolOrNull('offstage') ?? offstage;
-
     return Offstage(
-      offstage: resolvedOffstage,
+      offstage: _resolvedOffstage,
       child: child,
     );
   }
@@ -2433,6 +2507,9 @@ class TomCupertinoPageScaffold extends TomContainerBase {
   final bool resizeToAvoidBottomInset;
   final Widget child;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+
   TomCupertinoPageScaffold({
     super.key,
     super.tomId,
@@ -2442,13 +2519,15 @@ class TomCupertinoPageScaffold extends TomContainerBase {
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     required this.child,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: navigationBar,
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
+      backgroundColor: _resolvedBackgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       child: child,
     );
@@ -2466,6 +2545,9 @@ class TomCupertinoTabScaffold extends TomContainerBase {
   final bool resizeToAvoidBottomInset;
   final String? restorationId;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+
   TomCupertinoTabScaffold({
     super.key,
     super.tomId,
@@ -2477,7 +2559,9 @@ class TomCupertinoTabScaffold extends TomContainerBase {
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.restorationId,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -2485,7 +2569,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
       tabBar: tabBar,
       tabBuilder: tabBuilder,
       controller: controller,
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
+      backgroundColor: _resolvedBackgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       restorationId: restorationId,
     );
@@ -2502,6 +2586,9 @@ class TomCupertinoFormRow extends TomContainerBase {
   final Widget? helper;
   final Widget? error;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomCupertinoFormRow({
     super.key,
     super.tomId,
@@ -2512,13 +2599,15 @@ class TomCupertinoFormRow extends TomContainerBase {
     this.padding,
     this.helper,
     this.error,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return CupertinoFormRow(
       prefix: prefix,
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
+      padding: _resolvedPadding,
       helper: helper,
       error: error,
       child: child,
@@ -2539,6 +2628,9 @@ class TomCupertinoFormSection extends TomContainerBase {
   final Clip clipBehavior;
   final bool insetGrouped;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry _resolvedMargin;
+
   TomCupertinoFormSection({
     super.key,
     super.tomId,
@@ -2552,17 +2644,18 @@ class TomCupertinoFormSection extends TomContainerBase {
     this.decoration,
     this.clipBehavior = Clip.none,
     this.insetGrouped = false,
-  });
+  }) {
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? EdgeInsets.zero;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     final resolvedBgColor = backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
-    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? EdgeInsets.zero;
     if (insetGrouped) {
       return CupertinoFormSection.insetGrouped(
         header: header,
         footer: footer,
-        margin: resolvedMargin,
+        margin: _resolvedMargin,
         backgroundColor: resolvedBgColor,
         decoration: decoration,
         clipBehavior: clipBehavior,
@@ -2572,7 +2665,7 @@ class TomCupertinoFormSection extends TomContainerBase {
     return CupertinoFormSection(
       header: header,
       footer: footer,
-      margin: resolvedMargin,
+      margin: _resolvedMargin,
       backgroundColor: resolvedBgColor,
       decoration: decoration,
       clipBehavior: clipBehavior,
@@ -2597,6 +2690,11 @@ class TomNestedScrollView extends TomContainerBase {
   final String? restorationId;
   final ScrollBehavior? scrollBehavior;
 
+  // Pre-resolved resource values
+  late final bool _resolvedFloatHeaderSlivers;
+  late final String? _resolvedRestorationId;
+  late final ScrollPhysics? _resolvedPhysics;
+
   TomNestedScrollView({
     super.key,
     super.tomId,
@@ -2613,31 +2711,25 @@ class TomNestedScrollView extends TomContainerBase {
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.scrollBehavior,
-  });
+  }) {
+    _resolvedFloatHeaderSlivers = floatHeaderSlivers ?? resolveBoolOrNull('floatHeaderSlivers') ?? false;
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedFloatHeaderSlivers =
-        floatHeaderSlivers ?? resolveBoolOrNull('floatHeaderSlivers') ?? false;
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedPhysics =
-        physics ?? _resolveScrollPhysics('physics');
-
     return NestedScrollView(
       controller: controller,
       scrollDirection: scrollDirection,
       reverse: reverse,
-      physics: resolvedPhysics,
+      physics: _resolvedPhysics,
       headerSliverBuilder: headerSliverBuilder,
       body: body,
       dragStartBehavior: dragStartBehavior,
-      floatHeaderSlivers: resolvedFloatHeaderSlivers,
+      floatHeaderSlivers: _resolvedFloatHeaderSlivers,
       clipBehavior: clipBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       scrollBehavior: scrollBehavior,
     );
   }
@@ -2662,6 +2754,12 @@ class TomScrollbar extends TomContainerBase {
   final bool? interactive;
   final ScrollbarOrientation? scrollbarOrientation;
 
+  // Pre-resolved resource values
+  late final bool? _resolvedThumbVisibility;
+  late final bool? _resolvedTrackVisibility;
+  late final double? _resolvedThickness;
+  late final bool? _resolvedInteractive;
+
   TomScrollbar({
     super.key,
     super.tomId,
@@ -2676,27 +2774,23 @@ class TomScrollbar extends TomContainerBase {
     this.notificationPredicate,
     this.interactive,
     this.scrollbarOrientation,
-  });
+  }) {
+    _resolvedThumbVisibility = thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
+    _resolvedTrackVisibility = trackVisibility ?? resolveBoolOrNull('trackVisibility');
+    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
+    _resolvedInteractive = interactive ?? resolveBoolOrNull('interactive');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedThumbVisibility =
-        thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
-    final resolvedTrackVisibility =
-        trackVisibility ?? resolveBoolOrNull('trackVisibility');
-    final resolvedThickness =
-        thickness ?? resolveDoubleOrNull('thickness');
-    final resolvedInteractive =
-        interactive ?? resolveBoolOrNull('interactive');
-
     return Scrollbar(
       controller: controller,
-      thumbVisibility: resolvedThumbVisibility,
-      trackVisibility: resolvedTrackVisibility,
-      thickness: resolvedThickness,
+      thumbVisibility: _resolvedThumbVisibility,
+      trackVisibility: _resolvedTrackVisibility,
+      thickness: _resolvedThickness,
       radius: radius,
       notificationPredicate: notificationPredicate,
-      interactive: resolvedInteractive,
+      interactive: _resolvedInteractive,
       scrollbarOrientation: scrollbarOrientation,
       child: child,
     );
@@ -2716,6 +2810,11 @@ class TomCupertinoScrollbar extends TomContainerBase {
   final Radius radiusWhileDragging;
   final ScrollNotificationPredicate? notificationPredicate;
 
+  // Pre-resolved resource values
+  late final bool? _resolvedThumbVisibility;
+  late final double _resolvedThickness;
+  late final double _resolvedThicknessWhileDragging;
+
   TomCupertinoScrollbar({
     super.key,
     super.tomId,
@@ -2729,22 +2828,19 @@ class TomCupertinoScrollbar extends TomContainerBase {
     this.radius = CupertinoScrollbar.defaultRadius,
     this.radiusWhileDragging = CupertinoScrollbar.defaultRadiusWhileDragging,
     this.notificationPredicate,
-  });
+  }) {
+    _resolvedThumbVisibility = thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
+    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness') ?? CupertinoScrollbar.defaultThickness;
+    _resolvedThicknessWhileDragging = thicknessWhileDragging ?? resolveDoubleOrNull('thicknessWhileDragging') ?? CupertinoScrollbar.defaultThicknessWhileDragging;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedThumbVisibility =
-        thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
-    final resolvedThickness =
-        thickness ?? resolveDoubleOrNull('thickness') ?? CupertinoScrollbar.defaultThickness;
-    final resolvedThicknessWhileDragging =
-        thicknessWhileDragging ?? resolveDoubleOrNull('thicknessWhileDragging') ?? CupertinoScrollbar.defaultThicknessWhileDragging;
-
     return CupertinoScrollbar(
       controller: controller,
-      thumbVisibility: resolvedThumbVisibility,
-      thickness: resolvedThickness,
-      thicknessWhileDragging: resolvedThicknessWhileDragging,
+      thumbVisibility: _resolvedThumbVisibility,
+      thickness: _resolvedThickness,
+      thicknessWhileDragging: _resolvedThicknessWhileDragging,
       radius: radius,
       radiusWhileDragging: radiusWhileDragging,
       notificationPredicate: notificationPredicate,
@@ -2768,6 +2864,14 @@ class TomDraggableScrollableSheet extends TomContainerBase {
   final bool? shouldCloseOnMinExtent;
   final ScrollableWidgetBuilder builder;
 
+  // Pre-resolved resource values
+  late final double _resolvedInitialChildSize;
+  late final double _resolvedMinChildSize;
+  late final double _resolvedMaxChildSize;
+  late final bool _resolvedExpand;
+  late final bool _resolvedSnap;
+  late final bool _resolvedShouldCloseOnMinExtent;
+
   TomDraggableScrollableSheet({
     super.key,
     super.tomId,
@@ -2783,32 +2887,26 @@ class TomDraggableScrollableSheet extends TomContainerBase {
     this.controller,
     this.shouldCloseOnMinExtent,
     required this.builder,
-  });
+  }) {
+    _resolvedInitialChildSize = initialChildSize ?? resolveDoubleOrNull('initialChildSize') ?? 0.5;
+    _resolvedMinChildSize = minChildSize ?? resolveDoubleOrNull('minChildSize') ?? 0.25;
+    _resolvedMaxChildSize = maxChildSize ?? resolveDoubleOrNull('maxChildSize') ?? 1.0;
+    _resolvedExpand = expand ?? resolveBoolOrNull('expand') ?? true;
+    _resolvedSnap = snap ?? resolveBoolOrNull('snap') ?? false;
+    _resolvedShouldCloseOnMinExtent = shouldCloseOnMinExtent ?? resolveBoolOrNull('shouldCloseOnMinExtent') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedInitialChildSize =
-        initialChildSize ?? resolveDoubleOrNull('initialChildSize') ?? 0.5;
-    final resolvedMinChildSize =
-        minChildSize ?? resolveDoubleOrNull('minChildSize') ?? 0.25;
-    final resolvedMaxChildSize =
-        maxChildSize ?? resolveDoubleOrNull('maxChildSize') ?? 1.0;
-    final resolvedExpand =
-        expand ?? resolveBoolOrNull('expand') ?? true;
-    final resolvedSnap =
-        snap ?? resolveBoolOrNull('snap') ?? false;
-    final resolvedShouldCloseOnMinExtent =
-        shouldCloseOnMinExtent ?? resolveBoolOrNull('shouldCloseOnMinExtent') ?? true;
-
     return DraggableScrollableSheet(
-      initialChildSize: resolvedInitialChildSize,
-      minChildSize: resolvedMinChildSize,
-      maxChildSize: resolvedMaxChildSize,
-      expand: resolvedExpand,
-      snap: resolvedSnap,
+      initialChildSize: _resolvedInitialChildSize,
+      minChildSize: _resolvedMinChildSize,
+      maxChildSize: _resolvedMaxChildSize,
+      expand: _resolvedExpand,
+      snap: _resolvedSnap,
       snapSizes: snapSizes,
       controller: controller,
-      shouldCloseOnMinExtent: resolvedShouldCloseOnMinExtent,
+      shouldCloseOnMinExtent: _resolvedShouldCloseOnMinExtent,
       builder: builder,
     );
   }
@@ -2835,6 +2933,17 @@ class TomInteractiveViewer extends TomContainerBase {
   final Alignment? alignment;
   final Widget child;
 
+  // Pre-resolved resource values
+  late final EdgeInsets _resolvedBoundaryMargin;
+  late final bool _resolvedConstrained;
+  late final double _resolvedMaxScale;
+  late final double _resolvedMinScale;
+  late final double _resolvedInteractionEndFrictionCoefficient;
+  late final bool _resolvedPanEnabled;
+  late final bool _resolvedScaleEnabled;
+  late final double _resolvedScaleFactor;
+  late final Alignment _resolvedAlignment;
+
   TomInteractiveViewer({
     super.key,
     super.tomId,
@@ -2856,47 +2965,36 @@ class TomInteractiveViewer extends TomContainerBase {
     this.transformationController,
     this.alignment,
     required this.child,
-  });
+  }) {
+    _resolvedBoundaryMargin = boundaryMargin ?? resolveEdgeInsetsOrNull('boundaryMargin') ?? EdgeInsets.zero;
+    _resolvedConstrained = constrained ?? resolveBoolOrNull('constrained') ?? true;
+    _resolvedMaxScale = maxScale ?? resolveDoubleOrNull('maxScale') ?? 2.5;
+    _resolvedMinScale = minScale ?? resolveDoubleOrNull('minScale') ?? 0.8;
+    _resolvedInteractionEndFrictionCoefficient = interactionEndFrictionCoefficient ?? resolveDoubleOrNull('interactionEndFrictionCoefficient') ?? 0.0000135;
+    _resolvedPanEnabled = panEnabled ?? resolveBoolOrNull('panEnabled') ?? true;
+    _resolvedScaleEnabled = scaleEnabled ?? resolveBoolOrNull('scaleEnabled') ?? true;
+    _resolvedScaleFactor = scaleFactor ?? resolveDoubleOrNull('scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.topLeft;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedBoundaryMargin =
-      boundaryMargin ?? resolveEdgeInsetsOrNull('boundaryMargin') ?? EdgeInsets.zero;
-    final resolvedConstrained =
-      constrained ?? resolveBoolOrNull('constrained') ?? true;
-    final resolvedMaxScale =
-      maxScale ?? resolveDoubleOrNull('maxScale') ?? 2.5;
-    final resolvedMinScale =
-      minScale ?? resolveDoubleOrNull('minScale') ?? 0.8;
-    final resolvedInteractionEndFrictionCoefficient =
-      interactionEndFrictionCoefficient ?? resolveDoubleOrNull('interactionEndFrictionCoefficient') ?? 0.0000135;
-    final resolvedPanEnabled =
-      panEnabled ?? resolveBoolOrNull('panEnabled') ?? true;
-    final resolvedScaleEnabled =
-      scaleEnabled ?? resolveBoolOrNull('scaleEnabled') ?? true;
-    final resolvedScaleFactor =
-      scaleFactor ?? resolveDoubleOrNull('scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedAlignment =
-        alignment ?? _resolveAlignment('alignment') ?? Alignment.topLeft;
-
     return InteractiveViewer(
       clipBehavior: clipBehavior,
       panAxis: panAxis,
-      boundaryMargin: resolvedBoundaryMargin,
-      constrained: resolvedConstrained,
-      maxScale: resolvedMaxScale,
-      minScale: resolvedMinScale,
-      interactionEndFrictionCoefficient: resolvedInteractionEndFrictionCoefficient,
+      boundaryMargin: _resolvedBoundaryMargin,
+      constrained: _resolvedConstrained,
+      maxScale: _resolvedMaxScale,
+      minScale: _resolvedMinScale,
+      interactionEndFrictionCoefficient: _resolvedInteractionEndFrictionCoefficient,
       onInteractionEnd: onInteractionEnd,
       onInteractionStart: onInteractionStart,
       onInteractionUpdate: onInteractionUpdate,
-      panEnabled: resolvedPanEnabled,
-      scaleEnabled: resolvedScaleEnabled,
-      scaleFactor: resolvedScaleFactor,
+      panEnabled: _resolvedPanEnabled,
+      scaleEnabled: _resolvedScaleEnabled,
+      scaleFactor: _resolvedScaleFactor,
       transformationController: transformationController,
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       child: child,
     );
   }
@@ -2945,6 +3043,9 @@ class TomColoredBox extends TomContainerBase {
   final Color? color;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final Color _resolvedColor;
+
   TomColoredBox({
     super.key,
     super.tomId,
@@ -2952,14 +3053,14 @@ class TomColoredBox extends TomContainerBase {
     super.scope,
     this.color,
     this.child,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrFail('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedColor = color ?? resolveColorOrFail('color');
-
     return ColoredBox(
-      color: resolvedColor,
+      color: _resolvedColor,
       child: child,
     );
   }
@@ -2973,6 +3074,9 @@ class TomOpacity extends TomContainerBase {
   final bool alwaysIncludeSemantics;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedOpacity;
+
   TomOpacity({
     super.key,
     super.tomId,
@@ -2981,14 +3085,14 @@ class TomOpacity extends TomContainerBase {
     this.opacity,
     this.alwaysIncludeSemantics = false,
     this.child,
-  });
+  }) {
+    _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
-
     return Opacity(
-      opacity: resolvedOpacity,
+      opacity: _resolvedOpacity,
       alwaysIncludeSemantics: alwaysIncludeSemantics,
       child: child,
     );
@@ -3006,6 +3110,10 @@ class TomTransform extends TomContainerBase {
   final FilterQuality? filterQuality;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final AlignmentGeometry? _resolvedAlignment;
+  late final bool _resolvedTransformHitTests;
+
   TomTransform({
     super.key,
     super.tomId,
@@ -3017,21 +3125,18 @@ class TomTransform extends TomContainerBase {
     this.transformHitTests,
     this.filterQuality,
     this.child,
-  });
+  }) {
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+    _resolvedTransformHitTests = transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 3: Resolve complex objects from resources
-    final resolvedAlignment =
-        alignment ?? _resolveAlignment('alignment');
-    final resolvedTransformHitTests =
-        transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
-
     return Transform(
       transform: transform,
       origin: origin,
-      alignment: resolvedAlignment,
-      transformHitTests: resolvedTransformHitTests,
+      alignment: _resolvedAlignment,
+      transformHitTests: _resolvedTransformHitTests,
       filterQuality: filterQuality,
       child: child,
     );
@@ -3050,6 +3155,9 @@ class TomRotatedBox extends TomContainerBase {
   final int? quarterTurns;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final int _resolvedQuarterTurns;
+
   TomRotatedBox({
     super.key,
     super.tomId,
@@ -3057,15 +3165,14 @@ class TomRotatedBox extends TomContainerBase {
     super.scope,
     this.quarterTurns,
     this.child,
-  });
+  }) {
+    _resolvedQuarterTurns = quarterTurns ?? resolveIntOrFail('quarterTurns');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedQuarterTurns =
-        quarterTurns ?? resolveIntOrFail('quarterTurns');
-
     return RotatedBox(
-      quarterTurns: resolvedQuarterTurns,
+      quarterTurns: _resolvedQuarterTurns,
       child: child,
     );
   }
@@ -3083,6 +3190,10 @@ class TomOverflowBar extends TomContainerBase {
   final TextDirection? textDirection;
   final List<Widget> children;
 
+  // Pre-resolved resource values
+  late final double _resolvedSpacing;
+  late final double _resolvedOverflowSpacing;
+
   TomOverflowBar({
     super.key,
     super.tomId,
@@ -3095,19 +3206,17 @@ class TomOverflowBar extends TomContainerBase {
     this.overflowDirection = VerticalDirection.down,
     this.textDirection,
     this.children = const <Widget>[],
-  });
+  }) {
+    _resolvedSpacing = spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
+    _resolvedOverflowSpacing = overflowSpacing ?? resolveDoubleOrNull('overflowSpacing') ?? 0.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSpacing =
-        spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
-    final resolvedOverflowSpacing =
-        overflowSpacing ?? resolveDoubleOrNull('overflowSpacing') ?? 0.0;
-
     return OverflowBar(
-      spacing: resolvedSpacing,
+      spacing: _resolvedSpacing,
       alignment: alignment,
-      overflowSpacing: resolvedOverflowSpacing,
+      overflowSpacing: _resolvedOverflowSpacing,
       overflowAlignment: overflowAlignment,
       overflowDirection: overflowDirection,
       textDirection: textDirection,
@@ -3128,6 +3237,13 @@ class TomOverflowBox extends TomContainerBase {
   final OverflowBoxFit fit;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double? _resolvedMinWidth;
+  late final double? _resolvedMaxWidth;
+  late final double? _resolvedMinHeight;
+  late final double? _resolvedMaxHeight;
+  late final AlignmentGeometry _resolvedAlignment;
+
   TomOverflowBox({
     super.key,
     super.tomId,
@@ -3140,30 +3256,22 @@ class TomOverflowBox extends TomContainerBase {
     this.maxHeight,
     this.fit = OverflowBoxFit.max,
     this.child,
-  });
+  }) {
+    _resolvedMinWidth = minWidth ?? resolveDoubleOrNull('minWidth');
+    _resolvedMaxWidth = maxWidth ?? resolveDoubleOrNull('maxWidth');
+    _resolvedMinHeight = minHeight ?? resolveDoubleOrNull('minHeight');
+    _resolvedMaxHeight = maxHeight ?? resolveDoubleOrNull('maxHeight');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedMinWidth =
-        minWidth ?? resolveDoubleOrNull('minWidth');
-    final resolvedMaxWidth =
-        maxWidth ?? resolveDoubleOrNull('maxWidth');
-    final resolvedMinHeight =
-        minHeight ?? resolveDoubleOrNull('minHeight');
-    final resolvedMaxHeight =
-        maxHeight ?? resolveDoubleOrNull('maxHeight');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-
     return OverflowBox(
-      alignment: resolvedAlignment,
-      minWidth: resolvedMinWidth,
-      maxWidth: resolvedMaxWidth,
-      minHeight: resolvedMinHeight,
-      maxHeight: resolvedMaxHeight,
+      alignment: _resolvedAlignment,
+      minWidth: _resolvedMinWidth,
+      maxWidth: _resolvedMaxWidth,
+      minHeight: _resolvedMinHeight,
+      maxHeight: _resolvedMaxHeight,
       fit: fit,
       child: child,
     );
@@ -3282,6 +3390,10 @@ class TomLimitedBox extends TomContainerBase {
   final double? maxHeight;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedMaxWidth;
+  late final double _resolvedMaxHeight;
+
   TomLimitedBox({
     super.key,
     super.tomId,
@@ -3290,18 +3402,16 @@ class TomLimitedBox extends TomContainerBase {
     this.maxWidth,
     this.maxHeight,
     this.child,
-  });
+  }) {
+    _resolvedMaxWidth = maxWidth ?? resolveDoubleOrNull('maxWidth') ?? double.infinity;
+    _resolvedMaxHeight = maxHeight ?? resolveDoubleOrNull('maxHeight') ?? double.infinity;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedMaxWidth =
-        maxWidth ?? resolveDoubleOrNull('maxWidth') ?? double.infinity;
-    final resolvedMaxHeight =
-        maxHeight ?? resolveDoubleOrNull('maxHeight') ?? double.infinity;
-
     return LimitedBox(
-      maxWidth: resolvedMaxWidth,
-      maxHeight: resolvedMaxHeight,
+      maxWidth: _resolvedMaxWidth,
+      maxHeight: _resolvedMaxHeight,
       child: child,
     );
   }
@@ -3315,6 +3425,9 @@ class TomBaseline extends TomContainerBase {
   final TextBaseline baselineType;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedBaseline;
+
   TomBaseline({
     super.key,
     super.tomId,
@@ -3323,14 +3436,14 @@ class TomBaseline extends TomContainerBase {
     this.baseline,
     required this.baselineType,
     this.child,
-  });
+  }) {
+    _resolvedBaseline = baseline ?? resolveDoubleOrFail('baseline');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedBaseline = baseline ?? resolveDoubleOrFail('baseline');
-
     return Baseline(
-      baseline: resolvedBaseline,
+      baseline: _resolvedBaseline,
       baselineType: baselineType,
       child: child,
     );
@@ -3345,6 +3458,9 @@ class TomListBody extends TomContainerBase {
   final bool? reverse;
   final List<Widget> children;
 
+  // Pre-resolved resource values
+  late final bool _resolvedReverse;
+
   TomListBody({
     super.key,
     super.tomId,
@@ -3353,15 +3469,15 @@ class TomListBody extends TomContainerBase {
     this.mainAxis = Axis.vertical,
     this.reverse,
     this.children = const <Widget>[],
-  });
+  }) {
+    _resolvedReverse = reverse ?? resolveBoolOrNull('reverse') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedReverse = reverse ?? resolveBoolOrNull('reverse') ?? false;
-
     return ListBody(
       mainAxis: mainAxis,
-      reverse: resolvedReverse,
+      reverse: _resolvedReverse,
       children: children,
     );
   }
@@ -3458,6 +3574,10 @@ class TomCustomPaint extends TomContainerBase {
   final bool? willChange;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final bool _resolvedIsComplex;
+  late final bool _resolvedWillChange;
+
   TomCustomPaint({
     super.key,
     super.tomId,
@@ -3469,22 +3589,21 @@ class TomCustomPaint extends TomContainerBase {
     this.isComplex,
     this.willChange,
     this.child,
-  });
+  }) {
+    _resolvedIsComplex = isComplex ?? resolveBoolOrNull('isComplex') ?? false;
+    _resolvedWillChange = willChange ?? resolveBoolOrNull('willChange') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSize = size ?? Size.zero;
-    final resolvedIsComplex =
-        isComplex ?? resolveBoolOrNull('isComplex') ?? false;
-    final resolvedWillChange =
-        willChange ?? resolveBoolOrNull('willChange') ?? false;
 
     return CustomPaint(
       painter: painter,
       foregroundPainter: foregroundPainter,
       size: resolvedSize,
-      isComplex: resolvedIsComplex,
-      willChange: resolvedWillChange,
+      isComplex: _resolvedIsComplex,
+      willChange: _resolvedWillChange,
       child: child,
     );
   }
@@ -3502,6 +3621,12 @@ class TomPhysicalModel extends TomContainerBase {
   final Color? shadowColor;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedElevation;
+  late final Color _resolvedColor;
+  late final Color _resolvedShadowColor;
+  late final BorderRadius? _resolvedBorderRadius;
+
   TomPhysicalModel({
     super.key,
     super.tomId,
@@ -3514,27 +3639,22 @@ class TomPhysicalModel extends TomContainerBase {
     this.color,
     this.shadowColor,
     this.child,
-  });
+  }) {
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
+    _resolvedColor = color ?? resolveColorOrFail('color');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
+    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    final resolvedColor = color ?? resolveColorOrFail('color');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedBorderRadius =
-        borderRadius ?? _resolveBorderRadius('borderRadius');
-
     return PhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
-      borderRadius: resolvedBorderRadius,
-      elevation: resolvedElevation,
-      color: resolvedColor,
-      shadowColor: resolvedShadowColor,
+      borderRadius: _resolvedBorderRadius,
+      elevation: _resolvedElevation,
+      color: _resolvedColor,
+      shadowColor: _resolvedShadowColor,
       child: child,
     );
   }
@@ -3556,6 +3676,11 @@ class TomPhysicalShape extends TomContainerBase {
   final Color? shadowColor;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final double _resolvedElevation;
+  late final Color _resolvedColor;
+  late final Color _resolvedShadowColor;
+
   TomPhysicalShape({
     super.key,
     super.tomId,
@@ -3567,22 +3692,20 @@ class TomPhysicalShape extends TomContainerBase {
     this.color,
     this.shadowColor,
     this.child,
-  });
+  }) {
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
+    _resolvedColor = color ?? resolveColorOrFail('color');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    final resolvedColor = color ?? resolveColorOrFail('color');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
-
     return PhysicalShape(
       clipper: clipper,
       clipBehavior: clipBehavior,
-      elevation: resolvedElevation,
-      color: resolvedColor,
-      shadowColor: resolvedShadowColor,
+      elevation: _resolvedElevation,
+      color: _resolvedColor,
+      shadowColor: _resolvedShadowColor,
       child: child,
     );
   }
@@ -3596,6 +3719,9 @@ class TomFractionalTranslation extends TomContainerBase {
   final bool? transformHitTests;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final bool _resolvedTransformHitTests;
+
   TomFractionalTranslation({
     super.key,
     super.tomId,
@@ -3604,16 +3730,15 @@ class TomFractionalTranslation extends TomContainerBase {
     required this.translation,
     this.transformHitTests,
     this.child,
-  });
+  }) {
+    _resolvedTransformHitTests = transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTransformHitTests =
-        transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
-
     return FractionalTranslation(
       translation: translation,
-      transformHitTests: resolvedTransformHitTests,
+      transformHitTests: _resolvedTransformHitTests,
       child: child,
     );
   }
@@ -3657,6 +3782,9 @@ class TomGridTileBar extends TomContainerBase {
   final Widget? subtitle;
   final Widget? trailing;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+
   TomGridTileBar({
     super.key,
     super.tomId,
@@ -3667,15 +3795,14 @@ class TomGridTileBar extends TomContainerBase {
     this.title,
     this.subtitle,
     this.trailing,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-
     return GridTileBar(
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       leading: leading,
       title: title,
       subtitle: subtitle,
@@ -3698,6 +3825,9 @@ class TomCupertinoExpansionTile extends TomContainerBase {
   final ExpansibleController? controller;
   final ExpansionTileTransitionMode transitionMode;
 
+  // Pre-resolved resource values
+  late final String _resolvedTitle;
+
   TomCupertinoExpansionTile({
     super.key,
     super.tomId,
@@ -3708,13 +3838,14 @@ class TomCupertinoExpansionTile extends TomContainerBase {
     required this.child,
     this.controller,
     this.transitionMode = ExpansionTileTransitionMode.fade,
-  });
+  }) {
+    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
     return CupertinoExpansionTile(
-      title: title ?? Text(resolvedTitle),
+      title: title ?? Text(_resolvedTitle),
       controller: controller,
       transitionMode: transitionMode,
       child: child,

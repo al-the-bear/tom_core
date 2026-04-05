@@ -36,6 +36,20 @@ class TomListView extends TomListBase {
   /// children because constructing the [List] requires doing work for every
   /// child that could possibly be displayed in the list view instead of just
   /// those children that are actually visible.
+  // Pre-resolved resource values
+  late final bool _resolvedReverse;
+  late final bool? _resolvedPrimary;
+  late final bool _resolvedShrinkWrap;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final double? _resolvedItemExtent;
+  late final double? _resolvedCacheExtent;
+  late final int? _resolvedSemanticChildCount;
+  late final String? _resolvedRestorationId;
+  late final bool _resolvedAddAutomaticKeepAlives;
+  late final bool _resolvedAddRepaintBoundaries;
+  late final bool _resolvedAddSemanticIndexes;
+  late final ScrollPhysics? _resolvedPhysics;
+
   TomListView({
     super.key,
     super.tomId,
@@ -61,7 +75,20 @@ class TomListView extends TomListBase {
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
   })  : _children = children,
-        _childrenDelegate = null;
+        _childrenDelegate = null {
+    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedAddAutomaticKeepAlives = resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
+    _resolvedAddRepaintBoundaries = resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
+    _resolvedAddSemanticIndexes = resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+  }
 
   /// Creates a scrollable, linear array of widgets that are created on demand.
   ///
@@ -179,73 +206,47 @@ class TomListView extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedReverse =
-        resolveBoolOrNull('reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    final resolvedShrinkWrap =
-        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull('itemExtent');
-    final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    final resolvedSemanticChildCount =
-        semanticChildCount ?? resolveIntOrNull('semanticChildCount');
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-    final resolvedAddAutomaticKeepAlives =
-        resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
-    final resolvedAddRepaintBoundaries =
-        resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
-    final resolvedAddSemanticIndexes =
-        resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
-
-    // Phase 3: Resolve ScrollPhysics from resources
-    final resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
-
     // If children list provided, use default ListView constructor
     if (_children != null) {
       return ListView(
         scrollDirection: scrollDirection,
-        reverse: resolvedReverse,
+        reverse: _resolvedReverse,
         controller: controller,
-        primary: resolvedPrimary,
-        physics: resolvedPhysics,
-        shrinkWrap: resolvedShrinkWrap,
-        padding: resolvedPadding,
-        itemExtent: resolvedItemExtent,
+        primary: _resolvedPrimary,
+        physics: _resolvedPhysics,
+        shrinkWrap: _resolvedShrinkWrap,
+        padding: _resolvedPadding,
+        itemExtent: _resolvedItemExtent,
         prototypeItem: prototypeItem,
-        cacheExtent: resolvedCacheExtent,
-        semanticChildCount: resolvedSemanticChildCount,
+        cacheExtent: _resolvedCacheExtent,
+        semanticChildCount: _resolvedSemanticChildCount,
         dragStartBehavior: dragStartBehavior,
         keyboardDismissBehavior: keyboardDismissBehavior,
-        restorationId: resolvedRestorationId,
+        restorationId: _resolvedRestorationId,
         clipBehavior: clipBehavior,
-        addAutomaticKeepAlives: resolvedAddAutomaticKeepAlives,
-        addRepaintBoundaries: resolvedAddRepaintBoundaries,
-        addSemanticIndexes: resolvedAddSemanticIndexes,
+        addAutomaticKeepAlives: _resolvedAddAutomaticKeepAlives,
+        addRepaintBoundaries: _resolvedAddRepaintBoundaries,
+        addSemanticIndexes: _resolvedAddSemanticIndexes,
         children: _children,
       );
     }
     // Otherwise use custom with delegate
     return ListView.custom(
       scrollDirection: scrollDirection,
-      reverse: resolvedReverse,
+      reverse: _resolvedReverse,
       controller: controller,
-      primary: resolvedPrimary,
-      physics: resolvedPhysics,
-      shrinkWrap: resolvedShrinkWrap,
-      padding: resolvedPadding,
-      itemExtent: resolvedItemExtent,
+      primary: _resolvedPrimary,
+      physics: _resolvedPhysics,
+      shrinkWrap: _resolvedShrinkWrap,
+      padding: _resolvedPadding,
+      itemExtent: _resolvedItemExtent,
       prototypeItem: prototypeItem,
       childrenDelegate: _childrenDelegate!,
-      cacheExtent: resolvedCacheExtent,
-      semanticChildCount: resolvedSemanticChildCount,
+      cacheExtent: _resolvedCacheExtent,
+      semanticChildCount: _resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       clipBehavior: clipBehavior,
     );
   }
@@ -271,6 +272,14 @@ class TomAnimatedList extends TomListBase {
   final EdgeInsetsGeometry? padding;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final int _resolvedInitialItemCount;
+  late final bool _resolvedReverse;
+  late final bool? _resolvedPrimary;
+  late final bool _resolvedShrinkWrap;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final ScrollPhysics? _resolvedPhysics;
+
   TomAnimatedList({
     super.key,
     super.tomId,
@@ -286,34 +295,27 @@ class TomAnimatedList extends TomListBase {
     this.shrinkWrap = false,
     this.padding,
     this.clipBehavior = Clip.hardEdge,
-  });
+  }) {
+    _resolvedInitialItemCount = resolveIntOrNull('initialItemCount') ?? initialItemCount;
+    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedInitialItemCount =
-        resolveIntOrNull('initialItemCount') ?? initialItemCount;
-    final resolvedReverse =
-        resolveBoolOrNull('reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    final resolvedShrinkWrap =
-        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
-    // Phase 3: Resolve ScrollPhysics from resources
-    final resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
-
     return AnimatedList(
       itemBuilder: itemBuilder,
-      initialItemCount: resolvedInitialItemCount,
+      initialItemCount: _resolvedInitialItemCount,
       scrollDirection: scrollDirection,
-      reverse: resolvedReverse,
+      reverse: _resolvedReverse,
       controller: controller,
-      primary: resolvedPrimary,
-      physics: resolvedPhysics,
-      shrinkWrap: resolvedShrinkWrap,
-      padding: resolvedPadding,
+      primary: _resolvedPrimary,
+      physics: _resolvedPhysics,
+      shrinkWrap: _resolvedShrinkWrap,
+      padding: _resolvedPadding,
       clipBehavior: clipBehavior,
     );
   }
@@ -343,6 +345,9 @@ class TomDismissible extends TomListBase {
   final DragStartBehavior dragStartBehavior;
   final HitTestBehavior behavior;
 
+  // Pre-resolved resource values
+  late final double _resolvedCrossAxisEndOffset;
+
   TomDismissible({
     super.key,
     super.tomId,
@@ -362,14 +367,12 @@ class TomDismissible extends TomListBase {
     this.crossAxisEndOffset,
     this.dragStartBehavior = DragStartBehavior.start,
     this.behavior = HitTestBehavior.opaque,
-  });
+  }) {
+    _resolvedCrossAxisEndOffset = crossAxisEndOffset ?? resolveDoubleOrNull('crossAxisEndOffset') ?? 0.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCrossAxisEndOffset =
-        crossAxisEndOffset ?? resolveDoubleOrNull('crossAxisEndOffset') ?? 0.0;
-
     return Dismissible(
       key: key ?? ValueKey(tomId),
       background: background,
@@ -382,7 +385,7 @@ class TomDismissible extends TomListBase {
       resizeDuration: resizeDuration,
       dismissThresholds: dismissThresholds,
       movementDuration: movementDuration,
-      crossAxisEndOffset: resolvedCrossAxisEndOffset,
+      crossAxisEndOffset: _resolvedCrossAxisEndOffset,
       dragStartBehavior: dragStartBehavior,
       behavior: behavior,
       child: child,
@@ -411,6 +414,18 @@ class TomListWheelScrollView extends TomListBase {
   final ScrollBehavior? scrollBehavior;
   final ListWheelChildDelegate childDelegate;
 
+  // Pre-resolved resource values
+  late final double _resolvedDiameterRatio;
+  late final double _resolvedPerspective;
+  late final double _resolvedOffAxisFraction;
+  late final double _resolvedMagnification;
+  late final double _resolvedOverAndUnderCenterOpacity;
+  late final double _resolvedItemExtent;
+  late final double _resolvedSqueeze;
+  late final bool _resolvedUseMagnifier;
+  late final bool _resolvedRenderChildrenOutsideViewport;
+  late final String? _resolvedRestorationId;
+
   TomListWheelScrollView({
     super.key,
     super.tomId,
@@ -432,47 +447,36 @@ class TomListWheelScrollView extends TomListBase {
     this.restorationId,
     this.scrollBehavior,
     required this.childDelegate,
-  });
+  }) {
+    _resolvedDiameterRatio = diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
+    _resolvedPerspective = perspective ?? resolveDoubleOrNull('perspective') ?? RenderListWheelViewport.defaultPerspective;
+    _resolvedOffAxisFraction = offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0;
+    _resolvedMagnification = magnification ?? resolveDoubleOrNull('magnification') ?? 1.0;
+    _resolvedOverAndUnderCenterOpacity = overAndUnderCenterOpacity ?? resolveDoubleOrNull('overAndUnderCenterOpacity') ?? 1.0;
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrFail('itemExtent');
+    _resolvedSqueeze = squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.0;
+    _resolvedUseMagnifier = resolveBoolOrNull('useMagnifier') ?? useMagnifier;
+    _resolvedRenderChildrenOutsideViewport = resolveBoolOrNull('renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedDiameterRatio =
-        diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
-    final resolvedPerspective =
-        perspective ?? resolveDoubleOrNull('perspective') ?? RenderListWheelViewport.defaultPerspective;
-    final resolvedOffAxisFraction =
-        offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0;
-    final resolvedMagnification =
-        magnification ?? resolveDoubleOrNull('magnification') ?? 1.0;
-    final resolvedOverAndUnderCenterOpacity =
-        overAndUnderCenterOpacity ?? resolveDoubleOrNull('overAndUnderCenterOpacity') ?? 1.0;
-    final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrFail('itemExtent');
-    final resolvedSqueeze =
-        squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.0;
-    final resolvedUseMagnifier =
-        resolveBoolOrNull('useMagnifier') ?? useMagnifier;
-    final resolvedRenderChildrenOutsideViewport =
-        resolveBoolOrNull('renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-
     return ListWheelScrollView.useDelegate(
       controller: controller,
       physics: physics,
-      diameterRatio: resolvedDiameterRatio,
-      perspective: resolvedPerspective,
-      offAxisFraction: resolvedOffAxisFraction,
-      useMagnifier: resolvedUseMagnifier,
-      magnification: resolvedMagnification,
-      overAndUnderCenterOpacity: resolvedOverAndUnderCenterOpacity,
-      itemExtent: resolvedItemExtent,
-      squeeze: resolvedSqueeze,
+      diameterRatio: _resolvedDiameterRatio,
+      perspective: _resolvedPerspective,
+      offAxisFraction: _resolvedOffAxisFraction,
+      useMagnifier: _resolvedUseMagnifier,
+      magnification: _resolvedMagnification,
+      overAndUnderCenterOpacity: _resolvedOverAndUnderCenterOpacity,
+      itemExtent: _resolvedItemExtent,
+      squeeze: _resolvedSqueeze,
       onSelectedItemChanged: onSelectedItemChanged,
-      renderChildrenOutsideViewport: resolvedRenderChildrenOutsideViewport,
+      renderChildrenOutsideViewport: _resolvedRenderChildrenOutsideViewport,
       clipBehavior: clipBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       scrollBehavior: scrollBehavior,
       childDelegate: childDelegate,
     );
@@ -496,6 +500,13 @@ class TomCupertinoListTile extends TomListBase {
   final double? leadingSize;
   final double? leadingToTitle;
 
+  // Pre-resolved resource values
+  late final String _resolvedTitle;
+  late final Color? _resolvedBackgroundColor;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final double _resolvedLeadingSize;
+  late final double _resolvedLeadingToTitle;
+
   TomCupertinoListTile({
     super.key,
     super.tomId,
@@ -512,36 +523,27 @@ class TomCupertinoListTile extends TomListBase {
     this.padding,
     this.leadingSize,
     this.leadingToTitle,
-  });
+  }) {
+    _resolvedTitle = titleText ?? resolveResourceOrNull('titleText') ?? resolveResourceOrFail('label');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedLeadingSize = leadingSize ?? resolveDoubleOrNull('leadingSize') ?? 28.0;
+    _resolvedLeadingToTitle = leadingToTitle ?? resolveDoubleOrNull('leadingToTitle') ?? 12.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-      titleText ??
-        resolveResourceOrNull('titleText') ??
-        resolveResourceOrFail('label');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedLeadingSize =
-        leadingSize ?? resolveDoubleOrNull('leadingSize') ?? 28.0;
-    final resolvedLeadingToTitle =
-        leadingToTitle ?? resolveDoubleOrNull('leadingToTitle') ?? 12.0;
-
     return CupertinoListTile(
-      title: title ?? Text(resolvedTitle),
+      title: title ?? Text(_resolvedTitle),
       subtitle: subtitle,
       additionalInfo: additionalInfo,
       leading: leading,
       trailing: trailing,
       onTap: onTap,
-      backgroundColor: resolvedBackgroundColor,
-      padding: resolvedPadding,
-      leadingSize: resolvedLeadingSize,
-      leadingToTitle: resolvedLeadingToTitle,
+      backgroundColor: _resolvedBackgroundColor,
+      padding: _resolvedPadding,
+      leadingSize: _resolvedLeadingSize,
+      leadingToTitle: _resolvedLeadingToTitle,
     );
   }
 }
@@ -568,6 +570,13 @@ class TomCupertinoListSection extends TomListBase {
   final Widget? decoration;
   final Widget? separatorColor;
 
+  // Pre-resolved resource values
+  late final Color _resolvedBackgroundColor;
+  late final double? _resolvedTopMargin;
+  late final bool _resolvedHasLeading;
+  late final double _resolvedAdditionalDividerMargin;
+  late final EdgeInsetsGeometry _resolvedMargin;
+
   TomCupertinoListSection({
     super.key,
     super.tomId,
@@ -586,32 +595,25 @@ class TomCupertinoListSection extends TomListBase {
     this.additionalDividerMargin = 0.0,
     this.decoration,
     this.separatorColor,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemBackground;
+    _resolvedTopMargin = topMargin ?? resolveDoubleOrNull('topMargin');
+    _resolvedHasLeading = hasLeading ?? resolveBoolOrNull('hasLeading') ?? true;
+    _resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0 ? additionalDividerMargin : resolveDoubleOrNull('additionalDividerMargin') ?? 0.0;
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? const EdgeInsets.only(bottom: 8.0);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemBackground;
-    final resolvedTopMargin =
-        topMargin ?? resolveDoubleOrNull('topMargin');
-    final resolvedHasLeading =
-      hasLeading ?? resolveBoolOrNull('hasLeading') ?? true;
-    final resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0
-        ? additionalDividerMargin
-        : resolveDoubleOrNull('additionalDividerMargin') ?? 0.0;
-    final resolvedMargin =
-        margin ?? resolveEdgeInsetsOrNull('margin') ?? const EdgeInsets.only(bottom: 8.0);
-
     return CupertinoListSection(
       header: header,
       footer: footer,
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       clipBehavior: clipBehavior,
-      topMargin: resolvedTopMargin,
-      hasLeading: resolvedHasLeading,
-      additionalDividerMargin: resolvedAdditionalDividerMargin,
-      margin: resolvedMargin,
+      topMargin: _resolvedTopMargin,
+      hasLeading: _resolvedHasLeading,
+      additionalDividerMargin: _resolvedAdditionalDividerMargin,
+      margin: _resolvedMargin,
       children: children,
     );
   }
@@ -643,6 +645,13 @@ class TomReorderableList extends TomListBase {
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
   final String? restorationId;
 
+  // Pre-resolved resource values
+  late final double? _resolvedItemExtent;
+  late final bool _resolvedShrinkWrap;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final double _resolvedAnchor;
+  late final double? _resolvedCacheExtent;
+
   TomReorderableList({
     super.key,
     super.tomId,
@@ -669,22 +678,16 @@ class TomReorderableList extends TomListBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
-  });
+  }) {
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedShrinkWrap = shrinkWrap ?? resolveBoolOrNull('shrinkWrap') ?? false;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedAnchor = anchor != 0.0 ? anchor : resolveDoubleOrNull('anchor') ?? 0.0;
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedItemExtent =
-      itemExtent ?? resolveDoubleOrNull('itemExtent');
-    final resolvedShrinkWrap =
-      shrinkWrap ?? resolveBoolOrNull('shrinkWrap') ?? false;
-    final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedAnchor =
-      anchor != 0.0 ? anchor : resolveDoubleOrNull('anchor') ?? 0.0;
-    final resolvedCacheExtent =
-      cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-
     return ReorderableList(
       itemBuilder: (context, index) {
         return (childrenDelegate as SliverChildBuilderDelegate).builder(context, index)!;
@@ -693,7 +696,7 @@ class TomReorderableList extends TomListBase {
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: resolvedItemExtent,
+      itemExtent: _resolvedItemExtent,
       itemExtentBuilder: itemExtentBuilder,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,
@@ -702,11 +705,11 @@ class TomReorderableList extends TomListBase {
       controller: controller,
       primary: primary,
       physics: physics,
-      shrinkWrap: resolvedShrinkWrap,
-      padding: resolvedPadding,
+      shrinkWrap: _resolvedShrinkWrap,
+      padding: _resolvedPadding,
       clipBehavior: clipBehavior,
-      anchor: resolvedAnchor,
-      cacheExtent: resolvedCacheExtent,
+      anchor: _resolvedAnchor,
+      cacheExtent: _resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
       restorationId: restorationId,
@@ -728,6 +731,9 @@ class TomSliverReorderableList extends TomListBase {
   final Widget? prototypeItem;
   final ReorderItemProxyDecorator? proxyDecorator;
 
+  // Pre-resolved resource values
+  late final double? _resolvedItemExtent;
+
   TomSliverReorderableList({
     super.key,
     super.tomId,
@@ -742,21 +748,19 @@ class TomSliverReorderableList extends TomListBase {
     this.itemExtentBuilder,
     this.prototypeItem,
     this.proxyDecorator,
-  });
+  }) {
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull('itemExtent');
-
     return SliverReorderableList(
       itemBuilder: itemBuilder,
       itemCount: itemCount,
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: resolvedItemExtent,
+      itemExtent: _resolvedItemExtent,
       itemExtentBuilder: itemExtentBuilder,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,

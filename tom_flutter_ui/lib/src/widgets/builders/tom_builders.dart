@@ -198,6 +198,9 @@ class TomListenableBuilder extends TomBuilderBase {
 /// Animates a tween and rebuilds the widget tree on each animation frame.
 /// Authorization applies to animated content.
 class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
+  // Pre-resolved resource values
+  late final Curve _resolvedCurve;
+
   TomTweenAnimationBuilder({
     super.key,
     super.tomId,
@@ -209,7 +212,9 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     required this.builder,
     this.onEnd,
     this.child,
-  });
+  }) {
+    _resolvedCurve = curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
+  }
 
   /// The tween to animate.
   final Tween<T> tween;
@@ -231,14 +236,10 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCurve =
-        curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
-
     return TweenAnimationBuilder<T>(
       tween: tween,
       duration: duration,
-      curve: resolvedCurve,
+      curve: _resolvedCurve,
       builder: builder,
       onEnd: onEnd,
       child: child,

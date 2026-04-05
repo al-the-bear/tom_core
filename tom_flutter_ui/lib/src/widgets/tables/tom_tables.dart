@@ -36,6 +36,23 @@ class TomDataTable extends TomTableBase {
   final Clip clipBehavior;
   final List<DataRow> rows;
 
+  // Pre-resolved resource values
+  late final int? _resolvedSortColumnIndex;
+  late final bool _resolvedSortAscending;
+  late final double? _resolvedDataRowMinHeight;
+  late final double? _resolvedDataRowMaxHeight;
+  late final double? _resolvedHeadingRowHeight;
+  late final double? _resolvedHorizontalMargin;
+  late final double? _resolvedColumnSpacing;
+  late final double? _resolvedDividerThickness;
+  late final double? _resolvedCheckboxHorizontalMargin;
+  late final bool _resolvedShowCheckboxColumn;
+  late final bool _resolvedShowBottomBorder;
+  late final TextStyle? _resolvedDataTextStyle;
+  late final TextStyle? _resolvedHeadingTextStyle;
+  late final Decoration? _resolvedDecoration;
+  late final TableBorder? _resolvedBorder;
+
   TomDataTable({
     super.key,
     super.tomId,
@@ -62,60 +79,46 @@ class TomDataTable extends TomTableBase {
     this.border,
     this.clipBehavior = Clip.none,
     required this.rows,
-  });
+  }) {
+    _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
+    _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
+    _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight');
+    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight');
+    _resolvedHeadingRowHeight = headingRowHeight ?? resolveDoubleOrNull('headingRowHeight');
+    _resolvedHorizontalMargin = horizontalMargin ?? resolveDoubleOrNull('horizontalMargin');
+    _resolvedColumnSpacing = columnSpacing ?? resolveDoubleOrNull('columnSpacing');
+    _resolvedDividerThickness = dividerThickness ?? resolveDoubleOrNull('dividerThickness');
+    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
+    _resolvedShowCheckboxColumn = resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
+    _resolvedShowBottomBorder = resolveBoolOrNull('showBottomBorder') ?? showBottomBorder;
+    _resolvedDataTextStyle = dataTextStyle ?? _resolveTextStyle('dataTextStyle');
+    _resolvedHeadingTextStyle = headingTextStyle ?? _resolveTextStyle('headingTextStyle');
+    _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
+    _resolvedBorder = border ?? _resolveTableBorder('border');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSortColumnIndex =
-      sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
-    final resolvedSortAscending =
-      resolveBoolOrNull('sortAscending') ?? sortAscending;
-    final resolvedDataRowMinHeight =
-        dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight');
-    final resolvedDataRowMaxHeight =
-        dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight');
-    final resolvedHeadingRowHeight =
-        headingRowHeight ?? resolveDoubleOrNull('headingRowHeight');
-    final resolvedHorizontalMargin =
-        horizontalMargin ?? resolveDoubleOrNull('horizontalMargin');
-    final resolvedColumnSpacing =
-        columnSpacing ?? resolveDoubleOrNull('columnSpacing');
-    final resolvedDividerThickness =
-        dividerThickness ?? resolveDoubleOrNull('dividerThickness');
-    final resolvedCheckboxHorizontalMargin =
-        checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
-    final resolvedShowCheckboxColumn =
-      resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
-    final resolvedShowBottomBorder =
-      resolveBoolOrNull('showBottomBorder') ?? showBottomBorder;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedDataTextStyle =
-        dataTextStyle ?? _resolveTextStyle('dataTextStyle');
-    final resolvedHeadingTextStyle =
-        headingTextStyle ?? _resolveTextStyle('headingTextStyle');
-
     return DataTable(
       columns: columns,
-      sortColumnIndex: resolvedSortColumnIndex,
-      sortAscending: resolvedSortAscending,
+      sortColumnIndex: _resolvedSortColumnIndex,
+      sortAscending: _resolvedSortAscending,
       onSelectAll: onSelectAll,
-      decoration: decoration ?? _resolveDecoration('decoration'),
+      decoration: _resolvedDecoration,
       dataRowColor: dataRowColor,
-      dataRowMinHeight: resolvedDataRowMinHeight,
-      dataRowMaxHeight: resolvedDataRowMaxHeight,
-      dataTextStyle: resolvedDataTextStyle,
+      dataRowMinHeight: _resolvedDataRowMinHeight,
+      dataRowMaxHeight: _resolvedDataRowMaxHeight,
+      dataTextStyle: _resolvedDataTextStyle,
       headingRowColor: headingRowColor,
-      headingRowHeight: resolvedHeadingRowHeight,
-      headingTextStyle: resolvedHeadingTextStyle,
-      horizontalMargin: resolvedHorizontalMargin,
-      columnSpacing: resolvedColumnSpacing,
-      showCheckboxColumn: resolvedShowCheckboxColumn,
-      showBottomBorder: resolvedShowBottomBorder,
-      dividerThickness: resolvedDividerThickness,
-      checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
-      border: border ?? _resolveTableBorder('border'),
+      headingRowHeight: _resolvedHeadingRowHeight,
+      headingTextStyle: _resolvedHeadingTextStyle,
+      horizontalMargin: _resolvedHorizontalMargin,
+      columnSpacing: _resolvedColumnSpacing,
+      showCheckboxColumn: _resolvedShowCheckboxColumn,
+      showBottomBorder: _resolvedShowBottomBorder,
+      dividerThickness: _resolvedDividerThickness,
+      checkboxHorizontalMargin: _resolvedCheckboxHorizontalMargin,
+      border: _resolvedBorder,
       clipBehavior: clipBehavior,
       rows: rows,
     );
@@ -166,6 +169,21 @@ class TomPaginatedDataTable extends TomTableBase {
   final bool showEmptyRows;
   final DataTableSource source;
 
+  // Pre-resolved resource values
+  late final int? _resolvedSortColumnIndex;
+  late final bool _resolvedSortAscending;
+  late final double? _resolvedDataRowMinHeight;
+  late final double? _resolvedDataRowMaxHeight;
+  late final double _resolvedHeadingRowHeight;
+  late final double _resolvedHorizontalMargin;
+  late final double _resolvedColumnSpacing;
+  late final double? _resolvedCheckboxHorizontalMargin;
+  late final bool _resolvedShowCheckboxColumn;
+  late final bool _resolvedShowFirstLastButtons;
+  late final int? _resolvedInitialFirstRowIndex;
+  late final int _resolvedRowsPerPage;
+  late final bool _resolvedShowEmptyRows;
+
   TomPaginatedDataTable({
     super.key,
     super.tomId,
@@ -200,60 +218,46 @@ class TomPaginatedDataTable extends TomTableBase {
     this.headingRowColor,
     this.showEmptyRows = false,
     required this.source,
-  });
+  }) {
+    _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
+    _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
+    _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight') ?? kMinInteractiveDimension;
+    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight') ?? kMinInteractiveDimension;
+    _resolvedHeadingRowHeight = headingRowHeight ?? resolveDoubleOrNull('headingRowHeight') ?? 56.0;
+    _resolvedHorizontalMargin = horizontalMargin ?? resolveDoubleOrNull('horizontalMargin') ?? 24.0;
+    _resolvedColumnSpacing = columnSpacing ?? resolveDoubleOrNull('columnSpacing') ?? 56.0;
+    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
+    _resolvedShowCheckboxColumn = resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
+    _resolvedShowFirstLastButtons = resolveBoolOrNull('showFirstLastButtons') ?? showFirstLastButtons;
+    _resolvedInitialFirstRowIndex = initialFirstRowIndex ?? resolveIntOrNull('initialFirstRowIndex');
+    _resolvedRowsPerPage = resolveIntOrNull('rowsPerPage') ?? rowsPerPage;
+    _resolvedShowEmptyRows = resolveBoolOrNull('showEmptyRows') ?? showEmptyRows;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSortColumnIndex =
-      sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
-    final resolvedSortAscending =
-      resolveBoolOrNull('sortAscending') ?? sortAscending;
-    final resolvedDataRowMinHeight =
-        dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight') ?? kMinInteractiveDimension;
-    final resolvedDataRowMaxHeight =
-        dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight') ?? kMinInteractiveDimension;
-    final resolvedHeadingRowHeight =
-        headingRowHeight ?? resolveDoubleOrNull('headingRowHeight') ?? 56.0;
-    final resolvedHorizontalMargin =
-        horizontalMargin ?? resolveDoubleOrNull('horizontalMargin') ?? 24.0;
-    final resolvedColumnSpacing =
-        columnSpacing ?? resolveDoubleOrNull('columnSpacing') ?? 56.0;
-    final resolvedCheckboxHorizontalMargin =
-        checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
-    final resolvedShowCheckboxColumn =
-        resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
-    final resolvedShowFirstLastButtons =
-        resolveBoolOrNull('showFirstLastButtons') ?? showFirstLastButtons;
-    final resolvedInitialFirstRowIndex =
-        initialFirstRowIndex ?? resolveIntOrNull('initialFirstRowIndex');
-    final resolvedRowsPerPage =
-        resolveIntOrNull('rowsPerPage') ?? rowsPerPage;
-    final resolvedShowEmptyRows =
-        resolveBoolOrNull('showEmptyRows') ?? showEmptyRows;
-
     return PaginatedDataTable(
       header: header,
       actions: actions,
       columns: columns,
-      sortColumnIndex: resolvedSortColumnIndex,
-      sortAscending: resolvedSortAscending,
+      sortColumnIndex: _resolvedSortColumnIndex,
+      sortAscending: _resolvedSortAscending,
       onSelectAll: onSelectAll,
-      dataRowMinHeight: resolvedDataRowMinHeight,
-      dataRowMaxHeight: resolvedDataRowMaxHeight,
-      headingRowHeight: resolvedHeadingRowHeight,
-      horizontalMargin: resolvedHorizontalMargin,
-      columnSpacing: resolvedColumnSpacing,
-      showCheckboxColumn: resolvedShowCheckboxColumn,
-      showFirstLastButtons: resolvedShowFirstLastButtons,
-      initialFirstRowIndex: resolvedInitialFirstRowIndex,
+      dataRowMinHeight: _resolvedDataRowMinHeight,
+      dataRowMaxHeight: _resolvedDataRowMaxHeight,
+      headingRowHeight: _resolvedHeadingRowHeight,
+      horizontalMargin: _resolvedHorizontalMargin,
+      columnSpacing: _resolvedColumnSpacing,
+      showCheckboxColumn: _resolvedShowCheckboxColumn,
+      showFirstLastButtons: _resolvedShowFirstLastButtons,
+      initialFirstRowIndex: _resolvedInitialFirstRowIndex,
       onPageChanged: onPageChanged,
-      rowsPerPage: resolvedRowsPerPage,
+      rowsPerPage: _resolvedRowsPerPage,
       availableRowsPerPage: availableRowsPerPage,
       onRowsPerPageChanged: onRowsPerPageChanged,
       dragStartBehavior: dragStartBehavior,
-      checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
-      showEmptyRows: resolvedShowEmptyRows,
+      checkboxHorizontalMargin: _resolvedCheckboxHorizontalMargin,
+      showEmptyRows: _resolvedShowEmptyRows,
       source: source,
     );
   }
@@ -271,6 +275,9 @@ class TomTable extends TomTableBase {
   final TableCellVerticalAlignment defaultVerticalAlignment;
   final TextBaseline? textBaseline;
 
+  // Pre-resolved resource values
+  late final TableBorder? _resolvedBorder;
+
   TomTable({
     super.key,
     super.tomId,
@@ -283,7 +290,9 @@ class TomTable extends TomTableBase {
     this.border,
     this.defaultVerticalAlignment = TableCellVerticalAlignment.top,
     this.textBaseline,
-  });
+  }) {
+    _resolvedBorder = border ?? _resolveTableBorder('border');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -292,7 +301,7 @@ class TomTable extends TomTableBase {
       columnWidths: columnWidths,
       defaultColumnWidth: defaultColumnWidth,
       textDirection: textDirection,
-      border: border ?? _resolveTableBorder('border'),
+      border: _resolvedBorder,
       defaultVerticalAlignment: defaultVerticalAlignment,
       textBaseline: textBaseline,
     );
@@ -324,6 +333,15 @@ class TomGridView extends TomTableBase {
   final String? restorationId;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final bool _resolvedReverse;
+  late final bool? _resolvedPrimary;
+  late final bool _resolvedShrinkWrap;
+  late final double? _resolvedCacheExtent;
+  late final int? _resolvedSemanticChildCount;
+  late final String? _resolvedRestorationId;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomGridView({
     super.key,
     super.tomId,
@@ -344,39 +362,33 @@ class TomGridView extends TomTableBase {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
-  });
+  }) {
+    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    final resolvedShrinkWrap =
-        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    final resolvedSemanticChildCount =
-        semanticChildCount ?? resolveIntOrNull('semanticChildCount');
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
     return GridView.custom(
       scrollDirection: scrollDirection,
-      reverse: resolvedReverse,
+      reverse: _resolvedReverse,
       controller: controller,
-      primary: resolvedPrimary,
+      primary: _resolvedPrimary,
       physics: physics,
-      shrinkWrap: resolvedShrinkWrap,
-      padding: resolvedPadding,
+      shrinkWrap: _resolvedShrinkWrap,
+      padding: _resolvedPadding,
       gridDelegate: gridDelegate,
       childrenDelegate: childrenDelegate,
-      cacheExtent: resolvedCacheExtent,
-      semanticChildCount: resolvedSemanticChildCount,
+      cacheExtent: _resolvedCacheExtent,
+      semanticChildCount: _resolvedSemanticChildCount,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       clipBehavior: clipBehavior,
     );
   }
@@ -411,6 +423,18 @@ class TomReorderableListView extends TomTableBase {
   final Clip clipBehavior;
   final double? autoScrollerVelocityScalar;
 
+  // Pre-resolved resource values
+  late final double? _resolvedItemExtent;
+  late final double? _resolvedCacheExtent;
+  late final double _resolvedAnchor;
+  late final double? _resolvedAutoScrollerVelocityScalar;
+  late final bool _resolvedBuildDefaultDragHandles;
+  late final bool _resolvedReverse;
+  late final bool? _resolvedPrimary;
+  late final bool _resolvedShrinkWrap;
+  late final String? _resolvedRestorationId;
+  late final EdgeInsets? _resolvedPadding;
+
   TomReorderableListView({
     super.key,
     super.tomId,
@@ -440,54 +464,45 @@ class TomReorderableListView extends TomTableBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.autoScrollerVelocityScalar,
-  });
+  }) {
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedAnchor = anchor ?? resolveDoubleOrNull('anchor') ?? 0.0;
+    _resolvedAutoScrollerVelocityScalar = autoScrollerVelocityScalar ?? resolveDoubleOrNull('autoScrollerVelocityScalar');
+    _resolvedBuildDefaultDragHandles = resolveBoolOrNull('buildDefaultDragHandles') ?? buildDefaultDragHandles;
+    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull('itemExtent');
-    final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    final resolvedAnchor =
-        anchor ?? resolveDoubleOrNull('anchor') ?? 0.0;
-    final resolvedAutoScrollerVelocityScalar =
-        autoScrollerVelocityScalar ?? resolveDoubleOrNull('autoScrollerVelocityScalar');
-    final resolvedBuildDefaultDragHandles =
-      resolveBoolOrNull('buildDefaultDragHandles') ?? buildDefaultDragHandles;
-    final resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    final resolvedShrinkWrap =
-      resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    final resolvedRestorationId =
-      restorationId ?? resolveResourceOrNull('restorationId');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
     return ReorderableListView(
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,
-      itemExtent: resolvedItemExtent,
+      itemExtent: _resolvedItemExtent,
       prototypeItem: prototypeItem,
       proxyDecorator: proxyDecorator,
-      buildDefaultDragHandles: resolvedBuildDefaultDragHandles,
-      padding: resolvedPadding,
+      buildDefaultDragHandles: _resolvedBuildDefaultDragHandles,
+      padding: _resolvedPadding,
       header: header,
       footer: footer,
       scrollDirection: scrollDirection,
-      reverse: resolvedReverse,
+      reverse: _resolvedReverse,
       scrollController: scrollController,
-      primary: resolvedPrimary,
+      primary: _resolvedPrimary,
       physics: physics,
-      shrinkWrap: resolvedShrinkWrap,
-      anchor: resolvedAnchor,
-      cacheExtent: resolvedCacheExtent,
+      shrinkWrap: _resolvedShrinkWrap,
+      anchor: _resolvedAnchor,
+      cacheExtent: _resolvedCacheExtent,
       dragStartBehavior: dragStartBehavior,
       keyboardDismissBehavior: keyboardDismissBehavior,
-      restorationId: resolvedRestorationId,
+      restorationId: _resolvedRestorationId,
       clipBehavior: clipBehavior,
-      autoScrollerVelocityScalar: resolvedAutoScrollerVelocityScalar,
+      autoScrollerVelocityScalar: _resolvedAutoScrollerVelocityScalar,
       children: children,
     );
   }

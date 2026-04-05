@@ -27,6 +27,11 @@ class TomElevatedButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget? _resolvedIcon;
+  late final ButtonStyle? _resolvedStyle;
+
   TomElevatedButton({
     super.key,
     super.tomId,
@@ -43,30 +48,27 @@ class TomElevatedButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedIcon = icon ?? _buildResolvedIcon();
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
-    // Resolve icon: use provided widget, or resolve from resources
-    final resolvedIcon = icon ?? _buildResolvedIcon(context);
-
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-
-    if (resolvedIcon != null) {
+    if (_resolvedIcon != null) {
       return ElevatedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: _resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: resolvedIcon,
+        icon: _resolvedIcon,
         label: buttonChild,
       );
     }
@@ -76,7 +78,7 @@ class TomElevatedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -85,14 +87,14 @@ class TomElevatedButton extends TomButtonBase {
   }
 
   /// Builds an Icon widget from resolved icon data, or null if not available.
-  Widget? _buildResolvedIcon(BuildContext context) {
+  Widget? _buildResolvedIcon() {
     final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -115,6 +117,11 @@ class TomTextButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget? _resolvedIcon;
+  late final ButtonStyle? _resolvedStyle;
+
   TomTextButton({
     super.key,
     super.tomId,
@@ -131,28 +138,27 @@ class TomTextButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedIcon = icon ?? _buildResolvedIcon();
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedIcon = icon ?? _buildResolvedIcon(context);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-
-    if (resolvedIcon != null) {
+    if (_resolvedIcon != null) {
       return TextButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: _resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: resolvedIcon,
+        icon: _resolvedIcon,
         label: buttonChild,
       );
     }
@@ -162,7 +168,7 @@ class TomTextButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -170,14 +176,14 @@ class TomTextButton extends TomButtonBase {
     );
   }
 
-  Widget? _buildResolvedIcon(BuildContext context) {
+  Widget? _buildResolvedIcon() {
     final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -200,6 +206,11 @@ class TomOutlinedButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget? _resolvedIcon;
+  late final ButtonStyle? _resolvedStyle;
+
   TomOutlinedButton({
     super.key,
     super.tomId,
@@ -216,28 +227,27 @@ class TomOutlinedButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedIcon = icon ?? _buildResolvedIcon();
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedIcon = icon ?? _buildResolvedIcon(context);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-
-    if (resolvedIcon != null) {
+    if (_resolvedIcon != null) {
       return OutlinedButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: _resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: resolvedIcon,
+        icon: _resolvedIcon,
         label: buttonChild,
       );
     }
@@ -247,7 +257,7 @@ class TomOutlinedButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -255,14 +265,14 @@ class TomOutlinedButton extends TomButtonBase {
     );
   }
 
-  Widget? _buildResolvedIcon(BuildContext context) {
+  Widget? _buildResolvedIcon() {
     final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -286,6 +296,11 @@ class TomFilledButton extends TomButtonBase {
   final String? label;
   final bool tonal;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Widget? _resolvedIcon;
+  late final ButtonStyle? _resolvedStyle;
+
   TomFilledButton({
     super.key,
     super.tomId,
@@ -303,29 +318,28 @@ class TomFilledButton extends TomButtonBase {
     this.child,
     this.label,
     this.tonal = false,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedIcon = icon ?? _buildResolvedIcon();
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-    final resolvedIcon = icon ?? _buildResolvedIcon(context);
-
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     if (tonal) {
-      if (resolvedIcon != null) {
+      if (_resolvedIcon != null) {
         return FilledButton.tonalIcon(
           onPressed: onPressed,
           onLongPress: onLongPress,
           onHover: onHover,
           onFocusChange: onFocusChange,
-          style: resolvedStyle,
+          style: _resolvedStyle,
           focusNode: focusNode,
           autofocus: autofocus,
           clipBehavior: clipBehavior,
-          icon: resolvedIcon,
+          icon: _resolvedIcon,
           label: buttonChild,
         );
       }
@@ -334,7 +348,7 @@ class TomFilledButton extends TomButtonBase {
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: _resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
@@ -342,17 +356,17 @@ class TomFilledButton extends TomButtonBase {
       );
     }
 
-    if (resolvedIcon != null) {
+    if (_resolvedIcon != null) {
       return FilledButton.icon(
         onPressed: onPressed,
         onLongPress: onLongPress,
         onHover: onHover,
         onFocusChange: onFocusChange,
-        style: resolvedStyle,
+        style: _resolvedStyle,
         focusNode: focusNode,
         autofocus: autofocus,
         clipBehavior: clipBehavior,
-        icon: resolvedIcon,
+        icon: _resolvedIcon,
         label: buttonChild,
       );
     }
@@ -362,7 +376,7 @@ class TomFilledButton extends TomButtonBase {
       onLongPress: onLongPress,
       onHover: onHover,
       onFocusChange: onFocusChange,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       focusNode: focusNode,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
@@ -370,14 +384,14 @@ class TomFilledButton extends TomButtonBase {
     );
   }
 
-  Widget? _buildResolvedIcon(BuildContext context) {
+  Widget? _buildResolvedIcon() {
     final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -413,6 +427,26 @@ class TomFloatingActionButton extends TomButtonBase {
   final Object? heroTag;
   final _FABVariant _variant;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTooltip;
+  late final Color? _resolvedForegroundColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedHoverColor;
+  late final Color? _resolvedSplashColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedFocusElevation;
+  late final double? _resolvedHoverElevation;
+  late final double? _resolvedHighlightElevation;
+  late final double? _resolvedDisabledElevation;
+  late final ShapeBorder? _resolvedShape;
+  late final bool _resolvedAutofocus;
+  late final bool _resolvedMini;
+  late final bool? _resolvedIsExtended;
+  late final String? _resolvedLabel;
+  late final Widget? _resolvedIcon;
+  late final Widget? _resolvedChild;
+
   TomFloatingActionButton({
     super.key,
     super.tomId,
@@ -441,7 +475,26 @@ class TomFloatingActionButton extends TomButtonBase {
     this.label,
     this.heroTag,
   })  : _variant = _FABVariant.regular,
-        extendedIconLabelChild = null;
+        extendedIconLabelChild = null {
+    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedMini = resolveBoolOrNull('mini') ?? mini;
+    _resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
+    _resolvedLabel = label ?? resolveResourceOrNull('label');
+    _resolvedIcon = _resolveIconWidget();
+    _resolvedChild = _resolveChild();
+  }
 
   /// Creates a small floating action button.
   TomFloatingActionButton.small({
@@ -472,7 +525,26 @@ class TomFloatingActionButton extends TomButtonBase {
         mini = false,
         icon = null,
         label = null,
-        extendedIconLabelChild = null;
+        extendedIconLabelChild = null {
+    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedMini = false;
+    _resolvedIsExtended = null;
+    _resolvedLabel = null;
+    _resolvedIcon = null;
+    _resolvedChild = _resolveChild();
+  }
 
   /// Creates a large floating action button.
   TomFloatingActionButton.large({
@@ -503,7 +575,26 @@ class TomFloatingActionButton extends TomButtonBase {
         mini = false,
         icon = null,
         label = null,
-        extendedIconLabelChild = null;
+        extendedIconLabelChild = null {
+    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedMini = false;
+    _resolvedIsExtended = null;
+    _resolvedLabel = null;
+    _resolvedIcon = null;
+    _resolvedChild = _resolveChild();
+  }
 
   /// Creates an extended floating action button with icon and label.
   TomFloatingActionButton.extended({
@@ -534,10 +625,29 @@ class TomFloatingActionButton extends TomButtonBase {
     this.heroTag,
   })  : _variant = _FABVariant.extended,
         child = null,
-        mini = false;
+        mini = false {
+    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedMini = false;
+    _resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
+    _resolvedLabel = label ?? resolveResourceOrNull('label');
+    _resolvedIcon = _resolveIconWidget();
+    _resolvedChild = null;
+  }
 
   /// Resolves the child widget from parameter or resources.
-  Widget? _resolveChild(BuildContext context) {
+  Widget? _resolveChild() {
     if (child != null) return child;
     final iconData = resolveIcon();
     if (iconData != null) return Icon(iconData);
@@ -545,7 +655,7 @@ class TomFloatingActionButton extends TomButtonBase {
   }
 
   /// Resolves the icon widget from parameter or resources.
-  Widget? _resolveIconWidget(BuildContext context) {
+  Widget? _resolveIconWidget() {
     if (icon != null) return icon;
     final iconData = resolveIcon();
     if (iconData != null) return Icon(iconData);
@@ -555,179 +665,148 @@ class TomFloatingActionButton extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     // Tooltip is always optional
-    final resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull('foregroundColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull('focusColor');
-    final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull('hoverColor');
-    final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull('splashColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedFocusElevation =
-        focusElevation ?? resolveDoubleOrNull('focusElevation');
-    final resolvedHoverElevation =
-        hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    final resolvedHighlightElevation =
-        highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    final resolvedDisabledElevation =
-        disabledElevation ?? resolveDoubleOrNull('disabledElevation');
-    final resolvedShape = shape ?? _resolveShapeBorder('shape');
-    final resolvedAutofocus =
-        resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedMini = resolveBoolOrNull('mini') ?? mini;
-    final resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
 
     switch (_variant) {
       case _FABVariant.extended:
         // Extended FAB requires a label
-        final resolvedLabel = label ?? resolveResourceOrFail('label');
         return FloatingActionButton.extended(
           onPressed: onPressed,
-          tooltip: resolvedTooltip,
-          foregroundColor: resolvedForegroundColor,
-          backgroundColor: resolvedBackgroundColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          splashColor: resolvedSplashColor,
+          tooltip: _resolvedTooltip,
+          foregroundColor: _resolvedForegroundColor,
+          backgroundColor: _resolvedBackgroundColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          splashColor: _resolvedSplashColor,
           heroTag: heroTag,
-          elevation: resolvedElevation,
-          focusElevation: resolvedFocusElevation,
-          hoverElevation: resolvedHoverElevation,
-          highlightElevation: resolvedHighlightElevation,
-          disabledElevation: resolvedDisabledElevation,
-          shape: resolvedShape,
+          elevation: _resolvedElevation,
+          focusElevation: _resolvedFocusElevation,
+          hoverElevation: _resolvedHoverElevation,
+          highlightElevation: _resolvedHighlightElevation,
+          disabledElevation: _resolvedDisabledElevation,
+          shape: _resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: resolvedAutofocus,
+          autofocus: _resolvedAutofocus,
           focusNode: focusNode,
-          isExtended: resolvedIsExtended ?? true,
-          icon: _resolveIconWidget(context),
-          label: extendedIconLabelChild ?? Text(resolvedLabel),
+          isExtended: _resolvedIsExtended ?? true,
+          icon: _resolvedIcon,
+          label: extendedIconLabelChild ?? Text(_resolvedLabel!),
         );
 
       case _FABVariant.small:
         return FloatingActionButton.small(
           onPressed: onPressed,
-          tooltip: resolvedTooltip,
-          foregroundColor: resolvedForegroundColor,
-          backgroundColor: resolvedBackgroundColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          splashColor: resolvedSplashColor,
+          tooltip: _resolvedTooltip,
+          foregroundColor: _resolvedForegroundColor,
+          backgroundColor: _resolvedBackgroundColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          splashColor: _resolvedSplashColor,
           heroTag: heroTag,
-          elevation: resolvedElevation,
-          focusElevation: resolvedFocusElevation,
-          hoverElevation: resolvedHoverElevation,
-          highlightElevation: resolvedHighlightElevation,
-          disabledElevation: resolvedDisabledElevation,
-          shape: resolvedShape,
+          elevation: _resolvedElevation,
+          focusElevation: _resolvedFocusElevation,
+          hoverElevation: _resolvedHoverElevation,
+          highlightElevation: _resolvedHighlightElevation,
+          disabledElevation: _resolvedDisabledElevation,
+          shape: _resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: resolvedAutofocus,
+          autofocus: _resolvedAutofocus,
           focusNode: focusNode,
-          child: _resolveChild(context),
+          child: _resolvedChild,
         );
 
       case _FABVariant.large:
         return FloatingActionButton.large(
           onPressed: onPressed,
-          tooltip: resolvedTooltip,
-          foregroundColor: resolvedForegroundColor,
-          backgroundColor: resolvedBackgroundColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          splashColor: resolvedSplashColor,
+          tooltip: _resolvedTooltip,
+          foregroundColor: _resolvedForegroundColor,
+          backgroundColor: _resolvedBackgroundColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          splashColor: _resolvedSplashColor,
           heroTag: heroTag,
-          elevation: resolvedElevation,
-          focusElevation: resolvedFocusElevation,
-          hoverElevation: resolvedHoverElevation,
-          highlightElevation: resolvedHighlightElevation,
-          disabledElevation: resolvedDisabledElevation,
-          shape: resolvedShape,
+          elevation: _resolvedElevation,
+          focusElevation: _resolvedFocusElevation,
+          hoverElevation: _resolvedHoverElevation,
+          highlightElevation: _resolvedHighlightElevation,
+          disabledElevation: _resolvedDisabledElevation,
+          shape: _resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: resolvedAutofocus,
+          autofocus: _resolvedAutofocus,
           focusNode: focusNode,
-          child: _resolveChild(context),
+          child: _resolvedChild,
         );
 
       case _FABVariant.regular:
-        final resolvedIcon = _resolveIconWidget(context);
-        final resolvedLabel = label ?? resolveResourceOrNull('label');
         // Legacy behavior: if icon and label are both provided, use extended
-        if (resolvedIcon != null && resolvedLabel != null) {
+        if (_resolvedIcon != null && _resolvedLabel != null) {
           return FloatingActionButton.extended(
             onPressed: onPressed,
-            tooltip: resolvedTooltip,
-            foregroundColor: resolvedForegroundColor,
-            backgroundColor: resolvedBackgroundColor,
-            focusColor: resolvedFocusColor,
-            hoverColor: resolvedHoverColor,
-            splashColor: resolvedSplashColor,
+            tooltip: _resolvedTooltip,
+            foregroundColor: _resolvedForegroundColor,
+            backgroundColor: _resolvedBackgroundColor,
+            focusColor: _resolvedFocusColor,
+            hoverColor: _resolvedHoverColor,
+            splashColor: _resolvedSplashColor,
             heroTag: heroTag,
-            elevation: resolvedElevation,
-            focusElevation: resolvedFocusElevation,
-            hoverElevation: resolvedHoverElevation,
-            highlightElevation: resolvedHighlightElevation,
-            disabledElevation: resolvedDisabledElevation,
-            shape: resolvedShape,
+            elevation: _resolvedElevation,
+            focusElevation: _resolvedFocusElevation,
+            hoverElevation: _resolvedHoverElevation,
+            highlightElevation: _resolvedHighlightElevation,
+            disabledElevation: _resolvedDisabledElevation,
+            shape: _resolvedShape,
             clipBehavior: clipBehavior,
-            autofocus: resolvedAutofocus,
+            autofocus: _resolvedAutofocus,
             focusNode: focusNode,
-            isExtended: resolvedIsExtended ?? true,
-            icon: resolvedIcon,
-            label: Text(resolvedLabel),
+            isExtended: _resolvedIsExtended ?? true,
+            icon: _resolvedIcon,
+            label: Text(_resolvedLabel!),
           );
         }
 
         // Legacy behavior: if mini is true, use small
-        if (resolvedMini) {
+        if (_resolvedMini) {
           return FloatingActionButton.small(
             onPressed: onPressed,
-            tooltip: resolvedTooltip,
-            foregroundColor: resolvedForegroundColor,
-            backgroundColor: resolvedBackgroundColor,
-            focusColor: resolvedFocusColor,
-            hoverColor: resolvedHoverColor,
-            splashColor: resolvedSplashColor,
+            tooltip: _resolvedTooltip,
+            foregroundColor: _resolvedForegroundColor,
+            backgroundColor: _resolvedBackgroundColor,
+            focusColor: _resolvedFocusColor,
+            hoverColor: _resolvedHoverColor,
+            splashColor: _resolvedSplashColor,
             heroTag: heroTag,
-            elevation: resolvedElevation,
-            focusElevation: resolvedFocusElevation,
-            hoverElevation: resolvedHoverElevation,
-            highlightElevation: resolvedHighlightElevation,
-            disabledElevation: resolvedDisabledElevation,
-            shape: resolvedShape,
+            elevation: _resolvedElevation,
+            focusElevation: _resolvedFocusElevation,
+            hoverElevation: _resolvedHoverElevation,
+            highlightElevation: _resolvedHighlightElevation,
+            disabledElevation: _resolvedDisabledElevation,
+            shape: _resolvedShape,
             clipBehavior: clipBehavior,
-            autofocus: resolvedAutofocus,
+            autofocus: _resolvedAutofocus,
             focusNode: focusNode,
-            child: _resolveChild(context),
+            child: _resolvedChild,
           );
         }
 
         return FloatingActionButton(
           onPressed: onPressed,
-          tooltip: resolvedTooltip,
-          foregroundColor: resolvedForegroundColor,
-          backgroundColor: resolvedBackgroundColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          splashColor: resolvedSplashColor,
+          tooltip: _resolvedTooltip,
+          foregroundColor: _resolvedForegroundColor,
+          backgroundColor: _resolvedBackgroundColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          splashColor: _resolvedSplashColor,
           heroTag: heroTag,
-          elevation: resolvedElevation,
-          focusElevation: resolvedFocusElevation,
-          hoverElevation: resolvedHoverElevation,
-          highlightElevation: resolvedHighlightElevation,
-          disabledElevation: resolvedDisabledElevation,
-          shape: resolvedShape,
+          elevation: _resolvedElevation,
+          focusElevation: _resolvedFocusElevation,
+          hoverElevation: _resolvedHoverElevation,
+          highlightElevation: _resolvedHighlightElevation,
+          disabledElevation: _resolvedDisabledElevation,
+          shape: _resolvedShape,
           clipBehavior: clipBehavior,
-          autofocus: resolvedAutofocus,
+          autofocus: _resolvedAutofocus,
           focusNode: focusNode,
-          mini: resolvedMini,
-          child: _resolveChild(context),
+          mini: _resolvedMini,
+          child: _resolvedChild,
         );
     }
   }
@@ -754,6 +833,10 @@ class TomMenuItemButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final ButtonStyle? _resolvedStyle;
+
   TomMenuItemButton({
     super.key,
     super.tomId,
@@ -772,21 +855,20 @@ class TomMenuItemButton extends TomButtonBase {
     this.closeOnActivate = true,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     return MenuItemButton(
       onPressed: onPressed,
       focusNode: focusNode,
       shortcut: shortcut,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       autofocus: autofocus,
       clipBehavior: clipBehavior,
       leadingIcon: leadingIcon,
@@ -797,7 +879,7 @@ class TomMenuItemButton extends TomButtonBase {
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -820,6 +902,12 @@ class TomSubmenuButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final ButtonStyle? _resolvedStyle;
+  late final MenuStyle? _resolvedMenuStyle;
+  late final Offset? _resolvedAlignmentOffset;
+
   TomSubmenuButton({
     super.key,
     super.tomId,
@@ -839,26 +927,24 @@ class TomSubmenuButton extends TomButtonBase {
     required this.menuChildren,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedStyle = style ?? _resolveStyle();
+    _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
+    _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-
-    // Phase 3: Resolve ButtonStyle and MenuStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-    final resolvedMenuStyle = menuStyle ?? _resolveMenuStyle(context);
-    final resolvedAlignmentOffset =
-        alignmentOffset ?? _resolveOffset('alignmentOffset');
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     return SubmenuButton(
       onOpen: onOpen,
       onClose: onClose,
       focusNode: focusNode,
-      style: resolvedStyle,
-      menuStyle: resolvedMenuStyle,
-      alignmentOffset: resolvedAlignmentOffset,
+      style: _resolvedStyle,
+      menuStyle: _resolvedMenuStyle,
+      alignmentOffset: _resolvedAlignmentOffset,
       clipBehavior: clipBehavior,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
@@ -868,13 +954,13 @@ class TomSubmenuButton extends TomButtonBase {
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
-  MenuStyle? _resolveMenuStyle(BuildContext context) {
+  MenuStyle? _resolveMenuStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
   }
@@ -897,6 +983,9 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
   final bool showSelectedIcon;
   final Widget? selectedIcon;
 
+  // Pre-resolved resource values
+  late final ButtonStyle? _resolvedStyle;
+
   TomSegmentedButton({
     super.key,
     super.tomId,
@@ -910,27 +999,26 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
     this.style,
     this.showSelectedIcon = true,
     this.selectedIcon,
-  });
+  }) {
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-
     return SegmentedButton<T>(
       segments: segments,
       selected: selected,
       onSelectionChanged: onSelectionChanged,
       multiSelectionEnabled: multiSelectionEnabled,
       emptySelectionAllowed: emptySelectionAllowed,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       showSelectedIcon: showSelectedIcon,
       selectedIcon: selectedIcon,
     );
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -963,6 +1051,22 @@ class TomIconButton extends TomButtonBase {
   final FocusNode? focusNode;
   final _IconButtonVariant _variant;
 
+  // Pre-resolved resource values
+  late final String _resolvedTooltip;
+  late final Widget _resolvedIcon;
+  late final double? _resolvedIconSize;
+  late final double? _resolvedSplashRadius;
+  late final Color? _resolvedColor;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedHoverColor;
+  late final Color? _resolvedHighlightColor;
+  late final Color? _resolvedSplashColor;
+  late final Color? _resolvedDisabledColor;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final BoxConstraints? _resolvedConstraints;
+  late final ButtonStyle? _resolvedStyle;
+
   TomIconButton({
     super.key,
     super.tomId,
@@ -988,7 +1092,22 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.regular;
+  }) : _variant = _IconButtonVariant.regular {
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedIcon = _resolveIcon();
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
+    _resolvedSplashRadius = splashRadius ?? resolveDoubleOrNull('splashRadius');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   /// Creates a filled icon button.
   TomIconButton.filled({
@@ -1085,135 +1204,107 @@ class TomIconButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    final resolvedIcon = _resolveIcon();
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
-    final resolvedSplashRadius =
-        splashRadius ?? resolveDoubleOrNull('splashRadius');
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull('focusColor');
-    final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull('hoverColor');
-    final resolvedHighlightColor =
-        highlightColor ?? resolveColorOrNull('highlightColor');
-    final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull('splashColor');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedAlignment =
-        alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
-    final resolvedConstraints =
-        constraints ?? _resolveBoxConstraints('constraints');
-
-    // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
-
     switch (_variant) {
       case _IconButtonVariant.filled:
         return IconButton.filled(
           onPressed: onPressed,
-          iconSize: resolvedIconSize,
+          iconSize: _resolvedIconSize,
           visualDensity: visualDensity,
-          padding: resolvedPadding,
-          alignment: resolvedAlignment,
-          splashRadius: resolvedSplashRadius,
-          color: resolvedColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          highlightColor: resolvedHighlightColor,
-          splashColor: resolvedSplashColor,
-          disabledColor: resolvedDisabledColor,
+          padding: _resolvedPadding,
+          alignment: _resolvedAlignment,
+          splashRadius: _resolvedSplashRadius,
+          color: _resolvedColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          highlightColor: _resolvedHighlightColor,
+          splashColor: _resolvedSplashColor,
+          disabledColor: _resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: resolvedConstraints,
-          style: resolvedStyle,
+          constraints: _resolvedConstraints,
+          style: _resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: resolvedIcon,
-          tooltip: resolvedTooltip,
+          icon: _resolvedIcon,
+          tooltip: _resolvedTooltip,
           focusNode: focusNode,
         );
 
       case _IconButtonVariant.filledTonal:
         return IconButton.filledTonal(
           onPressed: onPressed,
-          iconSize: resolvedIconSize,
+          iconSize: _resolvedIconSize,
           visualDensity: visualDensity,
-          padding: resolvedPadding,
-          alignment: resolvedAlignment,
-          splashRadius: resolvedSplashRadius,
-          color: resolvedColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          highlightColor: resolvedHighlightColor,
-          splashColor: resolvedSplashColor,
-          disabledColor: resolvedDisabledColor,
+          padding: _resolvedPadding,
+          alignment: _resolvedAlignment,
+          splashRadius: _resolvedSplashRadius,
+          color: _resolvedColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          highlightColor: _resolvedHighlightColor,
+          splashColor: _resolvedSplashColor,
+          disabledColor: _resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: resolvedConstraints,
-          style: resolvedStyle,
+          constraints: _resolvedConstraints,
+          style: _resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: resolvedIcon,
-          tooltip: resolvedTooltip,
+          icon: _resolvedIcon,
+          tooltip: _resolvedTooltip,
           focusNode: focusNode,
         );
 
       case _IconButtonVariant.outlined:
         return IconButton.outlined(
           onPressed: onPressed,
-          iconSize: resolvedIconSize,
+          iconSize: _resolvedIconSize,
           visualDensity: visualDensity,
-          padding: resolvedPadding,
-          alignment: resolvedAlignment,
-          splashRadius: resolvedSplashRadius,
-          color: resolvedColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          highlightColor: resolvedHighlightColor,
-          splashColor: resolvedSplashColor,
-          disabledColor: resolvedDisabledColor,
+          padding: _resolvedPadding,
+          alignment: _resolvedAlignment,
+          splashRadius: _resolvedSplashRadius,
+          color: _resolvedColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          highlightColor: _resolvedHighlightColor,
+          splashColor: _resolvedSplashColor,
+          disabledColor: _resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: resolvedConstraints,
-          style: resolvedStyle,
+          constraints: _resolvedConstraints,
+          style: _resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: resolvedIcon,
-          tooltip: resolvedTooltip,
+          icon: _resolvedIcon,
+          tooltip: _resolvedTooltip,
           focusNode: focusNode,
         );
 
       case _IconButtonVariant.regular:
         return IconButton(
           onPressed: onPressed,
-          iconSize: resolvedIconSize,
+          iconSize: _resolvedIconSize,
           visualDensity: visualDensity,
-          padding: resolvedPadding,
-          alignment: resolvedAlignment,
-          splashRadius: resolvedSplashRadius,
-          color: resolvedColor,
-          focusColor: resolvedFocusColor,
-          hoverColor: resolvedHoverColor,
-          highlightColor: resolvedHighlightColor,
-          splashColor: resolvedSplashColor,
-          disabledColor: resolvedDisabledColor,
+          padding: _resolvedPadding,
+          alignment: _resolvedAlignment,
+          splashRadius: _resolvedSplashRadius,
+          color: _resolvedColor,
+          focusColor: _resolvedFocusColor,
+          hoverColor: _resolvedHoverColor,
+          highlightColor: _resolvedHighlightColor,
+          splashColor: _resolvedSplashColor,
+          disabledColor: _resolvedDisabledColor,
           autofocus: autofocus,
-          constraints: resolvedConstraints,
-          style: resolvedStyle,
+          constraints: _resolvedConstraints,
+          style: _resolvedStyle,
           isSelected: isSelected,
           selectedIcon: selectedIcon,
-          icon: resolvedIcon,
-          tooltip: resolvedTooltip,
+          icon: _resolvedIcon,
+          tooltip: _resolvedTooltip,
           focusNode: focusNode,
         );
     }
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -1238,6 +1329,9 @@ class TomBackButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Color? color;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedColor;
+
   TomBackButton({
     super.key,
     super.tomId,
@@ -1245,15 +1339,15 @@ class TomBackButton extends TomButtonBase {
     super.scope,
     this.onPressed,
     this.color,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve color from resources if not explicitly set
-    final resolvedColor = color ?? resolveColorOrNull('color');
     return BackButton(
       onPressed: onPressed,
-      color: resolvedColor,
+      color: _resolvedColor,
     );
   }
 }
@@ -1265,6 +1359,9 @@ class TomCloseButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Color? color;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedColor;
+
   TomCloseButton({
     super.key,
     super.tomId,
@@ -1272,15 +1369,15 @@ class TomCloseButton extends TomButtonBase {
     super.scope,
     this.onPressed,
     this.color,
-  });
+  }) {
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve color from resources if not explicitly set
-    final resolvedColor = color ?? resolveColorOrNull('color');
     return CloseButton(
       onPressed: onPressed,
-      color: resolvedColor,
+      color: _resolvedColor,
     );
   }
 }
@@ -1298,6 +1395,9 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
   final ButtonStyle? style;
   final Widget? labelWidget;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+
   TomDropdownMenuEntry({
     super.key,
     super.tomId,
@@ -1310,14 +1410,16 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     this.enabled = true,
     this.style,
     this.labelWidget,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+  }
 
   /// Creates the underlying [DropdownMenuEntry] for use in a [DropdownMenu].
   DropdownMenuEntry<T> toEntry(BuildContext context) {
     final resolvedLabel = label ?? resolveResourceOrFail('label');
 
     // Phase 3: Resolve ButtonStyle from resources
-    final resolvedStyle = style ?? _resolveStyle(context);
+    final resolvedStyle = style ?? _resolveStyle();
 
     return DropdownMenuEntry<T>(
       value: value,
@@ -1335,13 +1437,12 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     // DropdownMenuEntry is not a widget itself — it is used as data within
     // DropdownMenu. This buildContent returns a placeholder that renders
     // the label for preview/accessibility purposes.
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
 
-    return Text(resolvedLabel);
+    return Text(_resolvedLabel);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
-  ButtonStyle? _resolveStyle(BuildContext context) {
+  ButtonStyle? _resolveStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
@@ -1368,6 +1469,13 @@ class TomCupertinoButton extends TomButtonBase {
   final AlignmentGeometry alignment;
   final bool filled;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final Color? _resolvedColor;
+  late final double? _resolvedMinSize;
+  late final double? _resolvedPressedOpacity;
+
   TomCupertinoButton({
     super.key,
     super.tomId,
@@ -1384,30 +1492,26 @@ class TomCupertinoButton extends TomButtonBase {
     this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
     this.alignment = Alignment.center,
     this.filled = false,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedMinSize = minSize ?? resolveDoubleOrNull('minSize');
+    _resolvedPressedOpacity = pressedOpacity ?? resolveDoubleOrNull('pressedOpacity');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedMinSize =
-        minSize ?? resolveDoubleOrNull('minSize');
-    final resolvedPressedOpacity =
-        pressedOpacity ?? resolveDoubleOrNull('pressedOpacity');
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     if (filled) {
       return CupertinoButton.filled(
         onPressed: onPressed,
-        padding: resolvedPadding,
+        padding: _resolvedPadding,
         disabledColor: disabledColor,
         // ignore: deprecated_member_use
-        minSize: resolvedMinSize,
-        pressedOpacity: resolvedPressedOpacity,
+        minSize: _resolvedMinSize,
+        pressedOpacity: _resolvedPressedOpacity,
         borderRadius: borderRadius,
         alignment: alignment,
         child: buttonChild,
@@ -1416,12 +1520,12 @@ class TomCupertinoButton extends TomButtonBase {
 
     return CupertinoButton(
       onPressed: onPressed,
-      padding: resolvedPadding,
-      color: resolvedColor,
+      padding: _resolvedPadding,
+      color: _resolvedColor,
       disabledColor: disabledColor,
       // ignore: deprecated_member_use
-      minSize: resolvedMinSize,
-      pressedOpacity: resolvedPressedOpacity,
+      minSize: _resolvedMinSize,
+      pressedOpacity: _resolvedPressedOpacity,
       borderRadius: borderRadius,
       alignment: alignment,
       child: buttonChild,
@@ -1444,6 +1548,9 @@ class TomCheckboxMenuButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+
   TomCheckboxMenuButton({
     super.key,
     super.tomId,
@@ -1459,12 +1566,13 @@ class TomCheckboxMenuButton extends TomButtonBase {
     this.shortcut,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     return CheckboxMenuButton(
       value: value,
@@ -1493,6 +1601,9 @@ class TomRadioMenuButton<T> extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+
   TomRadioMenuButton({
     super.key,
     super.tomId,
@@ -1508,12 +1619,13 @@ class TomRadioMenuButton<T> extends TomButtonBase {
     this.shortcut,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     return RadioMenuButton<T>(
       value: value,
@@ -1596,6 +1708,9 @@ class TomCupertinoDialogAction extends TomButtonBase {
   final TextStyle? textStyle;
   final Widget child;
 
+  // Pre-resolved resource values
+  late final TextStyle? _resolvedTextStyle;
+
   TomCupertinoDialogAction({
     super.key,
     super.tomId,
@@ -1606,18 +1721,17 @@ class TomCupertinoDialogAction extends TomButtonBase {
     this.isDestructiveAction = false,
     this.textStyle,
     required this.child,
-  });
+  }) {
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 3: Resolve optional TextStyle from resources
-    final resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
-
     return CupertinoDialogAction(
       onPressed: onPressed,
       isDefaultAction: isDefaultAction,
       isDestructiveAction: isDestructiveAction,
-      textStyle: resolvedTextStyle,
+      textStyle: _resolvedTextStyle,
       child: child,
     );
   }
@@ -1675,6 +1789,12 @@ class TomExpandIcon extends TomButtonBase {
   final Color? expandedColor;
   final String? semanticLabel;
 
+  // Pre-resolved resource values
+  late final double _resolvedSize;
+  late final Color? _resolvedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedExpandedColor;
+
   TomExpandIcon({
     super.key,
     super.tomId,
@@ -1688,30 +1808,26 @@ class TomExpandIcon extends TomButtonBase {
     this.disabledColor,
     this.expandedColor,
     this.semanticLabel,
-  });
+  }) {
+    _resolvedSize = size ?? resolveDoubleOrNull('size') ?? 24.0;
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedExpandedColor = expandedColor ?? resolveColorOrNull('expandedColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSize =
-        size ?? resolveDoubleOrNull('size') ?? 24.0;
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull('disabledColor');
-    final resolvedExpandedColor =
-        expandedColor ?? resolveColorOrNull('expandedColor');
     // Note: ExpandIcon doesn't have a semanticLabel parameter in Flutter's API
     // The widget's semantics are handled internally via Semantics wrapper
 
     return ExpandIcon(
       isExpanded: isExpanded,
       onPressed: onPressed,
-      size: resolvedSize,
+      size: _resolvedSize,
       padding: padding,
-      color: resolvedColor,
-      disabledColor: resolvedDisabledColor,
-      expandedColor: resolvedExpandedColor,
+      color: _resolvedColor,
+      disabledColor: _resolvedDisabledColor,
+      expandedColor: _resolvedExpandedColor,
     );
   }
 }
@@ -1758,6 +1874,26 @@ class TomMaterialButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Color? _resolvedTextColor;
+  late final Color? _resolvedDisabledTextColor;
+  late final Color? _resolvedColor;
+  late final Color? _resolvedDisabledColor;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedHoverColor;
+  late final Color? _resolvedHighlightColor;
+  late final Color? _resolvedSplashColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedFocusElevation;
+  late final double? _resolvedHoverElevation;
+  late final double? _resolvedHighlightElevation;
+  late final double? _resolvedDisabledElevation;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final ShapeBorder? _resolvedShape;
+  late final double? _resolvedMinWidth;
+  late final double? _resolvedHeight;
+
   TomMaterialButton({
     super.key,
     super.tomId,
@@ -1794,12 +1930,30 @@ class TomMaterialButton extends TomButtonBase {
     this.enableFeedback = true,
     this.child,
     this.label,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
+    _resolvedDisabledTextColor = disabledTextColor ?? resolveColorOrNull('disabledTextColor');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedMinWidth = minWidth ?? resolveDoubleOrNull('minWidth');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final buttonChild = child ?? Text(resolvedLabel);
+    final buttonChild = child ?? Text(_resolvedLabel);
 
     // ignore: deprecated_member_use
     return MaterialButton(
@@ -1808,29 +1962,29 @@ class TomMaterialButton extends TomButtonBase {
       onHighlightChanged: onHighlightChanged,
       mouseCursor: mouseCursor,
       textTheme: textTheme,
-      textColor: textColor ?? resolveColorOrNull('textColor'),
-      disabledTextColor: disabledTextColor ?? resolveColorOrNull('disabledTextColor'),
-      color: color ?? resolveColorOrNull('color'),
-      disabledColor: disabledColor ?? resolveColorOrNull('disabledColor'),
-      focusColor: focusColor ?? resolveColorOrNull('focusColor'),
-      hoverColor: hoverColor ?? resolveColorOrNull('hoverColor'),
-      highlightColor: highlightColor ?? resolveColorOrNull('highlightColor'),
-      splashColor: splashColor ?? resolveColorOrNull('splashColor'),
+      textColor: _resolvedTextColor,
+      disabledTextColor: _resolvedDisabledTextColor,
+      color: _resolvedColor,
+      disabledColor: _resolvedDisabledColor,
+      focusColor: _resolvedFocusColor,
+      hoverColor: _resolvedHoverColor,
+      highlightColor: _resolvedHighlightColor,
+      splashColor: _resolvedSplashColor,
       colorBrightness: colorBrightness,
-      elevation: elevation ?? resolveDoubleOrNull('elevation'),
-      focusElevation: focusElevation ?? resolveDoubleOrNull('focusElevation'),
-      hoverElevation: hoverElevation ?? resolveDoubleOrNull('hoverElevation'),
-      highlightElevation: highlightElevation ?? resolveDoubleOrNull('highlightElevation'),
-      disabledElevation: disabledElevation ?? resolveDoubleOrNull('disabledElevation'),
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
+      elevation: _resolvedElevation,
+      focusElevation: _resolvedFocusElevation,
+      hoverElevation: _resolvedHoverElevation,
+      highlightElevation: _resolvedHighlightElevation,
+      disabledElevation: _resolvedDisabledElevation,
+      padding: _resolvedPadding,
       visualDensity: visualDensity,
-      shape: shape ?? _resolveShapeBorder('shape'),
+      shape: _resolvedShape,
       clipBehavior: clipBehavior,
       focusNode: focusNode,
       autofocus: autofocus,
       animationDuration: animationDuration,
-      minWidth: minWidth ?? resolveDoubleOrNull('minWidth'),
-      height: height ?? resolveDoubleOrNull('height'),
+      minWidth: _resolvedMinWidth,
+      height: _resolvedHeight,
       enableFeedback: enableFeedback,
       child: buttonChild,
     );
@@ -1860,6 +2014,12 @@ class TomButtonBar extends TomButtonBase {
   final VerticalDirection? overflowDirection;
   final double? overflowButtonSpacing;
 
+  // Pre-resolved resource values
+  late final double? _resolvedButtonMinWidth;
+  late final double? _resolvedButtonHeight;
+  late final EdgeInsetsGeometry? _resolvedButtonPadding;
+  late final double? _resolvedOverflowButtonSpacing;
+
   TomButtonBar({
     super.key,
     super.tomId,
@@ -1876,7 +2036,12 @@ class TomButtonBar extends TomButtonBase {
     this.layoutBehavior,
     this.overflowDirection,
     this.overflowButtonSpacing,
-  });
+  }) {
+    _resolvedButtonMinWidth = buttonMinWidth ?? resolveDoubleOrNull('buttonMinWidth');
+    _resolvedButtonHeight = buttonHeight ?? resolveDoubleOrNull('buttonHeight');
+    _resolvedButtonPadding = buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding');
+    _resolvedOverflowButtonSpacing = overflowButtonSpacing ?? resolveDoubleOrNull('overflowButtonSpacing');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1885,13 +2050,13 @@ class TomButtonBar extends TomButtonBase {
       alignment: alignment,
       mainAxisSize: mainAxisSize,
       buttonTextTheme: buttonTextTheme,
-      buttonMinWidth: buttonMinWidth ?? resolveDoubleOrNull('buttonMinWidth'),
-      buttonHeight: buttonHeight ?? resolveDoubleOrNull('buttonHeight'),
-      buttonPadding: buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding'),
+      buttonMinWidth: _resolvedButtonMinWidth,
+      buttonHeight: _resolvedButtonHeight,
+      buttonPadding: _resolvedButtonPadding,
       buttonAlignedDropdown: buttonAlignedDropdown,
       layoutBehavior: layoutBehavior,
       overflowDirection: overflowDirection,
-      overflowButtonSpacing: overflowButtonSpacing ?? resolveDoubleOrNull('overflowButtonSpacing'),
+      overflowButtonSpacing: _resolvedOverflowButtonSpacing,
       children: children,
     );
   }

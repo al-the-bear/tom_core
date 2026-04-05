@@ -30,6 +30,15 @@ class TomText extends TomLabelBase {
   /// TomText(text: 'Hello')         // Explicit text
   /// TomText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
+  // Pre-resolved resource values
+  late final String _resolvedText;
+  late final int? _resolvedMaxLines;
+  late final bool? _resolvedSoftWrap;
+  late final String? _resolvedSemanticsLabel;
+  late final TextStyle? _resolvedStyle;
+  late final StrutStyle? _resolvedStrutStyle;
+  late final TextHeightBehavior? _resolvedTextHeightBehavior;
+
   TomText({
     super.key,
     super.tomId,
@@ -47,31 +56,31 @@ class TomText extends TomLabelBase {
     this.semanticsLabel,
     this.textWidthBasis,
     this.textHeightBehavior,
-  });
+  }) {
+    _resolvedText = text ?? resolveResourceOrFail('label');
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap');
+    _resolvedSemanticsLabel = semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
+    _resolvedStyle = style ?? _resolveTextStyle('style');
+    _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
+    _resolvedTextHeightBehavior = textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResourceOrFail('label');
-
-    // Phase 2: Resolve optional parameter from resources
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap');
-    final resolvedSemanticsLabel =
-        semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
-
     return Text(
-      resolvedText,
-      style: style ?? _resolveTextStyle('style'),
-      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
+      _resolvedText,
+      style: _resolvedStyle,
+      strutStyle: _resolvedStrutStyle,
       textAlign: textAlign,
       textDirection: textDirection,
       locale: locale,
-      softWrap: resolvedSoftWrap,
+      softWrap: _resolvedSoftWrap,
       overflow: overflow,
-      maxLines: resolvedMaxLines,
-      semanticsLabel: resolvedSemanticsLabel,
+      maxLines: _resolvedMaxLines,
+      semanticsLabel: _resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
+      textHeightBehavior: _resolvedTextHeightBehavior,
     );
   }
 
@@ -133,6 +142,21 @@ class TomSelectableText extends TomLabelBase {
   /// TomSelectableText(text: 'Hello')         // Explicit text
   /// TomSelectableText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
+  // Pre-resolved resource values
+  late final String _resolvedText;
+  late final Color? _resolvedCursorColor;
+  late final int? _resolvedMaxLines;
+  late final int? _resolvedMinLines;
+  late final bool _resolvedAutofocus;
+  late final bool _resolvedShowCursor;
+  late final double _resolvedCursorWidth;
+  late final double? _resolvedCursorHeight;
+  late final String? _resolvedSemanticsLabel;
+  late final TextStyle? _resolvedStyle;
+  late final ScrollPhysics? _resolvedScrollPhysics;
+  late final StrutStyle? _resolvedStrutStyle;
+  late final TextHeightBehavior? _resolvedTextHeightBehavior;
+
   TomSelectableText({
     super.key,
     super.tomId,
@@ -162,48 +186,44 @@ class TomSelectableText extends TomLabelBase {
     this.magnifierConfiguration,
     this.selectionControls,
     this.onSelectionChanged,
-  });
+  }) {
+    _resolvedText = text ?? resolveResourceOrFail('label');
+    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedShowCursor = resolveBoolOrNull('showCursor') ?? showCursor;
+    _resolvedCursorWidth = resolveDoubleOrNull('cursorWidth') ?? cursorWidth;
+    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
+    _resolvedSemanticsLabel = semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
+    _resolvedStyle = style ?? _resolveTextStyle('style');
+    _resolvedScrollPhysics = scrollPhysics ?? _resolveScrollPhysics('scrollPhysics');
+    _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
+    _resolvedTextHeightBehavior = textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResourceOrFail('label');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCursorColor =
-        cursorColor ?? resolveColorOrNull('cursorColor');
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
-    final resolvedAutofocus =
-        resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedShowCursor =
-        resolveBoolOrNull('showCursor') ?? showCursor;
-    final resolvedCursorWidth =
-        resolveDoubleOrNull('cursorWidth') ?? cursorWidth;
-    final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    final resolvedSemanticsLabel =
-        semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
-
     return SelectableText(
-      resolvedText,
-      style: style ?? _resolveTextStyle('style'),
-      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
+      _resolvedText,
+      style: _resolvedStyle,
+      strutStyle: _resolvedStrutStyle,
       textAlign: textAlign,
       textDirection: textDirection,
-      maxLines: resolvedMaxLines,
+      maxLines: _resolvedMaxLines,
       focusNode: focusNode,
-      autofocus: resolvedAutofocus,
-      showCursor: resolvedShowCursor,
-      minLines: resolvedMinLines,
-      cursorWidth: resolvedCursorWidth,
-      cursorHeight: resolvedCursorHeight,
+      autofocus: _resolvedAutofocus,
+      showCursor: _resolvedShowCursor,
+      minLines: _resolvedMinLines,
+      cursorWidth: _resolvedCursorWidth,
+      cursorHeight: _resolvedCursorHeight,
       cursorRadius: cursorRadius,
-      cursorColor: resolvedCursorColor,
+      cursorColor: _resolvedCursorColor,
       onTap: onTap,
-      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics('scrollPhysics'),
-      semanticsLabel: resolvedSemanticsLabel,
+      scrollPhysics: _resolvedScrollPhysics,
+      semanticsLabel: _resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
+      textHeightBehavior: _resolvedTextHeightBehavior,
       contextMenuBuilder: contextMenuBuilder,
       magnifierConfiguration: magnifierConfiguration,
       selectionControls: selectionControls,
@@ -249,6 +269,13 @@ class TomRichText extends TomLabelBase {
   final SelectionRegistrar? selectionRegistrar;
   final Color? selectionColor;
 
+  // Pre-resolved resource values
+  late final int? _resolvedMaxLines;
+  late final Color? _resolvedSelectionColor;
+  late final bool _resolvedSoftWrap;
+  late final StrutStyle? _resolvedStrutStyle;
+  late final TextHeightBehavior? _resolvedTextHeightBehavior;
+
   TomRichText({
     super.key,
     super.tomId,
@@ -266,30 +293,29 @@ class TomRichText extends TomLabelBase {
     this.textHeightBehavior,
     this.selectionRegistrar,
     this.selectionColor,
-  });
+  }) {
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedSelectionColor = selectionColor ?? resolveColorOrNull('selectionColor');
+    _resolvedSoftWrap = resolveBoolOrNull('softWrap') ?? softWrap;
+    _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
+    _resolvedTextHeightBehavior = textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedSelectionColor =
-        selectionColor ?? resolveColorOrNull('selectionColor');
-    final resolvedSoftWrap =
-        resolveBoolOrNull('softWrap') ?? softWrap;
-
     return RichText(
       text: text,
       textAlign: textAlign,
       textDirection: textDirection,
-      softWrap: resolvedSoftWrap,
+      softWrap: _resolvedSoftWrap,
       overflow: overflow,
-      maxLines: resolvedMaxLines,
+      maxLines: _resolvedMaxLines,
       locale: locale,
-      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
+      strutStyle: _resolvedStrutStyle,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
+      textHeightBehavior: _resolvedTextHeightBehavior,
       selectionRegistrar: selectionRegistrar,
-      selectionColor: resolvedSelectionColor,
+      selectionColor: _resolvedSelectionColor,
     );
   }
 
@@ -321,6 +347,18 @@ class TomBadge extends TomLabelBase {
   final double? smallSize;
   final double? largeSize;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedTextColor;
+  late final double? _resolvedSmallSize;
+  late final double? _resolvedLargeSize;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final TextStyle? _resolvedTextStyle;
+  late final AlignmentGeometry? _resolvedAlignment;
+  late final Offset? _resolvedOffset;
+  late final bool _resolvedIsLabelVisible;
+
   TomBadge({
     super.key,
     super.tomId,
@@ -338,40 +376,34 @@ class TomBadge extends TomLabelBase {
     this.isLabelVisible = true,
     this.smallSize,
     this.largeSize,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
+    _resolvedSmallSize = smallSize ?? resolveDoubleOrNull('smallSize');
+    _resolvedLargeSize = largeSize ?? resolveDoubleOrNull('largeSize');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+    _resolvedOffset = offset ?? _resolveOffset('offset');
+    _resolvedIsLabelVisible = resolveBoolOrNull('isLabelVisible') ?? isLabelVisible;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final effectiveLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedTextColor =
-        textColor ?? resolveColorOrNull('textColor');
-    final resolvedSmallSize =
-        smallSize ?? resolveDoubleOrNull('smallSize');
-    final resolvedLargeSize =
-        largeSize ?? resolveDoubleOrNull('largeSize');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedTextStyle =
-        textStyle ?? _resolveTextStyle('textStyle');
+    final effectiveLabel = label ?? Text(_resolvedLabel);
 
     return Badge(
       label: effectiveLabel,
-      backgroundColor: resolvedBackgroundColor,
-      textColor: resolvedTextColor,
-      textStyle: resolvedTextStyle,
-      padding: resolvedPadding,
-      alignment: alignment ?? _resolveAlignment('alignment'),
-      offset: offset ?? _resolveOffset('offset'),
-      isLabelVisible: resolveBoolOrNull('isLabelVisible') ?? isLabelVisible,
-      smallSize: resolvedSmallSize,
-      largeSize: resolvedLargeSize,
+      backgroundColor: _resolvedBackgroundColor,
+      textColor: _resolvedTextColor,
+      textStyle: _resolvedTextStyle,
+      padding: _resolvedPadding,
+      alignment: _resolvedAlignment,
+      offset: _resolvedOffset,
+      isLabelVisible: _resolvedIsLabelVisible,
+      smallSize: _resolvedSmallSize,
+      largeSize: _resolvedLargeSize,
       child: child,
     );
   }
@@ -431,6 +463,33 @@ class TomListTile extends TomLabelBase {
   final ListTileTitleAlignment? titleAlignment;
   final MouseCursor? mouseCursor;
 
+  // Pre-resolved resource values
+  late final String _resolvedTitle;
+  late final bool _resolvedIsThreeLine;
+  late final bool? _resolvedDense;
+  late final bool _resolvedEnabled;
+  late final bool _resolvedSelected;
+  late final bool _resolvedAutofocus;
+  late final bool? _resolvedEnableFeedback;
+  late final Color? _resolvedSelectedColor;
+  late final Color? _resolvedIconColor;
+  late final Color? _resolvedTextColor;
+  late final EdgeInsetsGeometry? _resolvedContentPadding;
+  late final Color? _resolvedFocusColor;
+  late final Color? _resolvedHoverColor;
+  late final Color? _resolvedSplashColor;
+  late final Color? _resolvedTileColor;
+  late final Color? _resolvedSelectedTileColor;
+  late final double? _resolvedHorizontalTitleGap;
+  late final double? _resolvedMinVerticalPadding;
+  late final double? _resolvedMinLeadingWidth;
+  late final double? _resolvedMinTileHeight;
+  late final VisualDensity? _resolvedVisualDensity;
+  late final ShapeBorder? _resolvedShape;
+  late final TextStyle? _resolvedTitleTextStyle;
+  late final TextStyle? _resolvedSubtitleTextStyle;
+  late final TextStyle? _resolvedLeadingAndTrailingTextStyle;
+
   TomListTile({
     super.key,
     super.tomId,
@@ -470,96 +529,70 @@ class TomListTile extends TomLabelBase {
     this.minTileHeight,
     this.titleAlignment,
     this.mouseCursor,
-  });
+  }) {
+    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
+    _resolvedIsThreeLine = resolveBoolOrNull('isThreeLine') ?? isThreeLine;
+    _resolvedDense = dense ?? resolveBoolOrNull('dense');
+    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
+    _resolvedSelected = resolveBoolOrNull('selected') ?? selected;
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
+    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
+    _resolvedContentPadding = contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedTileColor = tileColor ?? resolveColorOrNull('tileColor');
+    _resolvedSelectedTileColor = selectedTileColor ?? resolveColorOrNull('selectedTileColor');
+    _resolvedHorizontalTitleGap = horizontalTitleGap ?? resolveDoubleOrNull('horizontalTitleGap');
+    _resolvedMinVerticalPadding = minVerticalPadding ?? resolveDoubleOrNull('minVerticalPadding');
+    _resolvedMinLeadingWidth = minLeadingWidth ?? resolveDoubleOrNull('minLeadingWidth');
+    _resolvedMinTileHeight = minTileHeight ?? resolveDoubleOrNull('minTileHeight');
+    _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+    _resolvedSubtitleTextStyle = subtitleTextStyle ?? _resolveTextStyle('subtitleTextStyle');
+    _resolvedLeadingAndTrailingTextStyle = leadingAndTrailingTextStyle ?? _resolveTextStyle('leadingAndTrailingTextStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    final effectiveTitle = title ?? Text(resolvedTitle);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedIsThreeLine =
-        resolveBoolOrNull('isThreeLine') ?? isThreeLine;
-    final resolvedDense = dense ?? resolveBoolOrNull('dense');
-    final resolvedEnabled =
-        resolveBoolOrNull('enabled') ?? enabled;
-    final resolvedSelected =
-        resolveBoolOrNull('selected') ?? selected;
-    final resolvedAutofocus =
-        resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull('enableFeedback');
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-    final resolvedIconColor =
-        iconColor ?? resolveColorOrNull('iconColor');
-    final resolvedTextColor =
-        textColor ?? resolveColorOrNull('textColor');
-    final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
-    final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull('focusColor');
-    final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull('hoverColor');
-    final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull('splashColor');
-    final resolvedTileColor =
-        tileColor ?? resolveColorOrNull('tileColor');
-    final resolvedSelectedTileColor =
-        selectedTileColor ?? resolveColorOrNull('selectedTileColor');
-    final resolvedHorizontalTitleGap =
-        horizontalTitleGap ?? resolveDoubleOrNull('horizontalTitleGap');
-    final resolvedMinVerticalPadding =
-        minVerticalPadding ?? resolveDoubleOrNull('minVerticalPadding');
-    final resolvedMinLeadingWidth =
-        minLeadingWidth ?? resolveDoubleOrNull('minLeadingWidth');
-    final resolvedMinTileHeight =
-        minTileHeight ?? resolveDoubleOrNull('minTileHeight');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedVisualDensity =
-        visualDensity ?? _resolveVisualDensity('visualDensity');
-    final resolvedShape =
-        shape ?? _resolveShapeBorder('shape');
-    final resolvedTitleTextStyle =
-        titleTextStyle ?? _resolveTextStyle('titleTextStyle');
-    final resolvedSubtitleTextStyle =
-        subtitleTextStyle ?? _resolveTextStyle('subtitleTextStyle');
-    final resolvedLeadingAndTrailingTextStyle =
-        leadingAndTrailingTextStyle ?? _resolveTextStyle('leadingAndTrailingTextStyle');
+    final effectiveTitle = title ?? Text(_resolvedTitle);
 
     return ListTile(
       title: effectiveTitle,
       subtitle: subtitle,
       leading: leading,
       trailing: trailing,
-      isThreeLine: resolvedIsThreeLine,
-      dense: resolvedDense,
-      visualDensity: resolvedVisualDensity,
-      shape: resolvedShape,
-      selectedColor: resolvedSelectedColor,
-      iconColor: resolvedIconColor,
-      textColor: resolvedTextColor,
-      titleTextStyle: resolvedTitleTextStyle,
-      subtitleTextStyle: resolvedSubtitleTextStyle,
-      leadingAndTrailingTextStyle: resolvedLeadingAndTrailingTextStyle,
-      contentPadding: resolvedContentPadding,
-      enabled: resolvedEnabled,
+      isThreeLine: _resolvedIsThreeLine,
+      dense: _resolvedDense,
+      visualDensity: _resolvedVisualDensity,
+      shape: _resolvedShape,
+      selectedColor: _resolvedSelectedColor,
+      iconColor: _resolvedIconColor,
+      textColor: _resolvedTextColor,
+      titleTextStyle: _resolvedTitleTextStyle,
+      subtitleTextStyle: _resolvedSubtitleTextStyle,
+      leadingAndTrailingTextStyle: _resolvedLeadingAndTrailingTextStyle,
+      contentPadding: _resolvedContentPadding,
+      enabled: _resolvedEnabled,
       onTap: onTap,
       onLongPress: onLongPress,
-      selected: resolvedSelected,
-      focusColor: resolvedFocusColor,
-      hoverColor: resolvedHoverColor,
-      splashColor: resolvedSplashColor,
+      selected: _resolvedSelected,
+      focusColor: _resolvedFocusColor,
+      hoverColor: _resolvedHoverColor,
+      splashColor: _resolvedSplashColor,
       focusNode: focusNode,
-      autofocus: resolvedAutofocus,
-      tileColor: resolvedTileColor,
-      selectedTileColor: resolvedSelectedTileColor,
-      enableFeedback: resolvedEnableFeedback,
-      horizontalTitleGap: resolvedHorizontalTitleGap,
-      minVerticalPadding: resolvedMinVerticalPadding,
-      minLeadingWidth: resolvedMinLeadingWidth,
-      minTileHeight: resolvedMinTileHeight,
+      autofocus: _resolvedAutofocus,
+      tileColor: _resolvedTileColor,
+      selectedTileColor: _resolvedSelectedTileColor,
+      enableFeedback: _resolvedEnableFeedback,
+      horizontalTitleGap: _resolvedHorizontalTitleGap,
+      minVerticalPadding: _resolvedMinVerticalPadding,
+      minLeadingWidth: _resolvedMinLeadingWidth,
+      minTileHeight: _resolvedMinTileHeight,
       titleAlignment: titleAlignment,
       mouseCursor: mouseCursor,
     );
@@ -607,6 +640,15 @@ class TomChip extends TomLabelBase {
   final IconThemeData? iconTheme;
   final WidgetStateProperty<Color?>? color;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final Color? _resolvedDeleteIconColor;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final TextStyle? _resolvedLabelStyle;
+
   TomChip({
     super.key,
     super.tomId,
@@ -633,46 +675,37 @@ class TomChip extends TomLabelBase {
     this.visualDensity,
     this.iconTheme,
     this.color,
-  });
+  }) {
+    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    final chipLabel = label ?? Text(resolvedLabel);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle =
-        labelStyle ?? _resolveTextStyle('labelStyle');
+    final chipLabel = label ?? Text(_resolvedLabel);
 
     return Chip(
       avatar: avatar,
       label: chipLabel,
-      labelStyle: resolvedLabelStyle,
+      labelStyle: _resolvedLabelStyle,
       labelPadding: labelPadding,
       padding: padding,
       deleteIcon: deleteIcon,
       onDeleted: onDeleted,
-      deleteIconColor: resolvedDeleteIconColor,
+      deleteIconColor: _resolvedDeleteIconColor,
       deleteButtonTooltipMessage: deleteButtonTooltipMessage,
       side: side,
       shape: shape,
       clipBehavior: clipBehavior,
-      backgroundColor: resolvedBackgroundColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      elevation: resolvedElevation,
+      backgroundColor: _resolvedBackgroundColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      elevation: _resolvedElevation,
       materialTapTargetSize: materialTapTargetSize,
       visualDensity: visualDensity,
       iconTheme: iconTheme,
@@ -746,6 +779,11 @@ class TomAboutListTile extends TomLabelBase {
   final List<Widget>? aboutBoxChildren;
   final bool dense;
 
+  // Pre-resolved resource values
+  late final String? _resolvedApplicationName;
+  late final String? _resolvedApplicationVersion;
+  late final String? _resolvedApplicationLegalese;
+
   TomAboutListTile({
     super.key,
     super.tomId,
@@ -759,23 +797,20 @@ class TomAboutListTile extends TomLabelBase {
     this.applicationLegalese,
     this.aboutBoxChildren,
     this.dense = false,
-  });
+  }) {
+    _resolvedApplicationName = applicationName ?? resolveResourceOrNull('applicationName');
+    _resolvedApplicationVersion = applicationVersion ?? resolveResourceOrNull('applicationVersion');
+    _resolvedApplicationLegalese = applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedApplicationName =
-      applicationName ?? resolveResourceOrNull('applicationName');
-    final resolvedApplicationVersion =
-      applicationVersion ?? resolveResourceOrNull('applicationVersion');
-    final resolvedApplicationLegalese =
-      applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
-
     return AboutListTile(
       icon: icon,
-      applicationName: resolvedApplicationName,
-      applicationVersion: resolvedApplicationVersion,
+      applicationName: _resolvedApplicationName,
+      applicationVersion: _resolvedApplicationVersion,
       applicationIcon: applicationIcon,
-      applicationLegalese: resolvedApplicationLegalese,
+      applicationLegalese: _resolvedApplicationLegalese,
       aboutBoxChildren: aboutBoxChildren,
       dense: dense,
       child: child,
@@ -793,6 +828,13 @@ class TomVerticalDivider extends TomLabelBase {
   final double? endIndent;
   final Color? color;
 
+  // Pre-resolved resource values
+  late final double? _resolvedWidth;
+  late final double? _resolvedThickness;
+  late final double? _resolvedIndent;
+  late final double? _resolvedEndIndent;
+  late final Color? _resolvedColor;
+
   TomVerticalDivider({
     super.key,
     super.tomId,
@@ -803,24 +845,22 @@ class TomVerticalDivider extends TomLabelBase {
     this.indent,
     this.endIndent,
     this.color,
-  });
+  }) {
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
+    _resolvedIndent = indent ?? resolveDoubleOrNull('indent');
+    _resolvedEndIndent = endIndent ?? resolveDoubleOrNull('endIndent');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedWidth = width ?? resolveDoubleOrNull('width');
-    final resolvedThickness =
-        thickness ?? resolveDoubleOrNull('thickness');
-    final resolvedIndent = indent ?? resolveDoubleOrNull('indent');
-    final resolvedEndIndent =
-        endIndent ?? resolveDoubleOrNull('endIndent');
-    final resolvedColor = color ?? resolveColorOrNull('color');
-
     return VerticalDivider(
-      width: resolvedWidth,
-      thickness: resolvedThickness,
-      indent: resolvedIndent,
-      endIndent: resolvedEndIndent,
-      color: resolvedColor,
+      width: _resolvedWidth,
+      thickness: _resolvedThickness,
+      indent: _resolvedIndent,
+      endIndent: _resolvedEndIndent,
+      color: _resolvedColor,
     );
   }
 }
@@ -832,6 +872,9 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
   final String? label;
   final MenuAcceleratorChildBuilder? builder;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+
   TomMenuAcceleratorLabel({
     super.key,
     super.tomId,
@@ -839,13 +882,14 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
     super.scope,
     this.label,
     this.builder,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
     return MenuAcceleratorLabel(
-      resolvedLabel,
+      _resolvedLabel,
       builder: builder ?? MenuAcceleratorLabel.defaultLabelBuilder,
     );
   }
@@ -862,6 +906,10 @@ class TomBanner extends TomLabelBase {
   final TextStyle textStyle;
   final Color? color;
 
+  // Pre-resolved resource values
+  late final String _resolvedMessage;
+  late final Color _resolvedColor;
+
   TomBanner({
     super.key,
     super.tomId,
@@ -873,7 +921,10 @@ class TomBanner extends TomLabelBase {
     required this.location,
     this.textStyle = _kTextStyle,
     this.color,
-  });
+  }) {
+    _resolvedMessage = message ?? resolveResourceOrFail('message');
+    _resolvedColor = color ?? resolveColorOrNull('color') ?? _kColor;
+  }
 
   static const Color _kColor = Color(0xA0B71C1C);
   static const TextStyle _kTextStyle = TextStyle(
@@ -885,14 +936,12 @@ class TomBanner extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedMessage = message ?? resolveResourceOrFail('message');
-    final resolvedColor = color ?? resolveColorOrNull('color') ?? _kColor;
     return Banner(
-      message: resolvedMessage,
+      message: _resolvedMessage,
       textDirection: textDirection,
       location: location,
       textStyle: textStyle,
-      color: resolvedColor,
+      color: _resolvedColor,
       child: child,
     );
   }

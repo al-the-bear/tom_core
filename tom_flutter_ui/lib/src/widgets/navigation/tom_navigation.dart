@@ -33,6 +33,22 @@ class TomNavigationRail extends TomNavigationBase {
   final IconThemeData? unselectedIconTheme;
   final bool extended;
 
+  // Pre-resolved resource values
+  late final int? _resolvedSelectedIndex;
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedIndicatorColor;
+  late final double? _resolvedMinWidth;
+  late final double? _resolvedMinExtendedWidth;
+  late final bool? _resolvedUseIndicator;
+  late final double? _resolvedGroupAlignment;
+  late final bool _resolvedExtended;
+  late final TextStyle? _resolvedSelectedLabelTextStyle;
+  late final TextStyle? _resolvedUnselectedLabelTextStyle;
+  late final ShapeBorder? _resolvedIndicatorShape;
+  late final IconThemeData? _resolvedSelectedIconTheme;
+  late final IconThemeData? _resolvedUnselectedIconTheme;
+
   TomNavigationRail({
     super.key,
     super.tomId,
@@ -57,7 +73,22 @@ class TomNavigationRail extends TomNavigationBase {
     this.selectedIconTheme,
     this.unselectedIconTheme,
     this.extended = false,
-  });
+  }) {
+    _resolvedSelectedIndex = selectedIndex ?? resolveIntOrNull('selectedIndex');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
+    _resolvedMinWidth = minWidth ?? resolveDoubleOrNull('minWidth');
+    _resolvedMinExtendedWidth = minExtendedWidth ?? resolveDoubleOrNull('minExtendedWidth');
+    _resolvedUseIndicator = useIndicator ?? resolveBoolOrNull('useIndicator');
+    _resolvedGroupAlignment = groupAlignment ?? resolveDoubleOrNull('groupAlignment');
+    _resolvedExtended = resolveBoolOrNull('extended') ?? extended;
+    _resolvedSelectedLabelTextStyle = selectedLabelTextStyle ?? _resolveTextStyle('selectedLabelTextStyle');
+    _resolvedUnselectedLabelTextStyle = unselectedLabelTextStyle ?? _resolveTextStyle('unselectedLabelTextStyle');
+    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
+    _resolvedSelectedIconTheme = selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
+    _resolvedUnselectedIconTheme = unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
+  }
 
   // Phase 3: Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
@@ -77,54 +108,26 @@ class TomNavigationRail extends TomNavigationBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSelectedIndex =
-      selectedIndex ?? resolveIntOrNull('selectedIndex');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull('indicatorColor');
-    final resolvedMinWidth =
-        minWidth ?? resolveDoubleOrNull('minWidth');
-    final resolvedMinExtendedWidth =
-        minExtendedWidth ?? resolveDoubleOrNull('minExtendedWidth');
-    final resolvedUseIndicator =
-      useIndicator ?? resolveBoolOrNull('useIndicator');
-    final resolvedGroupAlignment =
-        groupAlignment ?? resolveDoubleOrNull('groupAlignment');
-    final resolvedExtended =
-      resolveBoolOrNull('extended') ?? extended;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedSelectedLabelTextStyle =
-        selectedLabelTextStyle ?? _resolveTextStyle('selectedLabelTextStyle');
-    final resolvedUnselectedLabelTextStyle =
-        unselectedLabelTextStyle ?? _resolveTextStyle('unselectedLabelTextStyle');
-    final resolvedIndicatorShape =
-        indicatorShape ?? _resolveShapeBorder('indicatorShape');
-
     return NavigationRail(
-      selectedIndex: resolvedSelectedIndex,
+      selectedIndex: _resolvedSelectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: destinations,
       leading: leading,
       trailing: trailing,
       labelType: labelType,
-      backgroundColor: resolvedBackgroundColor,
-      elevation: resolvedElevation,
-      indicatorColor: resolvedIndicatorColor,
-      indicatorShape: resolvedIndicatorShape,
-      minWidth: resolvedMinWidth,
-      minExtendedWidth: resolvedMinExtendedWidth,
-      useIndicator: resolvedUseIndicator,
-      groupAlignment: resolvedGroupAlignment,
-      selectedLabelTextStyle: resolvedSelectedLabelTextStyle,
-      unselectedLabelTextStyle: resolvedUnselectedLabelTextStyle,
-      selectedIconTheme: selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme'),
-      unselectedIconTheme: unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme'),
-      extended: resolvedExtended,
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      indicatorColor: _resolvedIndicatorColor,
+      indicatorShape: _resolvedIndicatorShape,
+      minWidth: _resolvedMinWidth,
+      minExtendedWidth: _resolvedMinExtendedWidth,
+      useIndicator: _resolvedUseIndicator,
+      groupAlignment: _resolvedGroupAlignment,
+      selectedLabelTextStyle: _resolvedSelectedLabelTextStyle,
+      unselectedLabelTextStyle: _resolvedUnselectedLabelTextStyle,
+      selectedIconTheme: _resolvedSelectedIconTheme,
+      unselectedIconTheme: _resolvedUnselectedIconTheme,
+      extended: _resolvedExtended,
     );
   }
 }
@@ -149,6 +152,16 @@ class TomNavigationBar extends TomNavigationBase {
   final WidgetStateProperty<IconThemeData?>? iconTheme;
   final WidgetStateProperty<Color?>? overlayColor;
 
+  // Pre-resolved resource values
+  late final int _resolvedSelectedIndex;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedIndicatorColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedHeight;
+  late final ShapeBorder? _resolvedIndicatorShape;
+
   TomNavigationBar({
     super.key,
     super.tomId,
@@ -169,39 +182,32 @@ class TomNavigationBar extends TomNavigationBase {
     this.labelTextStyle,
     this.iconTheme,
     this.overlayColor,
-  });
+  }) {
+    _resolvedSelectedIndex = resolveIntOrNull('selectedIndex') ?? selectedIndex;
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSelectedIndex =
-      resolveIntOrNull('selectedIndex') ?? selectedIndex;
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull('indicatorColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-
     return NavigationBar(
-      selectedIndex: resolvedSelectedIndex,
+      selectedIndex: _resolvedSelectedIndex,
       onDestinationSelected: onDestinationSelected,
       destinations: destinations,
-      backgroundColor: resolvedBackgroundColor,
-      indicatorColor: resolvedIndicatorColor,
-      indicatorShape: indicatorShape ?? _resolveShapeBorder('indicatorShape'),
-      elevation: resolvedElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
+      backgroundColor: _resolvedBackgroundColor,
+      indicatorColor: _resolvedIndicatorColor,
+      indicatorShape: _resolvedIndicatorShape,
+      elevation: _resolvedElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
       animationDuration: animationDuration,
       labelBehavior: labelBehavior,
-      height: resolvedHeight,
+      height: _resolvedHeight,
       overlayColor: overlayColor,
     );
   }
@@ -243,6 +249,23 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   final TabAlignment? tabAlignment;
   final TextScaler? textScaler;
 
+  // Pre-resolved resource values
+  late final bool _resolvedIsScrollable;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final Color? _resolvedIndicatorColor;
+  late final double? _resolvedIndicatorWeight;
+  late final EdgeInsetsGeometry? _resolvedIndicatorPadding;
+  late final Color? _resolvedDividerColor;
+  late final double? _resolvedDividerHeight;
+  late final Color? _resolvedLabelColor;
+  late final Color? _resolvedUnselectedLabelColor;
+  late final EdgeInsetsGeometry? _resolvedLabelPadding;
+  late final bool _resolvedAutomaticIndicatorColorAdjustment;
+  late final TextStyle? _resolvedLabelStyle;
+  late final TextStyle? _resolvedUnselectedLabelStyle;
+  late final Decoration? _resolvedIndicator;
+  late final BorderRadius? _resolvedSplashBorderRadius;
+
   TomTabBar({
     super.key,
     super.tomId,
@@ -273,7 +296,23 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     this.splashBorderRadius,
     this.tabAlignment,
     this.textScaler,
-  });
+  }) {
+    _resolvedIsScrollable = resolveBoolOrNull('isScrollable') ?? isScrollable;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
+    _resolvedIndicatorWeight = indicatorWeight ?? resolveDoubleOrNull('indicatorWeight');
+    _resolvedIndicatorPadding = indicatorPadding ?? resolveEdgeInsetsOrNull('indicatorPadding');
+    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
+    _resolvedDividerHeight = dividerHeight ?? resolveDoubleOrNull('dividerHeight');
+    _resolvedLabelColor = labelColor ?? resolveColorOrNull('labelColor');
+    _resolvedUnselectedLabelColor = unselectedLabelColor ?? resolveColorOrNull('unselectedLabelColor');
+    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
+    _resolvedAutomaticIndicatorColorAdjustment = resolveBoolOrNull('automaticIndicatorColorAdjustment') ?? automaticIndicatorColorAdjustment;
+    _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
+    _resolvedUnselectedLabelStyle = unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
+    _resolvedIndicator = indicator ?? _resolveDecoration('indicator');
+    _resolvedSplashBorderRadius = splashBorderRadius ?? _resolveBorderRadius('splashBorderRadius');
+  }
 
   @override
   Size get preferredSize => Size.fromHeight(
@@ -288,65 +327,29 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedIsScrollable =
-      resolveBoolOrNull('isScrollable') ?? isScrollable;
-    final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull('indicatorColor');
-    final resolvedIndicatorWeight =
-        indicatorWeight ?? resolveDoubleOrNull('indicatorWeight');
-    final resolvedIndicatorPadding =
-      indicatorPadding ?? resolveEdgeInsetsOrNull('indicatorPadding');
-    final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull('dividerColor');
-    final resolvedDividerHeight =
-        dividerHeight ?? resolveDoubleOrNull('dividerHeight');
-    final resolvedLabelColor =
-        labelColor ?? resolveColorOrNull('labelColor');
-    final resolvedUnselectedLabelColor =
-        unselectedLabelColor ?? resolveColorOrNull('unselectedLabelColor');
-    final resolvedLabelPadding =
-      labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    final resolvedAutomaticIndicatorColorAdjustment =
-      resolveBoolOrNull('automaticIndicatorColorAdjustment') ?? automaticIndicatorColorAdjustment;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle =
-        labelStyle ?? _resolveTextStyle('labelStyle');
-    final resolvedUnselectedLabelStyle =
-        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedIndicator =
-        indicator ?? _resolveDecoration('indicator');
-    final resolvedSplashBorderRadius =
-        splashBorderRadius ?? _resolveBorderRadius('splashBorderRadius');
-
     return TabBar(
       tabs: tabs,
       controller: controller,
-      isScrollable: resolvedIsScrollable,
-      padding: resolvedPadding,
-      indicatorColor: resolvedIndicatorColor,
-      indicatorWeight: resolvedIndicatorWeight ?? 2.0,
-      indicatorPadding: resolvedIndicatorPadding ?? EdgeInsets.zero,
-      indicator: resolvedIndicator,
+      isScrollable: _resolvedIsScrollable,
+      padding: _resolvedPadding,
+      indicatorColor: _resolvedIndicatorColor,
+      indicatorWeight: _resolvedIndicatorWeight ?? 2.0,
+      indicatorPadding: _resolvedIndicatorPadding ?? EdgeInsets.zero,
+      indicator: _resolvedIndicator,
       indicatorSize: indicatorSize,
-      dividerColor: resolvedDividerColor,
-      dividerHeight: resolvedDividerHeight,
-      labelColor: resolvedLabelColor,
-      labelStyle: resolvedLabelStyle,
-      labelPadding: resolvedLabelPadding,
-      unselectedLabelColor: resolvedUnselectedLabelColor,
-      unselectedLabelStyle: resolvedUnselectedLabelStyle,
+      dividerColor: _resolvedDividerColor,
+      dividerHeight: _resolvedDividerHeight,
+      labelColor: _resolvedLabelColor,
+      labelStyle: _resolvedLabelStyle,
+      labelPadding: _resolvedLabelPadding,
+      unselectedLabelColor: _resolvedUnselectedLabelColor,
+      unselectedLabelStyle: _resolvedUnselectedLabelStyle,
       overlayColor: overlayColor,
       onTap: onTap,
-      automaticIndicatorColorAdjustment: resolvedAutomaticIndicatorColorAdjustment,
+      automaticIndicatorColorAdjustment: _resolvedAutomaticIndicatorColorAdjustment,
       physics: physics,
       splashFactory: splashFactory,
-      splashBorderRadius: resolvedSplashBorderRadius,
+      splashBorderRadius: _resolvedSplashBorderRadius,
       tabAlignment: tabAlignment,
       textScaler: textScaler,
     );
@@ -378,6 +381,16 @@ class TomNavigationDrawer extends TomNavigationBase {
   final ShapeBorder? indicatorShape;
   final EdgeInsetsGeometry? tilePadding;
 
+  // Pre-resolved resource values
+  late final int? _resolvedSelectedIndex;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedIndicatorColor;
+  late final EdgeInsetsGeometry? _resolvedTilePadding;
+  late final ShapeBorder? _resolvedIndicatorShape;
+
   TomNavigationDrawer({
     super.key,
     super.tomId,
@@ -393,40 +406,29 @@ class TomNavigationDrawer extends TomNavigationBase {
     this.indicatorColor,
     this.indicatorShape,
     this.tilePadding,
-  });
+  }) {
+    _resolvedSelectedIndex = selectedIndex ?? resolveIntOrNull('selectedIndex');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
+    _resolvedTilePadding = tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
+    _resolvedIndicatorShape = indicatorShape ?? _resolveShapeBorder('indicatorShape');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSelectedIndex =
-      selectedIndex ?? resolveIntOrNull('selectedIndex');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull('indicatorColor');
-    final resolvedTilePadding =
-      tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
-
-    // Phase 3: Resolve complex objects from resources
-    final resolvedIndicatorShape =
-        indicatorShape ?? _resolveShapeBorder('indicatorShape');
-
     return NavigationDrawer(
-      selectedIndex: resolvedSelectedIndex,
+      selectedIndex: _resolvedSelectedIndex,
       onDestinationSelected: onDestinationSelected,
-      backgroundColor: resolvedBackgroundColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      elevation: resolvedElevation,
-      indicatorColor: resolvedIndicatorColor,
-      indicatorShape: resolvedIndicatorShape,
-      tilePadding: resolvedTilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
+      backgroundColor: _resolvedBackgroundColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      elevation: _resolvedElevation,
+      indicatorColor: _resolvedIndicatorColor,
+      indicatorShape: _resolvedIndicatorShape,
+      tilePadding: _resolvedTilePadding ?? const EdgeInsets.symmetric(horizontal: 12.0),
       children: children,
     );
   }
@@ -451,6 +453,15 @@ class TomDrawer extends TomNavigationBase {
   final Clip? clipBehavior;
   final String? semanticLabel;
 
+  // Pre-resolved resource values
+  late final String? _resolvedLabel;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final double? _resolvedElevation;
+  late final double? _resolvedWidth;
+  late final ShapeBorder? _resolvedShape;
+
   TomDrawer({
     super.key,
     super.tomId,
@@ -465,36 +476,27 @@ class TomDrawer extends TomNavigationBase {
     this.width,
     this.clipBehavior,
     this.semanticLabel,
-  });
+  }) {
+    _resolvedLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel') ?? (tomId != null ? resolveResourceOrFail('label') : null);
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel =
-        semanticLabel ??
-            resolveResourceOrNull('semanticLabel') ??
-            (tomId != null ? resolveResourceOrFail('label') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-
     return Drawer(
-      backgroundColor: resolvedBackgroundColor,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      elevation: resolvedElevation,
-      shape: shape ?? _resolveShapeBorder('shape'),
-      width: resolvedWidth,
+      backgroundColor: _resolvedBackgroundColor,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      elevation: _resolvedElevation,
+      shape: _resolvedShape,
+      width: _resolvedWidth,
       clipBehavior: clipBehavior,
-      semanticLabel: resolvedLabel,
+      semanticLabel: _resolvedLabel,
       child: child,
     );
   }
@@ -531,6 +533,18 @@ class TomBottomNavigationBar extends TomNavigationBase {
   final BottomNavigationBarLandscapeLayout? landscapeLayout;
   final MouseCursor? mouseCursor;
 
+  // Pre-resolved resource values
+  late final int _resolvedCurrentIndex;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedBackgroundColor;
+  late final double _resolvedIconSize;
+  late final Color? _resolvedSelectedItemColor;
+  late final Color? _resolvedUnselectedItemColor;
+  late final IconThemeData? _resolvedSelectedIconTheme;
+  late final IconThemeData? _resolvedUnselectedIconTheme;
+  late final TextStyle? _resolvedSelectedLabelStyle;
+  late final TextStyle? _resolvedUnselectedLabelStyle;
+
   TomBottomNavigationBar({
     super.key,
     super.tomId,
@@ -557,49 +571,36 @@ class TomBottomNavigationBar extends TomNavigationBase {
     this.enableFeedback,
     this.landscapeLayout,
     this.mouseCursor,
-  });
+  }) {
+    _resolvedCurrentIndex = resolveIntOrNull('currentIndex') ?? currentIndex;
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
+    _resolvedSelectedItemColor = selectedItemColor ?? resolveColorOrNull('selectedItemColor');
+    _resolvedUnselectedItemColor = unselectedItemColor ?? resolveColorOrNull('unselectedItemColor');
+    _resolvedSelectedIconTheme = selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
+    _resolvedUnselectedIconTheme = unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
+    _resolvedSelectedLabelStyle = selectedLabelStyle ?? _resolveTextStyle('selectedLabelStyle');
+    _resolvedUnselectedLabelStyle = unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCurrentIndex =
-      resolveIntOrNull('currentIndex') ?? currentIndex;
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
-    final resolvedSelectedItemColor =
-        selectedItemColor ?? resolveColorOrNull('selectedItemColor');
-    final resolvedUnselectedItemColor =
-        unselectedItemColor ?? resolveColorOrNull('unselectedItemColor');
-    final resolvedSelectedIconTheme =
-      selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
-    final resolvedUnselectedIconTheme =
-      unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedSelectedLabelStyle =
-        selectedLabelStyle ?? _resolveTextStyle('selectedLabelStyle');
-    final resolvedUnselectedLabelStyle =
-        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
-
     return BottomNavigationBar(
       items: items,
-      currentIndex: resolvedCurrentIndex,
+      currentIndex: _resolvedCurrentIndex,
       onTap: onTap,
-      elevation: resolvedElevation,
+      elevation: _resolvedElevation,
       type: type,
       fixedColor: fixedColor,
-      backgroundColor: resolvedBackgroundColor,
-      iconSize: resolvedIconSize,
-      selectedItemColor: resolvedSelectedItemColor,
-      unselectedItemColor: resolvedUnselectedItemColor,
-      selectedIconTheme: resolvedSelectedIconTheme,
-      unselectedIconTheme: resolvedUnselectedIconTheme,
-      selectedLabelStyle: resolvedSelectedLabelStyle,
-      unselectedLabelStyle: resolvedUnselectedLabelStyle,
+      backgroundColor: _resolvedBackgroundColor,
+      iconSize: _resolvedIconSize,
+      selectedItemColor: _resolvedSelectedItemColor,
+      unselectedItemColor: _resolvedUnselectedItemColor,
+      selectedIconTheme: _resolvedSelectedIconTheme,
+      unselectedIconTheme: _resolvedUnselectedIconTheme,
+      selectedLabelStyle: _resolvedSelectedLabelStyle,
+      unselectedLabelStyle: _resolvedUnselectedLabelStyle,
       selectedFontSize: selectedFontSize ?? 14.0,
       unselectedFontSize: unselectedFontSize ?? 12.0,
       showSelectedLabels: showSelectedLabels,
@@ -638,6 +639,12 @@ class TomStepper extends TomNavigationBase {
   final double? connectorThickness;
   final Color? connectorColor;
 
+  // Pre-resolved resource values
+  late final ScrollPhysics? _resolvedPhysics;
+  late final double? _resolvedElevation;
+  late final double? _resolvedConnectorThickness;
+  late final Color? _resolvedConnectorColor;
+
   TomStepper({
     super.key,
     super.tomId,
@@ -655,32 +662,27 @@ class TomStepper extends TomNavigationBase {
     this.margin,
     this.connectorThickness,
     this.connectorColor,
-  });
+  }) {
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedConnectorThickness = connectorThickness ?? resolveDoubleOrNull('connectorThickness');
+    _resolvedConnectorColor = connectorColor ?? resolveColorOrNull('connectorColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPhysics =
-      physics ?? _resolveScrollPhysics('physics');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedConnectorThickness =
-        connectorThickness ?? resolveDoubleOrNull('connectorThickness');
-    final resolvedConnectorColor =
-        connectorColor ?? resolveColorOrNull('connectorColor');
-
     return Stepper(
       steps: steps,
       currentStep: currentStep,
       type: type,
-      physics: resolvedPhysics,
+      physics: _resolvedPhysics,
       onStepContinue: onStepContinue,
       onStepCancel: onStepCancel,
       controlsBuilder: controlsBuilder,
-      elevation: resolvedElevation,
+      elevation: _resolvedElevation,
       margin: margin,
-      connectorThickness: resolvedConnectorThickness,
-      connectorColor: resolvedConnectorColor != null ? WidgetStatePropertyAll<Color>(resolvedConnectorColor) : null,
+      connectorThickness: _resolvedConnectorThickness,
+      connectorColor: _resolvedConnectorColor != null ? WidgetStatePropertyAll<Color>(_resolvedConnectorColor) : null,
     );
   }
 
@@ -701,6 +703,9 @@ class TomTabBarView extends TomNavigationBase {
   final double? viewportFraction;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final double _resolvedViewportFraction;
+
   TomTabBarView({
     super.key,
     super.tomId,
@@ -712,19 +717,17 @@ class TomTabBarView extends TomNavigationBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.viewportFraction,
     this.clipBehavior = Clip.hardEdge,
-  });
+  }) {
+    _resolvedViewportFraction = viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedViewportFraction =
-        viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
-
     return TabBarView(
       controller: controller,
       physics: physics,
       dragStartBehavior: dragStartBehavior,
-      viewportFraction: resolvedViewportFraction,
+      viewportFraction: _resolvedViewportFraction,
       clipBehavior: clipBehavior,
       children: children,
     );
@@ -804,6 +807,12 @@ class TomCupertinoTabBar extends TomNavigationBase {
   final double? height;
   final Border? border;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedActiveColor;
+  late final double _resolvedIconSize;
+  late final double _resolvedHeight;
+
   TomCupertinoTabBar({
     super.key,
     super.tomId,
@@ -818,29 +827,24 @@ class TomCupertinoTabBar extends TomNavigationBase {
     this.iconSize,
     this.height,
     this.border,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 30.0;
+    _resolvedHeight = height ?? resolveDoubleOrNull('height') ?? 50.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull('activeColor');
-    final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull('iconSize') ?? 30.0;
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height') ?? 50.0;
-
     return CupertinoTabBar(
       items: items,
       onTap: onTap,
       currentIndex: currentIndex,
-      backgroundColor: resolvedBackgroundColor,
-      activeColor: resolvedActiveColor,
+      backgroundColor: _resolvedBackgroundColor,
+      activeColor: _resolvedActiveColor,
       inactiveColor: inactiveColor,
-      iconSize: resolvedIconSize,
-      height: resolvedHeight,
+      iconSize: _resolvedIconSize,
+      height: _resolvedHeight,
       border: border,
     );
   }
@@ -864,6 +868,10 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
   final bool transitionBetweenRoutes;
   final Object? heroTag;
 
+  // Pre-resolved resource values
+  late final String? _resolvedPreviousPageTitle;
+  late final Color? _resolvedBackgroundColor;
+
   TomCupertinoNavigationBar({
     super.key,
     super.tomId,
@@ -881,16 +889,13 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
     this.border,
     this.transitionBetweenRoutes = true,
     this.heroTag,
-  });
+  }) {
+    _resolvedPreviousPageTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPreviousPageTitle =
-        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-
     // When transitionBetweenRoutes is true, Flutter asserts heroTag must be
     // identical to its internal _defaultHeroTag. We can't access that constant,
     // so we omit heroTag entirely (letting Flutter use its default).
@@ -900,10 +905,10 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
         leading: leading,
         automaticallyImplyLeading: automaticallyImplyLeading,
         automaticallyImplyMiddle: automaticallyImplyMiddle,
-        previousPageTitle: resolvedPreviousPageTitle,
+        previousPageTitle: _resolvedPreviousPageTitle,
         middle: middle,
         trailing: trailing,
-        backgroundColor: resolvedBackgroundColor,
+        backgroundColor: _resolvedBackgroundColor,
         brightness: brightness,
         padding: padding,
         border: border,
@@ -916,10 +921,10 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
       automaticallyImplyMiddle: automaticallyImplyMiddle,
-      previousPageTitle: resolvedPreviousPageTitle,
+      previousPageTitle: _resolvedPreviousPageTitle,
       middle: middle,
       trailing: trailing,
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       brightness: brightness,
       padding: padding,
       border: border,
@@ -939,6 +944,9 @@ class TomBreadcrumb extends TomNavigationBase {
   final CrossAxisAlignment crossAxisAlignment;
   final EdgeInsetsGeometry? padding;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomBreadcrumb({
     super.key,
     super.tomId,
@@ -949,7 +957,9 @@ class TomBreadcrumb extends TomNavigationBase {
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.crossAxisAlignment = CrossAxisAlignment.center,
     this.padding,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -968,11 +978,8 @@ class TomBreadcrumb extends TomNavigationBase {
       children: breadcrumbChildren,
     );
 
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-
-    if (resolvedPadding != null) {
-      return Padding(padding: resolvedPadding, child: row);
+    if (_resolvedPadding != null) {
+      return Padding(padding: _resolvedPadding, child: row);
     }
     return row;
   }
@@ -1203,6 +1210,10 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
   final bool stretch;
   final bool alwaysShowMiddle;
 
+  // Pre-resolved resource values
+  late final String? _resolvedPreviousPageTitle;
+  late final Color? _resolvedBackgroundColor;
+
   TomCupertinoSliverNavigationBar({
     super.key,
     super.tomId,
@@ -1223,26 +1234,24 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
     this.heroTag = _defaultHeroTag,
     this.stretch = false,
     this.alwaysShowMiddle = true,
-  });
+  }) {
+    _resolvedPreviousPageTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+  }
 
   static const Object _defaultHeroTag = 'TomCupertinoSliverNavigationBar';
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPreviousPageTitle =
-        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-
     return CupertinoSliverNavigationBar(
       largeTitle: largeTitle,
       leading: leading,
       automaticallyImplyLeading: automaticallyImplyLeading,
       automaticallyImplyTitle: automaticallyImplyTitle,
-      previousPageTitle: resolvedPreviousPageTitle,
+      previousPageTitle: _resolvedPreviousPageTitle,
       middle: middle,
       trailing: trailing,
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       brightness: brightness,
       padding: padding,
       border: border,
@@ -1305,6 +1314,10 @@ class TomDrawerHeader extends TomNavigationBase {
   final Curve curve;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry _resolvedPadding;
+  late final EdgeInsetsGeometry _resolvedMargin;
+
   TomDrawerHeader({
     super.key,
     super.tomId,
@@ -1316,21 +1329,17 @@ class TomDrawerHeader extends TomNavigationBase {
     this.duration = const Duration(milliseconds: 250),
     this.curve = Curves.fastOutSlowIn,
     this.child,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? const EdgeInsets.only(bottom: 8.0);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding') ??
-            const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
-    final resolvedMargin =
-        margin ?? resolveEdgeInsetsOrNull('margin') ??
-            const EdgeInsets.only(bottom: 8.0);
-
     return DrawerHeader(
       decoration: decoration,
-      padding: resolvedPadding,
-      margin: resolvedMargin,
+      padding: _resolvedPadding,
+      margin: _resolvedMargin,
       duration: duration,
       curve: curve,
       child: child,
@@ -1353,6 +1362,9 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
   final VoidCallback? onDetailsPressed;
   final Color? arrowColor;
 
+  // Pre-resolved resource values
+  late final Color _resolvedArrowColor;
+
   TomUserAccountsDrawerHeader({
     super.key,
     super.tomId,
@@ -1368,13 +1380,12 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     this.accountEmail,
     this.onDetailsPressed,
     this.arrowColor,
-  });
+  }) {
+    _resolvedArrowColor = arrowColor ?? resolveColorOrNull('arrowColor') ?? Colors.white;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedArrowColor =
-        arrowColor ?? resolveColorOrNull('arrowColor') ?? Colors.white;
-
     return UserAccountsDrawerHeader(
       decoration: decoration,
       margin: margin,
@@ -1385,7 +1396,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
       accountName: accountName,
       accountEmail: accountEmail,
       onDetailsPressed: onDetailsPressed,
-      arrowColor: resolvedArrowColor,
+      arrowColor: _resolvedArrowColor,
     );
   }
 }
@@ -1398,6 +1409,10 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
   final String? previousPageTitle;
   final VoidCallback? onPressed;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTitle;
+  late final String? _resolvedPreviousPageTitle;
+
   TomCupertinoNavigationBarBackButton({
     super.key,
     super.tomId,
@@ -1406,16 +1421,16 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     this.color,
     this.previousPageTitle,
     this.onPressed,
-  });
+  }) {
+    _resolvedTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
+    _resolvedPreviousPageTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
-
     return CupertinoNavigationBarBackButton(
       color: color,
-      previousPageTitle: resolvedTitle,
+      previousPageTitle: _resolvedTitle,
       onPressed: onPressed,
     );
   }
@@ -1431,6 +1446,11 @@ class TomTabPageSelector extends TomNavigationBase {
   final Color? selectedColor;
   final BorderStyle? borderStyle;
 
+  // Pre-resolved resource values
+  late final double _resolvedIndicatorSize;
+  late final Color? _resolvedColor;
+  late final Color? _resolvedSelectedColor;
+
   TomTabPageSelector({
     super.key,
     super.tomId,
@@ -1441,21 +1461,19 @@ class TomTabPageSelector extends TomNavigationBase {
     this.color,
     this.selectedColor,
     this.borderStyle,
-  });
+  }) {
+    _resolvedIndicatorSize = indicatorSize ?? resolveDoubleOrNull('indicatorSize') ?? 12.0;
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedIndicatorSize =
-        indicatorSize ?? resolveDoubleOrNull('indicatorSize') ?? 12.0;
-    final resolvedColor = color ?? resolveColorOrNull('color');
-    final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull('selectedColor');
-
     return TabPageSelector(
       controller: controller,
-      indicatorSize: resolvedIndicatorSize,
-      color: resolvedColor,
-      selectedColor: resolvedSelectedColor,
+      indicatorSize: _resolvedIndicatorSize,
+      color: _resolvedColor,
+      selectedColor: _resolvedSelectedColor,
       borderStyle: borderStyle,
     );
   }

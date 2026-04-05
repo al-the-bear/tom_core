@@ -77,6 +77,36 @@ class TomTextField extends TomInputBase {
   final String? hint;
   final InputCounterWidgetBuilder? buildCounter;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String? _resolvedHint;
+  late final Color? _resolvedCursorColor;
+  late final Color? _resolvedCursorErrorColor;
+  late final double? _resolvedCursorHeight;
+  late final double _resolvedCursorWidth;
+  late final int? _resolvedMaxLines;
+  late final int? _resolvedMinLines;
+  late final int? _resolvedMaxLength;
+  late final bool _resolvedAutofocus;
+  late final bool _resolvedObscureText;
+  late final bool _resolvedAutocorrect;
+  late final bool _resolvedEnableSuggestions;
+  late final bool _resolvedExpands;
+  late final bool _resolvedEnabled;
+  late final bool _resolvedReadOnly;
+  late final bool? _resolvedShowCursor;
+  late final String _resolvedObscuringCharacter;
+  late final EdgeInsets _resolvedScrollPadding;
+  late final bool? _resolvedEnableInteractiveSelection;
+  late final String? _resolvedRestorationId;
+  late final bool _resolvedScribbleEnabled;
+  late final bool _resolvedEnableIMEPersonalizedLearning;
+  late final bool _resolvedCanRequestFocus;
+  late final TextStyle? _resolvedStyle;
+  late final InputDecoration? _resolvedDecoration;
+  late final ScrollPhysics? _resolvedScrollPhysics;
+  late final StrutStyle? _resolvedStrutStyle;
+
   TomTextField({
     super.key,
     super.tomId,
@@ -146,124 +176,98 @@ class TomTextField extends TomInputBase {
     this.label,
     this.hint,
     this.buildCounter,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
+    _resolvedCursorErrorColor = cursorErrorColor ?? resolveColorOrNull('cursorErrorColor');
+    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
+    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedObscureText = resolveBoolOrNull('obscureText') ?? obscureText;
+    _resolvedAutocorrect = resolveBoolOrNull('autocorrect') ?? autocorrect;
+    _resolvedEnableSuggestions = resolveBoolOrNull('enableSuggestions') ?? enableSuggestions;
+    _resolvedExpands = resolveBoolOrNull('expands') ?? expands;
+    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
+    _resolvedReadOnly = resolveBoolOrNull('readOnly') ?? readOnly;
+    _resolvedShowCursor = showCursor ?? resolveBoolOrNull('showCursor');
+    _resolvedObscuringCharacter = obscuringCharacter ?? resolveResourceOrNull('obscuringCharacter') ?? '•';
+    _resolvedScrollPadding = resolveEdgeInsetsOrNull('scrollPadding') ?? scrollPadding;
+    _resolvedEnableInteractiveSelection = enableInteractiveSelection ?? resolveBoolOrNull('enableInteractiveSelection');
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedScribbleEnabled = resolveBoolOrNull('scribbleEnabled') ?? scribbleEnabled;
+    _resolvedEnableIMEPersonalizedLearning = resolveBoolOrNull('enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
+    _resolvedCanRequestFocus = resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
+    _resolvedStyle = style ?? _resolveTextStyle();
+    _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
+    _resolvedScrollPhysics = scrollPhysics ?? _resolveScrollPhysics('scrollPhysics');
+    _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedCursorColor =
-        cursorColor ?? resolveColorOrNull('cursorColor');
-    final resolvedCursorErrorColor =
-        cursorErrorColor ?? resolveColorOrNull('cursorErrorColor');
-    final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    final resolvedCursorWidth =
-        cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
-    final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedMinLines =
-        minLines ?? resolveIntOrNull('minLines');
-    final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull('maxLength');
-    final resolvedAutofocus =
-        resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedObscureText =
-        resolveBoolOrNull('obscureText') ?? obscureText;
-    final resolvedAutocorrect =
-        resolveBoolOrNull('autocorrect') ?? autocorrect;
-    final resolvedEnableSuggestions =
-        resolveBoolOrNull('enableSuggestions') ?? enableSuggestions;
-    final resolvedExpands =
-        resolveBoolOrNull('expands') ?? expands;
-    final resolvedEnabled =
-        resolveBoolOrNull('enabled') ?? enabled;
-    final resolvedReadOnly =
-        resolveBoolOrNull('readOnly') ?? readOnly;
-    final resolvedShowCursor =
-        showCursor ?? resolveBoolOrNull('showCursor');
-    final resolvedObscuringCharacter =
-        obscuringCharacter ?? resolveResourceOrNull('obscuringCharacter') ?? '•';
-    final resolvedScrollPadding =
-        resolveEdgeInsetsOrNull('scrollPadding') ?? scrollPadding;
-    final resolvedEnableInteractiveSelection =
-        enableInteractiveSelection ?? resolveBoolOrNull('enableInteractiveSelection');
-    final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull('restorationId');
-    final resolvedScribbleEnabled =
-        resolveBoolOrNull('scribbleEnabled') ?? scribbleEnabled;
-    final resolvedEnableIMEPersonalizedLearning =
-        resolveBoolOrNull('enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
-    final resolvedCanRequestFocus =
-        resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context);
-
-    // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
-    final resolvedDecoration = _resolveDecoration(resolvedLabel, resolvedHint);
-
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      decoration: resolvedDecoration,
+      decoration: _resolvedDecoration,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: resolvedStyle,
-      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
+      style: _resolvedStyle,
+      strutStyle: _resolvedStrutStyle,
       textAlign: textAlign,
       textAlignVertical: textAlignVertical,
       textDirection: textDirection,
-      autofocus: resolvedAutofocus,
-      obscureText: resolvedObscureText,
-      obscuringCharacter: resolvedObscuringCharacter,
-      autocorrect: resolvedAutocorrect,
+      autofocus: _resolvedAutofocus,
+      obscureText: _resolvedObscureText,
+      obscuringCharacter: _resolvedObscuringCharacter,
+      autocorrect: _resolvedAutocorrect,
       smartDashesType: smartDashesType,
       smartQuotesType: smartQuotesType,
-      enableSuggestions: resolvedEnableSuggestions,
-      maxLines: resolvedMaxLines,
-      minLines: resolvedMinLines,
-      expands: resolvedExpands,
-      maxLength: resolvedMaxLength,
+      enableSuggestions: _resolvedEnableSuggestions,
+      maxLines: _resolvedMaxLines,
+      minLines: _resolvedMinLines,
+      expands: _resolvedExpands,
+      maxLength: _resolvedMaxLength,
       maxLengthEnforcement: maxLengthEnforcement,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onSubmitted: onSubmitted,
       onAppPrivateCommand: onAppPrivateCommand,
       inputFormatters: inputFormatters,
-      enabled: resolvedEnabled,
+      enabled: _resolvedEnabled,
       ignorePointers: ignorePointers,
-      readOnly: resolvedReadOnly,
-      showCursor: resolvedShowCursor,
-      cursorWidth: resolvedCursorWidth,
-      cursorHeight: resolvedCursorHeight,
+      readOnly: _resolvedReadOnly,
+      showCursor: _resolvedShowCursor,
+      cursorWidth: _resolvedCursorWidth,
+      cursorHeight: _resolvedCursorHeight,
       cursorRadius: cursorRadius,
-      cursorColor: resolvedCursorColor,
-      cursorErrorColor: resolvedCursorErrorColor,
+      cursorColor: _resolvedCursorColor,
+      cursorErrorColor: _resolvedCursorErrorColor,
       selectionHeightStyle: selectionHeightStyle,
       selectionWidthStyle: selectionWidthStyle,
       keyboardAppearance: keyboardAppearance,
-      scrollPadding: resolvedScrollPadding,
+      scrollPadding: _resolvedScrollPadding,
       dragStartBehavior: dragStartBehavior,
-      enableInteractiveSelection: resolvedEnableInteractiveSelection,
+      enableInteractiveSelection: _resolvedEnableInteractiveSelection,
       selectionControls: selectionControls,
       onTap: onTap,
       onTapAlwaysCalled: onTapAlwaysCalled,
       onTapOutside: onTapOutside,
       mouseCursor: mouseCursor,
       scrollController: scrollController,
-      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics('scrollPhysics'),
+      scrollPhysics: _resolvedScrollPhysics,
       autofillHints: autofillHints,
       clipBehavior: clipBehavior,
-      restorationId: resolvedRestorationId,
-      scribbleEnabled: resolvedScribbleEnabled,
-      enableIMEPersonalizedLearning: resolvedEnableIMEPersonalizedLearning,
+      restorationId: _resolvedRestorationId,
+      scribbleEnabled: _resolvedScribbleEnabled,
+      enableIMEPersonalizedLearning: _resolvedEnableIMEPersonalizedLearning,
       contentInsertionConfiguration: contentInsertionConfiguration,
       contextMenuBuilder: contextMenuBuilder,
-      canRequestFocus: resolvedCanRequestFocus,
+      canRequestFocus: _resolvedCanRequestFocus,
       spellCheckConfiguration: spellCheckConfiguration,
       magnifierConfiguration: magnifierConfiguration,
       undoController: undoController,
@@ -272,7 +276,7 @@ class TomTextField extends TomInputBase {
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context) {
+  TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
@@ -351,6 +355,21 @@ class TomTextFormField extends TomInputBase {
   final String? label;
   final String? hint;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String? _resolvedHint;
+  late final int? _resolvedMaxLines;
+  late final int? _resolvedMinLines;
+  late final int? _resolvedMaxLength;
+  late final bool _resolvedAutofocus;
+  late final bool _resolvedObscureText;
+  late final bool _resolvedAutocorrect;
+  late final String? _resolvedInitialValue;
+  late final bool _resolvedEnabled;
+  late final bool _resolvedReadOnly;
+  late final TextStyle? _resolvedStyle;
+  late final InputDecoration? _resolvedDecoration;
+
   TomTextFormField({
     super.key,
     super.tomId,
@@ -382,70 +401,54 @@ class TomTextFormField extends TomInputBase {
     this.autovalidateMode,
     this.label,
     this.hint,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
+    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedObscureText = resolveBoolOrNull('obscureText') ?? obscureText;
+    _resolvedAutocorrect = resolveBoolOrNull('autocorrect') ?? autocorrect;
+    _resolvedInitialValue = initialValue ?? resolveResourceOrNull('initialValue');
+    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
+    _resolvedReadOnly = resolveBoolOrNull('readOnly') ?? readOnly;
+    _resolvedStyle = style ?? _resolveTextStyle();
+    _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final resolvedHint =
-        hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedMinLines =
-        minLines ?? resolveIntOrNull('minLines');
-    final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull('maxLength');
-    final resolvedAutofocus =
-        resolveBoolOrNull('autofocus') ?? autofocus;
-    final resolvedObscureText =
-        resolveBoolOrNull('obscureText') ?? obscureText;
-    final resolvedAutocorrect =
-        resolveBoolOrNull('autocorrect') ?? autocorrect;
-    final resolvedInitialValue =
-        initialValue ?? resolveResourceOrNull('initialValue');
-    final resolvedEnabled =
-        resolveBoolOrNull('enabled') ?? enabled;
-    final resolvedReadOnly =
-        resolveBoolOrNull('readOnly') ?? readOnly;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context);
-
-    // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
-    final resolvedDecoration = _resolveDecoration(resolvedLabel, resolvedHint);
-
     return TextFormField(
       controller: controller,
       focusNode: focusNode,
-      decoration: resolvedDecoration,
+      decoration: _resolvedDecoration,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       textAlign: textAlign,
       textDirection: textDirection,
-      autofocus: resolvedAutofocus,
-      obscureText: resolvedObscureText,
-      autocorrect: resolvedAutocorrect,
-      maxLines: resolvedMaxLines,
-      minLines: resolvedMinLines,
-      maxLength: resolvedMaxLength,
+      autofocus: _resolvedAutofocus,
+      obscureText: _resolvedObscureText,
+      autocorrect: _resolvedAutocorrect,
+      maxLines: _resolvedMaxLines,
+      minLines: _resolvedMinLines,
+      maxLength: _resolvedMaxLength,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onFieldSubmitted: onFieldSubmitted,
       onSaved: onSaved,
       validator: validator,
-      initialValue: resolvedInitialValue,
-      enabled: resolvedEnabled,
-      readOnly: resolvedReadOnly,
+      initialValue: _resolvedInitialValue,
+      enabled: _resolvedEnabled,
+      readOnly: _resolvedReadOnly,
       autovalidateMode: autovalidateMode,
     );
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context) {
+  TextStyle? _resolveTextStyle() {
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
@@ -505,6 +508,11 @@ class TomSearchBar extends TomInputBase {
   final bool autoFocus;
   final TextCapitalization textCapitalization;
 
+  // Pre-resolved resource values
+  late final String? _resolvedHint;
+  late final bool _resolvedAutoFocus;
+  late final BoxConstraints? _resolvedConstraints;
+
   TomSearchBar({
     super.key,
     super.tomId,
@@ -529,21 +537,18 @@ class TomSearchBar extends TomInputBase {
     this.constraints,
     this.autoFocus = false,
     this.textCapitalization = TextCapitalization.none,
-  });
+  }) {
+    _resolvedHint = hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedAutoFocus = resolveBoolOrNull('autoFocus') ?? autoFocus;
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedHint =
-        hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedAutoFocus =
-        resolveBoolOrNull('autoFocus') ?? autoFocus;
-
     return SearchBar(
       controller: controller,
       focusNode: focusNode,
-      hintText: resolvedHint,
+      hintText: _resolvedHint,
       leading: leading,
       trailing: trailing,
       onChanged: onChanged,
@@ -557,8 +562,8 @@ class TomSearchBar extends TomInputBase {
       padding: padding,
       textStyle: textStyle,
       hintStyle: hintStyle,
-      constraints: constraints ?? _resolveBoxConstraints('constraints'),
-      autoFocus: resolvedAutoFocus,
+      constraints: _resolvedConstraints,
+      autoFocus: _resolvedAutoFocus,
       textCapitalization: textCapitalization,
     );
   }
@@ -645,6 +650,15 @@ class TomSearchAnchor extends TomInputBase {
   final TextCapitalization? textCapitalization;
   final TextInputAction? viewOnSubmitted;
 
+  // Pre-resolved resource values
+  late final String? _resolvedHint;
+  late final Color? _resolvedViewBackgroundColor;
+  late final double? _resolvedViewElevation;
+  late final Color? _resolvedViewSurfaceTintColor;
+  late final Color? _resolvedDividerColor;
+  late final TextStyle? _resolvedHeaderTextStyle;
+  late final TextStyle? _resolvedHeaderHintStyle;
+
   TomSearchAnchor({
     super.key,
     super.tomId,
@@ -668,27 +682,18 @@ class TomSearchAnchor extends TomInputBase {
     this.viewConstraints,
     this.textCapitalization,
     this.viewOnSubmitted,
-  });
+  }) {
+    _resolvedHint = viewHintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedViewBackgroundColor = viewBackgroundColor ?? resolveColorOrNull('viewBackgroundColor');
+    _resolvedViewElevation = viewElevation ?? resolveDoubleOrNull('viewElevation');
+    _resolvedViewSurfaceTintColor = viewSurfaceTintColor ?? resolveColorOrNull('viewSurfaceTintColor');
+    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
+    _resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle('headerTextStyle');
+    _resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle('headerHintStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedHint =
-        viewHintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedViewBackgroundColor =
-        viewBackgroundColor ?? resolveColorOrNull('viewBackgroundColor');
-    final resolvedViewElevation =
-        viewElevation ?? resolveDoubleOrNull('viewElevation');
-    final resolvedViewSurfaceTintColor =
-        viewSurfaceTintColor ?? resolveColorOrNull('viewSurfaceTintColor');
-    final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull('dividerColor');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle('headerTextStyle');
-    final resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle('headerHintStyle');
-
     return SearchAnchor(
       isFullScreen: isFullScreen,
       searchController: searchController,
@@ -696,7 +701,7 @@ class TomSearchAnchor extends TomInputBase {
           (BuildContext context, SearchController controller) {
             return SearchBar(
               controller: controller,
-              hintText: resolvedHint,
+              hintText: _resolvedHint,
               onTap: () => controller.openView(),
               onChanged: (_) => controller.openView(),
             );
@@ -704,15 +709,15 @@ class TomSearchAnchor extends TomInputBase {
       suggestionsBuilder: suggestionsBuilder,
       viewLeading: viewLeading,
       viewTrailing: viewTrailing,
-      viewHintText: resolvedHint,
-      viewBackgroundColor: resolvedViewBackgroundColor,
-      viewElevation: resolvedViewElevation,
-      viewSurfaceTintColor: resolvedViewSurfaceTintColor,
+      viewHintText: _resolvedHint,
+      viewBackgroundColor: _resolvedViewBackgroundColor,
+      viewElevation: _resolvedViewElevation,
+      viewSurfaceTintColor: _resolvedViewSurfaceTintColor,
       viewSide: viewSide,
       viewShape: viewShape,
-      headerTextStyle: resolvedHeaderTextStyle,
-      headerHintStyle: resolvedHeaderHintStyle,
-      dividerColor: resolvedDividerColor,
+      headerTextStyle: _resolvedHeaderTextStyle,
+      headerHintStyle: _resolvedHeaderHintStyle,
+      dividerColor: _resolvedDividerColor,
       viewConstraints: viewConstraints,
       textCapitalization: textCapitalization,
     );
@@ -768,6 +773,14 @@ class TomEditableText extends TomInputBase {
   final bool enableInteractiveSelection;
   final Clip clipBehavior;
 
+  // Pre-resolved resource values
+  late final Color _resolvedBackgroundCursorColor;
+  late final Color? _resolvedSelectionColor;
+  late final double? _resolvedCursorHeight;
+  late final double _resolvedCursorWidth;
+  late final int? _resolvedMaxLines;
+  late final int? _resolvedMinLines;
+
   TomEditableText({
     super.key,
     super.tomId,
@@ -810,25 +823,17 @@ class TomEditableText extends TomInputBase {
     this.rendererIgnoresPointer = false,
     this.enableInteractiveSelection = true,
     this.clipBehavior = Clip.hardEdge,
-  });
+  }) {
+    _resolvedBackgroundCursorColor = backgroundCursorColor ?? resolveColorOrNull('backgroundCursorColor') ?? Colors.grey;
+    _resolvedSelectionColor = selectionColor ?? resolveColorOrNull('selectionColor');
+    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
+    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundCursorColor =
-        backgroundCursorColor ?? resolveColorOrNull('backgroundCursorColor') ?? Colors.grey;
-    final resolvedSelectionColor =
-        selectionColor ?? resolveColorOrNull('selectionColor');
-    final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    final resolvedCursorWidth =
-        cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
-    final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedMinLines =
-        minLines ?? resolveIntOrNull('minLines');
-
-    // Phase 3: Style is required, so no resource resolution for this widget
     // (EditableText requires an explicit style)
 
     return EditableText(
@@ -841,12 +846,12 @@ class TomEditableText extends TomInputBase {
       style: style,
       strutStyle: strutStyle,
       cursorColor: cursorColor,
-      backgroundCursorColor: resolvedBackgroundCursorColor,
-      maxLines: resolvedMaxLines,
-      minLines: resolvedMinLines,
+      backgroundCursorColor: _resolvedBackgroundCursorColor,
+      maxLines: _resolvedMaxLines,
+      minLines: _resolvedMinLines,
       expands: expands,
       autofocus: autofocus,
-      selectionColor: resolvedSelectionColor,
+      selectionColor: _resolvedSelectionColor,
       selectionControls: selectionControls,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
@@ -856,8 +861,8 @@ class TomEditableText extends TomInputBase {
       textScaler: textScaler,
       showCursor: showCursor,
       showSelectionHandles: showSelectionHandles,
-      cursorWidth: resolvedCursorWidth,
-      cursorHeight: resolvedCursorHeight,
+      cursorWidth: _resolvedCursorWidth,
+      cursorHeight: _resolvedCursorHeight,
       cursorRadius: cursorRadius,
       cursorOffset: cursorOffset,
       scrollPhysics: scrollPhysics,
@@ -907,6 +912,15 @@ class TomCupertinoTextField extends TomInputBase {
   final bool enabled;
   final bool readOnly;
 
+  // Pre-resolved resource values
+  late final String? _resolvedPlaceholder;
+  late final EdgeInsetsGeometry _resolvedPadding;
+  late final int? _resolvedMaxLines;
+  late final int? _resolvedMinLines;
+  late final int? _resolvedMaxLength;
+  late final TextStyle? _resolvedStyle;
+  late final TextStyle? _resolvedPlaceholderStyle;
+
   TomCupertinoTextField({
     super.key,
     super.tomId,
@@ -940,34 +954,25 @@ class TomCupertinoTextField extends TomInputBase {
     this.onSubmitted,
     this.enabled = true,
     this.readOnly = false,
-  });
+  }) {
+    _resolvedPlaceholder = placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.all(7.0);
+    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
+    _resolvedStyle = style ?? _resolveTextStyle('style');
+    _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.all(7.0);
-    final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull('maxLines');
-    final resolvedMinLines =
-        minLines ?? resolveIntOrNull('minLines');
-    final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull('maxLength');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle('style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
-
     return CupertinoTextField(
       controller: controller,
       focusNode: focusNode,
       decoration: decoration,
-      padding: resolvedPadding,
-      placeholder: resolvedPlaceholder,
-      placeholderStyle: resolvedPlaceholderStyle,
+      padding: _resolvedPadding,
+      placeholder: _resolvedPlaceholder,
+      placeholderStyle: _resolvedPlaceholderStyle,
       prefix: prefix,
       prefixMode: prefixMode,
       suffix: suffix,
@@ -976,15 +981,15 @@ class TomCupertinoTextField extends TomInputBase {
       keyboardType: keyboardType,
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       textAlign: textAlign,
       textDirection: textDirection,
       autofocus: autofocus,
       obscureText: obscureText,
       autocorrect: autocorrect,
-      maxLines: resolvedMaxLines,
-      minLines: resolvedMinLines,
-      maxLength: resolvedMaxLength,
+      maxLines: _resolvedMaxLines,
+      minLines: _resolvedMinLines,
+      maxLength: _resolvedMaxLength,
       onChanged: onChanged,
       onEditingComplete: onEditingComplete,
       onSubmitted: onSubmitted,
@@ -1058,6 +1063,10 @@ class TomCupertinoDatePicker extends TomInputBase {
   final bool showDayOfWeek;
   final double? itemExtent;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final double _resolvedItemExtent;
+
   TomCupertinoDatePicker({
     super.key,
     super.tomId,
@@ -1075,16 +1084,13 @@ class TomCupertinoDatePicker extends TomInputBase {
     this.backgroundColor,
     this.showDayOfWeek = false,
     this.itemExtent,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0;
-
     return CupertinoDatePicker(
       mode: mode,
       onDateTimeChanged: onDateTimeChanged,
@@ -1095,9 +1101,9 @@ class TomCupertinoDatePicker extends TomInputBase {
       maximumYear: maximumYear,
       minuteInterval: minuteInterval,
       use24hFormat: use24hFormat,
-      backgroundColor: resolvedBackgroundColor,
+      backgroundColor: _resolvedBackgroundColor,
       showDayOfWeek: showDayOfWeek,
-      itemExtent: resolvedItemExtent,
+      itemExtent: _resolvedItemExtent,
     );
   }
 }
@@ -1130,6 +1136,16 @@ class TomCupertinoSearchTextField extends TomInputBase {
   final SmartQuotesType? smartQuotesType;
   final SmartDashesType? smartDashesType;
 
+  // Pre-resolved resource values
+  late final String _resolvedPlaceholder;
+  late final TextStyle? _resolvedStyle;
+  late final TextStyle? _resolvedPlaceholderStyle;
+  late final Color? _resolvedBackgroundColor;
+  late final BorderRadius? _resolvedBorderRadius;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final Color? _resolvedItemColor;
+  late final double? _resolvedItemSize;
+
   TomCupertinoSearchTextField({
     super.key,
     super.tomId,
@@ -1158,30 +1174,33 @@ class TomCupertinoSearchTextField extends TomInputBase {
     this.enabled = true,
     this.smartQuotesType,
     this.smartDashesType,
-  });
+  }) {
+    _resolvedPlaceholder = placeholder ?? resolveResourceOrFail('hint');
+    _resolvedStyle = style ?? _resolveTextStyle('style');
+    _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedItemColor = itemColor ?? resolveColorOrNull('itemColor');
+    _resolvedItemSize = itemSize ?? resolveDoubleOrNull('itemSize');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPlaceholder = placeholder ?? resolveResourceOrFail('hint');
-
-    // Phase 3: Resolve optional TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle('style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
-
     return CupertinoSearchTextField(
       controller: controller,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       onSuffixTap: onSuffixTap,
-      style: resolvedStyle,
-      placeholder: resolvedPlaceholder,
-      placeholderStyle: resolvedPlaceholderStyle,
+      style: _resolvedStyle,
+      placeholder: _resolvedPlaceholder,
+      placeholderStyle: _resolvedPlaceholderStyle,
       decoration: decoration,
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
-      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius') ?? const BorderRadius.all(Radius.circular(8.0)),
-      padding: padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
-      itemColor: itemColor ?? resolveColorOrNull('itemColor') ?? CupertinoColors.secondaryLabel,
-      itemSize: itemSize ?? resolveDoubleOrNull('itemSize') ?? 20.0,
+      backgroundColor: _resolvedBackgroundColor,
+      borderRadius: _resolvedBorderRadius ?? const BorderRadius.all(Radius.circular(8.0)),
+      padding: _resolvedPadding ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
+      itemColor: _resolvedItemColor ?? CupertinoColors.secondaryLabel,
+      itemSize: _resolvedItemSize ?? 20.0,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       suffixMode: suffixMode,
@@ -1219,6 +1238,10 @@ class TomCupertinoTimerPicker extends TomInputBase {
   final double? itemExtent;
   final ValueChanged<Duration> onTimerDurationChanged;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedItemExtent;
+
   TomCupertinoTimerPicker({
     super.key,
     super.tomId,
@@ -1232,7 +1255,10 @@ class TomCupertinoTimerPicker extends TomInputBase {
     this.backgroundColor,
     this.itemExtent,
     required this.onTimerDurationChanged,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1242,8 +1268,8 @@ class TomCupertinoTimerPicker extends TomInputBase {
       minuteInterval: minuteInterval,
       secondInterval: secondInterval,
       alignment: alignment,
-      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
-      itemExtent: itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0,
+      backgroundColor: _resolvedBackgroundColor,
+      itemExtent: _resolvedItemExtent ?? 32.0,
       onTimerDurationChanged: onTimerDurationChanged,
     );
   }
@@ -1302,6 +1328,12 @@ class TomInputDatePickerFormField extends TomInputBase {
   final bool acceptEmptyDate;
   final FocusNode? focusNode;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabelText;
+  late final String _resolvedHintText;
+  late final String _resolvedErrorFormat;
+  late final String _resolvedErrorInvalid;
+
   TomInputDatePickerFormField({
     super.key,
     super.tomId,
@@ -1321,15 +1353,15 @@ class TomInputDatePickerFormField extends TomInputBase {
     this.autofocus = false,
     this.acceptEmptyDate = false,
     this.focusNode,
-  });
+  }) {
+    _resolvedLabelText = fieldLabelText ?? resolveResourceOrFail('label');
+    _resolvedHintText = fieldHintText ?? resolveResourceOrFail('hint');
+    _resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail('errorFormat');
+    _resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail('errorInvalid');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabelText = fieldLabelText ?? resolveResourceOrFail('label');
-    final resolvedHintText = fieldHintText ?? resolveResourceOrFail('hint');
-    final resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail('errorFormat');
-    final resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail('errorInvalid');
-
     return InputDatePickerFormField(
       initialDate: initialDate,
       firstDate: firstDate,
@@ -1337,10 +1369,10 @@ class TomInputDatePickerFormField extends TomInputBase {
       onDateSubmitted: onDateSubmitted,
       onDateSaved: onDateSaved,
       selectableDayPredicate: selectableDayPredicate,
-      errorFormatText: resolvedErrorFormat,
-      errorInvalidText: resolvedErrorInvalid,
-      fieldHintText: resolvedHintText,
-      fieldLabelText: resolvedLabelText,
+      errorFormatText: _resolvedErrorFormat,
+      errorInvalidText: _resolvedErrorInvalid,
+      fieldHintText: _resolvedHintText,
+      fieldLabelText: _resolvedLabelText,
       keyboardType: keyboardType,
       autofocus: autofocus,
       acceptEmptyDate: acceptEmptyDate,
@@ -1442,6 +1474,16 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   final SpellCheckConfiguration? spellCheckConfiguration;
   final String? restorationId;
 
+  // Pre-resolved resource values
+  late final String? _resolvedPlaceholder;
+  late final TextStyle? _resolvedStyle;
+  late final TextStyle? _resolvedPlaceholderStyle;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final double? _resolvedCursorWidth;
+  late final double? _resolvedCursorHeight;
+  late final Color? _resolvedCursorColor;
+  late final EdgeInsets? _resolvedScrollPadding;
+
   TomCupertinoTextFormFieldRow({
     super.key,
     super.tomId,
@@ -1497,20 +1539,22 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
     this.contextMenuBuilder,
     this.spellCheckConfiguration,
     this.restorationId,
-  });
+  }) {
+    _resolvedPlaceholder = placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedStyle = style ?? _resolveTextStyle('style');
+    _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth');
+    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
+    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
+    _resolvedScrollPadding = scrollPadding ?? resolveEdgeInsetsOrNull('scrollPadding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-
-    // Phase 3: Resolve optional TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle('style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
-
     return CupertinoTextFormFieldRow(
       prefix: prefix,
-      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
+      padding: _resolvedPadding,
       controller: controller,
       initialValue: initialValue,
       focusNode: focusNode,
@@ -1518,7 +1562,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       textInputAction: textInputAction,
-      style: resolvedStyle,
+      style: _resolvedStyle,
       strutStyle: strutStyle,
       textDirection: textDirection,
       textAlign: textAlign,
@@ -1544,18 +1588,18 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       validator: validator,
       inputFormatters: inputFormatters,
       enabled: enabled,
-      cursorWidth: cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0,
-      cursorHeight: cursorHeight ?? resolveDoubleOrNull('cursorHeight'),
-      cursorColor: cursorColor ?? resolveColorOrNull('cursorColor'),
+      cursorWidth: _resolvedCursorWidth ?? 2.0,
+      cursorHeight: _resolvedCursorHeight,
+      cursorColor: _resolvedCursorColor,
       keyboardAppearance: keyboardAppearance,
-      scrollPadding: scrollPadding ?? resolveEdgeInsetsOrNull('scrollPadding') ?? const EdgeInsets.all(20.0),
+      scrollPadding: _resolvedScrollPadding ?? const EdgeInsets.all(20.0),
       enableInteractiveSelection: enableInteractiveSelection,
       selectionControls: selectionControls,
       scrollPhysics: scrollPhysics,
       autofillHints: autofillHints,
       autovalidateMode: autovalidateMode,
-      placeholder: resolvedPlaceholder,
-      placeholderStyle: resolvedPlaceholderStyle,
+      placeholder: _resolvedPlaceholder,
+      placeholderStyle: _resolvedPlaceholderStyle,
       contextMenuBuilder: contextMenuBuilder,
       spellCheckConfiguration: spellCheckConfiguration,
       restorationId: restorationId,
@@ -1609,6 +1653,15 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   final FormFieldValidator<T>? validator;
   final String? forceErrorText;
 
+  // Pre-resolved resource values
+  late final String _resolvedLabel;
+  late final String? _resolvedHint;
+  late final String? _resolvedHelper;
+  late final TextStyle? _resolvedTextStyle;
+  late final double? _resolvedWidth;
+  late final double? _resolvedMenuHeight;
+  late final EdgeInsetsGeometry? _resolvedExpandedInsets;
+
   TomDropdownMenuFormField({
     super.key,
     super.tomId,
@@ -1649,32 +1702,32 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
     this.autovalidateMode = AutovalidateMode.disabled,
     this.validator,
     this.forceErrorText,
-  });
+  }) {
+    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedHint = hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedHelper = helperText ?? (tomId != null ? resolveResourceOrFail('helper') : null);
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedMenuHeight = menuHeight ?? resolveDoubleOrNull('menuHeight');
+    _resolvedExpandedInsets = expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
-    final resolvedHint =
-        hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    final resolvedHelper =
-        helperText ?? (tomId != null ? resolveResourceOrFail('helper') : null);
-    // Phase 3: Resolve optional TextStyle from resources
-    final resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
-
     return DropdownMenuFormField<T>(
       enabled: enabled,
-      width: width ?? resolveDoubleOrNull('width'),
-      menuHeight: menuHeight ?? resolveDoubleOrNull('menuHeight'),
+      width: _resolvedWidth,
+      menuHeight: _resolvedMenuHeight,
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
-      label: Text(resolvedLabel),
-      hintText: resolvedHint,
-      helperText: resolvedHelper,
+      label: Text(_resolvedLabel),
+      hintText: _resolvedHint,
+      helperText: _resolvedHelper,
       selectedTrailingIcon: selectedTrailingIcon,
       enableFilter: enableFilter,
       enableSearch: enableSearch,
       keyboardType: keyboardType,
-      textStyle: resolvedTextStyle,
+      textStyle: _resolvedTextStyle,
       textAlign: textAlign,
       inputDecorationTheme: inputDecorationTheme,
       menuStyle: menuStyle,
@@ -1683,7 +1736,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       onSelected: onSelected,
       focusNode: focusNode,
       requestFocusOnTap: requestFocusOnTap,
-      expandedInsets: expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets'),
+      expandedInsets: _resolvedExpandedInsets,
       alignmentOffset: alignmentOffset,
       filterCallback: filterCallback,
       searchCallback: searchCallback,

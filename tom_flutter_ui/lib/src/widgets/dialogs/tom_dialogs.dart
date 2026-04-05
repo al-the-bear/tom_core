@@ -58,6 +58,27 @@ class TomAlertDialog extends TomDialogBase {
   final AlignmentGeometry? alignment;
   final bool scrollable;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTitle;
+  late final EdgeInsetsGeometry? _resolvedIconPadding;
+  late final Color? _resolvedIconColor;
+  late final EdgeInsetsGeometry? _resolvedTitlePadding;
+  late final EdgeInsetsGeometry? _resolvedContentPadding;
+  late final EdgeInsetsGeometry? _resolvedActionsPadding;
+  late final double? _resolvedActionsOverflowButtonSpacing;
+  late final EdgeInsetsGeometry? _resolvedButtonPadding;
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final String? _resolvedSemanticLabel;
+  late final EdgeInsets _resolvedInsetPadding;
+  late final bool _resolvedScrollable;
+  late final TextStyle? _resolvedTitleTextStyle;
+  late final TextStyle? _resolvedContentTextStyle;
+  late final ShapeBorder? _resolvedShape;
+  late final AlignmentGeometry? _resolvedAlignment;
+
   TomAlertDialog({
     super.key,
     super.tomId,
@@ -91,78 +112,60 @@ class TomAlertDialog extends TomDialogBase {
     this.shape,
     this.alignment,
     this.scrollable = false,
-  });
+  }) {
+    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+    _resolvedIconPadding = iconPadding ?? resolveEdgeInsetsOrNull('iconPadding');
+    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
+    _resolvedTitlePadding = titlePadding ?? resolveEdgeInsetsOrNull('titlePadding');
+    _resolvedContentPadding = contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
+    _resolvedActionsPadding = actionsPadding ?? resolveEdgeInsetsOrNull('actionsPadding');
+    _resolvedActionsOverflowButtonSpacing = actionsOverflowButtonSpacing ?? resolveDoubleOrNull('actionsOverflowButtonSpacing');
+    _resolvedButtonPadding = buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedSemanticLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel');
+    _resolvedInsetPadding = resolveEdgeInsetsOrNull('insetPadding') ?? insetPadding;
+    _resolvedScrollable = resolveBoolOrNull('scrollable') ?? scrollable;
+    _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+    _resolvedContentTextStyle = contentTextStyle ?? _resolveTextStyle('contentTextStyle');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
     final effectiveTitle =
-        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedIconPadding =
-        iconPadding ?? resolveEdgeInsetsOrNull('iconPadding');
-    final resolvedIconColor =
-        iconColor ?? resolveColorOrNull('iconColor');
-    final resolvedTitlePadding =
-        titlePadding ?? resolveEdgeInsetsOrNull('titlePadding');
-    final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
-    final resolvedActionsPadding =
-        actionsPadding ?? resolveEdgeInsetsOrNull('actionsPadding');
-    final resolvedActionsOverflowButtonSpacing =
-        actionsOverflowButtonSpacing ?? resolveDoubleOrNull('actionsOverflowButtonSpacing');
-    final resolvedButtonPadding =
-        buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedSemanticLabel =
-        semanticLabel ?? resolveResourceOrNull('semanticLabel');
-    final resolvedInsetPadding =
-        resolveEdgeInsetsOrNull('insetPadding') ?? insetPadding;
-    final resolvedScrollable =
-        resolveBoolOrNull('scrollable') ?? scrollable;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedTitleTextStyle =
-        titleTextStyle ?? _resolveTextStyle('titleTextStyle');
-    final resolvedContentTextStyle =
-        contentTextStyle ?? _resolveTextStyle('contentTextStyle');
+        title ?? (_resolvedTitle != null ? Text(_resolvedTitle) : null);
 
     return AlertDialog(
       icon: icon,
-      iconPadding: resolvedIconPadding,
-      iconColor: resolvedIconColor,
+      iconPadding: _resolvedIconPadding,
+      iconColor: _resolvedIconColor,
       title: effectiveTitle,
-      titlePadding: resolvedTitlePadding,
-      titleTextStyle: resolvedTitleTextStyle,
+      titlePadding: _resolvedTitlePadding,
+      titleTextStyle: _resolvedTitleTextStyle,
       content: content,
-      contentPadding: resolvedContentPadding,
-      contentTextStyle: resolvedContentTextStyle,
+      contentPadding: _resolvedContentPadding,
+      contentTextStyle: _resolvedContentTextStyle,
       actions: actions,
-      actionsPadding: resolvedActionsPadding,
+      actionsPadding: _resolvedActionsPadding,
       actionsAlignment: actionsAlignment,
       actionsOverflowAlignment: actionsOverflowAlignment,
       actionsOverflowDirection: actionsOverflowDirection,
-      actionsOverflowButtonSpacing: resolvedActionsOverflowButtonSpacing,
-      buttonPadding: resolvedButtonPadding,
-      backgroundColor: resolvedBackgroundColor,
-      elevation: resolvedElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      semanticLabel: resolvedSemanticLabel,
-      insetPadding: resolvedInsetPadding,
+      actionsOverflowButtonSpacing: _resolvedActionsOverflowButtonSpacing,
+      buttonPadding: _resolvedButtonPadding,
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      semanticLabel: _resolvedSemanticLabel,
+      insetPadding: _resolvedInsetPadding,
       clipBehavior: clipBehavior,
-      shape: shape ?? _resolveShapeBorder('shape'),
-      alignment: alignment ?? _resolveAlignment('alignment'),
-      scrollable: resolvedScrollable,
+      shape: _resolvedShape,
+      alignment: _resolvedAlignment,
+      scrollable: _resolvedScrollable,
     );
   }
 
@@ -202,6 +205,20 @@ class TomSimpleDialog extends TomDialogBase {
   final ShapeBorder? shape;
   final AlignmentGeometry? alignment;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTitle;
+  late final EdgeInsetsGeometry _resolvedTitlePadding;
+  late final EdgeInsetsGeometry _resolvedContentPadding;
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final String? _resolvedSemanticLabel;
+  late final EdgeInsets? _resolvedInsetPadding;
+  late final TextStyle? _resolvedTitleTextStyle;
+  late final ShapeBorder? _resolvedShape;
+  late final AlignmentGeometry? _resolvedAlignment;
+
   TomSimpleDialog({
     super.key,
     super.tomId,
@@ -222,51 +239,40 @@ class TomSimpleDialog extends TomDialogBase {
     this.clipBehavior,
     this.shape,
     this.alignment,
-  });
+  }) {
+    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+    _resolvedTitlePadding = resolveEdgeInsetsOrNull('titlePadding') ?? titlePadding;
+    _resolvedContentPadding = resolveEdgeInsetsOrNull('contentPadding') ?? contentPadding;
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedSemanticLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel');
+    _resolvedInsetPadding = insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
+    _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
     final effectiveTitle =
-        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedTitlePadding =
-        resolveEdgeInsetsOrNull('titlePadding') ?? titlePadding;
-    final resolvedContentPadding =
-        resolveEdgeInsetsOrNull('contentPadding') ?? contentPadding;
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedSemanticLabel =
-        semanticLabel ?? resolveResourceOrNull('semanticLabel');
-    final resolvedInsetPadding =
-        insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedTitleTextStyle =
-        titleTextStyle ?? _resolveTextStyle('titleTextStyle');
+        title ?? (_resolvedTitle != null ? Text(_resolvedTitle) : null);
 
     return SimpleDialog(
       title: effectiveTitle,
-      titlePadding: resolvedTitlePadding,
-      titleTextStyle: resolvedTitleTextStyle,
-      contentPadding: resolvedContentPadding,
-      backgroundColor: resolvedBackgroundColor,
-      elevation: resolvedElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      semanticLabel: resolvedSemanticLabel,
-      insetPadding: resolvedInsetPadding,
+      titlePadding: _resolvedTitlePadding,
+      titleTextStyle: _resolvedTitleTextStyle,
+      contentPadding: _resolvedContentPadding,
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      semanticLabel: _resolvedSemanticLabel,
+      insetPadding: _resolvedInsetPadding,
       clipBehavior: clipBehavior,
-      shape: shape ?? _resolveShapeBorder('shape'),
-      alignment: alignment ?? _resolveAlignment('alignment'),
+      shape: _resolvedShape,
+      alignment: _resolvedAlignment,
       children: children,
     );
   }
@@ -301,6 +307,15 @@ class TomDialog extends TomDialogBase {
   final AlignmentGeometry? alignment;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final EdgeInsets? _resolvedInsetPadding;
+  late final ShapeBorder? _resolvedShape;
+  late final AlignmentGeometry? _resolvedAlignment;
+
   TomDialog({
     super.key,
     super.tomId,
@@ -315,31 +330,27 @@ class TomDialog extends TomDialogBase {
     this.shape,
     this.alignment,
     this.child,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedInsetPadding = insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedInsetPadding =
-        insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
-
     return Dialog(
-      backgroundColor: resolvedBackgroundColor,
-      elevation: resolvedElevation,
-      shadowColor: resolvedShadowColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      insetPadding: resolvedInsetPadding,
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      shadowColor: _resolvedShadowColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      insetPadding: _resolvedInsetPadding,
       clipBehavior: clipBehavior,
-      shape: shape ?? _resolveShapeBorder('shape'),
-      alignment: alignment ?? _resolveAlignment('alignment'),
+      shape: _resolvedShape,
+      alignment: _resolvedAlignment,
       child: child,
     );
   }
@@ -372,6 +383,14 @@ class TomBottomSheet extends TomDialogBase {
   final BottomSheetDragStartHandler? onDragStart;
   final BottomSheetDragEndHandler? onDragEnd;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final double? _resolvedElevation;
+  late final bool _resolvedEnableDrag;
+  late final bool? _resolvedShowDragHandle;
+  late final ShapeBorder? _resolvedShape;
+  late final BoxConstraints? _resolvedConstraints;
+
   TomBottomSheet({
     super.key,
     super.tomId,
@@ -389,31 +408,28 @@ class TomBottomSheet extends TomDialogBase {
     this.showDragHandle,
     this.onDragStart,
     this.onDragEnd,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedEnableDrag = resolveBoolOrNull('enableDrag') ?? enableDrag;
+    _resolvedShowDragHandle = showDragHandle ?? resolveBoolOrNull('showDragHandle');
+    _resolvedShape = shape ?? _resolveShapeBorder('shape');
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedEnableDrag =
-        resolveBoolOrNull('enableDrag') ?? enableDrag;
-    final resolvedShowDragHandle =
-        showDragHandle ?? resolveBoolOrNull('showDragHandle');
-
     return BottomSheet(
       animationController: animationController,
       onClosing: onClosing,
       builder: builder,
-      backgroundColor: resolvedBackgroundColor,
-      elevation: resolvedElevation,
-      shape: shape ?? _resolveShapeBorder('shape'),
+      backgroundColor: _resolvedBackgroundColor,
+      elevation: _resolvedElevation,
+      shape: _resolvedShape,
       clipBehavior: clipBehavior,
-      constraints: constraints ?? _resolveBoxConstraints('constraints'),
-      enableDrag: resolvedEnableDrag,
-      showDragHandle: resolvedShowDragHandle,
+      constraints: _resolvedConstraints,
+      enableDrag: _resolvedEnableDrag,
+      showDragHandle: _resolvedShowDragHandle,
       onDragStart: onDragStart,
       onDragEnd: onDragEnd,
     );
@@ -527,6 +543,18 @@ class TomMaterialBanner extends TomDialogBase {
   final Animation<double>? animation;
   final VoidCallback? onVisible;
 
+  // Pre-resolved resource values
+  late final double? _resolvedElevation;
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedSurfaceTintColor;
+  late final Color? _resolvedShadowColor;
+  late final Color? _resolvedDividerColor;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final EdgeInsetsGeometry? _resolvedMargin;
+  late final EdgeInsetsGeometry? _resolvedLeadingPadding;
+  late final bool _resolvedForceActionsBelow;
+  late final TextStyle? _resolvedContentTextStyle;
+
   TomMaterialBanner({
     super.key,
     super.tomId,
@@ -548,47 +576,35 @@ class TomMaterialBanner extends TomDialogBase {
     this.overflowAlignment = OverflowBarAlignment.end,
     this.animation,
     this.onVisible,
-  });
+  }) {
+    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
+    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedLeadingPadding = leadingPadding ?? resolveEdgeInsetsOrNull('leadingPadding');
+    _resolvedForceActionsBelow = resolveBoolOrNull('forceActionsBelow') ?? forceActionsBelow;
+    _resolvedContentTextStyle = contentTextStyle ?? _resolveTextStyle('contentTextStyle');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
-    final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull('dividerColor');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
-    final resolvedLeadingPadding =
-        leadingPadding ?? resolveEdgeInsetsOrNull('leadingPadding');
-    final resolvedForceActionsBelow =
-        resolveBoolOrNull('forceActionsBelow') ?? forceActionsBelow;
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedContentTextStyle =
-        contentTextStyle ?? _resolveTextStyle('contentTextStyle');
-
     return MaterialBanner(
       content: content,
-      contentTextStyle: resolvedContentTextStyle,
+      contentTextStyle: _resolvedContentTextStyle,
       actions: actions,
-      elevation: resolvedElevation,
+      elevation: _resolvedElevation,
       leading: leading,
-      backgroundColor: resolvedBackgroundColor,
-      surfaceTintColor: resolvedSurfaceTintColor,
-      shadowColor: resolvedShadowColor,
-      dividerColor: resolvedDividerColor,
-      padding: resolvedPadding,
-      margin: resolvedMargin,
-      leadingPadding: resolvedLeadingPadding,
-      forceActionsBelow: resolvedForceActionsBelow,
+      backgroundColor: _resolvedBackgroundColor,
+      surfaceTintColor: _resolvedSurfaceTintColor,
+      shadowColor: _resolvedShadowColor,
+      dividerColor: _resolvedDividerColor,
+      padding: _resolvedPadding,
+      margin: _resolvedMargin,
+      leadingPadding: _resolvedLeadingPadding,
+      forceActionsBelow: _resolvedForceActionsBelow,
       overflowAlignment: overflowAlignment,
       animation: animation,
       onVisible: onVisible,
@@ -625,6 +641,15 @@ class TomTooltip extends TomDialogBase {
   final TooltipTriggeredCallback? onTriggered;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final String? _resolvedMessage;
+  late final double? _resolvedHeight;
+  late final double? _resolvedVerticalOffset;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final EdgeInsetsGeometry? _resolvedMargin;
+  late final TextStyle? _resolvedTextStyle;
+  late final Decoration? _resolvedDecoration;
+
   TomTooltip({
     super.key,
     super.tomId,
@@ -649,39 +674,31 @@ class TomTooltip extends TomDialogBase {
     this.enableFeedback,
     this.onTriggered,
     this.child,
-  });
+  }) {
+    _resolvedMessage = richMessage != null ? null : (message ?? resolveResourceOrFail('tooltip'));
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedVerticalOffset = verticalOffset ?? resolveDoubleOrNull('verticalOffset');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
+    _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     // Tooltip requires exactly one of message or richMessage
-    final String? resolvedMessage =
-        richMessage != null ? null : (message ?? resolveResourceOrFail('tooltip'));
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedHeight = height ?? resolveDoubleOrNull('height');
-    final resolvedVerticalOffset =
-        verticalOffset ?? resolveDoubleOrNull('verticalOffset');
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
-
-    // Phase 3: Resolve TextStyle from resources
-    final resolvedTextStyle =
-        textStyle ?? _resolveTextStyle('textStyle');
-    final resolvedDecoration =
-        decoration ?? _resolveDecoration('decoration');
 
     return Tooltip(
-      message: resolvedMessage,
+      message: _resolvedMessage,
       richMessage: richMessage,
-      height: resolvedHeight,
-      padding: resolvedPadding,
-      margin: resolvedMargin,
-      verticalOffset: resolvedVerticalOffset,
+      height: _resolvedHeight,
+      padding: _resolvedPadding,
+      margin: _resolvedMargin,
+      verticalOffset: _resolvedVerticalOffset,
       preferBelow: preferBelow,
       excludeFromSemantics: excludeFromSemantics,
-      decoration: resolvedDecoration,
-      textStyle: resolvedTextStyle,
+      decoration: _resolvedDecoration,
+      textStyle: _resolvedTextStyle,
       textAlign: textAlign,
       waitDuration: waitDuration,
       showDuration: showDuration,
@@ -718,6 +735,9 @@ class TomCupertinoAlertDialog extends TomDialogBase {
   final ScrollController? actionScrollController;
   final EdgeInsets? insetAnimationCurve;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTitle;
+
   TomCupertinoAlertDialog({
     super.key,
     super.tomId,
@@ -730,14 +750,14 @@ class TomCupertinoAlertDialog extends TomDialogBase {
     this.scrollController,
     this.actionScrollController,
     this.insetAnimationCurve,
-  });
+  }) {
+    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
     final effectiveTitle =
-        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
+        title ?? (_resolvedTitle != null ? Text(_resolvedTitle) : null);
 
     return CupertinoAlertDialog(
       title: effectiveTitle,
@@ -762,6 +782,9 @@ class TomCupertinoActionSheet extends TomDialogBase {
   final ScrollController? actionScrollController;
   final Widget? cancelButton;
 
+  // Pre-resolved resource values
+  late final String? _resolvedTitle;
+
   TomCupertinoActionSheet({
     super.key,
     super.tomId,
@@ -774,14 +797,14 @@ class TomCupertinoActionSheet extends TomDialogBase {
     this.messageScrollController,
     this.actionScrollController,
     this.cancelButton,
-  });
+  }) {
+    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle =
-        titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
     final effectiveTitle =
-        title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
+        title ?? (_resolvedTitle != null ? Text(_resolvedTitle) : null);
 
     return CupertinoActionSheet(
       title: effectiveTitle,
@@ -1172,6 +1195,11 @@ class TomAboutDialog extends TomDialogBase {
   final String? applicationLegalese;
   final List<Widget>? children;
 
+  // Pre-resolved resource values
+  late final String? _resolvedApplicationName;
+  late final String? _resolvedApplicationVersion;
+  late final String? _resolvedApplicationLegalese;
+
   TomAboutDialog({
     super.key,
     super.tomId,
@@ -1182,22 +1210,19 @@ class TomAboutDialog extends TomDialogBase {
     this.applicationIcon,
     this.applicationLegalese,
     this.children,
-  });
+  }) {
+    _resolvedApplicationName = applicationName ?? (tomId != null ? resolveResourceOrFail('applicationName') : null);
+    _resolvedApplicationVersion = applicationVersion ?? (tomId != null ? resolveResourceOrFail('applicationVersion') : null);
+    _resolvedApplicationLegalese = applicationLegalese ?? (tomId != null ? resolveResourceOrFail('applicationLegalese') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return AboutDialog(
-      applicationName: applicationName ??
-          (tomId != null ? resolveResourceOrFail('applicationName') : null),
-      applicationVersion: applicationVersion ??
-          (tomId != null
-              ? resolveResourceOrFail('applicationVersion')
-              : null),
+      applicationName: _resolvedApplicationName,
+      applicationVersion: _resolvedApplicationVersion,
       applicationIcon: applicationIcon,
-      applicationLegalese: applicationLegalese ??
-          (tomId != null
-              ? resolveResourceOrFail('applicationLegalese')
-              : null),
+      applicationLegalese: _resolvedApplicationLegalese,
       children: children,
     );
   }
@@ -1211,6 +1236,9 @@ class TomCupertinoContextMenu extends TomDialogBase {
   final List<Widget> actions;
   final bool? enableHapticFeedback;
 
+  // Pre-resolved resource values
+  late final bool _resolvedEnableHapticFeedback;
+
   TomCupertinoContextMenu({
     super.key,
     super.tomId,
@@ -1219,16 +1247,15 @@ class TomCupertinoContextMenu extends TomDialogBase {
     required this.child,
     required this.actions,
     this.enableHapticFeedback,
-  });
+  }) {
+    _resolvedEnableHapticFeedback = enableHapticFeedback ?? resolveBoolOrNull('enableHapticFeedback') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedEnableHapticFeedback =
-        enableHapticFeedback ?? resolveBoolOrNull('enableHapticFeedback') ?? false;
-
     return CupertinoContextMenu(
       actions: actions,
-      enableHapticFeedback: resolvedEnableHapticFeedback,
+      enableHapticFeedback: _resolvedEnableHapticFeedback,
       child: child,
     );
   }
@@ -1256,6 +1283,16 @@ class TomDatePickerDialog extends TomDialogBase {
   final Icon? switchToInputEntryModeIcon;
   final Icon? switchToCalendarEntryModeIcon;
 
+  // Pre-resolved resource values
+  late final TextInputType? _resolvedKeyboardType;
+  late final String? _resolvedCancelText;
+  late final String? _resolvedConfirmText;
+  late final String? _resolvedHelpText;
+  late final String? _resolvedErrorFormatText;
+  late final String? _resolvedErrorInvalidText;
+  late final String? _resolvedFieldHintText;
+  late final String? _resolvedFieldLabelText;
+
   TomDatePickerDialog({
     super.key,
     super.tomId,
@@ -1278,13 +1315,19 @@ class TomDatePickerDialog extends TomDialogBase {
     this.keyboardType,
     this.switchToInputEntryModeIcon,
     this.switchToCalendarEntryModeIcon,
-  });
+  }) {
+    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType'));
+    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
+    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
+    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
+    _resolvedErrorFormatText = errorFormatText ?? (tomId != null ? resolveResourceOrFail('errorFormat') : null);
+    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
+    _resolvedFieldHintText = fieldHintText ?? (tomId != null ? resolveResourceOrFail('fieldHint') : null);
+    _resolvedFieldLabelText = fieldLabelText ?? (tomId != null ? resolveResourceOrFail('fieldLabel') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedKeyboardType =
-        keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType'));
-
     return DatePickerDialog(
       initialDate: initialDate,
       firstDate: firstDate,
@@ -1292,22 +1335,15 @@ class TomDatePickerDialog extends TomDialogBase {
       currentDate: currentDate,
       initialEntryMode: initialEntryMode,
       selectableDayPredicate: selectableDayPredicate,
-      cancelText:
-          cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null),
-      confirmText:
-          confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null),
-      helpText:
-          helpText ?? (tomId != null ? resolveResourceOrFail('help') : null),
+      cancelText: _resolvedCancelText,
+      confirmText: _resolvedConfirmText,
+      helpText: _resolvedHelpText,
       initialCalendarMode: initialCalendarMode,
-      errorFormatText: errorFormatText ??
-          (tomId != null ? resolveResourceOrFail('errorFormat') : null),
-      errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResourceOrFail('errorInvalid') : null),
-      fieldHintText: fieldHintText ??
-          (tomId != null ? resolveResourceOrFail('fieldHint') : null),
-      fieldLabelText: fieldLabelText ??
-          (tomId != null ? resolveResourceOrFail('fieldLabel') : null),
-      keyboardType: resolvedKeyboardType,
+      errorFormatText: _resolvedErrorFormatText,
+      errorInvalidText: _resolvedErrorInvalidText,
+      fieldHintText: _resolvedFieldHintText,
+      fieldLabelText: _resolvedFieldLabelText,
+      keyboardType: _resolvedKeyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
     );
@@ -1338,6 +1374,20 @@ class TomDateRangePickerDialog extends TomDialogBase {
   final Icon? switchToInputEntryModeIcon;
   final Icon? switchToCalendarEntryModeIcon;
 
+  // Pre-resolved resource values
+  late final TextInputType _resolvedKeyboardType;
+  late final String? _resolvedHelpText;
+  late final String? _resolvedCancelText;
+  late final String? _resolvedConfirmText;
+  late final String? _resolvedSaveText;
+  late final String? _resolvedErrorFormatText;
+  late final String? _resolvedErrorInvalidText;
+  late final String? _resolvedErrorInvalidRangeText;
+  late final String? _resolvedFieldStartHintText;
+  late final String? _resolvedFieldEndHintText;
+  late final String? _resolvedFieldStartLabelText;
+  late final String? _resolvedFieldEndLabelText;
+
   TomDateRangePickerDialog({
     super.key,
     super.tomId,
@@ -1362,42 +1412,41 @@ class TomDateRangePickerDialog extends TomDialogBase {
     this.keyboardType,
     this.switchToInputEntryModeIcon,
     this.switchToCalendarEntryModeIcon,
-  });
+  }) {
+    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType')) ?? TextInputType.datetime;
+    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
+    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
+    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
+    _resolvedSaveText = saveText ?? (tomId != null ? resolveResourceOrFail('save') : null);
+    _resolvedErrorFormatText = errorFormatText ?? (tomId != null ? resolveResourceOrFail('errorFormat') : null);
+    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
+    _resolvedErrorInvalidRangeText = errorInvalidRangeText ?? (tomId != null ? resolveResourceOrFail('errorInvalidRange') : null);
+    _resolvedFieldStartHintText = fieldStartHintText ?? (tomId != null ? resolveResourceOrFail('fieldStartHint') : null);
+    _resolvedFieldEndHintText = fieldEndHintText ?? (tomId != null ? resolveResourceOrFail('fieldEndHint') : null);
+    _resolvedFieldStartLabelText = fieldStartLabelText ?? (tomId != null ? resolveResourceOrFail('fieldStartLabel') : null);
+    _resolvedFieldEndLabelText = fieldEndLabelText ?? (tomId != null ? resolveResourceOrFail('fieldEndLabel') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedKeyboardType =
-        keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType')) ?? TextInputType.datetime;
-
     return DateRangePickerDialog(
       initialDateRange: initialDateRange,
       firstDate: firstDate,
       lastDate: lastDate,
       currentDate: currentDate,
       initialEntryMode: initialEntryMode,
-      helpText:
-          helpText ?? (tomId != null ? resolveResourceOrFail('help') : null),
-      cancelText:
-          cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null),
-      confirmText:
-          confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null),
-      saveText:
-          saveText ?? (tomId != null ? resolveResourceOrFail('save') : null),
-      errorFormatText: errorFormatText ??
-          (tomId != null ? resolveResourceOrFail('errorFormat') : null),
-      errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResourceOrFail('errorInvalid') : null),
-      errorInvalidRangeText: errorInvalidRangeText ??
-          (tomId != null ? resolveResourceOrFail('errorInvalidRange') : null),
-      fieldStartHintText: fieldStartHintText ??
-          (tomId != null ? resolveResourceOrFail('fieldStartHint') : null),
-      fieldEndHintText: fieldEndHintText ??
-          (tomId != null ? resolveResourceOrFail('fieldEndHint') : null),
-      fieldStartLabelText: fieldStartLabelText ??
-          (tomId != null ? resolveResourceOrFail('fieldStartLabel') : null),
-      fieldEndLabelText: fieldEndLabelText ??
-          (tomId != null ? resolveResourceOrFail('fieldEndLabel') : null),
-      keyboardType: resolvedKeyboardType,
+      helpText: _resolvedHelpText,
+      cancelText: _resolvedCancelText,
+      confirmText: _resolvedConfirmText,
+      saveText: _resolvedSaveText,
+      errorFormatText: _resolvedErrorFormatText,
+      errorInvalidText: _resolvedErrorInvalidText,
+      errorInvalidRangeText: _resolvedErrorInvalidRangeText,
+      fieldStartHintText: _resolvedFieldStartHintText,
+      fieldEndHintText: _resolvedFieldEndHintText,
+      fieldStartLabelText: _resolvedFieldStartLabelText,
+      fieldEndLabelText: _resolvedFieldEndLabelText,
+      keyboardType: _resolvedKeyboardType,
       switchToInputEntryModeIcon: switchToInputEntryModeIcon,
       switchToCalendarEntryModeIcon: switchToCalendarEntryModeIcon,
     );
@@ -1419,6 +1468,14 @@ class TomTimePickerDialog extends TomDialogBase {
   final Orientation? orientation;
   final EntryModeChangeCallback? onEntryModeChanged;
 
+  // Pre-resolved resource values
+  late final String? _resolvedCancelText;
+  late final String? _resolvedConfirmText;
+  late final String? _resolvedHelpText;
+  late final String? _resolvedErrorInvalidText;
+  late final String? _resolvedHourLabelText;
+  late final String? _resolvedMinuteLabelText;
+
   TomTimePickerDialog({
     super.key,
     super.tomId,
@@ -1434,24 +1491,25 @@ class TomTimePickerDialog extends TomDialogBase {
     this.initialEntryMode = TimePickerEntryMode.dial,
     this.orientation,
     this.onEntryModeChanged,
-  });
+  }) {
+    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
+    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
+    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
+    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
+    _resolvedHourLabelText = hourLabelText ?? (tomId != null ? resolveResourceOrFail('hourLabel') : null);
+    _resolvedMinuteLabelText = minuteLabelText ?? (tomId != null ? resolveResourceOrFail('minuteLabel') : null);
+  }
 
   @override
   Widget buildContent(BuildContext context) {
     return TimePickerDialog(
       initialTime: initialTime,
-      cancelText:
-          cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null),
-      confirmText:
-          confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null),
-      helpText:
-          helpText ?? (tomId != null ? resolveResourceOrFail('help') : null),
-      errorInvalidText: errorInvalidText ??
-          (tomId != null ? resolveResourceOrFail('errorInvalid') : null),
-      hourLabelText: hourLabelText ??
-          (tomId != null ? resolveResourceOrFail('hourLabel') : null),
-      minuteLabelText: minuteLabelText ??
-          (tomId != null ? resolveResourceOrFail('minuteLabel') : null),
+      cancelText: _resolvedCancelText,
+      confirmText: _resolvedConfirmText,
+      helpText: _resolvedHelpText,
+      errorInvalidText: _resolvedErrorInvalidText,
+      hourLabelText: _resolvedHourLabelText,
+      minuteLabelText: _resolvedMinuteLabelText,
       initialEntryMode: initialEntryMode,
       orientation: orientation,
       onEntryModeChanged: onEntryModeChanged,
@@ -1497,6 +1555,9 @@ class TomSimpleDialogOption extends TomDialogBase {
   final EdgeInsets? padding;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final EdgeInsets? _resolvedPadding;
+
   TomSimpleDialogOption({
     super.key,
     super.tomId,
@@ -1505,15 +1566,15 @@ class TomSimpleDialogOption extends TomDialogBase {
     this.onPressed,
     this.padding,
     this.child,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-
     return SimpleDialogOption(
       onPressed: onPressed,
-      padding: resolvedPadding,
+      padding: _resolvedPadding,
       child: child,
     );
   }
@@ -1528,6 +1589,11 @@ class TomLicensePage extends TomDialogBase {
   final Widget? applicationIcon;
   final String? applicationLegalese;
 
+  // Pre-resolved resource values
+  late final String? _resolvedApplicationName;
+  late final String? _resolvedApplicationVersion;
+  late final String? _resolvedApplicationLegalese;
+
   TomLicensePage({
     super.key,
     super.tomId,
@@ -1537,22 +1603,19 @@ class TomLicensePage extends TomDialogBase {
     this.applicationVersion,
     this.applicationIcon,
     this.applicationLegalese,
-  });
+  }) {
+    _resolvedApplicationName = applicationName ?? resolveResourceOrNull('applicationName');
+    _resolvedApplicationVersion = applicationVersion ?? resolveResourceOrNull('applicationVersion');
+    _resolvedApplicationLegalese = applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedApplicationName =
-      applicationName ?? resolveResourceOrNull('applicationName');
-    final resolvedApplicationVersion =
-      applicationVersion ?? resolveResourceOrNull('applicationVersion');
-    final resolvedApplicationLegalese =
-      applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
-
     return LicensePage(
-      applicationName: resolvedApplicationName,
-      applicationVersion: resolvedApplicationVersion,
+      applicationName: _resolvedApplicationName,
+      applicationVersion: _resolvedApplicationVersion,
       applicationIcon: applicationIcon,
-      applicationLegalese: resolvedApplicationLegalese,
+      applicationLegalese: _resolvedApplicationLegalese,
     );
   }
 }

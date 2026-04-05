@@ -18,6 +18,9 @@ class TomDecoratedSliver extends TomSliverBase {
   final Decoration? decoration;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final Decoration? _resolvedDecoration;
+
   TomDecoratedSliver({
     super.key,
     super.tomId,
@@ -25,12 +28,13 @@ class TomDecoratedSliver extends TomSliverBase {
     super.scope,
     this.decoration,
     required this.sliver,
-  });
+  }) {
+    _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedDecoration = decoration ?? _resolveDecoration('decoration');
-    if (resolvedDecoration == null) {
+    if (_resolvedDecoration == null) {
       throw FlutterError(
         'TomDecoratedSliver requires a decoration. '
         'Provide it explicitly or define it in resources.',
@@ -38,7 +42,7 @@ class TomDecoratedSliver extends TomSliverBase {
     }
 
     return DecoratedSliver(
-      decoration: resolvedDecoration,
+      decoration: _resolvedDecoration,
       sliver: sliver,
     );
   }
@@ -78,6 +82,9 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
   final double? maxExtent;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final double _resolvedMaxExtent;
+
   TomSliverConstrainedCrossAxis({
     super.key,
     super.tomId,
@@ -85,16 +92,14 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
     super.scope,
     this.maxExtent,
     required this.sliver,
-  });
+  }) {
+    _resolvedMaxExtent = maxExtent ?? resolveDoubleOrFail('maxExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedMaxExtent =
-      maxExtent ?? resolveDoubleOrFail('maxExtent');
-
     return SliverConstrainedCrossAxis(
-      maxExtent: resolvedMaxExtent,
+      maxExtent: _resolvedMaxExtent,
       sliver: sliver,
     );
   }
@@ -107,6 +112,9 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
   final int? flex;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final int _resolvedFlex;
+
   TomSliverCrossAxisExpanded({
     super.key,
     super.tomId,
@@ -114,15 +122,14 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
     super.scope,
     this.flex,
     required this.sliver,
-  });
+  }) {
+    _resolvedFlex = flex ?? resolveIntOrNull('flex') ?? 1;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedFlex = flex ?? resolveIntOrNull('flex') ?? 1;
-
     return SliverCrossAxisExpanded(
-      flex: resolvedFlex,
+      flex: _resolvedFlex,
       sliver: sliver,
     );
   }
@@ -158,6 +165,10 @@ class TomSliverFillViewport extends TomSliverBase {
   final double? viewportFraction;
   final bool padEnds;
 
+  // Pre-resolved resource values
+  late final double _resolvedViewportFraction;
+  late final bool _resolvedPadEnds;
+
   TomSliverFillViewport({
     super.key,
     super.tomId,
@@ -166,19 +177,17 @@ class TomSliverFillViewport extends TomSliverBase {
     required this.delegate,
     this.viewportFraction,
     this.padEnds = true,
-  });
+  }) {
+    _resolvedViewportFraction = viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
+    _resolvedPadEnds = resolveBoolOrNull('padEnds') ?? padEnds;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedViewportFraction =
-        viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
-    final resolvedPadEnds = resolveBoolOrNull('padEnds') ?? padEnds;
-
     return SliverFillViewport(
       delegate: delegate,
-      viewportFraction: resolvedViewportFraction,
-      padEnds: resolvedPadEnds,
+      viewportFraction: _resolvedViewportFraction,
+      padEnds: _resolvedPadEnds,
     );
   }
 }
@@ -190,6 +199,9 @@ class TomSliverFixedExtentList extends TomSliverBase {
   final SliverChildDelegate delegate;
   final double? itemExtent;
 
+  // Pre-resolved resource values
+  late final double _resolvedItemExtent;
+
   TomSliverFixedExtentList({
     super.key,
     super.tomId,
@@ -197,17 +209,15 @@ class TomSliverFixedExtentList extends TomSliverBase {
     super.scope,
     required this.delegate,
     this.itemExtent,
-  });
+  }) {
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrFail('itemExtent');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedItemExtent =
-      itemExtent ?? resolveDoubleOrFail('itemExtent');
-
     return SliverFixedExtentList(
       delegate: delegate,
-      itemExtent: resolvedItemExtent,
+      itemExtent: _resolvedItemExtent,
     );
   }
 }
@@ -263,6 +273,9 @@ class TomSliverOffstage extends TomSliverBase {
   final bool? offstage;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final bool _resolvedOffstage;
+
   TomSliverOffstage({
     super.key,
     super.tomId,
@@ -270,16 +283,14 @@ class TomSliverOffstage extends TomSliverBase {
     super.scope,
     this.offstage,
     required this.sliver,
-  });
+  }) {
+    _resolvedOffstage = offstage ?? resolveBoolOrNull('offstage') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedOffstage =
-        offstage ?? resolveBoolOrNull('offstage') ?? true;
-
     return SliverOffstage(
-      offstage: resolvedOffstage,
+      offstage: _resolvedOffstage,
       sliver: sliver,
     );
   }
@@ -293,6 +304,10 @@ class TomSliverOpacity extends TomSliverBase {
   final bool? alwaysIncludeSemantics;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final double _resolvedOpacity;
+  late final bool _resolvedAlwaysIncludeSemantics;
+
   TomSliverOpacity({
     super.key,
     super.tomId,
@@ -301,19 +316,16 @@ class TomSliverOpacity extends TomSliverBase {
     this.opacity,
     this.alwaysIncludeSemantics,
     required this.sliver,
-  });
+  }) {
+    _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
+    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedOpacity =
-        opacity ?? resolveDoubleOrFail('opacity');
-    final resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ??
-        resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
-
     return SliverOpacity(
-      opacity: resolvedOpacity,
-      alwaysIncludeSemantics: resolvedAlwaysIncludeSemantics,
+      opacity: _resolvedOpacity,
+      alwaysIncludeSemantics: _resolvedAlwaysIncludeSemantics,
       sliver: sliver,
     );
   }
@@ -326,6 +338,9 @@ class TomSliverPadding extends TomSliverBase {
   final EdgeInsetsGeometry? padding;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+
   TomSliverPadding({
     super.key,
     super.tomId,
@@ -333,14 +348,13 @@ class TomSliverPadding extends TomSliverBase {
     super.scope,
     this.padding,
     required this.sliver,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    if (resolvedPadding == null) {
+    if (_resolvedPadding == null) {
       throw StateError(
         'Tom widget requires either an explicit padding or a tomId resource '
         'value at padding. Widget: $runtimeType',
@@ -348,7 +362,7 @@ class TomSliverPadding extends TomSliverBase {
     }
 
     return SliverPadding(
-      padding: resolvedPadding,
+      padding: _resolvedPadding,
       sliver: sliver,
     );
   }
@@ -362,6 +376,10 @@ class TomSliverPersistentHeader extends TomSliverBase {
   final bool? pinned;
   final bool? floating;
 
+  // Pre-resolved resource values
+  late final bool _resolvedPinned;
+  late final bool _resolvedFloating;
+
   TomSliverPersistentHeader({
     super.key,
     super.tomId,
@@ -370,19 +388,17 @@ class TomSliverPersistentHeader extends TomSliverBase {
     required this.delegate,
     this.pinned,
     this.floating,
-  });
+  }) {
+    _resolvedPinned = pinned ?? resolveBoolOrNull('pinned') ?? false;
+    _resolvedFloating = floating ?? resolveBoolOrNull('floating') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPinned = pinned ?? resolveBoolOrNull('pinned') ?? false;
-    final resolvedFloating =
-        floating ?? resolveBoolOrNull('floating') ?? false;
-
     return SliverPersistentHeader(
       delegate: delegate,
-      pinned: resolvedPinned,
-      floating: resolvedFloating,
+      pinned: _resolvedPinned,
+      floating: _resolvedFloating,
     );
   }
 }
@@ -449,6 +465,13 @@ class TomSliverSafeArea extends TomSliverBase {
   final EdgeInsets? minimum;
   final Widget sliver;
 
+  // Pre-resolved resource values
+  late final bool _resolvedLeft;
+  late final bool _resolvedTop;
+  late final bool _resolvedRight;
+  late final bool _resolvedBottom;
+  late final EdgeInsets _resolvedMinimum;
+
   TomSliverSafeArea({
     super.key,
     super.tomId,
@@ -460,25 +483,22 @@ class TomSliverSafeArea extends TomSliverBase {
     this.bottom,
     this.minimum,
     required this.sliver,
-  });
+  }) {
+    _resolvedLeft = left ?? resolveBoolOrNull('left') ?? true;
+    _resolvedTop = top ?? resolveBoolOrNull('top') ?? true;
+    _resolvedRight = right ?? resolveBoolOrNull('right') ?? true;
+    _resolvedBottom = bottom ?? resolveBoolOrNull('bottom') ?? true;
+    _resolvedMinimum = minimum ?? resolveEdgeInsetsOrNull('minimum') ?? EdgeInsets.zero;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedLeft = left ?? resolveBoolOrNull('left') ?? true;
-    final resolvedTop = top ?? resolveBoolOrNull('top') ?? true;
-    final resolvedRight = right ?? resolveBoolOrNull('right') ?? true;
-    final resolvedBottom =
-        bottom ?? resolveBoolOrNull('bottom') ?? true;
-    final resolvedMinimum =
-        minimum ?? resolveEdgeInsetsOrNull('minimum') ?? EdgeInsets.zero;
-
     return SliverSafeArea(
-      left: resolvedLeft,
-      top: resolvedTop,
-      right: resolvedRight,
-      bottom: resolvedBottom,
-      minimum: resolvedMinimum,
+      left: _resolvedLeft,
+      top: _resolvedTop,
+      right: _resolvedRight,
+      bottom: _resolvedBottom,
+      minimum: _resolvedMinimum,
       sliver: sliver,
     );
   }
@@ -522,6 +542,14 @@ class TomSliverVisibility extends TomSliverBase {
   final bool? maintainSemantics;
   final bool? maintainInteractivity;
 
+  // Pre-resolved resource values
+  late final bool _resolvedVisible;
+  late final bool _resolvedMaintainState;
+  late final bool _resolvedMaintainAnimation;
+  late final bool _resolvedMaintainSize;
+  late final bool _resolvedMaintainSemantics;
+  late final bool _resolvedMaintainInteractivity;
+
   TomSliverVisibility({
     super.key,
     super.tomId,
@@ -535,33 +563,26 @@ class TomSliverVisibility extends TomSliverBase {
     this.maintainSize,
     this.maintainSemantics,
     this.maintainInteractivity,
-  });
+  }) {
+    _resolvedVisible = visible ?? resolveBoolOrNull('visible') ?? true;
+    _resolvedMaintainState = maintainState ?? resolveBoolOrNull('maintainState') ?? false;
+    _resolvedMaintainAnimation = maintainAnimation ?? resolveBoolOrNull('maintainAnimation') ?? false;
+    _resolvedMaintainSize = maintainSize ?? resolveBoolOrNull('maintainSize') ?? false;
+    _resolvedMaintainSemantics = maintainSemantics ?? resolveBoolOrNull('maintainSemantics') ?? false;
+    _resolvedMaintainInteractivity = maintainInteractivity ?? resolveBoolOrNull('maintainInteractivity') ?? false;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedVisible =
-        visible ?? resolveBoolOrNull('visible') ?? true;
-    final resolvedMaintainState =
-        maintainState ?? resolveBoolOrNull('maintainState') ?? false;
-    final resolvedMaintainAnimation = maintainAnimation ??
-        resolveBoolOrNull('maintainAnimation') ?? false;
-    final resolvedMaintainSize =
-        maintainSize ?? resolveBoolOrNull('maintainSize') ?? false;
-    final resolvedMaintainSemantics = maintainSemantics ??
-        resolveBoolOrNull('maintainSemantics') ?? false;
-    final resolvedMaintainInteractivity = maintainInteractivity ??
-        resolveBoolOrNull('maintainInteractivity') ?? false;
-
     return SliverVisibility(
       sliver: sliver,
       replacementSliver: replacementSliver,
-      visible: resolvedVisible,
-      maintainState: resolvedMaintainState,
-      maintainAnimation: resolvedMaintainAnimation,
-      maintainSize: resolvedMaintainSize,
-      maintainSemantics: resolvedMaintainSemantics,
-      maintainInteractivity: resolvedMaintainInteractivity,
+      visible: _resolvedVisible,
+      maintainState: _resolvedMaintainState,
+      maintainAnimation: _resolvedMaintainAnimation,
+      maintainSize: _resolvedMaintainSize,
+      maintainSemantics: _resolvedMaintainSemantics,
+      maintainInteractivity: _resolvedMaintainInteractivity,
     );
   }
 }

@@ -47,6 +47,16 @@ class TomIcon extends TomImageBase {
   /// TomIcon(icon: Icons.save)          // Explicit icon
   /// TomIcon(tomId: 'app.saveBtn')      // Resolves from resources
   /// ```
+  // Pre-resolved resource values
+  late final IconData? _resolvedIcon;
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedSize;
+  late final Color? _resolvedColor;
+  late final double? _resolvedFill;
+  late final double? _resolvedWeight;
+  late final double? _resolvedGrade;
+  late final double? _resolvedOpticalSize;
+
   TomIcon({
     this.icon,
     super.key,
@@ -63,39 +73,29 @@ class TomIcon extends TomImageBase {
     this.semanticLabel,
     this.textDirection,
     this.applyTextScaling,
-  });
+  }) {
+    _resolvedIcon = icon ?? _resolveIconFromResources();
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
+    _resolvedSize = size ?? resolveDoubleOrNull('size');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedFill = fill ?? resolveDoubleOrNull('fill');
+    _resolvedWeight = weight ?? resolveDoubleOrNull('weight');
+    _resolvedGrade = grade ?? resolveDoubleOrNull('grade');
+    _resolvedOpticalSize = opticalSize ?? resolveDoubleOrNull('opticalSize');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Resolve icon: use provided icon, or look up from resources
-    final resolvedIcon = icon ?? _resolveIconFromResources(context);
-    final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSize =
-        size ?? resolveDoubleOrNull('size');
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedFill =
-        fill ?? resolveDoubleOrNull('fill');
-    final resolvedWeight =
-        weight ?? resolveDoubleOrNull('weight');
-    final resolvedGrade =
-        grade ?? resolveDoubleOrNull('grade');
-    final resolvedOpticalSize =
-        opticalSize ?? resolveDoubleOrNull('opticalSize');
-
     return Icon(
-      resolvedIcon,
-      size: resolvedSize,
-      fill: resolvedFill,
-      weight: resolvedWeight,
-      grade: resolvedGrade,
-      opticalSize: resolvedOpticalSize,
-      color: resolvedColor,
+      _resolvedIcon,
+      size: _resolvedSize,
+      fill: _resolvedFill,
+      weight: _resolvedWeight,
+      grade: _resolvedGrade,
+      opticalSize: _resolvedOpticalSize,
+      color: _resolvedColor,
       shadows: shadows,
-      semanticLabel: resolvedSemanticLabel,
+      semanticLabel: _resolvedSemanticLabel,
       textDirection: textDirection,
       applyTextScaling: applyTextScaling,
     );
@@ -104,7 +104,7 @@ class TomIcon extends TomImageBase {
   /// Resolves icon from resources + icon provider.
   ///
   /// Returns `null` if tomId is not set or icon cannot be resolved.
-  IconData? _resolveIconFromResources(BuildContext context) {
+  IconData? _resolveIconFromResources() {
     if (tomId == null) return null;
     // Get icon name from resources (e.g., "save", "delete")
     final iconName = resolveResourceOrFail('icon');
@@ -136,6 +136,16 @@ class TomImage extends TomImageBase {
   final FilterQuality filterQuality;
   final String? semanticLabel;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final Color? _resolvedColor;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final bool _resolvedMatchTextDirection;
+  late final bool _resolvedGaplessPlayback;
+  late final bool _resolvedIsAntiAlias;
+
   TomImage({
     super.key,
     super.tomId,
@@ -155,44 +165,34 @@ class TomImage extends TomImageBase {
     this.isAntiAlias = false,
     this.filterQuality = FilterQuality.medium,
     this.semanticLabel,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedMatchTextDirection = resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
+    _resolvedGaplessPlayback = resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
+    _resolvedIsAntiAlias = resolveBoolOrNull('isAntiAlias') ?? isAntiAlias;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-    final resolvedMatchTextDirection =
-        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
-    final resolvedGaplessPlayback =
-        resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
-    final resolvedIsAntiAlias =
-        resolveBoolOrNull('isAntiAlias') ?? isAntiAlias;
-
     return Image(
       image: imageProvider,
-      width: resolvedWidth,
-      height: resolvedHeight,
-      color: resolvedColor,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
+      color: _resolvedColor,
       colorBlendMode: colorBlendMode,
       fit: fit,
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       repeat: repeat,
       centerSlice: centerSlice,
-      matchTextDirection: resolvedMatchTextDirection,
-      gaplessPlayback: resolvedGaplessPlayback,
-      isAntiAlias: resolvedIsAntiAlias,
+      matchTextDirection: _resolvedMatchTextDirection,
+      gaplessPlayback: _resolvedGaplessPlayback,
+      isAntiAlias: _resolvedIsAntiAlias,
       filterQuality: filterQuality,
-      semanticLabel: resolvedSemanticLabel,
+      semanticLabel: _resolvedSemanticLabel,
     );
   }
 
@@ -217,6 +217,13 @@ class TomCircleAvatar extends TomImageBase {
   final double? minRadius;
   final double? maxRadius;
 
+  // Pre-resolved resource values
+  late final Color? _resolvedBackgroundColor;
+  late final Color? _resolvedForegroundColor;
+  late final double? _resolvedRadius;
+  late final double? _resolvedMinRadius;
+  late final double? _resolvedMaxRadius;
+
   TomCircleAvatar({
     super.key,
     super.tomId,
@@ -232,32 +239,26 @@ class TomCircleAvatar extends TomImageBase {
     this.radius,
     this.minRadius,
     this.maxRadius,
-  });
+  }) {
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
+    _resolvedRadius = radius ?? resolveDoubleOrNull('radius');
+    _resolvedMinRadius = minRadius ?? resolveDoubleOrNull('minRadius');
+    _resolvedMaxRadius = maxRadius ?? resolveDoubleOrNull('maxRadius');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
-    final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull('foregroundColor');
-    final resolvedRadius =
-        radius ?? resolveDoubleOrNull('radius');
-    final resolvedMinRadius =
-        minRadius ?? resolveDoubleOrNull('minRadius');
-    final resolvedMaxRadius =
-        maxRadius ?? resolveDoubleOrNull('maxRadius');
-
     return CircleAvatar(
-      backgroundColor: resolvedBackgroundColor,
-      foregroundColor: resolvedForegroundColor,
+      backgroundColor: _resolvedBackgroundColor,
+      foregroundColor: _resolvedForegroundColor,
       backgroundImage: backgroundImage,
       foregroundImage: foregroundImage,
       onBackgroundImageError: onBackgroundImageError,
       onForegroundImageError: onForegroundImageError,
-      radius: resolvedRadius,
-      minRadius: resolvedMinRadius,
-      maxRadius: resolvedMaxRadius,
+      radius: _resolvedRadius,
+      minRadius: _resolvedMinRadius,
+      maxRadius: _resolvedMaxRadius,
       child: child,
     );
   }
@@ -288,6 +289,15 @@ class TomFadeInImage extends TomImageBase {
   final ImageErrorWidgetBuilder? placeholderErrorBuilder;
   final ImageErrorWidgetBuilder? imageErrorBuilder;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final Color? _resolvedPlaceholderColor;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final bool _resolvedMatchTextDirection;
+  late final bool _resolvedExcludeFromSemantics;
+
   TomFadeInImage({
     super.key,
     super.tomId,
@@ -313,27 +323,18 @@ class TomFadeInImage extends TomImageBase {
     this.placeholderColorBlendMode,
     this.placeholderErrorBuilder,
     this.imageErrorBuilder,
-  });
+  }) {
+    _resolvedSemanticLabel = imageSemanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedPlaceholderColor = placeholderColor ?? resolveColorOrNull('placeholderColor');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedMatchTextDirection = resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
+    _resolvedExcludeFromSemantics = resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = imageSemanticLabel ??
-        (tomId != null ? resolveResourceOrFail('alt') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-    final resolvedPlaceholderColor =
-        placeholderColor ?? resolveColorOrNull('placeholderColor');
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-    final resolvedMatchTextDirection =
-        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
-    final resolvedExcludeFromSemantics =
-        resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
-
     return FadeInImage(
       placeholder: placeholder,
       image: image,
@@ -341,16 +342,16 @@ class TomFadeInImage extends TomImageBase {
       fadeOutCurve: fadeOutCurve,
       fadeInDuration: fadeInDuration,
       fadeInCurve: fadeInCurve,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       fit: fit,
       placeholderFit: placeholderFit,
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       repeat: repeat,
-      matchTextDirection: resolvedMatchTextDirection,
-      excludeFromSemantics: resolvedExcludeFromSemantics,
-      imageSemanticLabel: resolvedSemanticLabel,
-      placeholderColor: resolvedPlaceholderColor,
+      matchTextDirection: _resolvedMatchTextDirection,
+      excludeFromSemantics: _resolvedExcludeFromSemantics,
+      imageSemanticLabel: _resolvedSemanticLabel,
+      placeholderColor: _resolvedPlaceholderColor,
       placeholderColorBlendMode: placeholderColorBlendMode,
       placeholderErrorBuilder: placeholderErrorBuilder,
       imageErrorBuilder: imageErrorBuilder,
@@ -372,6 +373,11 @@ class TomImageIcon extends TomImageBase {
   final Color? color;
   final String? semanticLabel;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedSize;
+  late final Color? _resolvedColor;
+
   TomImageIcon({
     super.key,
     super.tomId,
@@ -381,24 +387,19 @@ class TomImageIcon extends TomImageBase {
     this.size,
     this.color,
     this.semanticLabel,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
+    _resolvedSize = size ?? resolveDoubleOrNull('size');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSize =
-        size ?? resolveDoubleOrNull('size');
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-
     return ImageIcon(
       image,
-      size: resolvedSize,
-      color: resolvedColor,
-      semanticLabel: resolvedSemanticLabel,
+      size: _resolvedSize,
+      color: _resolvedColor,
+      semanticLabel: _resolvedSemanticLabel,
     );
   }
 }
@@ -419,6 +420,12 @@ class TomInkImage extends TomImageBase {
   final double? height;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+
   TomInkImage({
     super.key,
     super.tomId,
@@ -434,30 +441,25 @@ class TomInkImage extends TomImageBase {
     this.width,
     this.height,
     this.child,
-  });
+  }) {
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull('padding');
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-
     return Ink.image(
-      padding: resolvedPadding,
+      padding: _resolvedPadding,
       image: image,
       colorFilter: colorFilter,
       fit: fit,
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       centerSlice: centerSlice,
       repeat: repeat,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       child: child,
     );
   }
@@ -494,6 +496,18 @@ class TomNetworkImage extends TomImageBase {
   final ImageLoadingBuilder? loadingBuilder;
   final ImageErrorWidgetBuilder? errorBuilder;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final String _resolvedSrc;
+  late final double _resolvedScale;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final AlignmentGeometry _resolvedAlignment;
+  late final bool _resolvedMatchTextDirection;
+  late final bool _resolvedGaplessPlayback;
+  late final Color? _resolvedColor;
+  late final bool _resolvedExcludeFromSemantics;
+
   TomNetworkImage({
     super.key,
     super.tomId,
@@ -519,51 +533,39 @@ class TomNetworkImage extends TomImageBase {
     this.frameBuilder,
     this.loadingBuilder,
     this.errorBuilder,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
+    _resolvedSrc = resolveResourceOrNull('src') ?? src;
+    _resolvedScale = resolveDoubleOrNull('scale') ?? scale;
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
+    _resolvedMatchTextDirection = resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
+    _resolvedGaplessPlayback = resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedExcludeFromSemantics = resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedSrc =
-        resolveResourceOrNull('src') ?? src;
-    final resolvedScale =
-        resolveDoubleOrNull('scale') ?? scale;
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-    final resolvedAlignment =
-        _resolveAlignment('alignment') ?? alignment;
-    final resolvedMatchTextDirection =
-        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
-    final resolvedGaplessPlayback =
-        resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedExcludeFromSemantics =
-        resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
-
     return Image.network(
-      resolvedSrc,
-      scale: resolvedScale,
+      _resolvedSrc,
+      scale: _resolvedScale,
       headers: headers,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       fit: fit,
-      alignment: resolvedAlignment,
+      alignment: _resolvedAlignment,
       repeat: repeat,
       centerSlice: centerSlice,
-      matchTextDirection: resolvedMatchTextDirection,
-      gaplessPlayback: resolvedGaplessPlayback,
+      matchTextDirection: _resolvedMatchTextDirection,
+      gaplessPlayback: _resolvedGaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: resolvedColor,
+      color: _resolvedColor,
       colorBlendMode: colorBlendMode,
-      semanticLabel: resolvedSemanticLabel,
-      excludeFromSemantics: resolvedExcludeFromSemantics,
+      semanticLabel: _resolvedSemanticLabel,
+      excludeFromSemantics: _resolvedExcludeFromSemantics,
       frameBuilder: frameBuilder,
       loadingBuilder: loadingBuilder,
       errorBuilder: errorBuilder,
@@ -603,6 +605,14 @@ class TomAssetImage extends TomImageBase {
   final int? cacheWidth;
   final int? cacheHeight;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final Color? _resolvedColor;
+  late final int? _resolvedCacheWidth;
+  late final int? _resolvedCacheHeight;
+
   TomAssetImage({
     super.key,
     super.tomId,
@@ -629,31 +639,23 @@ class TomAssetImage extends TomImageBase {
     this.errorBuilder,
     this.cacheWidth,
     this.cacheHeight,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedCacheWidth = cacheWidth ?? resolveIntOrNull('cacheWidth');
+    _resolvedCacheHeight = cacheHeight ?? resolveIntOrNull('cacheHeight');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedCacheWidth =
-        cacheWidth ?? resolveIntOrNull('cacheWidth');
-    final resolvedCacheHeight =
-        cacheHeight ?? resolveIntOrNull('cacheHeight');
-
     return Image.asset(
       name,
       bundle: bundle,
       package: package,
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       fit: fit,
       alignment: alignment,
       repeat: repeat,
@@ -662,14 +664,14 @@ class TomAssetImage extends TomImageBase {
       gaplessPlayback: gaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: resolvedColor,
+      color: _resolvedColor,
       colorBlendMode: colorBlendMode,
-      semanticLabel: resolvedSemanticLabel,
+      semanticLabel: _resolvedSemanticLabel,
       excludeFromSemantics: excludeFromSemantics,
       frameBuilder: frameBuilder,
       errorBuilder: errorBuilder,
-      cacheWidth: resolvedCacheWidth,
-      cacheHeight: resolvedCacheHeight,
+      cacheWidth: _resolvedCacheWidth,
+      cacheHeight: _resolvedCacheHeight,
     );
   }
 }
@@ -698,6 +700,12 @@ class TomFileImage extends TomImageBase {
   final ImageFrameBuilder? frameBuilder;
   final ImageErrorWidgetBuilder? errorBuilder;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final double? _resolvedWidth;
+  late final double? _resolvedHeight;
+  late final Color? _resolvedColor;
+
   TomFileImage({
     super.key,
     super.tomId,
@@ -721,25 +729,19 @@ class TomFileImage extends TomImageBase {
     this.excludeFromSemantics = false,
     this.frameBuilder,
     this.errorBuilder,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedWidth =
-        width ?? resolveDoubleOrNull('width');
-    final resolvedHeight =
-        height ?? resolveDoubleOrNull('height');
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-
     return Image(
       image: FileImage(File(filePath), scale: scale),
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: _resolvedWidth,
+      height: _resolvedHeight,
       fit: fit,
       alignment: alignment,
       repeat: repeat,
@@ -748,9 +750,9 @@ class TomFileImage extends TomImageBase {
       gaplessPlayback: gaplessPlayback,
       filterQuality: filterQuality,
       isAntiAlias: isAntiAlias,
-      color: resolvedColor,
+      color: _resolvedColor,
       colorBlendMode: colorBlendMode,
-      semanticLabel: resolvedSemanticLabel,
+      semanticLabel: _resolvedSemanticLabel,
       excludeFromSemantics: excludeFromSemantics,
       frameBuilder: frameBuilder,
       errorBuilder: errorBuilder,
@@ -773,6 +775,11 @@ class TomAnimatedIcon extends TomImageBase {
   final String? semanticLabel;
   final TextDirection? textDirection;
 
+  // Pre-resolved resource values
+  late final String? _resolvedSemanticLabel;
+  late final Color? _resolvedColor;
+  late final double? _resolvedSize;
+
   TomAnimatedIcon({
     super.key,
     super.tomId,
@@ -784,25 +791,20 @@ class TomAnimatedIcon extends TomImageBase {
     this.size,
     this.semanticLabel,
     this.textDirection,
-  });
+  }) {
+    _resolvedSemanticLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedSize = size ?? resolveDoubleOrNull('size');
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedSemanticLabel =
-        semanticLabel ?? resolveResourceOrNull('semanticLabel');
-
-    // Phase 2: Resolve optional parameters from resources
-    final resolvedColor =
-        color ?? resolveColorOrNull('color');
-    final resolvedSize =
-        size ?? resolveDoubleOrNull('size');
-
     return AnimatedIcon(
       icon: icon,
       progress: progress,
-      color: resolvedColor,
-      size: resolvedSize,
-      semanticLabel: resolvedSemanticLabel,
+      color: _resolvedColor,
+      size: _resolvedSize,
+      semanticLabel: _resolvedSemanticLabel,
       textDirection: textDirection,
     );
   }
@@ -816,6 +818,9 @@ class TomImageFiltered extends TomImageBase {
   final bool? enabled;
   final Widget? child;
 
+  // Pre-resolved resource values
+  late final bool _resolvedEnabled;
+
   TomImageFiltered({
     super.key,
     super.tomId,
@@ -824,15 +829,15 @@ class TomImageFiltered extends TomImageBase {
     required this.imageFilter,
     this.enabled,
     this.child,
-  });
+  }) {
+    _resolvedEnabled = enabled ?? resolveBoolOrNull('enabled') ?? true;
+  }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedEnabled = enabled ?? resolveBoolOrNull('enabled') ?? true;
-
     return ImageFiltered(
       imageFilter: imageFilter,
-      enabled: resolvedEnabled,
+      enabled: _resolvedEnabled,
       child: child,
     );
   }
