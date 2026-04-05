@@ -12,7 +12,7 @@ import 'tom_node_base.dart';
 /// - **Readonly** → visual treatment from [TomReadonlyStyle] via [TomThemeScope].
 /// - **Full access** → normal rendering.
 abstract class TomPolicyNodeBase extends TomNodeBase {
-  const TomPolicyNodeBase({
+  TomPolicyNodeBase({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -21,10 +21,8 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
   @override
   Widget build(BuildContext context) {
-    final resourceKeyPath = resolveResourceBasePath();
-
-    final authState = resourceKeyPath != null
-        ? TomUIAuthorization.resolveAuth(resourceKeyPath)
+    final authState = basePath != null
+        ? TomUIAuthorization.resolveAuth(basePath!)
         : TomAuthState.fullAccess;
 
     if (!authState.visible) return const SizedBox.shrink();

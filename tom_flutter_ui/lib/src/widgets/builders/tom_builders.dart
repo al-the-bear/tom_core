@@ -18,7 +18,7 @@ import '../../widget_base/tom_family_base.dart';
 /// Provides inline stateful widget capability via a builder function.
 /// Authorization applies to the entire builder content region.
 class TomStatefulBuilder extends TomBuilderBase {
-  const TomStatefulBuilder({
+  TomStatefulBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -46,7 +46,7 @@ class TomStatefulBuilder extends TomBuilderBase {
 /// Rebuilds the widget tree whenever the stream emits a new event.
 /// Authorization applies to stream-driven content.
 class TomStreamBuilder<T> extends TomBuilderBase {
-  const TomStreamBuilder({
+  TomStreamBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -84,7 +84,7 @@ class TomStreamBuilder<T> extends TomBuilderBase {
 /// Rebuilds the widget tree when the future completes.
 /// Authorization applies to async-loaded content.
 class TomFutureBuilder<T> extends TomBuilderBase {
-  const TomFutureBuilder({
+  TomFutureBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -122,7 +122,7 @@ class TomFutureBuilder<T> extends TomBuilderBase {
 /// Rebuilds the widget tree whenever the [ValueListenable] changes.
 /// Authorization applies to reactive content.
 class TomValueListenableBuilder<T> extends TomBuilderBase {
-  const TomValueListenableBuilder({
+  TomValueListenableBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -160,7 +160,7 @@ class TomValueListenableBuilder<T> extends TomBuilderBase {
 /// Rebuilds the widget tree whenever the [Listenable] notifies.
 /// Authorization applies to reactive content.
 class TomListenableBuilder extends TomBuilderBase {
-  const TomListenableBuilder({
+  TomListenableBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -198,7 +198,7 @@ class TomListenableBuilder extends TomBuilderBase {
 /// Animates a tween and rebuilds the widget tree on each animation frame.
 /// Authorization applies to animated content.
 class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
-  const TomTweenAnimationBuilder({
+  TomTweenAnimationBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -255,7 +255,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
 /// Rebuilds the widget tree when the device orientation changes.
 /// Authorization applies to orientation-responsive content.
 class TomOrientationBuilder extends TomBuilderBase {
-  const TomOrientationBuilder({
+  TomOrientationBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -283,7 +283,7 @@ class TomOrientationBuilder extends TomBuilderBase {
 /// Rebuilds the widget tree with the parent's constraints.
 /// Authorization applies to constraint-responsive content.
 class TomLayoutBuilder extends TomBuilderBase {
-  const TomLayoutBuilder({
+  TomLayoutBuilder({
     super.key,
     super.tomId,
     super.tomGroup,

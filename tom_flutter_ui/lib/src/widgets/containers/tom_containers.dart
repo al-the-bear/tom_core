@@ -27,7 +27,7 @@ class TomCard extends TomContainerBase {
   final bool semanticContainer;
   final Widget? child;
 
-  const TomCard({
+  TomCard({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -80,9 +80,8 @@ class TomCard extends TomContainerBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -116,7 +115,7 @@ class TomExpansionTile extends TomContainerBase {
   final bool dense;
   final bool showTrailingIcon;
 
-  const TomExpansionTile({
+  TomExpansionTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -215,9 +214,8 @@ class TomExpansionTile extends TomContainerBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -247,7 +245,7 @@ class TomScaffold extends TomContainerBase {
   final bool endDrawerEnableOpenDragGesture;
   final String? restorationId;
 
-  const TomScaffold({
+  TomScaffold({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -371,7 +369,7 @@ class TomAppBar extends StatelessWidget
   @override
   final TomScope? scope;
 
-  const TomAppBar({
+  TomAppBar({
     super.key,
     this.tomId,
     this.tomGroup,
@@ -504,26 +502,26 @@ class TomAppBar extends StatelessWidget
   IconThemeData? _resolveIconThemeData(String suffix) {
     final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
     final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
     final basePath = resolveFullPath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   String? _resolveStringOrNull(String suffix) {
     final basePath = resolveFullPath();
     if (basePath == null) return null;
-    if (!TomUIResources.resourceExists(basePath, suffix)) return null;
-    return TomUIResources.resolveText(basePath, suffix);
+    if (!TomUIResources.resourceExists(basePath!, suffix)) return null;
+    return TomUIResources.resolveText(basePath!, suffix);
   }
 }
 
@@ -542,7 +540,7 @@ class TomBottomAppBar extends TomContainerBase {
   final Color? shadowColor;
   final Color? surfaceTintColor;
 
-  const TomBottomAppBar({
+  TomBottomAppBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -600,7 +598,7 @@ class TomDivider extends TomContainerBase {
   final double? endIndent;
   final Color? color;
 
-  const TomDivider({
+  TomDivider({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -653,7 +651,7 @@ class TomContainer extends TomContainerBase {
   final double? width;
   final double? height;
 
-  const TomContainer({
+  TomContainer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -713,21 +711,18 @@ class TomContainer extends TomContainerBase {
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -741,7 +736,7 @@ class TomColumn extends TomContainerBase {
   final TextBaseline? textBaseline;
   final List<Widget> children;
 
-  const TomColumn({
+  TomColumn({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -779,7 +774,7 @@ class TomRow extends TomContainerBase {
   final TextBaseline? textBaseline;
   final List<Widget> children;
 
-  const TomRow({
+  TomRow({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -820,7 +815,7 @@ class TomWrap extends TomContainerBase {
   final Clip clipBehavior;
   final List<Widget> children;
 
-  const TomWrap({
+  TomWrap({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -868,7 +863,7 @@ class TomStack extends TomContainerBase {
   final Clip clipBehavior;
   final List<Widget> children;
 
-  const TomStack({
+  TomStack({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -896,9 +891,8 @@ class TomStack extends TomContainerBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -910,7 +904,7 @@ class TomIndexedStack extends TomContainerBase {
   final StackFit sizing;
   final List<Widget> children;
 
-  const TomIndexedStack({
+  TomIndexedStack({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -941,9 +935,8 @@ class TomIndexedStack extends TomContainerBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -953,7 +946,7 @@ class TomSizedBox extends TomContainerBase {
   final double? height;
   final Widget? child;
 
-  const TomSizedBox({
+  TomSizedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -982,7 +975,7 @@ class TomConstrainedBox extends TomContainerBase {
   final BoxConstraints constraints;
   final Widget? child;
 
-  const TomConstrainedBox({
+  TomConstrainedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1005,7 +998,7 @@ class TomPadding extends TomContainerBase {
   final EdgeInsetsGeometry padding;
   final Widget? child;
 
-  const TomPadding({
+  TomPadding({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1032,7 +1025,7 @@ class TomCenter extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
-  const TomCenter({
+  TomCenter({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1065,7 +1058,7 @@ class TomAlign extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
-  const TomAlign({
+  TomAlign({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1098,7 +1091,7 @@ class TomAspectRatio extends TomContainerBase {
   final double aspectRatio;
   final Widget? child;
 
-  const TomAspectRatio({
+  TomAspectRatio({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1123,7 +1116,7 @@ class TomFittedBox extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomFittedBox({
+  TomFittedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1152,7 +1145,7 @@ class TomFractionallySizedBox extends TomContainerBase {
   final double? heightFactor;
   final Widget? child;
 
-  const TomFractionallySizedBox({
+  TomFractionallySizedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1184,7 +1177,7 @@ class TomFractionallySizedBox extends TomContainerBase {
 class TomIntrinsicHeight extends TomContainerBase {
   final Widget? child;
 
-  const TomIntrinsicHeight({
+  TomIntrinsicHeight({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1204,7 +1197,7 @@ class TomIntrinsicWidth extends TomContainerBase {
   final double? stepHeight;
   final Widget? child;
 
-  const TomIntrinsicWidth({
+  TomIntrinsicWidth({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1245,7 +1238,7 @@ class TomMaterial extends TomContainerBase {
   final Duration animationDuration;
   final Widget? child;
 
-  const TomMaterial({
+  TomMaterial({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1299,21 +1292,18 @@ class TomMaterial extends TomContainerBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   BorderRadiusGeometry? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -1323,7 +1313,7 @@ class TomDecoratedBox extends TomContainerBase {
   final DecorationPosition position;
   final Widget? child;
 
-  const TomDecoratedBox({
+  TomDecoratedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1350,7 +1340,7 @@ class TomClipRRect extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomClipRRect({
+  TomClipRRect({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1378,7 +1368,7 @@ class TomClipOval extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomClipOval({
+  TomClipOval({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1404,7 +1394,7 @@ class TomClipRect extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomClipRect({
+  TomClipRect({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1465,7 +1455,7 @@ class TomSliverAppBar extends TomContainerBase {
   final bool forceMaterialTransparency;
   final Clip? clipBehavior;
 
-  const TomSliverAppBar({
+  TomSliverAppBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1582,21 +1572,18 @@ class TomSliverAppBar extends TomContainerBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -1604,7 +1591,7 @@ class TomSliverAppBar extends TomContainerBase {
 class TomSliverToBoxAdapter extends TomContainerBase {
   final Widget? child;
 
-  const TomSliverToBoxAdapter({
+  TomSliverToBoxAdapter({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1622,7 +1609,7 @@ class TomSliverToBoxAdapter extends TomContainerBase {
 class TomSliverList extends TomContainerBase {
   final SliverChildDelegate delegate;
 
-  const TomSliverList({
+  TomSliverList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1641,7 +1628,7 @@ class TomSliverGrid extends TomContainerBase {
   final SliverChildDelegate delegate;
   final SliverGridDelegate gridDelegate;
 
-  const TomSliverGrid({
+  TomSliverGrid({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1665,7 +1652,7 @@ class TomSliverFillRemaining extends TomContainerBase {
   final bool hasScrollBody;
   final bool fillOverscroll;
 
-  const TomSliverFillRemaining({
+  TomSliverFillRemaining({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1704,7 +1691,7 @@ class TomCustomScrollView extends TomContainerBase {
   final String? restorationId;
   final Clip clipBehavior;
 
-  const TomCustomScrollView({
+  TomCustomScrollView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1800,7 +1787,7 @@ class TomExpansionPanel {
   /// Highlight color when tapping the header.
   final Color? highlightColor;
 
-  const TomExpansionPanel({
+  TomExpansionPanel({
     this.tomId,
     this.tomGroup,
     required this.headerBuilder,
@@ -1839,7 +1826,7 @@ class TomExpansionPanelList extends TomContainerBase {
   final Color? dividerColor;
   final double? elevation;
 
-  const TomExpansionPanelList({
+  TomExpansionPanelList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1886,7 +1873,7 @@ class TomInk extends TomContainerBase {
   final double? height;
   final Widget? child;
 
-  const TomInk({
+  TomInk({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1923,9 +1910,8 @@ class TomInk extends TomContainerBase {
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 }
 
@@ -2038,7 +2024,7 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final TomScope? scope;
 
   /// Creates a Tom Spacer widget.
-  const TomSpacer({
+  TomSpacer({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -2070,7 +2056,7 @@ class TomPositioned extends TomContainerBase {
   final Widget child;
 
   /// Creates a Tom Positioned widget.
-  const TomPositioned({
+  TomPositioned({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2085,7 +2071,7 @@ class TomPositioned extends TomContainerBase {
   });
 
   /// Creates a Tom Positioned widget that fills the Stack.
-  const TomPositioned.fill({
+  TomPositioned.fill({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2125,7 +2111,7 @@ class TomPositionedDirectional extends TomContainerBase {
   final Widget child;
 
   /// Creates a Tom PositionedDirectional widget.
-  const TomPositionedDirectional({
+  TomPositionedDirectional({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2196,7 +2182,7 @@ class TomSafeArea extends TomContainerBase {
   final bool maintainBottomViewPadding;
   final Widget child;
 
-  const TomSafeArea({
+  TomSafeArea({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2239,7 +2225,7 @@ class TomSingleChildScrollView extends TomContainerBase {
   final String? restorationId;
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
 
-  const TomSingleChildScrollView({
+  TomSingleChildScrollView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2279,9 +2265,8 @@ class TomSingleChildScrollView extends TomContainerBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -2302,7 +2287,7 @@ class TomCarouselView extends TomContainerBase {
   final bool reverse;
   final ValueChanged<int>? onTap;
 
-  const TomCarouselView({
+  TomCarouselView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2339,9 +2324,8 @@ class TomCarouselView extends TomContainerBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -2358,7 +2342,7 @@ class TomVisibility extends TomContainerBase {
   final bool maintainSemantics;
   final bool maintainInteractivity;
 
-  const TomVisibility({
+  TomVisibility({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2395,7 +2379,7 @@ class TomOffstage extends TomContainerBase {
   final bool offstage;
   final Widget? child;
 
-  const TomOffstage({
+  TomOffstage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2426,7 +2410,7 @@ class TomCupertinoPageScaffold extends TomContainerBase {
   final bool resizeToAvoidBottomInset;
   final Widget child;
 
-  const TomCupertinoPageScaffold({
+  TomCupertinoPageScaffold({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2459,7 +2443,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
   final bool resizeToAvoidBottomInset;
   final String? restorationId;
 
-  const TomCupertinoTabScaffold({
+  TomCupertinoTabScaffold({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2495,7 +2479,7 @@ class TomCupertinoFormRow extends TomContainerBase {
   final Widget? helper;
   final Widget? error;
 
-  const TomCupertinoFormRow({
+  TomCupertinoFormRow({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2532,7 +2516,7 @@ class TomCupertinoFormSection extends TomContainerBase {
   final Clip clipBehavior;
   final bool insetGrouped;
 
-  const TomCupertinoFormSection({
+  TomCupertinoFormSection({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2590,7 +2574,7 @@ class TomNestedScrollView extends TomContainerBase {
   final String? restorationId;
   final ScrollBehavior? scrollBehavior;
 
-  const TomNestedScrollView({
+  TomNestedScrollView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2636,9 +2620,8 @@ class TomNestedScrollView extends TomContainerBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -2656,7 +2639,7 @@ class TomScrollbar extends TomContainerBase {
   final bool? interactive;
   final ScrollbarOrientation? scrollbarOrientation;
 
-  const TomScrollbar({
+  TomScrollbar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2710,7 +2693,7 @@ class TomCupertinoScrollbar extends TomContainerBase {
   final Radius radiusWhileDragging;
   final ScrollNotificationPredicate? notificationPredicate;
 
-  const TomCupertinoScrollbar({
+  TomCupertinoScrollbar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2762,7 +2745,7 @@ class TomDraggableScrollableSheet extends TomContainerBase {
   final bool? shouldCloseOnMinExtent;
   final ScrollableWidgetBuilder builder;
 
-  const TomDraggableScrollableSheet({
+  TomDraggableScrollableSheet({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2829,7 +2812,7 @@ class TomInteractiveViewer extends TomContainerBase {
   final Alignment? alignment;
   final Widget child;
 
-  const TomInteractiveViewer({
+  TomInteractiveViewer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2896,9 +2879,8 @@ class TomInteractiveViewer extends TomContainerBase {
   }
 
   Alignment? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    final resolved = TomStyleResolvers.resolveAlignment(basePath, suffix);
+    final resolved = TomStyleResolvers.resolveAlignment(basePath!, suffix);
     // TomStyleResolvers returns AlignmentGeometry, but InteractiveViewer needs Alignment
     if (resolved is Alignment) return resolved;
     return null;
@@ -2913,7 +2895,7 @@ class TomClipPath extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomClipPath({
+  TomClipPath({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2940,7 +2922,7 @@ class TomColoredBox extends TomContainerBase {
   final Color? color;
   final Widget? child;
 
-  const TomColoredBox({
+  TomColoredBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -2968,7 +2950,7 @@ class TomOpacity extends TomContainerBase {
   final bool alwaysIncludeSemantics;
   final Widget? child;
 
-  const TomOpacity({
+  TomOpacity({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3001,7 +2983,7 @@ class TomTransform extends TomContainerBase {
   final FilterQuality? filterQuality;
   final Widget? child;
 
-  const TomTransform({
+  TomTransform({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3033,9 +3015,8 @@ class TomTransform extends TomContainerBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -3046,7 +3027,7 @@ class TomRotatedBox extends TomContainerBase {
   final int? quarterTurns;
   final Widget? child;
 
-  const TomRotatedBox({
+  TomRotatedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3079,7 +3060,7 @@ class TomOverflowBar extends TomContainerBase {
   final TextDirection? textDirection;
   final List<Widget> children;
 
-  const TomOverflowBar({
+  TomOverflowBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3124,7 +3105,7 @@ class TomOverflowBox extends TomContainerBase {
   final OverflowBoxFit fit;
   final Widget? child;
 
-  const TomOverflowBox({
+  TomOverflowBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3166,9 +3147,8 @@ class TomOverflowBox extends TomContainerBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -3180,7 +3160,7 @@ class TomSizedOverflowBox extends TomContainerBase {
   final AlignmentGeometry alignment;
   final Widget? child;
 
-  const TomSizedOverflowBox({
+  TomSizedOverflowBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3210,7 +3190,7 @@ class TomUnconstrainedBox extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomUnconstrainedBox({
+  TomUnconstrainedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3245,7 +3225,7 @@ class TomConstraintsTransformBox extends TomContainerBase {
   final String debugTransformType;
   final Widget? child;
 
-  const TomConstraintsTransformBox({
+  TomConstraintsTransformBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3279,7 +3259,7 @@ class TomLimitedBox extends TomContainerBase {
   final double? maxHeight;
   final Widget? child;
 
-  const TomLimitedBox({
+  TomLimitedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3312,7 +3292,7 @@ class TomBaseline extends TomContainerBase {
   final TextBaseline baselineType;
   final Widget? child;
 
-  const TomBaseline({
+  TomBaseline({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3342,7 +3322,7 @@ class TomListBody extends TomContainerBase {
   final bool? reverse;
   final List<Widget> children;
 
-  const TomListBody({
+  TomListBody({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3372,7 +3352,7 @@ class TomFlow extends TomContainerBase {
   final Clip? clipBehavior;
   final List<Widget> children;
 
-  const TomFlow({
+  TomFlow({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3401,7 +3381,7 @@ class TomCustomMultiChildLayout extends TomContainerBase {
   final MultiChildLayoutDelegate delegate;
   final List<Widget> children;
 
-  const TomCustomMultiChildLayout({
+  TomCustomMultiChildLayout({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3426,7 +3406,7 @@ class TomCustomSingleChildLayout extends TomContainerBase {
   final SingleChildLayoutDelegate delegate;
   final Widget? child;
 
-  const TomCustomSingleChildLayout({
+  TomCustomSingleChildLayout({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3455,7 +3435,7 @@ class TomCustomPaint extends TomContainerBase {
   final bool? willChange;
   final Widget? child;
 
-  const TomCustomPaint({
+  TomCustomPaint({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3499,7 +3479,7 @@ class TomPhysicalModel extends TomContainerBase {
   final Color? shadowColor;
   final Widget? child;
 
-  const TomPhysicalModel({
+  TomPhysicalModel({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3537,9 +3517,8 @@ class TomPhysicalModel extends TomContainerBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 }
 
@@ -3554,7 +3533,7 @@ class TomPhysicalShape extends TomContainerBase {
   final Color? shadowColor;
   final Widget? child;
 
-  const TomPhysicalShape({
+  TomPhysicalShape({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3594,7 +3573,7 @@ class TomFractionalTranslation extends TomContainerBase {
   final bool? transformHitTests;
   final Widget? child;
 
-  const TomFractionalTranslation({
+  TomFractionalTranslation({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3625,7 +3604,7 @@ class TomGridTile extends TomContainerBase {
   final Widget? footer;
   final Widget child;
 
-  const TomGridTile({
+  TomGridTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3655,7 +3634,7 @@ class TomGridTileBar extends TomContainerBase {
   final Widget? subtitle;
   final Widget? trailing;
 
-  const TomGridTileBar({
+  TomGridTileBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3696,7 +3675,7 @@ class TomCupertinoExpansionTile extends TomContainerBase {
   final ExpansibleController? controller;
   final ExpansionTileTransitionMode transitionMode;
 
-  const TomCupertinoExpansionTile({
+  TomCupertinoExpansionTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -3728,7 +3707,7 @@ class TomClipRSuperellipse extends TomContainerBase {
   final Clip clipBehavior;
   final Widget? child;
 
-  const TomClipRSuperellipse({
+  TomClipRSuperellipse({
     super.key,
     super.tomId,
     super.tomGroup,

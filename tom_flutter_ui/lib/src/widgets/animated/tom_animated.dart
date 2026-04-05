@@ -22,7 +22,7 @@ class TomAnimatedAlign extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedAlign({
+  TomAnimatedAlign({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -55,9 +55,8 @@ class TomAnimatedAlign extends TomAnimatedBase {
     );
   }
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }}
 
 /// Tom wrapper for [AnimatedBuilder].
@@ -72,7 +71,7 @@ class TomAnimatedBuilder extends TomAnimatedBase {
   final Widget? child;
 
   /// Creates TomAnimatedBuilder with [listenable] parameter.
-  const TomAnimatedBuilder({
+  TomAnimatedBuilder({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -121,7 +120,7 @@ class TomAnimatedContainer extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedContainer({
+  TomAnimatedContainer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -179,21 +178,18 @@ class TomAnimatedContainer extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 }
 
@@ -213,7 +209,7 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   final AnimatedCrossFadeBuilder layoutBuilder;
   final bool? excludeBottomFocus;
 
-  const TomAnimatedCrossFade({
+  TomAnimatedCrossFade({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -253,9 +249,8 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -275,7 +270,7 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedDefaultTextStyle({
+  TomAnimatedDefaultTextStyle({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -318,9 +313,8 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -336,7 +330,7 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedFractionallySizedBox({
+  TomAnimatedFractionallySizedBox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -370,9 +364,8 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -387,7 +380,7 @@ class TomAnimatedOpacity extends TomAnimatedBase {
   final VoidCallback? onEnd;
   final bool? alwaysIncludeSemantics;
 
-  const TomAnimatedOpacity({
+  TomAnimatedOpacity({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -429,7 +422,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedPadding({
+  TomAnimatedPadding({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -480,7 +473,7 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedPhysicalModel({
+  TomAnimatedPhysicalModel({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -530,9 +523,8 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 }
 
@@ -648,7 +640,7 @@ class TomAnimatedRotation extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedRotation({
+  TomAnimatedRotation({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -680,9 +672,8 @@ class TomAnimatedRotation extends TomAnimatedBase {
   }
 
   Alignment? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix) as Alignment?;
   }
 }
 
@@ -698,7 +689,7 @@ class TomAnimatedScale extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedScale({
+  TomAnimatedScale({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -730,9 +721,8 @@ class TomAnimatedScale extends TomAnimatedBase {
   }
 
   Alignment? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix) as Alignment?;
   }
 }
 
@@ -748,7 +738,7 @@ class TomAnimatedSize extends TomAnimatedBase {
   final Clip clipBehavior;
   final VoidCallback? onEnd;
 
-  const TomAnimatedSize({
+  TomAnimatedSize({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -776,9 +766,8 @@ class TomAnimatedSize extends TomAnimatedBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -792,7 +781,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
   final Curve curve;
   final VoidCallback? onEnd;
 
-  const TomAnimatedSlide({
+  TomAnimatedSlide({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -820,9 +809,8 @@ class TomAnimatedSlide extends TomAnimatedBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -838,7 +826,7 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
   final AnimatedSwitcherTransitionBuilder transitionBuilder;
   final AnimatedSwitcherLayoutBuilder layoutBuilder;
 
-  const TomAnimatedSwitcher({
+  TomAnimatedSwitcher({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -877,7 +865,7 @@ class TomHero extends TomAnimatedBase {
   final bool? transitionOnUserGestures;
   final Widget child;
 
-  const TomHero({
+  TomHero({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -916,7 +904,7 @@ class TomRotationTransition extends TomAnimatedBase {
   final FilterQuality? filterQuality;
   final Widget? child;
 
-  const TomRotationTransition({
+  TomRotationTransition({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -947,7 +935,7 @@ class TomScaleTransition extends TomAnimatedBase {
   final FilterQuality? filterQuality;
   final Widget? child;
 
-  const TomScaleTransition({
+  TomScaleTransition({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -977,7 +965,7 @@ class TomFadeTransition extends TomAnimatedBase {
   final bool alwaysIncludeSemantics;
   final Widget? child;
 
-  const TomFadeTransition({
+  TomFadeTransition({
     super.key,
     super.tomId,
     super.tomGroup,

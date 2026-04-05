@@ -22,7 +22,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
   final String? semanticsValue;
   final StrokeCap? strokeCap;
 
-  const TomCircularProgressIndicator({
+  TomCircularProgressIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -84,7 +84,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
   final String? semanticsValue;
   final BorderRadiusGeometry? borderRadius;
 
-  const TomLinearProgressIndicator({
+  TomLinearProgressIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -129,9 +129,8 @@ class TomLinearProgressIndicator extends TomProgressBase {
   }
 
   BorderRadiusGeometry? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 }
 
@@ -151,7 +150,7 @@ class TomRefreshIndicator extends TomProgressBase {
   final double strokeWidth;
   final double triggerMode;
 
-  const TomRefreshIndicator({
+  TomRefreshIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -213,7 +212,7 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
   final double radius;
   final Color? color;
 
-  const TomCupertinoActivityIndicator({
+  TomCupertinoActivityIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -253,7 +252,7 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
   final double? trackHeight;
   final EdgeInsetsGeometry? padding;
 
-  const TomCupertinoLinearActivityIndicator({
+  TomCupertinoLinearActivityIndicator({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -297,7 +296,7 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
   final RefreshControlIndicatorBuilder? builder;
   final RefreshCallback? onRefresh;
 
-  const TomCupertinoSliverRefreshControl({
+  TomCupertinoSliverRefreshControl({
     super.key,
     super.tomId,
     super.tomGroup,

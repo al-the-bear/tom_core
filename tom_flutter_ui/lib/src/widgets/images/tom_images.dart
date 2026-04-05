@@ -47,7 +47,7 @@ class TomIcon extends TomImageBase {
   /// TomIcon(icon: Icons.save)          // Explicit icon
   /// TomIcon(tomId: 'app.saveBtn')      // Resolves from resources
   /// ```
-  const TomIcon({
+  TomIcon({
     this.icon,
     super.key,
     super.tomId,
@@ -136,7 +136,7 @@ class TomImage extends TomImageBase {
   final FilterQuality filterQuality;
   final String? semanticLabel;
 
-  const TomImage({
+  TomImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -197,9 +197,8 @@ class TomImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -218,7 +217,7 @@ class TomCircleAvatar extends TomImageBase {
   final double? minRadius;
   final double? maxRadius;
 
-  const TomCircleAvatar({
+  TomCircleAvatar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -289,7 +288,7 @@ class TomFadeInImage extends TomImageBase {
   final ImageErrorWidgetBuilder? placeholderErrorBuilder;
   final ImageErrorWidgetBuilder? imageErrorBuilder;
 
-  const TomFadeInImage({
+  TomFadeInImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -359,9 +358,8 @@ class TomFadeInImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -374,7 +372,7 @@ class TomImageIcon extends TomImageBase {
   final Color? color;
   final String? semanticLabel;
 
-  const TomImageIcon({
+  TomImageIcon({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -421,7 +419,7 @@ class TomInkImage extends TomImageBase {
   final double? height;
   final Widget? child;
 
-  const TomInkImage({
+  TomInkImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -465,9 +463,8 @@ class TomInkImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -497,7 +494,7 @@ class TomNetworkImage extends TomImageBase {
   final ImageLoadingBuilder? loadingBuilder;
   final ImageErrorWidgetBuilder? errorBuilder;
 
-  const TomNetworkImage({
+  TomNetworkImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -574,9 +571,8 @@ class TomNetworkImage extends TomImageBase {
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -607,7 +603,7 @@ class TomAssetImage extends TomImageBase {
   final int? cacheWidth;
   final int? cacheHeight;
 
-  const TomAssetImage({
+  TomAssetImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -702,7 +698,7 @@ class TomFileImage extends TomImageBase {
   final ImageFrameBuilder? frameBuilder;
   final ImageErrorWidgetBuilder? errorBuilder;
 
-  const TomFileImage({
+  TomFileImage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -777,7 +773,7 @@ class TomAnimatedIcon extends TomImageBase {
   final String? semanticLabel;
   final TextDirection? textDirection;
 
-  const TomAnimatedIcon({
+  TomAnimatedIcon({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -820,7 +816,7 @@ class TomImageFiltered extends TomImageBase {
   final bool? enabled;
   final Widget? child;
 
-  const TomImageFiltered({
+  TomImageFiltered({
     super.key,
     super.tomId,
     super.tomGroup,

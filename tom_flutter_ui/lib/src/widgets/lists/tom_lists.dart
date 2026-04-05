@@ -36,7 +36,7 @@ class TomListView extends TomListBase {
   /// children because constructing the [List] requires doing work for every
   /// child that could possibly be displayed in the list view instead of just
   /// those children that are actually visible.
-  const TomListView({
+  TomListView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -146,7 +146,7 @@ class TomListView extends TomListBase {
         );
 
   /// Creates a scrollable, linear array of widgets with a custom child model.
-  const TomListView.custom({
+  TomListView.custom({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -251,9 +251,8 @@ class TomListView extends TomListBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -272,7 +271,7 @@ class TomAnimatedList extends TomListBase {
   final EdgeInsetsGeometry? padding;
   final Clip clipBehavior;
 
-  const TomAnimatedList({
+  TomAnimatedList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -320,9 +319,8 @@ class TomAnimatedList extends TomListBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -345,7 +343,7 @@ class TomDismissible extends TomListBase {
   final DragStartBehavior dragStartBehavior;
   final HitTestBehavior behavior;
 
-  const TomDismissible({
+  TomDismissible({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -413,7 +411,7 @@ class TomListWheelScrollView extends TomListBase {
   final ScrollBehavior? scrollBehavior;
   final ListWheelChildDelegate childDelegate;
 
-  const TomListWheelScrollView({
+  TomListWheelScrollView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -498,7 +496,7 @@ class TomCupertinoListTile extends TomListBase {
   final double? leadingSize;
   final double? leadingToTitle;
 
-  const TomCupertinoListTile({
+  TomCupertinoListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -570,7 +568,7 @@ class TomCupertinoListSection extends TomListBase {
   final Widget? decoration;
   final Widget? separatorColor;
 
-  const TomCupertinoListSection({
+  TomCupertinoListSection({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -645,7 +643,7 @@ class TomReorderableList extends TomListBase {
   final ScrollViewKeyboardDismissBehavior keyboardDismissBehavior;
   final String? restorationId;
 
-  const TomReorderableList({
+  TomReorderableList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -730,7 +728,7 @@ class TomSliverReorderableList extends TomListBase {
   final Widget? prototypeItem;
   final ReorderItemProxyDecorator? proxyDecorator;
 
-  const TomSliverReorderableList({
+  TomSliverReorderableList({
     super.key,
     super.tomId,
     super.tomGroup,

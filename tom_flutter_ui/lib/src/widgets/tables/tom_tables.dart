@@ -36,7 +36,7 @@ class TomDataTable extends TomTableBase {
   final Clip clipBehavior;
   final List<DataRow> rows;
 
-  const TomDataTable({
+  TomDataTable({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -122,21 +122,18 @@ class TomDataTable extends TomTableBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 
   TableBorder? _resolveTableBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
+    return TomStyleResolvers.resolveTableBorder(basePath!, suffix);
   }
 }
 
@@ -169,7 +166,7 @@ class TomPaginatedDataTable extends TomTableBase {
   final bool showEmptyRows;
   final DataTableSource source;
 
-  const TomPaginatedDataTable({
+  TomPaginatedDataTable({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -274,7 +271,7 @@ class TomTable extends TomTableBase {
   final TableCellVerticalAlignment defaultVerticalAlignment;
   final TextBaseline? textBaseline;
 
-  const TomTable({
+  TomTable({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -302,9 +299,8 @@ class TomTable extends TomTableBase {
   }
 
   TableBorder? _resolveTableBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTableBorder(basePath, suffix);
+    return TomStyleResolvers.resolveTableBorder(basePath!, suffix);
   }
 }
 
@@ -328,7 +324,7 @@ class TomGridView extends TomTableBase {
   final String? restorationId;
   final Clip clipBehavior;
 
-  const TomGridView({
+  TomGridView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -415,7 +411,7 @@ class TomReorderableListView extends TomTableBase {
   final Clip clipBehavior;
   final double? autoScrollerVelocityScalar;
 
-  const TomReorderableListView({
+  TomReorderableListView({
     super.key,
     super.tomId,
     super.tomGroup,

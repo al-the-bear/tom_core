@@ -32,7 +32,7 @@ class TomNavigationRail extends TomNavigationBase {
   final IconThemeData? unselectedIconTheme;
   final bool extended;
 
-  const TomNavigationRail({
+  TomNavigationRail({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -60,21 +60,18 @@ class TomNavigationRail extends TomNavigationBase {
 
   // Phase 3: Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
   }
 
   @override
@@ -151,7 +148,7 @@ class TomNavigationBar extends TomNavigationBase {
   final WidgetStateProperty<IconThemeData?>? iconTheme;
   final WidgetStateProperty<Color?>? overlayColor;
 
-  const TomNavigationBar({
+  TomNavigationBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -209,9 +206,8 @@ class TomNavigationBar extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -246,7 +242,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   final TabAlignment? tabAlignment;
   final TextScaler? textScaler;
 
-  const TomTabBar({
+  TomTabBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -285,9 +281,8 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
 
   // Phase 3: Resolve TextStyle from resources
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   @override
@@ -357,15 +352,13 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 }
 
@@ -384,7 +377,7 @@ class TomNavigationDrawer extends TomNavigationBase {
   final ShapeBorder? indicatorShape;
   final EdgeInsetsGeometry? tilePadding;
 
-  const TomNavigationDrawer({
+  TomNavigationDrawer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -438,9 +431,8 @@ class TomNavigationDrawer extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -458,7 +450,7 @@ class TomDrawer extends TomNavigationBase {
   final Clip? clipBehavior;
   final String? semanticLabel;
 
-  const TomDrawer({
+  TomDrawer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -507,9 +499,8 @@ class TomDrawer extends TomNavigationBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -539,7 +530,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
   final BottomNavigationBarLandscapeLayout? landscapeLayout;
   final MouseCursor? mouseCursor;
 
-  const TomBottomNavigationBar({
+  TomBottomNavigationBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -619,15 +610,13 @@ class TomBottomNavigationBar extends TomNavigationBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   IconThemeData? _resolveIconThemeData(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
+    return TomStyleResolvers.resolveIconThemeData(basePath!, suffix);
   }
 }
 
@@ -648,7 +637,7 @@ class TomStepper extends TomNavigationBase {
   final double? connectorThickness;
   final Color? connectorColor;
 
-  const TomStepper({
+  TomStepper({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -695,9 +684,8 @@ class TomStepper extends TomNavigationBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -712,7 +700,7 @@ class TomTabBarView extends TomNavigationBase {
   final double? viewportFraction;
   final Clip clipBehavior;
 
-  const TomTabBarView({
+  TomTabBarView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -760,7 +748,7 @@ class TomPageView extends TomNavigationBase {
   final ScrollBehavior? scrollBehavior;
   final bool padEnds;
 
-  const TomPageView({
+  TomPageView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -815,7 +803,7 @@ class TomCupertinoTabBar extends TomNavigationBase {
   final double? height;
   final Border? border;
 
-  const TomCupertinoTabBar({
+  TomCupertinoTabBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -875,7 +863,7 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
   final bool transitionBetweenRoutes;
   final Object? heroTag;
 
-  const TomCupertinoNavigationBar({
+  TomCupertinoNavigationBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -950,7 +938,7 @@ class TomBreadcrumb extends TomNavigationBase {
   final CrossAxisAlignment crossAxisAlignment;
   final EdgeInsetsGeometry? padding;
 
-  const TomBreadcrumb({
+  TomBreadcrumb({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1013,7 +1001,7 @@ class TomTab extends Tab with TomWidgetMixin {
   ///
   /// Requires [tomId] for authorization and resource resolution.
   /// At least one of [text], [icon], or [child] must be non-null.
-  const TomTab({
+  TomTab({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -1072,7 +1060,7 @@ class TomTab extends Tab with TomWidgetMixin {
 class TomNavigationDestination extends NavigationDestination
     with TomWidgetMixin {
   /// Creates a Tom NavigationDestination.
-  const TomNavigationDestination({
+  TomNavigationDestination({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -1132,7 +1120,7 @@ class TomNavigationDestination extends NavigationDestination
 class TomNavigationDrawerDestination extends NavigationDrawerDestination
     with TomWidgetMixin {
   /// Creates a Tom NavigationDrawerDestination.
-  const TomNavigationDrawerDestination({
+  TomNavigationDrawerDestination({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -1199,7 +1187,7 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
   final bool stretch;
   final bool alwaysShowMiddle;
 
-  const TomCupertinoSliverNavigationBar({
+  TomCupertinoSliverNavigationBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1262,7 +1250,7 @@ class TomFlexibleSpaceBar extends TomNavigationBase {
   final List<StretchMode> stretchModes;
   final double expandedTitleScale;
 
-  const TomFlexibleSpaceBar({
+  TomFlexibleSpaceBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1301,7 +1289,7 @@ class TomDrawerHeader extends TomNavigationBase {
   final Curve curve;
   final Widget? child;
 
-  const TomDrawerHeader({
+  TomDrawerHeader({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1349,7 +1337,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
   final VoidCallback? onDetailsPressed;
   final Color? arrowColor;
 
-  const TomUserAccountsDrawerHeader({
+  TomUserAccountsDrawerHeader({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1394,7 +1382,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
   final String? previousPageTitle;
   final VoidCallback? onPressed;
 
-  const TomCupertinoNavigationBarBackButton({
+  TomCupertinoNavigationBarBackButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1427,7 +1415,7 @@ class TomTabPageSelector extends TomNavigationBase {
   final Color? selectedColor;
   final BorderStyle? borderStyle;
 
-  const TomTabPageSelector({
+  TomTabPageSelector({
     super.key,
     super.tomId,
     super.tomGroup,

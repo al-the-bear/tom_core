@@ -27,7 +27,7 @@ class TomElevatedButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomElevatedButton({
+  TomElevatedButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -93,9 +93,8 @@ class TomElevatedButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -116,7 +115,7 @@ class TomTextButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomTextButton({
+  TomTextButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -179,9 +178,8 @@ class TomTextButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -202,7 +200,7 @@ class TomOutlinedButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomOutlinedButton({
+  TomOutlinedButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -265,9 +263,8 @@ class TomOutlinedButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -289,7 +286,7 @@ class TomFilledButton extends TomButtonBase {
   final String? label;
   final bool tonal;
 
-  const TomFilledButton({
+  TomFilledButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -381,9 +378,8 @@ class TomFilledButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -417,7 +413,7 @@ class TomFloatingActionButton extends TomButtonBase {
   final Object? heroTag;
   final _FABVariant _variant;
 
-  const TomFloatingActionButton({
+  TomFloatingActionButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -448,7 +444,7 @@ class TomFloatingActionButton extends TomButtonBase {
         extendedIconLabelChild = null;
 
   /// Creates a small floating action button.
-  const TomFloatingActionButton.small({
+  TomFloatingActionButton.small({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -479,7 +475,7 @@ class TomFloatingActionButton extends TomButtonBase {
         extendedIconLabelChild = null;
 
   /// Creates a large floating action button.
-  const TomFloatingActionButton.large({
+  TomFloatingActionButton.large({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -510,7 +506,7 @@ class TomFloatingActionButton extends TomButtonBase {
         extendedIconLabelChild = null;
 
   /// Creates an extended floating action button with icon and label.
-  const TomFloatingActionButton.extended({
+  TomFloatingActionButton.extended({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -737,9 +733,8 @@ class TomFloatingActionButton extends TomButtonBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -759,7 +754,7 @@ class TomMenuItemButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomMenuItemButton({
+  TomMenuItemButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -803,9 +798,8 @@ class TomMenuItemButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -826,7 +820,7 @@ class TomSubmenuButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomSubmenuButton({
+  TomSubmenuButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -875,23 +869,20 @@ class TomSubmenuButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
+    return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
   }
 
   /// Phase 3: Resolves Offset from resources.
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -906,7 +897,7 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
   final bool showSelectedIcon;
   final Widget? selectedIcon;
 
-  const TomSegmentedButton({
+  TomSegmentedButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -940,9 +931,8 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -973,7 +963,7 @@ class TomIconButton extends TomButtonBase {
   final FocusNode? focusNode;
   final _IconButtonVariant _variant;
 
-  const TomIconButton({
+  TomIconButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1001,7 +991,7 @@ class TomIconButton extends TomButtonBase {
   }) : _variant = _IconButtonVariant.regular;
 
   /// Creates a filled icon button.
-  const TomIconButton.filled({
+  TomIconButton.filled({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1029,7 +1019,7 @@ class TomIconButton extends TomButtonBase {
   }) : _variant = _IconButtonVariant.filled;
 
   /// Creates a filled tonal icon button.
-  const TomIconButton.filledTonal({
+  TomIconButton.filledTonal({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1057,7 +1047,7 @@ class TomIconButton extends TomButtonBase {
   }) : _variant = _IconButtonVariant.filledTonal;
 
   /// Creates an outlined icon button.
-  const TomIconButton.outlined({
+  TomIconButton.outlined({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1224,23 +1214,20 @@ class TomIconButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 
   /// Phase 2: Resolves AlignmentGeometry from resources.
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 
   /// Phase 2: Resolves BoxConstraints from resources.
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 }
 
@@ -1251,7 +1238,7 @@ class TomBackButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Color? color;
 
-  const TomBackButton({
+  TomBackButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1278,7 +1265,7 @@ class TomCloseButton extends TomButtonBase {
   final VoidCallback? onPressed;
   final Color? color;
 
-  const TomCloseButton({
+  TomCloseButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1311,7 +1298,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
   final ButtonStyle? style;
   final Widget? labelWidget;
 
-  const TomDropdownMenuEntry({
+  TomDropdownMenuEntry({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1355,9 +1342,8 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
+    return TomStyleResolvers.resolveButtonStyle(basePath!, 'style');
   }
 }
 
@@ -1382,7 +1368,7 @@ class TomCupertinoButton extends TomButtonBase {
   final AlignmentGeometry alignment;
   final bool filled;
 
-  const TomCupertinoButton({
+  TomCupertinoButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1458,7 +1444,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomCheckboxMenuButton({
+  TomCheckboxMenuButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1507,7 +1493,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomRadioMenuButton({
+  TomRadioMenuButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1549,7 +1535,7 @@ class TomMenuBar extends TomButtonBase {
   final MenuStyle? style;
   final Clip clipBehavior;
 
-  const TomMenuBar({
+  TomMenuBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1578,7 +1564,7 @@ class TomCupertinoActionSheetAction extends TomButtonBase {
   final bool isDestructiveAction;
   final Widget child;
 
-  const TomCupertinoActionSheetAction({
+  TomCupertinoActionSheetAction({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1610,7 +1596,7 @@ class TomCupertinoDialogAction extends TomButtonBase {
   final TextStyle? textStyle;
   final Widget child;
 
-  const TomCupertinoDialogAction({
+  TomCupertinoDialogAction({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1637,9 +1623,8 @@ class TomCupertinoDialogAction extends TomButtonBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -1653,7 +1638,7 @@ class TomCupertinoContextMenuAction extends TomButtonBase {
   final IconData? trailingIcon;
   final Widget child;
 
-  const TomCupertinoContextMenuAction({
+  TomCupertinoContextMenuAction({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1690,7 +1675,7 @@ class TomExpandIcon extends TomButtonBase {
   final Color? expandedColor;
   final String? semanticLabel;
 
-  const TomExpandIcon({
+  TomExpandIcon({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1773,7 +1758,7 @@ class TomMaterialButton extends TomButtonBase {
   final Widget? child;
   final String? label;
 
-  const TomMaterialButton({
+  TomMaterialButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1852,9 +1837,8 @@ class TomMaterialButton extends TomButtonBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -1876,7 +1860,7 @@ class TomButtonBar extends TomButtonBase {
   final VerticalDirection? overflowDirection;
   final double? overflowButtonSpacing;
 
-  const TomButtonBar({
+  TomButtonBar({
     super.key,
     super.tomId,
     super.tomGroup,

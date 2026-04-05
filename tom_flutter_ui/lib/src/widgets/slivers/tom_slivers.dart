@@ -18,7 +18,7 @@ class TomDecoratedSliver extends TomSliverBase {
   final Decoration? decoration;
   final Widget sliver;
 
-  const TomDecoratedSliver({
+  TomDecoratedSliver({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -44,9 +44,8 @@ class TomDecoratedSliver extends TomSliverBase {
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 }
 
@@ -56,7 +55,7 @@ class TomDecoratedSliver extends TomSliverBase {
 class TomPinnedHeaderSliver extends TomSliverBase {
   final Widget child;
 
-  const TomPinnedHeaderSliver({
+  TomPinnedHeaderSliver({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -79,7 +78,7 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
   final double? maxExtent;
   final Widget sliver;
 
-  const TomSliverConstrainedCrossAxis({
+  TomSliverConstrainedCrossAxis({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -108,7 +107,7 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
   final int? flex;
   final Widget sliver;
 
-  const TomSliverCrossAxisExpanded({
+  TomSliverCrossAxisExpanded({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -135,7 +134,7 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
 class TomSliverCrossAxisGroup extends TomSliverBase {
   final List<Widget> slivers;
 
-  const TomSliverCrossAxisGroup({
+  TomSliverCrossAxisGroup({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -159,7 +158,7 @@ class TomSliverFillViewport extends TomSliverBase {
   final double? viewportFraction;
   final bool padEnds;
 
-  const TomSliverFillViewport({
+  TomSliverFillViewport({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -191,7 +190,7 @@ class TomSliverFixedExtentList extends TomSliverBase {
   final SliverChildDelegate delegate;
   final double? itemExtent;
 
-  const TomSliverFixedExtentList({
+  TomSliverFixedExtentList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -219,7 +218,7 @@ class TomSliverFixedExtentList extends TomSliverBase {
 class TomSliverFloatingHeader extends TomSliverBase {
   final Widget child;
 
-  const TomSliverFloatingHeader({
+  TomSliverFloatingHeader({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -241,7 +240,7 @@ class TomSliverFloatingHeader extends TomSliverBase {
 class TomSliverMainAxisGroup extends TomSliverBase {
   final List<Widget> slivers;
 
-  const TomSliverMainAxisGroup({
+  TomSliverMainAxisGroup({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -264,7 +263,7 @@ class TomSliverOffstage extends TomSliverBase {
   final bool? offstage;
   final Widget sliver;
 
-  const TomSliverOffstage({
+  TomSliverOffstage({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -294,7 +293,7 @@ class TomSliverOpacity extends TomSliverBase {
   final bool? alwaysIncludeSemantics;
   final Widget sliver;
 
-  const TomSliverOpacity({
+  TomSliverOpacity({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -327,7 +326,7 @@ class TomSliverPadding extends TomSliverBase {
   final EdgeInsetsGeometry? padding;
   final Widget sliver;
 
-  const TomSliverPadding({
+  TomSliverPadding({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -363,7 +362,7 @@ class TomSliverPersistentHeader extends TomSliverBase {
   final bool? pinned;
   final bool? floating;
 
-  const TomSliverPersistentHeader({
+  TomSliverPersistentHeader({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -395,7 +394,7 @@ class TomSliverPrototypeExtentList extends TomSliverBase {
   final SliverChildDelegate delegate;
   final Widget prototypeItem;
 
-  const TomSliverPrototypeExtentList({
+  TomSliverPrototypeExtentList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -421,7 +420,7 @@ class TomSliverResizingHeader extends TomSliverBase {
   final double minExtentPrototype;
   final double maxExtentPrototype;
 
-  const TomSliverResizingHeader({
+  TomSliverResizingHeader({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -450,7 +449,7 @@ class TomSliverSafeArea extends TomSliverBase {
   final EdgeInsets? minimum;
   final Widget sliver;
 
-  const TomSliverSafeArea({
+  TomSliverSafeArea({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -492,7 +491,7 @@ class TomSliverVariedExtentList extends TomSliverBase {
   final SliverChildDelegate delegate;
   final ItemExtentBuilder itemExtentBuilder;
 
-  const TomSliverVariedExtentList({
+  TomSliverVariedExtentList({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -523,7 +522,7 @@ class TomSliverVisibility extends TomSliverBase {
   final bool? maintainSemantics;
   final bool? maintainInteractivity;
 
-  const TomSliverVisibility({
+  TomSliverVisibility({
     super.key,
     super.tomId,
     super.tomGroup,

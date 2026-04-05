@@ -60,7 +60,7 @@ class TomGestureDetector extends TomInteractionBase {
   final bool? trackpadScrollCausesScale;
   final Offset trackpadScrollToScaleFactor;
 
-  const TomGestureDetector({
+  TomGestureDetector({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -174,9 +174,8 @@ class TomGestureDetector extends TomInteractionBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -216,7 +215,7 @@ class TomInkWell extends TomInteractionBase {
   final WidgetStatesController? statesController;
   final Duration? hoverDuration;
 
-  const TomInkWell({
+  TomInkWell({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -316,15 +315,13 @@ class TomInkWell extends TomInteractionBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -362,7 +359,7 @@ class TomInkResponse extends TomInteractionBase {
   final WidgetStatesController? statesController;
   final Duration? hoverDuration;
 
-  const TomInkResponse({
+  TomInkResponse({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -455,15 +452,13 @@ class TomInkResponse extends TomInteractionBase {
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -491,7 +486,7 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
   final HitTestBehavior hitTestBehavior;
   final bool allowedButtonsFilter;
 
-  const TomDraggable({
+  TomDraggable({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -552,9 +547,8 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -569,7 +563,7 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
   final DragTargetMove<T>? onMove;
   final HitTestBehavior? hitTestBehavior;
 
-  const TomDragTarget({
+  TomDragTarget({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -622,7 +616,7 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
   final bool? ignoringFeedbackPointer;
   final Duration delay;
 
-  const TomLongPressDraggable({
+  TomLongPressDraggable({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -687,7 +681,7 @@ class TomAbsorbPointer extends TomInteractionBase {
   final bool? absorbing;
   final Widget? child;
 
-  const TomAbsorbPointer({
+  TomAbsorbPointer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -716,7 +710,7 @@ class TomIgnorePointer extends TomInteractionBase {
   final bool? ignoring;
   final Widget? child;
 
-  const TomIgnorePointer({
+  TomIgnorePointer({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -750,7 +744,7 @@ class TomMouseRegion extends TomInteractionBase {
   final HitTestBehavior? hitTestBehavior;
   final Widget? child;
 
-  const TomMouseRegion({
+  TomMouseRegion({
     super.key,
     super.tomId,
     super.tomGroup,

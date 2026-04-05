@@ -77,7 +77,7 @@ class TomTextField extends TomInputBase {
   final String? hint;
   final InputCounterWidgetBuilder? buildCounter;
 
-  const TomTextField({
+  TomTextField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -273,14 +273,12 @@ class TomTextField extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
   InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
-    final basePath = resolveResourceBasePath();
 
     // Start with explicit decoration or empty
     InputDecoration base = decoration ?? const InputDecoration();
@@ -288,7 +286,7 @@ class TomTextField extends TomInputBase {
     // Try to resolve InputDecoration from resources
     if (basePath != null) {
       final resourceDecoration =
-          TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+          TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
       if (resourceDecoration != null) {
         // Merge: explicit decoration properties take precedence
         base = resourceDecoration.copyWith(
@@ -311,15 +309,13 @@ class TomTextField extends TomInputBase {
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -355,7 +351,7 @@ class TomTextFormField extends TomInputBase {
   final String? label;
   final String? hint;
 
-  const TomTextFormField({
+  TomTextFormField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -450,14 +446,12 @@ class TomTextFormField extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
   InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
-    final basePath = resolveResourceBasePath();
 
     // Start with explicit decoration or empty
     InputDecoration base = decoration ?? const InputDecoration();
@@ -465,7 +459,7 @@ class TomTextFormField extends TomInputBase {
     // Try to resolve InputDecoration from resources
     if (basePath != null) {
       final resourceDecoration =
-          TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+          TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
       if (resourceDecoration != null) {
         // Merge: explicit decoration properties take precedence
         base = resourceDecoration.copyWith(
@@ -511,7 +505,7 @@ class TomSearchBar extends TomInputBase {
   final bool autoFocus;
   final TextCapitalization textCapitalization;
 
-  const TomSearchBar({
+  TomSearchBar({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -570,9 +564,8 @@ class TomSearchBar extends TomInputBase {
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 }
 
@@ -588,7 +581,7 @@ class TomAutocomplete<T extends Object> extends TomInputBase {
   final OptionsViewOpenDirection optionsViewOpenDirection;
   final TextEditingValue? initialValue;
 
-  const TomAutocomplete({
+  TomAutocomplete({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -652,7 +645,7 @@ class TomSearchAnchor extends TomInputBase {
   final TextCapitalization? textCapitalization;
   final TextInputAction? viewOnSubmitted;
 
-  const TomSearchAnchor({
+  TomSearchAnchor({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -727,9 +720,8 @@ class TomSearchAnchor extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -776,7 +768,7 @@ class TomEditableText extends TomInputBase {
   final bool enableInteractiveSelection;
   final Clip clipBehavior;
 
-  const TomEditableText({
+  TomEditableText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -915,7 +907,7 @@ class TomCupertinoTextField extends TomInputBase {
   final bool enabled;
   final bool readOnly;
 
-  const TomCupertinoTextField({
+  TomCupertinoTextField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1003,9 +995,8 @@ class TomCupertinoTextField extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -1024,7 +1015,7 @@ class TomCalendarDatePicker extends TomInputBase {
   final DateTime? currentDate;
   final SelectableDayPredicate? selectableDayPredicate;
 
-  const TomCalendarDatePicker({
+  TomCalendarDatePicker({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1067,7 +1058,7 @@ class TomCupertinoDatePicker extends TomInputBase {
   final bool showDayOfWeek;
   final double? itemExtent;
 
-  const TomCupertinoDatePicker({
+  TomCupertinoDatePicker({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1139,7 +1130,7 @@ class TomCupertinoSearchTextField extends TomInputBase {
   final SmartQuotesType? smartQuotesType;
   final SmartDashesType? smartDashesType;
 
-  const TomCupertinoSearchTextField({
+  TomCupertinoSearchTextField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1205,15 +1196,13 @@ class TomCupertinoSearchTextField extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 }
 
@@ -1230,7 +1219,7 @@ class TomCupertinoTimerPicker extends TomInputBase {
   final double? itemExtent;
   final ValueChanged<Duration> onTimerDurationChanged;
 
-  const TomCupertinoTimerPicker({
+  TomCupertinoTimerPicker({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1270,7 +1259,7 @@ class TomForm extends TomInputBase {
   final bool? canPop;
   final PopInvokedWithResultCallback<Object?>? onPopInvokedWithResult;
 
-  const TomForm({
+  TomForm({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1313,7 +1302,7 @@ class TomInputDatePickerFormField extends TomInputBase {
   final bool acceptEmptyDate;
   final FocusNode? focusNode;
 
-  const TomInputDatePickerFormField({
+  TomInputDatePickerFormField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1371,7 +1360,7 @@ class TomYearPicker extends TomInputBase {
   final ValueChanged<DateTime> onChanged;
   final DragStartBehavior dragStartBehavior;
 
-  const TomYearPicker({
+  TomYearPicker({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1453,7 +1442,7 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   final SpellCheckConfiguration? spellCheckConfiguration;
   final String? restorationId;
 
-  const TomCupertinoTextFormFieldRow({
+  TomCupertinoTextFormFieldRow({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1574,9 +1563,8 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -1621,7 +1609,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   final FormFieldValidator<T>? validator;
   final String? forceErrorText;
 
-  const TomDropdownMenuFormField({
+  TomDropdownMenuFormField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1713,8 +1701,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }

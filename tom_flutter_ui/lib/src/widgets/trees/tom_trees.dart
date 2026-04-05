@@ -17,7 +17,7 @@ class TomTreeView extends TomTreeBase {
   final bool shrinkWrap;
   final ScrollPhysics? physics;
 
-  const TomTreeView({
+  TomTreeView({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -58,9 +58,8 @@ class TomTreeView extends TomTreeBase {
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -73,7 +72,7 @@ class TomTreeNode {
   final bool? initiallyExpanded;
   final VoidCallback? onTap;
 
-  const TomTreeNode({
+  TomTreeNode({
     required this.title,
     this.leading,
     this.trailing,
@@ -180,7 +179,7 @@ class TomTreeSliver<T> extends TomTreeBase {
   final bool? addRepaintBoundaries;
   final bool? addSemanticIndexes;
 
-  const TomTreeSliver({
+  TomTreeSliver({
     super.key,
     super.tomId,
     super.tomGroup,

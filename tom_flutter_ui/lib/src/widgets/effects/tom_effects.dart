@@ -18,7 +18,7 @@ class TomBackdropFilter extends TomEffectBase {
   final BlendMode? blendMode;
   final Widget? child;
 
-  const TomBackdropFilter({
+  TomBackdropFilter({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -50,7 +50,7 @@ class TomColorFiltered extends TomEffectBase {
   final ColorFilter colorFilter;
   final Widget? child;
 
-  const TomColorFiltered({
+  TomColorFiltered({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -76,7 +76,7 @@ class TomShaderMask extends TomEffectBase {
   final BlendMode? blendMode;
   final Widget? child;
 
-  const TomShaderMask({
+  TomShaderMask({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -177,7 +177,7 @@ class TomSelectableRegion extends TomEffectBase {
   final SelectableRegionContextMenuBuilder? contextMenuBuilder;
   final TextMagnifierConfiguration magnifierConfiguration;
 
-  const TomSelectableRegion({
+  TomSelectableRegion({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -214,7 +214,7 @@ class TomSelectionArea extends TomEffectBase {
   final ValueChanged<SelectedContent?>? onSelectionChanged;
   final Widget child;
 
-  const TomSelectionArea({
+  TomSelectionArea({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -257,7 +257,7 @@ class TomSensitiveContent extends TomEffectBase {
   final ContentSensitivity? sensitivity;
   final Widget child;
 
-  const TomSensitiveContent({
+  TomSensitiveContent({
     super.key,
     super.tomId,
     super.tomGroup,

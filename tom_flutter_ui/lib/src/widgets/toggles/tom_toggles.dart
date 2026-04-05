@@ -28,7 +28,7 @@ class TomSwitch extends TomToggleBase {
   final WidgetStateProperty<Color?>? overlayColor;
   final double? splashRadius;
 
-  const TomSwitch({
+  TomSwitch({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -112,7 +112,7 @@ class TomCheckbox extends TomToggleBase {
   final FocusNode? focusNode;
   final bool autofocus;
 
-  const TomCheckbox({
+  TomCheckbox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -176,21 +176,18 @@ class TomCheckbox extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -212,7 +209,7 @@ class TomRadio<T> extends TomToggleBase {
   final FocusNode? focusNode;
   final bool autofocus;
 
-  const TomRadio({
+  TomRadio({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -268,9 +265,8 @@ class TomRadio<T> extends TomToggleBase {
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -301,7 +297,7 @@ class TomSwitchListTile extends TomToggleBase {
   final bool? enableFeedback;
   final Color? hoverColor;
 
-  const TomSwitchListTile({
+  TomSwitchListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -391,15 +387,13 @@ class TomSwitchListTile extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -430,7 +424,7 @@ class TomCheckboxListTile extends TomToggleBase {
   final FocusNode? focusNode;
   final OutlinedBorder? checkboxShape;
 
-  const TomCheckboxListTile({
+  TomCheckboxListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -519,21 +513,18 @@ class TomCheckboxListTile extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -563,7 +554,7 @@ class TomRadioListTile<T> extends TomToggleBase {
   final ShapeBorder? shape;
   final WidgetStateProperty<Color?>? fillColor;
 
-  const TomRadioListTile({
+  TomRadioListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -643,15 +634,13 @@ class TomRadioListTile<T> extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -682,7 +671,7 @@ class TomToggleButtons extends TomToggleBase {
   final BoxConstraints? constraints;
   final TextStyle? textStyle;
 
-  const TomToggleButtons({
+  TomToggleButtons({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -783,7 +772,7 @@ class TomCupertinoSwitch extends TomToggleBase {
   final FocusNode? focusNode;
   final bool autofocus;
 
-  const TomCupertinoSwitch({
+  TomCupertinoSwitch({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -856,7 +845,7 @@ class TomCupertinoCheckbox extends TomToggleBase {
   final OutlinedBorder? shape;
   final String? semanticLabel;
 
-  const TomCupertinoCheckbox({
+  TomCupertinoCheckbox({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -909,15 +898,13 @@ class TomCupertinoCheckbox extends TomToggleBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 }
 
@@ -938,7 +925,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
   final bool autofocus;
   final bool useCheckmarkStyle;
 
-  const TomCupertinoRadio({
+  TomCupertinoRadio({
     super.key,
     super.tomId,
     super.tomGroup,

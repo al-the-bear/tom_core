@@ -403,20 +403,20 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
   AclBorderStyle? _resolveBorderStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomUIResources.resolveMap(basePath!, suffix);
     if (map == null || map.isEmpty) return null;
     return AclBorderStyle(
       kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
       color:
-          TomUIResources.resolveColor(basePath, '$suffix.color') ??
+          TomUIResources.resolveColor(basePath!, '$suffix.color') ??
           const Color(0x00000000),
       lineWidth:
-          TomUIResources.resolveDouble(basePath, '$suffix.lineWidth') ?? 1.0,
-      rounded: TomUIResources.resolveBool(basePath, '$suffix.rounded') ?? false,
+          TomUIResources.resolveDouble(basePath!, '$suffix.lineWidth') ?? 1.0,
+      rounded: TomUIResources.resolveBool(basePath!, '$suffix.rounded') ?? false,
       borderRadius:
-          TomUIResources.resolveDouble(basePath, '$suffix.borderRadius') ?? 0.0,
+          TomUIResources.resolveDouble(basePath!, '$suffix.borderRadius') ?? 0.0,
       borderInsets:
-          TomUIResources.resolveEdgeInsets(basePath, '$suffix.borderInsets') ??
+          TomUIResources.resolveEdgeInsets(basePath!, '$suffix.borderInsets') ??
           EdgeInsets.zero,
     );
   }
@@ -432,7 +432,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitlePosition] from a resource text at [basePath]/titlePosition.
   AclTitlePosition? _resolveTitlePosition(String basePath) {
-    final value = TomUIResources.resolveValue(basePath, 'titlePosition');
+    final value = TomUIResources.resolveValue(basePath!, 'titlePosition');
     if (value == null) return null;
     final text = value.toString();
     for (final pos in AclTitlePosition.values) {
@@ -443,7 +443,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitleBorderAlign] from a resource text at [basePath]/titleBorderAlign.
   AclTitleBorderAlign? _resolveTitleBorderAlign(String basePath) {
-    final value = TomUIResources.resolveValue(basePath, 'titleBorderAlign');
+    final value = TomUIResources.resolveValue(basePath!, 'titleBorderAlign');
     if (value == null) return null;
     final text = value.toString();
     for (final align in AclTitleBorderAlign.values) {

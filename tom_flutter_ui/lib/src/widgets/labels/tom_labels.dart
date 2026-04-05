@@ -30,7 +30,7 @@ class TomText extends TomLabelBase {
   /// TomText(text: 'Hello')         // Explicit text
   /// TomText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
-  const TomText({
+  TomText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -76,21 +76,18 @@ class TomText extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
   }
 }
 
@@ -136,7 +133,7 @@ class TomSelectableText extends TomLabelBase {
   /// TomSelectableText(text: 'Hello')         // Explicit text
   /// TomSelectableText(tomId: 'app.greeting')  // Resolves from resources
   /// ```
-  const TomSelectableText({
+  TomSelectableText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -215,27 +212,23 @@ class TomSelectableText extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
   }
 
   ScrollPhysics? _resolveScrollPhysics(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
+    return TomStyleResolvers.resolveScrollPhysics(basePath!, suffix);
   }
 }
 
@@ -256,7 +249,7 @@ class TomRichText extends TomLabelBase {
   final SelectionRegistrar? selectionRegistrar;
   final Color? selectionColor;
 
-  const TomRichText({
+  TomRichText({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -301,15 +294,13 @@ class TomRichText extends TomLabelBase {
   }
 
   StrutStyle? _resolveStrutStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
+    return TomStyleResolvers.resolveStrutStyle(basePath!, suffix);
   }
 
   TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
+    return TomStyleResolvers.resolveTextHeightBehavior(basePath!, suffix);
   }
 }
 
@@ -330,7 +321,7 @@ class TomBadge extends TomLabelBase {
   final double? smallSize;
   final double? largeSize;
 
-  const TomBadge({
+  TomBadge({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -386,21 +377,18 @@ class TomBadge extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -443,7 +431,7 @@ class TomListTile extends TomLabelBase {
   final ListTileTitleAlignment? titleAlignment;
   final MouseCursor? mouseCursor;
 
-  const TomListTile({
+  TomListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -578,21 +566,18 @@ class TomListTile extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 }
 
@@ -622,7 +607,7 @@ class TomChip extends TomLabelBase {
   final IconThemeData? iconTheme;
   final WidgetStateProperty<Color?>? color;
 
-  const TomChip({
+  TomChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -696,9 +681,8 @@ class TomChip extends TomLabelBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -715,7 +699,7 @@ class TomDefaultTextStyle extends TomLabelBase {
   final TextHeightBehavior? textHeightBehavior;
   final Widget child;
 
-  const TomDefaultTextStyle({
+  TomDefaultTextStyle({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -762,7 +746,7 @@ class TomAboutListTile extends TomLabelBase {
   final List<Widget>? aboutBoxChildren;
   final bool dense;
 
-  const TomAboutListTile({
+  TomAboutListTile({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -809,7 +793,7 @@ class TomVerticalDivider extends TomLabelBase {
   final double? endIndent;
   final Color? color;
 
-  const TomVerticalDivider({
+  TomVerticalDivider({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -848,7 +832,7 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
   final String? label;
   final MenuAcceleratorChildBuilder? builder;
 
-  const TomMenuAcceleratorLabel({
+  TomMenuAcceleratorLabel({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -878,7 +862,7 @@ class TomBanner extends TomLabelBase {
   final TextStyle textStyle;
   final Color? color;
 
-  const TomBanner({
+  TomBanner({
     super.key,
     super.tomId,
     super.tomGroup,

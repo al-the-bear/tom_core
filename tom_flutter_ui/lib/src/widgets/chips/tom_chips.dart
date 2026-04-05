@@ -33,7 +33,7 @@ class TomFilterChip extends TomChipBase {
   final Color? deleteIconColor;
   final String? deleteButtonTooltipMessage;
 
-  const TomFilterChip({
+  TomFilterChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -134,27 +134,23 @@ class TomFilterChip extends TomChipBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -182,7 +178,7 @@ class TomChoiceChip extends TomChipBase {
   final double? elevation;
   final double? pressElevation;
 
-  const TomChoiceChip({
+  TomChoiceChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -263,27 +259,23 @@ class TomChoiceChip extends TomChipBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -309,7 +301,7 @@ class TomActionChip extends TomChipBase {
   final double? elevation;
   final double? pressElevation;
 
-  const TomActionChip({
+  TomActionChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -383,27 +375,23 @@ class TomActionChip extends TomChipBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -440,7 +428,7 @@ class TomInputChip extends TomChipBase {
   final double? pressElevation;
   final String? tooltip;
 
-  const TomInputChip({
+  TomInputChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -546,27 +534,23 @@ class TomInputChip extends TomChipBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }
 
@@ -605,7 +589,7 @@ class TomRawChip extends TomChipBase {
   final double? elevation;
   final String? tooltip;
 
-  const TomRawChip({
+  TomRawChip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -716,26 +700,22 @@ class TomRawChip extends TomChipBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BorderSide? _resolveBorderSide(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderSide(basePath, suffix);
+    return TomStyleResolvers.resolveBorderSide(basePath!, suffix);
   }
 
   VisualDensity? _resolveVisualDensity(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
+    return TomStyleResolvers.resolveVisualDensity(basePath!, suffix);
   }
 }

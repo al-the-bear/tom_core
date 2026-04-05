@@ -58,7 +58,7 @@ class TomAlertDialog extends TomDialogBase {
   final AlignmentGeometry? alignment;
   final bool scrollable;
 
-  const TomAlertDialog({
+  TomAlertDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -167,21 +167,18 @@ class TomAlertDialog extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -205,7 +202,7 @@ class TomSimpleDialog extends TomDialogBase {
   final ShapeBorder? shape;
   final AlignmentGeometry? alignment;
 
-  const TomSimpleDialog({
+  TomSimpleDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -275,21 +272,18 @@ class TomSimpleDialog extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -307,7 +301,7 @@ class TomDialog extends TomDialogBase {
   final AlignmentGeometry? alignment;
   final Widget? child;
 
-  const TomDialog({
+  TomDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -351,15 +345,13 @@ class TomDialog extends TomDialogBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -380,7 +372,7 @@ class TomBottomSheet extends TomDialogBase {
   final BottomSheetDragStartHandler? onDragStart;
   final BottomSheetDragEndHandler? onDragEnd;
 
-  const TomBottomSheet({
+  TomBottomSheet({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -428,15 +420,13 @@ class TomBottomSheet extends TomDialogBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 }
 
@@ -537,7 +527,7 @@ class TomMaterialBanner extends TomDialogBase {
   final Animation<double>? animation;
   final VoidCallback? onVisible;
 
-  const TomMaterialBanner({
+  TomMaterialBanner({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -606,9 +596,8 @@ class TomMaterialBanner extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 }
 
@@ -636,7 +625,7 @@ class TomTooltip extends TomDialogBase {
   final TooltipTriggeredCallback? onTriggered;
   final Widget? child;
 
-  const TomTooltip({
+  TomTooltip({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -706,15 +695,13 @@ class TomTooltip extends TomDialogBase {
   }
 
   TextStyle? _resolveTextStyle(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, suffix);
+    return TomStyleResolvers.resolveTextStyle(basePath!, suffix);
   }
 
   Decoration? _resolveDecoration(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveDecoration(basePath, suffix);
+    return TomStyleResolvers.resolveDecoration(basePath!, suffix);
   }
 }
 
@@ -731,7 +718,7 @@ class TomCupertinoAlertDialog extends TomDialogBase {
   final ScrollController? actionScrollController;
   final EdgeInsets? insetAnimationCurve;
 
-  const TomCupertinoAlertDialog({
+  TomCupertinoAlertDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -775,7 +762,7 @@ class TomCupertinoActionSheet extends TomDialogBase {
   final ScrollController? actionScrollController;
   final Widget? cancelButton;
 
-  const TomCupertinoActionSheet({
+  TomCupertinoActionSheet({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -832,7 +819,7 @@ class TomModalBottomSheet extends TomDialogBase {
   final AnimationController? transitionAnimationController;
   final Offset? anchorPoint;
 
-  const TomModalBottomSheet({
+  TomModalBottomSheet({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1185,7 +1172,7 @@ class TomAboutDialog extends TomDialogBase {
   final String? applicationLegalese;
   final List<Widget>? children;
 
-  const TomAboutDialog({
+  TomAboutDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1224,7 +1211,7 @@ class TomCupertinoContextMenu extends TomDialogBase {
   final List<Widget> actions;
   final bool? enableHapticFeedback;
 
-  const TomCupertinoContextMenu({
+  TomCupertinoContextMenu({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1269,7 +1256,7 @@ class TomDatePickerDialog extends TomDialogBase {
   final Icon? switchToInputEntryModeIcon;
   final Icon? switchToCalendarEntryModeIcon;
 
-  const TomDatePickerDialog({
+  TomDatePickerDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1351,7 +1338,7 @@ class TomDateRangePickerDialog extends TomDialogBase {
   final Icon? switchToInputEntryModeIcon;
   final Icon? switchToCalendarEntryModeIcon;
 
-  const TomDateRangePickerDialog({
+  TomDateRangePickerDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1432,7 +1419,7 @@ class TomTimePickerDialog extends TomDialogBase {
   final Orientation? orientation;
   final EntryModeChangeCallback? onEntryModeChanged;
 
-  const TomTimePickerDialog({
+  TomTimePickerDialog({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1510,7 +1497,7 @@ class TomSimpleDialogOption extends TomDialogBase {
   final EdgeInsets? padding;
   final Widget? child;
 
-  const TomSimpleDialogOption({
+  TomSimpleDialogOption({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1541,7 +1528,7 @@ class TomLicensePage extends TomDialogBase {
   final Widget? applicationIcon;
   final String? applicationLegalese;
 
-  const TomLicensePage({
+  TomLicensePage({
     super.key,
     super.tomId,
     super.tomGroup,

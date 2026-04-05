@@ -24,7 +24,7 @@ class TomSlider extends TomSliderBase {
   final bool autofocus;
   final SliderInteraction? allowedInteraction;
 
-  const TomSlider({
+  TomSlider({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -106,7 +106,7 @@ class TomRangeSlider extends TomSliderBase {
   final WidgetStateProperty<Color?>? overlayColor;
   final SemanticFormatterCallback? semanticFormatterCallback;
 
-  const TomRangeSlider({
+  TomRangeSlider({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -168,7 +168,7 @@ class TomCupertinoSlider extends TomSliderBase {
   final Color? activeColor;
   final Color thumbColor;
 
-  const TomCupertinoSlider({
+  TomCupertinoSlider({
     super.key,
     super.tomId,
     super.tomGroup,

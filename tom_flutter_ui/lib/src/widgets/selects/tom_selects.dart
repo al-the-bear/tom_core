@@ -36,7 +36,7 @@ class TomDropdownButton<T> extends TomSelectBase {
   final EdgeInsetsGeometry? padding;
   final String? hint;
 
-  const TomDropdownButton({
+  TomDropdownButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -137,21 +137,18 @@ class TomDropdownButton<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -180,7 +177,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   final PopupMenuPosition? position;
   final Clip clipBehavior;
 
-  const TomPopupMenuButton({
+  TomPopupMenuButton({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -254,21 +251,18 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   }
 
   ShapeBorder? _resolveShapeBorder(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
+    return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
 
   BoxConstraints? _resolveBoxConstraints(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
+    return TomStyleResolvers.resolveBoxConstraints(basePath!, suffix);
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -302,7 +296,7 @@ class TomDropdownMenu<T> extends TomSelectBase {
   final EdgeInsets? expandedInsets;
   final SearchCallback<T>? searchCallback;
 
-  const TomDropdownMenu({
+  TomDropdownMenu({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -395,16 +389,14 @@ class TomDropdownMenu<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, 'textStyle');
+    return TomStyleResolvers.resolveTextStyle(basePath!, 'textStyle');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
+    return TomStyleResolvers.resolveMenuStyle(basePath!, 'menuStyle');
   }
 }
 
@@ -424,7 +416,7 @@ class TomMenuAnchor extends TomSelectBase {
   final bool consumeOutsideTap;
   final Widget Function(BuildContext, MenuController, Widget?)? builder;
 
-  const TomMenuAnchor({
+  TomMenuAnchor({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -466,15 +458,13 @@ class TomMenuAnchor extends TomSelectBase {
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveMenuStyle(basePath, 'style');
+    return TomStyleResolvers.resolveMenuStyle(basePath!, 'style');
   }
 
   Offset? _resolveOffset(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveOffset(basePath, suffix);
+    return TomStyleResolvers.resolveOffset(basePath!, suffix);
   }
 }
 
@@ -511,7 +501,7 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   final FormFieldValidator<T>? validator;
   final AutovalidateMode? autovalidateMode;
 
-  const TomDropdownButtonFormField({
+  TomDropdownButtonFormField({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -620,28 +610,24 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveTextStyle(basePath, 'style');
+    return TomStyleResolvers.resolveTextStyle(basePath!, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources.
   InputDecoration? _resolveInputDecoration(BuildContext context) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
+    return TomStyleResolvers.resolveInputDecoration(basePath!, 'decoration');
   }
 
   BorderRadius? _resolveBorderRadius(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
+    return TomStyleResolvers.resolveBorderRadius(basePath!, suffix);
   }
 
   AlignmentGeometry? _resolveAlignment(String suffix) {
-    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
-    return TomStyleResolvers.resolveAlignment(basePath, suffix);
+    return TomStyleResolvers.resolveAlignment(basePath!, suffix);
   }
 }
 
@@ -658,7 +644,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
   final EdgeInsetsGeometry? padding;
   final Color? backgroundColor;
 
-  const TomCupertinoSlidingSegmentedControl({
+  TomCupertinoSlidingSegmentedControl({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -723,7 +709,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
 /// ```
 class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   /// Creates a Tom PopupMenuItem.
-  const TomPopupMenuItem({
+  TomPopupMenuItem({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -782,7 +768,7 @@ class _TomPopupMenuItemState<T>
 /// Typically controlled via group authorization with adjacent menu items.
 class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   /// Creates a Tom PopupMenuDivider.
-  const TomPopupMenuDivider({
+  TomPopupMenuDivider({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -839,7 +825,7 @@ class _TomPopupMenuDividerState extends State<TomPopupMenuDivider> {
 class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     with TomWidgetMixin {
   /// Creates a Tom CheckedPopupMenuItem.
-  const TomCheckedPopupMenuItem({
+  TomCheckedPopupMenuItem({
     this.tomId,
     this.tomGroup,
     this.scope,
@@ -911,7 +897,7 @@ class TomCupertinoPicker extends TomSelectBase {
   final Widget? selectionOverlay;
   final bool looping;
 
-  const TomCupertinoPicker({
+  TomCupertinoPicker({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -960,7 +946,7 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
   final Color? pressedColor;
   final EdgeInsetsGeometry? padding;
 
-  const TomCupertinoSegmentedControl({
+  TomCupertinoSegmentedControl({
     super.key,
     super.tomId,
     super.tomGroup,
@@ -1006,7 +992,7 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
 /// ```
 class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
   /// Creates a Tom DropdownMenuItem.
-  const TomDropdownMenuItem({
+  TomDropdownMenuItem({
     this.tomId,
     this.tomGroup,
     this.scope,
