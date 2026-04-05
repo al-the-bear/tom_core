@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -56,20 +57,20 @@ class TomNavigationRail extends TomNavigationBase {
   });
 
   // Phase 3: Resolve TextStyle from resources
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  IconThemeData? _resolveIconThemeData(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  IconThemeData? _resolveIconThemeData(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
   }
@@ -78,31 +79,31 @@ class TomNavigationRail extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSelectedIndex =
-      selectedIndex ?? resolveIntOrNull(context, 'selectedIndex');
+      selectedIndex ?? resolveIntOrNull('selectedIndex');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+        indicatorColor ?? resolveColorOrNull('indicatorColor');
     final resolvedMinWidth =
-        minWidth ?? resolveDoubleOrNull(context, 'minWidth');
+        minWidth ?? resolveDoubleOrNull('minWidth');
     final resolvedMinExtendedWidth =
-        minExtendedWidth ?? resolveDoubleOrNull(context, 'minExtendedWidth');
+        minExtendedWidth ?? resolveDoubleOrNull('minExtendedWidth');
     final resolvedUseIndicator =
-      useIndicator ?? resolveBoolOrNull(context, 'useIndicator');
+      useIndicator ?? resolveBoolOrNull('useIndicator');
     final resolvedGroupAlignment =
-        groupAlignment ?? resolveDoubleOrNull(context, 'groupAlignment');
+        groupAlignment ?? resolveDoubleOrNull('groupAlignment');
     final resolvedExtended =
-      resolveBoolOrNull(context, 'extended') ?? extended;
+      resolveBoolOrNull('extended') ?? extended;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedSelectedLabelTextStyle =
-        selectedLabelTextStyle ?? _resolveTextStyle(context, 'selectedLabelTextStyle');
+        selectedLabelTextStyle ?? _resolveTextStyle('selectedLabelTextStyle');
     final resolvedUnselectedLabelTextStyle =
-        unselectedLabelTextStyle ?? _resolveTextStyle(context, 'unselectedLabelTextStyle');
+        unselectedLabelTextStyle ?? _resolveTextStyle('unselectedLabelTextStyle');
     final resolvedIndicatorShape =
-        indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape');
+        indicatorShape ?? _resolveShapeBorder('indicatorShape');
 
     return NavigationRail(
       selectedIndex: resolvedSelectedIndex,
@@ -121,8 +122,8 @@ class TomNavigationRail extends TomNavigationBase {
       groupAlignment: resolvedGroupAlignment,
       selectedLabelTextStyle: resolvedSelectedLabelTextStyle,
       unselectedLabelTextStyle: resolvedUnselectedLabelTextStyle,
-      selectedIconTheme: selectedIconTheme ?? _resolveIconThemeData(context, 'selectedIconTheme'),
-      unselectedIconTheme: unselectedIconTheme ?? _resolveIconThemeData(context, 'unselectedIconTheme'),
+      selectedIconTheme: selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme'),
+      unselectedIconTheme: unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme'),
       extended: resolvedExtended,
     );
   }
@@ -173,19 +174,19 @@ class TomNavigationBar extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSelectedIndex =
-      resolveIntOrNull(context, 'selectedIndex') ?? selectedIndex;
+      resolveIntOrNull('selectedIndex') ?? selectedIndex;
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+        indicatorColor ?? resolveColorOrNull('indicatorColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
 
     return NavigationBar(
       selectedIndex: resolvedSelectedIndex,
@@ -193,7 +194,7 @@ class TomNavigationBar extends TomNavigationBase {
       destinations: destinations,
       backgroundColor: resolvedBackgroundColor,
       indicatorColor: resolvedIndicatorColor,
-      indicatorShape: indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape'),
+      indicatorShape: indicatorShape ?? _resolveShapeBorder('indicatorShape'),
       elevation: resolvedElevation,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
@@ -204,8 +205,8 @@ class TomNavigationBar extends TomNavigationBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -279,8 +280,8 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
       );
 
   // Phase 3: Resolve TextStyle from resources
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -289,39 +290,39 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedIsScrollable =
-      resolveBoolOrNull(context, 'isScrollable') ?? isScrollable;
+      resolveBoolOrNull('isScrollable') ?? isScrollable;
     final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+      padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+        indicatorColor ?? resolveColorOrNull('indicatorColor');
     final resolvedIndicatorWeight =
-        indicatorWeight ?? resolveDoubleOrNull(context, 'indicatorWeight');
+        indicatorWeight ?? resolveDoubleOrNull('indicatorWeight');
     final resolvedIndicatorPadding =
-      indicatorPadding ?? resolveEdgeInsetsOrNull(context, 'indicatorPadding');
+      indicatorPadding ?? resolveEdgeInsetsOrNull('indicatorPadding');
     final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+        dividerColor ?? resolveColorOrNull('dividerColor');
     final resolvedDividerHeight =
-        dividerHeight ?? resolveDoubleOrNull(context, 'dividerHeight');
+        dividerHeight ?? resolveDoubleOrNull('dividerHeight');
     final resolvedLabelColor =
-        labelColor ?? resolveColorOrNull(context, 'labelColor');
+        labelColor ?? resolveColorOrNull('labelColor');
     final resolvedUnselectedLabelColor =
-        unselectedLabelColor ?? resolveColorOrNull(context, 'unselectedLabelColor');
+        unselectedLabelColor ?? resolveColorOrNull('unselectedLabelColor');
     final resolvedLabelPadding =
-      labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+      labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedAutomaticIndicatorColorAdjustment =
-      resolveBoolOrNull(context, 'automaticIndicatorColorAdjustment') ?? automaticIndicatorColorAdjustment;
+      resolveBoolOrNull('automaticIndicatorColorAdjustment') ?? automaticIndicatorColorAdjustment;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle =
-        labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+        labelStyle ?? _resolveTextStyle('labelStyle');
     final resolvedUnselectedLabelStyle =
-        unselectedLabelStyle ?? _resolveTextStyle(context, 'unselectedLabelStyle');
+        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
 
     // Phase 3: Resolve complex objects from resources
     final resolvedIndicator =
-        indicator ?? _resolveDecoration(context, 'indicator');
+        indicator ?? _resolveDecoration('indicator');
     final resolvedSplashBorderRadius =
-        splashBorderRadius ?? _resolveBorderRadius(context, 'splashBorderRadius');
+        splashBorderRadius ?? _resolveBorderRadius('splashBorderRadius');
 
     return TabBar(
       tabs: tabs,
@@ -351,14 +352,14 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     );
   }
 
-  Decoration? _resolveDecoration(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Decoration? _resolveDecoration(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
@@ -399,23 +400,23 @@ class TomNavigationDrawer extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSelectedIndex =
-      selectedIndex ?? resolveIntOrNull(context, 'selectedIndex');
+      selectedIndex ?? resolveIntOrNull('selectedIndex');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedIndicatorColor =
-        indicatorColor ?? resolveColorOrNull(context, 'indicatorColor');
+        indicatorColor ?? resolveColorOrNull('indicatorColor');
     final resolvedTilePadding =
-      tilePadding ?? resolveEdgeInsetsOrNull(context, 'tilePadding');
+      tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
 
     // Phase 3: Resolve complex objects from resources
     final resolvedIndicatorShape =
-        indicatorShape ?? _resolveShapeBorder(context, 'indicatorShape');
+        indicatorShape ?? _resolveShapeBorder('indicatorShape');
 
     return NavigationDrawer(
       selectedIndex: resolvedSelectedIndex,
@@ -431,8 +432,8 @@ class TomNavigationDrawer extends TomNavigationBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -471,27 +472,27 @@ class TomDrawer extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
         semanticLabel ??
-            resolveResourceOrNull(context, 'semanticLabel') ??
-            (tomId != null ? resolveResourceOrFail(context, 'label') : null);
+            resolveResourceOrNull('semanticLabel') ??
+            (tomId != null ? resolveResourceOrFail('label') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
 
     return Drawer(
       backgroundColor: resolvedBackgroundColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       elevation: resolvedElevation,
-      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      shape: shape ?? _resolveShapeBorder('shape'),
       width: resolvedWidth,
       clipBehavior: clipBehavior,
       semanticLabel: resolvedLabel,
@@ -499,8 +500,8 @@ class TomDrawer extends TomNavigationBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -563,27 +564,27 @@ class TomBottomNavigationBar extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedCurrentIndex =
-      resolveIntOrNull(context, 'currentIndex') ?? currentIndex;
+      resolveIntOrNull('currentIndex') ?? currentIndex;
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
+        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
     final resolvedSelectedItemColor =
-        selectedItemColor ?? resolveColorOrNull(context, 'selectedItemColor');
+        selectedItemColor ?? resolveColorOrNull('selectedItemColor');
     final resolvedUnselectedItemColor =
-        unselectedItemColor ?? resolveColorOrNull(context, 'unselectedItemColor');
+        unselectedItemColor ?? resolveColorOrNull('unselectedItemColor');
     final resolvedSelectedIconTheme =
-      selectedIconTheme ?? _resolveIconThemeData(context, 'selectedIconTheme');
+      selectedIconTheme ?? _resolveIconThemeData('selectedIconTheme');
     final resolvedUnselectedIconTheme =
-      unselectedIconTheme ?? _resolveIconThemeData(context, 'unselectedIconTheme');
+      unselectedIconTheme ?? _resolveIconThemeData('unselectedIconTheme');
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedSelectedLabelStyle =
-        selectedLabelStyle ?? _resolveTextStyle(context, 'selectedLabelStyle');
+        selectedLabelStyle ?? _resolveTextStyle('selectedLabelStyle');
     final resolvedUnselectedLabelStyle =
-        unselectedLabelStyle ?? _resolveTextStyle(context, 'unselectedLabelStyle');
+        unselectedLabelStyle ?? _resolveTextStyle('unselectedLabelStyle');
 
     return BottomNavigationBar(
       items: items,
@@ -610,14 +611,14 @@ class TomBottomNavigationBar extends TomNavigationBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  IconThemeData? _resolveIconThemeData(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  IconThemeData? _resolveIconThemeData(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveIconThemeData(basePath, suffix);
   }
@@ -662,13 +663,13 @@ class TomStepper extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedPhysics =
-      physics ?? _resolveScrollPhysics(context, 'physics');
+      physics ?? _resolveScrollPhysics('physics');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedConnectorThickness =
-        connectorThickness ?? resolveDoubleOrNull(context, 'connectorThickness');
+        connectorThickness ?? resolveDoubleOrNull('connectorThickness');
     final resolvedConnectorColor =
-        connectorColor ?? resolveColorOrNull(context, 'connectorColor');
+        connectorColor ?? resolveColorOrNull('connectorColor');
 
     return Stepper(
       steps: steps,
@@ -685,8 +686,8 @@ class TomStepper extends TomNavigationBase {
     );
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -719,7 +720,7 @@ class TomTabBarView extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedViewportFraction =
-        viewportFraction ?? resolveDoubleOrNull(context, 'viewportFraction') ?? 1.0;
+        viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
 
     return TabBarView(
       controller: controller,
@@ -823,13 +824,13 @@ class TomCupertinoTabBar extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 30.0;
+        iconSize ?? resolveDoubleOrNull('iconSize') ?? 30.0;
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height') ?? 50.0;
+        height ?? resolveDoubleOrNull('height') ?? 50.0;
 
     return CupertinoTabBar(
       items: items,
@@ -885,9 +886,9 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedPreviousPageTitle =
-        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
+        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
 
     // When transitionBetweenRoutes is true, Flutter asserts heroTag must be
     // identical to its internal _defaultHeroTag. We can't access that constant,
@@ -966,7 +967,7 @@ class TomBreadcrumb extends TomNavigationBase {
     );
 
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     if (resolvedPadding != null) {
       return Padding(padding: resolvedPadding, child: row);
@@ -1014,15 +1015,15 @@ class TomTab extends Tab with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   Widget build(BuildContext context) {
-    final hidden = checkHidden(context);
+    final hidden = checkHidden();
     if (hidden != null) return hidden;
 
     final resolvedText =
-        text ?? (tomId != null ? getText(context, 'text') : null);
+        text ?? (tomId != null ? getText('text') : null);
 
     return applyReadonly(
       context,
@@ -1069,17 +1070,17 @@ class TomNavigationDestination extends NavigationDestination
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   Widget build(BuildContext context) {
-    final hidden = checkHidden(context);
+    final hidden = checkHidden();
     if (hidden != null) return hidden;
 
     final resolvedLabel =
-        label.isNotEmpty ? label : (tomId != null ? getText(context, 'label') : label);
+        label.isNotEmpty ? label : (tomId != null ? getText('label') : label);
     final resolvedTooltip =
-        tooltip ?? (tomId != null ? getText(context, 'tooltip') : null);
+        tooltip ?? (tomId != null ? getText('tooltip') : null);
 
     return applyReadonly(
       context,
@@ -1125,15 +1126,15 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   Widget build(BuildContext context) {
-    final hidden = checkHidden(context);
+    final hidden = checkHidden();
     if (hidden != null) return hidden;
 
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
 
     return applyReadonly(
       context,
@@ -1199,9 +1200,9 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPreviousPageTitle =
-        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
+        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
 
     return CupertinoSliverNavigationBar(
       largeTitle: largeTitle,
@@ -1288,10 +1289,10 @@ class TomDrawerHeader extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ??
+        padding ?? resolveEdgeInsetsOrNull('padding') ??
             const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 8.0);
     final resolvedMargin =
-        margin ?? resolveEdgeInsetsOrNull(context, 'margin') ??
+        margin ?? resolveEdgeInsetsOrNull('margin') ??
             const EdgeInsets.only(bottom: 8.0);
 
     return DrawerHeader(
@@ -1339,7 +1340,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedArrowColor =
-        arrowColor ?? resolveColorOrNull(context, 'arrowColor') ?? Colors.white;
+        arrowColor ?? resolveColorOrNull('arrowColor') ?? Colors.white;
 
     return UserAccountsDrawerHeader(
       decoration: decoration,
@@ -1376,7 +1377,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
-        previousPageTitle ?? resolveResourceOrNull(context, 'previousPageTitle');
+        previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
 
     return CupertinoNavigationBarBackButton(
       color: color,
@@ -1410,10 +1411,10 @@ class TomTabPageSelector extends TomNavigationBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedIndicatorSize =
-        indicatorSize ?? resolveDoubleOrNull(context, 'indicatorSize') ?? 12.0;
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+        indicatorSize ?? resolveDoubleOrNull('indicatorSize') ?? 12.0;
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
 
     return TabPageSelector(
       controller: controller,

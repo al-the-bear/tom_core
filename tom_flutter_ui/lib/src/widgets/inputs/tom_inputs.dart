@@ -149,60 +149,60 @@ class TomTextField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
-    final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
+    final resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedCursorColor =
-        cursorColor ?? resolveColorOrNull(context, 'cursorColor');
+        cursorColor ?? resolveColorOrNull('cursorColor');
     final resolvedCursorErrorColor =
-        cursorErrorColor ?? resolveColorOrNull(context, 'cursorErrorColor');
+        cursorErrorColor ?? resolveColorOrNull('cursorErrorColor');
     final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
     final resolvedCursorWidth =
-        cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0;
+        cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
     final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull(context, 'maxLines');
+        maxLines ?? resolveIntOrNull('maxLines');
     final resolvedMinLines =
-        minLines ?? resolveIntOrNull(context, 'minLines');
+        minLines ?? resolveIntOrNull('minLines');
     final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull(context, 'maxLength');
+        maxLength ?? resolveIntOrNull('maxLength');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedObscureText =
-        resolveBoolOrNull(context, 'obscureText') ?? obscureText;
+        resolveBoolOrNull('obscureText') ?? obscureText;
     final resolvedAutocorrect =
-        resolveBoolOrNull(context, 'autocorrect') ?? autocorrect;
+        resolveBoolOrNull('autocorrect') ?? autocorrect;
     final resolvedEnableSuggestions =
-        resolveBoolOrNull(context, 'enableSuggestions') ?? enableSuggestions;
+        resolveBoolOrNull('enableSuggestions') ?? enableSuggestions;
     final resolvedExpands =
-        resolveBoolOrNull(context, 'expands') ?? expands;
+        resolveBoolOrNull('expands') ?? expands;
     final resolvedEnabled =
-        resolveBoolOrNull(context, 'enabled') ?? enabled;
+        resolveBoolOrNull('enabled') ?? enabled;
     final resolvedReadOnly =
-        resolveBoolOrNull(context, 'readOnly') ?? readOnly;
+        resolveBoolOrNull('readOnly') ?? readOnly;
     final resolvedShowCursor =
-        showCursor ?? resolveBoolOrNull(context, 'showCursor');
+        showCursor ?? resolveBoolOrNull('showCursor');
     final resolvedObscuringCharacter =
-        obscuringCharacter ?? resolveResourceOrNull(context, 'obscuringCharacter') ?? '•';
+        obscuringCharacter ?? resolveResourceOrNull('obscuringCharacter') ?? '•';
     final resolvedScrollPadding =
-        resolveEdgeInsetsOrNull(context, 'scrollPadding') ?? scrollPadding;
+        resolveEdgeInsetsOrNull('scrollPadding') ?? scrollPadding;
     final resolvedEnableInteractiveSelection =
-        enableInteractiveSelection ?? resolveBoolOrNull(context, 'enableInteractiveSelection');
+        enableInteractiveSelection ?? resolveBoolOrNull('enableInteractiveSelection');
     final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+        restorationId ?? resolveResourceOrNull('restorationId');
     final resolvedScribbleEnabled =
-        resolveBoolOrNull(context, 'scribbleEnabled') ?? scribbleEnabled;
+        resolveBoolOrNull('scribbleEnabled') ?? scribbleEnabled;
     final resolvedEnableIMEPersonalizedLearning =
-        resolveBoolOrNull(context, 'enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
+        resolveBoolOrNull('enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
     final resolvedCanRequestFocus =
-        resolveBoolOrNull(context, 'canRequestFocus') ?? canRequestFocus;
+        resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
 
     // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
-    final resolvedDecoration = _resolveDecoration(context, resolvedLabel, resolvedHint);
+    final resolvedDecoration = _resolveDecoration(resolvedLabel, resolvedHint);
 
     return TextField(
       controller: controller,
@@ -212,7 +212,7 @@ class TomTextField extends TomInputBase {
       textInputAction: textInputAction,
       textCapitalization: textCapitalization,
       style: resolvedStyle,
-      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
+      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
       textAlign: textAlign,
       textAlignVertical: textAlignVertical,
       textDirection: textDirection,
@@ -254,7 +254,7 @@ class TomTextField extends TomInputBase {
       onTapOutside: onTapOutside,
       mouseCursor: mouseCursor,
       scrollController: scrollController,
-      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
+      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics('scrollPhysics'),
       autofillHints: autofillHints,
       clipBehavior: clipBehavior,
       restorationId: resolvedRestorationId,
@@ -272,15 +272,14 @@ class TomTextField extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
-  InputDecoration _resolveDecoration(
-      BuildContext context, String resolvedLabel, String? resolvedHint) {
-    final basePath = resolveResourceBasePath(context);
+  InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
+    final basePath = resolveResourceBasePath();
 
     // Start with explicit decoration or empty
     InputDecoration base = decoration ?? const InputDecoration();
@@ -310,14 +309,14 @@ class TomTextField extends TomInputBase {
     );
   }
 
-  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  StrutStyle? _resolveStrutStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -389,35 +388,35 @@ class TomTextFormField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final resolvedHint =
-        hint ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull(context, 'maxLines');
+        maxLines ?? resolveIntOrNull('maxLines');
     final resolvedMinLines =
-        minLines ?? resolveIntOrNull(context, 'minLines');
+        minLines ?? resolveIntOrNull('minLines');
     final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull(context, 'maxLength');
+        maxLength ?? resolveIntOrNull('maxLength');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedObscureText =
-        resolveBoolOrNull(context, 'obscureText') ?? obscureText;
+        resolveBoolOrNull('obscureText') ?? obscureText;
     final resolvedAutocorrect =
-        resolveBoolOrNull(context, 'autocorrect') ?? autocorrect;
+        resolveBoolOrNull('autocorrect') ?? autocorrect;
     final resolvedInitialValue =
-        initialValue ?? resolveResourceOrNull(context, 'initialValue');
+        initialValue ?? resolveResourceOrNull('initialValue');
     final resolvedEnabled =
-        resolveBoolOrNull(context, 'enabled') ?? enabled;
+        resolveBoolOrNull('enabled') ?? enabled;
     final resolvedReadOnly =
-        resolveBoolOrNull(context, 'readOnly') ?? readOnly;
+        resolveBoolOrNull('readOnly') ?? readOnly;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
 
     // Phase 3: Resolve InputDecoration from resources and merge with explicit settings
-    final resolvedDecoration = _resolveDecoration(context, resolvedLabel, resolvedHint);
+    final resolvedDecoration = _resolveDecoration(resolvedLabel, resolvedHint);
 
     return TextFormField(
       controller: controller,
@@ -449,15 +448,14 @@ class TomTextFormField extends TomInputBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources and merges with explicit values.
-  InputDecoration _resolveDecoration(
-      BuildContext context, String resolvedLabel, String? resolvedHint) {
-    final basePath = resolveResourceBasePath(context);
+  InputDecoration _resolveDecoration(String resolvedLabel, String? resolvedHint) {
+    final basePath = resolveResourceBasePath();
 
     // Start with explicit decoration or empty
     InputDecoration base = decoration ?? const InputDecoration();
@@ -539,11 +537,11 @@ class TomSearchBar extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedHint =
-        hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedAutoFocus =
-        resolveBoolOrNull(context, 'autoFocus') ?? autoFocus;
+        resolveBoolOrNull('autoFocus') ?? autoFocus;
 
     return SearchBar(
       controller: controller,
@@ -562,14 +560,14 @@ class TomSearchBar extends TomInputBase {
       padding: padding,
       textStyle: textStyle,
       hintStyle: hintStyle,
-      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
+      constraints: constraints ?? _resolveBoxConstraints('constraints'),
       autoFocus: resolvedAutoFocus,
       textCapitalization: textCapitalization,
     );
   }
 
-  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BoxConstraints? _resolveBoxConstraints(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
@@ -677,21 +675,21 @@ class TomSearchAnchor extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedHint =
-        viewHintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        viewHintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedViewBackgroundColor =
-        viewBackgroundColor ?? resolveColorOrNull(context, 'viewBackgroundColor');
+        viewBackgroundColor ?? resolveColorOrNull('viewBackgroundColor');
     final resolvedViewElevation =
-        viewElevation ?? resolveDoubleOrNull(context, 'viewElevation');
+        viewElevation ?? resolveDoubleOrNull('viewElevation');
     final resolvedViewSurfaceTintColor =
-        viewSurfaceTintColor ?? resolveColorOrNull(context, 'viewSurfaceTintColor');
+        viewSurfaceTintColor ?? resolveColorOrNull('viewSurfaceTintColor');
     final resolvedDividerColor =
-        dividerColor ?? resolveColorOrNull(context, 'dividerColor');
+        dividerColor ?? resolveColorOrNull('dividerColor');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle(context, 'headerTextStyle');
-    final resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle(context, 'headerHintStyle');
+    final resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle('headerTextStyle');
+    final resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle('headerHintStyle');
 
     return SearchAnchor(
       isFullScreen: isFullScreen,
@@ -723,8 +721,8 @@ class TomSearchAnchor extends TomInputBase {
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -820,17 +818,17 @@ class TomEditableText extends TomInputBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundCursorColor =
-        backgroundCursorColor ?? resolveColorOrNull(context, 'backgroundCursorColor') ?? Colors.grey;
+        backgroundCursorColor ?? resolveColorOrNull('backgroundCursorColor') ?? Colors.grey;
     final resolvedSelectionColor =
-        selectionColor ?? resolveColorOrNull(context, 'selectionColor');
+        selectionColor ?? resolveColorOrNull('selectionColor');
     final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
     final resolvedCursorWidth =
-        cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0;
+        cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
     final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull(context, 'maxLines');
+        maxLines ?? resolveIntOrNull('maxLines');
     final resolvedMinLines =
-        minLines ?? resolveIntOrNull(context, 'minLines');
+        minLines ?? resolveIntOrNull('minLines');
 
     // Phase 3: Style is required, so no resource resolution for this widget
     // (EditableText requires an explicit style)
@@ -948,21 +946,21 @@ class TomCupertinoTextField extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsets.all(7.0);
+        padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.all(7.0);
     final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull(context, 'maxLines');
+        maxLines ?? resolveIntOrNull('maxLines');
     final resolvedMinLines =
-        minLines ?? resolveIntOrNull(context, 'minLines');
+        minLines ?? resolveIntOrNull('minLines');
     final resolvedMaxLength =
-        maxLength ?? resolveIntOrNull(context, 'maxLength');
+        maxLength ?? resolveIntOrNull('maxLength');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+    final resolvedStyle = style ?? _resolveTextStyle('style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
 
     return CupertinoTextField(
       controller: controller,
@@ -997,8 +995,8 @@ class TomCupertinoTextField extends TomInputBase {
   }
 
   /// Phase 3: Resolves TextStyle from resources.
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -1083,9 +1081,9 @@ class TomCupertinoDatePicker extends TomInputBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0;
+        itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0;
 
     return CupertinoDatePicker(
       mode: mode,
@@ -1163,11 +1161,11 @@ class TomCupertinoSearchTextField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedPlaceholder = placeholder ?? resolveResourceOrFail(context, 'hint');
+    final resolvedPlaceholder = placeholder ?? resolveResourceOrFail('hint');
 
     // Phase 3: Resolve optional TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+    final resolvedStyle = style ?? _resolveTextStyle('style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
 
     return CupertinoSearchTextField(
       controller: controller,
@@ -1178,11 +1176,11 @@ class TomCupertinoSearchTextField extends TomInputBase {
       placeholder: resolvedPlaceholder,
       placeholderStyle: resolvedPlaceholderStyle,
       decoration: decoration,
-      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? const BorderRadius.all(Radius.circular(8.0)),
-      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
-      itemColor: itemColor ?? resolveColorOrNull(context, 'itemColor') ?? CupertinoColors.secondaryLabel,
-      itemSize: itemSize ?? resolveDoubleOrNull(context, 'itemSize') ?? 20.0,
+      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius') ?? const BorderRadius.all(Radius.circular(8.0)),
+      padding: padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsetsDirectional.fromSTEB(5.5, 8, 5.5, 8),
+      itemColor: itemColor ?? resolveColorOrNull('itemColor') ?? CupertinoColors.secondaryLabel,
+      itemSize: itemSize ?? resolveDoubleOrNull('itemSize') ?? 20.0,
       prefixIcon: prefixIcon,
       suffixIcon: suffixIcon,
       suffixMode: suffixMode,
@@ -1196,14 +1194,14 @@ class TomCupertinoSearchTextField extends TomInputBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
@@ -1244,8 +1242,8 @@ class TomCupertinoTimerPicker extends TomInputBase {
       minuteInterval: minuteInterval,
       secondInterval: secondInterval,
       alignment: alignment,
-      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
-      itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
+      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
+      itemExtent: itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0,
       onTimerDurationChanged: onTimerDurationChanged,
     );
   }
@@ -1325,10 +1323,10 @@ class TomInputDatePickerFormField extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabelText = fieldLabelText ?? resolveResourceOrFail(context, 'label');
-    final resolvedHintText = fieldHintText ?? resolveResourceOrFail(context, 'hint');
-    final resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail(context, 'errorFormat');
-    final resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail(context, 'errorInvalid');
+    final resolvedLabelText = fieldLabelText ?? resolveResourceOrFail('label');
+    final resolvedHintText = fieldHintText ?? resolveResourceOrFail('hint');
+    final resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail('errorFormat');
+    final resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail('errorInvalid');
 
     return InputDatePickerFormField(
       initialDate: initialDate,
@@ -1500,15 +1498,15 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedPlaceholder =
-        placeholder ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 3: Resolve optional TextStyle from resources
-    final resolvedStyle = style ?? _resolveTextStyle(context, 'style');
-    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle(context, 'placeholderStyle');
+    final resolvedStyle = style ?? _resolveTextStyle('style');
+    final resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
 
     return CupertinoTextFormFieldRow(
       prefix: prefix,
-      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
+      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
       controller: controller,
       initialValue: initialValue,
       focusNode: focusNode,
@@ -1542,11 +1540,11 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
       validator: validator,
       inputFormatters: inputFormatters,
       enabled: enabled,
-      cursorWidth: cursorWidth ?? resolveDoubleOrNull(context, 'cursorWidth') ?? 2.0,
-      cursorHeight: cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight'),
-      cursorColor: cursorColor ?? resolveColorOrNull(context, 'cursorColor'),
+      cursorWidth: cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0,
+      cursorHeight: cursorHeight ?? resolveDoubleOrNull('cursorHeight'),
+      cursorColor: cursorColor ?? resolveColorOrNull('cursorColor'),
       keyboardAppearance: keyboardAppearance,
-      scrollPadding: scrollPadding ?? resolveEdgeInsetsOrNull(context, 'scrollPadding') ?? const EdgeInsets.all(20.0),
+      scrollPadding: scrollPadding ?? resolveEdgeInsetsOrNull('scrollPadding') ?? const EdgeInsets.all(20.0),
       enableInteractiveSelection: enableInteractiveSelection,
       selectionControls: selectionControls,
       scrollPhysics: scrollPhysics,
@@ -1560,8 +1558,8 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -1651,18 +1649,18 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final resolvedHint =
-        hintText ?? (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
     final resolvedHelper =
-        helperText ?? (tomId != null ? resolveResourceOrFail(context, 'helper') : null);
+        helperText ?? (tomId != null ? resolveResourceOrFail('helper') : null);
     // Phase 3: Resolve optional TextStyle from resources
-    final resolvedTextStyle = textStyle ?? _resolveTextStyle(context, 'textStyle');
+    final resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
 
     return DropdownMenuFormField<T>(
       enabled: enabled,
-      width: width ?? resolveDoubleOrNull(context, 'width'),
-      menuHeight: menuHeight ?? resolveDoubleOrNull(context, 'menuHeight'),
+      width: width ?? resolveDoubleOrNull('width'),
+      menuHeight: menuHeight ?? resolveDoubleOrNull('menuHeight'),
       leadingIcon: leadingIcon,
       trailingIcon: trailingIcon,
       label: Text(resolvedLabel),
@@ -1681,7 +1679,7 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
       onSelected: onSelected,
       focusNode: focusNode,
       requestFocusOnTap: requestFocusOnTap,
-      expandedInsets: expandedInsets ?? resolveEdgeInsetsOrNull(context, 'expandedInsets'),
+      expandedInsets: expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets'),
       alignmentOffset: alignmentOffset,
       filterCallback: filterCallback,
       searchCallback: searchCallback,
@@ -1698,8 +1696,8 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }

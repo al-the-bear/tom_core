@@ -674,11 +674,18 @@ class TomClass extends TomObject<Map<String, TomObject>>
   /// Creates a new [TomClass] and automatically registers all [TomObject]
   /// members for observation.
   TomClass() : super({}) {
+    prepareForSelfObservation();
     startSelfObservation();
   }
 
   static final ClassMirror _classMirror =
       tomReflector.reflectType(TomClass) as ClassMirror;
+
+  /// Hook to create objects BEFORE start of self-observation
+  /// 
+  void prepareForSelfObservation() {
+    // Override in subclasses to create member objects before observation starts
+  }
 
   /// Throws [TomObservableException] - direct value setting is not allowed.
   ///

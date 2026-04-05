@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../../resource_auth/tom_auth_state.dart';
-import '../../../resource_auth/tom_id_prefix.dart';
 import '../../../resource_auth/tom_resources.dart';
 import '../../../theme/tom_theme.dart';
 import '../../../widget_base/tom_style_resolvers.dart';
@@ -9,7 +9,6 @@ import '../../../advanced_container_layout/acl_builder.dart';
 import '../../../advanced_container_layout/acl_container.dart';
 import '../../../advanced_container_layout/acl_group_visibility.dart';
 import '../../../advanced_container_layout/row_alignment.dart';
-import '../../../widget_base/tom_node_base.dart';
 import '../../../widget_base/tom_screen_elements_provider.dart';
 
 /// A delegating wrapper around [AclBuilder] that adds Tom UI concerns:
@@ -17,7 +16,7 @@ import '../../../widget_base/tom_screen_elements_provider.dart';
 /// - **Element provider** — typed access to screen elements via `(T p) => p.field`.
 /// - **Authorization** — container-level visibility check via [TomUIAuthorization].
 /// - **Resources** — container title resolved from [TomUIResources] if not explicit.
-/// - **Identity scope** — wraps the result in [TomNodeScope] for descendant resolution.
+/// - **Identity scope** — wraps the result in [TomScope] for descendant resolution.
 ///
 /// The wrapper delegates all layout operations to a standard [AclBuilder].
 /// This keeps the layout engine independent of Tom-specific concerns.
@@ -318,7 +317,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// 1. Check container-level authorization — if hidden, return [SizedBox.shrink].
   /// 2. Resolve title from resources if not explicitly set.
   /// 3. Build the underlying [AclBuilder].
-  /// 4. Wrap in [TomNodeScope] providing the container's identity to descendants.
+  /// 4. Wrap in [TomScope] providing scope context to descendants.
   ///
   /// ACL containers with IDs act as implicit group scopes — any widget inside
   /// can use this container's ID as part of their canonical path.
@@ -326,13 +325,9 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// The returned widget must be placed in a [BuildContext] that has a
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
   Widget build(BuildContext context) {
-    final parentScope = TomNodeScope.of(context);
-
-    // Self-path: always includes own ID (for own resources and auth),
-    // regardless of whether this is an identity or layout container.
-    final containerPath =
-        parentScope?.selfPathForContainer(id) ??
-        TomIdPrefix.prefixed(TomIdPrefix.container, id);
+    // Self-path: <scopePath>.<id>
+    final scopePath = TomScope.current.getScopePath();
+    final containerPath = scopePath.isNotEmpty ? '$scopePath.$id' : id;
 
     // Container-level authorization
     final auth = TomUIAuthorization.resolveAuth(containerPath);
@@ -342,7 +337,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     if (_explicitTitle == null) {
       final resourceTitle = TomUIResources.resolveText(containerPath, 'title');
       // Only use resource title if it doesn't look like a missing-key fallback
-      if (!resourceTitle.startsWith('c-')) {
+      if (!resourceTitle.contains('.title')) {
         _builder.setAclTitle(resourceTitle);
       }
     }
@@ -396,20 +391,14 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
     final acl = _builder.build();
 
-    // Wrap in TomNodeScope for descendant resource/auth resolution
-    // ACL containers with IDs are implicit group scopes
+    // ACL containers no longer create new scopes - scoping is external
     Widget result = acl;
     if (auth.readonly) {
       final style = TomThemeScope.readonlyStyleOf(context);
       result = style.apply(result);
     }
 
-    return TomNodeScope.extend(
-      context,
-      containerId: id,
-      containerIdScope: idScope,
-      child: result,
-    );
+    return result;
   }
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].

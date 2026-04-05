@@ -66,41 +66,41 @@ class TomFilterChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
     final chipLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+        pressElevation ?? resolveDoubleOrNull('pressElevation');
     final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
 
     // Phase 3: Resolve remaining optional parameters from resources
     final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedShowCheckmark =
-        resolveBoolOrNull(context, 'showCheckmark') ?? showCheckmark;
+        resolveBoolOrNull('showCheckmark') ?? showCheckmark;
     final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
 
     Widget chip = FilterChip(
       selected: selected,
@@ -117,10 +117,10 @@ class TomFilterChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
       deleteIcon: deleteIcon,
@@ -132,26 +132,26 @@ class TomFilterChip extends TomChipBase {
     return chip;
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -208,33 +208,33 @@ class TomChoiceChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
     final chipLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+        pressElevation ?? resolveDoubleOrNull('pressElevation');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
 
     // Phase 3: Resolve remaining optional parameters from resources
     final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     Widget chip = ChoiceChip(
       selected: selected,
@@ -249,10 +249,10 @@ class TomChoiceChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
     );
@@ -260,26 +260,26 @@ class TomChoiceChip extends TomChipBase {
     return chip;
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -332,30 +332,30 @@ class TomActionChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     final chipLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+        pressElevation ?? resolveDoubleOrNull('pressElevation');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
 
     // Phase 3: Resolve remaining optional parameters from resources
     final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     Widget chip = ActionChip(
       onPressed: onPressed,
@@ -368,10 +368,10 @@ class TomActionChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
     );
@@ -379,26 +379,26 @@ class TomActionChip extends TomChipBase {
     return chip;
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -473,42 +473,42 @@ class TomInputChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     final chipLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
     final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+        pressElevation ?? resolveDoubleOrNull('pressElevation');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
 
     // Phase 3: Resolve remaining optional parameters from resources
     final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
     final resolvedShowCheckmark =
-        resolveBoolOrNull(context, 'showCheckmark') ?? showCheckmark;
+        resolveBoolOrNull('showCheckmark') ?? showCheckmark;
 
     return InputChip(
       selected: selected,
@@ -531,36 +531,36 @@ class TomInputChip extends TomChipBase {
       backgroundColor: resolvedBackgroundColor,
       selectedShadowColor: resolvedSelectedShadowColor,
       shadowColor: resolvedShadowColor,
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       clipBehavior: clipBehavior,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
       elevation: resolvedElevation,
       pressElevation: resolvedPressElevation,
       tooltip: resolvedTooltip,
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -639,43 +639,43 @@ class TomRawChip extends TomChipBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
     final chipLabel = label ?? Text(resolvedLabel);
     final resolvedTooltip =
-      tooltip ?? resolveResourceOrFail(context, 'tooltip');
+      tooltip ?? resolveResourceOrFail('tooltip');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
     final resolvedPressElevation =
-        pressElevation ?? resolveDoubleOrNull(context, 'pressElevation');
+        pressElevation ?? resolveDoubleOrNull('pressElevation');
     final resolvedCheckmarkColor =
-        checkmarkColor ?? resolveColorOrNull(context, 'checkmarkColor');
+        checkmarkColor ?? resolveColorOrNull('checkmarkColor');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedSelectedShadowColor =
-        selectedShadowColor ?? resolveColorOrNull(context, 'selectedShadowColor');
+        selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
 
     // Phase 3: Resolve TextStyle from resources
-    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+    final resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
 
     // Phase 3: Resolve remaining optional parameters from resources
     final resolvedLabelPadding =
-        labelPadding ?? resolveEdgeInsetsOrNull(context, 'labelPadding');
+        labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedDeleteButtonTooltipMessage =
-        deleteButtonTooltipMessage ?? resolveResourceOrNull(context, 'deleteButtonTooltipMessage');
+        deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
 
     return RawChip(
       avatar: avatar,
@@ -693,8 +693,8 @@ class TomRawChip extends TomChipBase {
       pressElevation: resolvedPressElevation,
       showCheckmark: showCheckmark,
       checkmarkColor: resolvedCheckmarkColor,
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       clipBehavior: clipBehavior,
       selectedColor: resolvedSelectedColor,
       disabledColor: resolvedDisabledColor,
@@ -703,33 +703,33 @@ class TomRawChip extends TomChipBase {
       shadowColor: resolvedShadowColor,
       surfaceTintColor: resolvedSurfaceTintColor,
       padding: resolvedPadding,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
       materialTapTargetSize: materialTapTargetSize,
       elevation: resolvedElevation,
       tooltip: resolvedTooltip,
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }

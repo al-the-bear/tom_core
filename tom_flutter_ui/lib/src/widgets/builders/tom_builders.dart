@@ -227,7 +227,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedCurve =
-        curve ?? _resolveCurve(resolveResourceOrNull(context, 'curve')) ?? Curves.linear;
+        curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
 
     return TweenAnimationBuilder<T>(
       tween: tween,

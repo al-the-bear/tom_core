@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'tom_fields.dart';
 
-class TomForm extends TomMap<String, TomField> {
-  TomForm(super.form) : super.ofMap();
+class TomFormOld extends TomMap<String, TomFieldOld> {
+  TomFormOld(super.form) : super.ofMap();
 
   List<Widget> getFields() {
     return values.map((field) => field.getField()).toList();

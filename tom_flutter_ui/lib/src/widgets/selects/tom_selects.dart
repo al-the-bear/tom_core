@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -68,38 +69,38 @@ class TomDropdownButton<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     final resolvedHint =
       hint ??
-        resolveResourceOrNull(context, 'hint') ??
-        (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        resolveResourceOrNull('hint') ??
+        (tomId != null ? resolveResourceOrFail('hint') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        elevation ?? resolveIntOrNull(context, 'elevation') ?? 8;
+        elevation ?? resolveIntOrNull('elevation') ?? 8;
     final resolvedIconDisabledColor =
-        iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
+        iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
     final resolvedIconEnabledColor =
-        iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
+        iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
     final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
+        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
     final resolvedItemHeight =
-        itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
+        itemHeight ?? resolveDoubleOrNull('itemHeight');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedDropdownColor =
-        dropdownColor ?? resolveColorOrNull(context, 'dropdownColor');
+        dropdownColor ?? resolveColorOrNull('dropdownColor');
     final resolvedMenuMaxHeight =
-        menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
+        menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
     final resolvedIsDense =
-      resolveBoolOrNull(context, 'isDense') ?? isDense;
+      resolveBoolOrNull('isDense') ?? isDense;
     final resolvedIsExpanded =
-      resolveBoolOrNull(context, 'isExpanded') ?? isExpanded;
+      resolveBoolOrNull('isExpanded') ?? isExpanded;
     final resolvedAutofocus =
-      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+      resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+      enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedAlignment =
-      _resolveAlignment(context, 'alignment') ?? alignment;
+      _resolveAlignment('alignment') ?? alignment;
     final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+      padding ?? resolveEdgeInsetsOrNull('padding');
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
@@ -126,7 +127,7 @@ class TomDropdownButton<T> extends TomSelectBase {
       menuMaxHeight: resolvedMenuMaxHeight,
       enableFeedback: resolvedEnableFeedback,
       alignment: resolvedAlignment,
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius'),
       padding: resolvedPadding,
       hint: resolvedHint != null ? Text(resolvedHint) : null,
     );
@@ -134,19 +135,19 @@ class TomDropdownButton<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -205,25 +206,25 @@ class TomPopupMenuButton<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedPadding =
-      resolveEdgeInsetsOrNull(context, 'padding') ?? padding;
+      resolveEdgeInsetsOrNull('padding') ?? padding;
     final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull(context, 'iconSize');
+        iconSize ?? resolveDoubleOrNull('iconSize');
     final resolvedEnabled =
-      resolveBoolOrNull(context, 'enabled') ?? enabled;
+      resolveBoolOrNull('enabled') ?? enabled;
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+      enableFeedback ?? resolveBoolOrNull('enableFeedback');
 
     return PopupMenuButton<T>(
       itemBuilder: itemBuilder,
@@ -237,32 +238,32 @@ class TomPopupMenuButton<T> extends TomSelectBase {
       padding: resolvedPadding,
       icon: icon,
       iconSize: resolvedIconSize,
-      offset: offset ?? _resolveOffset(context, 'offset') ?? Offset.zero,
+      offset: offset ?? _resolveOffset('offset') ?? Offset.zero,
       enabled: resolvedEnabled,
-      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      shape: shape ?? _resolveShapeBorder('shape'),
       color: resolvedColor,
       enableFeedback: resolvedEnableFeedback,
-      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
+      constraints: constraints ?? _resolveBoxConstraints('constraints'),
       position: position,
       clipBehavior: clipBehavior,
       child: child,
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BoxConstraints? _resolveBoxConstraints(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -332,33 +333,33 @@ class TomDropdownMenu<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
       label ??
-        resolveResourceOrNull(context, 'label') ??
-        resolveResourceOrFail(context, 'label');
+        resolveResourceOrNull('label') ??
+        resolveResourceOrFail('label');
     final resolvedHint =
       hintText ??
-        resolveResourceOrNull(context, 'hintText') ??
-        resolveResourceOrNull(context, 'hint') ??
-        (tomId != null ? resolveResourceOrFail(context, 'hint') : null);
+        resolveResourceOrNull('hintText') ??
+        resolveResourceOrNull('hint') ??
+        (tomId != null ? resolveResourceOrFail('hint') : null);
     final resolvedHelperText =
-      helperText ?? resolveResourceOrNull(context, 'helperText');
+      helperText ?? resolveResourceOrNull('helperText');
     final resolvedErrorText =
-      errorText ?? resolveResourceOrNull(context, 'errorText');
+      errorText ?? resolveResourceOrNull('errorText');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedEnabled =
-      resolveBoolOrNull(context, 'enabled') ?? enabled;
+      resolveBoolOrNull('enabled') ?? enabled;
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedMenuHeight =
-        menuHeight ?? resolveDoubleOrNull(context, 'menuHeight');
+        menuHeight ?? resolveDoubleOrNull('menuHeight');
     final resolvedEnableFilter =
-      resolveBoolOrNull(context, 'enableFilter') ?? enableFilter;
+      resolveBoolOrNull('enableFilter') ?? enableFilter;
     final resolvedEnableSearch =
-      resolveBoolOrNull(context, 'enableSearch') ?? enableSearch;
+      resolveBoolOrNull('enableSearch') ?? enableSearch;
     final resolvedExpandedInsets =
-      expandedInsets ?? resolveEdgeInsetsOrNull(context, 'expandedInsets');
+      expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
     final resolvedRequestFocusOnTap =
-      resolveBoolOrNull(context, 'requestFocusOnTap') ?? requestFocusOnTap;
+      resolveBoolOrNull('requestFocusOnTap') ?? requestFocusOnTap;
 
     return DropdownMenu<T>(
       initialSelection: initialSelection,
@@ -390,14 +391,14 @@ class TomDropdownMenu<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'textStyle');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
@@ -439,9 +440,9 @@ class TomMenuAnchor extends TomSelectBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedAlignmentOffset =
-        alignmentOffset ?? _resolveOffset(context, 'alignmentOffset');
+        alignmentOffset ?? _resolveOffset('alignmentOffset');
     final resolvedConsumeOutsideTap =
-        resolveBoolOrNull(context, 'consumeOutsideTap') ?? consumeOutsideTap;
+        resolveBoolOrNull('consumeOutsideTap') ?? consumeOutsideTap;
 
     return MenuAnchor(
       menuChildren: menuChildren,
@@ -460,13 +461,13 @@ class TomMenuAnchor extends TomSelectBase {
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath, 'style');
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -541,40 +542,40 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = resolveResourceOrFail(context, 'label');
+    final resolvedLabel = resolveResourceOrFail('label');
     // Phase 3: Resolve InputDecoration from resources
     final effectiveDecoration =
       decoration ?? _resolveInputDecoration(context) ?? InputDecoration(labelText: resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-        elevation ?? resolveIntOrNull(context, 'elevation') ?? 8;
+        elevation ?? resolveIntOrNull('elevation') ?? 8;
     final resolvedIconDisabledColor =
-        iconDisabledColor ?? resolveColorOrNull(context, 'iconDisabledColor');
+        iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
     final resolvedIconEnabledColor =
-        iconEnabledColor ?? resolveColorOrNull(context, 'iconEnabledColor');
+        iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
     final resolvedIconSize =
-        iconSize ?? resolveDoubleOrNull(context, 'iconSize') ?? 24.0;
+        iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
     final resolvedItemHeight =
-        itemHeight ?? resolveDoubleOrNull(context, 'itemHeight');
+        itemHeight ?? resolveDoubleOrNull('itemHeight');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedDropdownColor =
-        dropdownColor ?? resolveColorOrNull(context, 'dropdownColor');
+        dropdownColor ?? resolveColorOrNull('dropdownColor');
     final resolvedMenuMaxHeight =
-        menuMaxHeight ?? resolveDoubleOrNull(context, 'menuMaxHeight');
+        menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedIsDense =
-      resolveBoolOrNull(context, 'isDense') ?? isDense;
+      resolveBoolOrNull('isDense') ?? isDense;
     final resolvedIsExpanded =
-      resolveBoolOrNull(context, 'isExpanded') ?? isExpanded;
+      resolveBoolOrNull('isExpanded') ?? isExpanded;
     final resolvedAutofocus =
-      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+      resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+      enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedAlignment =
-      _resolveAlignment(context, 'alignment') ?? alignment;
+      _resolveAlignment('alignment') ?? alignment;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedStyle = style ?? _resolveTextStyle(context);
@@ -604,7 +605,7 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
       menuMaxHeight: resolvedMenuMaxHeight,
       enableFeedback: resolvedEnableFeedback,
       alignment: resolvedAlignment,
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius'),
       onSaved: onSaved,
       validator: validator,
       autovalidateMode: autovalidateMode,
@@ -613,26 +614,26 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
 
   /// Phase 3: Resolves TextStyle from resources.
   TextStyle? _resolveTextStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, 'style');
   }
 
   /// Phase 3: Resolves InputDecoration from resources.
   InputDecoration? _resolveInputDecoration(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveInputDecoration(basePath, 'decoration');
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -667,11 +668,11 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedThumbColor =
-        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+        thumbColor ?? resolveColorOrNull('thumbColor');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
+        padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
 
     final effectiveBg = resolvedBackgroundColor ??
         CupertinoDynamicColor.resolve(
@@ -734,7 +735,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   PopupMenuItemState<T, TomPopupMenuItem<T>> createState() =>
@@ -757,7 +758,7 @@ class _TomPopupMenuItemState<T>
 
   @override
   Widget build(BuildContext context) {
-    final hidden = widget.checkHidden(context);
+    final hidden = widget.checkHidden();
     if (hidden != null) return hidden;
     return widget.applyReadonly(context, super.build(context));
   }
@@ -781,7 +782,7 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   State<PopupMenuDivider> createState() => _TomPopupMenuDividerState();
@@ -803,7 +804,7 @@ class _TomPopupMenuDividerState extends State<TomPopupMenuDivider> {
   @override
   Widget build(BuildContext context) {
     final widgetMixin = widget as TomWidgetMixin;
-    final hidden = widgetMixin.checkHidden(context);
+    final hidden = widgetMixin.checkHidden();
     if (hidden != null) return hidden;
     return const Divider(height: 1.0, thickness: 0.0);
   }
@@ -841,7 +842,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   PopupMenuItemState<T, CheckedPopupMenuItem<T>> createState() =>
@@ -865,7 +866,7 @@ class _TomCheckedPopupMenuItemState<T>
   @override
   Widget build(BuildContext context) {
     final widgetMixin = widget as TomWidgetMixin;
-    final hidden = widgetMixin.checkHidden(context);
+    final hidden = widgetMixin.checkHidden();
     if (hidden != null) return hidden;
     return widgetMixin.applyReadonly(context, super.build(context));
   }
@@ -911,13 +912,13 @@ class TomCupertinoPicker extends TomSelectBase {
   @override
   Widget buildContent(BuildContext context) {
     return CupertinoPicker(
-      diameterRatio: diameterRatio ?? resolveDoubleOrNull(context, 'diameterRatio') ?? 1.07,
-      backgroundColor: backgroundColor ?? resolveColorOrNull(context, 'backgroundColor'),
-      offAxisFraction: offAxisFraction ?? resolveDoubleOrNull(context, 'offAxisFraction') ?? 0.0,
+      diameterRatio: diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? 1.07,
+      backgroundColor: backgroundColor ?? resolveColorOrNull('backgroundColor'),
+      offAxisFraction: offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0,
       useMagnifier: useMagnifier,
-      magnification: magnification ?? resolveDoubleOrNull(context, 'magnification') ?? 1.0,
-      squeeze: squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.45,
-      itemExtent: itemExtent ?? resolveDoubleOrNull(context, 'itemExtent') ?? 32.0,
+      magnification: magnification ?? resolveDoubleOrNull('magnification') ?? 1.0,
+      squeeze: squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.45,
+      itemExtent: itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0,
       onSelectedItemChanged: onSelectedItemChanged,
       selectionOverlay: selectionOverlay,
       looping: looping,
@@ -959,11 +960,11 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
       children: children,
       groupValue: groupValue,
       onValueChanged: onValueChanged,
-      unselectedColor: unselectedColor ?? resolveColorOrNull(context, 'unselectedColor'),
-      selectedColor: selectedColor ?? resolveColorOrNull(context, 'selectedColor'),
-      borderColor: borderColor ?? resolveColorOrNull(context, 'borderColor'),
-      pressedColor: pressedColor ?? resolveColorOrNull(context, 'pressedColor'),
-      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
+      unselectedColor: unselectedColor ?? resolveColorOrNull('unselectedColor'),
+      selectedColor: selectedColor ?? resolveColorOrNull('selectedColor'),
+      borderColor: borderColor ?? resolveColorOrNull('borderColor'),
+      pressedColor: pressedColor ?? resolveColorOrNull('pressedColor'),
+      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
     );
   }
 }
@@ -999,5 +1000,5 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 }

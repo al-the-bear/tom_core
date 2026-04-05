@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-class TomField<T> extends TomObject<T> {
+class TomFieldOld<T> extends TomObject<T> {
   String Function(String) get t =>
       TomTextResourceProvider.getAppResources().getText;
   bool Function(String) get translationExists =>
@@ -17,7 +17,7 @@ class TomField<T> extends TomObject<T> {
   T initialValue;
   bool obscureText;
 
-  TomField(
+  TomFieldOld(
     this.formName,
     this.fieldName,
     this.initialValue, {
@@ -171,7 +171,7 @@ class TomField<T> extends TomObject<T> {
   }
 }
 
-class TomEmailField<T> extends TomField<T> {
+class TomEmailField<T> extends TomFieldOld<T> {
   TomEmailField(
     super.formName,
     super.fieldName,
@@ -199,7 +199,7 @@ class TomEmailField<T> extends TomField<T> {
   }
 }
 
-class TomPasswordField<T> extends TomField<T> {
+class TomPasswordField<T> extends TomFieldOld<T> {
   TomPasswordField(
     super.formName,
     super.fieldName,

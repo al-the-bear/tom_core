@@ -50,18 +50,18 @@ class TomText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResourceOrFail(context, 'label');
+    final resolvedText = text ?? resolveResourceOrFail('label');
 
     // Phase 2: Resolve optional parameter from resources
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
-    final resolvedSoftWrap = softWrap ?? resolveBoolOrNull(context, 'softWrap');
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    final resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap');
     final resolvedSemanticsLabel =
-        semanticsLabel ?? resolveResourceOrNull(context, 'semanticsLabel');
+        semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
 
     return Text(
       resolvedText,
-      style: style ?? _resolveTextStyle(context, 'style'),
-      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
+      style: style ?? _resolveTextStyle('style'),
+      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
       locale: locale,
@@ -70,24 +70,24 @@ class TomText extends TomLabelBase {
       maxLines: resolvedMaxLines,
       semanticsLabel: resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  StrutStyle? _resolveStrutStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
-  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
@@ -167,28 +167,28 @@ class TomSelectableText extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedText = text ?? resolveResourceOrFail(context, 'label');
+    final resolvedText = text ?? resolveResourceOrFail('label');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedCursorColor =
-        cursorColor ?? resolveColorOrNull(context, 'cursorColor');
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
-    final resolvedMinLines = minLines ?? resolveIntOrNull(context, 'minLines');
+        cursorColor ?? resolveColorOrNull('cursorColor');
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
+    final resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedShowCursor =
-        resolveBoolOrNull(context, 'showCursor') ?? showCursor;
+        resolveBoolOrNull('showCursor') ?? showCursor;
     final resolvedCursorWidth =
-        resolveDoubleOrNull(context, 'cursorWidth') ?? cursorWidth;
+        resolveDoubleOrNull('cursorWidth') ?? cursorWidth;
     final resolvedCursorHeight =
-        cursorHeight ?? resolveDoubleOrNull(context, 'cursorHeight');
+        cursorHeight ?? resolveDoubleOrNull('cursorHeight');
     final resolvedSemanticsLabel =
-        semanticsLabel ?? resolveResourceOrNull(context, 'semanticsLabel');
+        semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
 
     return SelectableText(
       resolvedText,
-      style: style ?? _resolveTextStyle(context, 'style'),
-      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
+      style: style ?? _resolveTextStyle('style'),
+      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
       textAlign: textAlign,
       textDirection: textDirection,
       maxLines: resolvedMaxLines,
@@ -201,10 +201,10 @@ class TomSelectableText extends TomLabelBase {
       cursorRadius: cursorRadius,
       cursorColor: resolvedCursorColor,
       onTap: onTap,
-      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics(context, 'scrollPhysics'),
+      scrollPhysics: scrollPhysics ?? _resolveScrollPhysics('scrollPhysics'),
       semanticsLabel: resolvedSemanticsLabel,
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
       contextMenuBuilder: contextMenuBuilder,
       magnifierConfiguration: magnifierConfiguration,
       selectionControls: selectionControls,
@@ -212,26 +212,26 @@ class TomSelectableText extends TomLabelBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  StrutStyle? _resolveStrutStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
-  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -275,11 +275,11 @@ class TomRichText extends TomLabelBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedMaxLines = maxLines ?? resolveIntOrNull(context, 'maxLines');
+    final resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
     final resolvedSelectionColor =
-        selectionColor ?? resolveColorOrNull(context, 'selectionColor');
+        selectionColor ?? resolveColorOrNull('selectionColor');
     final resolvedSoftWrap =
-        resolveBoolOrNull(context, 'softWrap') ?? softWrap;
+        resolveBoolOrNull('softWrap') ?? softWrap;
 
     return RichText(
       text: text,
@@ -289,22 +289,22 @@ class TomRichText extends TomLabelBase {
       overflow: overflow,
       maxLines: resolvedMaxLines,
       locale: locale,
-      strutStyle: strutStyle ?? _resolveStrutStyle(context, 'strutStyle'),
+      strutStyle: strutStyle ?? _resolveStrutStyle('strutStyle'),
       textWidthBasis: textWidthBasis,
-      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior(context, 'textHeightBehavior'),
+      textHeightBehavior: textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior'),
       selectionRegistrar: selectionRegistrar,
       selectionColor: resolvedSelectionColor,
     );
   }
 
-  StrutStyle? _resolveStrutStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  StrutStyle? _resolveStrutStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveStrutStyle(basePath, suffix);
   }
 
-  TextHeightBehavior? _resolveTextHeightBehavior(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextHeightBehavior? _resolveTextHeightBehavior(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextHeightBehavior(basePath, suffix);
   }
@@ -347,24 +347,24 @@ class TomBadge extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
     final effectiveLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedTextColor =
-        textColor ?? resolveColorOrNull(context, 'textColor');
+        textColor ?? resolveColorOrNull('textColor');
     final resolvedSmallSize =
-        smallSize ?? resolveDoubleOrNull(context, 'smallSize');
+        smallSize ?? resolveDoubleOrNull('smallSize');
     final resolvedLargeSize =
-        largeSize ?? resolveDoubleOrNull(context, 'largeSize');
+        largeSize ?? resolveDoubleOrNull('largeSize');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedTextStyle =
-        textStyle ?? _resolveTextStyle(context, 'textStyle');
+        textStyle ?? _resolveTextStyle('textStyle');
 
     return Badge(
       label: effectiveLabel,
@@ -372,29 +372,29 @@ class TomBadge extends TomLabelBase {
       textColor: resolvedTextColor,
       textStyle: resolvedTextStyle,
       padding: resolvedPadding,
-      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
-      offset: offset ?? _resolveOffset(context, 'offset'),
-      isLabelVisible: resolveBoolOrNull(context, 'isLabelVisible') ?? isLabelVisible,
+      alignment: alignment ?? _resolveAlignment('alignment'),
+      offset: offset ?? _resolveOffset('offset'),
+      isLabelVisible: resolveBoolOrNull('isLabelVisible') ?? isLabelVisible,
       smallSize: resolvedSmallSize,
       largeSize: resolvedLargeSize,
       child: child,
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -481,59 +481,59 @@ class TomListTile extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedIsThreeLine =
-        resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
-    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+        resolveBoolOrNull('isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull('dense');
     final resolvedEnabled =
-        resolveBoolOrNull(context, 'enabled') ?? enabled;
+        resolveBoolOrNull('enabled') ?? enabled;
     final resolvedSelected =
-        resolveBoolOrNull(context, 'selected') ?? selected;
+        resolveBoolOrNull('selected') ?? selected;
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+        enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedIconColor =
-        iconColor ?? resolveColorOrNull(context, 'iconColor');
+        iconColor ?? resolveColorOrNull('iconColor');
     final resolvedTextColor =
-        textColor ?? resolveColorOrNull(context, 'textColor');
+        textColor ?? resolveColorOrNull('textColor');
     final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
+        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull(context, 'splashColor');
+        splashColor ?? resolveColorOrNull('splashColor');
     final resolvedTileColor =
-        tileColor ?? resolveColorOrNull(context, 'tileColor');
+        tileColor ?? resolveColorOrNull('tileColor');
     final resolvedSelectedTileColor =
-        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+        selectedTileColor ?? resolveColorOrNull('selectedTileColor');
     final resolvedHorizontalTitleGap =
-        horizontalTitleGap ?? resolveDoubleOrNull(context, 'horizontalTitleGap');
+        horizontalTitleGap ?? resolveDoubleOrNull('horizontalTitleGap');
     final resolvedMinVerticalPadding =
-        minVerticalPadding ?? resolveDoubleOrNull(context, 'minVerticalPadding');
+        minVerticalPadding ?? resolveDoubleOrNull('minVerticalPadding');
     final resolvedMinLeadingWidth =
-        minLeadingWidth ?? resolveDoubleOrNull(context, 'minLeadingWidth');
+        minLeadingWidth ?? resolveDoubleOrNull('minLeadingWidth');
     final resolvedMinTileHeight =
-        minTileHeight ?? resolveDoubleOrNull(context, 'minTileHeight');
+        minTileHeight ?? resolveDoubleOrNull('minTileHeight');
 
     // Phase 3: Resolve complex objects from resources
     final resolvedVisualDensity =
-        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+        visualDensity ?? _resolveVisualDensity('visualDensity');
     final resolvedShape =
-        shape ?? _resolveShapeBorder(context, 'shape');
+        shape ?? _resolveShapeBorder('shape');
     final resolvedTitleTextStyle =
-        titleTextStyle ?? _resolveTextStyle(context, 'titleTextStyle');
+        titleTextStyle ?? _resolveTextStyle('titleTextStyle');
     final resolvedSubtitleTextStyle =
-        subtitleTextStyle ?? _resolveTextStyle(context, 'subtitleTextStyle');
+        subtitleTextStyle ?? _resolveTextStyle('subtitleTextStyle');
     final resolvedLeadingAndTrailingTextStyle =
-        leadingAndTrailingTextStyle ?? _resolveTextStyle(context, 'leadingAndTrailingTextStyle');
+        leadingAndTrailingTextStyle ?? _resolveTextStyle('leadingAndTrailingTextStyle');
 
     return ListTile(
       title: effectiveTitle,
@@ -572,20 +572,20 @@ class TomListTile extends TomLabelBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -646,24 +646,24 @@ class TomChip extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = labelText ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = labelText ?? resolveResourceOrFail('label');
     final chipLabel = label ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedDeleteIconColor =
-        deleteIconColor ?? resolveColorOrNull(context, 'deleteIconColor');
+        deleteIconColor ?? resolveColorOrNull('deleteIconColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull(context, 'shadowColor');
+        shadowColor ?? resolveColorOrNull('shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull(context, 'surfaceTintColor');
+        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedLabelStyle =
-        labelStyle ?? _resolveTextStyle(context, 'labelStyle');
+        labelStyle ?? _resolveTextStyle('labelStyle');
 
     return Chip(
       avatar: avatar,
@@ -689,8 +689,8 @@ class TomChip extends TomLabelBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -772,11 +772,11 @@ class TomAboutListTile extends TomLabelBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedApplicationName =
-      applicationName ?? resolveResourceOrNull(context, 'applicationName');
+      applicationName ?? resolveResourceOrNull('applicationName');
     final resolvedApplicationVersion =
-      applicationVersion ?? resolveResourceOrNull(context, 'applicationVersion');
+      applicationVersion ?? resolveResourceOrNull('applicationVersion');
     final resolvedApplicationLegalese =
-      applicationLegalese ?? resolveResourceOrNull(context, 'applicationLegalese');
+      applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
 
     return AboutListTile(
       icon: icon,
@@ -814,13 +814,13 @@ class TomVerticalDivider extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedWidth = width ?? resolveDoubleOrNull(context, 'width');
+    final resolvedWidth = width ?? resolveDoubleOrNull('width');
     final resolvedThickness =
-        thickness ?? resolveDoubleOrNull(context, 'thickness');
-    final resolvedIndent = indent ?? resolveDoubleOrNull(context, 'indent');
+        thickness ?? resolveDoubleOrNull('thickness');
+    final resolvedIndent = indent ?? resolveDoubleOrNull('indent');
     final resolvedEndIndent =
-        endIndent ?? resolveDoubleOrNull(context, 'endIndent');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+        endIndent ?? resolveDoubleOrNull('endIndent');
+    final resolvedColor = color ?? resolveColorOrNull('color');
 
     return VerticalDivider(
       width: resolvedWidth,
@@ -849,7 +849,7 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     return MenuAcceleratorLabel(
       resolvedLabel,
       builder: builder ?? MenuAcceleratorLabel.defaultLabelBuilder,
@@ -890,8 +890,8 @@ class TomBanner extends TomLabelBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedMessage = message ?? resolveResourceOrFail(context, 'message');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color') ?? _kColor;
+    final resolvedMessage = message ?? resolveResourceOrFail('message');
+    final resolvedColor = color ?? resolveColorOrNull('color') ?? _kColor;
     return Banner(
       message: resolvedMessage,
       textDirection: textDirection,

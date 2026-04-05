@@ -56,17 +56,17 @@ class TomSwitch extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedActiveTrackColor =
-        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+        activeTrackColor ?? resolveColorOrNull('activeTrackColor');
     final resolvedInactiveThumbColor =
-        inactiveThumbColor ?? resolveColorOrNull(context, 'inactiveThumbColor');
+        inactiveThumbColor ?? resolveColorOrNull('inactiveThumbColor');
     final resolvedInactiveTrackColor =
-        inactiveTrackColor ?? resolveColorOrNull(context, 'inactiveTrackColor');
+        inactiveTrackColor ?? resolveColorOrNull('inactiveTrackColor');
     final resolvedSplashRadius =
-        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+        splashRadius ?? resolveDoubleOrNull('splashRadius');
     final resolvedAutofocus =
-      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+      resolveBoolOrNull('autofocus') ?? autofocus;
 
     return Switch(
       value: value,
@@ -137,21 +137,21 @@ class TomCheckbox extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedCheckColor =
-        checkColor ?? resolveColorOrNull(context, 'checkColor');
+        checkColor ?? resolveColorOrNull('checkColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedSplashRadius =
-        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+        splashRadius ?? resolveDoubleOrNull('splashRadius');
     final resolvedTristate =
-        resolveBoolOrNull(context, 'tristate') ?? tristate;
+        resolveBoolOrNull('tristate') ?? tristate;
     final resolvedIsError =
-        resolveBoolOrNull(context, 'isError') ?? isError;
+        resolveBoolOrNull('isError') ?? isError;
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
 
     return Checkbox(
       value: value,
@@ -164,29 +164,29 @@ class TomCheckbox extends TomToggleBase {
       hoverColor: resolvedHoverColor,
       overlayColor: overlayColor,
       splashRadius: resolvedSplashRadius,
-      visualDensity: visualDensity ?? _resolveVisualDensity(context, 'visualDensity'),
-      shape: shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?,
-      side: side ?? _resolveBorderSide(context, 'side'),
+      visualDensity: visualDensity ?? _resolveVisualDensity('visualDensity'),
+      shape: shape ?? _resolveShapeBorder('shape') as OutlinedBorder?,
+      side: side ?? _resolveBorderSide('side'),
       isError: resolvedIsError,
       focusNode: focusNode,
       autofocus: resolvedAutofocus,
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -233,19 +233,19 @@ class TomRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedSplashRadius =
-        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
+        splashRadius ?? resolveDoubleOrNull('splashRadius');
     final resolvedToggleable =
-      resolveBoolOrNull(context, 'toggleable') ?? toggleable;
+      resolveBoolOrNull('toggleable') ?? toggleable;
     final resolvedAutofocus =
-      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+      resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedVisualDensity =
-      visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+      visualDensity ?? _resolveVisualDensity('visualDensity');
 
     return Radio<T>(
       value: value,
@@ -264,8 +264,8 @@ class TomRadio<T> extends TomToggleBase {
     );
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -329,37 +329,37 @@ class TomSwitchListTile extends TomToggleBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle = titleText ??
-      resolveResourceOrNull(context, 'titleText') ??
-      resolveResourceOrFail(context, 'label');
+      resolveResourceOrNull('titleText') ??
+      resolveResourceOrFail('label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional color parameters from resources
     final resolvedIsThreeLine =
-      resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
-    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+      resolveBoolOrNull('isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull('dense');
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedActiveTrackColor =
-        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+        activeTrackColor ?? resolveColorOrNull('activeTrackColor');
     final resolvedInactiveThumbColor =
-        inactiveThumbColor ?? resolveColorOrNull(context, 'inactiveThumbColor');
+        inactiveThumbColor ?? resolveColorOrNull('inactiveThumbColor');
     final resolvedInactiveTrackColor =
-        inactiveTrackColor ?? resolveColorOrNull(context, 'inactiveTrackColor');
+        inactiveTrackColor ?? resolveColorOrNull('inactiveTrackColor');
     final resolvedTileColor =
-        tileColor ?? resolveColorOrNull(context, 'tileColor');
+        tileColor ?? resolveColorOrNull('tileColor');
     final resolvedSelectedTileColor =
-        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+        selectedTileColor ?? resolveColorOrNull('selectedTileColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+        enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
-    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
+    final resolvedShape = shape ?? _resolveShapeBorder('shape');
     final resolvedVisualDensity =
-        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+        visualDensity ?? _resolveVisualDensity('visualDensity');
 
     return SwitchListTile(
       value: value,
@@ -386,14 +386,14 @@ class TomSwitchListTile extends TomToggleBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -457,36 +457,36 @@ class TomCheckboxListTile extends TomToggleBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedTitle = titleText ??
-      resolveResourceOrNull(context, 'titleText') ??
-      resolveResourceOrFail(context, 'label');
+      resolveResourceOrNull('titleText') ??
+      resolveResourceOrFail('label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional color parameters from resources
     final resolvedIsThreeLine =
-      resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
-    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+      resolveBoolOrNull('isThreeLine') ?? isThreeLine;
+    final resolvedDense = dense ?? resolveBoolOrNull('dense');
     final resolvedTristate =
-      resolveBoolOrNull(context, 'tristate') ?? tristate;
+      resolveBoolOrNull('tristate') ?? tristate;
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedCheckColor =
-        checkColor ?? resolveColorOrNull(context, 'checkColor');
+        checkColor ?? resolveColorOrNull('checkColor');
     final resolvedTileColor =
-        tileColor ?? resolveColorOrNull(context, 'tileColor');
+        tileColor ?? resolveColorOrNull('tileColor');
     final resolvedSelectedTileColor =
-        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+        selectedTileColor ?? resolveColorOrNull('selectedTileColor');
     final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+        enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
     final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
-    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
-    final resolvedSide = side ?? _resolveBorderSide(context, 'side');
+        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
+    final resolvedShape = shape ?? _resolveShapeBorder('shape');
+    final resolvedSide = side ?? _resolveBorderSide('side');
     final resolvedVisualDensity =
-        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+        visualDensity ?? _resolveVisualDensity('visualDensity');
     final resolvedCheckboxShape =
-        checkboxShape ?? _resolveShapeBorder(context, 'checkboxShape') as OutlinedBorder?;
+        checkboxShape ?? _resolveShapeBorder('checkboxShape') as OutlinedBorder?;
 
     return CheckboxListTile(
       value: value,
@@ -513,20 +513,20 @@ class TomCheckboxListTile extends TomToggleBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -587,30 +587,30 @@ class TomRadioListTile<T> extends TomToggleBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitle = titleText ?? resolveResourceOrFail(context, 'label');
+    final resolvedTitle = titleText ?? resolveResourceOrFail('label');
     final effectiveTitle = title ?? Text(resolvedTitle);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedTileColor =
-        tileColor ?? resolveColorOrNull(context, 'tileColor');
+        tileColor ?? resolveColorOrNull('tileColor');
     final resolvedSelectedTileColor =
-        selectedTileColor ?? resolveColorOrNull(context, 'selectedTileColor');
+        selectedTileColor ?? resolveColorOrNull('selectedTileColor');
     final resolvedContentPadding =
-        contentPadding ?? resolveEdgeInsetsOrNull(context, 'contentPadding');
-    final resolvedDense = dense ?? resolveBoolOrNull(context, 'dense');
+        contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
+    final resolvedDense = dense ?? resolveBoolOrNull('dense');
     final resolvedIsThreeLine =
-        resolveBoolOrNull(context, 'isThreeLine') ?? isThreeLine;
+        resolveBoolOrNull('isThreeLine') ?? isThreeLine;
     final resolvedVisualDensity =
-        visualDensity ?? _resolveVisualDensity(context, 'visualDensity');
+        visualDensity ?? _resolveVisualDensity('visualDensity');
     final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback');
+        enableFeedback ?? resolveBoolOrNull('enableFeedback');
     final resolvedToggleable =
-        resolveBoolOrNull(context, 'toggleable') ?? toggleable;
+        resolveBoolOrNull('toggleable') ?? toggleable;
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
-    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+        resolveBoolOrNull('autofocus') ?? autofocus;
+    final resolvedShape = shape ?? _resolveShapeBorder('shape');
 
     return RadioListTile<T>(
       value: value,
@@ -636,14 +636,14 @@ class TomRadioListTile<T> extends TomToggleBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  VisualDensity? _resolveVisualDensity(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  VisualDensity? _resolveVisualDensity(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveVisualDensity(basePath, suffix);
   }
@@ -707,29 +707,29 @@ class TomToggleButtons extends TomToggleBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedSelectedColor =
-        selectedColor ?? resolveColorOrNull(context, 'selectedColor');
+        selectedColor ?? resolveColorOrNull('selectedColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedFillColor =
-        fillColor ?? resolveColorOrNull(context, 'fillColor');
+        fillColor ?? resolveColorOrNull('fillColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHighlightColor =
-        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+        highlightColor ?? resolveColorOrNull('highlightColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull(context, 'splashColor');
+        splashColor ?? resolveColorOrNull('splashColor');
     final resolvedBorderColor =
-        borderColor ?? resolveColorOrNull(context, 'borderColor');
+        borderColor ?? resolveColorOrNull('borderColor');
     final resolvedSelectedBorderColor =
-        selectedBorderColor ?? resolveColorOrNull(context, 'selectedBorderColor');
+        selectedBorderColor ?? resolveColorOrNull('selectedBorderColor');
     final resolvedDisabledBorderColor =
-        disabledBorderColor ?? resolveColorOrNull(context, 'disabledBorderColor');
+        disabledBorderColor ?? resolveColorOrNull('disabledBorderColor');
     final resolvedBorderWidth =
-        borderWidth ?? resolveDoubleOrNull(context, 'borderWidth');
+        borderWidth ?? resolveDoubleOrNull('borderWidth');
 
     return ToggleButtons(
       isSelected: isSelected,
@@ -798,17 +798,17 @@ class TomCupertinoSwitch extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveTrackColor =
-        activeTrackColor ?? resolveColorOrNull(context, 'activeTrackColor');
+        activeTrackColor ?? resolveColorOrNull('activeTrackColor');
     final resolvedThumbColor =
-        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+        thumbColor ?? resolveColorOrNull('thumbColor');
     final resolvedTrackColor =
-        trackColor ?? resolveColorOrNull(context, 'trackColor');
+        trackColor ?? resolveColorOrNull('trackColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedOnLabelColor =
-        onLabelColor ?? resolveColorOrNull(context, 'onLabelColor');
+        onLabelColor ?? resolveColorOrNull('onLabelColor');
     final resolvedOffLabelColor =
-        offLabelColor ?? resolveColorOrNull(context, 'offLabelColor');
+        offLabelColor ?? resolveColorOrNull('offLabelColor');
 
     return CupertinoSwitch(
       value: value,
@@ -870,18 +870,18 @@ class TomCupertinoCheckbox extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedInactiveColor =
-        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+        inactiveColor ?? resolveColorOrNull('inactiveColor');
     final resolvedCheckColor =
-        checkColor ?? resolveColorOrNull(context, 'checkColor');
+        checkColor ?? resolveColorOrNull('checkColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedSemanticLabel =
-      semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
-    final resolvedSide = side ?? _resolveBorderSide(context, 'side');
+      semanticLabel ?? resolveResourceOrNull('semanticLabel');
+    final resolvedSide = side ?? _resolveBorderSide('side');
     final resolvedShape =
-      shape ?? _resolveShapeBorder(context, 'shape') as OutlinedBorder?;
+      shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
 
     return CupertinoCheckbox(
       value: value,
@@ -899,14 +899,14 @@ class TomCupertinoCheckbox extends TomToggleBase {
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
 
-  BorderSide? _resolveBorderSide(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderSide? _resolveBorderSide(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderSide(basePath, suffix);
   }
@@ -951,13 +951,13 @@ class TomCupertinoRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameters from resources
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedInactiveColor =
-        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+        inactiveColor ?? resolveColorOrNull('inactiveColor');
     final resolvedFillColor =
-        fillColor ?? resolveColorOrNull(context, 'fillColor');
+        fillColor ?? resolveColorOrNull('fillColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
 
     return CupertinoRadio<T>(
       value: value,

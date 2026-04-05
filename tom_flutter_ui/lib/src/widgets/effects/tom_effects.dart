@@ -31,7 +31,7 @@ class TomBackdropFilter extends TomEffectBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBlendMode = blendMode ??
-        _resolveBlendMode(resolveResourceOrNull(context, 'blendMode')) ??
+        _resolveBlendMode(resolveResourceOrNull('blendMode')) ??
         BlendMode.srcOver;
 
     return BackdropFilter(
@@ -87,7 +87,7 @@ class TomShaderMask extends TomEffectBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBlendMode = blendMode ??
-        _resolveBlendMode(resolveResourceOrNull(context, 'blendMode')) ??
+        _resolveBlendMode(resolveResourceOrNull('blendMode')) ??
         BlendMode.modulate;
 
     return ShaderMask(
@@ -264,7 +264,7 @@ class TomSensitiveContent extends TomEffectBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSensitivity = sensitivity ??
-        _resolveContentSensitivity(resolveResourceOrNull(context, 'sensitivity')) ??
+        _resolveContentSensitivity(resolveResourceOrNull('sensitivity')) ??
       ContentSensitivity.autoSensitive;
 
     return SensitiveContent(

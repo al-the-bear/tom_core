@@ -37,7 +37,10 @@ import '../json/map_merge_and_process.dart';
 ///
 /// [TomTextResourceProvider] is designed for storing and retrieving text-based
 /// resources such as localized strings, UI labels, error messages, and other
-/// text content that may vary by locale or configuration.
+/// text content that may vary by locale or configuration. It also supports
+/// retrieval of object values using the existsObject and getObject methods,
+/// this is intended for extended UI configuration which is related to look
+/// and feel of the UI, such as TextStyles, Colors, etc. This allows for a unified resource management
 ///
 /// The provider supports:
 /// - Singleton access via [getAppResources]
@@ -172,6 +175,45 @@ class TomTextResourceProvider {
     return resources[s] != null && resources[s] is String;
   }
 
+  /// Checks if a configuration value exists at the given path.
+  ///
+  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
+  /// using dot notation (e.g., 'api.timeout').
+  ///
+  /// [s] - The configuration key or path to check.
+  ///
+  /// Returns `true` if any value exists at the path, `false` otherwise.
+  bool existsObject(String s) {
+    try {
+      getObjectFromTree(resources, s);
+      return true;
+    } catch (ex) {
+      // fall through
+    }
+    return resources[s] != null;
+  }
+
+  /// Retrieves the configuration value at the given path.
+  ///
+  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
+  /// using dot notation (e.g., 'api.timeout').
+  ///
+  /// If the configuration is not found, returns the key itself as a fallback,
+  /// which helps identify missing configuration during development.
+  ///
+  /// [s] - The configuration key or path to retrieve.
+  ///
+  /// Returns the value if found (can be any type), or the key [s] if not found.
+  Object getObject(String s) {
+    try {
+      dynamic value = getObjectFromTree(resources, s);
+      return value;
+    } catch (ex) {
+      // fall through
+    }
+    return resources[s] != null ? resources[s]! : s;
+  }
+
   /// Retrieves the text value at the given path.
   ///
   /// Supports both flat keys (e.g., 'title') and hierarchical paths
@@ -205,9 +247,6 @@ class TomTextResourceProvider {
 /// [TomConfigResourceProvider] is designed for storing and retrieving
 /// configuration values such as API endpoints, feature flags, timeouts,
 /// and other application settings.
-///
-/// Unlike [TomTextResourceProvider], this provider can return any type of
-/// value (not just strings), making it suitable for typed configuration.
 ///
 /// ## Usage
 ///

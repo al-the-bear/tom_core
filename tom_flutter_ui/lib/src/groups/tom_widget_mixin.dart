@@ -1,11 +1,11 @@
 import 'package:flutter/widgets.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../resource_auth/tom_auth_state.dart';
-import '../resource_auth/tom_id_prefix.dart';
 import '../resource_auth/tom_resources.dart';
 import '../theme/tom_theme.dart';
-import '../widget_base/tom_node_base.dart';
-import 'tom_groups.dart';
+import '../widget_base/tom_authorizable.dart';
+import 'tom_ui_group.dart';
 
 /// Mixin for Tom widgets that extend Flutter widgets directly.
 ///
@@ -20,45 +20,52 @@ import 'tom_groups.dart';
 ///   final String tomId;
 ///
 ///   @override
-///   final String? tomGroup;
+///   final TomUIGroup? tomGroup;
 /// }
 /// ```
 ///
 /// The mixin provides:
 /// - [tomId] — abstract, must be implemented
-/// - [tomGroup] — optional group membership (defaults to `null`)
-/// - [resolveFullPath] — canonical path via [TomNodeScope]
+/// - [tomGroup] — optional group membership (TomUIGroup object)
+/// - [resolveFullPath] — canonical path via [TomScope]
 /// - [getAuth] — authorization state lookup
 /// - [getText] — text resource lookup
 /// - [checkHidden] — returns `SizedBox.shrink()` if hidden
 /// - [applyReadonly] — applies readonly styling
 /// - Group registration hooks for StatefulWidgets
-mixin TomWidgetMixin on Widget {
+///
+/// Implements [TomAuthorizable] for type-safe group registration.
+mixin TomWidgetMixin on Widget implements TomAuthorizable {
   /// The local widget ID (without prefix).
   ///
   /// This is combined with parent scope IDs to create the canonical path.
   /// Can be null for drop-in Flutter compatibility.
+  @override
   String? get tomId;
 
-  /// Optional group membership (zero or one group).
+  /// Optional group membership.
   ///
-  /// When set, the widget registers with [TomGroups] on mount.
-  String? get tomGroup => null;
+  /// When set, the widget registers with the group on mount using weak
+  /// references. Groups are created manually and passed directly.
+  @override
+  TomUIGroup? get tomGroup => null;
 
-  /// Resolves the full canonical path including route/container/group prefix.
+  /// Resolves the full canonical path including scope path.
   ///
-  /// Uses [TomNodeScope] from the widget tree to build the path.
+  /// Uses [TomScope.current] to build the path.
   /// Returns null if tomId is null.
-  String? resolveFullPath(BuildContext context) {
+  String? resolveFullPath() {
     if (tomId == null) return null;
-    final scope = TomNodeScope.of(context);
-    return scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    if (scopePath.isNotEmpty) {
+      return '$scopePath.$tomId';
+    }
+    return tomId;
   }
 
   /// Gets authorization state for this widget.
-  TomAuthState getAuth(BuildContext context) {
-    final path = resolveFullPath(context);
+  TomAuthState getAuth() {
+    final path = resolveFullPath();
     if (path == null) return TomAuthState.fullAccess;
     return TomUIAuthorization.resolveAuth(path);
   }
@@ -66,8 +73,8 @@ mixin TomWidgetMixin on Widget {
   /// Gets a text resource for this widget.
   ///
   /// Resolves `<canonical-path>.<suffix>` from [TomUIResources].
-  String getText(BuildContext context, String suffix) {
-    final path = resolveFullPath(context);
+  String getText(String suffix) {
+    final path = resolveFullPath();
     if (path == null) return '';
     return TomUIResources.resolveText(path, suffix);
   }
@@ -78,13 +85,13 @@ mixin TomWidgetMixin on Widget {
   /// ```dart
   /// @override
   /// Widget build(BuildContext context) {
-  ///   final hidden = checkHidden(context);
+  ///   final hidden = checkHidden();
   ///   if (hidden != null) return hidden;
   ///   // ... normal build
   /// }
   /// ```
-  Widget? checkHidden(BuildContext context) {
-    if (!getAuth(context).visible) return const SizedBox.shrink();
+  Widget? checkHidden() {
+    if (!getAuth().visible) return const SizedBox.shrink();
     return null;
   }
 
@@ -92,7 +99,7 @@ mixin TomWidgetMixin on Widget {
   ///
   /// The readonly style is resolved from [TomThemeScope].
   Widget applyReadonly(BuildContext context, Widget child) {
-    if (getAuth(context).readonly) {
+    if (getAuth().readonly) {
       final style = TomThemeScope.readonlyStyleOf(context);
       return style.apply(child);
     }
@@ -113,10 +120,7 @@ mixin TomWidgetMixin on Widget {
   /// For **StatelessWidgets**, registration is handled by calling this
   /// in a wrapper or during build tracking.
   void registerWithGroup() {
-    final group = tomGroup;
-    if (group != null) {
-      TomGroups.of(group).register(this);
-    }
+    tomGroup?.register(this);
   }
 
   /// Unregisters this widget from its group.
@@ -129,22 +133,21 @@ mixin TomWidgetMixin on Widget {
   ///   super.dispose();
   /// }
   /// ```
+  ///
+  /// Note: This is optional since groups use weak references.
   void unregisterFromGroup() {
-    final group = tomGroup;
-    if (group != null) {
-      TomGroups.of(group).unregister(this);
-    }
+    tomGroup?.unregister(this);
   }
 
   /// Debug description for this widget.
   String get debugLabel {
     final parts = <String>['id: $tomId'];
-    if (tomGroup != null) parts.add('group: $tomGroup');
+    if (tomGroup != null) parts.add('group: ${tomGroup!.groupId}');
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
 
   // ===========================================================================
-  // Typed Resource Resolution (Phase 2)
+  // Typed Resource Resolution
   // ===========================================================================
 
   /// Resolves a color from resources relative to this widget's canonical path.
@@ -156,8 +159,8 @@ mixin TomWidgetMixin on Widget {
   ///
   /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
   /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
-  Color? resolveColorOrNull(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  Color? resolveColorOrNull(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomUIResources.resolveColor(basePath, suffix);
   }
@@ -168,8 +171,8 @@ mixin TomWidgetMixin on Widget {
   /// - This widget has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not numeric
-  double? resolveDoubleOrNull(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  double? resolveDoubleOrNull(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomUIResources.resolveDouble(basePath, suffix);
   }
@@ -180,8 +183,8 @@ mixin TomWidgetMixin on Widget {
   /// - This widget has no [tomId] (resource lookup is impossible)
   /// - No resource exists for this suffix
   /// - The value exists but is not numeric
-  double resolveDoubleOrFail(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  double resolveDoubleOrFail(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
@@ -209,8 +212,8 @@ mixin TomWidgetMixin on Widget {
   /// - This widget has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not numeric
-  int? resolveIntOrNull(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  int? resolveIntOrNull(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomUIResources.resolveInt(basePath, suffix);
   }
@@ -221,8 +224,8 @@ mixin TomWidgetMixin on Widget {
   /// - This widget has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not boolean-like
-  bool? resolveBoolOrNull(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  bool? resolveBoolOrNull(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomUIResources.resolveBool(basePath, suffix);
   }
@@ -238,8 +241,8 @@ mixin TomWidgetMixin on Widget {
   /// - A single number for uniform insets
   /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
-  EdgeInsets? resolveEdgeInsetsOrNull(BuildContext context, String suffix) {
-    final basePath = resolveFullPath(context);
+  EdgeInsets? resolveEdgeInsetsOrNull(String suffix) {
+    final basePath = resolveFullPath();
     if (basePath == null) return null;
     return TomUIResources.resolveEdgeInsets(basePath, suffix);
   }

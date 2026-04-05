@@ -1,11 +1,11 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../resource_auth/tom_auth_state.dart';
-import '../../resource_auth/tom_id_prefix.dart';
 import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_family_base.dart';
-import '../../widget_base/tom_node_base.dart';
+import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [DataTable].
@@ -66,40 +66,40 @@ class TomDataTable extends TomTableBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSortColumnIndex =
-      sortColumnIndex ?? resolveIntOrNull(context, 'sortColumnIndex');
+      sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
     final resolvedSortAscending =
-      resolveBoolOrNull(context, 'sortAscending') ?? sortAscending;
+      resolveBoolOrNull('sortAscending') ?? sortAscending;
     final resolvedDataRowMinHeight =
-        dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight');
+        dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight');
     final resolvedDataRowMaxHeight =
-        dataRowMaxHeight ?? resolveDoubleOrNull(context, 'dataRowMaxHeight');
+        dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight');
     final resolvedHeadingRowHeight =
-        headingRowHeight ?? resolveDoubleOrNull(context, 'headingRowHeight');
+        headingRowHeight ?? resolveDoubleOrNull('headingRowHeight');
     final resolvedHorizontalMargin =
-        horizontalMargin ?? resolveDoubleOrNull(context, 'horizontalMargin');
+        horizontalMargin ?? resolveDoubleOrNull('horizontalMargin');
     final resolvedColumnSpacing =
-        columnSpacing ?? resolveDoubleOrNull(context, 'columnSpacing');
+        columnSpacing ?? resolveDoubleOrNull('columnSpacing');
     final resolvedDividerThickness =
-        dividerThickness ?? resolveDoubleOrNull(context, 'dividerThickness');
+        dividerThickness ?? resolveDoubleOrNull('dividerThickness');
     final resolvedCheckboxHorizontalMargin =
-        checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+        checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
     final resolvedShowCheckboxColumn =
-      resolveBoolOrNull(context, 'showCheckboxColumn') ?? showCheckboxColumn;
+      resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
     final resolvedShowBottomBorder =
-      resolveBoolOrNull(context, 'showBottomBorder') ?? showBottomBorder;
+      resolveBoolOrNull('showBottomBorder') ?? showBottomBorder;
 
     // Phase 3: Resolve TextStyle from resources
     final resolvedDataTextStyle =
-        dataTextStyle ?? _resolveTextStyle(context, 'dataTextStyle');
+        dataTextStyle ?? _resolveTextStyle('dataTextStyle');
     final resolvedHeadingTextStyle =
-        headingTextStyle ?? _resolveTextStyle(context, 'headingTextStyle');
+        headingTextStyle ?? _resolveTextStyle('headingTextStyle');
 
     return DataTable(
       columns: columns,
       sortColumnIndex: resolvedSortColumnIndex,
       sortAscending: resolvedSortAscending,
       onSelectAll: onSelectAll,
-      decoration: decoration ?? _resolveDecoration(context, 'decoration'),
+      decoration: decoration ?? _resolveDecoration('decoration'),
       dataRowColor: dataRowColor,
       dataRowMinHeight: resolvedDataRowMinHeight,
       dataRowMaxHeight: resolvedDataRowMaxHeight,
@@ -113,26 +113,26 @@ class TomDataTable extends TomTableBase {
       showBottomBorder: resolvedShowBottomBorder,
       dividerThickness: resolvedDividerThickness,
       checkboxHorizontalMargin: resolvedCheckboxHorizontalMargin,
-      border: border ?? _resolveTableBorder(context, 'border'),
+      border: border ?? _resolveTableBorder('border'),
       clipBehavior: clipBehavior,
       rows: rows,
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
 
-  Decoration? _resolveDecoration(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Decoration? _resolveDecoration(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
-  TableBorder? _resolveTableBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TableBorder? _resolveTableBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
@@ -206,31 +206,31 @@ class TomPaginatedDataTable extends TomTableBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSortColumnIndex =
-      sortColumnIndex ?? resolveIntOrNull(context, 'sortColumnIndex');
+      sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
     final resolvedSortAscending =
-      resolveBoolOrNull(context, 'sortAscending') ?? sortAscending;
+      resolveBoolOrNull('sortAscending') ?? sortAscending;
     final resolvedDataRowMinHeight =
-        dataRowMinHeight ?? resolveDoubleOrNull(context, 'dataRowMinHeight') ?? kMinInteractiveDimension;
+        dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight') ?? kMinInteractiveDimension;
     final resolvedDataRowMaxHeight =
-        dataRowMaxHeight ?? resolveDoubleOrNull(context, 'dataRowMaxHeight') ?? kMinInteractiveDimension;
+        dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight') ?? kMinInteractiveDimension;
     final resolvedHeadingRowHeight =
-        headingRowHeight ?? resolveDoubleOrNull(context, 'headingRowHeight') ?? 56.0;
+        headingRowHeight ?? resolveDoubleOrNull('headingRowHeight') ?? 56.0;
     final resolvedHorizontalMargin =
-        horizontalMargin ?? resolveDoubleOrNull(context, 'horizontalMargin') ?? 24.0;
+        horizontalMargin ?? resolveDoubleOrNull('horizontalMargin') ?? 24.0;
     final resolvedColumnSpacing =
-        columnSpacing ?? resolveDoubleOrNull(context, 'columnSpacing') ?? 56.0;
+        columnSpacing ?? resolveDoubleOrNull('columnSpacing') ?? 56.0;
     final resolvedCheckboxHorizontalMargin =
-        checkboxHorizontalMargin ?? resolveDoubleOrNull(context, 'checkboxHorizontalMargin');
+        checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
     final resolvedShowCheckboxColumn =
-        resolveBoolOrNull(context, 'showCheckboxColumn') ?? showCheckboxColumn;
+        resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
     final resolvedShowFirstLastButtons =
-        resolveBoolOrNull(context, 'showFirstLastButtons') ?? showFirstLastButtons;
+        resolveBoolOrNull('showFirstLastButtons') ?? showFirstLastButtons;
     final resolvedInitialFirstRowIndex =
-        initialFirstRowIndex ?? resolveIntOrNull(context, 'initialFirstRowIndex');
+        initialFirstRowIndex ?? resolveIntOrNull('initialFirstRowIndex');
     final resolvedRowsPerPage =
-        resolveIntOrNull(context, 'rowsPerPage') ?? rowsPerPage;
+        resolveIntOrNull('rowsPerPage') ?? rowsPerPage;
     final resolvedShowEmptyRows =
-        resolveBoolOrNull(context, 'showEmptyRows') ?? showEmptyRows;
+        resolveBoolOrNull('showEmptyRows') ?? showEmptyRows;
 
     return PaginatedDataTable(
       header: header,
@@ -291,14 +291,14 @@ class TomTable extends TomTableBase {
       columnWidths: columnWidths,
       defaultColumnWidth: defaultColumnWidth,
       textDirection: textDirection,
-      border: border ?? _resolveTableBorder(context, 'border'),
+      border: border ?? _resolveTableBorder('border'),
       defaultVerticalAlignment: defaultVerticalAlignment,
       textBaseline: textBaseline,
     );
   }
 
-  TableBorder? _resolveTableBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TableBorder? _resolveTableBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTableBorder(basePath, suffix);
   }
@@ -348,18 +348,18 @@ class TomGridView extends TomTableBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedReverse = resolveBoolOrNull(context, 'reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+    final resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
     final resolvedShrinkWrap =
-        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
     final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
     final resolvedSemanticChildCount =
-        semanticChildCount ?? resolveIntOrNull(context, 'semanticChildCount');
+        semanticChildCount ?? resolveIntOrNull('semanticChildCount');
     final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+        restorationId ?? resolveResourceOrNull('restorationId');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     return GridView.custom(
       scrollDirection: scrollDirection,
@@ -444,23 +444,23 @@ class TomReorderableListView extends TomTableBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+        itemExtent ?? resolveDoubleOrNull('itemExtent');
     final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
     final resolvedAnchor =
-        anchor ?? resolveDoubleOrNull(context, 'anchor') ?? 0.0;
+        anchor ?? resolveDoubleOrNull('anchor') ?? 0.0;
     final resolvedAutoScrollerVelocityScalar =
-        autoScrollerVelocityScalar ?? resolveDoubleOrNull(context, 'autoScrollerVelocityScalar');
+        autoScrollerVelocityScalar ?? resolveDoubleOrNull('autoScrollerVelocityScalar');
     final resolvedBuildDefaultDragHandles =
-      resolveBoolOrNull(context, 'buildDefaultDragHandles') ?? buildDefaultDragHandles;
-    final resolvedReverse = resolveBoolOrNull(context, 'reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+      resolveBoolOrNull('buildDefaultDragHandles') ?? buildDefaultDragHandles;
+    final resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
     final resolvedShrinkWrap =
-      resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+      resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
     final resolvedRestorationId =
-      restorationId ?? resolveResourceOrNull(context, 'restorationId');
+      restorationId ?? resolveResourceOrNull('restorationId');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     return ReorderableListView(
       onReorder: onReorder,
@@ -531,16 +531,15 @@ class _TomAuthContent extends StatelessWidget {
   });
 
   final String? tomId;
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     if (tomId == null) return child;
 
-    final scope = TomNodeScope.of(context);
-    final fullPath = scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     final auth = TomUIAuthorization.resolveAuth(fullPath);
 
     // Hidden: return empty
@@ -618,7 +617,7 @@ class TomDataCell extends DataCell {
   final String? tomId;
 
   /// Optional group membership.
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 }
 
 /// Tom extension of [DataColumn] with built-in authorization.
@@ -665,7 +664,7 @@ class TomDataColumn extends DataColumn {
   final String? tomId;
 
   /// Optional group membership.
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   /// Returns true if this column should be visible based on authorization.
   ///
@@ -675,18 +674,16 @@ class TomDataColumn extends DataColumn {
   /// ```
   bool isVisible(BuildContext context) {
     if (tomId == null) return true;
-    final scope = TomNodeScope.of(context);
-    final fullPath = scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).visible;
   }
 
   /// Returns true if this column should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (tomId == null) return false;
-    final scope = TomNodeScope.of(context);
-    final fullPath = scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).readonly;
   }
 }
@@ -736,7 +733,7 @@ class TomDataRow extends DataRow {
   final String? tomId;
 
   /// Optional group membership.
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   /// Returns true if this row should be visible based on authorization.
   ///
@@ -746,18 +743,16 @@ class TomDataRow extends DataRow {
   /// ```
   bool isVisible(BuildContext context) {
     if (tomId == null) return true;
-    final scope = TomNodeScope.of(context);
-    final fullPath = scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).visible;
   }
 
   /// Returns true if this row should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (tomId == null) return false;
-    final scope = TomNodeScope.of(context);
-    final fullPath = scope?.appendWidget(tomId!) ??
-        TomIdPrefix.prefixed(TomIdPrefix.widget, tomId!);
+    final scopePath = TomScope.current.getScopePath();
+    final fullPath = scopePath.isNotEmpty ? '$scopePath.$tomId' : tomId!;
     return TomUIAuthorization.resolveAuth(fullPath).readonly;
   }
 }

@@ -12,11 +12,16 @@ import 'tom_node_base.dart';
 /// - **Readonly** → visual treatment from [TomReadonlyStyle] via [TomThemeScope].
 /// - **Full access** → normal rendering.
 abstract class TomPolicyNodeBase extends TomNodeBase {
-  const TomPolicyNodeBase({super.key, super.tomId, super.tomGroup});
+  const TomPolicyNodeBase({
+    super.key,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final resourceKeyPath = resolveResourceBasePath(context);
+    final resourceKeyPath = resolveResourceBasePath();
 
     final authState = resourceKeyPath != null
         ? TomUIAuthorization.resolveAuth(resourceKeyPath)

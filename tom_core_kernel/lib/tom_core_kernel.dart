@@ -23,6 +23,7 @@ export 'src/tombase/logging/logging_isolate.dart';
 export 'src/tombase/logging/remote_logoutput.dart';
 export 'src/tombase/logging/remote_logserver.dart';
 export 'src/tombase/resources/tom_resource_provider.dart';
+export 'src/tombase/scope_ids/scope_ids.dart';
 export 'src/tombase/security/access_controls.dart';
 export 'src/tombase/security/authentication_authorization.dart';
 export 'src/tombase/security/bearer_authentication.dart';

@@ -32,18 +32,18 @@ class TomTreeView extends TomTreeBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedIndentation =
-        indentation ?? resolveDoubleOrNull(context, 'indentation') ?? 24.0;
+        indentation ?? resolveDoubleOrNull('indentation') ?? 24.0;
     final resolvedShrinkWrap =
-        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
     final resolvedInitiallyExpanded =
-        resolveBoolOrNull(context, 'initiallyExpanded');
+        resolveBoolOrNull('initiallyExpanded');
 
     return ListView(
       padding: resolvedPadding,
       shrinkWrap: resolvedShrinkWrap,
-      physics: physics ?? _resolveScrollPhysics(context, 'physics'),
+      physics: physics ?? _resolveScrollPhysics('physics'),
       children: [
         for (final node in nodes)
           _TomTreeNodeWidget(
@@ -56,8 +56,8 @@ class TomTreeView extends TomTreeBase {
     );
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -199,11 +199,11 @@ class TomTreeSliver<T> extends TomTreeBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ??
-        resolveBoolOrNull(context, 'addAutomaticKeepAlives') ?? true;
+        resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
     final resolvedAddRepaintBoundaries = addRepaintBoundaries ??
-        resolveBoolOrNull(context, 'addRepaintBoundaries') ?? true;
+        resolveBoolOrNull('addRepaintBoundaries') ?? true;
     final resolvedAddSemanticIndexes =
-        addSemanticIndexes ?? resolveBoolOrNull(context, 'addSemanticIndexes') ?? true;
+        addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;
 
     return TreeSliver<T>(
       tree: tree,

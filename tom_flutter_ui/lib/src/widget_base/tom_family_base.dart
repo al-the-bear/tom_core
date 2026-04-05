@@ -1,8 +1,6 @@
 import 'package:flutter/widgets.dart';
 
 import '../resource_auth/tom_auth_state.dart';
-import '../resource_auth/tom_id_prefix.dart';
-import 'tom_node_base.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';
 
@@ -12,7 +10,7 @@ import 'tom_widget_family.dart';
 /// via [families]. Extends [TomPolicyNodeBase] so authorization is always
 /// enforced.
 abstract class TomFamilyBase extends TomPolicyNodeBase {
-  const TomFamilyBase({super.key, super.tomId, super.tomGroup});
+  const TomFamilyBase({super.key, super.tomId, super.tomGroup, super.scope});
 
   /// The primary widget family for this widget.
   TomWidgetFamily get family;
@@ -40,6 +38,7 @@ abstract class TomButtonBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -52,6 +51,7 @@ abstract class TomInputBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -64,6 +64,7 @@ abstract class TomSelectBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -76,6 +77,7 @@ abstract class TomToggleBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -88,6 +90,7 @@ abstract class TomSliderBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -96,44 +99,24 @@ abstract class TomSliderBase extends TomFamilyBase {
 
 /// Base for the Container family (structural wrapper widgets).
 ///
-/// Containers propagate their ID to descendants via [TomNodeScope].
-///
-/// When [idScope] is `true` (identity container), the container's ID is
-/// appended to the descendant path — child widgets see it in their
-/// canonical path (e.g., `c-shipping.w-street`).
-///
-/// When [idScope] is `false` (layout container, default), the container
-/// resolves its OWN resources and auth using its self-path, but does NOT
-/// modify the descendant path. This is the key mechanism that keeps
-/// identity paths stable under UI restructuring.
+/// Containers resolve their own resources and authorization using their
+/// [tomId] but do NOT create new scopes for child widgets. Scoping is
+/// managed at higher levels via [TomScope].
 abstract class TomContainerBase extends TomFamilyBase {
-  /// Whether this container contributes its ID to descendant paths.
-  ///
-  /// - `true` — identity container: ID appears in descendant paths.
-  /// - `false` — layout container (default): ID is for own resources only.
-  final bool idScope;
-
   const TomContainerBase({
     super.key,
     super.tomId,
     super.tomGroup,
-    this.idScope = false,
+    super.scope,
   });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.container;
 
   @override
-  String get idPrefix => 'c-';
-
-  @override
   Widget build(BuildContext context) {
-    // Self-path: always includes own ID (for own resources and auth).
-    final scope = TomNodeScope.of(context);
-    final selfPath = tomId != null
-        ? (scope?.selfPathForContainer(tomId!) ??
-            TomIdPrefix.prefixed(TomIdPrefix.container, tomId!))
-        : null;
+    // Self-path: <scopePath>.<tomId>
+    final selfPath = resolveResourceBasePath();
 
     final authState = selfPath != null
         ? TomUIAuthorization.resolveAuth(selfPath)
@@ -141,24 +124,10 @@ abstract class TomContainerBase extends TomFamilyBase {
 
     if (!authState.visible) return const SizedBox.shrink();
 
-    Widget content;
     if (authState.readonly) {
-      content = buildReadonly(context);
-    } else {
-      content = buildContent(context);
+      return buildReadonly(context);
     }
-
-    // Scope propagation: only include ID in descendant path if idScope is true.
-    if (tomId != null) {
-      return TomNodeScope.extend(
-        context,
-        containerId: tomId,
-        containerIdScope: idScope,
-        groupId: tomGroup,
-        child: content,
-      );
-    }
-    return content;
+    return buildContent(context);
   }
 }
 
@@ -168,6 +137,7 @@ abstract class TomDialogBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -180,6 +150,7 @@ abstract class TomTableBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -192,6 +163,7 @@ abstract class TomLabelBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -204,6 +176,7 @@ abstract class TomImageBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -216,6 +189,7 @@ abstract class TomNavigationBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -228,6 +202,7 @@ abstract class TomProgressBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -240,6 +215,7 @@ abstract class TomChipBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -252,6 +228,7 @@ abstract class TomListBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -264,6 +241,7 @@ abstract class TomTreeBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -276,6 +254,7 @@ abstract class TomSliverBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -288,6 +267,7 @@ abstract class TomAnimatedBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -300,6 +280,7 @@ abstract class TomEffectBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -312,6 +293,7 @@ abstract class TomInteractionBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override
@@ -324,6 +306,7 @@ abstract class TomBuilderBase extends TomFamilyBase {
     super.key,
     super.tomId,
     super.tomGroup,
+    super.scope,
   });
 
   @override

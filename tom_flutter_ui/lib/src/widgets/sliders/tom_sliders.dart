@@ -49,23 +49,23 @@ class TomSlider extends TomSliderBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
-      label ?? resolveResourceOrNull(context, 'label');
+      label ?? resolveResourceOrNull('label');
 
     // Phase 2: Resolve optional color parameters from resources
     final resolvedMin =
-      resolveDoubleOrNull(context, 'min') ?? min;
+      resolveDoubleOrNull('min') ?? min;
     final resolvedMax =
-      resolveDoubleOrNull(context, 'max') ?? max;
+      resolveDoubleOrNull('max') ?? max;
     final resolvedDivisions =
-      divisions ?? resolveIntOrNull(context, 'divisions');
+      divisions ?? resolveIntOrNull('divisions');
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedInactiveColor =
-        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+        inactiveColor ?? resolveColorOrNull('inactiveColor');
     final resolvedThumbColor =
-        thumbColor ?? resolveColorOrNull(context, 'thumbColor');
+        thumbColor ?? resolveColorOrNull('thumbColor');
     final resolvedAutofocus =
-      resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+      resolveBoolOrNull('autofocus') ?? autofocus;
 
     return Slider(
       value: value,
@@ -126,13 +126,13 @@ class TomRangeSlider extends TomSliderBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedMin = resolveDoubleOrNull(context, 'min') ?? min;
-    final resolvedMax = resolveDoubleOrNull(context, 'max') ?? max;
-    final resolvedDivisions = divisions ?? resolveIntOrNull(context, 'divisions');
+    final resolvedMin = resolveDoubleOrNull('min') ?? min;
+    final resolvedMax = resolveDoubleOrNull('max') ?? max;
+    final resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedInactiveColor =
-        inactiveColor ?? resolveColorOrNull(context, 'inactiveColor');
+        inactiveColor ?? resolveColorOrNull('inactiveColor');
 
     return RangeSlider(
       values: values,
@@ -184,13 +184,13 @@ class TomCupertinoSlider extends TomSliderBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedMin = resolveDoubleOrNull(context, 'min') ?? min;
-    final resolvedMax = resolveDoubleOrNull(context, 'max') ?? max;
-    final resolvedDivisions = divisions ?? resolveIntOrNull(context, 'divisions');
+    final resolvedMin = resolveDoubleOrNull('min') ?? min;
+    final resolvedMax = resolveDoubleOrNull('max') ?? max;
+    final resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
     final resolvedActiveColor =
-        activeColor ?? resolveColorOrNull(context, 'activeColor');
+        activeColor ?? resolveColorOrNull('activeColor');
     final resolvedThumbColor =
-        resolveColorOrNull(context, 'thumbColor') ?? thumbColor;
+        resolveColorOrNull('thumbColor') ?? thumbColor;
 
     return CupertinoSlider(
       value: value,

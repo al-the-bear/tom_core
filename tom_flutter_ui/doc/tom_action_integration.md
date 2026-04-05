@@ -73,57 +73,45 @@ Every action MUST be part of an ActionController.
 
 ### Integration with Widgets
 
-Actions and widgets don't share scope inheritance but use different prefixes. A button widget that triggers an action has its **own** widget ID and the **action's** action ID:
+A button widget that triggers an action has its **own** widget path and references the **action's** path:
 
 ```
-Widget:  r-orders.c-toolbar.w-deleteBtn     ← button widget
-Action:  ac-orderMgmt.a-delete              ← action being triggered
+Widget:  shoppingApp.checkout.toolbar.deleteBtn     ← button widget
+Action:  shoppingApp.checkout.orderForm.delete      ← form-based action
+   or:   orderMgmt.delete                           ← standalone action
 ```
 
-The button's visibility and resources come from its widget path. The action's authorization and resources come from its action path, which is always of the structure: $actioncontroller-id.$action-id.
+The button's visibility and resources come from its widget path. The action's authorization comes from its action path.
 
-### Interdependence of Widget and Action Authoriuztion
+### Interdependence of Widget and Action Authorization
 
-A widget can be authorized while its action is not (button visible but disabled), or vice versa (button hidden because unauthorized). The two authorization checks are independent, but are combined:
+Widget and action authorization are independent but combine to determine the final button state.
+
+**Authorization values:**
+- Widget: `none` (hidden), `read` (readonly), `full` (editable)
+- Action: `full` (triggerable) or `none` (protected) — treat `read` as `none`
 
 | Widget Auth | Action Auth | Result |
 |-------------|-------------|--------|
-| Visible | Visible | Button visible, enabled |
-| Visible | Hidden | Button disabled |
-| Hidden | Visible | Button hidden |
-| Hidden | Hidden | Button hidden |
+| `full` | `full` | Button enabled |
+| `full` | `none`/`read` | Button disabled |
+| `read` | any | Button disabled |
+| `none` | any | Button hidden |
 
-### Extending TomNodeScope
+**Key insight:** When widget is `full` but action is `none`, the button is **disabled** (visible but greyed out), not hidden. This lets users see that an action exists but is currently unavailable.
 
-To support action paths, extend `TomNodeScope` with controller awareness:
+### Widget Authorization via `authorizor`
 
-```dart
-class TomNodeScope extends InheritedWidget {
-  // ... existing fields ...
-  final CustomAuthorization? authorizor;  // NEW: custom authorization
-  
-}
-```
-
-This can then be used to link the Widget to the action authorization:
+Widgets can link to action authorization via the `authorizor` field:
 
 ```dart
 TomWidget( 
-    authorizor = action.authorizor, 
-    onPressed = action.actionTrigger( (bc, tx) => {...} )
-    
-    );
+  authorizor: action.authorizor, 
+  onPressed: action.actionTrigger((ctx, tx) => {...}),
+);
 ```
 
-### TomIdPrefix Additions
-
-```dart
-class TomIdPrefix {
-  // ... existing ...
-  static const action = 'a-';
-  static const actionController = 'ac-';
-}
-```
+The `authorizor` provides a `TomAuthorizor` that resolves the action's authorization at instantiation time (no BuildContext needed).
 
 ---
 
@@ -141,16 +129,15 @@ Actions have no "readonly" state because an action either can be triggered or ca
 
 ### Authorization Resolution
 
-Action authorization uses the a new `TomActionAuthorization` singleton as widgets:
+Action authorization uses `TomActionAuthorization`:
 
 ```dart
 extension ActionAuthorization on TomAction {
   bool isAuthorized() {
-    bool actionAuth = !TomActionAuthorization.isProtected($controllerId.$actionId);
-    bool groupAuth = group!=null ? group.isVisible() : true; // no group -> visible
+    bool actionAuth = !TomActionAuthorization.isProtected(controller.fullPath + '.' + actionId);
+    bool groupAuth = group != null ? group.isVisible() : true; // no group -> visible
     return actionAuth && groupAuth;
   }
-  
 }
 ```
 
@@ -158,10 +145,10 @@ This maps directly to the underlying authorization infrastructure found in tom_c
 
 ### No Lookup Hierarchy
 
-For action `a-delete` in controller `ac-orderMgmt`:
+For action `delete` in controller `orderMgmt`:
 
 ```
-1. ac-orderMgmt.a-delete          ← controller + action
+1. orderMgmt.delete          ← controller + action
 ```
 
 No lookup hierarchy.
@@ -179,7 +166,7 @@ class DeleteOrderAction extends TomAction<OrderActionContext, Order> {
 }
 ```
 
-Group path: `r-orders.g-orderMutations` — hides all members when unauthorized. A group is unauthorized if a single member is not authorized.
+Group path: `orders.orderMutations` — hides all members when unauthorized. A group is unauthorized if a single member is not authorized.
 
 ---
 
@@ -278,13 +265,17 @@ class OrderController extends TomActionController {
 
 Actions resolve resources using their canonical path:
 
-```dart
-// Path: ac-orderMgmt.a-delete
-ac-orderMgmt.a-delete.label: "Delete Order"
-ac-orderMgmt.a-delete.tooltip: "Permanently delete the selected order"
-ac-orderMgmt.a-delete.icon: "delete"
-ac-orderMgmt.a-delete.confirm.title: "Delete Order?"
-ac-orderMgmt.a-delete.confirm.message: "This cannot be undone."
+```yaml
+# Standalone controller path: orderMgmt.delete
+orderMgmt.delete.label: "Delete Order"
+orderMgmt.delete.tooltip: "Permanently delete the selected order"
+orderMgmt.delete.icon: "delete"
+orderMgmt.delete.confirm.title: "Delete Order?"
+orderMgmt.delete.confirm.message: "This cannot be undone."
+
+# Form-based controller path: shoppingApp.checkout.orderForm.save
+shoppingApp.checkout.orderForm.save.label: "Save Order"
+shoppingApp.checkout.orderForm.save.tooltip: "Save changes to the order"
 ```
 
 Sample resource suffixes:
@@ -344,24 +335,171 @@ var button = TomElevatedButton(
 
 ---
 
-### Popup-Menus and etc.
+### Popup Menus
 
-a similar pattern as above is used to use the standard widgets and integrate them with actions
+Popup menus, dropdown menus, and context menus use the same `actionTrigger()` pattern. Since resource resolution happens at instantiation time (no BuildContext needed), menu items can be created upfront:
 
-USER: please fill in!!!
+```dart
+// Popup menu with action items
+TomPopupMenuButton(
+  tomId: 'orderActions',
+  itemBuilder: (context) => [
+    TomPopupMenuItem(
+      tomId: 'editItem',
+      authorizor: editAction.authorizor,
+      onTap: editAction.actionTrigger(
+        contextBuilder: (_) => OrderActionContext(...),
+      ),
+      child: Text(editAction.label),  // Resolved at instantiation
+    ),
+    TomPopupMenuItem(
+      tomId: 'deleteItem',
+      authorizor: deleteAction.authorizor,
+      onTap: deleteAction.actionTrigger(
+        contextBuilder: (_) => OrderActionContext(...),
+      ),
+      child: Text(deleteAction.label),
+    ),
+  ],
+)
+```
 
-### Multiple actions
+**Dropdown menus:**
 
-if a widget is linked to more than one action, there is a multi-action authorizor:
+```dart
+TomDropdownMenu(
+  tomId: 'statusDropdown',
+  dropdownMenuEntries: [
+    TomDropdownMenuEntry(
+      value: 'approve',
+      authorizor: approveAction.authorizor,
+      onPressed: approveAction.actionTrigger(...),
+      label: approveAction.label,
+    ),
+    TomDropdownMenuEntry(
+      value: 'reject',
+      authorizor: rejectAction.authorizor,
+      onPressed: rejectAction.actionTrigger(...),
+      label: rejectAction.label,
+    ),
+  ],
+)
+```
 
-authorizor = TomMultiAuthorizor([ action1.authorizor, action2.authorizor ]);
+**Context menus (right-click):**
 
-widget can link to multiple actions either:
+```dart
+TomContextMenu(
+  tomId: 'rowContext',
+  actions: [
+    TomContextMenuAction(
+      tomId: 'copyAction',
+      authorizor: copyAction.authorizor,
+      onPressed: copyAction.actionTrigger(...),
+      child: Row(children: [
+        Icon(copyAction.icon),
+        Text(copyAction.label),
+      ]),
+    ),
+  ],
+)
+```
 
-- through multiple callbacks
-- using a multi-action callback adaptor
+**Key benefit:** All menu items resolve their labels, icons, and authorization at instantiation time. No need to access BuildContext during menu construction.
 
-USER: please fill in!!!
+### Multiple Actions
+
+When a widget is linked to more than one action, use `TomMultiAuthorizor` to combine authorization:
+
+```dart
+// Multi-action authorization: button enabled only if ALL actions are authorized
+authorizor: TomMultiAuthorizor([
+  action1.authorizor,
+  action2.authorizor,
+])
+```
+
+**Multiple callbacks via separate handlers:**
+
+```dart
+TomListTile(
+  tomId: 'orderRow',
+  authorizor: TomMultiAuthorizor([viewAction.authorizor, editAction.authorizor]),
+  onTap: viewAction.actionTrigger(
+    contextBuilder: (_) => OrderActionContext(...),
+  ),
+  onLongPress: editAction.actionTrigger(
+    contextBuilder: (_) => OrderActionContext(...),
+  ),
+)
+```
+
+**Action sequence via `TomActionSequence`:**
+
+```dart
+// Execute multiple actions in sequence
+final validateAndSave = TomActionSequence([
+  validateAction,
+  saveAction,
+]);
+
+TomElevatedButton(
+  tomId: 'saveBtn',
+  authorizor: validateAndSave.authorizor,  // Combined: all must be authorized
+  onPressed: validateAndSave.actionTrigger(
+    contextBuilder: (_) => FormActionContext(...),
+  ),
+)
+```
+
+**Conditional action selection:**
+
+```dart
+// Choose action based on state
+TomElevatedButton(
+  tomId: 'toggleBtn',
+  authorizor: TomMultiAuthorizor([enableAction.authorizor, disableAction.authorizor]),
+  onPressed: () {
+    final action = isEnabled ? disableAction : enableAction;
+    action.execute(context);
+  },
+)
+```
+
+---
+
+## 6. Widgets Requiring Modification
+
+With instantiation-time resource and authorization resolution (no BuildContext required), the following widgets can now be fully integrated that were previously problematic:
+
+### Widgets to Modify (add `authorizor` and `scope` parameters)
+
+| Widget | Modification Required |
+|--------|----------------------|
+| All button widgets | Add `authorizor` parameter for action authorization |
+| All container widgets | Add optional `scope` parameter for scope inheritance |
+| `TomPopupMenuItem` | Add `authorizor` for menu item visibility/enabled state |
+| `TomDropdownMenuEntry` | Add `authorizor` for entry visibility/enabled state |
+| `TomContextMenuAction` | Add `authorizor` for context menu item state |
+| `TomListTile` | Add `authorizor` for tile-level authorization |
+
+### Widgets to Add
+
+| Widget | Purpose |
+|--------|---------|
+| `TomActionButton` | Action-first button that takes a `TomAction` directly |
+| `TomActionMenuItem` | Menu item that takes a `TomAction` directly |
+| `TomFormScope` | Provides form scope to descendants |
+
+### New Action Accessors on TomAction
+
+| Accessor | Type | Purpose |
+|----------|------|---------|
+| `authorizor` | `TomAuthorizor` | Authorization provider for widgets |
+| `label` | `String` | Resolved label text |
+| `tooltip` | `String?` | Resolved tooltip text |
+| `icon` | `IconData?` | Resolved icon |
+| `actionTrigger()` | `VoidCallback Function(...)` | Creates callback with context builder |
 
 ---
 
@@ -369,9 +507,7 @@ USER: please fill in!!!
 
 Analysis of all 299 Tom widgets and their relationship to actions.
 
-Actions can be wired to ALL possible events (onChanged, onTap, onPressed, onSelectionChanged, onEnter, onExit)
-
-USER: update the table to reflect which Widgets/callbacks might needed additional adapter classes (typically additional accessors on TomAction to provide these).
+Actions can be wired to ALL possible events (onChanged, onTap, onPressed, onSelectionChanged, onEnter, onExit).
 
 ### Primary Action Triggers (39 widgets)
 

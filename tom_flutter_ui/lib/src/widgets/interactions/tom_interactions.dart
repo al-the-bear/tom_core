@@ -116,11 +116,11 @@ class TomGestureDetector extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedExcludeFromSemantics = excludeFromSemantics ??
-      resolveBoolOrNull(context, 'excludeFromSemantics') ?? false;
+      resolveBoolOrNull('excludeFromSemantics') ?? false;
     final resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ??
-      resolveBoolOrNull(context, 'trackpadScrollCausesScale') ?? false;
+      resolveBoolOrNull('trackpadScrollCausesScale') ?? false;
     final resolvedTrackpadScrollToScaleFactor =
-      _resolveOffset(context, 'trackpadScrollToScaleFactor') ?? trackpadScrollToScaleFactor;
+      _resolveOffset('trackpadScrollToScaleFactor') ?? trackpadScrollToScaleFactor;
 
     return GestureDetector(
       onTap: onTap,
@@ -172,8 +172,8 @@ class TomGestureDetector extends TomInteractionBase {
     );
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -256,27 +256,27 @@ class TomInkWell extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedHighlightColor =
-        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+        highlightColor ?? resolveColorOrNull('highlightColor');
     final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull(context, 'splashColor');
+        splashColor ?? resolveColorOrNull('splashColor');
     final resolvedRadius =
-        radius ?? resolveDoubleOrNull(context, 'radius');
+        radius ?? resolveDoubleOrNull('radius');
     final resolvedBorderRadius =
-        borderRadius ?? _resolveBorderRadius(context, 'borderRadius');
+        borderRadius ?? _resolveBorderRadius('borderRadius');
     final resolvedCustomBorder =
-        customBorder ?? _resolveShapeBorder(context, 'customBorder');
+        customBorder ?? _resolveShapeBorder('customBorder');
     final resolvedEnableFeedback =
-        enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback') ?? true;
+        enableFeedback ?? resolveBoolOrNull('enableFeedback') ?? true;
     final resolvedExcludeFromSemantics =
-        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
+        resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
     final resolvedCanRequestFocus =
-        resolveBoolOrNull(context, 'canRequestFocus') ?? canRequestFocus;
+        resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
+        resolveBoolOrNull('autofocus') ?? autofocus;
 
     return InkWell(
       onTap: onTap,
@@ -313,14 +313,14 @@ class TomInkWell extends TomInteractionBase {
     );
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -399,24 +399,24 @@ class TomInkResponse extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedContainedInkWell =
-      containedInkWell ?? resolveBoolOrNull(context, 'containedInkWell') ?? false;
-    final resolvedRadius = radius ?? resolveDoubleOrNull(context, 'radius');
+      containedInkWell ?? resolveBoolOrNull('containedInkWell') ?? false;
+    final resolvedRadius = radius ?? resolveDoubleOrNull('radius');
     final resolvedFocusColor =
-      focusColor ?? resolveColorOrNull(context, 'focusColor');
+      focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-      hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+      hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedHighlightColor =
-      highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+      highlightColor ?? resolveColorOrNull('highlightColor');
     final resolvedSplashColor =
-      splashColor ?? resolveColorOrNull(context, 'splashColor');
+      splashColor ?? resolveColorOrNull('splashColor');
     final resolvedEnableFeedback =
-      enableFeedback ?? resolveBoolOrNull(context, 'enableFeedback') ?? true;
+      enableFeedback ?? resolveBoolOrNull('enableFeedback') ?? true;
     final resolvedExcludeFromSemantics = excludeFromSemantics ??
-      resolveBoolOrNull(context, 'excludeFromSemantics') ?? false;
+      resolveBoolOrNull('excludeFromSemantics') ?? false;
     final resolvedAutofocus =
-      autofocus ?? resolveBoolOrNull(context, 'autofocus') ?? false;
+      autofocus ?? resolveBoolOrNull('autofocus') ?? false;
     final resolvedCanRequestFocus =
-      canRequestFocus ?? resolveBoolOrNull(context, 'canRequestFocus') ?? true;
+      canRequestFocus ?? resolveBoolOrNull('canRequestFocus') ?? true;
 
     return InkResponse(
       onTap: onTap,
@@ -431,8 +431,8 @@ class TomInkResponse extends TomInteractionBase {
       containedInkWell: resolvedContainedInkWell,
       highlightShape: highlightShape,
       radius: resolvedRadius,
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius'),
-      customBorder: customBorder ?? _resolveShapeBorder(context, 'customBorder'),
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius'),
+      customBorder: customBorder ?? _resolveShapeBorder('customBorder'),
       focusColor: resolvedFocusColor,
       hoverColor: resolvedHoverColor,
       highlightColor: resolvedHighlightColor,
@@ -451,14 +451,14 @@ class TomInkResponse extends TomInteractionBase {
     );
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -517,19 +517,19 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedMaxSimultaneousDrags = maxSimultaneousDrags ??
-      resolveIntOrNull(context, 'maxSimultaneousDrags');
+      resolveIntOrNull('maxSimultaneousDrags');
     final resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ??
-      resolveBoolOrNull(context, 'ignoringFeedbackSemantics') ?? true;
+      resolveBoolOrNull('ignoringFeedbackSemantics') ?? true;
     final resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ??
-      resolveBoolOrNull(context, 'ignoringFeedbackPointer') ?? true;
+      resolveBoolOrNull('ignoringFeedbackPointer') ?? true;
     final resolvedRootOverlay =
-      rootOverlay ?? resolveBoolOrNull(context, 'rootOverlay') ?? false;
+      rootOverlay ?? resolveBoolOrNull('rootOverlay') ?? false;
 
     return Draggable<T>(
       data: data,
       axis: axis,
       childWhenDragging: childWhenDragging,
-      feedbackOffset: _resolveOffset(context, 'feedbackOffset') ?? feedbackOffset,
+      feedbackOffset: _resolveOffset('feedbackOffset') ?? feedbackOffset,
       dragAnchorStrategy: dragAnchorStrategy,
       affinity: affinity,
       maxSimultaneousDrags: resolvedMaxSimultaneousDrags,
@@ -547,8 +547,8 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
     );
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -581,7 +581,7 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedHitTestBehavior = hitTestBehavior ??
-        _resolveHitTestBehavior(resolveResourceOrNull(context, 'hitTestBehavior')) ??
+        _resolveHitTestBehavior(resolveResourceOrNull('hitTestBehavior')) ??
         HitTestBehavior.translucent;
 
     return DragTarget<T>(
@@ -644,13 +644,13 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedMaxSimultaneousDrags = maxSimultaneousDrags ??
-      resolveIntOrNull(context, 'maxSimultaneousDrags');
+      resolveIntOrNull('maxSimultaneousDrags');
     final resolvedHapticFeedbackOnStart = hapticFeedbackOnStart ??
-      resolveBoolOrNull(context, 'hapticFeedbackOnStart') ?? true;
+      resolveBoolOrNull('hapticFeedbackOnStart') ?? true;
     final resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ??
-      resolveBoolOrNull(context, 'ignoringFeedbackSemantics') ?? true;
+      resolveBoolOrNull('ignoringFeedbackSemantics') ?? true;
     final resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ??
-      resolveBoolOrNull(context, 'ignoringFeedbackPointer') ?? true;
+      resolveBoolOrNull('ignoringFeedbackPointer') ?? true;
 
     return LongPressDraggable<T>(
       data: data,
@@ -693,7 +693,7 @@ class TomAbsorbPointer extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedAbsorbing =
-        absorbing ?? resolveBoolOrNull(context, 'absorbing') ?? true;
+        absorbing ?? resolveBoolOrNull('absorbing') ?? true;
 
     return AbsorbPointer(
       absorbing: resolvedAbsorbing,
@@ -721,7 +721,7 @@ class TomIgnorePointer extends TomInteractionBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedIgnoring =
-        ignoring ?? resolveBoolOrNull(context, 'ignoring') ?? true;
+        ignoring ?? resolveBoolOrNull('ignoring') ?? true;
 
     return IgnorePointer(
       ignoring: resolvedIgnoring,
@@ -758,9 +758,9 @@ class TomMouseRegion extends TomInteractionBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedOpaque = opaque ?? resolveBoolOrNull(context, 'opaque') ?? true;
+    final resolvedOpaque = opaque ?? resolveBoolOrNull('opaque') ?? true;
     final resolvedHitTestBehavior = hitTestBehavior ??
-        _resolveHitTestBehavior(resolveResourceOrNull(context, 'hitTestBehavior'));
+        _resolveHitTestBehavior(resolveResourceOrNull('hitTestBehavior'));
 
     return MouseRegion(
       onEnter: onEnter,

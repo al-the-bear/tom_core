@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart';
 
+import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -38,20 +39,20 @@ class TomCircularProgressIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
         semanticsLabel ??
-            resolveResourceOrNull(context, 'semanticsLabel') ??
-            (tomId != null ? resolveResourceOrFail(context, 'label') : null);
+            resolveResourceOrNull('semanticsLabel') ??
+            (tomId != null ? resolveResourceOrFail('label') : null);
     final resolvedSemanticsValue =
-        semanticsValue ?? resolveResourceOrNull(context, 'semanticsValue');
+        semanticsValue ?? resolveResourceOrNull('semanticsValue');
 
     // Phase 2: Resolve optional parameters from resources
-    final resolvedValue = value ?? resolveDoubleOrNull(context, 'value');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedValue = value ?? resolveDoubleOrNull('value');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedStrokeWidth =
-      strokeWidth ?? resolveDoubleOrNull(context, 'strokeWidth') ?? 4.0;
+      strokeWidth ?? resolveDoubleOrNull('strokeWidth') ?? 4.0;
     final resolvedStrokeAlign =
-        resolveDoubleOrNull(context, 'strokeAlign') ?? strokeAlign;
+        resolveDoubleOrNull('strokeAlign') ?? strokeAlign;
 
     return CircularProgressIndicator(
       value: resolvedValue,
@@ -98,18 +99,18 @@ class TomLinearProgressIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
       semanticsLabel ??
-        resolveResourceOrNull(context, 'semanticsLabel') ??
-        (tomId != null ? resolveResourceOrFail(context, 'label') : null);
+        resolveResourceOrNull('semanticsLabel') ??
+        (tomId != null ? resolveResourceOrFail('label') : null);
     final resolvedSemanticsValue =
-      semanticsValue ?? resolveResourceOrNull(context, 'semanticsValue');
+      semanticsValue ?? resolveResourceOrNull('semanticsValue');
 
     // Phase 2: Resolve optional parameters from resources
-    final resolvedValue = value ?? resolveDoubleOrNull(context, 'value');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedValue = value ?? resolveDoubleOrNull('value');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedMinHeight =
-        minHeight ?? resolveDoubleOrNull(context, 'minHeight');
+        minHeight ?? resolveDoubleOrNull('minHeight');
 
     return LinearProgressIndicator(
       value: resolvedValue,
@@ -119,12 +120,12 @@ class TomLinearProgressIndicator extends TomProgressBase {
       minHeight: resolvedMinHeight,
       semanticsLabel: resolvedLabel,
       semanticsValue: resolvedSemanticsValue,
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? BorderRadius.zero,
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius') ?? BorderRadius.zero,
     );
   }
 
-  BorderRadiusGeometry? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadiusGeometry? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
@@ -167,21 +168,21 @@ class TomRefreshIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     final resolvedLabel =
       semanticsLabel ??
-        resolveResourceOrNull(context, 'semanticsLabel') ??
-        (tomId != null ? resolveResourceOrFail(context, 'label') : null);
+        resolveResourceOrNull('semanticsLabel') ??
+        (tomId != null ? resolveResourceOrFail('label') : null);
     final resolvedSemanticsValue =
-      semanticsValue ?? resolveResourceOrNull(context, 'semanticsValue');
+      semanticsValue ?? resolveResourceOrNull('semanticsValue');
 
     // Phase 2: Resolve optional color parameters from resources
     final resolvedDisplacement =
-      resolveDoubleOrNull(context, 'displacement') ?? displacement;
+      resolveDoubleOrNull('displacement') ?? displacement;
     final resolvedEdgeOffset =
-      resolveDoubleOrNull(context, 'edgeOffset') ?? edgeOffset;
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+      resolveDoubleOrNull('edgeOffset') ?? edgeOffset;
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedStrokeWidth =
-      resolveDoubleOrNull(context, 'strokeWidth') ?? strokeWidth;
+      resolveDoubleOrNull('strokeWidth') ?? strokeWidth;
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -220,10 +221,10 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional color parameter from resources
     final resolvedAnimating =
-        resolveBoolOrNull(context, 'animating') ?? animating;
+        resolveBoolOrNull('animating') ?? animating;
     final resolvedRadius =
-        resolveDoubleOrNull(context, 'radius') ?? radius;
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+        resolveDoubleOrNull('radius') ?? radius;
+    final resolvedColor = color ?? resolveColorOrNull('color');
 
     return CupertinoActivityIndicator(
       animating: resolvedAnimating,
@@ -260,13 +261,13 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
   Widget buildContent(BuildContext context) {
     // CupertinoActivityIndicator doesn't have a linear variant by default.
     // Using MaterialLinearProgressIndicator with Cupertino styling.
-    final resolvedValue = value ?? resolveDoubleOrNull(context, 'value') ?? 0.0;
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color') ??
+    final resolvedValue = value ?? resolveDoubleOrNull('value') ?? 0.0;
+    final resolvedColor = color ?? resolveColorOrNull('color') ??
         CupertinoTheme.of(context).primaryColor;
     final resolvedTrackHeight =
-        trackHeight ?? resolveDoubleOrNull(context, 'trackHeight') ?? 4.0;
+        trackHeight ?? resolveDoubleOrNull('trackHeight') ?? 4.0;
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding') ?? EdgeInsets.zero;
+        padding ?? resolveEdgeInsetsOrNull('padding') ?? EdgeInsets.zero;
 
     return Padding(
       padding: resolvedPadding,
@@ -302,9 +303,9 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedRefreshTriggerPullDistance = refreshTriggerPullDistance ??
-        resolveDoubleOrNull(context, 'refreshTriggerPullDistance') ?? 100.0;
+        resolveDoubleOrNull('refreshTriggerPullDistance') ?? 100.0;
     final resolvedRefreshIndicatorExtent = refreshIndicatorExtent ??
-        resolveDoubleOrNull(context, 'refreshIndicatorExtent') ?? 60.0;
+        resolveDoubleOrNull('refreshIndicatorExtent') ?? 60.0;
 
     return CupertinoSliverRefreshControl(
       refreshTriggerPullDistance: resolvedRefreshTriggerPullDistance,
@@ -324,7 +325,7 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   @override
   final String? tomId;
   @override
-  final String? tomGroup;
+  final TomUIGroup? tomGroup;
 
   const TomRefreshProgressIndicator({
     super.key,

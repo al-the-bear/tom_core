@@ -1,11 +1,10 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../resource_auth/tom_auth_state.dart';
-import '../resource_auth/tom_id_prefix.dart';
 import '../theme/tom_theme.dart';
-import '../widget_base/tom_node_base.dart';
 import 'acl_flags.dart';
 import 'acl_device_context.dart';
 import 'acl_group_visibility.dart';
@@ -635,60 +634,53 @@ class _AclContainerState extends State<AclContainer> {
 
   /// Builds the canonical policy path for an ACL component ID.
   ///
-  /// Uses [TomNodeScope.fullIdPath] as the identity base, then appends
-  /// group/row/widget segments. Layout container IDs are already excluded
-  /// from [fullIdPath] by the scope system.
+  /// Uses [TomScope.current.getScopePath()] as the identity base, then appends
+  /// group/row/widget segments.
   String _buildComponentPolicyPath({
     required String componentId,
     String? groupName,
     String? rowId,
   }) {
-    final scope = TomNodeScope.of(context);
-    final base = scope?.fullIdPath;
+    final scopePath = TomScope.current.getScopePath();
     final segments = <String>[];
 
-    if (base != null && base.isNotEmpty) segments.add(base);
+    if (scopePath.isNotEmpty) segments.add(scopePath);
 
     // Add container self-segment if this ACL has its own ID
     if (widget.aclId != null && widget.aclId!.isNotEmpty) {
-      segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, widget.aclId!),
-      );
+      segments.add(widget.aclId!);
     }
 
     if (groupName != null && groupName.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, groupName));
+      segments.add(groupName);
     }
 
     if (rowId != null && rowId.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.row, rowId));
+      segments.add(rowId);
     }
 
-    segments.add(TomIdPrefix.prefixed(TomIdPrefix.widget, componentId));
+    segments.add(componentId);
     return segments.join('.');
   }
 
   /// Builds the canonical policy path for an ACL row ID.
   ///
-  /// Uses [TomNodeScope.fullIdPath] as the identity base.
+  /// Uses [TomScope.current.getScopePath()] as the identity base.
   String _buildRowPolicyPath({required String rowId, String? groupName}) {
-    final scope = TomNodeScope.of(context);
-    final base = scope?.fullIdPath;
+    final scopePath = TomScope.current.getScopePath();
     final segments = <String>[];
 
-    if (base != null && base.isNotEmpty) segments.add(base);
+    if (scopePath.isNotEmpty) segments.add(scopePath);
 
     if (widget.aclId != null && widget.aclId!.isNotEmpty) {
-      segments.add(
-        TomIdPrefix.prefixed(TomIdPrefix.container, widget.aclId!),
-      );
+      segments.add(widget.aclId!);
     }
 
     if (groupName != null && groupName.isNotEmpty) {
-      segments.add(TomIdPrefix.prefixed(TomIdPrefix.group, groupName));
+      segments.add(groupName);
     }
 
-    segments.add(TomIdPrefix.prefixed(TomIdPrefix.row, rowId));
+    segments.add(rowId);
     return segments.join('.');
   }
 
@@ -1214,22 +1206,7 @@ class _AclContainerState extends State<AclContainer> {
             rowAuthState: rowAuthState,
           );
 
-          // Identity rows push their rw-<id> into the scope so nested
-          // containers inside this row see the row ID in their paths.
-          if (row.id != null && row.idScope) {
-            final scope = TomNodeScope.of(context);
-            final rowIdPath = scope != null
-                ? scope.selfPathForRow(row.id!)
-                : TomIdPrefix.prefixed(TomIdPrefix.row, row.id!);
-            builtRow = TomNodeScope(
-              routeId: scope?.routeId,
-              containerId: scope?.containerId,
-              groupId: scope?.groupId,
-              formId: scope?.formId,
-              fullIdPath: rowIdPath,
-              child: builtRow,
-            );
-          }
+          // Row IDs do not create new scopes - scoping is external to containers
 
           rowWidgets.add(builtRow);
         }

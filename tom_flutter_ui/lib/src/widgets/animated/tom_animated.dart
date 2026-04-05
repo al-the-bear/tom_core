@@ -36,22 +36,22 @@ class TomAnimatedAlign extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedHeightFactor =
-        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+        heightFactor ?? resolveDoubleOrNull('heightFactor');
     final resolvedWidthFactor =
-        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+        widthFactor ?? resolveDoubleOrNull('widthFactor');
 
     return AnimatedAlign(
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.center,
       child: child,
       heightFactor: resolvedHeightFactor,
       widthFactor: resolvedWidthFactor,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
     );
   }
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }}
@@ -142,50 +142,50 @@ class TomAnimatedContainer extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedMargin =
-        margin ?? resolveEdgeInsetsOrNull(context, 'margin');
+        margin ?? resolveEdgeInsetsOrNull('margin');
 
     return AnimatedContainer(
-      alignment: alignment ?? _resolveAlignment(context, 'alignment'),
+      alignment: alignment ?? _resolveAlignment('alignment'),
       padding: resolvedPadding,
       color: resolvedColor,
-      decoration: decoration ?? _resolveDecoration(context, 'decoration'),
-      foregroundDecoration: foregroundDecoration ?? _resolveDecoration(context, 'foregroundDecoration'),
-      constraints: constraints ?? _resolveBoxConstraints(context, 'constraints'),
+      decoration: decoration ?? _resolveDecoration('decoration'),
+      foregroundDecoration: foregroundDecoration ?? _resolveDecoration('foregroundDecoration'),
+      constraints: constraints ?? _resolveBoxConstraints('constraints'),
       width: resolvedWidth,
       height: resolvedHeight,
       margin: resolvedMargin,
       transform: transform,
-      transformAlignment: transformAlignment ?? _resolveAlignment(context, 'transformAlignment'),
+      transformAlignment: transformAlignment ?? _resolveAlignment('transformAlignment'),
       clipBehavior: clipBehavior,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
-  Decoration? _resolveDecoration(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Decoration? _resolveDecoration(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveDecoration(basePath, suffix);
   }
 
-  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BoxConstraints? _resolveBoxConstraints(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
@@ -228,25 +228,25 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedExcludeBottomFocus = excludeBottomFocus ??
-        resolveBoolOrNull(context, 'excludeBottomFocus') ?? true;
+        resolveBoolOrNull('excludeBottomFocus') ?? true;
 
     return AnimatedCrossFade(
       firstChild: firstChild,
       secondChild: secondChild,
       crossFadeState: crossFadeState,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       reverseDuration: reverseDuration,
       firstCurve: firstCurve,
       secondCurve: secondCurve,
       sizeCurve: sizeCurve,
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.topCenter,
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.topCenter,
       layoutBuilder: layoutBuilder,
       excludeBottomFocus: resolvedExcludeBottomFocus,
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -288,11 +288,11 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
-    final resolvedStyle = _resolveTextStyle(context, 'style');
+    final resolvedStyle = _resolveTextStyle('style');
     final resolvedSoftWrap =
-        softWrap ?? resolveBoolOrNull(context, 'softWrap') ?? true;
+        softWrap ?? resolveBoolOrNull('softWrap') ?? true;
     final resolvedMaxLines =
-        maxLines ?? resolveIntOrNull(context, 'maxLines');
+        maxLines ?? resolveIntOrNull('maxLines');
 
     return AnimatedDefaultTextStyle(
       style: resolvedStyle ?? style,
@@ -302,15 +302,15 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
       maxLines: resolvedMaxLines,
       textWidthBasis: textWidthBasis,
       textHeightBehavior: textHeightBehavior,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -345,23 +345,23 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedWidthFactor =
-        widthFactor ?? resolveDoubleOrNull(context, 'widthFactor');
+        widthFactor ?? resolveDoubleOrNull('widthFactor');
     final resolvedHeightFactor =
-        heightFactor ?? resolveDoubleOrNull(context, 'heightFactor');
+        heightFactor ?? resolveDoubleOrNull('heightFactor');
 
     return AnimatedFractionallySizedBox(
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.center,
       widthFactor: resolvedWidthFactor,
       heightFactor: resolvedHeightFactor,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -394,13 +394,13 @@ class TomAnimatedOpacity extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedOpacity =
-        opacity ?? resolveDoubleOrFail(context, 'opacity');
+        opacity ?? resolveDoubleOrFail('opacity');
     final resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ??
-        resolveBoolOrNull(context, 'alwaysIncludeSemantics') ?? false;
+        resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
 
     return AnimatedOpacity(
       opacity: resolvedOpacity,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       alwaysIncludeSemantics: resolvedAlwaysIncludeSemantics,
@@ -434,7 +434,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     if (resolvedPadding == null) {
       throw StateError(
         'Tom widget requires either an explicit padding or a tomId resource '
@@ -444,7 +444,7 @@ class TomAnimatedPadding extends TomAnimatedBase {
 
     return AnimatedPadding(
       padding: resolvedPadding,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
@@ -491,34 +491,34 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedElevation =
-      elevation ?? resolveDoubleOrFail(context, 'elevation');
+      elevation ?? resolveDoubleOrFail('elevation');
     final resolvedColor =
-      color ?? resolveColorOrFail(context, 'color');
+      color ?? resolveColorOrFail('color');
     final resolvedAnimateColor =
-      animateColor ?? resolveBoolOrNull(context, 'animateColor') ?? true;
+      animateColor ?? resolveBoolOrNull('animateColor') ?? true;
     final resolvedShadowColor =
-      shadowColor ?? resolveColorOrFail(context, 'shadowColor');
+      shadowColor ?? resolveColorOrFail('shadowColor');
     final resolvedAnimateShadowColor = animateShadowColor ??
-      resolveBoolOrNull(context, 'animateShadowColor') ?? true;
+      resolveBoolOrNull('animateShadowColor') ?? true;
 
     return AnimatedPhysicalModel(
       shape: shape,
       clipBehavior: clipBehavior,
-      borderRadius: borderRadius ?? _resolveBorderRadius(context, 'borderRadius') ?? BorderRadius.zero,
+      borderRadius: borderRadius ?? _resolveBorderRadius('borderRadius') ?? BorderRadius.zero,
       elevation: resolvedElevation,
       color: resolvedColor,
       animateColor: resolvedAnimateColor,
       shadowColor: resolvedShadowColor,
       animateShadowColor: resolvedAnimateShadowColor,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  BorderRadius? _resolveBorderRadius(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BorderRadius? _resolveBorderRadius(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBorderRadius(basePath, suffix);
   }
@@ -599,21 +599,21 @@ class TomAnimatedRotation extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedTurns =
-        turns ?? resolveDoubleOrFail(context, 'turns');
+        turns ?? resolveDoubleOrFail('turns');
 
     return AnimatedRotation(
       turns: resolvedTurns,
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.center,
       filterQuality: filterQuality,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  Alignment? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Alignment? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
@@ -648,21 +648,21 @@ class TomAnimatedScale extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedScale =
-        scale ?? resolveDoubleOrFail(context, 'scale');
+        scale ?? resolveDoubleOrFail('scale');
 
     return AnimatedScale(
       scale: resolvedScale,
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.center,
       filterQuality: filterQuality,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  Alignment? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Alignment? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix) as Alignment?;
   }
@@ -696,8 +696,8 @@ class TomAnimatedSize extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     return AnimatedSize(
-      alignment: alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      alignment: alignment ?? _resolveAlignment('alignment') ?? Alignment.center,
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       reverseDuration: reverseDuration,
       curve: curve,
       clipBehavior: clipBehavior,
@@ -706,8 +706,8 @@ class TomAnimatedSize extends TomAnimatedBase {
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -738,19 +738,19 @@ class TomAnimatedSlide extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedOffset =
-        offset ?? _resolveOffset(context, 'offset') ?? Offset.zero;
+        offset ?? _resolveOffset('offset') ?? Offset.zero;
 
     return AnimatedSlide(
       offset: resolvedOffset,
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       curve: curve,
       onEnd: onEnd,
       child: child,
     );
   }
 
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -784,7 +784,7 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
   @override
   Widget buildContent(BuildContext context) {
     return AnimatedSwitcher(
-      duration: duration ?? Duration(milliseconds: resolveIntOrNull(context, 'duration') ?? 300),
+      duration: duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300),
       reverseDuration: reverseDuration,
       switchInCurve: switchInCurve,
       switchOutCurve: switchOutCurve,
@@ -822,7 +822,7 @@ class TomHero extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedTransitionOnUserGestures = transitionOnUserGestures ??
-        resolveBoolOrNull(context, 'transitionOnUserGestures') ?? false;
+        resolveBoolOrNull('transitionOnUserGestures') ?? false;
 
     return Hero(
       tag: tag,

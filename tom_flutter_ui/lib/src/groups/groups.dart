@@ -3,14 +3,19 @@
 /// Groups provide semantic control over entire UI regions without requiring
 /// individual IDs on every leaf widget.
 ///
+/// Groups are created manually and passed directly to widgets:
+///
+/// ```dart
+/// final shippingGroup = TomUIGroup('shipping');
+///
+/// TomTextField(tomId: 'street', tomGroup: shippingGroup, ...),
+/// TomTextField(tomId: 'city', tomGroup: shippingGroup, ...),
+/// ```
+///
 /// Core classes:
-/// - [TomGroup] — a single group with member tracking
-/// - [TomGroups] — global registry for all groups
-/// - [TomGroupScope] — widget that defines a group scope
+/// - [TomUIGroup] — a single group with weak-reference member tracking
 /// - [TomWidgetMixin] — mixin for widgets that extend Flutter widgets
 library;
 
-export 'tom_group.dart';
-export 'tom_group_scope.dart';
-export 'tom_groups.dart';
+export 'tom_ui_group.dart';
 export 'tom_widget_mixin.dart';

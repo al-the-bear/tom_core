@@ -1,59 +1,65 @@
 import 'package:flutter/widgets.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../groups/tom_ui_group.dart';
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
-import '../resource_auth/tom_id_prefix.dart';
 import '../resource_auth/tom_resources.dart';
+import 'tom_authorizable.dart';
 
 /// Base class for all Tom UI elements (widgets, actions, containers).
 ///
 /// Provides:
-/// - [tomId] — unique ID within its scope, prefixed at resolution time.
-/// - [tomGroup] — optional group membership (0 or 1).
+/// - [tomId] — unique ID within its scope.
+/// - [tomGroup] — optional group membership (TomUIGroup object).
+/// - [scope] — optional explicit scope (defaults to [TomScope.current]).
 /// - Resource path resolution via [resolveResourceBasePath].
 /// - Debug identity via [debugLabel].
-abstract class TomNodeBase extends StatelessWidget {
-  /// The plain (unprefixed) ID for this node.
+///
+/// Resource paths are constructed as: `<scopePath>.<tomId>` where scopePath
+/// comes from either the explicit [scope] or the current [TomScope].
+///
+/// Implements [TomAuthorizable] for type-safe group registration and
+/// authorization system participation.
+abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
+  @override
   final String? tomId;
 
-  /// The group this node belongs to, if any.
-  final String? tomGroup;
+  @override
+  final TomUIGroup? tomGroup;
 
-  const TomNodeBase({super.key, this.tomId, this.tomGroup});
-
-  /// The prefix applied to this node's ID when building the canonical path.
+  /// Optional explicit scope for resource/auth lookups.
   ///
-  /// Override in subclasses: widgets → 'w-', containers → 'c-', etc.
-  String get idPrefix => TomIdPrefix.widget;
+  /// When provided, this scope is used instead of [TomScope.current].
+  /// This is useful when the implicit zone-based scope isn't available,
+  /// such as when creating widgets outside of a TomScope zone.
+  final TomScope? scope;
 
-  /// Resolves the canonical resource base path for this node by walking up
-  /// the widget tree via [AclScope] and prepending ancestor IDs.
+  const TomNodeBase({super.key, this.tomId, this.tomGroup, this.scope});
+
+  /// The effective scope for this node.
   ///
+  /// Returns [scope] if provided, otherwise [TomScope.current].
+  TomScope get effectiveScope => scope ?? TomScope.current;
+
+  /// Resolves the canonical resource base path for this node.
+  ///
+  /// Returns `<scopePath>.<tomId>` where scopePath comes from [effectiveScope].
   /// Returns `null` if this node has no [tomId].
-  String? resolveResourceBasePath(BuildContext context) {
+  String? resolveResourceBasePath() {
     if (tomId == null) return null;
-    final prefixedId = TomIdPrefix.prefixed(idPrefix, tomId!);
-
-    // Walk up AclScope to collect parent path segments
-    // This integrates with the existing AclScope InheritedWidget
-    final parentPath = _resolveParentPath(context);
-    if (parentPath != null && parentPath.isNotEmpty) {
-      return '$parentPath.$prefixedId';
+    final scopePath = effectiveScope.getScopePath();
+    if (scopePath.isNotEmpty) {
+      return '$scopePath.$tomId';
     }
-    return prefixedId;
-  }
-
-  String? _resolveParentPath(BuildContext context) {
-    // Look for TomNodeScope (if one exists in the ancestor chain)
-    final scope = context.dependOnInheritedWidgetOfExactType<TomNodeScope>();
-    return scope?.fullIdPath;
+    return tomId;
   }
 
   /// Resolves a text resource relative to this node's base path.
   ///
   /// Returns the resolved text, or the full key as a development fallback.
-  String resolveResource(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  String resolveResource(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return suffix;
     return TomUIResources.resolveText(basePath, suffix);
   }
@@ -63,8 +69,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// Returns `null` if:
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
-  String? resolveResourceOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  String? resolveResourceOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     if (!TomUIResources.resourceExists(basePath, suffix)) return null;
     return TomUIResources.resolveText(basePath, suffix);
@@ -80,8 +86,8 @@ abstract class TomNodeBase extends StatelessWidget {
   ///
   /// If [tomId] is set but no resource exists, returns the looked-up key
   /// (`<basePath>.<suffix>`) for development visibility.
-  String resolveResourceOrFail(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  String resolveResourceOrFail(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
@@ -104,8 +110,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// The icon is resolved in two steps:
   /// 1. Get icon name from resources (using suffix 'icon')
   /// 2. Look up [IconData] from [TomUIIcons] provider
-  IconData? resolveIcon(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+  IconData? resolveIcon() {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
 
     // Get icon name from resources
@@ -119,7 +125,7 @@ abstract class TomNodeBase extends StatelessWidget {
   }
 
   // ===========================================================================
-  // Typed Resource Resolution (Phase 1)
+  // Typed Resource Resolution
   // ===========================================================================
 
   /// Resolves a color from resources relative to this node's base path.
@@ -131,8 +137,8 @@ abstract class TomNodeBase extends StatelessWidget {
   ///
   /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
   /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
-  Color? resolveColorOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Color? resolveColorOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveColor(basePath, suffix);
   }
@@ -143,8 +149,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId] (resource lookup is impossible)
   /// - No resource exists for this suffix
   /// - The value exists but cannot be parsed as a color
-  Color resolveColorOrFail(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Color resolveColorOrFail(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
@@ -173,8 +179,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not numeric
-  double? resolveDoubleOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  double? resolveDoubleOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveDouble(basePath, suffix);
   }
@@ -185,8 +191,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId] (resource lookup is impossible)
   /// - No resource exists for this suffix
   /// - The value exists but is not numeric
-  double resolveDoubleOrFail(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  double resolveDoubleOrFail(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
@@ -214,8 +220,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not numeric
-  int? resolveIntOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  int? resolveIntOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveInt(basePath, suffix);
   }
@@ -226,8 +232,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId] (resource lookup is impossible)
   /// - No resource exists for this suffix
   /// - The value exists but is not numeric
-  int resolveIntOrFail(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  int resolveIntOrFail(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) {
       throw StateError(
         'Tom widget requires either an explicit $suffix or a tomId for '
@@ -255,8 +261,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
   /// - The value is not boolean-like
-  bool? resolveBoolOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  bool? resolveBoolOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveBool(basePath, suffix);
   }
@@ -272,8 +278,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - A single number for uniform insets
   /// - An array [all], [horizontal, vertical], or [left, top, right, bottom]
   /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
-  EdgeInsets? resolveEdgeInsetsOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  EdgeInsets? resolveEdgeInsetsOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveEdgeInsets(basePath, suffix);
   }
@@ -284,8 +290,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
   /// - The resource is not a list
-  List<dynamic>? resolveListOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  List<dynamic>? resolveListOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveList(basePath, suffix);
   }
@@ -296,8 +302,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
   /// - The resource is not a map
-  Map<String, dynamic>? resolveMapOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Map<String, dynamic>? resolveMapOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveMap(basePath, suffix);
   }
@@ -307,8 +313,8 @@ abstract class TomNodeBase extends StatelessWidget {
   /// Returns `null` if:
   /// - This node has no [tomId]
   /// - No resource exists for this suffix
-  dynamic resolveValueOrNull(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  dynamic resolveValueOrNull(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomUIResources.resolveValue(basePath, suffix);
   }
@@ -317,184 +323,7 @@ abstract class TomNodeBase extends StatelessWidget {
   String get debugLabel {
     final parts = <String>[];
     if (tomId != null) parts.add('id: $tomId');
-    if (tomGroup != null) parts.add('group: $tomGroup');
+    if (tomGroup != null) parts.add('group: ${tomGroup!.groupId}');
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
 }
-
-/// InheritedWidget providing the current node's identity context to descendants.
-///
-/// Propagates route, container, group, and form IDs down the widget tree.
-/// Each ID segment is optional and contributes to the canonical path.
-///
-/// The [fullIdPath] contains only identity-scoped segments. Layout containers
-/// (those with `idScope: false`) do NOT appear in descendant paths — they
-/// resolve their own resources via [selfPathForContainer] but leave
-/// [fullIdPath] unchanged for descendants.
-///
-/// Canonical path format:
-/// ```
-/// r-<route>.c-<container>.g-<group>.f-<form>.w-<widget>
-/// ```
-class TomNodeScope extends InheritedWidget {
-  /// The route ID (without prefix).
-  final String? routeId;
-
-  /// The container ID (without prefix).
-  final String? containerId;
-
-  /// The group ID (without prefix).
-  final String? groupId;
-
-  /// The form ID (without prefix).
-  final String? formId;
-
-  /// The canonical identity path for this scope.
-  ///
-  /// Contains only identity-scoped segments (route, identity containers,
-  /// groups, forms). Layout containers are excluded.
-  final String? fullIdPath;
-
-  const TomNodeScope({
-    super.key,
-    required super.child,
-    this.routeId,
-    this.containerId,
-    this.groupId,
-    this.formId,
-    this.fullIdPath,
-  });
-
-  /// Creates a scope that extends the parent scope with additional IDs.
-  ///
-  /// When [containerId] is provided:
-  /// - If [containerIdScope] is `true` (identity container), the container ID
-  ///   is appended to [fullIdPath] for descendants.
-  /// - If [containerIdScope] is `false` (layout container, default), the
-  ///   container ID is stored in [containerId] for self-path resolution but
-  ///   does NOT modify [fullIdPath].
-  factory TomNodeScope.extend(
-    BuildContext context, {
-    Key? key,
-    required Widget child,
-    String? routeId,
-    String? containerId,
-    bool containerIdScope = false,
-    String? groupId,
-    String? formId,
-  }) {
-    final parent = TomNodeScope.of(context);
-    final effectiveRouteId = routeId ?? parent?.routeId;
-    final effectiveContainerId = containerId ?? parent?.containerId;
-    final effectiveGroupId = groupId ?? parent?.groupId;
-    final effectiveFormId = formId ?? parent?.formId;
-
-    // Build fullIdPath: only include identity-scoped container IDs.
-    String? newFullIdPath;
-    if (containerId != null && containerIdScope) {
-      // Identity container — append to path.
-      final parentPath = parent?.fullIdPath;
-      final segment = TomIdPrefix.prefixed(TomIdPrefix.container, containerId);
-      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
-          ? '$parentPath.$segment'
-          : segment;
-    } else if (routeId != null && routeId != parent?.routeId) {
-      // New route — rebuild path with route prefix.
-      final segment = TomIdPrefix.prefixed(TomIdPrefix.route, routeId);
-      final parentPath = parent?.fullIdPath;
-      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
-          ? '$parentPath.$segment'
-          : segment;
-    } else if (groupId != null && groupId != parent?.groupId) {
-      // New group — append to path.
-      final parentPath = parent?.fullIdPath;
-      final segment = TomIdPrefix.prefixed(TomIdPrefix.group, groupId);
-      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
-          ? '$parentPath.$segment'
-          : segment;
-    } else if (formId != null && formId != parent?.formId) {
-      // New form — append to path.
-      final parentPath = parent?.fullIdPath;
-      final segment = TomIdPrefix.prefixed(TomIdPrefix.form, formId);
-      newFullIdPath = (parentPath != null && parentPath.isNotEmpty)
-          ? '$parentPath.$segment'
-          : segment;
-    } else {
-      newFullIdPath = parent?.fullIdPath;
-    }
-
-    return TomNodeScope(
-      key: key,
-      routeId: effectiveRouteId,
-      containerId: effectiveContainerId,
-      groupId: effectiveGroupId,
-      formId: effectiveFormId,
-      fullIdPath: newFullIdPath,
-      child: child,
-    );
-  }
-
-  /// Appends a widget ID to create the canonical widget path.
-  ///
-  /// Uses [fullIdPath] as the base (identity-only path), then appends
-  /// the widget's prefixed ID.
-  String appendWidget(String widgetId) {
-    final base = fullIdPath;
-    final segment = '${TomIdPrefix.widget}$widgetId';
-    if (base != null && base.isNotEmpty) return '$base.$segment';
-    return segment;
-  }
-
-  /// Appends a group ID to create the canonical group path.
-  String appendGroup(String gId) {
-    final base = fullIdPath;
-    final segment = '${TomIdPrefix.group}$gId';
-    if (base != null && base.isNotEmpty) return '$base.$segment';
-    return segment;
-  }
-
-  /// Returns the self-path for a container: identity path + c-<id>.
-  ///
-  /// This is used by containers to resolve their OWN resources and auth,
-  /// regardless of whether they are identity or layout containers.
-  /// Does NOT modify the scope.
-  String selfPathForContainer(String cId) {
-    final base = fullIdPath;
-    final segment = TomIdPrefix.prefixed(TomIdPrefix.container, cId);
-    if (base != null && base.isNotEmpty) return '$base.$segment';
-    return segment;
-  }
-
-  /// Returns the self-path for a row: identity path + rw-<id>.
-  ///
-  /// Used by rows to resolve their OWN resources and auth.
-  /// Does NOT modify the scope.
-  String selfPathForRow(String rowId) {
-    final base = fullIdPath;
-    final segment = TomIdPrefix.prefixed(TomIdPrefix.row, rowId);
-    if (base != null && base.isNotEmpty) return '$base.$segment';
-    return segment;
-  }
-
-  /// Appends a form ID to create the canonical form path.
-  String appendForm(String fId) {
-    final base = fullIdPath;
-    final segment = '${TomIdPrefix.form}$fId';
-    if (base != null && base.isNotEmpty) return '$base.$segment';
-    return segment;
-  }
-
-  static TomNodeScope? of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<TomNodeScope>();
-  }
-
-  @override
-  bool updateShouldNotify(TomNodeScope oldWidget) {
-    return routeId != oldWidget.routeId ||
-        containerId != oldWidget.containerId ||
-        groupId != oldWidget.groupId ||
-        formId != oldWidget.formId ||
-        fullIdPath != oldWidget.fullIdPath;
-  }
-}
-

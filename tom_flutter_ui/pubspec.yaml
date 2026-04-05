@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  tom_core_kernel:
+    path: ../tom_core_kernel  
 
 dev_dependencies:
   flutter_test:

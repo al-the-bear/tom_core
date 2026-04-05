@@ -69,21 +69,21 @@ class TomIcon extends TomImageBase {
     // Resolve icon: use provided icon, or look up from resources
     final resolvedIcon = icon ?? _resolveIconFromResources(context);
     final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
+        semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedSize =
-        size ?? resolveDoubleOrNull(context, 'size');
+        size ?? resolveDoubleOrNull('size');
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedFill =
-        fill ?? resolveDoubleOrNull(context, 'fill');
+        fill ?? resolveDoubleOrNull('fill');
     final resolvedWeight =
-        weight ?? resolveDoubleOrNull(context, 'weight');
+        weight ?? resolveDoubleOrNull('weight');
     final resolvedGrade =
-        grade ?? resolveDoubleOrNull(context, 'grade');
+        grade ?? resolveDoubleOrNull('grade');
     final resolvedOpticalSize =
-        opticalSize ?? resolveDoubleOrNull(context, 'opticalSize');
+        opticalSize ?? resolveDoubleOrNull('opticalSize');
 
     return Icon(
       resolvedIcon,
@@ -106,7 +106,7 @@ class TomIcon extends TomImageBase {
   IconData? _resolveIconFromResources(BuildContext context) {
     if (tomId == null) return null;
     // Get icon name from resources (e.g., "save", "delete")
-    final iconName = resolveResourceOrFail(context, 'icon');
+    final iconName = resolveResourceOrFail('icon');
     // Skip if it returns the key itself (no resource found)
     if (iconName.endsWith('.icon')) return null;
     // Look up IconData from icon provider
@@ -158,23 +158,23 @@ class TomImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel =
-        semanticLabel ?? (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
+        semanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedAlignment =
-        _resolveAlignment(context, 'alignment') ?? alignment;
+        _resolveAlignment('alignment') ?? alignment;
     final resolvedMatchTextDirection =
-        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
     final resolvedGaplessPlayback =
-        resolveBoolOrNull(context, 'gaplessPlayback') ?? gaplessPlayback;
+        resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
     final resolvedIsAntiAlias =
-        resolveBoolOrNull(context, 'isAntiAlias') ?? isAntiAlias;
+        resolveBoolOrNull('isAntiAlias') ?? isAntiAlias;
 
     return Image(
       image: imageProvider,
@@ -194,8 +194,8 @@ class TomImage extends TomImageBase {
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -236,15 +236,15 @@ class TomCircleAvatar extends TomImageBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+        foregroundColor ?? resolveColorOrNull('foregroundColor');
     final resolvedRadius =
-        radius ?? resolveDoubleOrNull(context, 'radius');
+        radius ?? resolveDoubleOrNull('radius');
     final resolvedMinRadius =
-        minRadius ?? resolveDoubleOrNull(context, 'minRadius');
+        minRadius ?? resolveDoubleOrNull('minRadius');
     final resolvedMaxRadius =
-        maxRadius ?? resolveDoubleOrNull(context, 'maxRadius');
+        maxRadius ?? resolveDoubleOrNull('maxRadius');
 
     return CircleAvatar(
       backgroundColor: resolvedBackgroundColor,
@@ -315,21 +315,21 @@ class TomFadeInImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = imageSemanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'alt') : null);
+        (tomId != null ? resolveResourceOrFail('alt') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedPlaceholderColor =
-        placeholderColor ?? resolveColorOrNull(context, 'placeholderColor');
+        placeholderColor ?? resolveColorOrNull('placeholderColor');
     final resolvedAlignment =
-        _resolveAlignment(context, 'alignment') ?? alignment;
+        _resolveAlignment('alignment') ?? alignment;
     final resolvedMatchTextDirection =
-        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
     final resolvedExcludeFromSemantics =
-        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
+        resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
 
     return FadeInImage(
       placeholder: placeholder,
@@ -354,8 +354,8 @@ class TomFadeInImage extends TomImageBase {
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -383,13 +383,13 @@ class TomImageIcon extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedSize =
-        size ?? resolveDoubleOrNull(context, 'size');
+        size ?? resolveDoubleOrNull('size');
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
 
     return ImageIcon(
       image,
@@ -436,13 +436,13 @@ class TomInkImage extends TomImageBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedAlignment =
-        _resolveAlignment(context, 'alignment') ?? alignment;
+        _resolveAlignment('alignment') ?? alignment;
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
 
     return Ink.image(
       padding: resolvedPadding,
@@ -458,8 +458,8 @@ class TomInkImage extends TomImageBase {
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -520,27 +520,27 @@ class TomNetworkImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedSrc =
-        resolveResourceOrNull(context, 'src') ?? src;
+        resolveResourceOrNull('src') ?? src;
     final resolvedScale =
-        resolveDoubleOrNull(context, 'scale') ?? scale;
+        resolveDoubleOrNull('scale') ?? scale;
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedAlignment =
-        _resolveAlignment(context, 'alignment') ?? alignment;
+        _resolveAlignment('alignment') ?? alignment;
     final resolvedMatchTextDirection =
-        resolveBoolOrNull(context, 'matchTextDirection') ?? matchTextDirection;
+        resolveBoolOrNull('matchTextDirection') ?? matchTextDirection;
     final resolvedGaplessPlayback =
-        resolveBoolOrNull(context, 'gaplessPlayback') ?? gaplessPlayback;
+        resolveBoolOrNull('gaplessPlayback') ?? gaplessPlayback;
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedExcludeFromSemantics =
-        resolveBoolOrNull(context, 'excludeFromSemantics') ?? excludeFromSemantics;
+        resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
 
     return Image.network(
       resolvedSrc,
@@ -566,8 +566,8 @@ class TomNetworkImage extends TomImageBase {
     );
   }
 
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
@@ -630,19 +630,19 @@ class TomAssetImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedCacheWidth =
-        cacheWidth ?? resolveIntOrNull(context, 'cacheWidth');
+        cacheWidth ?? resolveIntOrNull('cacheWidth');
     final resolvedCacheHeight =
-        cacheHeight ?? resolveIntOrNull(context, 'cacheHeight');
+        cacheHeight ?? resolveIntOrNull('cacheHeight');
 
     return Image.asset(
       name,
@@ -721,15 +721,15 @@ class TomFileImage extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel = semanticLabel ??
-        (tomId != null ? resolveResourceOrFail(context, 'semanticLabel') : null);
+        (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedWidth =
-        width ?? resolveDoubleOrNull(context, 'width');
+        width ?? resolveDoubleOrNull('width');
     final resolvedHeight =
-        height ?? resolveDoubleOrNull(context, 'height');
+        height ?? resolveDoubleOrNull('height');
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
 
     return Image(
       image: FileImage(File(filePath), scale: scale),
@@ -783,13 +783,13 @@ class TomAnimatedIcon extends TomImageBase {
   @override
   Widget buildContent(BuildContext context) {
     final resolvedSemanticLabel =
-        semanticLabel ?? resolveResourceOrNull(context, 'semanticLabel');
+        semanticLabel ?? resolveResourceOrNull('semanticLabel');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedSize =
-        size ?? resolveDoubleOrNull(context, 'size');
+        size ?? resolveDoubleOrNull('size');
 
     return AnimatedIcon(
       icon: icon,
@@ -821,7 +821,7 @@ class TomImageFiltered extends TomImageBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedEnabled = enabled ?? resolveBoolOrNull(context, 'enabled') ?? true;
+    final resolvedEnabled = enabled ?? resolveBoolOrNull('enabled') ?? true;
 
     return ImageFiltered(
       imageFilter: imageFilter,

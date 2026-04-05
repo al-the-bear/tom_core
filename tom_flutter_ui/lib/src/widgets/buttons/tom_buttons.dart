@@ -43,7 +43,7 @@ class TomElevatedButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // Resolve icon: use provided widget, or resolve from resources
@@ -82,14 +82,14 @@ class TomElevatedButton extends TomButtonBase {
 
   /// Builds an Icon widget from resolved icon data, or null if not available.
   Widget? _buildResolvedIcon(BuildContext context) {
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -131,7 +131,7 @@ class TomTextButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -167,14 +167,14 @@ class TomTextButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon(BuildContext context) {
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -216,7 +216,7 @@ class TomOutlinedButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -252,14 +252,14 @@ class TomOutlinedButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon(BuildContext context) {
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -303,7 +303,7 @@ class TomFilledButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
     final resolvedIcon = icon ?? _buildResolvedIcon(context);
 
@@ -367,14 +367,14 @@ class TomFilledButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon(BuildContext context) {
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData == null) return null;
     return Icon(iconData);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -532,7 +532,7 @@ class TomFloatingActionButton extends TomButtonBase {
   /// Resolves the child widget from parameter or resources.
   Widget? _resolveChild(BuildContext context) {
     if (child != null) return child;
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData != null) return Icon(iconData);
     return null;
   }
@@ -540,7 +540,7 @@ class TomFloatingActionButton extends TomButtonBase {
   /// Resolves the icon widget from parameter or resources.
   Widget? _resolveIconWidget(BuildContext context) {
     if (icon != null) return icon;
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData != null) return Icon(iconData);
     return null;
   }
@@ -548,39 +548,39 @@ class TomFloatingActionButton extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     // Tooltip is always optional
-    final resolvedTooltip = tooltip ?? resolveResourceOrNull(context, 'tooltip');
+    final resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull(context, 'foregroundColor');
+        foregroundColor ?? resolveColorOrNull('foregroundColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull(context, 'splashColor');
+        splashColor ?? resolveColorOrNull('splashColor');
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull(context, 'elevation');
+        elevation ?? resolveDoubleOrNull('elevation');
     final resolvedFocusElevation =
-        focusElevation ?? resolveDoubleOrNull(context, 'focusElevation');
+        focusElevation ?? resolveDoubleOrNull('focusElevation');
     final resolvedHoverElevation =
-        hoverElevation ?? resolveDoubleOrNull(context, 'hoverElevation');
+        hoverElevation ?? resolveDoubleOrNull('hoverElevation');
     final resolvedHighlightElevation =
-        highlightElevation ?? resolveDoubleOrNull(context, 'highlightElevation');
+        highlightElevation ?? resolveDoubleOrNull('highlightElevation');
     final resolvedDisabledElevation =
-        disabledElevation ?? resolveDoubleOrNull(context, 'disabledElevation');
-    final resolvedShape = shape ?? _resolveShapeBorder(context, 'shape');
+        disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    final resolvedShape = shape ?? _resolveShapeBorder('shape');
     final resolvedAutofocus =
-        resolveBoolOrNull(context, 'autofocus') ?? autofocus;
-    final resolvedMini = resolveBoolOrNull(context, 'mini') ?? mini;
-    final resolvedIsExtended = isExtended ?? resolveBoolOrNull(context, 'isExtended');
+        resolveBoolOrNull('autofocus') ?? autofocus;
+    final resolvedMini = resolveBoolOrNull('mini') ?? mini;
+    final resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
 
     switch (_variant) {
       case _FABVariant.extended:
         // Extended FAB requires a label
-        final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+        final resolvedLabel = label ?? resolveResourceOrFail('label');
         return FloatingActionButton.extended(
           onPressed: onPressed,
           tooltip: resolvedTooltip,
@@ -650,7 +650,7 @@ class TomFloatingActionButton extends TomButtonBase {
 
       case _FABVariant.regular:
         final resolvedIcon = _resolveIconWidget(context);
-        final resolvedLabel = label ?? resolveResourceOrNull(context, 'label');
+        final resolvedLabel = label ?? resolveResourceOrNull('label');
         // Legacy behavior: if icon and label are both provided, use extended
         if (resolvedIcon != null && resolvedLabel != null) {
           return FloatingActionButton.extended(
@@ -725,8 +725,8 @@ class TomFloatingActionButton extends TomButtonBase {
     }
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -769,7 +769,7 @@ class TomMenuItemButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // Phase 3: Resolve ButtonStyle from resources
@@ -791,7 +791,7 @@ class TomMenuItemButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -836,14 +836,14 @@ class TomSubmenuButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // Phase 3: Resolve ButtonStyle and MenuStyle from resources
     final resolvedStyle = style ?? _resolveStyle(context);
     final resolvedMenuStyle = menuStyle ?? _resolveMenuStyle(context);
     final resolvedAlignmentOffset =
-        alignmentOffset ?? _resolveOffset(context, 'alignmentOffset');
+        alignmentOffset ?? _resolveOffset('alignmentOffset');
 
     return SubmenuButton(
       onOpen: onOpen,
@@ -862,21 +862,21 @@ class TomSubmenuButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 
   /// Phase 3: Resolves MenuStyle from resources.
   MenuStyle? _resolveMenuStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveMenuStyle(basePath, 'menuStyle');
   }
 
   /// Phase 3: Resolves Offset from resources.
-  Offset? _resolveOffset(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  Offset? _resolveOffset(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveOffset(basePath, suffix);
   }
@@ -926,7 +926,7 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -1067,9 +1067,9 @@ class TomIconButton extends TomButtonBase {
   }) : _variant = _IconButtonVariant.outlined;
 
   /// Resolves the icon widget from parameter or resources.
-  Widget _resolveIcon(BuildContext context) {
+  Widget _resolveIcon() {
     if (icon != null) return icon!;
-    final iconData = resolveIcon(context);
+    final iconData = resolveIcon();
     if (iconData != null) return Icon(iconData);
     // Fallback to placeholder icon
     return const Icon(Icons.error_outline);
@@ -1077,30 +1077,30 @@ class TomIconButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTooltip = tooltip ?? resolveResourceOrFail(context, 'tooltip');
-    final resolvedIcon = _resolveIcon(context);
+    final resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    final resolvedIcon = _resolveIcon();
 
     // Phase 2: Resolve optional parameters from resources
-    final resolvedIconSize = iconSize ?? resolveDoubleOrNull(context, 'iconSize');
+    final resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
     final resolvedSplashRadius =
-        splashRadius ?? resolveDoubleOrNull(context, 'splashRadius');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+        splashRadius ?? resolveDoubleOrNull('splashRadius');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedFocusColor =
-        focusColor ?? resolveColorOrNull(context, 'focusColor');
+        focusColor ?? resolveColorOrNull('focusColor');
     final resolvedHoverColor =
-        hoverColor ?? resolveColorOrNull(context, 'hoverColor');
+        hoverColor ?? resolveColorOrNull('hoverColor');
     final resolvedHighlightColor =
-        highlightColor ?? resolveColorOrNull(context, 'highlightColor');
+        highlightColor ?? resolveColorOrNull('highlightColor');
     final resolvedSplashColor =
-        splashColor ?? resolveColorOrNull(context, 'splashColor');
+        splashColor ?? resolveColorOrNull('splashColor');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedAlignment =
-        alignment ?? _resolveAlignment(context, 'alignment') ?? Alignment.center;
+        alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
     final resolvedConstraints =
-        constraints ?? _resolveBoxConstraints(context, 'constraints');
+        constraints ?? _resolveBoxConstraints('constraints');
 
     // Phase 3: Resolve ButtonStyle from resources
     final resolvedStyle = style ?? _resolveStyle(context);
@@ -1206,21 +1206,21 @@ class TomIconButton extends TomButtonBase {
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
 
   /// Phase 2: Resolves AlignmentGeometry from resources.
-  AlignmentGeometry? _resolveAlignment(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  AlignmentGeometry? _resolveAlignment(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveAlignment(basePath, suffix);
   }
 
   /// Phase 2: Resolves BoxConstraints from resources.
-  BoxConstraints? _resolveBoxConstraints(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  BoxConstraints? _resolveBoxConstraints(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveBoxConstraints(basePath, suffix);
   }
@@ -1244,7 +1244,7 @@ class TomBackButton extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve color from resources if not explicitly set
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     return BackButton(
       onPressed: onPressed,
       color: resolvedColor,
@@ -1270,7 +1270,7 @@ class TomCloseButton extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve color from resources if not explicitly set
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     return CloseButton(
       onPressed: onPressed,
       color: resolvedColor,
@@ -1306,7 +1306,7 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
 
   /// Creates the underlying [DropdownMenuEntry] for use in a [DropdownMenu].
   DropdownMenuEntry<T> toEntry(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
 
     // Phase 3: Resolve ButtonStyle from resources
     final resolvedStyle = style ?? _resolveStyle(context);
@@ -1327,14 +1327,14 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     // DropdownMenuEntry is not a widget itself — it is used as data within
     // DropdownMenu. This buildContent returns a placeholder that renders
     // the label for preview/accessibility purposes.
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
 
     return Text(resolvedLabel);
   }
 
   /// Phase 3: Resolves ButtonStyle from resources.
   ButtonStyle? _resolveStyle(BuildContext context) {
-    final basePath = resolveResourceBasePath(context);
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveButtonStyle(basePath, 'style');
   }
@@ -1380,17 +1380,17 @@ class TomCupertinoButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
-    final resolvedColor = color ?? resolveColorOrNull(context, 'color');
+        padding ?? resolveEdgeInsetsOrNull('padding');
+    final resolvedColor = color ?? resolveColorOrNull('color');
     final resolvedMinSize =
-        minSize ?? resolveDoubleOrNull(context, 'minSize');
+        minSize ?? resolveDoubleOrNull('minSize');
     final resolvedPressedOpacity =
-        pressedOpacity ?? resolveDoubleOrNull(context, 'pressedOpacity');
+        pressedOpacity ?? resolveDoubleOrNull('pressedOpacity');
 
     if (filled) {
       return CupertinoButton.filled(
@@ -1454,7 +1454,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return CheckboxMenuButton(
@@ -1502,7 +1502,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     return RadioMenuButton<T>(
@@ -1598,7 +1598,7 @@ class TomCupertinoDialogAction extends TomButtonBase {
   @override
   Widget buildContent(BuildContext context) {
     // Phase 3: Resolve optional TextStyle from resources
-    final resolvedTextStyle = textStyle ?? _resolveTextStyle(context, 'textStyle');
+    final resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
 
     return CupertinoDialogAction(
       onPressed: onPressed,
@@ -1609,8 +1609,8 @@ class TomCupertinoDialogAction extends TomButtonBase {
     );
   }
 
-  TextStyle? _resolveTextStyle(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  TextStyle? _resolveTextStyle(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveTextStyle(basePath, suffix);
   }
@@ -1680,13 +1680,13 @@ class TomExpandIcon extends TomButtonBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedSize =
-        size ?? resolveDoubleOrNull(context, 'size') ?? 24.0;
+        size ?? resolveDoubleOrNull('size') ?? 24.0;
     final resolvedColor =
-        color ?? resolveColorOrNull(context, 'color');
+        color ?? resolveColorOrNull('color');
     final resolvedDisabledColor =
-        disabledColor ?? resolveColorOrNull(context, 'disabledColor');
+        disabledColor ?? resolveColorOrNull('disabledColor');
     final resolvedExpandedColor =
-        expandedColor ?? resolveColorOrNull(context, 'expandedColor');
+        expandedColor ?? resolveColorOrNull('expandedColor');
     // Note: ExpandIcon doesn't have a semanticLabel parameter in Flutter's API
     // The widget's semantics are handled internally via Semantics wrapper
 
@@ -1783,7 +1783,7 @@ class TomMaterialButton extends TomButtonBase {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail(context, 'label');
+    final resolvedLabel = label ?? resolveResourceOrFail('label');
     final buttonChild = child ?? Text(resolvedLabel);
 
     // ignore: deprecated_member_use
@@ -1793,36 +1793,36 @@ class TomMaterialButton extends TomButtonBase {
       onHighlightChanged: onHighlightChanged,
       mouseCursor: mouseCursor,
       textTheme: textTheme,
-      textColor: textColor ?? resolveColorOrNull(context, 'textColor'),
-      disabledTextColor: disabledTextColor ?? resolveColorOrNull(context, 'disabledTextColor'),
-      color: color ?? resolveColorOrNull(context, 'color'),
-      disabledColor: disabledColor ?? resolveColorOrNull(context, 'disabledColor'),
-      focusColor: focusColor ?? resolveColorOrNull(context, 'focusColor'),
-      hoverColor: hoverColor ?? resolveColorOrNull(context, 'hoverColor'),
-      highlightColor: highlightColor ?? resolveColorOrNull(context, 'highlightColor'),
-      splashColor: splashColor ?? resolveColorOrNull(context, 'splashColor'),
+      textColor: textColor ?? resolveColorOrNull('textColor'),
+      disabledTextColor: disabledTextColor ?? resolveColorOrNull('disabledTextColor'),
+      color: color ?? resolveColorOrNull('color'),
+      disabledColor: disabledColor ?? resolveColorOrNull('disabledColor'),
+      focusColor: focusColor ?? resolveColorOrNull('focusColor'),
+      hoverColor: hoverColor ?? resolveColorOrNull('hoverColor'),
+      highlightColor: highlightColor ?? resolveColorOrNull('highlightColor'),
+      splashColor: splashColor ?? resolveColorOrNull('splashColor'),
       colorBrightness: colorBrightness,
-      elevation: elevation ?? resolveDoubleOrNull(context, 'elevation'),
-      focusElevation: focusElevation ?? resolveDoubleOrNull(context, 'focusElevation'),
-      hoverElevation: hoverElevation ?? resolveDoubleOrNull(context, 'hoverElevation'),
-      highlightElevation: highlightElevation ?? resolveDoubleOrNull(context, 'highlightElevation'),
-      disabledElevation: disabledElevation ?? resolveDoubleOrNull(context, 'disabledElevation'),
-      padding: padding ?? resolveEdgeInsetsOrNull(context, 'padding'),
+      elevation: elevation ?? resolveDoubleOrNull('elevation'),
+      focusElevation: focusElevation ?? resolveDoubleOrNull('focusElevation'),
+      hoverElevation: hoverElevation ?? resolveDoubleOrNull('hoverElevation'),
+      highlightElevation: highlightElevation ?? resolveDoubleOrNull('highlightElevation'),
+      disabledElevation: disabledElevation ?? resolveDoubleOrNull('disabledElevation'),
+      padding: padding ?? resolveEdgeInsetsOrNull('padding'),
       visualDensity: visualDensity,
-      shape: shape ?? _resolveShapeBorder(context, 'shape'),
+      shape: shape ?? _resolveShapeBorder('shape'),
       clipBehavior: clipBehavior,
       focusNode: focusNode,
       autofocus: autofocus,
       animationDuration: animationDuration,
-      minWidth: minWidth ?? resolveDoubleOrNull(context, 'minWidth'),
-      height: height ?? resolveDoubleOrNull(context, 'height'),
+      minWidth: minWidth ?? resolveDoubleOrNull('minWidth'),
+      height: height ?? resolveDoubleOrNull('height'),
       enableFeedback: enableFeedback,
       child: buttonChild,
     );
   }
 
-  ShapeBorder? _resolveShapeBorder(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ShapeBorder? _resolveShapeBorder(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath, suffix);
   }
@@ -1870,13 +1870,13 @@ class TomButtonBar extends TomButtonBase {
       alignment: alignment,
       mainAxisSize: mainAxisSize,
       buttonTextTheme: buttonTextTheme,
-      buttonMinWidth: buttonMinWidth ?? resolveDoubleOrNull(context, 'buttonMinWidth'),
-      buttonHeight: buttonHeight ?? resolveDoubleOrNull(context, 'buttonHeight'),
-      buttonPadding: buttonPadding ?? resolveEdgeInsetsOrNull(context, 'buttonPadding'),
+      buttonMinWidth: buttonMinWidth ?? resolveDoubleOrNull('buttonMinWidth'),
+      buttonHeight: buttonHeight ?? resolveDoubleOrNull('buttonHeight'),
+      buttonPadding: buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding'),
       buttonAlignedDropdown: buttonAlignedDropdown,
       layoutBehavior: layoutBehavior,
       overflowDirection: overflowDirection,
-      overflowButtonSpacing: overflowButtonSpacing ?? resolveDoubleOrNull(context, 'overflowButtonSpacing'),
+      overflowButtonSpacing: overflowButtonSpacing ?? resolveDoubleOrNull('overflowButtonSpacing'),
       children: children,
     );
   }

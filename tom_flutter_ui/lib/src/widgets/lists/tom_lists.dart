@@ -177,29 +177,29 @@ class TomListView extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedReverse =
-        resolveBoolOrNull(context, 'reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+        resolveBoolOrNull('reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
     final resolvedShrinkWrap =
-        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+        itemExtent ?? resolveDoubleOrNull('itemExtent');
     final resolvedCacheExtent =
-        cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+        cacheExtent ?? resolveDoubleOrNull('cacheExtent');
     final resolvedSemanticChildCount =
-        semanticChildCount ?? resolveIntOrNull(context, 'semanticChildCount');
+        semanticChildCount ?? resolveIntOrNull('semanticChildCount');
     final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+        restorationId ?? resolveResourceOrNull('restorationId');
     final resolvedAddAutomaticKeepAlives =
-        resolveBoolOrNull(context, 'addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
+        resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
     final resolvedAddRepaintBoundaries =
-        resolveBoolOrNull(context, 'addRepaintBoundaries') ?? addRepaintBoundaries;
+        resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
     final resolvedAddSemanticIndexes =
-        resolveBoolOrNull(context, 'addSemanticIndexes') ?? addSemanticIndexes;
+        resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
 
     // Phase 3: Resolve ScrollPhysics from resources
-    final resolvedPhysics = physics ?? _resolveScrollPhysics(context, 'physics');
+    final resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
 
     // If children list provided, use default ListView constructor
     if (_children != null) {
@@ -246,8 +246,8 @@ class TomListView extends TomListBase {
     );
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -288,17 +288,17 @@ class TomAnimatedList extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedInitialItemCount =
-        resolveIntOrNull(context, 'initialItemCount') ?? initialItemCount;
+        resolveIntOrNull('initialItemCount') ?? initialItemCount;
     final resolvedReverse =
-        resolveBoolOrNull(context, 'reverse') ?? reverse;
-    final resolvedPrimary = primary ?? resolveBoolOrNull(context, 'primary');
+        resolveBoolOrNull('reverse') ?? reverse;
+    final resolvedPrimary = primary ?? resolveBoolOrNull('primary');
     final resolvedShrinkWrap =
-        resolveBoolOrNull(context, 'shrinkWrap') ?? shrinkWrap;
+        resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
     final resolvedPadding =
-        padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+        padding ?? resolveEdgeInsetsOrNull('padding');
 
     // Phase 3: Resolve ScrollPhysics from resources
-    final resolvedPhysics = physics ?? _resolveScrollPhysics(context, 'physics');
+    final resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
 
     return AnimatedList(
       itemBuilder: itemBuilder,
@@ -314,8 +314,8 @@ class TomAnimatedList extends TomListBase {
     );
   }
 
-  ScrollPhysics? _resolveScrollPhysics(BuildContext context, String suffix) {
-    final basePath = resolveResourceBasePath(context);
+  ScrollPhysics? _resolveScrollPhysics(String suffix) {
+    final basePath = resolveResourceBasePath();
     if (basePath == null) return null;
     return TomStyleResolvers.resolveScrollPhysics(basePath, suffix);
   }
@@ -364,7 +364,7 @@ class TomDismissible extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedCrossAxisEndOffset =
-        crossAxisEndOffset ?? resolveDoubleOrNull(context, 'crossAxisEndOffset') ?? 0.0;
+        crossAxisEndOffset ?? resolveDoubleOrNull('crossAxisEndOffset') ?? 0.0;
 
     return Dismissible(
       key: key ?? ValueKey(tomId),
@@ -433,25 +433,25 @@ class TomListWheelScrollView extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedDiameterRatio =
-        diameterRatio ?? resolveDoubleOrNull(context, 'diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
+        diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
     final resolvedPerspective =
-        perspective ?? resolveDoubleOrNull(context, 'perspective') ?? RenderListWheelViewport.defaultPerspective;
+        perspective ?? resolveDoubleOrNull('perspective') ?? RenderListWheelViewport.defaultPerspective;
     final resolvedOffAxisFraction =
-        offAxisFraction ?? resolveDoubleOrNull(context, 'offAxisFraction') ?? 0.0;
+        offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0;
     final resolvedMagnification =
-        magnification ?? resolveDoubleOrNull(context, 'magnification') ?? 1.0;
+        magnification ?? resolveDoubleOrNull('magnification') ?? 1.0;
     final resolvedOverAndUnderCenterOpacity =
-        overAndUnderCenterOpacity ?? resolveDoubleOrNull(context, 'overAndUnderCenterOpacity') ?? 1.0;
+        overAndUnderCenterOpacity ?? resolveDoubleOrNull('overAndUnderCenterOpacity') ?? 1.0;
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrFail(context, 'itemExtent');
+        itemExtent ?? resolveDoubleOrFail('itemExtent');
     final resolvedSqueeze =
-        squeeze ?? resolveDoubleOrNull(context, 'squeeze') ?? 1.0;
+        squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.0;
     final resolvedUseMagnifier =
-        resolveBoolOrNull(context, 'useMagnifier') ?? useMagnifier;
+        resolveBoolOrNull('useMagnifier') ?? useMagnifier;
     final resolvedRenderChildrenOutsideViewport =
-        resolveBoolOrNull(context, 'renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
+        resolveBoolOrNull('renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
     final resolvedRestorationId =
-        restorationId ?? resolveResourceOrNull(context, 'restorationId');
+        restorationId ?? resolveResourceOrNull('restorationId');
 
     return ListWheelScrollView.useDelegate(
       controller: controller,
@@ -512,18 +512,18 @@ class TomCupertinoListTile extends TomListBase {
   Widget buildContent(BuildContext context) {
     final resolvedTitle =
       titleText ??
-        resolveResourceOrNull(context, 'titleText') ??
-        resolveResourceOrFail(context, 'label');
+        resolveResourceOrNull('titleText') ??
+        resolveResourceOrFail('label');
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor');
+        backgroundColor ?? resolveColorOrNull('backgroundColor');
     final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+      padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedLeadingSize =
-        leadingSize ?? resolveDoubleOrNull(context, 'leadingSize') ?? 28.0;
+        leadingSize ?? resolveDoubleOrNull('leadingSize') ?? 28.0;
     final resolvedLeadingToTitle =
-        leadingToTitle ?? resolveDoubleOrNull(context, 'leadingToTitle') ?? 12.0;
+        leadingToTitle ?? resolveDoubleOrNull('leadingToTitle') ?? 12.0;
 
     return CupertinoListTile(
       title: title ?? Text(resolvedTitle),
@@ -585,16 +585,16 @@ class TomCupertinoListSection extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull(context, 'backgroundColor') ?? CupertinoColors.systemBackground;
+        backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemBackground;
     final resolvedTopMargin =
-        topMargin ?? resolveDoubleOrNull(context, 'topMargin');
+        topMargin ?? resolveDoubleOrNull('topMargin');
     final resolvedHasLeading =
-      hasLeading ?? resolveBoolOrNull(context, 'hasLeading') ?? true;
+      hasLeading ?? resolveBoolOrNull('hasLeading') ?? true;
     final resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0
         ? additionalDividerMargin
-        : resolveDoubleOrNull(context, 'additionalDividerMargin') ?? 0.0;
+        : resolveDoubleOrNull('additionalDividerMargin') ?? 0.0;
     final resolvedMargin =
-        margin ?? resolveEdgeInsetsOrNull(context, 'margin') ?? const EdgeInsets.only(bottom: 8.0);
+        margin ?? resolveEdgeInsetsOrNull('margin') ?? const EdgeInsets.only(bottom: 8.0);
 
     return CupertinoListSection(
       header: header,
@@ -667,15 +667,15 @@ class TomReorderableList extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedItemExtent =
-      itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+      itemExtent ?? resolveDoubleOrNull('itemExtent');
     final resolvedShrinkWrap =
-      shrinkWrap ?? resolveBoolOrNull(context, 'shrinkWrap') ?? false;
+      shrinkWrap ?? resolveBoolOrNull('shrinkWrap') ?? false;
     final resolvedPadding =
-      padding ?? resolveEdgeInsetsOrNull(context, 'padding');
+      padding ?? resolveEdgeInsetsOrNull('padding');
     final resolvedAnchor =
-      anchor != 0.0 ? anchor : resolveDoubleOrNull(context, 'anchor') ?? 0.0;
+      anchor != 0.0 ? anchor : resolveDoubleOrNull('anchor') ?? 0.0;
     final resolvedCacheExtent =
-      cacheExtent ?? resolveDoubleOrNull(context, 'cacheExtent');
+      cacheExtent ?? resolveDoubleOrNull('cacheExtent');
 
     return ReorderableList(
       itemBuilder: (context, index) {
@@ -739,7 +739,7 @@ class TomSliverReorderableList extends TomListBase {
   Widget buildContent(BuildContext context) {
     // Phase 2: Resolve optional parameters from resources
     final resolvedItemExtent =
-        itemExtent ?? resolveDoubleOrNull(context, 'itemExtent');
+        itemExtent ?? resolveDoubleOrNull('itemExtent');
 
     return SliverReorderableList(
       itemBuilder: itemBuilder,
