@@ -19,9 +19,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Root provider for the entire demo.
 ///
-/// Scope path: demo26
+/// Uses the zone scope (demo26) set by the demo framework — no sub-scope.
 class Demo26Provider extends TomScreenElementsProviderBase {
-  Demo26Provider() : super('demo26');
+  Demo26Provider();
 
   /// Nested sub-provider: demo26.basic
   late final basic = BasicSectionProvider(this);

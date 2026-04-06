@@ -72,16 +72,22 @@ class TomScreenElementsProviderBase with TomScopeMixin
   /// Creates a scoped element provider.
   ///
   /// [scopeId] — the scope segment for this provider (e.g., `'basicSection'`).
+  /// When `null`, the provider adopts the current scope without creating a
+  /// child scope. This is useful for root providers that run inside an
+  /// existing [TomScope.withScope] zone.
   ///
   /// [parent] — optional parent provider. When given, this provider's scope
   /// nests under `parent.scope`. When omitted, nests under the current zone
   /// scope ([TomScope.current]).
-  TomScreenElementsProviderBase(String scopeId,
-      [TomScreenElementsProvider? parent]) {
-    initScope(
-      scopeId: scopeId,
-      parentScope: parent?.scope ?? TomScope.current,
-    );
+  TomScreenElementsProviderBase([String? scopeId,
+      TomScreenElementsProvider? parent]) {
+    final parentScope = parent?.scope ?? TomScope.current;
+    if (scopeId != null) {
+      initScope(scopeId: scopeId, parentScope: parentScope);
+    } else {
+      // Adopt the parent scope without nesting
+      initScope(scopeId: parentScope.id, parentScope: parentScope.parent);
+    }
   }
 
   @override
