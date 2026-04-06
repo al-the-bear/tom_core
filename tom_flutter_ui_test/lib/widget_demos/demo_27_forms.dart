@@ -269,7 +269,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
           )
               .append((p) => p.firstNameField)
               .append((p) => p.lastNameField, dist: 16)
-              .newRow(dist: 16)
+              .newRow()
               .append((p) => p.emailField)
               .append((p) => p.phoneField, dist: 16)
               .build(context),
@@ -281,10 +281,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             title: 'Address',
           )
               .append((p) => p.streetField)
-              .newRow(dist: 16)
+              .newRow()
               .append((p) => p.cityField)
               .append((p) => p.zipField, dist: 16)
-              .newRow(dist: 16)
+              .newRow()
               .append((p) => p.countryField)
               .build(context),
           TomSizedBox(height: 24),
@@ -355,11 +355,11 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
       )
           .append((p) => p.personal.firstNameField)
           .append((p) => p.personal.lastNameField, dist: 16)
-          .newRow(dist: 16)
+          .newRow()
           .append((p) => p.personal.emailField)
-          .newRow(dist: 16)
+          .newRow()
           .append((p) => p.address.streetField)
-          .newRow(dist: 16)
+          .newRow()
           .append((p) => p.address.cityField)
           .append((p) => p.address.zipField, dist: 16)
           .append((p) => p.address.countryField, dist: 16)

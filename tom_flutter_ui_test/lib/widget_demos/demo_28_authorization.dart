@@ -413,7 +413,7 @@ class _AuthorizationDemoContentState
       )
           .append((p) => p.nameField)
           .append((p) => p.emailField, dist: 16)
-          .newRow(dist: 16)
+          .newRow()
           .append((p) => p.roleField)
           .newRow()
           .gapRow()
