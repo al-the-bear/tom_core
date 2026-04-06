@@ -46,6 +46,9 @@ class BasicSectionProvider extends TomScreenElementsProviderBase {
     scope: this,
     onPressed: () {},
   );
+
+  /// Nested sub-provider: demo26.basic.details
+  late final details = DetailsSectionProvider(this);
 }
 
 /// Provider demonstrating nesting: a sub-section inside the basic section.
@@ -70,6 +73,9 @@ class DetailsSectionProvider extends TomScreenElementsProviderBase {
     scope: this,
     onPressed: () {},
   );
+
+  /// Nested sub-provider: demo26.basic.details.metadata
+  late final metadata = MetadataSectionProvider(this);
 }
 
 /// Provider with deeper nesting to show 3-level scope chains.
@@ -192,8 +198,6 @@ class _ScopeActionDemoContentState
     extends TomState<_ScopeActionDemoContent> {
   // Providers created once, reused across rebuilds
   late final _basicProvider = BasicSectionProvider();
-  late final _detailsProvider = DetailsSectionProvider(_basicProvider);
-  late final _metadataProvider = MetadataSectionProvider(_detailsProvider);
   late final _actionsProvider = ActionsSectionProvider();
   late final _compositeProvider = CompositeSectionProvider();
 
@@ -285,11 +289,11 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _detailsProvider.label,
+                _basicProvider.details.label,
                 TomSizedBox(height: 8),
-                _detailsProvider.statusChip,
+                _basicProvider.details.statusChip,
                 TomSizedBox(height: 8),
-                _detailsProvider.editButton,
+                _basicProvider.details.editButton,
               ],
             ),
           ),
@@ -302,9 +306,9 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _metadataProvider.createdLabel,
+                _basicProvider.details.metadata.createdLabel,
                 TomSizedBox(height: 4),
-                _metadataProvider.modifiedLabel,
+                _basicProvider.details.metadata.modifiedLabel,
               ],
             ),
           ),
@@ -367,8 +371,9 @@ class _ScopeActionDemoContentState
     final theme = Theme.of(context);
     final entries = <(String, String)>[
       ('BasicSectionProvider', _basicProvider.getScopePath()),
-      ('DetailsSectionProvider', _detailsProvider.getScopePath()),
-      ('MetadataSectionProvider', _metadataProvider.getScopePath()),
+      ('DetailsSectionProvider', _basicProvider.details.getScopePath()),
+      ('MetadataSectionProvider',
+          _basicProvider.details.metadata.getScopePath()),
       ('ActionsSectionProvider', _actionsProvider.getScopePath()),
       ('CompositeSectionProvider', _compositeProvider.getScopePath()),
       ('AddressSubProvider', _compositeProvider.address.getScopePath()),
