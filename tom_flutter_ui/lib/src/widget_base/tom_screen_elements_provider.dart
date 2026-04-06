@@ -35,3 +35,55 @@ abstract interface class TomScreenElementsProvider {
   /// Typically set during construction, e.g., `TomScope.named('loginScreen')`.
   TomScope get scope;
 }
+
+/// Base class for screen element providers that is itself a [TomScope].
+///
+/// Extend this class to declare reusable, scoped widget trees that are
+/// created once and returned on every rebuild. Because the class IS a
+/// [TomScope], pass `scope: this` on child widgets to nest them under
+/// this provider's scope path.
+///
+/// Nesting providers chains the scopes automatically:
+///
+/// ```dart
+/// // Outer provider (created inside a TomScope zone for "demo23")
+/// class OrderScreenProvider extends TomScreenElementsProviderBase {
+///   OrderScreenProvider([TomScreenElementsProvider? parent])
+///       : super('order', parent);
+///
+///   late final submitButton = TomButton(tomId: 'submit', scope: this);
+///   late final details = OrderDetailsProvider(this);
+/// }
+///
+/// // Nested provider
+/// class OrderDetailsProvider extends TomScreenElementsProviderBase {
+///   OrderDetailsProvider(TomScreenElementsProvider parent)
+///       : super('details', parent);
+///
+///   late final nameField = TomTextField(tomId: 'name', scope: this);
+/// }
+/// ```
+///
+/// With the outer zone scope "demo23", the resulting resource paths are:
+/// - `demo23.order.submit`
+/// - `demo23.order.details.name`
+class TomScreenElementsProviderBase with TomScopeMixin
+    implements TomScreenElementsProvider {
+  /// Creates a scoped element provider.
+  ///
+  /// [scopeId] — the scope segment for this provider (e.g., `'basicSection'`).
+  ///
+  /// [parent] — optional parent provider. When given, this provider's scope
+  /// nests under `parent.scope`. When omitted, nests under the current zone
+  /// scope ([TomScope.current]).
+  TomScreenElementsProviderBase(String scopeId,
+      [TomScreenElementsProvider? parent]) {
+    initScope(
+      scopeId: scopeId,
+      parentScope: parent?.scope ?? TomScope.current,
+    );
+  }
+
+  @override
+  TomScope get scope => this;
+}
