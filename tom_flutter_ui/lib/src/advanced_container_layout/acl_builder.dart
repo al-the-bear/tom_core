@@ -862,13 +862,14 @@ class AclBuilder {
 
   /// Builds the final [Acl] widget, optionally wrapped with layout controls.
   ///
-  /// - [expandWidth] — wraps in a [SizedBox] with `width: double.infinity`
-  ///   so the container fills the available horizontal space.
+  /// - [expandWidth] — makes the container fill the available horizontal
+  ///   space. Propagated into the [Acl] widget so it sets tight width
+  ///   constraints internally (including through title [Stack]).
   /// - [expandHeight] — wraps in [Expanded] so the container fills the
   ///   available vertical space. The parent must be a [Flex] widget (e.g.
   ///   [Column], [Row]).
-  /// - [width] — explicit width; overrides [expandWidth] when set.
-  /// - [height] — explicit height; overrides [expandHeight] when set.
+  /// - [width] — explicit width; applied via outer [SizedBox].
+  /// - [height] — explicit height; applied via outer [SizedBox].
   /// - [margin] — outer spacing applied outside the container.
   /// - [scrollableX] — overrides the builder-level horizontal scroll flag.
   /// - [scrollableY] — overrides the builder-level vertical scroll flag.
@@ -894,6 +895,8 @@ class AclBuilder {
       backgroundColor: _backgroundColor,
       scrollableX: scrollableX ?? _scrollableX,
       scrollableY: scrollableY ?? _scrollableY,
+      expandWidth: expandWidth,
+      expandHeight: expandHeight,
       title: _title,
       titleWidget: _titleWidget,
       titleStyle: _titleStyle,
@@ -912,16 +915,9 @@ class AclBuilder {
       direction: _direction,
     );
 
-    // Apply explicit or expand sizing
-    final effectiveWidth =
-        width ?? (expandWidth ? double.infinity : null);
-    final effectiveHeight = height;
-    if (effectiveWidth != null || effectiveHeight != null) {
-      result = SizedBox(
-        width: effectiveWidth,
-        height: effectiveHeight,
-        child: result,
-      );
+    // Explicit width/height via outer SizedBox
+    if (width != null || height != null) {
+      result = SizedBox(width: width, height: height, child: result);
     }
 
     // expandHeight wraps in Expanded (parent must be a Flex widget)

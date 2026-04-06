@@ -2094,6 +2094,8 @@ class AclLayout extends StatelessWidget {
   final Color? backgroundColor;
   final bool scrollableX;
   final bool scrollableY;
+  final bool expandWidth;
+  final bool expandHeight;
   final Size? preferredContainerSize;
   final Size? minimumContainerSize;
   final Size? maximumContainerSize;
@@ -2114,6 +2116,8 @@ class AclLayout extends StatelessWidget {
     this.backgroundColor,
     this.scrollableX = false,
     this.scrollableY = false,
+    this.expandWidth = false,
+    this.expandHeight = false,
     this.preferredContainerSize,
     this.minimumContainerSize,
     this.maximumContainerSize,
@@ -2128,7 +2132,7 @@ class AclLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AclContainer(
+    Widget result = AclContainer(
       rows: rows,
       borderStyle: borderStyle,
       focusedBorderStyle: focusedBorderStyle,
@@ -2147,6 +2151,13 @@ class AclLayout extends StatelessWidget {
       variants: variants,
       direction: direction,
     );
+    if (expandWidth) {
+      result = SizedBox(width: double.infinity, child: result);
+    }
+    if (expandHeight) {
+      result = SizedBox(height: double.infinity, child: result);
+    }
+    return result;
   }
 }
 
@@ -2167,6 +2178,8 @@ class Acl extends AclLayout {
     super.backgroundColor,
     super.scrollableX = false,
     super.scrollableY = false,
+    super.expandWidth = false,
+    super.expandHeight = false,
     super.preferredContainerSize,
     super.minimumContainerSize,
     super.maximumContainerSize,
@@ -2280,6 +2293,7 @@ class Acl extends AclLayout {
 
     return Stack(
       clipBehavior: Clip.none,
+      fit: expandWidth ? StackFit.passthrough : StackFit.loose,
       children: [
         Padding(
           padding: const EdgeInsets.only(top: _kTitleReserve),
