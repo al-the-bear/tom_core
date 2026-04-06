@@ -235,7 +235,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
     return _DemoCard(
       tomId: 'card.login',
       child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _loginProvider.emailField,
           TomSizedBox(height: 16),
@@ -257,7 +257,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
     return _DemoCard(
       tomId: 'card.contact',
       child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _contactProvider.header,
           TomSizedBox(height: 16),
@@ -281,7 +281,6 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             title: 'Address',
           )
               .append((p) => p.streetField)
-              .expandX()
               .newRow()
               .append((p) => p.cityField)
               .append((p) => p.zipField)
@@ -306,7 +305,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
     return _DemoCard(
       tomId: 'card.settings',
       child: TomColumn(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _settingsProvider.nameField,
           TomSizedBox(height: 16),
@@ -360,7 +359,6 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
           .append((p) => p.personal.emailField)
           .newRow()
           .append((p) => p.address.streetField)
-          .expandX()
           .newRow()
           .append((p) => p.address.cityField)
           .append((p) => p.address.zipField)

@@ -3358,7 +3358,9 @@ const _demo27CardResources = <String, String>{
 const _demo27WidgetResources = <String, String>{
   // LoginFormProvider: demo27.login.*
   'demo27.login.email.label': 'Email',
+  'demo27.login.email.hint': 'Enter your email address',
   'demo27.login.password.label': 'Password',
+  'demo27.login.password.hint': 'Enter your password',
   'demo27.login.submit.label': 'Sign In',
   'demo27.login.forgot.label': 'Forgot password?',
   // ContactFormProvider: demo27.contact.*
@@ -3367,17 +3369,27 @@ const _demo27WidgetResources = <String, String>{
   'demo27.contact.reset.label': 'Reset',
   // PersonalSectionProvider: demo27.contact.personal.*
   'demo27.contact.personal.firstName.label': 'First Name',
+  'demo27.contact.personal.firstName.hint': 'John',
   'demo27.contact.personal.lastName.label': 'Last Name',
+  'demo27.contact.personal.lastName.hint': 'Doe',
   'demo27.contact.personal.email.label': 'Email',
+  'demo27.contact.personal.email.hint': 'john.doe@example.com',
   'demo27.contact.personal.phone.label': 'Phone',
+  'demo27.contact.personal.phone.hint': '+1 555 123 4567',
   // AddressSectionProvider: demo27.contact.address.*
   'demo27.contact.address.street.label': 'Street',
+  'demo27.contact.address.street.hint': '123 Main St',
   'demo27.contact.address.city.label': 'City',
+  'demo27.contact.address.city.hint': 'New York',
   'demo27.contact.address.zip.label': 'ZIP Code',
+  'demo27.contact.address.zip.hint': '10001',
   'demo27.contact.address.country.label': 'Country',
+  'demo27.contact.address.country.hint': 'United States',
   // SettingsFormProvider: demo27.settings.*
   'demo27.settings.displayName.label': 'Display Name',
+  'demo27.settings.displayName.hint': 'Your display name',
   'demo27.settings.bio.label': 'Bio',
+  'demo27.settings.bio.hint': 'Tell us about yourself',
   'demo27.settings.notificationsLabel.label': 'Enable notifications',
   'demo27.settings.darkModeLabel.label': 'Dark mode',
   'demo27.settings.notifications.label': 'Notifications',
@@ -3432,8 +3444,11 @@ const _demo28WidgetResources = <String, String>{
   'demo28.grouped.basic2.label': 'Email Reports',
   // ProfileSectionProvider: demo28.profile.*
   'demo28.profile.name.label': 'Full Name',
+  'demo28.profile.name.hint': 'Enter your full name',
   'demo28.profile.email.label': 'Email Address',
+  'demo28.profile.email.hint': 'Enter your email',
   'demo28.profile.role.label': 'Role',
+  'demo28.profile.role.hint': 'Your role',
   'demo28.profile.save.label': 'Save Profile',
 };
 
