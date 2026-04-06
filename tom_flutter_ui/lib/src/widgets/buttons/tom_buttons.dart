@@ -1093,20 +1093,7 @@ class TomIconButton extends TomButtonBase {
     this.tooltip,
     this.focusNode,
   }) : _variant = _IconButtonVariant.regular {
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    _resolvedIcon = _resolveIcon();
-    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
-    _resolvedSplashRadius = splashRadius ?? resolveDoubleOrNull('splashRadius');
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
-    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
-    _resolvedStyle = style ?? _resolveStyle();
+    _initResolvedFields();
   }
 
   /// Creates a filled icon button.
@@ -1135,7 +1122,9 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.filled;
+  }) : _variant = _IconButtonVariant.filled {
+    _initResolvedFields();
+  }
 
   /// Creates a filled tonal icon button.
   TomIconButton.filledTonal({
@@ -1163,7 +1152,9 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.filledTonal;
+  }) : _variant = _IconButtonVariant.filledTonal {
+    _initResolvedFields();
+  }
 
   /// Creates an outlined icon button.
   TomIconButton.outlined({
@@ -1191,7 +1182,26 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.outlined;
+  }) : _variant = _IconButtonVariant.outlined {
+    _initResolvedFields();
+  }
+
+  void _initResolvedFields() {
+    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedIcon = _resolveIcon();
+    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
+    _resolvedSplashRadius = splashRadius ?? resolveDoubleOrNull('splashRadius');
+    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
+    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
+    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
+    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
+    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
+    _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
+    _resolvedStyle = style ?? _resolveStyle();
+  }
 
   /// Resolves the icon widget from parameter or resources.
   Widget _resolveIcon() {

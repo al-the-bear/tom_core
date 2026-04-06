@@ -22,6 +22,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../../groups/tom_ui_group.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_node_base.dart';
+import '../../widget_base/tom_scope_widgets.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [AlertDialog].
@@ -897,9 +899,10 @@ class TomDialogs {
     Offset? anchorPoint,
     TraversalEdgeBehavior? traversalEdgeBehavior,
   }) {
+    final wrappedBuilder = InScopeBuilder(scope: _findScopeFromContext(context)).wrap1(builder);
     return material.showDialog<T>(
       context: context,
-      builder: builder,
+      builder: wrappedBuilder,
       barrierDismissible: barrierDismissible,
       barrierColor: barrierColor,
       barrierLabel: barrierLabel,
@@ -933,9 +936,10 @@ class TomDialogs {
     AnimationController? transitionAnimationController,
     Offset? anchorPoint,
   }) {
+    final wrappedBuilder = InScopeBuilder(scope: _findScopeFromContext(context)).wrap1(builder);
     return material.showModalBottomSheet<T>(
       context: context,
-      builder: builder,
+      builder: wrappedBuilder,
       backgroundColor: backgroundColor,
       barrierLabel: barrierLabel,
       elevation: elevation,
@@ -1178,6 +1182,29 @@ class TomDialogs {
       query: query,
       useRootNavigator: useRootNavigator,
     );
+  }
+
+  /// Finds the nearest [TomScope] from the widget tree via [context].
+  ///
+  /// Checks the context's own widget first, then walks up ancestors.
+  /// Falls back to [TomScope.current] if no Tom widget is found.
+  static TomScope _findScopeFromContext(BuildContext context) {
+    if (context is Element) {
+      final scope = _extractScope(context.widget);
+      if (scope != null) return scope;
+    }
+    TomScope? found;
+    context.visitAncestorElements((element) {
+      found = _extractScope(element.widget);
+      return found == null;
+    });
+    return found ?? TomScope.current;
+  }
+
+  static TomScope? _extractScope(Widget widget) {
+    if (widget is TomNodeBase) return widget.constructionScope;
+    if (widget is TomStatefulWidget) return widget.constructionScope;
+    return null;
   }
 }
 

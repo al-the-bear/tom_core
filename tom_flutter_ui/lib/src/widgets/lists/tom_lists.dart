@@ -77,18 +77,7 @@ class TomListView extends TomListBase {
     this.addSemanticIndexes = true,
   })  : _children = children,
         _childrenDelegate = null {
-    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedAddAutomaticKeepAlives = resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
-    _resolvedAddRepaintBoundaries = resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
-    _resolvedAddSemanticIndexes = resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
-    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+    _initResolvedFields();
   }
 
   /// Creates a scrollable, linear array of widgets that are created on demand.
@@ -128,7 +117,9 @@ class TomListView extends TomListBase {
           addAutomaticKeepAlives: addAutomaticKeepAlives,
           addRepaintBoundaries: addRepaintBoundaries,
           addSemanticIndexes: addSemanticIndexes,
-        );
+        ) {
+    _initResolvedFields();
+  }
 
   /// Creates a fixed-length scrollable linear array of list "items" separated
   /// by list item "separators".
@@ -171,7 +162,9 @@ class TomListView extends TomListBase {
           addAutomaticKeepAlives: addAutomaticKeepAlives,
           addRepaintBoundaries: addRepaintBoundaries,
           addSemanticIndexes: addSemanticIndexes,
-        );
+        ) {
+    _initResolvedFields();
+  }
 
   /// Creates a scrollable, linear array of widgets with a custom child model.
   TomListView.custom({
@@ -199,7 +192,24 @@ class TomListView extends TomListBase {
     this.addRepaintBoundaries = true,
     this.addSemanticIndexes = true,
   })  : _children = null,
-        _childrenDelegate = childrenDelegate;
+        _childrenDelegate = childrenDelegate {
+    _initResolvedFields();
+  }
+
+  void _initResolvedFields() {
+    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
+    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
+    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
+    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
+    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedAddAutomaticKeepAlives = resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
+    _resolvedAddRepaintBoundaries = resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
+    _resolvedAddSemanticIndexes = resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
+    _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
+  }
 
   static int _computeActualChildCount(int itemCount) {
     return itemCount > 0 ? itemCount * 2 - 1 : 0;

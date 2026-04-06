@@ -766,7 +766,10 @@ class TomColumn extends TomContainerBase {
       crossAxisAlignment: crossAxisAlignment,
       textDirection: textDirection,
       verticalDirection: verticalDirection,
-      textBaseline: textBaseline,
+      textBaseline: textBaseline ??
+          (crossAxisAlignment == CrossAxisAlignment.baseline
+              ? TextBaseline.alphabetic
+              : null),
       children: children,
     );
   }
@@ -804,7 +807,10 @@ class TomRow extends TomContainerBase {
       crossAxisAlignment: crossAxisAlignment,
       textDirection: textDirection,
       verticalDirection: verticalDirection,
-      textBaseline: textBaseline,
+      textBaseline: textBaseline ??
+          (crossAxisAlignment == CrossAxisAlignment.baseline
+              ? TextBaseline.alphabetic
+              : null),
       children: children,
     );
   }
@@ -2119,12 +2125,7 @@ class TomPositioned extends TomContainerBase {
     this.height,
     required this.child,
   }) {
-    _resolvedLeft = left ?? resolveDoubleOrNull('left');
-    _resolvedTop = top ?? resolveDoubleOrNull('top');
-    _resolvedRight = right ?? resolveDoubleOrNull('right');
-    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _initResolvedFields();
   }
 
   /// Creates a Tom Positioned widget that fills the Stack.
@@ -2139,7 +2140,18 @@ class TomPositioned extends TomContainerBase {
     this.bottom = 0.0,
     required this.child,
   })  : width = null,
-        height = null;
+        height = null {
+    _initResolvedFields();
+  }
+
+  void _initResolvedFields() {
+    _resolvedLeft = left ?? resolveDoubleOrNull('left');
+    _resolvedTop = top ?? resolveDoubleOrNull('top');
+    _resolvedRight = right ?? resolveDoubleOrNull('right');
+    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
+    _resolvedWidth = width ?? resolveDoubleOrNull('width');
+    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+  }
 
   @override
   Widget buildContent(BuildContext context) {

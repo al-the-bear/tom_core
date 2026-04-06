@@ -542,7 +542,7 @@ class _ScrollableDemoContentState extends TomState<_ScrollableDemoContent>
                       ),
                       child: ScrollConfiguration(
                         behavior: _MouseDragScrollBehavior(),
-                        child: ListView.builder(
+                        child: TomListView.builder(
                           controller: scrollController,
                           itemCount: 15,
                           itemBuilder: (context, i) {
