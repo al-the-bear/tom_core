@@ -40,6 +40,9 @@ import 'widget_demos/demo_22_extension_widgets.dart';
 import 'widget_demos/demo_23_builders_clips.dart';
 import 'widget_demos/demo_24_containers_layout.dart';
 import 'widget_demos/demo_25_remaining_widgets.dart';
+import 'widget_demos/demo_26_scope_action.dart';
+import 'widget_demos/demo_27_forms.dart';
+import 'widget_demos/demo_28_authorization.dart';
 
 /// Global locale settings service instance.
 final localeSettingsService = LocaleSettingsService();
@@ -447,6 +450,23 @@ class WidgetDemosTab extends StatelessWidget {
           title: 'Remaining Widgets',
           description: 'Dialogs, Buttons, Navigation, Labels, Lists, Images',
           screen: RemainingWidgetsDemo(),
+        )),
+        const SizedBox(height: 16),
+        _buildCategoryHeader(context, 'Scope & Architecture', Icons.account_tree),
+        TomScope.withScope('demo26', () => DemoTile(
+          title: 'Scope & Action',
+          description: 'TomScreenElementsProviderBase, nested scopes, reusable widget trees',
+          screen: ScopeActionDemo(),
+        )),
+        TomScope.withScope('demo27', () => DemoTile(
+          title: 'Forms',
+          description: 'Form fields in scoped providers, validation, ACL form layout',
+          screen: FormsDemo(),
+        )),
+        TomScope.withScope('demo28', () => DemoTile(
+          title: 'Authorization',
+          description: 'Widget visibility, readonly state, group authorization, TomUIGroup',
+          screen: AuthorizationDemo(),
         )),
       ],
     );

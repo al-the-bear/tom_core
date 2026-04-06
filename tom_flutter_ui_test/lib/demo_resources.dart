@@ -3257,6 +3257,186 @@ const _demo25PickerResources = <String, String>{
   'demo25.timePicker.demo.confirm': 'OK',
 };
 
+// =============================================================================
+// Demo 26: Scope & Action resources
+// =============================================================================
+
+const _demo26SectionResources = <String, String>{
+  'demo26.section.basic.title': 'Basic Provider',
+  'demo26.section.basic.subtitle': 'Widgets created once in a TomScreenElementsProviderBase, reused across rebuilds',
+  'demo26.section.nested.title': 'Nested Scope Chains',
+  'demo26.section.nested.subtitle': 'Providers nesting inside providers — scopes chain automatically',
+  'demo26.section.actions.title': 'Actions Provider',
+  'demo26.section.actions.subtitle': 'Standalone provider using zone scope (no explicit parent)',
+  'demo26.section.composite.title': 'Composite Provider with ACL',
+  'demo26.section.composite.subtitle': 'Provider with nested sub-providers used inside TomAclBuilder',
+  'demo26.section.paths.title': 'Scope Path Visualization',
+  'demo26.section.paths.subtitle': 'Shows the resolved scope path for each provider',
+};
+
+const _demo26CardResources = <String, String>{
+  'demo26.card.basicProvider.icon': 'mWidgets',
+  'demo26.card.basicProvider.title': 'Basic Provider Demo',
+  'demo26.card.basicProvider.description': 'Widgets from BasicSectionProvider — scope path: demo26.basic',
+  'demo26.card.nested1.icon': 'mLooksOne',
+  'demo26.card.nested1.title': 'Level 1: basic',
+  'demo26.card.nested1.description': 'Top-level provider widgets (demo26.basic.*)',
+  'demo26.card.nested2.icon': 'mLooksTwo',
+  'demo26.card.nested2.title': 'Level 2: basic.details',
+  'demo26.card.nested2.description': 'Nested provider widgets (demo26.basic.details.*)',
+  'demo26.card.nested3.icon': 'mLooks3',
+  'demo26.card.nested3.title': 'Level 3: basic.details.metadata',
+  'demo26.card.nested3.description': 'Deeply nested provider widgets (demo26.basic.details.metadata.*)',
+  'demo26.card.actions.icon': 'mPlayArrow',
+  'demo26.card.actions.title': 'Action Buttons',
+  'demo26.card.actions.description': 'ActionsSectionProvider using zone scope — path: demo26.actions',
+  'demo26.card.composite.icon': 'mAccountTree',
+  'demo26.card.composite.title': 'Composite Provider',
+  'demo26.card.composite.description': 'Provider composing address and contact sub-providers via TomAclBuilder',
+  'demo26.card.paths.icon': 'mRoute',
+  'demo26.card.paths.title': 'Resolved Scope Paths',
+  'demo26.card.paths.description': 'Runtime scope path for each provider in the hierarchy',
+};
+
+const _demo26WidgetResources = <String, String>{
+  // BasicSectionProvider: demo26.basic.*
+  'demo26.basic.title.label': 'Basic Section',
+  'demo26.basic.description.label': 'This section demonstrates widgets created inside a TomScreenElementsProviderBase. All widgets resolve resources under demo26.basic.',
+  'demo26.basic.action.label': 'Action',
+  'demo26.basic.info.label': 'Info',
+  // DetailsSectionProvider: demo26.basic.details.*
+  'demo26.basic.details.label.label': 'Detail Information',
+  'demo26.basic.details.status.label': 'Active',
+  'demo26.basic.details.edit.label': 'Edit',
+  // MetadataSectionProvider: demo26.basic.details.metadata.*
+  'demo26.basic.details.metadata.created.label': 'Created: 2025-01-15',
+  'demo26.basic.details.metadata.modified.label': 'Modified: 2026-04-06',
+  // ActionsSectionProvider: demo26.actions.*
+  'demo26.actions.save.label': 'Save',
+  'demo26.actions.cancel.label': 'Cancel',
+  'demo26.actions.delete.label': 'Delete',
+  // CompositeSectionProvider: demo26.composite.*
+  'demo26.composite.header.label': 'Composite Form',
+  // AddressSubProvider: demo26.composite.address.*
+  'demo26.composite.address.street.label': 'Street',
+  'demo26.composite.address.city.label': 'City',
+  // ContactSubProvider: demo26.composite.contact.*
+  'demo26.composite.contact.email.label': 'Email',
+  'demo26.composite.contact.phone.label': 'Phone',
+};
+
+// =============================================================================
+// Demo 27: Forms resources
+// =============================================================================
+
+const _demo27SectionResources = <String, String>{
+  'demo27.section.login.title': 'Simple Login Form',
+  'demo27.section.login.subtitle': 'Login form using scoped provider — all fields resolve under demo27.login',
+  'demo27.section.contact.title': 'Multi-Section Contact Form',
+  'demo27.section.contact.subtitle': 'Nested providers for personal info and address, laid out with TomAclBuilder',
+  'demo27.section.settings.title': 'Settings Form',
+  'demo27.section.settings.subtitle': 'Mixed input types: text fields and switches in a scoped provider',
+  'demo27.section.aclForm.title': 'Form with ACL Layout',
+  'demo27.section.aclForm.subtitle': 'Top-level TomAclBuilder accessing nested sub-provider fields via dot navigation',
+};
+
+const _demo27CardResources = <String, String>{
+  'demo27.card.login.icon': 'mLogin',
+  'demo27.card.login.title': 'Login Form',
+  'demo27.card.login.description': 'Email and password fields from LoginFormProvider (demo27.login)',
+  'demo27.card.contact.icon': 'mContacts',
+  'demo27.card.contact.title': 'Contact Form',
+  'demo27.card.contact.description': 'Personal and address sections with ACL layout (demo27.contact)',
+  'demo27.card.settings.icon': 'mSettings',
+  'demo27.card.settings.title': 'Settings Form',
+  'demo27.card.settings.description': 'Text fields and toggle switches (demo27.settings)',
+  'demo27.card.aclForm.icon': 'mDashboard',
+  'demo27.card.aclForm.title': 'ACL-Laid-Out Form',
+  'demo27.card.aclForm.description': 'ContactFormProvider fields accessed through nested sub-providers',
+};
+
+const _demo27WidgetResources = <String, String>{
+  // LoginFormProvider: demo27.login.*
+  'demo27.login.email.label': 'Email',
+  'demo27.login.password.label': 'Password',
+  'demo27.login.submit.label': 'Sign In',
+  'demo27.login.forgot.label': 'Forgot password?',
+  // ContactFormProvider: demo27.contact.*
+  'demo27.contact.header.label': 'Contact Information',
+  'demo27.contact.save.label': 'Save Contact',
+  'demo27.contact.reset.label': 'Reset',
+  // PersonalSectionProvider: demo27.contact.personal.*
+  'demo27.contact.personal.firstName.label': 'First Name',
+  'demo27.contact.personal.lastName.label': 'Last Name',
+  'demo27.contact.personal.email.label': 'Email',
+  'demo27.contact.personal.phone.label': 'Phone',
+  // AddressSectionProvider: demo27.contact.address.*
+  'demo27.contact.address.street.label': 'Street',
+  'demo27.contact.address.city.label': 'City',
+  'demo27.contact.address.zip.label': 'ZIP Code',
+  'demo27.contact.address.country.label': 'Country',
+  // SettingsFormProvider: demo27.settings.*
+  'demo27.settings.displayName.label': 'Display Name',
+  'demo27.settings.bio.label': 'Bio',
+  'demo27.settings.notificationsLabel.label': 'Enable notifications',
+  'demo27.settings.darkModeLabel.label': 'Dark mode',
+  'demo27.settings.notifications.label': 'Notifications',
+  'demo27.settings.darkMode.label': 'Dark Mode',
+  'demo27.settings.save.label': 'Save Settings',
+};
+
+// =============================================================================
+// Demo 28: Authorization resources
+// =============================================================================
+
+const _demo28SectionResources = <String, String>{
+  'demo28.section.controls.title': 'Authorization Controls',
+  'demo28.section.controls.subtitle': 'Toggle switches to change authorization rules at runtime',
+  'demo28.section.perWidget.title': 'Per-Widget Authorization',
+  'demo28.section.perWidget.subtitle': 'Individual widgets hidden or made readonly based on their resource path',
+  'demo28.section.groups.title': 'Group Authorization',
+  'demo28.section.groups.subtitle': 'TomUIGroup controls collective visibility for premium vs. basic features',
+  'demo28.section.sectionLevel.title': 'Section-Level Authorization',
+  'demo28.section.sectionLevel.subtitle': 'TomAclBuilder applies authorization to the entire container and its children',
+  'demo28.section.states.title': 'Auth State Visualization',
+  'demo28.section.states.subtitle': 'Live view of resolved TomAuthState for each resource path',
+};
+
+const _demo28CardResources = <String, String>{
+  'demo28.card.controls.icon': 'mTune',
+  'demo28.card.controls.title': 'Control Panel',
+  'demo28.card.controls.description': 'Toggle authorization rules and see widgets respond in real-time',
+  'demo28.card.perWidget.icon': 'mVisibility',
+  'demo28.card.perWidget.title': 'Admin Actions',
+  'demo28.card.perWidget.description': 'View, Edit, Delete buttons with individual auth state control',
+  'demo28.card.groups.icon': 'mGroup',
+  'demo28.card.groups.title': 'Feature Groups',
+  'demo28.card.groups.description': 'Premium and basic feature chips controlled by TomUIGroup visibility',
+  'demo28.card.sectionLevel.icon': 'mSecurity',
+  'demo28.card.sectionLevel.title': 'Profile Section',
+  'demo28.card.sectionLevel.description': 'Entire form section controlled by parent path authorization',
+  'demo28.card.states.icon': 'mPolicy',
+  'demo28.card.states.title': 'Auth State Table',
+  'demo28.card.states.description': 'Current TomAuthState for each resource path in the demo',
+};
+
+const _demo28WidgetResources = <String, String>{
+  // AdminSectionProvider: demo28.admin.*
+  'demo28.admin.view.label': 'View',
+  'demo28.admin.edit.label': 'Edit',
+  'demo28.admin.delete.label': 'Delete',
+  // GroupedSectionProvider: demo28.grouped.*
+  'demo28.grouped.premium1.label': 'Premium Analytics',
+  'demo28.grouped.premium2.label': 'Priority Support',
+  'demo28.grouped.basic1.label': 'Basic Dashboard',
+  'demo28.grouped.basic2.label': 'Email Reports',
+  // ProfileSectionProvider: demo28.profile.*
+  'demo28.profile.name.label': 'Full Name',
+  'demo28.profile.email.label': 'Email Address',
+  'demo28.profile.role.label': 'Role',
+  'demo28.profile.save.label': 'Save Profile',
+};
+
 /// Initializes the Tom UI resource and icon adapters for the demo app.
 ///
 /// Call this in `main()` before `runApp()`.
@@ -3274,6 +3454,15 @@ void initializeDemoResources() {
     ..._demo25SectionResources,
     ..._demo25CardResources,
     ..._demo25PickerResources,
+    ..._demo26SectionResources,
+    ..._demo26CardResources,
+    ..._demo26WidgetResources,
+    ..._demo27SectionResources,
+    ..._demo27CardResources,
+    ..._demo27WidgetResources,
+    ..._demo28SectionResources,
+    ..._demo28CardResources,
+    ..._demo28WidgetResources,
   };
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(allResources),
