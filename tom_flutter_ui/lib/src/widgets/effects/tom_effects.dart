@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -185,10 +186,10 @@ class TomSelectableRegion extends TomEffectBase {
     this.focusNode,
     required this.selectionControls,
     required this.child,
-    this.onSelectionChanged,
+    ValueChanged<SelectedContent?>? onSelectionChanged,
     this.contextMenuBuilder,
     this.magnifierConfiguration = TextMagnifierConfiguration.disabled,
-  });
+  }) : onSelectionChanged = InScopeBuilder(scope: scope).wrap1n(onSelectionChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -223,9 +224,9 @@ class TomSelectionArea extends TomEffectBase {
     this.selectionControls,
     this.contextMenuBuilder = _defaultContextMenuBuilder,
     this.magnifierConfiguration,
-    this.onSelectionChanged,
+    ValueChanged<SelectedContent?>? onSelectionChanged,
     required this.child,
-  });
+  }) : onSelectionChanged = InScopeBuilder(scope: scope).wrap1n(onSelectionChanged);
 
   static Widget _defaultContextMenuBuilder(
     BuildContext context,

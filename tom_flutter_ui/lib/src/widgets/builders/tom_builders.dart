@@ -211,9 +211,10 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     required this.duration,
     this.curve,
     required ValueWidgetBuilder<T> builder,
-    this.onEnd,
+    VoidCallback? onEnd,
     this.child,
-  }) : builder = InScopeBuilder(scope: scope).wrap3(builder) {
+  }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
+       onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedCurve = curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
   }
 
