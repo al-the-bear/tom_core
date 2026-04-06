@@ -272,11 +272,13 @@ class _BuildersClipsDemoContentState
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomIconButton(
+                tomId: 'counter.decrement',
                 onPressed: () => _counter.value--,
                 icon: const Icon(Icons.remove),
               ),
               TomSizedBox(width: 16),
               TomIconButton(
+                tomId: 'counter.increment',
                 onPressed: () => _counter.value++,
                 icon: const Icon(Icons.add),
               ),

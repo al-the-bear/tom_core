@@ -2974,6 +2974,274 @@ class _DemoResources {
   };
 }
 
+// ==========================================================================
+// Demo 22: Extension Widgets
+// ==========================================================================
+// Section headers
+const _demo22SectionResources = <String, String>{
+  'demo22.section.appbar.title.label': 'App Bars',
+  'demo22.section.appbar.subtitle.label':
+      'TomAppBar with title, actions, and styling',
+  'demo22.section.navDestination.title.label': 'Navigation Destinations',
+  'demo22.section.navDestination.subtitle.label':
+      'TomNavigationDestination in NavigationBar',
+  'demo22.section.drawerDestination.title.label': 'Drawer Destinations',
+  'demo22.section.drawerDestination.subtitle.label':
+      'TomNavigationDrawerDestination in NavigationDrawer',
+  'demo22.section.tableCell.title.label': 'Table Cells',
+  'demo22.section.tableCell.subtitle.label':
+      'TomTableCell with vertical alignment and data tables',
+  'demo22.section.refreshProgress.title.label': 'Refresh Progress',
+  'demo22.section.refreshProgress.subtitle.label':
+      'TomRefreshProgressIndicator for pull-to-refresh',
+  'demo22.section.cupertinoTabView.title.label': 'Cupertino Tab View',
+  'demo22.section.cupertinoTabView.subtitle.label':
+      'TomCupertinoTabView for iOS-style tab navigation',
+};
+// Demo cards
+const _demo22CardResources = <String, String>{
+  'demo22.demo.appbar.basic.icon': 'mDashboard',
+  'demo22.demo.appbar.basic.title.label': 'Basic TomAppBar',
+  'demo22.demo.appbar.basic.subtitle.label': 'Simple app bar with title and actions',
+  'demo22.demo.appbar.styled.icon': 'mPalette',
+  'demo22.demo.appbar.styled.title.label': 'Styled TomAppBar',
+  'demo22.demo.appbar.styled.subtitle.label': 'Custom colors, elevation, and shape',
+  'demo22.demo.appbar.titleWidget.icon': 'mWidgets',
+  'demo22.demo.appbar.titleWidget.title.label': 'TomAppBar with Title Widget',
+  'demo22.demo.appbar.titleWidget.subtitle.label': 'Custom widget as app bar title',
+  'demo22.demo.navDest.basic.icon': 'mNavigation',
+  'demo22.demo.navDest.basic.title.label': 'TomNavigationDestination',
+  'demo22.demo.navDest.basic.subtitle.label': 'Destinations inside a NavigationBar',
+  'demo22.demo.drawerDest.basic.icon': 'mMenu',
+  'demo22.demo.drawerDest.basic.title.label': 'TomNavigationDrawerDestination',
+  'demo22.demo.drawerDest.basic.subtitle.label': 'Destinations inside a NavigationDrawer',
+  'demo22.demo.tableCell.basic.icon': 'mTableChart',
+  'demo22.demo.tableCell.basic.title.label': 'TomTableCell',
+  'demo22.demo.tableCell.basic.subtitle.label': 'Cells with vertical alignment in DataTable',
+  'demo22.demo.refreshProgress.static.icon': 'mRefresh',
+  'demo22.demo.refreshProgress.static.title.label': 'Static Progress Values',
+  'demo22.demo.refreshProgress.static.subtitle.label': 'Various progress indicator states',
+  'demo22.demo.refreshProgress.inRefresh.icon': 'mSync',
+  'demo22.demo.refreshProgress.inRefresh.title.label': 'Pull-to-Refresh',
+  'demo22.demo.refreshProgress.inRefresh.subtitle.label': 'RefreshIndicator with TomRefreshProgressIndicator',
+  'demo22.demo.cupertinoTabView.info.icon': 'mInfoOutline',
+  'demo22.demo.cupertinoTabView.info.title.label': 'TomCupertinoTabView',
+  'demo22.demo.cupertinoTabView.info.subtitle.label': 'iOS tab view requiring CupertinoTabScaffold context',
+};
+
+// ==========================================================================
+// Demo 23: Builders, Clips & Base
+// ==========================================================================
+const _demo23SectionResources = <String, String>{
+  'demo23.section.asyncBuilders.title.label': 'Async Builders',
+  'demo23.section.asyncBuilders.subtitle.label':
+      'FutureBuilder, StreamBuilder for async data',
+  'demo23.section.listenableBuilders.title.label': 'Listenable Builders',
+  'demo23.section.listenableBuilders.subtitle.label':
+      'ValueListenableBuilder and ListenableBuilder',
+  'demo23.section.layoutBuilders.title.label': 'Layout Builders',
+  'demo23.section.layoutBuilders.subtitle.label':
+      'LayoutBuilder, OrientationBuilder, StatefulBuilder',
+  'demo23.section.animationBuilders.title.label': 'Animation Builders',
+  'demo23.section.animationBuilders.subtitle.label':
+      'AnimatedBuilder, TweenAnimationBuilder, animated positioning',
+  'demo23.section.clips.title.label': 'Clip Widgets',
+  'demo23.section.clips.subtitle.label':
+      'ClipOval, ClipPath, ClipRect, ClipRRect, ClipRSuperellipse',
+  'demo23.section.baseWidgets.title.label': 'Base Widgets',
+  'demo23.section.baseWidgets.subtitle.label':
+      'Opacity, RawChip, EditableText primitives',
+};
+const _demo23CardResources = <String, String>{
+  'demo23.demo.futureBuilder.icon': 'mSchedule',
+  'demo23.demo.futureBuilder.title.label': 'TomFutureBuilder',
+  'demo23.demo.futureBuilder.subtitle.label': 'Async data loading with snapshot handling',
+  'demo23.demo.streamBuilder.icon': 'mStream',
+  'demo23.demo.streamBuilder.title.label': 'TomStreamBuilder',
+  'demo23.demo.streamBuilder.subtitle.label': 'Reactive stream data display',
+  'demo23.demo.valueListenable.icon': 'mHearing',
+  'demo23.demo.valueListenable.title.label': 'TomValueListenableBuilder',
+  'demo23.demo.valueListenable.subtitle.label': 'Rebuilds on ValueNotifier changes',
+  'demo23.demo.listenableBuilder.icon': 'mNotifications',
+  'demo23.demo.listenableBuilder.title.label': 'TomListenableBuilder',
+  'demo23.demo.listenableBuilder.subtitle.label': 'Rebuilds on any Listenable change',
+  'demo23.demo.layoutBuilder.icon': 'mViewQuilt',
+  'demo23.demo.layoutBuilder.title.label': 'TomLayoutBuilder',
+  'demo23.demo.layoutBuilder.subtitle.label': 'Builds based on parent constraints',
+  'demo23.demo.orientationBuilder.icon': 'mScreenRotation',
+  'demo23.demo.orientationBuilder.title.label': 'TomOrientationBuilder',
+  'demo23.demo.orientationBuilder.subtitle.label': 'Responds to orientation changes',
+  'demo23.demo.statefulBuilder.icon': 'mBuildCircle',
+  'demo23.demo.statefulBuilder.title.label': 'TomStatefulBuilder',
+  'demo23.demo.statefulBuilder.subtitle.label': 'Local setState without full StatefulWidget',
+  'demo23.demo.animatedBuilder.icon': 'mAnimation',
+  'demo23.demo.animatedBuilder.title.label': 'TomAnimatedBuilder',
+  'demo23.demo.animatedBuilder.subtitle.label': 'Custom animation with AnimationController',
+  'demo23.demo.tweenAnimation.icon': 'mTimeline',
+  'demo23.demo.tweenAnimation.title.label': 'TomTweenAnimationBuilder',
+  'demo23.demo.tweenAnimation.subtitle.label': 'Implicit tween-based animation',
+  'demo23.demo.animatedFractional.icon': 'mAspectRatio',
+  'demo23.demo.animatedFractional.title.label': 'TomAnimatedFractionallySizedBox',
+  'demo23.demo.animatedFractional.subtitle.label': 'Animated size changes with fractions',
+  'demo23.demo.animatedPositioned.icon': 'mOpenWith',
+  'demo23.demo.animatedPositioned.title.label': 'TomAnimatedPositionedDirectional',
+  'demo23.demo.animatedPositioned.subtitle.label': 'Animated position in Stack with direction',
+  'demo23.demo.clips.icon': 'mContentCut',
+  'demo23.demo.clips.title.label': 'Clip Widgets',
+  'demo23.demo.clips.subtitle.label': 'ClipOval, ClipPath, ClipRect, ClipRRect, ClipRSuperellipse',
+  'demo23.demo.opacity.icon': 'mOpacity',
+  'demo23.demo.opacity.title.label': 'TomOpacity',
+  'demo23.demo.opacity.subtitle.label': 'Renders child with variable opacity',
+  'demo23.demo.rawChip.icon': 'mLabel',
+  'demo23.demo.rawChip.title.label': 'TomRawChip',
+  'demo23.demo.rawChip.subtitle.label': 'Low-level chip with full customization',
+  'demo23.demo.editableText.icon': 'mEdit',
+  'demo23.demo.editableText.title.label': 'TomEditableText',
+  'demo23.demo.editableText.subtitle.label': 'Base editable text without Material decoration',
+};
+
+// ==========================================================================
+// Demo 24: Containers & Layout
+// ==========================================================================
+const _demo24SectionResources = <String, String>{
+  'demo24.section.scaffolds.title.label': 'Scaffolds',
+  'demo24.section.scaffolds.subtitle.label':
+      'TomScaffold, BottomAppBar, CupertinoPageScaffold, CupertinoTabScaffold',
+  'demo24.section.surfaces.title.label': 'Surfaces & Decorations',
+  'demo24.section.surfaces.subtitle.label':
+      'DecoratedBox, ColoredBox, PhysicalModel, PhysicalShape',
+  'demo24.section.transforms.title.label': 'Transforms',
+  'demo24.section.transforms.subtitle.label':
+      'Transform, RotatedBox, FractionalTranslation, ConstraintsTransformBox',
+  'demo24.section.multiChild.title.label': 'Multi-Child Layout',
+  'demo24.section.multiChild.subtitle.label':
+      'OverflowBar, Flow, ListBody',
+  'demo24.section.customLayout.title.label': 'Custom Layout & Painting',
+  'demo24.section.customLayout.subtitle.label':
+      'CustomPaint, CustomSingleChildLayout',
+  'demo24.section.gridExpansion.title.label': 'Grids & Expansion',
+  'demo24.section.gridExpansion.subtitle.label':
+      'GridTile, GridTileBar, ExpansionPanelList',
+  'demo24.section.sliverExtras.title.label': 'Sliver Extras',
+  'demo24.section.sliverExtras.subtitle.label':
+      'SliverOffstage, SliverResizingHeader',
+};
+const _demo24CardResources = <String, String>{
+  'demo24.demo.scaffold.icon': 'mWebAsset',
+  'demo24.demo.scaffold.title.label': 'TomScaffold & TomBottomAppBar',
+  'demo24.demo.scaffold.subtitle.label': 'Page scaffold with bottom app bar and FAB',
+  'demo24.demo.cupertinoScaffold.icon': 'mPhoneIphone',
+  'demo24.demo.cupertinoScaffold.title.label': 'TomCupertinoPageScaffold',
+  'demo24.demo.cupertinoScaffold.subtitle.label': 'iOS-style page scaffold with navigation bar',
+  'demo24.demo.cupertinoTabScaffold.icon': 'mTabUnselected',
+  'demo24.demo.cupertinoTabScaffold.title.label': 'TomCupertinoTabScaffold',
+  'demo24.demo.cupertinoTabScaffold.subtitle.label': 'iOS-style tab scaffold with tab bar',
+  'demo24.demo.surfaces.icon': 'mLayers',
+  'demo24.demo.surfaces.title.label': 'Surface Widgets',
+  'demo24.demo.surfaces.subtitle.label': 'DecoratedBox, ColoredBox, PhysicalModel, PhysicalShape',
+  'demo24.demo.transforms.icon': 'mTransform',
+  'demo24.demo.transforms.title.label': 'Transform Widgets',
+  'demo24.demo.transforms.subtitle.label': 'Rotate, translate, scale, transform clip',
+  'demo24.demo.overflowBar.icon': 'mViewStream',
+  'demo24.demo.overflowBar.title.label': 'TomOverflowBar',
+  'demo24.demo.overflowBar.subtitle.label': 'Actions bar that overflows to column',
+  'demo24.demo.flow.icon': 'mAccountTree',
+  'demo24.demo.flow.title.label': 'TomFlow',
+  'demo24.demo.flow.subtitle.label': 'Custom layout delegating to FlowDelegate',
+  'demo24.demo.customPaint.icon': 'mBrush',
+  'demo24.demo.customPaint.title.label': 'TomCustomPaint',
+  'demo24.demo.customPaint.subtitle.label': 'Canvas-based custom painting',
+  'demo24.demo.customLayout.icon': 'mDashboardCustomize',
+  'demo24.demo.customLayout.title.label': 'TomCustomSingleChildLayout',
+  'demo24.demo.customLayout.subtitle.label': 'Custom child positioning via delegate',
+  'demo24.demo.gridTile.icon': 'mGridView',
+  'demo24.demo.gridTile.title.label': 'TomGridTile & TomGridTileBar',
+  'demo24.demo.gridTile.subtitle.label': 'Grid tiles with header and footer bars',
+  'demo24.demo.expansionPanel.icon': 'mExpandMore',
+  'demo24.demo.expansionPanel.title.label': 'TomExpansionPanel',
+  'demo24.demo.expansionPanel.subtitle.label': 'Expandable panels in an ExpansionPanelList',
+  'demo24.demo.sliverExtras.icon': 'mViewDay',
+  'demo24.demo.sliverExtras.title.label': 'Sliver Extras',
+  'demo24.demo.sliverExtras.subtitle.label': 'SliverOffstage and SliverResizingHeader',
+};
+
+// ==========================================================================
+// Demo 25: Remaining Widgets
+// ==========================================================================
+const _demo25SectionResources = <String, String>{
+  'demo25.section.buttonExtras.title.label': 'Button Extras',
+  'demo25.section.buttonExtras.subtitle.label':
+      'ButtonBar, MaterialButton, SnackBarAction, DropdownMenuEntry',
+  'demo25.section.dialogExtras.title.label': 'Dialog Extras',
+  'demo25.section.dialogExtras.subtitle.label':
+      'Dialog, AboutDialog, SimpleDialogOption, DateRangePicker, TimePicker',
+  'demo25.section.labelExtras.title.label': 'Label Extras',
+  'demo25.section.labelExtras.subtitle.label':
+      'AboutListTile, Banner, MenuAcceleratorLabel',
+  'demo25.section.navExtras.title.label': 'Navigation Extras',
+  'demo25.section.navExtras.subtitle.label':
+      'Breadcrumb, DrawerHeader, FlexibleSpaceBar, TabPageSelector, Cupertino nav',
+  'demo25.section.imageExtras.title.label': 'Image Extras',
+  'demo25.section.imageExtras.subtitle.label':
+      'AssetImage, FileImage, InkImage reference',
+  'demo25.section.listExtras.title.label': 'List Extras',
+  'demo25.section.listExtras.subtitle.label':
+      'CupertinoListSection, CupertinoListTile, ReorderableListView',
+};
+const _demo25CardResources = <String, String>{
+  'demo25.demo.buttonBar.icon': 'mSmartButton',
+  'demo25.demo.buttonBar.title.label': 'TomButtonBar (deprecated)',
+  'demo25.demo.buttonBar.subtitle.label': 'Legacy button bar — use TomOverflowBar instead',
+  'demo25.demo.materialButton.icon': 'mTouchApp',
+  'demo25.demo.materialButton.title.label': 'TomMaterialButton (deprecated)',
+  'demo25.demo.materialButton.subtitle.label': 'Legacy material button — use ElevatedButton etc.',
+  'demo25.demo.dropdownMenuEntry.icon': 'mArrowDropDown',
+  'demo25.demo.dropdownMenuEntry.title.label': 'TomDropdownMenuEntry',
+  'demo25.demo.dropdownMenuEntry.subtitle.label': 'Entries inside TomDropdownMenu',
+  'demo25.demo.snackBarAction.icon': 'mUndo',
+  'demo25.demo.snackBarAction.title.label': 'TomSnackBarAction',
+  'demo25.demo.snackBarAction.subtitle.label': 'Action button inside TomSnackBar',
+  'demo25.demo.dialogs.icon': 'mOpenInNew',
+  'demo25.demo.dialogs.title.label': 'Dialog Widgets',
+  'demo25.demo.dialogs.subtitle.label': 'TomDialog, AboutDialog, SimpleDialogOption, pickers, context menu',
+  'demo25.demo.cupertinoDialogActions.icon': 'mPhoneIphone',
+  'demo25.demo.cupertinoDialogActions.title.label': 'Cupertino Dialog & Action Sheet',
+  'demo25.demo.cupertinoDialogActions.subtitle.label': 'CupertinoDialogAction and CupertinoActionSheetAction',
+  'demo25.demo.aboutListTile.icon': 'mInfoOutline',
+  'demo25.demo.aboutListTile.title.label': 'TomAboutListTile',
+  'demo25.demo.aboutListTile.subtitle.label': 'ListTile that shows an AboutDialog',
+  'demo25.demo.banner.icon': 'mFlag',
+  'demo25.demo.banner.title.label': 'TomBanner',
+  'demo25.demo.banner.subtitle.label': 'Corner banner overlay on content',
+  'demo25.demo.menuAccelerator.icon': 'mKeyboard',
+  'demo25.demo.menuAccelerator.title.label': 'TomMenuAcceleratorLabel',
+  'demo25.demo.menuAccelerator.subtitle.label': 'Keyboard accelerator hint in menus',
+  'demo25.demo.breadcrumb.icon': 'mChevronRight',
+  'demo25.demo.breadcrumb.title.label': 'TomBreadcrumb',
+  'demo25.demo.breadcrumb.subtitle.label': 'Breadcrumb navigation trail',
+  'demo25.demo.drawerHeaders.icon': 'mAccountCircle',
+  'demo25.demo.drawerHeaders.title.label': 'Drawer Headers',
+  'demo25.demo.drawerHeaders.subtitle.label': 'TomDrawerHeader and TomUserAccountsDrawerHeader',
+  'demo25.demo.flexibleSpaceBar.icon': 'mLandscape',
+  'demo25.demo.flexibleSpaceBar.title.label': 'TomFlexibleSpaceBar',
+  'demo25.demo.flexibleSpaceBar.subtitle.label': 'Collapsing space in SliverAppBar',
+  'demo25.demo.tabPageSelector.icon': 'mFiberManualRecord',
+  'demo25.demo.tabPageSelector.title.label': 'TomTabPageSelector',
+  'demo25.demo.tabPageSelector.subtitle.label': 'Dot indicators for TabController pages',
+  'demo25.demo.cupertinoNavExtras.icon': 'mArrowBack',
+  'demo25.demo.cupertinoNavExtras.title.label': 'Cupertino Navigation',
+  'demo25.demo.cupertinoNavExtras.subtitle.label': 'CupertinoSliverNavigationBar and back button',
+  'demo25.demo.imageExtras.icon': 'mImage',
+  'demo25.demo.imageExtras.title.label': 'Image Widgets',
+  'demo25.demo.imageExtras.subtitle.label': 'TomAssetImage, TomFileImage, TomInkImage reference',
+  'demo25.demo.cupertinoList.icon': 'mList',
+  'demo25.demo.cupertinoList.title.label': 'Cupertino Lists',
+  'demo25.demo.cupertinoList.subtitle.label': 'TomCupertinoListSection and TomCupertinoListTile',
+  'demo25.demo.reorderableList.icon': 'mDragHandle',
+  'demo25.demo.reorderableList.title.label': 'TomReorderableListView',
+  'demo25.demo.reorderableList.subtitle.label': 'Drag-to-reorder list items',
+};
+
 /// Initializes the Tom UI resource and icon adapters for the demo app.
 ///
 /// Call this in `main()` before `runApp()`.
@@ -2982,6 +3250,14 @@ void initializeDemoResources() {
   final Map<String, dynamic> allResources = {
     ..._DemoResources._resources,
     ..._DemoResources._structuredResources,
+    ..._demo22SectionResources,
+    ..._demo22CardResources,
+    ..._demo23SectionResources,
+    ..._demo23CardResources,
+    ..._demo24SectionResources,
+    ..._demo24CardResources,
+    ..._demo25SectionResources,
+    ..._demo25CardResources,
   };
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(allResources),

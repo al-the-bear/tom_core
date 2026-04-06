@@ -625,6 +625,7 @@ class _RemainingWidgetsDemoContentState
             child: TomCustomScrollView(
               slivers: [
                 TomSliverAppBar(
+                  tomId: 'sliverAppBar.flexDemo',
                   expandedHeight: 150,
                   pinned: true,
                   flexibleSpace: TomFlexibleSpaceBar(
