@@ -36,6 +36,7 @@ import 'widget_demos/demo_18_animated.dart';
 import 'widget_demos/demo_19_effects.dart';
 import 'widget_demos/demo_20_interactions.dart';
 import 'widget_demos/demo_21_resource_resolution.dart';
+import 'widget_demos/demo_22_extension_widgets.dart';
 
 /// Global locale settings service instance.
 final localeSettingsService = LocaleSettingsService();
@@ -423,6 +424,11 @@ class WidgetDemosTab extends StatelessWidget {
           title: 'Resource Resolution',
           description: 'How widgets resolve labels, icons, tooltips from resources',
           screen: ResourceResolutionDemo(),
+        )),
+        TomScope.withScope('demo22', () => DemoTile(
+          title: 'Extension Widgets',
+          description: 'AppBar, NavigationDestination, TableCell, CupertinoTabView, RefreshProgressIndicator',
+          screen: ExtensionWidgetsDemo(),
         )),
       ],
     );
