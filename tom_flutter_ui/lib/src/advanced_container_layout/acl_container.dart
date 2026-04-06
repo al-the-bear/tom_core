@@ -359,6 +359,14 @@ class AclContainer extends StatefulWidget {
   /// If null, falls back to the nearest [AclDirectionScope], then [AclDirection.ltr].
   final AclDirection? direction;
 
+  /// When true, row components automatically fill the available horizontal
+  /// space even without explicit [AclFlags.expandX]. Components are wrapped
+  /// in [Flexible] with equal flex weight and the row uses
+  /// [MainAxisSize.max]. This prevents multiple unconstrained children
+  /// (e.g. TextFields) from each expanding to the full container width and
+  /// overflowing.
+  final bool autoFillWidth;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -368,6 +376,7 @@ class AclContainer extends StatefulWidget {
     this.backgroundColor,
     this.scrollableX = false,
     this.scrollableY = false,
+    this.autoFillWidth = false,
     this.preferredContainerSize,
     this.minimumContainerSize,
     this.maximumContainerSize,
@@ -1657,9 +1666,12 @@ class _AclContainerState extends State<AclContainer> {
       RowAlignment.right => MainAxisAlignment.end,
     };
 
-    final hasExpandX = row.components.any((c) => c.expandX && !c.isGap);
+    final hasExplicitExpandX = row.components.any((c) => c.expandX && !c.isGap);
     final hasExpandY = row.components.any((c) => c.expandY);
     final hasGapSlots = row.components.any((c) => c.isGap);
+    // When autoFillWidth is set (from expandWidth on the Acl/AclLayout),
+    // treat all rows as width-filling so components share space evenly.
+    final hasExpandX = hasExplicitExpandX || (widget.autoFillWidth && canExpandHorizontally);
     final rowFillsWidth = hasExpandX || hasGapSlots;
 
     final gapWeightSum = hasGapSlots
@@ -1830,8 +1842,13 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
+      // Effective expandX: true when the component has the flag OR when
+      // autoFillWidth is set and the container can expand horizontally.
+      final effectiveExpandX = component.expandX ||
+          (widget.autoFillWidth && canExpandHorizontally);
+
       if (!isFlexNativeChild &&
-          (!component.expandX || !canExpandHorizontally)) {
+          (!effectiveExpandX || !canExpandHorizontally)) {
         final effectiveWidth = fittedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
           child = SizedBox(width: effectiveWidth, child: child);
@@ -1848,7 +1865,7 @@ class _AclContainerState extends State<AclContainer> {
       final hasFiniteMaxWidth =
           (component.maximumSize?.width ?? double.infinity).isFinite;
       if (!isFlexNativeChild &&
-          component.expandX &&
+          effectiveExpandX &&
           canExpandHorizontally &&
           !hasFiniteMaxWidth) {
         child = SizedBox(width: double.infinity, child: child);
@@ -1914,7 +1931,7 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (component.expandX && canExpandHorizontally) {
+      if (effectiveExpandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
@@ -2140,6 +2157,7 @@ class AclLayout extends StatelessWidget {
       backgroundColor: backgroundColor,
       scrollableX: scrollableX,
       scrollableY: scrollableY,
+      autoFillWidth: expandWidth,
       preferredContainerSize: preferredContainerSize,
       minimumContainerSize: minimumContainerSize,
       maximumContainerSize: maximumContainerSize,
@@ -2313,6 +2331,7 @@ class Acl extends AclLayout {
             backgroundColor: backgroundColor,
             scrollableX: scrollableX,
             scrollableY: scrollableY,
+            autoFillWidth: expandWidth,
             preferredContainerSize: preferredContainerSize,
             minimumContainerSize: minimumContainerSize,
             maximumContainerSize: maximumContainerSize,
