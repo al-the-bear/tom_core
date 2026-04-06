@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';import 'package:flutter/cupertino.dart';import 'package:flutter/rendering.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -122,7 +123,7 @@ class TomListView extends TomListBase {
     this.addSemanticIndexes = true,
   })  : _children = null,
         _childrenDelegate = SliverChildBuilderDelegate(
-          itemBuilder,
+          InScopeBuilder(scope: scope).wrap2(itemBuilder),
           childCount: itemCount,
           addAutomaticKeepAlives: addAutomaticKeepAlives,
           addRepaintBoundaries: addRepaintBoundaries,
@@ -159,13 +160,13 @@ class TomListView extends TomListBase {
         semanticChildCount = itemCount,
         _children = null,
         _childrenDelegate = SliverChildBuilderDelegate(
-          (BuildContext context, int index) {
+          InScopeBuilder(scope: scope).wrap2((BuildContext context, int index) {
             final int itemIndex = index ~/ 2;
             if (index.isEven) {
               return itemBuilder(context, itemIndex);
             }
             return separatorBuilder(context, itemIndex);
-          },
+          }),
           childCount: _computeActualChildCount(itemCount),
           addAutomaticKeepAlives: addAutomaticKeepAlives,
           addRepaintBoundaries: addRepaintBoundaries,
@@ -285,7 +286,7 @@ class TomAnimatedList extends TomListBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.itemBuilder,
+    required AnimatedItemBuilder itemBuilder,
     this.initialItemCount = 0,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
@@ -295,7 +296,7 @@ class TomAnimatedList extends TomListBase {
     this.shrinkWrap = false,
     this.padding,
     this.clipBehavior = Clip.hardEdge,
-  }) {
+  }) : itemBuilder = InScopeBuilder(scope: scope).wrap3(itemBuilder) {
     _resolvedInitialItemCount = resolveIntOrNull('initialItemCount') ?? initialItemCount;
     _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
     _resolvedPrimary = primary ?? resolveBoolOrNull('primary');

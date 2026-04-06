@@ -15,23 +15,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Progress Indicators demo.
-class ProgressDemo extends StatelessWidget {
-  const ProgressDemo({super.key});
+class ProgressDemo extends TomStatelessWidget {
+  ProgressDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _ProgressDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _ProgressDemoContent();
+
   }
 }
 
-class _ProgressDemoContent extends StatefulWidget {
-  const _ProgressDemoContent();
+class _ProgressDemoContent extends TomStatefulWidget {
+  _ProgressDemoContent();
 
   @override
   State<_ProgressDemoContent> createState() => _ProgressDemoContentState();
 }
 
-class _ProgressDemoContentState extends State<_ProgressDemoContent>
+class _ProgressDemoContentState extends TomState<_ProgressDemoContent>
     with TickerProviderStateMixin {
   // Animation controllers for determinate progress
   late AnimationController _circularController;
@@ -75,7 +76,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -84,37 +85,37 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
           children: [
             // Section 1: Circular Progress
             _SectionHeader(
-              tomId: 'demo14.section.circular',
+              tomId: 'section.circular',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildCircularProgressSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Linear Progress
             _SectionHeader(
-              tomId: 'demo14.section.linear',
+              tomId: 'section.linear',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildLinearProgressSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Refresh Indicators
             _SectionHeader(
-              tomId: 'demo14.section.refresh',
+              tomId: 'section.refresh',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildRefreshIndicatorSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Cupertino Indicators
             _SectionHeader(
-              tomId: 'demo14.section.cupertino',
+              tomId: 'section.cupertino',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildCupertinoActivitySection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoLinearSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -127,16 +128,16 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
 
   Widget _buildCircularProgressSection() {
     return _DemoCard(
-      tomId: 'demo14.circular',
+      tomId: 'circular',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Indeterminate circular indicators
           TomText(
-            tomId: 'demo14.circular.indeterminateLabel',
+            tomId: 'circular.indeterminateLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 24,
             runSpacing: 16,
@@ -145,10 +146,10 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               // Default indeterminate
               TomColumn(
                 children: [
-                  const TomCircularProgressIndicator(),
-                  const TomSizedBox(height: 8),
+                  TomCircularProgressIndicator(),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.default',
+                    tomId: 'circular.default',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -159,9 +160,9 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                   TomCircularProgressIndicator(
                     color: Theme.of(context).colorScheme.secondary,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.colored',
+                    tomId: 'circular.colored',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -173,9 +174,9 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     strokeWidth: 8,
                     color: Theme.of(context).colorScheme.tertiary,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.thick',
+                    tomId: 'circular.thick',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -187,23 +188,23 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     strokeWidth: 2,
                     color: Theme.of(context).colorScheme.error,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.thin',
+                    tomId: 'circular.thin',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Determinate circular indicators
           TomText(
-            tomId: 'demo14.circular.determinateLabel',
+            tomId: 'circular.determinateLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 24,
             runSpacing: 16,
@@ -215,7 +216,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                   TomCircularProgressIndicator(
                     value: _circularProgress,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
                     text: '${(_circularProgress * 100).toInt()}%',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -230,7 +231,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     backgroundColor:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
                     text: '25%',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -246,7 +247,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                     color: Theme.of(context).colorScheme.secondary,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
                     text: '50%',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -262,7 +263,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                     color: Theme.of(context).colorScheme.tertiary,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
                     text: '75%',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -278,7 +279,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                     color: Colors.green,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
                     text: '100%',
                     style: Theme.of(context).textTheme.bodySmall,
@@ -287,35 +288,35 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Control buttons
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomElevatedButton(
-                tomId: 'demo14.circular.start',
+                tomId: 'circular.start',
                 onPressed: () {
                   _circularController.forward(from: 0);
                 },
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomOutlinedButton(
-                tomId: 'demo14.circular.reset',
+                tomId: 'circular.reset',
                 onPressed: () {
                   _circularController.reset();
                 },
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Stroke caps
           TomText(
-            tomId: 'demo14.circular.strokeCapLabel',
+            tomId: 'circular.strokeCapLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 24,
             runSpacing: 16,
@@ -330,9 +331,9 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     backgroundColor:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.capButt',
+                    tomId: 'circular.capButt',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -346,9 +347,9 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     backgroundColor:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.capRound',
+                    tomId: 'circular.capRound',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -362,9 +363,9 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                     backgroundColor:
                         Theme.of(context).colorScheme.surfaceContainerHighest,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.circular.capSquare',
+                    tomId: 'circular.capSquare',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -382,59 +383,59 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
 
   Widget _buildLinearProgressSection() {
     return _DemoCard(
-      tomId: 'demo14.linear',
+      tomId: 'linear',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Indeterminate linear indicators
           TomText(
-            tomId: 'demo14.linear.indeterminateLabel',
+            tomId: 'linear.indeterminateLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Default indeterminate
           TomText(
-            tomId: 'demo14.linear.default',
+            tomId: 'linear.default',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
-          const TomLinearProgressIndicator(),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 8),
+          TomLinearProgressIndicator(),
+          TomSizedBox(height: 16),
 
           // Colored
           TomText(
-            tomId: 'demo14.linear.colored',
+            tomId: 'linear.colored',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             color: Theme.of(context).colorScheme.secondary,
             backgroundColor:
                 Theme.of(context).colorScheme.secondary.withValues(alpha: 0.2),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Thick
           TomText(
-            tomId: 'demo14.linear.thick',
+            tomId: 'linear.thick',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             minHeight: 12,
             color: Theme.of(context).colorScheme.tertiary,
             backgroundColor:
                 Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.2),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Determinate linear indicators
           TomText(
-            tomId: 'demo14.linear.determinateLabel',
+            tomId: 'linear.determinateLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Animated determinate
           TomRow(
@@ -448,62 +449,62 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                       .withValues(alpha: 0.2),
                 ),
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomText(
                 text: '${(_linearProgress * 100).toInt()}%',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Fixed percentages
           TomColumn(
             children: [
               _buildLinearProgressRow('25%', 0.25),
-              const TomSizedBox(height: 8),
+              TomSizedBox(height: 8),
               _buildLinearProgressRow('50%', 0.5),
-              const TomSizedBox(height: 8),
+              TomSizedBox(height: 8),
               _buildLinearProgressRow('75%', 0.75),
-              const TomSizedBox(height: 8),
+              TomSizedBox(height: 8),
               _buildLinearProgressRow('100%', 1.0),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Control buttons
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomElevatedButton(
-                tomId: 'demo14.linear.start',
+                tomId: 'linear.start',
                 onPressed: () {
                   _linearController.forward(from: 0);
                 },
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomOutlinedButton(
-                tomId: 'demo14.linear.reset',
+                tomId: 'linear.reset',
                 onPressed: () {
                   _linearController.reset();
                 },
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Rounded corners
           TomText(
-            tomId: 'demo14.linear.roundedLabel',
+            tomId: 'linear.roundedLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomText(
-            tomId: 'demo14.linear.roundedSmall',
+            tomId: 'linear.roundedSmall',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             value: 0.6,
             minHeight: 8,
@@ -511,13 +512,13 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
             backgroundColor:
                 Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomText(
-            tomId: 'demo14.linear.roundedLarge',
+            tomId: 'linear.roundedLarge',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             value: 0.6,
             minHeight: 16,
@@ -526,13 +527,13 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                 Theme.of(context).colorScheme.surfaceContainerHighest,
             color: Theme.of(context).colorScheme.secondary,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomText(
-            tomId: 'demo14.linear.pill',
+            tomId: 'linear.pill',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomLinearProgressIndicator(
             value: 0.6,
             minHeight: 24,
@@ -573,15 +574,15 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
 
   Widget _buildRefreshIndicatorSection() {
     return _DemoCard(
-      tomId: 'demo14.refresh',
+      tomId: 'refresh',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo14.refresh.pullLabel',
+            tomId: 'refresh.pullLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Material Refresh Indicator
           TomContainer(
@@ -619,23 +620,23 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               ),
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           Center(
             child: TomText(
-              tomId: 'demo14.refresh.hint',
+              tomId: 'refresh.hint',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Colored refresh indicator
           TomText(
-            tomId: 'demo14.refresh.customLabel',
+            tomId: 'refresh.customLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomContainer(
             height: 150,
@@ -687,15 +688,15 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
 
   Widget _buildCupertinoActivitySection() {
     return _DemoCard(
-      tomId: 'demo14.cupertinoActivity',
+      tomId: 'cupertinoActivity',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo14.cupertinoActivity.spinnerLabel',
+            tomId: 'cupertinoActivity.spinnerLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomWrap(
             spacing: 32,
@@ -705,10 +706,10 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               // Default
               TomColumn(
                 children: [
-                  const TomCupertinoActivityIndicator(),
-                  const TomSizedBox(height: 8),
+                  TomCupertinoActivityIndicator(),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.cupertinoActivity.default',
+                    tomId: 'cupertinoActivity.default',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -716,10 +717,10 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               // Large
               TomColumn(
                 children: [
-                  const TomCupertinoActivityIndicator(radius: 20),
-                  const TomSizedBox(height: 8),
+                  TomCupertinoActivityIndicator(radius: 20),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.cupertinoActivity.large',
+                    tomId: 'cupertinoActivity.large',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -727,10 +728,10 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
               // Small
               TomColumn(
                 children: [
-                  const TomCupertinoActivityIndicator(radius: 8),
-                  const TomSizedBox(height: 8),
+                  TomCupertinoActivityIndicator(radius: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.cupertinoActivity.small',
+                    tomId: 'cupertinoActivity.small',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -741,23 +742,23 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                   TomCupertinoActivityIndicator(
                     color: Theme.of(context).colorScheme.primary,
                   ),
-                  const TomSizedBox(height: 8),
+                  TomSizedBox(height: 8),
                   TomText(
-                    tomId: 'demo14.cupertinoActivity.colored',
+                    tomId: 'cupertinoActivity.colored',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Toggle animation
           TomText(
-            tomId: 'demo14.cupertinoActivity.animationLabel',
+            tomId: 'cupertinoActivity.animationLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomRow(
             children: [
@@ -765,7 +766,7 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
                 animating: _cupertinoAnimating,
                 radius: 15,
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomText(
                 text: _cupertinoAnimating ? 'Animating' : 'Paused',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -791,96 +792,96 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo14.cupertinoLinear',
+        tomId: 'cupertinoLinear',
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              tomId: 'demo14.cupertinoLinear.barLabel',
+              tomId: 'cupertinoLinear.barLabel',
               style: Theme.of(context).textTheme.labelLarge,
             ),
-            const TomSizedBox(height: 12),
+            TomSizedBox(height: 12),
 
             // Indeterminate
             TomText(
-              tomId: 'demo14.cupertinoLinear.indeterminate',
+              tomId: 'cupertinoLinear.indeterminate',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
-            const TomCupertinoLinearActivityIndicator(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 8),
+            TomCupertinoLinearActivityIndicator(),
+            TomSizedBox(height: 16),
 
             // Determinate values
             TomText(
-              tomId: 'demo14.cupertinoLinear.determinate',
+              tomId: 'cupertinoLinear.determinate',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomColumn(
               children: [
                 TomRow(
                   children: [
-                    const TomSizedBox(
+                    TomSizedBox(
                       width: 40,
                       child: TomText(text: '25%'),
                     ),
-                    const TomExpanded(
+                    TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.25),
                     ),
                   ],
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    const TomSizedBox(
+                    TomSizedBox(
                       width: 40,
                       child: TomText(text: '50%'),
                     ),
-                    const TomExpanded(
+                    TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.5),
                     ),
                   ],
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    const TomSizedBox(
+                    TomSizedBox(
                       width: 40,
                       child: TomText(text: '75%'),
                     ),
-                    const TomExpanded(
+                    TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 0.75),
                     ),
                   ],
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 TomRow(
                   children: [
-                    const TomSizedBox(
+                    TomSizedBox(
                       width: 40,
                       child: TomText(text: '100%'),
                     ),
-                    const TomExpanded(
+                    TomExpanded(
                       child: TomCupertinoLinearActivityIndicator(value: 1.0),
                     ),
                   ],
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // Customized
             TomText(
-              tomId: 'demo14.cupertinoLinear.custom',
+              tomId: 'cupertinoLinear.custom',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomCupertinoLinearActivityIndicator(
               value: 0.6,
               trackHeight: 10,
               color: CupertinoColors.activeGreen,
             ),
-            const TomSizedBox(height: 12),
+            TomSizedBox(height: 12),
             TomCupertinoLinearActivityIndicator(
               value: 0.4,
               trackHeight: 10,
@@ -898,15 +899,15 @@ class _ProgressDemoContentState extends State<_ProgressDemoContent>
 // =============================================================================
 
 /// Section header widget with gradient underline.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -918,14 +919,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -943,17 +944,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -965,8 +966,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -977,7 +978,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -985,9 +986,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

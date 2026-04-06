@@ -15,23 +15,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Toggle & Switch Suite demo.
-class ToggleDemo extends StatelessWidget {
-  const ToggleDemo({super.key});
+class ToggleDemo extends TomStatelessWidget {
+  ToggleDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _ToggleDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _ToggleDemoContent();
+
   }
 }
 
-class _ToggleDemoContent extends StatefulWidget {
-  const _ToggleDemoContent();
+class _ToggleDemoContent extends TomStatefulWidget {
+  _ToggleDemoContent();
 
   @override
   State<_ToggleDemoContent> createState() => _ToggleDemoContentState();
 }
 
-class _ToggleDemoContentState extends State<_ToggleDemoContent> {
+class _ToggleDemoContentState extends TomState<_ToggleDemoContent> {
   // ===========================================================================
   // Section 1: Switch state
   // ===========================================================================
@@ -95,7 +96,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
   String? _aclRadio = 'option1';
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -103,46 +104,46 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Switch Controls
-            _SectionHeader(tomId: 'demo04.section.switch'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.switch'),
+            TomSizedBox(height: 16),
             _buildSwitchSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSwitchListTileSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoSwitchSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Checkbox Controls
-            _SectionHeader(tomId: 'demo04.section.checkbox'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.checkbox'),
+            TomSizedBox(height: 16),
             _buildCheckboxSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCheckboxListTileSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoCheckboxSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Radio Controls
-            _SectionHeader(tomId: 'demo04.section.radio'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.radio'),
+            TomSizedBox(height: 16),
             _buildRadioSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildRadioListTileSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoRadioSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Toggle Button Groups
-            _SectionHeader(tomId: 'demo04.section.toggleButtons'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.toggleButtons'),
+            TomSizedBox(height: 16),
             _buildToggleButtonsSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo
-            _SectionHeader(tomId: 'demo04.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildAclToggleSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -155,31 +156,31 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildSwitchSection() {
     return _DemoCard(
-      tomId: 'demo04.switch',
+      tomId: 'switch',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Default state
-          TomText(tomId: 'demo04.switch.defaultLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'switch.defaultLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomText(
                 text: _switchDefault ? 'On' : 'Off',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomSwitch(
                 value: _switchDefault,
                 onChanged: (v) => setState(() => _switchDefault = v),
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // With thumb icon
-          TomText(tomId: 'demo04.switch.thumbIconLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'switch.thumbIconLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomSwitch(
@@ -192,27 +193,27 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 }),
                 onChanged: (v) => setState(() => _switchThumbIcon = v),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text: _switchThumbIcon ? 'Enabled' : 'Disabled',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Disabled
-          TomText(tomId: 'demo04.switch.disabledLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'switch.disabledLabel'),
+          TomSizedBox(height: 8),
           TomSwitch(
             value: _switchDisabled,
             onChanged: null,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Custom colors
-          TomText(tomId: 'demo04.switch.customColorLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'switch.customColorLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomSwitch(
@@ -220,7 +221,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 activeTrackColor: Colors.green,
                 onChanged: (v) => setState(() => _switchCustomGreen = v),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomSwitch(
                 value: _switchCustomOrange,
                 activeTrackColor: Colors.orange,
@@ -228,7 +229,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Status display
           TomText(
@@ -245,31 +246,31 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildSwitchListTileSection() {
     return _DemoCard(
-      tomId: 'demo04.switchListTile',
+      tomId: 'switchListTile',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomSwitchListTile(
-            tomId: 'demo04.switchListTile.notifications',
+            tomId: 'switchListTile.notifications',
             value: _notifications,
-            secondary: const TomIcon(icon: Icons.notifications),
-            subtitle: TomText(tomId: 'demo04.switchListTile.notifications.subtitle'),
+            secondary: TomIcon(icon: Icons.notifications),
+            subtitle: TomText(tomId: 'switchListTile.notifications.subtitle'),
             onChanged: (v) => setState(() => _notifications = v),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomSwitchListTile(
-            tomId: 'demo04.switchListTile.darkMode',
+            tomId: 'switchListTile.darkMode',
             value: _darkMode,
-            secondary: const TomIcon(icon: Icons.dark_mode),
-            subtitle: TomText(tomId: 'demo04.switchListTile.darkMode.subtitle'),
+            secondary: TomIcon(icon: Icons.dark_mode),
+            subtitle: TomText(tomId: 'switchListTile.darkMode.subtitle'),
             onChanged: (v) => setState(() => _darkMode = v),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomSwitchListTile(
-            tomId: 'demo04.switchListTile.location',
+            tomId: 'switchListTile.location',
             value: _locationServices,
-            secondary: const TomIcon(icon: Icons.location_on),
-            subtitle: TomText(tomId: 'demo04.switchListTile.location.subtitle'),
+            secondary: TomIcon(icon: Icons.location_on),
+            subtitle: TomText(tomId: 'switchListTile.location.subtitle'),
             onChanged: (v) => setState(() => _locationServices = v),
           ),
         ],
@@ -279,29 +280,29 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildCupertinoSwitchSection() {
     return _DemoCard(
-      tomId: 'demo04.cupertinoSwitch',
+      tomId: 'cupertinoSwitch',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo04.cupertinoSwitch.defaultLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSwitch.defaultLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomCupertinoSwitch(
                 value: _cupertinoSwitch,
                 onChanged: (v) => setState(() => _cupertinoSwitch = v),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomText(
                 text: _cupertinoSwitch ? 'On' : 'Off',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo04.cupertinoSwitch.themedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSwitch.themedLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomCupertinoSwitch(
@@ -309,7 +310,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 activeTrackColor: CupertinoColors.activeGreen,
                 onChanged: (v) => setState(() => _cupertinoSwitchThemed = v),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomText(
                 text: _cupertinoSwitchThemed ? 'Active' : 'Inactive',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -327,13 +328,13 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildCheckboxSection() {
     return _DemoCard(
-      tomId: 'demo04.checkbox',
+      tomId: 'checkbox',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // States row
-          TomText(tomId: 'demo04.checkbox.statesLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'checkbox.statesLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               // Default checkbox
@@ -345,7 +346,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 text: _checkDefault ? 'Checked' : 'Unchecked',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
 
               // Tristate checkbox
               TomCheckbox(
@@ -361,11 +362,11 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Variants
-          TomText(tomId: 'demo04.checkbox.variantsLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'checkbox.variantsLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               // Custom color
@@ -375,8 +376,8 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 checkColor: Colors.white,
                 onChanged: (v) => setState(() => _checkCustomColor = v ?? false),
               ),
-              TomText(tomId: 'demo04.checkbox.customColor'),
-              const TomSizedBox(width: 16),
+              TomText(tomId: 'checkbox.customColor'),
+              TomSizedBox(width: 16),
 
               // Rounded shape
               TomCheckbox(
@@ -384,15 +385,15 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 shape: const CircleBorder(),
                 onChanged: (v) {},
               ),
-              TomText(tomId: 'demo04.checkbox.rounded'),
-              const TomSizedBox(width: 16),
+              TomText(tomId: 'checkbox.rounded'),
+              TomSizedBox(width: 16),
 
               // Disabled
               TomCheckbox(
                 value: _checkDisabled,
                 onChanged: null,
               ),
-              TomText(tomId: 'demo04.checkbox.disabled'),
+              TomText(tomId: 'checkbox.disabled'),
             ],
           ),
         ],
@@ -402,42 +403,42 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildCheckboxListTileSection() {
     return _DemoCard(
-      tomId: 'demo04.checkboxListTile',
+      tomId: 'checkboxListTile',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo04.checkboxListTile.categoriesLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'checkboxListTile.categoriesLabel'),
+          TomSizedBox(height: 8),
           TomCheckboxListTile(
-            tomId: 'demo04.checkboxListTile.technology',
+            tomId: 'checkboxListTile.technology',
             value: _categoryTechnology,
-            subtitle: TomText(tomId: 'demo04.checkboxListTile.technology.subtitle'),
-            secondary: const TomIcon(icon: Icons.computer),
+            subtitle: TomText(tomId: 'checkboxListTile.technology.subtitle'),
+            secondary: TomIcon(icon: Icons.computer),
             onChanged: (v) => setState(() => _categoryTechnology = v ?? false),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomCheckboxListTile(
-            tomId: 'demo04.checkboxListTile.science',
+            tomId: 'checkboxListTile.science',
             value: _categoryScience,
-            subtitle: TomText(tomId: 'demo04.checkboxListTile.science.subtitle'),
-            secondary: const TomIcon(icon: Icons.science),
+            subtitle: TomText(tomId: 'checkboxListTile.science.subtitle'),
+            secondary: TomIcon(icon: Icons.science),
             onChanged: (v) => setState(() => _categoryScience = v ?? false),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomCheckboxListTile(
-            tomId: 'demo04.checkboxListTile.business',
+            tomId: 'checkboxListTile.business',
             value: _categoryBusiness,
-            subtitle: TomText(tomId: 'demo04.checkboxListTile.business.subtitle'),
-            secondary: const TomIcon(icon: Icons.business),
+            subtitle: TomText(tomId: 'checkboxListTile.business.subtitle'),
+            secondary: TomIcon(icon: Icons.business),
             onChanged: (v) => setState(() => _categoryBusiness = v ?? false),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Leading vs trailing demo
-          TomText(tomId: 'demo04.checkboxListTile.positionLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'checkboxListTile.positionLabel'),
+          TomSizedBox(height: 8),
           TomCheckboxListTile(
-            tomId: 'demo04.checkboxListTile.leading',
+            tomId: 'checkboxListTile.leading',
             value: _checkboxLeading,
             controlAffinity: ListTileControlAffinity.leading,
             onChanged: (v) => setState(() => _checkboxLeading = v ?? false),
@@ -449,7 +450,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildCupertinoCheckboxSection() {
     return _DemoCard(
-      tomId: 'demo04.cupertinoCheckbox',
+      tomId: 'cupertinoCheckbox',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -459,18 +460,18 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                 value: _cupertinoCheck,
                 onChanged: (v) => setState(() => _cupertinoCheck = v ?? false),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text: _cupertinoCheck ? 'Checked' : 'Unchecked',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
               TomCupertinoCheckbox(
                 value: _cupertinoCheckActive,
                 activeColor: CupertinoColors.activeGreen,
                 onChanged: (v) => setState(() => _cupertinoCheckActive = v ?? false),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text: _cupertinoCheckActive ? 'Checked' : 'Unchecked',
                 style: Theme.of(context).textTheme.bodyMedium,
@@ -488,19 +489,19 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildRadioSection() {
     return _DemoCard(
-      tomId: 'demo04.radio',
+      tomId: 'radio',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Payment method (vertical)
-          TomText(tomId: 'demo04.radio.paymentLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'radio.paymentLabel'),
+          TomSizedBox(height: 8),
           ..._buildPaymentRadios(),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Shirt size (horizontal)
-          TomText(tomId: 'demo04.radio.sizeLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'radio.sizeLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               _buildSizeRadio('small', 'S'),
@@ -508,7 +509,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               _buildSizeRadio('large', 'L'),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
             text: 'Payment: $_paymentMethod, Size: $_shirtSize',
             style: Theme.of(context).textTheme.bodySmall,
@@ -528,8 +529,8 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
             groupValue: _paymentMethod,
             onChanged: (v) => setState(() => _paymentMethod = v),
           ),
-          const TomSizedBox(width: 4),
-          TomText(tomId: 'demo04.radio.payment.$method'),
+          TomSizedBox(width: 4),
+          TomText(tomId: 'radio.payment.$method'),
         ],
       );
     }).toList();
@@ -545,43 +546,43 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           onChanged: (v) => setState(() => _shirtSize = v),
         ),
         TomText(text: label),
-        const TomSizedBox(width: 12),
+        TomSizedBox(width: 12),
       ],
     );
   }
 
   Widget _buildRadioListTileSection() {
     return _DemoCard(
-      tomId: 'demo04.radioListTile',
+      tomId: 'radioListTile',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo04.radioListTile.shippingLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'radioListTile.shippingLabel'),
+          TomSizedBox(height: 8),
           TomRadioListTile<String>(
-            tomId: 'demo04.radioListTile.standard',
+            tomId: 'radioListTile.standard',
             value: 'standard',
             groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'demo04.radioListTile.standard.subtitle'),
-            secondary: const TomIcon(icon: Icons.local_shipping),
+            subtitle: TomText(tomId: 'radioListTile.standard.subtitle'),
+            secondary: TomIcon(icon: Icons.local_shipping),
             onChanged: (v) => setState(() => _shippingMethod = v),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomRadioListTile<String>(
-            tomId: 'demo04.radioListTile.express',
+            tomId: 'radioListTile.express',
             value: 'express',
             groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'demo04.radioListTile.express.subtitle'),
-            secondary: const TomIcon(icon: Icons.flight),
+            subtitle: TomText(tomId: 'radioListTile.express.subtitle'),
+            secondary: TomIcon(icon: Icons.flight),
             onChanged: (v) => setState(() => _shippingMethod = v),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
           TomRadioListTile<String>(
-            tomId: 'demo04.radioListTile.nextDay',
+            tomId: 'radioListTile.nextDay',
             value: 'nextDay',
             groupValue: _shippingMethod,
-            subtitle: TomText(tomId: 'demo04.radioListTile.nextDay.subtitle'),
-            secondary: const TomIcon(icon: Icons.rocket_launch),
+            subtitle: TomText(tomId: 'radioListTile.nextDay.subtitle'),
+            secondary: TomIcon(icon: Icons.rocket_launch),
             onChanged: (v) => setState(() => _shippingMethod = v),
           ),
         ],
@@ -591,20 +592,20 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildCupertinoRadioSection() {
     return _DemoCard(
-      tomId: 'demo04.cupertinoRadio',
+      tomId: 'cupertinoRadio',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomRow(
             children: [
               _buildCupertinoRadioOption('a', 'Option A'),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               _buildCupertinoRadioOption('b', 'Option B'),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               _buildCupertinoRadioOption('c', 'Option C'),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
             text: 'Selected: ${_cupertinoOption?.toUpperCase() ?? "none"}',
             style: Theme.of(context).textTheme.bodySmall,
@@ -623,7 +624,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           groupValue: _cupertinoOption,
           onChanged: (v) => setState(() => _cupertinoOption = v),
         ),
-        const TomSizedBox(width: 4),
+        TomSizedBox(width: 4),
         TomText(text: label),
       ],
     );
@@ -635,13 +636,13 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildToggleButtonsSection() {
     return _DemoCard(
-      tomId: 'demo04.toggleButtons',
+      tomId: 'toggleButtons',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Single select (exclusive)
-          TomText(tomId: 'demo04.toggleButtons.singleLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'toggleButtons.singleLabel'),
+          TomSizedBox(height: 8),
           TomToggleButtons(
             isSelected: _viewSelection,
             borderRadius: BorderRadius.circular(8),
@@ -683,11 +684,11 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Multi select (non-exclusive)
-          TomText(tomId: 'demo04.toggleButtons.multiLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'toggleButtons.multiLabel'),
+          TomSizedBox(height: 8),
           TomToggleButtons(
             isSelected: _formatSelection,
             borderRadius: BorderRadius.circular(8),
@@ -713,11 +714,11 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Vertical layout
-          TomText(tomId: 'demo04.toggleButtons.verticalLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'toggleButtons.verticalLabel'),
+          TomSizedBox(height: 8),
           TomToggleButtons(
             isSelected: _alignSelection,
             direction: Axis.vertical,
@@ -765,11 +766,11 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Custom styled toggle buttons
-          TomText(tomId: 'demo04.toggleButtons.customLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'toggleButtons.customLabel'),
+          TomSizedBox(height: 8),
           TomToggleButtons(
             isSelected: _viewSelection,
             borderRadius: BorderRadius.circular(20),
@@ -814,10 +815,10 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 
   Widget _buildAclToggleSection() {
     return _DemoCard(
-      tomId: 'demo04.aclToggle',
+      tomId: 'aclToggle',
       child: AclBuilder()
           // Row 1: Label + Switch
-          .append(TomText(tomId: 'demo04.aclToggle.enableLabel'))
+          .append(TomText(tomId: 'aclToggle.enableLabel'))
           .append(
             TomSwitch(
               value: _aclSwitch,
@@ -827,7 +828,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           )
           .newRow(dist: 16)
           // Row 2: Label + Checkbox
-          .append(TomText(tomId: 'demo04.aclToggle.agreeLabel'))
+          .append(TomText(tomId: 'aclToggle.agreeLabel'))
           .append(
             TomCheckbox(
               value: _aclCheckbox,
@@ -837,7 +838,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           )
           .newRow(dist: 16)
           // Row 3: Radio options
-          .append(TomText(tomId: 'demo04.aclToggle.chooseLabel'))
+          .append(TomText(tomId: 'aclToggle.chooseLabel'))
           .gap()
           .newRow(dist: 8)
           .append(
@@ -848,21 +849,21 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
                   groupValue: _aclRadio,
                   onChanged: (v) => setState(() => _aclRadio = v),
                 ),
-                TomText(tomId: 'demo04.aclToggle.option1'),
-                const TomSizedBox(width: 16),
+                TomText(tomId: 'aclToggle.option1'),
+                TomSizedBox(width: 16),
                 TomRadio<String>(
                   value: 'option2',
                   groupValue: _aclRadio,
                   onChanged: (v) => setState(() => _aclRadio = v),
                 ),
-                TomText(tomId: 'demo04.aclToggle.option2'),
-                const TomSizedBox(width: 16),
+                TomText(tomId: 'aclToggle.option2'),
+                TomSizedBox(width: 16),
                 TomRadio<String>(
                   value: 'option3',
                   groupValue: _aclRadio,
                   onChanged: (v) => setState(() => _aclRadio = v),
                 ),
-                TomText(tomId: 'demo04.aclToggle.option3'),
+                TomText(tomId: 'aclToggle.option3'),
               ],
             ),
           )
@@ -870,7 +871,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           // Row 4: Action buttons
           .append(
             TomTextButton(
-              tomId: 'demo04.aclToggle.reset',
+              tomId: 'aclToggle.reset',
               onPressed: () {
                 setState(() {
                   _aclSwitch = false;
@@ -883,7 +884,7 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
           .gap()
           .append(
             TomFilledButton(
-              tomId: 'demo04.aclToggle.apply',
+              tomId: 'aclToggle.apply',
               onPressed: () {},
             ),
             dist: 8,
@@ -898,15 +899,15 @@ class _ToggleDemoContentState extends State<_ToggleDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -918,14 +919,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -943,17 +944,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -972,11 +973,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -998,9 +999,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

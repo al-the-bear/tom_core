@@ -17,23 +17,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Dialog & Modal Gallery demo.
-class DialogModalGalleryDemo extends StatelessWidget {
-  const DialogModalGalleryDemo({super.key});
+class DialogModalGalleryDemo extends TomStatelessWidget {
+  DialogModalGalleryDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _DialogDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _DialogDemoContent();
+
   }
 }
 
-class _DialogDemoContent extends StatefulWidget {
-  const _DialogDemoContent();
+class _DialogDemoContent extends TomStatefulWidget {
+  _DialogDemoContent();
 
   @override
   State<_DialogDemoContent> createState() => _DialogDemoContentState();
 }
 
-class _DialogDemoContentState extends State<_DialogDemoContent> {
+class _DialogDemoContentState extends TomState<_DialogDemoContent> {
   // ===========================================================================
   // Section 1: Standard Dialogs state
   // ===========================================================================
@@ -65,7 +66,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   bool _aclBarrierDismissible = true;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -73,46 +74,46 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Standard Dialogs
-            _SectionHeader(tomId: 'demo09.section.standard'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.standard'),
+            TomSizedBox(height: 16),
             _buildAlertDialogSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSimpleDialogSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Bottom Sheets
-            _SectionHeader(tomId: 'demo09.section.sheets'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.sheets'),
+            TomSizedBox(height: 16),
             _buildBottomSheetSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildModalBottomSheetSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Feedback Overlays
-            _SectionHeader(tomId: 'demo09.section.feedback'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.feedback'),
+            TomSizedBox(height: 16),
             _buildSnackBarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildMaterialBannerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildTooltipSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Pickers & Cupertino
-            _SectionHeader(tomId: 'demo09.section.pickers'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.pickers'),
+            TomSizedBox(height: 16),
             _buildDatePickerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoAlertSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoActionSheetSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Dialog Demo
-            _SectionHeader(tomId: 'demo09.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildAclDialogSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -125,15 +126,15 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildAlertDialogSection() {
     return _DemoCard(
-      tomId: 'demo09.alertDialog',
+      tomId: 'alertDialog',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.alertDialog.resultLabel',
+            tomId: 'alertDialog.resultLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -148,22 +149,22 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.alertDialog.basic',
+                tomId: 'alertDialog.basic',
                 onPressed: () => _showBasicAlert(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomFilledButton(
                 tonal: true,
-                tomId: 'demo09.alertDialog.withIcon',
+                tomId: 'alertDialog.withIcon',
                 onPressed: () => _showIconAlert(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomOutlinedButton(
-                tomId: 'demo09.alertDialog.scrollable',
+                tomId: 'alertDialog.scrollable',
                 onPressed: () => _showScrollableAlert(context),
               ),
             ],
@@ -177,22 +178,22 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     TomDialogs.showDialog(
       context: context,
       builder: (ctx) => TomAlertDialog(
-        tomId: 'demo09.alertDialog.dlg',
+        tomId: 'alertDialog.dlg',
         titleText: 'Confirm Action',
-        content: const TomPadding(
+        content: TomPadding(
           padding: EdgeInsets.only(top: 8),
           child: TomText(text: 'Are you sure you want to proceed?'),
         ),
         actions: [
           TomTextButton(
-            tomId: 'demo09.alertDialog.cancel',
+            tomId: 'alertDialog.cancel',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Cancelled');
             },
           ),
           TomFilledButton(
-            tomId: 'demo09.alertDialog.confirm',
+            tomId: 'alertDialog.confirm',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Confirmed');
@@ -207,27 +208,27 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     TomDialogs.showDialog(
       context: context,
       builder: (ctx) => TomAlertDialog(
-        tomId: 'demo09.alertDialog.iconDlg',
+        tomId: 'alertDialog.iconDlg',
         icon: Icon(
           Icons.warning_amber_rounded,
           color: Theme.of(ctx).colorScheme.error,
           size: 48,
         ),
         titleText: 'Warning',
-        content: const TomPadding(
+        content: TomPadding(
           padding: EdgeInsets.only(top: 8),
           child: TomText(text: 'This action cannot be undone.'),
         ),
         actions: [
           TomTextButton(
-            tomId: 'demo09.alertDialog.dismiss',
+            tomId: 'alertDialog.dismiss',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Dismissed warning');
             },
           ),
           TomFilledButton(
-            tomId: 'demo09.alertDialog.proceed',
+            tomId: 'alertDialog.proceed',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Proceeded despite warning');
@@ -242,7 +243,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     TomDialogs.showDialog(
       context: context,
       builder: (ctx) => TomAlertDialog(
-        tomId: 'demo09.alertDialog.scrollDlg',
+        tomId: 'alertDialog.scrollDlg',
         titleText: 'Terms of Service',
         scrollable: true,
         content: TomPadding(
@@ -264,14 +265,14 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
         ),
         actions: [
           TomTextButton(
-            tomId: 'demo09.alertDialog.decline',
+            tomId: 'alertDialog.decline',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Declined terms');
             },
           ),
           TomFilledButton(
-            tomId: 'demo09.alertDialog.accept',
+            tomId: 'alertDialog.accept',
             onPressed: () {
               Navigator.of(ctx).pop();
               setState(() => _alertResult = 'Accepted terms');
@@ -284,15 +285,15 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildSimpleDialogSection() {
     return _DemoCard(
-      tomId: 'demo09.simpleDialog',
+      tomId: 'simpleDialog',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.simpleDialog.resultLabel',
+            tomId: 'simpleDialog.resultLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -307,9 +308,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomFilledButton(
-            tomId: 'demo09.simpleDialog.show',
+            tomId: 'simpleDialog.show',
             onPressed: () => _showSimpleDialog(context),
           ),
         ],
@@ -321,7 +322,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     TomDialogs.showDialog<String>(
       context: context,
       builder: (ctx) => TomSimpleDialog(
-        tomId: 'demo09.simpleDialog.dlg',
+        tomId: 'simpleDialog.dlg',
         titleText: 'Select a language',
         children: [
           for (final lang in ['Dart', 'TypeScript', 'Rust', 'Go', 'Python'])
@@ -330,7 +331,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
               child: TomRow(
                 children: [
                   const Icon(Icons.code, size: 20),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomText(text: lang),
                 ],
               ),
@@ -350,15 +351,15 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildBottomSheetSection() {
     return _DemoCard(
-      tomId: 'demo09.bottomSheet',
+      tomId: 'bottomSheet',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.bottomSheet.resultLabel',
+            tomId: 'bottomSheet.resultLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -373,9 +374,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomFilledButton(
-            tomId: 'demo09.bottomSheet.show',
+            tomId: 'bottomSheet.show',
             onPressed: () => _showPersistentBottomSheet(context),
           ),
         ],
@@ -405,16 +406,16 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomText(
               text: 'Persistent Bottom Sheet',
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
-            const TomSizedBox(height: 8),
-            const TomText(
+            TomSizedBox(height: 8),
+            TomText(
               text: 'This sheet stays visible until explicitly closed.',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomRow(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -439,15 +440,15 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildModalBottomSheetSection() {
     return _DemoCard(
-      tomId: 'demo09.modalSheet',
+      tomId: 'modalSheet',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.modalSheet.resultLabel',
+            tomId: 'modalSheet.resultLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomContainer(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
@@ -462,17 +463,17 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.modalSheet.basic',
+                tomId: 'modalSheet.basic',
                 onPressed: () => _showBasicModalSheet(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomFilledButton(
                 tonal: true,
-                tomId: 'demo09.modalSheet.scrollable',
+                tomId: 'modalSheet.scrollable',
                 onPressed: () => _showScrollableModalSheet(context),
               ),
             ],
@@ -495,7 +496,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
               text: 'Choose an Action',
               style: Theme.of(ctx).textTheme.titleLarge,
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             for (final item in [
               ('Share', Icons.share),
               ('Download', Icons.download),
@@ -533,7 +534,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           itemBuilder: (_, i) => ListTile(
             leading: CircleAvatar(child: Text('${i + 1}')),
             title: TomText(text: 'Scrollable item ${i + 1}'),
-            subtitle: const TomText(text: 'Drag to expand or collapse'),
+            subtitle: TomText(text: 'Drag to expand or collapse'),
             onTap: () {
               Navigator.of(ctx).pop();
               setState(
@@ -552,37 +553,37 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildSnackBarSection() {
     return _DemoCard(
-      tomId: 'demo09.snackBar',
+      tomId: 'snackBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.snackBar.countLabel',
+            tomId: 'snackBar.countLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomText(
             text: 'Shown: $_snackBarCount',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.snackBar.basic',
+                tomId: 'snackBar.basic',
                 onPressed: () => _showBasicSnackBar(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomFilledButton(
                 tonal: true,
-                tomId: 'demo09.snackBar.action',
+                tomId: 'snackBar.action',
                 onPressed: () => _showActionSnackBar(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomOutlinedButton(
-                tomId: 'demo09.snackBar.floating',
+                tomId: 'snackBar.floating',
                 onPressed: () => _showFloatingSnackBar(context),
               ),
             ],
@@ -595,7 +596,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   void _showBasicSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
-        content: const TomText(text: 'This is a basic snack bar'),
+        content: TomText(text: 'This is a basic snack bar'),
       ),
     );
     setState(() => _snackBarCount++);
@@ -604,7 +605,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   void _showActionSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
-        content: const TomText(text: 'File deleted'),
+        content: TomText(text: 'File deleted'),
         action: SnackBarAction(
           label: 'UNDO',
           onPressed: () {},
@@ -618,7 +619,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   void _showFloatingSnackBar(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       TomSnackBar(
-        content: const TomText(text: 'Floating snack bar with action'),
+        content: TomText(text: 'Floating snack bar with action'),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         action: SnackBarAction(
@@ -632,32 +633,32 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildMaterialBannerSection() {
     return _DemoCard(
-      tomId: 'demo09.banner',
+      tomId: 'banner',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.banner.statusLabel',
+            tomId: 'banner.statusLabel',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomText(
             text: _bannerVisible ? 'Banner visible' : 'Banner hidden',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.banner.show',
+                tomId: 'banner.show',
                 onPressed: _bannerVisible
                     ? null
                     : () {
                         ScaffoldMessenger.of(context).showMaterialBanner(
                           MaterialBanner(
-                            content: const TomText(
+                            content: TomText(
                               text: 'A new software update is available.',
                             ),
                             leading: const Icon(Icons.system_update),
@@ -684,9 +685,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                         setState(() => _bannerVisible = true);
                       },
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomOutlinedButton(
-                tomId: 'demo09.banner.hide',
+                tomId: 'banner.hide',
                 onPressed: _bannerVisible
                     ? () {
                         ScaffoldMessenger.of(context)
@@ -705,17 +706,17 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   Widget _buildTooltipSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo09.tooltip',
+      tomId: 'tooltip',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.tooltip.hintLabel',
+            tomId: 'tooltip.hintLabel',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -784,14 +785,14 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
   Widget _buildDatePickerSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo09.datePicker',
+      tomId: 'datePicker',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomRow(
             children: [
               Icon(Icons.calendar_today, color: theme.colorScheme.primary),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text:
                     'Date: ${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
@@ -801,11 +802,11 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               Icon(Icons.access_time, color: theme.colorScheme.primary),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text: 'Time: ${_selectedTime.format(context)}',
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -814,17 +815,17 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.datePicker.pickDate',
+                tomId: 'datePicker.pickDate',
                 onPressed: () => _pickDate(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomFilledButton(
                 tonal: true,
-                tomId: 'demo09.datePicker.pickTime',
+                tomId: 'datePicker.pickTime',
                 onPressed: () => _pickTime(context),
               ),
             ],
@@ -860,27 +861,27 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildCupertinoAlertSection() {
     return _DemoCard(
-      tomId: 'demo09.cupertinoAlert',
+      tomId: 'cupertinoAlert',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.cupertinoAlert.infoLabel',
+            tomId: 'cupertinoAlert.infoLabel',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomFilledButton(
-                tomId: 'demo09.cupertinoAlert.show',
+                tomId: 'cupertinoAlert.show',
                 onPressed: () => _showCupertinoAlert(context),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomFilledButton(
                 tonal: true,
-                tomId: 'demo09.cupertinoAlert.showDestructive',
+                tomId: 'cupertinoAlert.showDestructive',
                 onPressed: () => _showDestructiveCupertinoAlert(context),
               ),
             ],
@@ -894,9 +895,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => TomCupertinoAlertDialog(
-        tomId: 'demo09.cupertinoAlert.dlg',
+        tomId: 'cupertinoAlert.dlg',
         titleText: 'Allow Notifications?',
-        content: const TomPadding(
+        content: TomPadding(
           padding: EdgeInsets.only(top: 8),
           child: TomText(text: 'We would like to send you push notifications.'),
         ),
@@ -919,9 +920,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => TomCupertinoAlertDialog(
-        tomId: 'demo09.cupertinoAlert.destructiveDlg',
+        tomId: 'cupertinoAlert.destructiveDlg',
         titleText: 'Delete Account?',
-        content: const TomPadding(
+        content: TomPadding(
           padding: EdgeInsets.only(top: 8),
           child: TomText(
             text: 'This will permanently delete your account and all data.',
@@ -944,19 +945,19 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildCupertinoActionSheetSection() {
     return _DemoCard(
-      tomId: 'demo09.cupertinoSheet',
+      tomId: 'cupertinoSheet',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo09.cupertinoSheet.infoLabel',
+            tomId: 'cupertinoSheet.infoLabel',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomFilledButton(
-            tomId: 'demo09.cupertinoSheet.show',
+            tomId: 'cupertinoSheet.show',
             onPressed: () => _showCupertinoActionSheet(context),
           ),
         ],
@@ -968,9 +969,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
     showCupertinoModalPopup(
       context: context,
       builder: (ctx) => TomCupertinoActionSheet(
-        tomId: 'demo09.cupertinoSheet.sheet',
+        tomId: 'cupertinoSheet.sheet',
         titleText: 'Photo Options',
-        message: const TomText(text: 'Choose how to add a photo'),
+        message: TomText(text: 'Choose how to add a photo'),
         actions: [
           CupertinoActionSheetAction(
             child: const Text('Take Photo'),
@@ -1000,10 +1001,10 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 
   Widget _buildAclDialogSection() {
     return _DemoCard(
-      tomId: 'demo09.aclDialog',
+      tomId: 'aclDialog',
       child: AclBuilder()
           // Row 1: Dialog type selector
-          .append(TomText(tomId: 'demo09.aclDialog.typeLabel'))
+          .append(TomText(tomId: 'aclDialog.typeLabel'))
           .append(
             TomSegmentedButton<String>(
               segments: const [
@@ -1020,7 +1021,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           .expandX()
           .newRow(dist: 12)
           // Row 2: Barrier dismissible toggle
-          .append(TomText(tomId: 'demo09.aclDialog.barrierLabel'))
+          .append(TomText(tomId: 'aclDialog.barrierLabel'))
           .append(
             TomSwitch(
               value: _aclBarrierDismissible,
@@ -1052,14 +1053,14 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           // Row 4: Launch button
           .append(
             TomFilledButton(
-              tomId: 'demo09.aclDialog.launch',
+              tomId: 'aclDialog.launch',
               onPressed: () => _launchAclDialog(context),
             ),
           )
           .gap()
           .append(
             TomTextButton(
-              tomId: 'demo09.aclDialog.reset',
+              tomId: 'aclDialog.reset',
               onPressed: () {
                 setState(() {
                   _aclDialogType = 'alert';
@@ -1081,7 +1082,7 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
           barrierDismissible: _aclBarrierDismissible,
           builder: (ctx) => TomAlertDialog(
             titleText: 'ACL Alert',
-            content: const TomPadding(
+            content: TomPadding(
               padding: EdgeInsets.only(top: 8),
               child: TomText(text: 'Dialog launched from ACL builder.'),
             ),
@@ -1122,9 +1123,9 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
                   text: 'ACL Bottom Sheet',
                   style: Theme.of(ctx).textTheme.titleLarge,
                 ),
-                const TomSizedBox(height: 8),
-                const TomText(text: 'Launched from ACL builder controls.'),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 8),
+                TomText(text: 'Launched from ACL builder controls.'),
+                TomSizedBox(height: 16),
                 TomFilledButton(
                   label: 'Close',
                   onPressed: () => Navigator.of(ctx).pop(),
@@ -1142,15 +1143,15 @@ class _DialogDemoContentState extends State<_DialogDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1162,14 +1163,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1187,17 +1188,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -1216,11 +1217,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1242,9 +1243,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

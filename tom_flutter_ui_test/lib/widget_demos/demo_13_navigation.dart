@@ -16,23 +16,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Navigation demo.
-class NavigationDemo extends StatelessWidget {
-  const NavigationDemo({super.key});
+class NavigationDemo extends TomStatelessWidget {
+  NavigationDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _NavigationDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _NavigationDemoContent();
+
   }
 }
 
-class _NavigationDemoContent extends StatefulWidget {
-  const _NavigationDemoContent();
+class _NavigationDemoContent extends TomStatefulWidget {
+  _NavigationDemoContent();
 
   @override
   State<_NavigationDemoContent> createState() => _NavigationDemoContentState();
 }
 
-class _NavigationDemoContentState extends State<_NavigationDemoContent>
+class _NavigationDemoContentState extends TomState<_NavigationDemoContent>
     with TickerProviderStateMixin {
   // TabController for tab demos
   late TabController _tabController;
@@ -70,7 +71,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -79,55 +80,55 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
           children: [
             // Section 1: Tab Navigation
             _SectionHeader(
-              tomId: 'demo13.section.tabs',
+              tomId: 'section.tabs',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildTabBarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildScrollableTabBarSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Bottom Navigation
             _SectionHeader(
-              tomId: 'demo13.section.bottomNav',
+              tomId: 'section.bottomNav',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildNavigationBarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildBottomNavigationBarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoTabBarSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Rail & Drawer Navigation
             _SectionHeader(
-              tomId: 'demo13.section.railDrawer',
+              tomId: 'section.railDrawer',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildNavigationRailSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildNavigationDrawerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildDrawerSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Sequential Navigation
             _SectionHeader(
-              tomId: 'demo13.section.sequential',
+              tomId: 'section.sequential',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildStepperSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildPageViewSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: iOS Navigation
             _SectionHeader(
-              tomId: 'demo13.section.cupertino',
+              tomId: 'section.cupertino',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildCupertinoNavigationBarSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -140,16 +141,16 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildTabBarSection() {
     return _DemoCard(
-      tomId: 'demo13.tabBar',
+      tomId: 'tabBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic TabBar with TabBarView
           TomText(
-            tomId: 'demo13.tabBar.basicLabel',
+            tomId: 'tabBar.basicLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -157,14 +158,14 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
             ),
             child: TomTabBar(
               controller: _tabController,
-              tabs: const [
-                TomTab(tomId: 'demo13.tabBar.tab.home', text: 'Home'),
-                TomTab(tomId: 'demo13.tabBar.tab.search', text: 'Search'),
-                TomTab(tomId: 'demo13.tabBar.tab.settings', text: 'Settings'),
+              tabs: [
+                TomTab(tomId: 'tabBar.tab.home', text: 'Home'),
+                TomTab(tomId: 'tabBar.tab.search', text: 'Search'),
+                TomTab(tomId: 'tabBar.tab.settings', text: 'Settings'),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 120,
             decoration: BoxDecoration(
@@ -194,14 +195,14 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Tabs with icons
           TomText(
-            tomId: 'demo13.tabBar.iconTabsLabel',
+            tomId: 'tabBar.iconTabsLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primaryContainer,
@@ -213,17 +214,17 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               labelColor: Theme.of(context).colorScheme.primary,
               unselectedLabelColor:
                   Theme.of(context).colorScheme.onPrimaryContainer,
-              tabs: const [
+              tabs: [
                 TomTab(
-                  tomId: 'demo13.tabBar.iconTab.photos',
+                  tomId: 'tabBar.iconTab.photos',
                   icon: Icon(Icons.photo),
                 ),
                 TomTab(
-                  tomId: 'demo13.tabBar.iconTab.videos',
+                  tomId: 'tabBar.iconTab.videos',
                   icon: Icon(Icons.videocam),
                 ),
                 TomTab(
-                  tomId: 'demo13.tabBar.iconTab.music',
+                  tomId: 'tabBar.iconTab.music',
                   icon: Icon(Icons.music_note),
                 ),
               ],
@@ -236,16 +237,16 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildScrollableTabBarSection() {
     return _DemoCard(
-      tomId: 'demo13.scrollableTabBar',
+      tomId: 'scrollableTabBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Scrollable TabBar
           TomText(
-            tomId: 'demo13.scrollableTabBar.label',
+            tomId: 'scrollableTabBar.label',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -254,17 +255,17 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
             child: TomTabBar(
               controller: _scrollableTabController,
               isScrollable: true,
-              tabs: const [
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.all', text: 'All'),
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.documents', text: 'Documents'),
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.images', text: 'Images'),
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.videos', text: 'Videos'),
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.audio', text: 'Audio'),
-                TomTab(tomId: 'demo13.scrollableTabBar.tab.archives', text: 'Archives'),
+              tabs: [
+                TomTab(tomId: 'scrollableTabBar.tab.all', text: 'All'),
+                TomTab(tomId: 'scrollableTabBar.tab.documents', text: 'Documents'),
+                TomTab(tomId: 'scrollableTabBar.tab.images', text: 'Images'),
+                TomTab(tomId: 'scrollableTabBar.tab.videos', text: 'Videos'),
+                TomTab(tomId: 'scrollableTabBar.tab.audio', text: 'Audio'),
+                TomTab(tomId: 'scrollableTabBar.tab.archives', text: 'Archives'),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 80,
             decoration: BoxDecoration(
@@ -304,15 +305,15 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildNavigationBarSection() {
     return _DemoCard(
-      tomId: 'demo13.navigationBar',
+      tomId: 'navigationBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.navigationBar.m3Label',
+            tomId: 'navigationBar.m3Label',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -350,7 +351,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           Center(
             child: TomText(
               text: 'Selected: ${['Home', 'Explore', 'Saved', 'Profile'][_navigationBarIndex]}',
@@ -364,15 +365,15 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildBottomNavigationBarSection() {
     return _DemoCard(
-      tomId: 'demo13.bottomNavBar',
+      tomId: 'bottomNavBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.bottomNavBar.legacyLabel',
+            tomId: 'bottomNavBar.legacyLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -407,7 +408,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           Center(
             child: TomText(
               text: 'Selected: ${['Inbox', 'Sent', 'Drafts', 'Trash'][_bottomNavIndex]}',
@@ -421,15 +422,15 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildCupertinoTabBarSection() {
     return _DemoCard(
-      tomId: 'demo13.cupertinoTabBar',
+      tomId: 'cupertinoTabBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.cupertinoTabBar.iosLabel',
+            tomId: 'cupertinoTabBar.iosLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -463,7 +464,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           Center(
             child: TomText(
               text: 'Selected: ${['Home', 'Search', 'Alerts', 'Settings'][_cupertinoTabIndex]}',
@@ -481,22 +482,22 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildNavigationRailSection() {
     return _DemoCard(
-      tomId: 'demo13.navigationRail',
+      tomId: 'navigationRail',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomRow(
             children: [
               TomText(
-                tomId: 'demo13.navigationRail.sideLabel',
+                tomId: 'navigationRail.sideLabel',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
               const Spacer(),
               TomText(
-                tomId: 'demo13.navigationRail.extendedLabel',
+                tomId: 'navigationRail.extendedLabel',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               Switch(
                 value: _railExtended,
                 onChanged: (value) {
@@ -505,7 +506,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -570,15 +571,15 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildNavigationDrawerSection() {
     return _DemoCard(
-      tomId: 'demo13.navigationDrawer',
+      tomId: 'navigationDrawer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.navigationDrawer.m3DrawerLabel',
+            tomId: 'navigationDrawer.m3DrawerLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             decoration: BoxDecoration(
@@ -612,7 +613,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                               radius: 32,
                               child: Icon(Icons.person, size: 32),
                             ),
-                            const TomSizedBox(height: 8),
+                            TomSizedBox(height: 8),
                             TomText(
                               text: 'Demo User',
                               style: Theme.of(context).textTheme.titleMedium,
@@ -667,20 +668,20 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildDrawerSection() {
     return _DemoCard(
-      tomId: 'demo13.drawer',
+      tomId: 'drawer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.drawer.standardLabel',
+            tomId: 'drawer.standardLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TomElevatedButton(
-                tomId: 'demo13.drawer.openButton',
+                tomId: 'drawer.openButton',
                 onPressed: () {
                   showDialog(
                     context: context,
@@ -736,10 +737,10 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           Center(
             child: TomText(
-              tomId: 'demo13.drawer.hint',
+              tomId: 'drawer.hint',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -756,16 +757,16 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildStepperSection() {
     return _DemoCard(
-      tomId: 'demo13.stepper',
+      tomId: 'stepper',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Horizontal Stepper
           TomText(
-            tomId: 'demo13.stepper.horizontalLabel',
+            tomId: 'stepper.horizontalLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomSizedBox(
             height: 200,
             child: TomStepper(
@@ -824,14 +825,14 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
             ],
           ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Vertical Stepper
           TomText(
-            tomId: 'demo13.stepper.verticalLabel',
+            tomId: 'stepper.verticalLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             child: TomStepper(
@@ -908,15 +909,15 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 
   Widget _buildPageViewSection() {
     return _DemoCard(
-      tomId: 'demo13.pageView',
+      tomId: 'pageView',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo13.pageView.swipeLabel',
+            tomId: 'pageView.swipeLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 200,
             decoration: BoxDecoration(
@@ -954,7 +955,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                           ][index],
                           size: 48,
                         ),
-                        const TomSizedBox(height: 16),
+                        TomSizedBox(height: 16),
                         TomText(
                           text: titles[index],
                           style:
@@ -975,7 +976,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               }),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           // Page indicators
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -993,7 +994,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
               );
             }),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           // Navigation buttons
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1010,7 +1011,7 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                       }
                     : null,
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomIconButton(
                 tooltip: 'Next page',
                 icon: const Icon(Icons.chevron_right),
@@ -1041,22 +1042,22 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo13.cupertinoNavBar',
+        tomId: 'cupertinoNavBar',
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              tomId: 'demo13.cupertinoNavBar.iosBarLabel',
+              tomId: 'cupertinoNavBar.iosBarLabel',
               style: Theme.of(context).textTheme.labelLarge,
             ),
-            const TomSizedBox(height: 12),
+            TomSizedBox(height: 12),
 
             // Basic Cupertino Navigation Bar
             TomText(
-              tomId: 'demo13.cupertinoNavBar.basicLabel',
+              tomId: 'cupertinoNavBar.basicLabel',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomContainer(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -1065,19 +1066,19 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                 ),
               ),
               clipBehavior: Clip.antiAlias,
-              child: const TomCupertinoNavigationBar(
+              child: TomCupertinoNavigationBar(
                 middle: Text('Page Title'),
                 transitionBetweenRoutes: false,
               ),
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // With leading and trailing
             TomText(
-              tomId: 'demo13.cupertinoNavBar.withActionsLabel',
+              tomId: 'cupertinoNavBar.withActionsLabel',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomContainer(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -1101,14 +1102,14 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
                 transitionBetweenRoutes: false,
               ),
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // With back button simulation
             TomText(
-              tomId: 'demo13.cupertinoNavBar.backButtonLabel',
+              tomId: 'cupertinoNavBar.backButtonLabel',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomContainer(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -1150,25 +1151,25 @@ class _NavigationDemoContentState extends State<_NavigationDemoContent>
 // =============================================================================
 
 /// Tab content placeholder widget.
-class _TabContent extends StatelessWidget {
+class _TabContent extends TomStatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
 
-  const _TabContent({
+  _TabContent({
     required this.icon,
     required this.label,
     required this.color,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return Center(
       child: TomColumn(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 32, color: color),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomText(
             text: '$label Tab Content',
             style: Theme.of(context).textTheme.titleMedium,
@@ -1180,15 +1181,15 @@ class _TabContent extends StatelessWidget {
 }
 
 /// Section header widget with gradient underline.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1200,14 +1201,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1225,17 +1226,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1247,8 +1248,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1259,7 +1260,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1267,9 +1268,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

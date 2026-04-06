@@ -16,23 +16,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Effects & Filters demo.
-class EffectsDemo extends StatelessWidget {
-  const EffectsDemo({super.key});
+class EffectsDemo extends TomStatelessWidget {
+  EffectsDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _EffectsDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _EffectsDemoContent();
+
   }
 }
 
-class _EffectsDemoContent extends StatefulWidget {
-  const _EffectsDemoContent();
+class _EffectsDemoContent extends TomStatefulWidget {
+  _EffectsDemoContent();
 
   @override
   State<_EffectsDemoContent> createState() => _EffectsDemoContentState();
 }
 
-class _EffectsDemoContentState extends State<_EffectsDemoContent> {
+class _EffectsDemoContentState extends TomState<_EffectsDemoContent> {
   // State for interactive demos
   double _blurSigma = 5.0;
   Color _colorFilterColor = Colors.blue;
@@ -44,7 +45,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
   String? _selectedText;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -53,51 +54,51 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
           children: [
             // Section 1: Backdrop Filters
             _SectionHeader(
-              tomId: 'demo19.section.backdrop',
+              tomId: 'section.backdrop',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildBackdropFilterSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Image Filters
             _SectionHeader(
-              tomId: 'demo19.section.image',
+              tomId: 'section.image',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildImageFilterSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Color Filters
             _SectionHeader(
-              tomId: 'demo19.section.color',
+              tomId: 'section.color',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildColorFilterSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Shader Masks
             _SectionHeader(
-              tomId: 'demo19.section.shader',
+              tomId: 'section.shader',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildShaderMaskSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Text Selection
             _SectionHeader(
-              tomId: 'demo19.section.selection',
+              tomId: 'section.selection',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildSelectionSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 6: Sensitive Content
             _SectionHeader(
-              tomId: 'demo19.section.sensitive',
+              tomId: 'section.sensitive',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildSensitiveContentSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -110,7 +111,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 
   Widget _buildBackdropFilterSection() {
     return _DemoCard(
-      tomId: 'demo19.backdropFilter',
+      tomId: 'backdropFilter',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -158,7 +159,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                                 size: 48,
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),
-                              const TomSizedBox(height: 8),
+                              TomSizedBox(height: 8),
                               Text(
                                 'Blur: ${_blurSigma.toStringAsFixed(1)}',
                                 style: const TextStyle(
@@ -198,11 +199,11 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Blur sigma slider
           TomRow(
             children: [
-              const TomText(text: 'Blur Sigma: '),
+              TomText(text: 'Blur Sigma: '),
               TomExpanded(
                 child: Slider(
                   value: _blurSigma,
@@ -222,9 +223,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo19.backdropFilter.hint',
+            tomId: 'backdropFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -241,7 +242,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 
   Widget _buildImageFilterSection() {
     return _DemoCard(
-      tomId: 'demo19.imageFilter',
+      tomId: 'imageFilter',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -253,11 +254,11 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const TomText(
+                    TomText(
                       text: 'Original',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: Image.network(
@@ -269,16 +270,16 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                   ],
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               // Filtered image
               TomExpanded(
                 child: TomColumn(
                   children: [
-                    const TomText(
+                    TomText(
                       text: 'Filtered',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: TomImageFiltered(
@@ -299,11 +300,11 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Controls
           TomRow(
             children: [
-              const TomText(text: 'Blur: '),
+              TomText(text: 'Blur: '),
               TomExpanded(
                 child: Slider(
                   value: _imageBlurSigma,
@@ -326,7 +327,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
           ),
           TomRow(
             children: [
-              const TomText(text: 'Filter Enabled: '),
+              TomText(text: 'Filter Enabled: '),
               Switch(
                 value: _imageFilterEnabled,
                 onChanged: (value) =>
@@ -334,9 +335,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo19.imageFilter.hint',
+            tomId: 'imageFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -353,7 +354,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 
   Widget _buildColorFilterSection() {
     return _DemoCard(
-      tomId: 'demo19.colorFilter',
+      tomId: 'colorFilter',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -408,13 +409,13 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Color picker for custom filter
           TomText(
             text: 'Custom Color Filter:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
@@ -427,12 +428,12 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               _buildColorChip(Colors.cyan, 'Cyan'),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
             text: 'Blend Mode:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
@@ -445,9 +446,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               _buildBlendModeChip(BlendMode.color, 'Color'),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo19.colorFilter.hint',
+            tomId: 'colorFilter.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -465,7 +466,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
           text: label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: filter != null
@@ -516,7 +517,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 
   Widget _buildShaderMaskSection() {
     return _DemoCard(
-      tomId: 'demo19.shaderMask',
+      tomId: 'shaderMask',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -562,13 +563,13 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Blend mode selector
           TomText(
             text: 'Shader Blend Mode:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
@@ -579,7 +580,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               _buildShaderBlendModeChip(BlendMode.srcATop, 'Src ATop'),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Interactive shader mask demo
           TomCenter(
             child: TomShaderMask(
@@ -613,7 +614,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                       size: 48,
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     Text(
                       'Shader Masked Content',
                       style: TextStyle(
@@ -636,9 +637,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo19.shaderMask.hint',
+            tomId: 'shaderMask.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -659,7 +660,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
           text: label,
           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomShaderMask(
           shaderCallback: shaderCallback,
           child: ClipRRect(
@@ -695,7 +696,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
       children: [
         // SelectionArea demo
         _DemoCard(
-          tomId: 'demo19.selectionArea',
+          tomId: 'selectionArea',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -710,20 +711,20 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                       'Selection Area Demo',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     const Text(
                       'This entire area is wrapped in TomSelectionArea. '
                       'You can select any text within this container by '
                       'clicking and dragging. The selection will be highlighted '
                       'and you can copy it to clipboard.',
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     const Text(
                       'Try selecting this paragraph as well! Multiple paragraphs '
                       'can be selected at once, and the selection spans across '
                       'different Text widgets.',
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     TomRow(
                       children: [
                         Icon(
@@ -731,7 +732,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                           size: 16,
                           color: Theme.of(context).colorScheme.primary,
                         ),
-                        const TomSizedBox(width: 8),
+                        TomSizedBox(width: 8),
                         Expanded(
                           child: Text(
                             'SelectionArea provides a convenient way to enable '
@@ -747,7 +748,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                   ],
                 ),
               ),
-              const TomSizedBox(height: 16),
+              TomSizedBox(height: 16),
               if (_selectedText != null && _selectedText!.isNotEmpty) ...[
                 TomContainer(
                   padding: const EdgeInsets.all(12),
@@ -771,7 +772,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
-                      const TomSizedBox(height: 4),
+                      TomSizedBox(height: 4),
                       Text(
                         '"${_selectedText!.length > 100 ? '${_selectedText!.substring(0, 100)}...' : _selectedText}"',
                         style: const TextStyle(fontStyle: FontStyle.italic),
@@ -779,10 +780,10 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                     ],
                   ),
                 ),
-                const TomSizedBox(height: 12),
+                TomSizedBox(height: 12),
               ],
               TomText(
-                tomId: 'demo19.selectionArea.hint',
+                tomId: 'selectionArea.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -791,10 +792,10 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
         // SelectableRegion demo
         _DemoCard(
-          tomId: 'demo19.selectableRegion',
+          tomId: 'selectableRegion',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -807,20 +808,20 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                       'Selectable Region Demo',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     const Text(
                       'TomSelectableRegion provides lower-level control over '
                       'text selection. Unlike SelectionArea, you must provide '
                       'explicit selectionControls.',
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     TomCard(
                       child: TomPadding(
                         padding: const EdgeInsets.all(12),
                         child: TomRow(
                           children: [
                             const Icon(Icons.code, size: 20),
-                            const TomSizedBox(width: 8),
+                            TomSizedBox(width: 8),
                             const Expanded(
                               child: Text(
                                 'const code = "// Select this code snippet";',
@@ -834,9 +835,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                   ],
                 ),
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomText(
-                tomId: 'demo19.selectableRegion.hint',
+                tomId: 'selectableRegion.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -855,7 +856,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 
   Widget _buildSensitiveContentSection() {
     return _DemoCard(
-      tomId: 'demo19.sensitiveContent',
+      tomId: 'sensitiveContent',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -864,7 +865,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
             text: 'Content Sensitivity Level:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
@@ -886,7 +887,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Demo cards for different sensitivity levels
           TomRow(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -900,7 +901,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                   'Password: ••••••••\nSSN: •••-••-••••',
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomExpanded(
                 child: _buildSensitiveContentExample(
                   ContentSensitivity.notSensitive,
@@ -912,7 +913,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Interactive demo
           TomSensitiveContent(
             sensitivity: _sensitivity,
@@ -928,7 +929,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                           _getSensitivityIcon(_sensitivity),
                           color: _getSensitivityColor(_sensitivity),
                         ),
-                        const TomSizedBox(width: 12),
+                        TomSizedBox(width: 12),
                         TomExpanded(
                           child: TomColumn(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,15 +953,15 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                         ),
                       ],
                     ),
-                    const TomSizedBox(height: 12),
-                    const TomDivider(),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
+                    TomDivider(),
+                    TomSizedBox(height: 12),
                     const Text(
                       'This content area is wrapped in TomSensitiveContent. '
                       'On supported platforms (iOS/Android), the OS may treat '
                       'this content differently based on the sensitivity level.',
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     TomContainer(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -982,9 +983,9 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo19.sensitiveContent.hint',
+            tomId: 'sensitiveContent.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1031,7 +1032,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
             TomRow(
               children: [
                 Icon(icon, size: 16, color: color),
-                const TomSizedBox(width: 8),
+                TomSizedBox(width: 8),
                 Text(
                   title,
                   style: TextStyle(
@@ -1041,7 +1042,7 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             Text(
               content,
               style: const TextStyle(
@@ -1087,15 +1088,15 @@ class _EffectsDemoContentState extends State<_EffectsDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1107,14 +1108,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1132,17 +1133,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1154,8 +1155,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1166,7 +1167,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1174,9 +1175,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

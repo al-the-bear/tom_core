@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../resource_auth/tom_icons.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -321,9 +322,10 @@ class TomFadeInImage extends TomImageBase {
     this.imageSemanticLabel,
     this.placeholderColor,
     this.placeholderColorBlendMode,
-    this.placeholderErrorBuilder,
-    this.imageErrorBuilder,
-  }) {
+    ImageErrorWidgetBuilder? placeholderErrorBuilder,
+    ImageErrorWidgetBuilder? imageErrorBuilder,
+  }) : placeholderErrorBuilder = placeholderErrorBuilder != null ? InScopeBuilder(scope: scope).wrap3(placeholderErrorBuilder) : null,
+       imageErrorBuilder = imageErrorBuilder != null ? InScopeBuilder(scope: scope).wrap3(imageErrorBuilder) : null {
     _resolvedSemanticLabel = imageSemanticLabel ?? (tomId != null ? resolveResourceOrFail('alt') : null);
     _resolvedWidth = width ?? resolveDoubleOrNull('width');
     _resolvedHeight = height ?? resolveDoubleOrNull('height');
@@ -530,10 +532,12 @@ class TomNetworkImage extends TomImageBase {
     this.colorBlendMode,
     this.semanticLabel,
     this.excludeFromSemantics = false,
-    this.frameBuilder,
-    this.loadingBuilder,
-    this.errorBuilder,
-  }) {
+    ImageFrameBuilder? frameBuilder,
+    ImageLoadingBuilder? loadingBuilder,
+    ImageErrorWidgetBuilder? errorBuilder,
+  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
+       loadingBuilder = loadingBuilder != null ? InScopeBuilder(scope: scope).wrap3(loadingBuilder) : null,
+       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
     _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
     _resolvedSrc = resolveResourceOrNull('src') ?? src;
     _resolvedScale = resolveDoubleOrNull('scale') ?? scale;
@@ -635,11 +639,12 @@ class TomAssetImage extends TomImageBase {
     this.colorBlendMode,
     this.semanticLabel,
     this.excludeFromSemantics = false,
-    this.frameBuilder,
-    this.errorBuilder,
+    ImageFrameBuilder? frameBuilder,
+    ImageErrorWidgetBuilder? errorBuilder,
     this.cacheWidth,
     this.cacheHeight,
-  }) {
+  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
+       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
     _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
     _resolvedWidth = width ?? resolveDoubleOrNull('width');
     _resolvedHeight = height ?? resolveDoubleOrNull('height');
@@ -727,9 +732,10 @@ class TomFileImage extends TomImageBase {
     this.colorBlendMode,
     this.semanticLabel,
     this.excludeFromSemantics = false,
-    this.frameBuilder,
-    this.errorBuilder,
-  }) {
+    ImageFrameBuilder? frameBuilder,
+    ImageErrorWidgetBuilder? errorBuilder,
+  }) : frameBuilder = frameBuilder != null ? InScopeBuilder(scope: scope).wrap4(frameBuilder) : null,
+       errorBuilder = errorBuilder != null ? InScopeBuilder(scope: scope).wrap3(errorBuilder) : null {
     _resolvedSemanticLabel = semanticLabel ?? (tomId != null ? resolveResourceOrFail('semanticLabel') : null);
     _resolvedWidth = width ?? resolveDoubleOrNull('width');
     _resolvedHeight = height ?? resolveDoubleOrNull('height');

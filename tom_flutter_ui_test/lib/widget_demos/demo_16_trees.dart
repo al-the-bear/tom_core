@@ -13,23 +13,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Tree & Hierarchy demo.
-class TreesDemo extends StatelessWidget {
-  const TreesDemo({super.key});
+class TreesDemo extends TomStatelessWidget {
+  TreesDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _TreesDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _TreesDemoContent();
+
   }
 }
 
-class _TreesDemoContent extends StatefulWidget {
-  const _TreesDemoContent();
+class _TreesDemoContent extends TomStatefulWidget {
+  _TreesDemoContent();
 
   @override
   State<_TreesDemoContent> createState() => _TreesDemoContentState();
 }
 
-class _TreesDemoContentState extends State<_TreesDemoContent>
+class _TreesDemoContentState extends TomState<_TreesDemoContent>
     with TickerProviderStateMixin {
   // TreeSliver controller for programmatic expand/collapse
   late TreeSliverController _treeSliverController;
@@ -43,7 +44,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
   // Note: TreeSliverController doesn't require disposal
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -52,43 +53,43 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
           children: [
             // Section 1: Simple Tree View
             _SectionHeader(
-              tomId: 'demo16.section.simple',
+              tomId: 'section.simple',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildSimpleTreeSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: TreeSliver (High Performance)
             _SectionHeader(
-              tomId: 'demo16.section.sliver',
+              tomId: 'section.sliver',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildTreeSliverSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Nested Expansion Tiles
             _SectionHeader(
-              tomId: 'demo16.section.expansion',
+              tomId: 'section.expansion',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildExpansionTileSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: File Explorer Pattern
             _SectionHeader(
-              tomId: 'demo16.section.fileExplorer',
+              tomId: 'section.fileExplorer',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildFileExplorerSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Organizational Hierarchy
             _SectionHeader(
-              tomId: 'demo16.section.organization',
+              tomId: 'section.organization',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildOrganizationSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -101,15 +102,15 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 
   Widget _buildSimpleTreeSection() {
     return _DemoCard(
-      tomId: 'demo16.treeView',
+      tomId: 'treeView',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo16.treeView.basicLabel',
+            tomId: 'treeView.basicLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -131,54 +132,54 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                   initiallyExpanded: true,
                   children: [
                     TomTreeNode(
-                      title: const TomText(text: 'Mammals'),
-                      leading: const TomIcon(icon: Icons.category),
+                      title: TomText(text: 'Mammals'),
+                      leading: TomIcon(icon: Icons.category),
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'Dogs'),
-                          leading: const TomIcon(icon: Icons.emoji_nature),
+                          title: TomText(text: 'Dogs'),
+                          leading: TomIcon(icon: Icons.emoji_nature),
                           onTap: () => _showNodeTapped(context, 'Dogs'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Cats'),
-                          leading: const TomIcon(icon: Icons.emoji_nature),
+                          title: TomText(text: 'Cats'),
+                          leading: TomIcon(icon: Icons.emoji_nature),
                           onTap: () => _showNodeTapped(context, 'Cats'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Elephants'),
-                          leading: const TomIcon(icon: Icons.emoji_nature),
+                          title: TomText(text: 'Elephants'),
+                          leading: TomIcon(icon: Icons.emoji_nature),
                           onTap: () => _showNodeTapped(context, 'Elephants'),
                         ),
                       ],
                     ),
                     TomTreeNode(
-                      title: const TomText(text: 'Birds'),
-                      leading: const TomIcon(icon: Icons.category),
+                      title: TomText(text: 'Birds'),
+                      leading: TomIcon(icon: Icons.category),
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'Eagles'),
-                          leading: const TomIcon(icon: Icons.flight),
+                          title: TomText(text: 'Eagles'),
+                          leading: TomIcon(icon: Icons.flight),
                           onTap: () => _showNodeTapped(context, 'Eagles'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Parrots'),
-                          leading: const TomIcon(icon: Icons.flight),
+                          title: TomText(text: 'Parrots'),
+                          leading: TomIcon(icon: Icons.flight),
                           onTap: () => _showNodeTapped(context, 'Parrots'),
                         ),
                       ],
                     ),
                     TomTreeNode(
-                      title: const TomText(text: 'Fish'),
-                      leading: const TomIcon(icon: Icons.category),
+                      title: TomText(text: 'Fish'),
+                      leading: TomIcon(icon: Icons.category),
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'Salmon'),
-                          leading: const TomIcon(icon: Icons.water),
+                          title: TomText(text: 'Salmon'),
+                          leading: TomIcon(icon: Icons.water),
                           onTap: () => _showNodeTapped(context, 'Salmon'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Tuna'),
-                          leading: const TomIcon(icon: Icons.water),
+                          title: TomText(text: 'Tuna'),
+                          leading: TomIcon(icon: Icons.water),
                           onTap: () => _showNodeTapped(context, 'Tuna'),
                         ),
                       ],
@@ -193,29 +194,29 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                   ),
                   children: [
                     TomTreeNode(
-                      title: const TomText(text: 'Trees'),
-                      leading: const TomIcon(icon: Icons.forest),
+                      title: TomText(text: 'Trees'),
+                      leading: TomIcon(icon: Icons.forest),
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'Oak'),
+                          title: TomText(text: 'Oak'),
                           onTap: () => _showNodeTapped(context, 'Oak'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Pine'),
+                          title: TomText(text: 'Pine'),
                           onTap: () => _showNodeTapped(context, 'Pine'),
                         ),
                       ],
                     ),
                     TomTreeNode(
-                      title: const TomText(text: 'Flowers'),
-                      leading: const TomIcon(icon: Icons.local_florist),
+                      title: TomText(text: 'Flowers'),
+                      leading: TomIcon(icon: Icons.local_florist),
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'Roses'),
+                          title: TomText(text: 'Roses'),
                           onTap: () => _showNodeTapped(context, 'Roses'),
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'Tulips'),
+                          title: TomText(text: 'Tulips'),
                           onTap: () => _showNodeTapped(context, 'Tulips'),
                         ),
                       ],
@@ -225,9 +226,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo16.treeView.hint',
+            tomId: 'treeView.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -252,15 +253,15 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 
   Widget _buildTreeSliverSection() {
     return _DemoCard(
-      tomId: 'demo16.treeSliver',
+      tomId: 'treeSliver',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo16.treeSliver.descriptionText',
+            tomId: 'treeSliver.descriptionText',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Control buttons
           TomWrap(
@@ -268,16 +269,16 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
             runSpacing: 8,
             children: [
               TomElevatedButton(
-                tomId: 'demo16.treeSliver.expandAll',
+                tomId: 'treeSliver.expandAll',
                 onPressed: _expandAllTreeSliver,
               ),
               TomOutlinedButton(
-                tomId: 'demo16.treeSliver.collapseAll',
+                tomId: 'treeSliver.collapseAll',
                 onPressed: _collapseAllTreeSliver,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // TreeSliver demo
           TomContainer(
@@ -350,9 +351,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo16.treeSliver.hint',
+            tomId: 'treeSliver.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -476,16 +477,16 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 
   Widget _buildExpansionTileSection() {
     return _DemoCard(
-      tomId: 'demo16.expansionTile',
+      tomId: 'expansionTile',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic expansion tiles
           TomText(
-            tomId: 'demo16.expansionTile.basicLabel',
+            tomId: 'expansionTile.basicLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomExpansionTile(
             leading: TomIcon(
@@ -493,26 +494,26 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               color: Theme.of(context).colorScheme.primary,
             ),
             titleText: 'General Settings',
-            subtitle: const TomText(text: 'App preferences and configuration'),
+            subtitle: TomText(text: 'App preferences and configuration'),
             children: [
               TomListTile(
-                leading: const TomIcon(icon: Icons.language),
+                leading: TomIcon(icon: Icons.language),
                 titleText: 'Language',
-                subtitle: const TomText(text: 'English'),
-                trailing: const TomIcon(icon: Icons.chevron_right),
+                subtitle: TomText(text: 'English'),
+                trailing: TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
-                leading: const TomIcon(icon: Icons.dark_mode),
+                leading: TomIcon(icon: Icons.dark_mode),
                 titleText: 'Theme',
-                subtitle: const TomText(text: 'System default'),
-                trailing: const TomIcon(icon: Icons.chevron_right),
+                subtitle: TomText(text: 'System default'),
+                trailing: TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
-                leading: const TomIcon(icon: Icons.notifications),
+                leading: TomIcon(icon: Icons.notifications),
                 titleText: 'Notifications',
-                subtitle: const TomText(text: 'Enabled'),
+                subtitle: TomText(text: 'Enabled'),
                 trailing: TomSwitch(
                   value: true,
                   onChanged: (_) {},
@@ -520,7 +521,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
 
           TomExpansionTile(
             leading: TomIcon(
@@ -528,16 +529,16 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               color: Theme.of(context).colorScheme.secondary,
             ),
             titleText: 'Privacy & Security',
-            subtitle: const TomText(text: 'Account security options'),
+            subtitle: TomText(text: 'Account security options'),
             children: [
               TomListTile(
-                leading: const TomIcon(icon: Icons.lock),
+                leading: TomIcon(icon: Icons.lock),
                 titleText: 'Change Password',
-                trailing: const TomIcon(icon: Icons.chevron_right),
+                trailing: TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
               TomListTile(
-                leading: const TomIcon(icon: Icons.fingerprint),
+                leading: TomIcon(icon: Icons.fingerprint),
                 titleText: 'Biometric Login',
                 trailing: TomSwitch(
                   value: false,
@@ -545,21 +546,21 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                 ),
               ),
               TomListTile(
-                leading: const TomIcon(icon: Icons.verified_user),
+                leading: TomIcon(icon: Icons.verified_user),
                 titleText: 'Two-Factor Authentication',
-                trailing: const TomIcon(icon: Icons.chevron_right),
+                trailing: TomIcon(icon: Icons.chevron_right),
                 onTap: () {},
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Nested expansion tiles
           TomText(
-            tomId: 'demo16.expansionTile.nestedLabel',
+            tomId: 'expansionTile.nestedLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomExpansionTile(
             initiallyExpanded: true,
@@ -570,13 +571,13 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
             titleText: 'Computer Science',
             children: [
               TomExpansionTile(
-                leading: const TomIcon(icon: Icons.code),
+                leading: TomIcon(icon: Icons.code),
                 titleText: 'Programming',
                 children: [
                   TomExpansionTile(
-                    leading: const TomIcon(icon: Icons.flutter_dash),
+                    leading: TomIcon(icon: Icons.flutter_dash),
                     titleText: 'Mobile Development',
-                    children: const [
+                    children: [
                       TomListTile(
                         titleText: 'Flutter',
                         subtitle: TomText(text: 'Cross-platform framework'),
@@ -592,9 +593,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                     ],
                   ),
                   TomExpansionTile(
-                    leading: const TomIcon(icon: Icons.web),
+                    leading: TomIcon(icon: Icons.web),
                     titleText: 'Web Development',
-                    children: const [
+                    children: [
                       TomListTile(
                         titleText: 'React',
                         subtitle: TomText(text: 'Frontend library'),
@@ -608,9 +609,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                 ],
               ),
               TomExpansionTile(
-                leading: const TomIcon(icon: Icons.memory),
+                leading: TomIcon(icon: Icons.memory),
                 titleText: 'Algorithms',
-                children: const [
+                children: [
                   TomListTile(
                     titleText: 'Sorting',
                     subtitle: TomText(text: 'QuickSort, MergeSort, etc.'),
@@ -634,7 +635,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 
   Widget _buildFileExplorerSection() {
     return _DemoCard(
-      tomId: 'demo16.fileExplorer',
+      tomId: 'fileExplorer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -651,7 +652,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                 icon: const Icon(Icons.note_add),
                 onPressed: () {},
               ),
-              const TomSpacer(),
+              TomSpacer(),
               TomIconButton(
                 tooltip: 'List view',
                 icon: const Icon(Icons.view_list),
@@ -664,9 +665,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 8),
-          const TomDivider(),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
+          TomDivider(),
+          TomSizedBox(height: 8),
 
           // File explorer tree
           TomContainer(
@@ -681,7 +682,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               indentation: 20,
               nodes: [
                 TomTreeNode(
-                  title: const TomText(
+                  title: TomText(
                     text: 'my_project',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -693,7 +694,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                   initiallyExpanded: true,
                   children: [
                     TomTreeNode(
-                      title: const TomText(text: 'lib'),
+                      title: TomText(text: 'lib'),
                       leading: Icon(
                         Icons.folder,
                         color: Colors.amber.shade700,
@@ -702,7 +703,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                       initiallyExpanded: true,
                       children: [
                         TomTreeNode(
-                          title: const TomText(text: 'src'),
+                          title: TomText(text: 'src'),
                           leading: Icon(
                             Icons.folder,
                             color: Colors.amber.shade700,
@@ -717,7 +718,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                           ],
                         ),
                         TomTreeNode(
-                          title: const TomText(text: 'widgets'),
+                          title: TomText(text: 'widgets'),
                           leading: Icon(
                             Icons.folder,
                             color: Colors.amber.shade700,
@@ -735,7 +736,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                       ],
                     ),
                     TomTreeNode(
-                      title: const TomText(text: 'test'),
+                      title: TomText(text: 'test'),
                       leading: Icon(
                         Icons.folder,
                         color: Colors.amber.shade700,
@@ -749,7 +750,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                       ],
                     ),
                     TomTreeNode(
-                      title: const TomText(text: 'assets'),
+                      title: TomText(text: 'assets'),
                       leading: Icon(
                         Icons.folder,
                         color: Colors.amber.shade700,
@@ -773,9 +774,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo16.fileExplorer.hint',
+            tomId: 'fileExplorer.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -808,7 +809,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 
   Widget _buildOrganizationSection() {
     return _DemoCard(
-      tomId: 'demo16.organization',
+      tomId: 'organization',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -836,7 +837,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                   color: Theme.of(context).colorScheme.primary,
                   isExpanded: true,
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 // Vertical connector
                 TomContainer(
                   width: 2,
@@ -854,7 +855,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                     ),
                   ],
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 // Department heads
                 TomRow(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -869,13 +870,13 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                             avatar: 'MC',
                             color: Colors.blue,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           TomContainer(
                             width: 2,
                             height: 16,
                             color: Theme.of(context).colorScheme.outline,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           _buildOrgCard(
                             name: 'Alex Park',
                             role: 'Lead Developer',
@@ -883,7 +884,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                             color: Colors.lightBlue,
                             compact: true,
                           ),
-                          const TomSizedBox(height: 4),
+                          TomSizedBox(height: 4),
                           _buildOrgCard(
                             name: 'Lisa Wang',
                             role: 'DevOps Manager',
@@ -894,7 +895,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                         ],
                       ),
                     ),
-                    const TomSizedBox(width: 16),
+                    TomSizedBox(width: 16),
                     // CFO Branch
                     TomExpanded(
                       child: TomColumn(
@@ -905,13 +906,13 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                             avatar: 'EB',
                             color: Colors.green,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           TomContainer(
                             width: 2,
                             height: 16,
                             color: Theme.of(context).colorScheme.outline,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           _buildOrgCard(
                             name: 'David Kim',
                             role: 'Finance Manager',
@@ -922,7 +923,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                         ],
                       ),
                     ),
-                    const TomSizedBox(width: 16),
+                    TomSizedBox(width: 16),
                     // CMO Branch
                     TomExpanded(
                       child: TomColumn(
@@ -933,13 +934,13 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                             avatar: 'JW',
                             color: Colors.orange,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           TomContainer(
                             width: 2,
                             height: 16,
                             color: Theme.of(context).colorScheme.outline,
                           ),
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           _buildOrgCard(
                             name: 'Anna Lee',
                             role: 'Marketing Lead',
@@ -947,7 +948,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                             color: Colors.amber,
                             compact: true,
                           ),
-                          const TomSizedBox(height: 4),
+                          TomSizedBox(height: 4),
                           _buildOrgCard(
                             name: 'Tom Scott',
                             role: 'Brand Manager',
@@ -963,9 +964,9 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo16.organization.hint',
+            tomId: 'organization.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -1002,7 +1003,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                   ),
                 ),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomColumn(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -1048,7 +1049,7 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
                 ),
               ),
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             TomText(
               text: name,
               textAlign: TextAlign.center,
@@ -1076,15 +1077,15 @@ class _TreesDemoContentState extends State<_TreesDemoContent>
 // Section Header & Demo Card (Local Helpers)
 // =============================================================================
 
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1096,14 +1097,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1121,17 +1122,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1143,8 +1144,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1155,7 +1156,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1163,9 +1164,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

@@ -18,23 +18,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Animated Transitions demo.
-class AnimatedDemo extends StatelessWidget {
-  const AnimatedDemo({super.key});
+class AnimatedDemo extends TomStatelessWidget {
+  AnimatedDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _AnimatedDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _AnimatedDemoContent();
+
   }
 }
 
-class _AnimatedDemoContent extends StatefulWidget {
-  const _AnimatedDemoContent();
+class _AnimatedDemoContent extends TomStatefulWidget {
+  _AnimatedDemoContent();
 
   @override
   State<_AnimatedDemoContent> createState() => _AnimatedDemoContentState();
 }
 
-class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
+class _AnimatedDemoContentState extends TomState<_AnimatedDemoContent>
     with TickerProviderStateMixin {
   // Animation controllers for transition widgets
   late AnimationController _fadeController;
@@ -86,7 +87,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -94,74 +95,74 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: AnimatedContainer
-            _SectionHeader(tomId: 'demo18.section.container'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.container'),
+            TomSizedBox(height: 16),
             _buildAnimatedContainerSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Opacity & CrossFade
-            _SectionHeader(tomId: 'demo18.section.opacity'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.opacity'),
+            TomSizedBox(height: 16),
             _buildOpacitySection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCrossFadeSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: AnimatedSwitcher
-            _SectionHeader(tomId: 'demo18.section.switcher'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.switcher'),
+            TomSizedBox(height: 16),
             _buildSwitcherSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Position & Alignment
-            _SectionHeader(tomId: 'demo18.section.position'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.position'),
+            TomSizedBox(height: 16),
             _buildPositionedSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildAlignSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Padding & Size
-            _SectionHeader(tomId: 'demo18.section.padding'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.padding'),
+            TomSizedBox(height: 16),
             _buildPaddingSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSizeSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 6: Transform Animations
-            _SectionHeader(tomId: 'demo18.section.transform'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.transform'),
+            TomSizedBox(height: 16),
             _buildScaleSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSlideSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildRotationSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 7: Text & Physical Model
-            _SectionHeader(tomId: 'demo18.section.text'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.text'),
+            TomSizedBox(height: 16),
             _buildTextStyleSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildPhysicalModelSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 8: Transition Widgets
-            _SectionHeader(tomId: 'demo18.section.transitions'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.transitions'),
+            TomSizedBox(height: 16),
             _buildFadeTransitionSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildScaleTransitionSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildRotationTransitionSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 9: Hero Transitions
-            _SectionHeader(tomId: 'demo18.section.hero'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.hero'),
+            TomSizedBox(height: 16),
             _buildHeroSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -174,15 +175,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildAnimatedContainerSection() {
     return _DemoCard(
-      tomId: 'demo18.animatedContainer',
+      tomId: 'animatedContainer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.animatedContainer.demoLabel',
+            tomId: 'animatedContainer.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: GestureDetector(
               onTap: () => setState(() => _containerExpanded = !_containerExpanded),
@@ -233,9 +234,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomText(
-            tomId: 'demo18.animatedContainer.hint',
+            tomId: 'animatedContainer.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -252,15 +253,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildOpacitySection() {
     return _DemoCard(
-      tomId: 'demo18.animatedOpacity',
+      tomId: 'animatedOpacity',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.animatedOpacity.demoLabel',
+            tomId: 'animatedOpacity.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomExpanded(
@@ -270,7 +271,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                   label: 'Opacity: ${(_opacity * 100).toInt()}%',
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomAnimatedOpacity(
                 opacity: _opacity,
                 duration: const Duration(milliseconds: 300),
@@ -290,9 +291,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.animatedOpacity.hint',
+            tomId: 'animatedOpacity.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -305,15 +306,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildCrossFadeSection() {
     return _DemoCard(
-      tomId: 'demo18.crossFade',
+      tomId: 'crossFade',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.crossFade.demoLabel',
+            tomId: 'crossFade.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -371,7 +372,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomFilledButton(
                   label: 'Toggle Day/Night',
                   onPressed: () => setState(() {
@@ -379,14 +380,14 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                         ? CrossFadeState.showSecond
                         : CrossFadeState.showFirst;
                   }),
-                  child: const TomText(text: 'Toggle Day/Night'),
+                  child: TomText(text: 'Toggle Day/Night'),
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.crossFade.hint',
+            tomId: 'crossFade.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -418,15 +419,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
     ];
 
     return _DemoCard(
-      tomId: 'demo18.switcher',
+      tomId: 'switcher',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.switcher.demoLabel',
+            tomId: 'switcher.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -460,7 +461,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 24),
+                TomSizedBox(height: 24),
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
@@ -486,9 +487,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.switcher.hint',
+            tomId: 'switcher.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -505,15 +506,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildPositionedSection() {
     return _DemoCard(
-      tomId: 'demo18.positioned',
+      tomId: 'positioned',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.positioned.demoLabel',
+            tomId: 'positioned.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Container(
             height: 200,
             decoration: BoxDecoration(
@@ -571,9 +572,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.positioned.hint',
+            tomId: 'positioned.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -598,15 +599,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
     ];
 
     return _DemoCard(
-      tomId: 'demo18.align',
+      tomId: 'align',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.align.demoLabel',
+            tomId: 'align.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -640,7 +641,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                 ],
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
               // Demo area
               TomExpanded(
                 child: Container(
@@ -672,9 +673,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.align.hint',
+            tomId: 'align.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -691,15 +692,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildPaddingSection() {
     return _DemoCard(
-      tomId: 'demo18.padding',
+      tomId: 'padding',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.padding.demoLabel',
+            tomId: 'padding.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -722,11 +723,11 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                         borderRadius: BorderRadius.circular(8),
                       ),
                       alignment: Alignment.center,
-                      child: const TomText(text: 'Content'),
+                      child: TomText(text: 'Content'),
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomWrap(
                   spacing: 8,
                   children: [
@@ -736,7 +737,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       onPressed: () => setState(
                         () => _padding = const EdgeInsets.all(8),
                       ),
-                      child: const TomText(text: 'Small'),
+                      child: TomText(text: 'Small'),
                     ),
                     TomFilledButton(
                       label: 'Medium',
@@ -744,7 +745,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       onPressed: () => setState(
                         () => _padding = const EdgeInsets.all(24),
                       ),
-                      child: const TomText(text: 'Medium'),
+                      child: TomText(text: 'Medium'),
                     ),
                     TomFilledButton(
                       label: 'Asymmetric',
@@ -755,16 +756,16 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                           vertical: 16,
                         ),
                       ),
-                      child: const TomText(text: 'Asymmetric'),
+                      child: TomText(text: 'Asymmetric'),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.padding.hint',
+            tomId: 'padding.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -777,15 +778,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildSizeSection() {
     return _DemoCard(
-      tomId: 'demo18.size',
+      tomId: 'size',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.size.demoLabel',
+            tomId: 'size.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -807,7 +808,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         if (_sizeExpanded) ...[
-                          const TomSizedBox(height: 8),
+                          TomSizedBox(height: 8),
                           TomText(
                             text:
                                 'This additional content appears when expanded, and AnimatedSize smoothly animates the height change.',
@@ -818,7 +819,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomFilledButton(
                   label: 'Toggle Size',
                   onPressed: () => setState(() => _sizeExpanded = !_sizeExpanded),
@@ -827,9 +828,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.size.hint',
+            tomId: 'size.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -846,15 +847,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildScaleSection() {
     return _DemoCard(
-      tomId: 'demo18.scale',
+      tomId: 'scale',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.scale.demoLabel',
+            tomId: 'scale.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomExpanded(
@@ -867,7 +868,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                   label: 'Scale: ${_scale.toStringAsFixed(1)}x',
                 ),
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
               TomAnimatedScale(
                 scale: _scale,
                 duration: const Duration(milliseconds: 200),
@@ -887,9 +888,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.scale.hint',
+            tomId: 'scale.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -902,15 +903,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildSlideSection() {
     return _DemoCard(
-      tomId: 'demo18.slide',
+      tomId: 'slide',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.slide.demoLabel',
+            tomId: 'slide.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -943,7 +944,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomWrap(
                   spacing: 8,
                   children: [
@@ -952,44 +953,44 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(-0.5, 0),
                       ),
-                      icon: const TomIcon(icon: Icons.arrow_back),
+                      icon: TomIcon(icon: Icons.arrow_back),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Center',
                       onPressed: () => setState(
                         () => _slideOffset = Offset.zero,
                       ),
-                      icon: const TomIcon(icon: Icons.center_focus_strong),
+                      icon: TomIcon(icon: Icons.center_focus_strong),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide right',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0.5, 0),
                       ),
-                      icon: const TomIcon(icon: Icons.arrow_forward),
+                      icon: TomIcon(icon: Icons.arrow_forward),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide up',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0, -0.5),
                       ),
-                      icon: const TomIcon(icon: Icons.arrow_upward),
+                      icon: TomIcon(icon: Icons.arrow_upward),
                     ),
                     TomIconButton.filled(
                       tooltip: 'Slide down',
                       onPressed: () => setState(
                         () => _slideOffset = const Offset(0, 0.5),
                       ),
-                      icon: const TomIcon(icon: Icons.arrow_downward),
+                      icon: TomIcon(icon: Icons.arrow_downward),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.slide.hint',
+            tomId: 'slide.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1002,15 +1003,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildRotationSection() {
     return _DemoCard(
-      tomId: 'demo18.rotation',
+      tomId: 'rotation',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.rotation.demoLabel',
+            tomId: 'rotation.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomExpanded(
@@ -1022,7 +1023,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                   label: 'Turns: ${_turns.toStringAsFixed(2)}',
                 ),
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
               TomAnimatedRotation(
                 turns: _turns,
                 duration: const Duration(milliseconds: 500),
@@ -1043,35 +1044,35 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomWrap(
             spacing: 8,
             children: [
               TomFilledButton(tonal: true,
                 label: '0°',
                 onPressed: () => setState(() => _turns = 0),
-                child: const TomText(text: '0°'),
+                child: TomText(text: '0°'),
               ),
               TomFilledButton(tonal: true,
                 label: '90°',
                 onPressed: () => setState(() => _turns = 0.25),
-                child: const TomText(text: '90°'),
+                child: TomText(text: '90°'),
               ),
               TomFilledButton(tonal: true,
                 label: '180°',
                 onPressed: () => setState(() => _turns = 0.5),
-                child: const TomText(text: '180°'),
+                child: TomText(text: '180°'),
               ),
               TomFilledButton(tonal: true,
                 label: '360°',
                 onPressed: () => setState(() => _turns = 1),
-                child: const TomText(text: '360°'),
+                child: TomText(text: '360°'),
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.rotation.hint',
+            tomId: 'rotation.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1088,15 +1089,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildTextStyleSection() {
     return _DemoCard(
-      tomId: 'demo18.textStyle',
+      tomId: 'textStyle',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.textStyle.demoLabel',
+            tomId: 'textStyle.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -1114,12 +1115,12 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                           ),
                   child: const Text('Animated Text Style'),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomSwitch(
                   value: _boldText,
                   onChanged: (v) => setState(() => _boldText = v),
                 ),
-                const TomSizedBox(height: 8),
+                TomSizedBox(height: 8),
                 TomText(
                   text: _boldText ? 'Bold & Large' : 'Normal',
                   style: Theme.of(context).textTheme.labelSmall,
@@ -1127,9 +1128,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.textStyle.hint',
+            tomId: 'textStyle.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1142,15 +1143,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildPhysicalModelSection() {
     return _DemoCard(
-      tomId: 'demo18.physicalModel',
+      tomId: 'physicalModel',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.physicalModel.demoLabel',
+            tomId: 'physicalModel.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomRow(
             children: [
               TomExpanded(
@@ -1163,7 +1164,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                   label: 'Elevation: ${_elevation.toInt()}',
                 ),
               ),
-              const TomSizedBox(width: 24),
+              TomSizedBox(width: 24),
               TomAnimatedPhysicalModel(
                 duration: const Duration(milliseconds: 300),
                 shape: BoxShape.rectangle,
@@ -1183,7 +1184,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                         size: 32,
                         color: Theme.of(context).colorScheme.primary,
                       ),
-                      const TomSizedBox(height: 4),
+                      TomSizedBox(height: 4),
                       TomText(
                         text: '${_elevation.toInt()}dp',
                         style: Theme.of(context).textTheme.labelSmall,
@@ -1194,9 +1195,9 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.physicalModel.hint',
+            tomId: 'physicalModel.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1213,15 +1214,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildFadeTransitionSection() {
     return _DemoCard(
-      tomId: 'demo18.fadeTransition',
+      tomId: 'fadeTransition',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.fadeTransition.demoLabel',
+            tomId: 'fadeTransition.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -1241,7 +1242,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1249,16 +1250,16 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       label: 'Fade In',
                       tonal: true,
                       onPressed: () => _fadeController.forward(),
-                      child: const TomText(text: 'Fade In'),
+                      child: TomText(text: 'Fade In'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomFilledButton(
                       label: 'Fade Out',
                       tonal: true,
                       onPressed: () => _fadeController.reverse(),
-                      child: const TomText(text: 'Fade Out'),
+                      child: TomText(text: 'Fade Out'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
                       tooltip: 'Replay fade animation',
                       onPressed: () {
@@ -1268,16 +1269,16 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                           _fadeController.forward();
                         }
                       },
-                      icon: const TomIcon(icon: Icons.replay),
+                      icon: TomIcon(icon: Icons.replay),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.fadeTransition.hint',
+            tomId: 'fadeTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1290,15 +1291,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildScaleTransitionSection() {
     return _DemoCard(
-      tomId: 'demo18.scaleTransition',
+      tomId: 'scaleTransition',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.scaleTransition.demoLabel',
+            tomId: 'scaleTransition.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -1321,7 +1322,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1329,31 +1330,31 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       label: 'Scale Up',
                       tonal: true,
                       onPressed: () => _scaleController.forward(),
-                      child: const TomText(text: 'Scale Up'),
+                      child: TomText(text: 'Scale Up'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomFilledButton(
                       label: 'Scale Down',
                       tonal: true,
                       onPressed: () => _scaleController.reverse(),
-                      child: const TomText(text: 'Scale Down'),
+                      child: TomText(text: 'Scale Down'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
                       tooltip: 'Replay scale animation',
                       onPressed: () => _scaleController
                         ..reset()
                         ..forward(),
-                      icon: const TomIcon(icon: Icons.replay),
+                      icon: TomIcon(icon: Icons.replay),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.scaleTransition.hint',
+            tomId: 'scaleTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1366,15 +1367,15 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
 
   Widget _buildRotationTransitionSection() {
     return _DemoCard(
-      tomId: 'demo18.rotationTransition',
+      tomId: 'rotationTransition',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.rotationTransition.demoLabel',
+            tomId: 'rotationTransition.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           Center(
             child: TomColumn(
               children: [
@@ -1397,7 +1398,7 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 16),
+                TomSizedBox(height: 16),
                 TomRow(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1405,36 +1406,36 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
                       label: 'Rotate',
                       tonal: true,
                       onPressed: () => _rotationController.forward(),
-                      child: const TomText(text: 'Rotate'),
+                      child: TomText(text: 'Rotate'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomFilledButton(
                       label: 'Reverse',
                       tonal: true,
                       onPressed: () => _rotationController.reverse(),
-                      child: const TomText(text: 'Reverse'),
+                      child: TomText(text: 'Reverse'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomFilledButton(
                       label: 'Loop',
                       tonal: true,
                       onPressed: () => _rotationController.repeat(),
-                      child: const TomText(text: 'Loop'),
+                      child: TomText(text: 'Loop'),
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomIconButton.filledTonal(
                       tooltip: 'Stop rotation',
                       onPressed: () => _rotationController.stop(),
-                      icon: const TomIcon(icon: Icons.stop),
+                      icon: TomIcon(icon: Icons.stop),
                     ),
                   ],
                 ),
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.rotationTransition.hint',
+            tomId: 'rotationTransition.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1469,24 +1470,24 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
     ];
 
     return _DemoCard(
-      tomId: 'demo18.hero',
+      tomId: 'hero',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo18.hero.demoLabel',
+            tomId: 'hero.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomAnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: _showHeroDetail
                 ? _buildHeroDetail(heroItems[_selectedHeroIndex])
                 : _buildHeroGrid(heroItems),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo18.hero.hint',
+            tomId: 'hero.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1572,22 +1573,22 @@ class _AnimatedDemoContentState extends State<_AnimatedDemoContent>
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomText(
             text: 'Details for ${item.label}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomText(
             text: 'Hero animations create smooth transitions between shared elements.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomFilledButton(
             label: 'Back to Grid',
             tonal: true,
             onPressed: () => setState(() => _showHeroDetail = false),
-            child: const TomText(text: 'Back to Grid'),
+            child: TomText(text: 'Back to Grid'),
           ),
         ],
       ),
@@ -1638,15 +1639,15 @@ class _GridPainter extends CustomPainter {
 // Section Header & Demo Card (Local Helpers)
 // =============================================================================
 
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1658,14 +1659,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1683,17 +1684,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1705,8 +1706,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1717,7 +1718,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1725,9 +1726,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

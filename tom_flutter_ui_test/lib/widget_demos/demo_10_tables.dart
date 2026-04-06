@@ -15,23 +15,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Data Tables demo.
-class DataTablesDemo extends StatelessWidget {
-  const DataTablesDemo({super.key});
+class DataTablesDemo extends TomStatelessWidget {
+  DataTablesDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _TablesDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _TablesDemoContent();
+
   }
 }
 
-class _TablesDemoContent extends StatefulWidget {
-  const _TablesDemoContent();
+class _TablesDemoContent extends TomStatefulWidget {
+  _TablesDemoContent();
 
   @override
   State<_TablesDemoContent> createState() => _TablesDemoContentState();
 }
 
-class _TablesDemoContentState extends State<_TablesDemoContent> {
+class _TablesDemoContentState extends TomState<_TablesDemoContent> {
   // ===========================================================================
   // Section 1: TomDataTable state
   // ===========================================================================
@@ -111,7 +112,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -119,34 +120,34 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: TomDataTable
-            _SectionHeader(tomId: 'demo10.section.dataTable'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.dataTable'),
+            TomSizedBox(height: 16),
             _buildDataTableSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: TomPaginatedDataTable
-            _SectionHeader(tomId: 'demo10.section.paginated'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.paginated'),
+            TomSizedBox(height: 16),
             _buildPaginatedTableSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: TomTable
-            _SectionHeader(tomId: 'demo10.section.table'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.table'),
+            TomSizedBox(height: 16),
             _buildTableSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: TomGridView
-            _SectionHeader(tomId: 'demo10.section.grid'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.grid'),
+            TomSizedBox(height: 16),
             _buildGridViewSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: TomReorderableListView / ACL
-            _SectionHeader(tomId: 'demo10.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildReorderableListSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -160,37 +161,37 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   Widget _buildDataTableSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo10.dataTable',
+      tomId: 'dataTable',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomRow(
             children: [
               TomText(
-                tomId: 'demo10.dataTable.selectedLabel',
+                tomId: 'dataTable.selectedLabel',
                 style: theme.textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomText(
                 text: '${_selectedRows.length} rows',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomTextButton(
-                tomId: 'demo10.dataTable.clearSelection',
+                tomId: 'dataTable.clearSelection',
                 onPressed: _selectedRows.isNotEmpty
                     ? () => setState(() => _selectedRows.clear())
                     : null,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomSingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: TomDataTable(
-              tomId: 'demo10.dataTable.table',
+              tomId: 'dataTable.table',
               sortColumnIndex: _sortColumnIndex,
               sortAscending: _sortAscending,
               showCheckboxColumn: true,
@@ -199,30 +200,30 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
               ),
               columns: [
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.id'),
+                  label: TomText(tomId: 'dataTable.col.id'),
                   numeric: true,
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.name'),
+                  label: TomText(tomId: 'dataTable.col.name'),
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.category'),
+                  label: TomText(tomId: 'dataTable.col.category'),
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.price'),
+                  label: TomText(tomId: 'dataTable.col.price'),
                   numeric: true,
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.stock'),
+                  label: TomText(tomId: 'dataTable.col.stock'),
                   numeric: true,
                   onSort: (i, asc) => _sortData(i, asc),
                 ),
                 TomDataColumn(
-                  label: TomText(tomId: 'demo10.dataTable.col.status'),
+                  label: TomText(tomId: 'dataTable.col.status'),
                 ),
               ],
               rows: _products.take(5).map((p) {
@@ -278,21 +279,21 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   Widget _buildPaginatedTableSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo10.paginatedTable',
+      tomId: 'paginatedTable',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo10.paginatedTable.infoLabel',
+            tomId: 'paginatedTable.infoLabel',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomPaginatedDataTable(
-            tomId: 'demo10.paginatedTable.table',
+            tomId: 'paginatedTable.table',
             header: TomText(
-              tomId: 'demo10.paginatedTable.header',
+              tomId: 'paginatedTable.header',
               style: theme.textTheme.titleMedium,
             ),
             actions: [
@@ -317,17 +318,17 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
             showFirstLastButtons: true,
             columns: [
               TomDataColumn(
-                label: TomText(tomId: 'demo10.paginatedTable.col.id'),
+                label: TomText(tomId: 'paginatedTable.col.id'),
                 numeric: true,
               ),
               TomDataColumn(
-                label: TomText(tomId: 'demo10.paginatedTable.col.name'),
+                label: TomText(tomId: 'paginatedTable.col.name'),
               ),
               TomDataColumn(
-                label: TomText(tomId: 'demo10.paginatedTable.col.category'),
+                label: TomText(tomId: 'paginatedTable.col.category'),
               ),
               TomDataColumn(
-                label: TomText(tomId: 'demo10.paginatedTable.col.price'),
+                label: TomText(tomId: 'paginatedTable.col.price'),
                 numeric: true,
               ),
             ],
@@ -345,19 +346,19 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   Widget _buildTableSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo10.table',
+      tomId: 'table',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo10.table.infoLabel',
+            tomId: 'table.infoLabel',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomTable(
-            tomId: 'demo10.table.layout',
+            tomId: 'table.layout',
             border: TableBorder.all(
               color: theme.colorScheme.outlineVariant,
               borderRadius: BorderRadius.circular(8),
@@ -452,17 +453,17 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   Widget _buildGridViewSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo10.gridView',
+      tomId: 'gridView',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomRow(
             children: [
               TomText(
-                tomId: 'demo10.gridView.columnsLabel',
+                tomId: 'gridView.columnsLabel',
                 style: theme.textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomSegmentedButton<int>(
                 segments: const [
                   ButtonSegment(value: 2, label: Text('2')),
@@ -475,7 +476,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomContainer(
             height: 300,
             clipBehavior: Clip.hardEdge,
@@ -484,7 +485,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: TomGridView(
-              tomId: 'demo10.gridView.grid',
+              tomId: 'gridView.grid',
               padding: const EdgeInsets.all(8),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: _gridCrossAxisCount,
@@ -513,12 +514,12 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
   Widget _buildReorderableListSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo10.reorderable',
+      tomId: 'reorderable',
       child: AclBuilder()
           // Row 1: Info text
           .append(
             TomText(
-              tomId: 'demo10.reorderable.infoLabel',
+              tomId: 'reorderable.infoLabel',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -536,7 +537,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
               ),
               clipBehavior: Clip.hardEdge,
               child: TomReorderableListView(
-                tomId: 'demo10.reorderable.list',
+                tomId: 'reorderable.list',
                 padding: const EdgeInsets.all(8),
                 onReorder: (oldIndex, newIndex) {
                   setState(() {
@@ -582,7 +583,7 @@ class _TablesDemoContentState extends State<_TablesDemoContent> {
           // Row 4: Reset button
           .append(
             TomTextButton(
-              tomId: 'demo10.reorderable.reset',
+              tomId: 'reorderable.reset',
               onPressed: () {
                 setState(() {
                   _reorderableItems = List.generate(8, (i) => 'Item ${i + 1}');
@@ -649,17 +650,17 @@ class _ProductDataSource extends DataTableSource {
 // Helper Widgets
 // =============================================================================
 
-class _GridItem extends StatelessWidget {
+class _GridItem extends TomStatelessWidget {
   final int index;
   final Color color;
 
-  const _GridItem({
+  _GridItem({
     required this.index,
     required this.color,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomCard(
       elevation: 2,
       color: color.withValues(alpha: 0.2),
@@ -668,7 +669,7 @@ class _GridItem extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.grid_view, color: color),
-            const TomSizedBox(height: 4),
+            TomSizedBox(height: 4),
             TomText(
               text: 'Grid ${index + 1}',
               style: TextStyle(
@@ -683,18 +684,18 @@ class _GridItem extends StatelessWidget {
   }
 }
 
-class _ReorderableItem extends StatelessWidget {
+class _ReorderableItem extends TomStatelessWidget {
   final String title;
   final int index;
 
-  const _ReorderableItem({
+  _ReorderableItem({
     super.key,
     required this.title,
     required this.index,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -707,7 +708,7 @@ class _ReorderableItem extends StatelessWidget {
             style: const TextStyle(color: Colors.white),
           ),
         ),
-        subtitle: const TomText(text: 'Drag to reorder'),
+        subtitle: TomText(text: 'Drag to reorder'),
         trailing: Icon(Icons.drag_handle, color: theme.colorScheme.onSurfaceVariant),
       ),
     );
@@ -715,15 +716,15 @@ class _ReorderableItem extends StatelessWidget {
 }
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,14 +736,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -760,17 +761,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -789,11 +790,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,9 +816,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

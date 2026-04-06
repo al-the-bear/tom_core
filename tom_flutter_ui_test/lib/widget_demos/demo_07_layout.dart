@@ -18,23 +18,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Layout Containers demo.
-class LayoutContainersDemo extends StatelessWidget {
-  const LayoutContainersDemo({super.key});
+class LayoutContainersDemo extends TomStatelessWidget {
+  LayoutContainersDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _LayoutDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _LayoutDemoContent();
+
   }
 }
 
-class _LayoutDemoContent extends StatefulWidget {
-  const _LayoutDemoContent();
+class _LayoutDemoContent extends TomStatefulWidget {
+  _LayoutDemoContent();
 
   @override
   State<_LayoutDemoContent> createState() => _LayoutDemoContentState();
 }
 
-class _LayoutDemoContentState extends State<_LayoutDemoContent> {
+class _LayoutDemoContentState extends TomState<_LayoutDemoContent> {
   // ===========================================================================
   // Section 2: Stack & Positioned state
   // ===========================================================================
@@ -47,7 +48,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
   CrossAxisAlignment _aclCrossAxis = CrossAxisAlignment.start;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -55,64 +56,64 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Flex Layouts
-            _SectionHeader(tomId: 'demo07.section.flex'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.flex'),
+            TomSizedBox(height: 16),
             _buildColumnSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildRowSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildExpandedFlexibleSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSpacerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildWrapSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Stack & Positioned
-            _SectionHeader(tomId: 'demo07.section.stack'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.stack'),
+            TomSizedBox(height: 16),
             _buildStackSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildPositionedSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildIndexedStackSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Size & Constraint Widgets
-            _SectionHeader(tomId: 'demo07.section.size'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.size'),
+            TomSizedBox(height: 16),
             _buildSizedBoxSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildConstrainedBoxSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildFractionallySizedBoxSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildAspectRatioSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildFittedBoxSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildIntrinsicSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildMiscConstraintSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Alignment & Spacing
-            _SectionHeader(tomId: 'demo07.section.alignment'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.alignment'),
+            TomSizedBox(height: 16),
             _buildCenterAlignSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildPaddingSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildBaselineSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildDividerSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo
-            _SectionHeader(tomId: 'demo07.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildAclLayoutSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -127,13 +128,13 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.column',
+      tomId: 'column',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Column with different alignments
-          TomText(tomId: 'demo07.column.startLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'column.startLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 80,
             decoration: BoxDecoration(
@@ -149,10 +150,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.column.centerLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'column.centerLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 120,
             decoration: BoxDecoration(
@@ -168,10 +169,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.column.spaceBetweenLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'column.spaceBetweenLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 120,
             decoration: BoxDecoration(
@@ -196,12 +197,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.row',
+      tomId: 'row',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.row.startLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'row.startLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 40,
             decoration: BoxDecoration(
@@ -217,10 +218,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.row.spaceEvenlyLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'row.spaceEvenlyLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 40,
             decoration: BoxDecoration(
@@ -236,10 +237,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.row.endLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'row.endLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 40,
             decoration: BoxDecoration(
@@ -264,13 +265,13 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.expandedFlexible',
+      tomId: 'expandedFlexible',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Fixed + Expanded
-          TomText(tomId: 'demo07.expandedFlexible.fixedExpandedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'expandedFlexible.fixedExpandedLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 40,
             child: TomRow(
@@ -288,7 +289,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(width: 4),
+                TomSizedBox(width: 4),
                 TomExpanded(
                   child: TomContainer(
                     color: theme.colorScheme.secondary,
@@ -306,11 +307,11 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Flex ratios
-          TomText(tomId: 'demo07.expandedFlexible.flexRatioLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'expandedFlexible.flexRatioLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 40,
             child: TomRow(
@@ -329,7 +330,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(width: 4),
+                TomSizedBox(width: 4),
                 TomExpanded(
                   flex: 2,
                   child: TomContainer(
@@ -345,7 +346,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(width: 4),
+                TomSizedBox(width: 4),
                 TomExpanded(
                   flex: 3,
                   child: TomContainer(
@@ -364,11 +365,11 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Flexible with FlexFit
-          TomText(tomId: 'demo07.expandedFlexible.flexibleLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'expandedFlexible.flexibleLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 40,
             child: TomRow(
@@ -389,7 +390,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(width: 4),
+                TomSizedBox(width: 4),
                 TomFlexible(
                   fit: FlexFit.tight,
                   child: TomContainer(
@@ -417,12 +418,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.spacer',
+      tomId: 'spacer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.spacer.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'spacer.demoLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 40,
             child: TomRow(
@@ -440,7 +441,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSpacer(),
+                TomSpacer(),
                 TomContainer(
                   width: 60,
                   color: theme.colorScheme.tertiary,
@@ -457,10 +458,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.spacer.ratioLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'spacer.ratioLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 40,
             child: TomRow(
@@ -478,7 +479,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSpacer(),
+                TomSpacer(),
                 TomContainer(
                   width: 60,
                   color: theme.colorScheme.secondary,
@@ -492,7 +493,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSpacer(flex: 2),
+                TomSpacer(flex: 2),
                 TomContainer(
                   width: 60,
                   color: theme.colorScheme.tertiary,
@@ -518,12 +519,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.wrap',
+      tomId: 'wrap',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.wrap.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'wrap.demoLabel'),
+          TomSizedBox(height: 8),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
@@ -566,12 +567,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.stack',
+      tomId: 'stack',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.stack.layeredLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'stack.layeredLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 150,
             width: double.infinity,
@@ -607,7 +608,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                       ],
                     ),
                     child: TomText(
-                      tomId: 'demo07.stack.centeredText',
+                      tomId: 'stack.centeredText',
                       style: theme.textTheme.titleMedium,
                     ),
                   ),
@@ -647,12 +648,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.positioned',
+      tomId: 'positioned',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.positioned.cornersLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'positioned.cornersLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 160,
             width: double.infinity,
@@ -691,11 +692,11 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // PositionedDirectional
-          TomText(tomId: 'demo07.positioned.directionalLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'positioned.directionalLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 80,
             width: double.infinity,
@@ -742,12 +743,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final labels = ['Page A', 'Page B', 'Page C', 'Page D'];
 
     return _DemoCard(
-      tomId: 'demo07.indexedStack',
+      tomId: 'indexedStack',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.indexedStack.selectorLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'indexedStack.selectorLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(4, (i) {
@@ -762,7 +763,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               );
             }),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomSizedBox(
             height: 80,
             width: double.infinity,
@@ -801,12 +802,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.sizedBox',
+      tomId: 'sizedBox',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.sizedBox.fixedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'sizedBox.fixedLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomSizedBox(
@@ -825,7 +826,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   ),
                 ),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomSizedBox(
                 width: 60,
                 height: 60,
@@ -844,10 +845,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.sizedBox.expandLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'sizedBox.expandLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             width: double.infinity,
             height: 40,
@@ -855,7 +856,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               color: theme.colorScheme.tertiaryContainer,
               child: TomCenter(
                 child: TomText(
-                  tomId: 'demo07.sizedBox.expandText',
+                  tomId: 'sizedBox.expandText',
                   style: TextStyle(
                     fontSize: 11,
                     color: theme.colorScheme.onTertiaryContainer,
@@ -873,12 +874,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.constrainedBox',
+      tomId: 'constrainedBox',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.constrainedBox.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'constrainedBox.demoLabel'),
+          TomSizedBox(height: 8),
           TomConstrainedBox(
             constraints: const BoxConstraints(
               minWidth: 100,
@@ -890,7 +891,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               child: TomPadding(
                 padding: const EdgeInsets.all(12),
                 child: TomText(
-                  tomId: 'demo07.constrainedBox.contentText',
+                  tomId: 'constrainedBox.contentText',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -907,12 +908,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.fractionallySized',
+      tomId: 'fractionallySized',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.fractionallySized.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'fractionallySized.demoLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 60,
             width: double.infinity,
@@ -939,7 +940,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 60,
             width: double.infinity,
@@ -975,12 +976,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.aspectRatio',
+      tomId: 'aspectRatio',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.aspectRatio.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'aspectRatio.demoLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1005,7 +1006,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   ),
                 ),
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomExpanded(
                 flex: 2,
                 child: TomAspectRatio(
@@ -1038,12 +1039,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.fittedBox',
+      tomId: 'fittedBox',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.fittedBox.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'fittedBox.demoLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomExpanded(
@@ -1058,7 +1059,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   ),
                 ),
               ),
-              const TomSizedBox(width: 8),
+              TomSizedBox(width: 8),
               TomExpanded(
                 child: TomSizedBox(
                   height: 60,
@@ -1082,12 +1083,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.intrinsic',
+      tomId: 'intrinsic',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.intrinsic.heightLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'intrinsic.heightLabel'),
+          TomSizedBox(height: 8),
           TomIntrinsicHeight(
             child: TomRow(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1097,7 +1098,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     color: theme.colorScheme.primaryContainer,
                     child: TomCenter(
                       child: TomText(
-                        tomId: 'demo07.intrinsic.shortText',
+                        tomId: 'intrinsic.shortText',
                         style: TextStyle(
                           color: theme.colorScheme.onPrimaryContainer,
                           fontSize: 12,
@@ -1106,14 +1107,14 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(width: 4),
+                TomSizedBox(width: 4),
                 TomExpanded(
                   child: TomContainer(
                     color: theme.colorScheme.secondaryContainer,
                     child: TomPadding(
                       padding: const EdgeInsets.all(12),
                       child: TomText(
-                        tomId: 'demo07.intrinsic.tallText',
+                        tomId: 'intrinsic.tallText',
                         style: TextStyle(
                           color: theme.colorScheme.onSecondaryContainer,
                           fontSize: 12,
@@ -1125,10 +1126,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
-          TomText(tomId: 'demo07.intrinsic.widthLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'intrinsic.widthLabel'),
+          TomSizedBox(height: 8),
           TomIntrinsicWidth(
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1138,7 +1139,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   child: TomPadding(
                     padding: const EdgeInsets.all(8),
                     child: TomText(
-                      tomId: 'demo07.intrinsic.wideText',
+                      tomId: 'intrinsic.wideText',
                       style: TextStyle(
                         color: theme.colorScheme.onTertiaryContainer,
                         fontSize: 12,
@@ -1146,7 +1147,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     ),
                   ),
                 ),
-                const TomSizedBox(height: 4),
+                TomSizedBox(height: 4),
                 TomContainer(
                   color: theme.colorScheme.primaryContainer,
                   child: TomPadding(
@@ -1172,13 +1173,13 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.miscConstraint',
+      tomId: 'miscConstraint',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // LimitedBox
-          TomText(tomId: 'demo07.miscConstraint.limitedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'miscConstraint.limitedLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomLimitedBox(
@@ -1199,11 +1200,11 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // OverflowBox
-          TomText(tomId: 'demo07.miscConstraint.overflowLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'miscConstraint.overflowLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 60,
             width: 300,
@@ -1222,7 +1223,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   ),
                   child: TomCenter(
                     child: TomText(
-                      tomId: 'demo07.miscConstraint.overflowText',
+                      tomId: 'miscConstraint.overflowText',
                       style: TextStyle(
                         color: theme.colorScheme.onErrorContainer,
                         fontSize: 12,
@@ -1246,13 +1247,13 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.centerAlign',
+      tomId: 'centerAlign',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // TomCenter
-          TomText(tomId: 'demo07.centerAlign.centerLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'centerAlign.centerLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 80,
             width: double.infinity,
@@ -1271,7 +1272,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: TomText(
-                  tomId: 'demo07.centerAlign.centeredText',
+                  tomId: 'centerAlign.centeredText',
                   style: TextStyle(
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
@@ -1279,11 +1280,11 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // TomAlign with various alignments
-          TomText(tomId: 'demo07.centerAlign.alignLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'centerAlign.alignLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 120,
             width: double.infinity,
@@ -1325,12 +1326,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.padding',
+      tomId: 'padding',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.padding.uniformLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'padding.uniformLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             decoration: BoxDecoration(
               color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
@@ -1352,10 +1353,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
-          TomText(tomId: 'demo07.padding.symmetricLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'padding.symmetricLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             decoration: BoxDecoration(
               color: theme.colorScheme.secondaryContainer.withValues(
@@ -1382,10 +1383,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
-          TomText(tomId: 'demo07.padding.onlyLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'padding.onlyLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             decoration: BoxDecoration(
               color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3),
@@ -1416,12 +1417,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.baseline',
+      tomId: 'baseline',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo07.baseline.demoLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'baseline.demoLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 80,
             width: double.infinity,
@@ -1440,7 +1441,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomText(
                   text: 'Medium',
                   style: TextStyle(
@@ -1448,7 +1449,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     color: theme.colorScheme.secondary,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomText(
                   text: 'Small',
                   style: TextStyle(
@@ -1468,13 +1469,13 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo07.divider',
+      tomId: 'divider',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Horizontal dividers
-          TomText(tomId: 'demo07.divider.horizontalLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'divider.horizontalLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             decoration: BoxDecoration(
               border: Border.all(color: theme.colorScheme.outline),
@@ -1485,12 +1486,12 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
               child: TomColumn(
                 children: [
                   TomText(
-                    tomId: 'demo07.divider.section1',
+                    tomId: 'divider.section1',
                     style: theme.textTheme.bodyMedium,
                   ),
-                  const TomDivider(),
+                  TomDivider(),
                   TomText(
-                    tomId: 'demo07.divider.section2',
+                    tomId: 'divider.section2',
                     style: theme.textTheme.bodyMedium,
                   ),
                   TomDivider(
@@ -1500,30 +1501,30 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                     endIndent: 16,
                   ),
                   TomText(
-                    tomId: 'demo07.divider.section3',
+                    tomId: 'divider.section3',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Vertical dividers
-          TomText(tomId: 'demo07.divider.verticalLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'divider.verticalLabel'),
+          TomSizedBox(height: 8),
           TomSizedBox(
             height: 48,
             child: TomRow(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TomText(
-                  tomId: 'demo07.divider.col1',
+                  tomId: 'divider.col1',
                   style: theme.textTheme.bodyMedium,
                 ),
-                const TomVerticalDivider(),
+                TomVerticalDivider(),
                 TomText(
-                  tomId: 'demo07.divider.col2',
+                  tomId: 'divider.col2',
                   style: theme.textTheme.bodyMedium,
                 ),
                 TomVerticalDivider(
@@ -1531,7 +1532,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
                   color: theme.colorScheme.primary,
                 ),
                 TomText(
-                  tomId: 'demo07.divider.col3',
+                  tomId: 'divider.col3',
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
@@ -1552,10 +1553,10 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
     final crossAxisOptions = CrossAxisAlignment.values;
 
     return _DemoCard(
-      tomId: 'demo07.aclLayout',
+      tomId: 'aclLayout',
       child: AclBuilder()
           // Row 1: Main axis alignment selector
-          .append(TomText(tomId: 'demo07.aclLayout.mainAxisLabel'))
+          .append(TomText(tomId: 'aclLayout.mainAxisLabel'))
           .append(
             TomWrap(
               spacing: 4,
@@ -1579,7 +1580,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           .expandX()
           .newRow(dist: 12)
           // Row 2: Cross axis alignment selector
-          .append(TomText(tomId: 'demo07.aclLayout.crossAxisLabel'))
+          .append(TomText(tomId: 'aclLayout.crossAxisLabel'))
           .append(
             TomWrap(
               spacing: 4,
@@ -1626,7 +1627,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           // Row 4: Reset button
           .append(
             TomTextButton(
-              tomId: 'demo07.aclLayout.reset',
+              tomId: 'aclLayout.reset',
               onPressed: () {
                 setState(() {
                   _aclMainAxis = MainAxisAlignment.start;
@@ -1638,7 +1639,7 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
           .gap()
           .append(
             TomFilledButton(
-              tomId: 'demo07.aclLayout.apply',
+              tomId: 'aclLayout.apply',
               onPressed: () {},
             ),
             dist: 8,
@@ -1706,15 +1707,15 @@ class _LayoutDemoContentState extends State<_LayoutDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1726,14 +1727,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1751,17 +1752,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -1780,11 +1781,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1806,9 +1807,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

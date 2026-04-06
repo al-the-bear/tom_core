@@ -196,7 +196,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.itemBuilder,
+    required PopupMenuItemBuilder<T> itemBuilder,
     this.initialValue,
     this.onSelected,
     this.onCanceled,
@@ -216,7 +216,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     this.constraints,
     this.position,
     this.clipBehavior = Clip.none,
-  }) {
+  }) : itemBuilder = InScopeBuilder(scope: scope).wrap1(itemBuilder) {
     _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
@@ -442,8 +442,10 @@ class TomMenuAnchor extends TomSelectBase {
     this.onOpen,
     this.onClose,
     this.consumeOutsideTap = false,
-    this.builder,
-  }) {
+    Widget Function(BuildContext, MenuController, Widget?)? builder,
+  }) : builder = builder != null
+           ? InScopeBuilder(scope: scope).wrap3(builder)
+           : null {
     _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
     _resolvedConsumeOutsideTap = resolveBoolOrNull('consumeOutsideTap') ?? consumeOutsideTap;
     _resolvedStyle = style ?? _resolveMenuStyle();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -193,7 +194,7 @@ class TomTreeSliver<T> extends TomTreeBase {
     super.tomGroup,
     super.scope,
     required this.tree,
-    this.treeNodeBuilder = TreeSliver.defaultTreeNodeBuilder,
+    TreeSliverNodeBuilder treeNodeBuilder = TreeSliver.defaultTreeNodeBuilder,
     this.treeRowExtentBuilder = TreeSliver.defaultTreeRowExtentBuilder,
     this.controller,
     this.onNodeToggle,
@@ -202,7 +203,7 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.addAutomaticKeepAlives,
     this.addRepaintBoundaries,
     this.addSemanticIndexes,
-  }) {
+  }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder) {
     _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
     _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? resolveBoolOrNull('addRepaintBoundaries') ?? true;
     _resolvedAddSemanticIndexes = addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;

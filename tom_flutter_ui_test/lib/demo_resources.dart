@@ -1,20 +1,22 @@
-/// Demo resources adapter for tom_flutter_ui_test.
+/// Demo resources for tom_flutter_ui_test.
 ///
 /// Provides text and icon resources for the demo widgets via tomId lookup.
-/// This demonstrates how a real application would configure resources.
+/// This demonstrates how a real application would configure resources
+/// using [TomTextResourceProvider] from tom_core_kernel.
 library;
 
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-/// Demo resource adapter providing texts for all demo widgets.
+/// Demo resource container providing texts for all demo widgets.
 ///
-/// Resource keys follow the pattern: `<tomId>.<suffix>`
+/// Resource keys follow the pattern: `<basePath>.<suffix>`
 /// - `demo01.elevated.basic.label` → "Basic"
 /// - `demo01.elevated.save.icon` → "mSave"
-class DemoResourceAdapter extends TomUIResourceAdapter {
+class _DemoResources {
   /// All text resources for the demo app.
   ///
-  /// Keys are `<tomId>.<suffix>` where suffix is typically:
+  /// Keys are `<basePath>.<suffix>` where suffix is typically:
   /// - `label` - button/widget label text
   /// - `icon` - icon name for lookup via TomUIIcons
   /// - `title` - section/card title
@@ -596,8 +598,10 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
         'Dropdown fields using AclBuilder for responsive RTL/LTR layout.',
     'demo03.aclDropdown.categoryLabel.label': 'Category:',
     'demo03.aclDropdown.category.hint': 'Select category',
+    'demo03.aclDropdown.category.label': 'Category',
     'demo03.aclDropdown.sizeLabel.label': 'Size:',
     'demo03.aclDropdown.size.hint': 'Select size',
+    'demo03.aclDropdown.size.label': 'Size',
 
     // ==========================================================================
     // Demo 03: ACL Segmented Layout Card
@@ -2968,70 +2972,20 @@ class DemoResourceAdapter extends TomUIResourceAdapter {
         'demo21.lookup.map': {'status': 'ok', 'count': 3, 'source': 'demo21'},
 
   };
-
-    /// Regex to strip TomIdPrefix prefixes from any path segment.
-    static final _prefixPattern = RegExp(r'^(ac|w|c|f|r|a|g)-');
-
-    static String _normalizeBasePath(String basePath) {
-        return basePath
-                .split('.')
-                .map((segment) => segment.replaceFirst(_prefixPattern, ''))
-                .join('.');
-    }
-
-  @override
-  String resolveText(String basePath, String suffix) {
-        final cleanPath = _normalizeBasePath(basePath);
-    final key = '$cleanPath.$suffix';
-    return _resources[key] ?? '$basePath.$suffix';
-  }
-
-  @override
-  bool resourceExists(String basePath, String suffix) {
-        final cleanPath = _normalizeBasePath(basePath);
-    final key = '$cleanPath.$suffix';
-    return _resources.containsKey(key) ||
-        _structuredResources.containsKey(key);
-  }
-
-  @override
-  dynamic resolveValue(String basePath, String suffix) {
-        final cleanPath = _normalizeBasePath(basePath);
-    final key = '$cleanPath.$suffix';
-
-    // First check structured resources
-    if (_structuredResources.containsKey(key)) {
-            return _structuredResources[key];
-    }
-
-    // Fall back to string resources
-    if (_resources.containsKey(key)) {
-            return _resources[key];
-    }
-
-    return null;
-  }
-
-  @override
-  List<dynamic>? resolveList(String basePath, String suffix) {
-    final value = resolveValue(basePath, suffix);
-    if (value is List) return value;
-    return null;
-  }
-
-  @override
-  Map<String, dynamic>? resolveMap(String basePath, String suffix) {
-    final value = resolveValue(basePath, suffix);
-    if (value is Map<String, dynamic>) return value;
-    return null;
-  }
 }
 
 /// Initializes the Tom UI resource and icon adapters for the demo app.
 ///
 /// Call this in `main()` before `runApp()`.
 void initializeDemoResources() {
-  TomUIResources.adapter = DemoResourceAdapter();
+  // Merge string and structured resources into one map
+  final Map<String, dynamic> allResources = {
+    ..._DemoResources._resources,
+    ..._DemoResources._structuredResources,
+  };
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(allResources),
+  );
   TomUIIcons.adapter = AllIconsAdapter();
   TomUIColors.adapter = AllColorsAdapter();
 }

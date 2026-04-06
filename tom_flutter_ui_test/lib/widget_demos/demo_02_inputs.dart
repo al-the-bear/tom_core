@@ -17,23 +17,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Text Inputs demo.
-class InputsDemo extends StatelessWidget {
-  const InputsDemo({super.key});
+class InputsDemo extends TomStatelessWidget {
+  InputsDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _InputsDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _InputsDemoContent();
+
   }
 }
 
-class _InputsDemoContent extends StatefulWidget {
-  const _InputsDemoContent();
+class _InputsDemoContent extends TomStatefulWidget {
+  _InputsDemoContent();
 
   @override
   State<_InputsDemoContent> createState() => _InputsDemoContentState();
 }
 
-class _InputsDemoContentState extends State<_InputsDemoContent> {
+class _InputsDemoContentState extends TomState<_InputsDemoContent> {
   // State for interactive demos
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -83,7 +84,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -92,53 +93,53 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           children: [
             // Section 1: Standard Text Fields
             _SectionHeader(
-              tomId: 'demo02.section.standard',
+              tomId: 'section.standard',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildTextFieldSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildTextFormFieldSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Search & Autocomplete
             _SectionHeader(
-              tomId: 'demo02.section.search',
+              tomId: 'section.search',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildSearchBarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildAutocompleteSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Cupertino Text Inputs
             _SectionHeader(
-              tomId: 'demo02.section.cupertino',
+              tomId: 'section.cupertino',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildCupertinoTextFieldSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoSearchSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Date & Time Pickers
             _SectionHeader(
-              tomId: 'demo02.section.datetime',
+              tomId: 'section.datetime',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildCalendarSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoDateTimeSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo (RTL/LTR)
             _SectionHeader(
-              tomId: 'demo02.section.acl',
+              tomId: 'section.acl',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildAclTextFieldSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildAclDatePickerSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -156,64 +157,64 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.textfield',
+        tomId: 'textfield',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic text field
           TomTextField(
-            tomId: 'demo02.textfield.basic',
+            tomId: 'textfield.basic',
             controller: _nameController,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Text field with prefix and suffix
           TomTextField(
-            tomId: 'demo02.textfield.price',
+            tomId: 'textfield.price',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               prefixText: '\$ ',
               suffixText: 'USD',
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Password field with visibility toggle
           TomTextField(
-            tomId: 'demo02.textfield.password',
+            tomId: 'textfield.password',
             controller: _passwordController,
             obscureText: _obscurePassword,
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.lock),
               suffixIcon: TomIconButton(
-                tomId: 'demo02.textfield.passwordToggle',
+                tomId: 'textfield.passwordToggle',
                 onPressed: () {
                   setState(() => _obscurePassword = !_obscurePassword);
                 },
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Multiline text field
           TomTextField(
-            tomId: 'demo02.textfield.multiline',
+            tomId: 'textfield.multiline',
             maxLines: 4,
             minLines: 2,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Disabled text field
           TomTextField(
-            tomId: 'demo02.textfield.disabled',
+            tomId: 'textfield.disabled',
             enabled: false,
           ),
 
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Read-only text field
           TomTextField(
-            tomId: 'demo02.textfield.readonly',
+            tomId: 'textfield.readonly',
             readOnly: true,
           ),
         ],
@@ -229,7 +230,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.formfield',
+        tomId: 'formfield',
         child: Form(
         key: _formKey,
         child: TomColumn(
@@ -237,7 +238,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           children: [
             // Email validation
             TomTextFormField(
-              tomId: 'demo02.formfield.email',
+              tomId: 'formfield.email',
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
@@ -251,11 +252,11 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               },
               autovalidateMode: AutovalidateMode.onUserInteraction,
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // Required field
             TomTextFormField(
-              tomId: 'demo02.formfield.required',
+              tomId: 'formfield.required',
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'This field is required';
@@ -263,21 +264,21 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
                 return null;
               },
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // Phone number with formatting
             TomTextFormField(
-              tomId: 'demo02.formfield.phone',
+              tomId: 'formfield.phone',
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.phone),
               ),
             ),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
 
             // Validate button
             TomElevatedButton(
-              tomId: 'demo02.formfield.validate',
+              tomId: 'formfield.validate',
               onPressed: () {
                 _formKey.currentState?.validate();
               },
@@ -300,13 +301,13 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.searchbar',
+        tomId: 'searchbar',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic search bar
           TomSearchBar(
-            tomId: 'demo02.searchbar.basic',
+            tomId: 'searchbar.basic',
             controller: _searchController,
             onChanged: (value) {
               // Handle search
@@ -314,16 +315,16 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             leading: const Icon(Icons.search),
             trailing: [
               TomIconButton(
-                tomId: 'demo02.searchbar.mic',
+                tomId: 'searchbar.mic',
                 onPressed: () {},
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Search anchor with suggestions
           TomSearchAnchor(
-            tomId: 'demo02.searchbar.anchor',
+            tomId: 'searchbar.anchor',
             suggestionsBuilder: (context, controller) {
               final query = controller.text.toLowerCase();
               final suggestions = _getCountries()
@@ -338,7 +339,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             },
             builder: (context, controller) {
               return TomSearchBar(
-                tomId: 'demo02.searchbar.anchorBar',
+                tomId: 'searchbar.anchorBar',
                 controller: controller,
                 onTap: () => controller.openView(),
                 onChanged: (_) => controller.openView(),
@@ -359,7 +360,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.autocomplete',
+        tomId: 'autocomplete',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -378,7 +379,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             },
             fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
               return TomTextField(
-                tomId: 'demo02.autocomplete.country',
+                tomId: 'autocomplete.country',
                 controller: controller,
                 focusNode: focusNode,
                 decoration: const InputDecoration(
@@ -387,7 +388,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               );
             },
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           if (_selectedCountry != null)
             TomText(
               text: 'Selected: $_selectedCountry',
@@ -410,20 +411,20 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.cupertino',
+        tomId: 'cupertino',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic Cupertino text field
           TomCupertinoTextField(
-            tomId: 'demo02.cupertino.basic',
+            tomId: 'cupertino.basic',
             placeholder: 'Enter your name',
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Cupertino text field with prefix and suffix
           TomCupertinoTextField(
-            tomId: 'demo02.cupertino.decorated',
+            tomId: 'cupertino.decorated',
             prefix: const Padding(
               padding: EdgeInsets.only(left: 8),
               child: Icon(Icons.email, size: 20),
@@ -434,12 +435,12 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             ),
             placeholder: 'Email address',
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Cupertino form field row
           TomCupertinoTextFormFieldRow(
-            tomId: 'demo02.cupertino.formrow',
-            prefix: TomText(tomId: 'demo02.cupertino.formrowPrefix'),
+            tomId: 'cupertino.formrow',
+            prefix: TomText(tomId: 'cupertino.formrowPrefix'),
           ),
         ],
         ),
@@ -460,22 +461,22 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
       child: NotificationListener<ScrollNotification>(
         onNotification: (_) => true, // Block scroll notifications
         child: _DemoCard(
-          tomId: 'demo02.cupertinoSearch',
+          tomId: 'cupertinoSearch',
           child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cupertino search text field
             TomCupertinoSearchTextField(
-              tomId: 'demo02.cupertinoSearch.basic',
+              tomId: 'cupertinoSearch.basic',
               onChanged: (value) {
                 // Handle search
               },
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
 
             // Cupertino search with custom styling
             TomCupertinoSearchTextField(
-              tomId: 'demo02.cupertinoSearch.styled',
+              tomId: 'cupertinoSearch.styled',
               backgroundColor: CupertinoColors.systemGrey6,
               borderRadius: BorderRadius.circular(16),
             ),
@@ -497,7 +498,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.calendar',
+        tomId: 'calendar',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -505,7 +506,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           TomContainer(
             constraints: const BoxConstraints(maxHeight: 350),
             child: TomCalendarDatePicker(
-              tomId: 'demo02.calendar.picker',
+              tomId: 'calendar.picker',
               initialDate: _selectedDate,
               firstDate: DateTime(2020),
               lastDate: DateTime(2030),
@@ -514,24 +515,24 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               },
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Selected date display
           TomRow(
             children: [
-              TomIcon(tomId: 'demo02.calendar.selectedIcon'),
-              const TomSizedBox(width: 8),
+              TomIcon(tomId: 'calendar.selectedIcon'),
+              TomSizedBox(width: 8),
               TomText(
                 text: MaterialLocalizations.of(context).formatShortDate(_selectedDate),
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Input date picker form field
           TomInputDatePickerFormField(
-            tomId: 'demo02.calendar.inputField',
+            tomId: 'calendar.inputField',
             initialDate: _selectedDate,
             firstDate: DateTime(2020),
             lastDate: DateTime(2030),
@@ -539,13 +540,13 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               setState(() => _selectedDate = date);
             },
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Year picker
           TomContainer(
             constraints: const BoxConstraints(maxHeight: 200),
             child: TomYearPicker(
-              tomId: 'demo02.calendar.yearPicker',
+              tomId: 'calendar.yearPicker',
               firstDate: DateTime(2010),
               lastDate: DateTime(2030),
               currentDate: DateTime.now(),
@@ -568,17 +569,17 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo02.cupertinoDateTime',
+        tomId: 'cupertinoDateTime',
         child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Cupertino date picker
-          TomText(tomId: 'demo02.cupertinoDateTime.dateLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoDateTime.dateLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 200,
             child: TomCupertinoDatePicker(
-              tomId: 'demo02.cupertinoDateTime.datePicker',
+              tomId: 'cupertinoDateTime.datePicker',
               mode: CupertinoDatePickerMode.date,
               initialDateTime: _selectedDate,
               onDateTimeChanged: (date) {
@@ -586,15 +587,15 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               },
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Cupertino timer picker
-          TomText(tomId: 'demo02.cupertinoDateTime.timerLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoDateTime.timerLabel'),
+          TomSizedBox(height: 8),
           TomContainer(
             height: 200,
             child: TomCupertinoTimerPicker(
-              tomId: 'demo02.cupertinoDateTime.timerPicker',
+              tomId: 'cupertinoDateTime.timerPicker',
               mode: CupertinoTimerPickerMode.hms,
               initialTimerDuration: _selectedDuration,
               onTimerDurationChanged: (duration) {
@@ -602,13 +603,13 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
               },
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Display selected duration
           TomRow(
             children: [
-              TomIcon(tomId: 'demo02.cupertinoDateTime.durationIcon'),
-              const TomSizedBox(width: 8),
+              TomIcon(tomId: 'cupertinoDateTime.durationIcon'),
+              TomSizedBox(width: 8),
               TomText(
                 text: _formatDuration(_selectedDuration),
                 style: Theme.of(context).textTheme.titleMedium,
@@ -627,13 +628,13 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
 
   Widget _buildAclTextFieldSection() {
     return _DemoCard(
-      tomId: 'demo02.aclTextField',
+      tomId: 'aclTextField',
       child: AclBuilder()
           // Row 1: Label + TextField side by side
-          .append(TomText(tomId: 'demo02.aclTextField.nameLabel'))
+          .append(TomText(tomId: 'aclTextField.nameLabel'))
           .append(
             TomTextField(
-              tomId: 'demo02.aclTextField.name',
+              tomId: 'aclTextField.name',
             ),
             dist: 8,
           )
@@ -641,10 +642,10 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           .expandX()
           .newRow(dist: 16)
           // Row 2: Label + TextField side by side
-          .append(TomText(tomId: 'demo02.aclTextField.emailLabel'))
+          .append(TomText(tomId: 'aclTextField.emailLabel'))
           .append(
             TomTextField(
-              tomId: 'demo02.aclTextField.email',
+              tomId: 'aclTextField.email',
               keyboardType: TextInputType.emailAddress,
             ),
             dist: 8,
@@ -655,13 +656,13 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           // Row 3: Two text fields side by side
           .append(
             TomTextField(
-              tomId: 'demo02.aclTextField.city',
+              tomId: 'aclTextField.city',
             ),
           )
           .expandX()
           .append(
             TomTextField(
-              tomId: 'demo02.aclTextField.zip',
+              tomId: 'aclTextField.zip',
             ),
             dist: 16,
           )
@@ -672,12 +673,12 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
 
   Widget _buildAclDatePickerSection() {
     return _DemoCard(
-      tomId: 'demo02.aclDatePicker',
+      tomId: 'aclDatePicker',
       child: AclBuilder()
           // Row 1: Date label with formatted date display
-          .append(TomIcon(tomId: 'demo02.aclDatePicker.icon'))
+          .append(TomIcon(tomId: 'aclDatePicker.icon'))
           .append(
-            TomText(tomId: 'demo02.aclDatePicker.label'),
+            TomText(tomId: 'aclDatePicker.label'),
             dist: 8,
           )
           .append(
@@ -690,9 +691,9 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
           .gap()
           .newRow(dist: 16)
           // Row 2: Duration label with formatted duration
-          .append(TomIcon(tomId: 'demo02.aclDatePicker.timerIcon'))
+          .append(TomIcon(tomId: 'aclDatePicker.timerIcon'))
           .append(
-            TomText(tomId: 'demo02.aclDatePicker.durationLabel'),
+            TomText(tomId: 'aclDatePicker.durationLabel'),
             dist: 8,
           )
           .append(
@@ -709,7 +710,7 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
             TomContainer(
               constraints: const BoxConstraints(maxHeight: 300),
               child: TomCalendarDatePicker(
-                tomId: 'demo02.aclDatePicker.calendar',
+                tomId: 'aclDatePicker.calendar',
                 initialDate: _selectedDate,
                 firstDate: DateTime(2020),
                 lastDate: DateTime(2030),
@@ -730,15 +731,15 @@ class _InputsDemoContentState extends State<_InputsDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -750,14 +751,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -775,17 +776,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -797,8 +798,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -809,7 +810,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -817,9 +818,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

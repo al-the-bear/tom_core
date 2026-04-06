@@ -43,6 +43,8 @@ dependencies:
   # Local package dependency
   tom_flutter_ui:
     path: ../tom_flutter_ui
+  tom_core_kernel:
+    path: ../tom_core_kernel
 
 dev_dependencies:
   flutter_test:

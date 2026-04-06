@@ -2554,12 +2554,12 @@ class TomCupertinoTabScaffold extends TomContainerBase {
     super.tomGroup,
     super.scope,
     required this.tabBar,
-    required this.tabBuilder,
+    required IndexedWidgetBuilder tabBuilder,
     this.controller,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.restorationId,
-  }) {
+  }) : tabBuilder = InScopeBuilder(scope: scope).wrap2(tabBuilder) {
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
   }
 
@@ -2706,14 +2706,14 @@ class TomNestedScrollView extends TomContainerBase {
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
     this.physics,
-    required this.headerSliverBuilder,
+    required NestedScrollViewHeaderSliversBuilder headerSliverBuilder,
     required this.body,
     this.dragStartBehavior = DragStartBehavior.start,
     this.floatHeaderSlivers,
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.scrollBehavior,
-  }) {
+  }) : headerSliverBuilder = InScopeBuilder(scope: scope).wrap2(headerSliverBuilder) {
     _resolvedFloatHeaderSlivers = floatHeaderSlivers ?? resolveBoolOrNull('floatHeaderSlivers') ?? false;
     _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
@@ -2888,8 +2888,8 @@ class TomDraggableScrollableSheet extends TomContainerBase {
     this.snapAnimationDuration,
     this.controller,
     this.shouldCloseOnMinExtent,
-    required this.builder,
-  }) {
+    required ScrollableWidgetBuilder builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder) {
     _resolvedInitialChildSize = initialChildSize ?? resolveDoubleOrNull('initialChildSize') ?? 0.5;
     _resolvedMinChildSize = minChildSize ?? resolveDoubleOrNull('minChildSize') ?? 0.25;
     _resolvedMaxChildSize = maxChildSize ?? resolveDoubleOrNull('maxChildSize') ?? 1.0;

@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -23,8 +24,8 @@ class TomStatefulBuilder extends TomBuilderBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.builder,
-  });
+    required StatefulWidgetBuilder builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree with setState capability.
   final StatefulWidgetBuilder builder;
@@ -53,8 +54,8 @@ class TomStreamBuilder<T> extends TomBuilderBase {
     super.scope,
     this.initialData,
     this.stream,
-    required this.builder,
-  });
+    required AsyncWidgetBuilder<T> builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The initial data to use before the stream emits any events.
   final T? initialData;
@@ -91,8 +92,8 @@ class TomFutureBuilder<T> extends TomBuilderBase {
     super.scope,
     this.initialData,
     this.future,
-    required this.builder,
-  });
+    required AsyncWidgetBuilder<T> builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The initial data to use before the future completes.
   final T? initialData;
@@ -128,9 +129,9 @@ class TomValueListenableBuilder<T> extends TomBuilderBase {
     super.tomGroup,
     super.scope,
     required this.valueListenable,
-    required this.builder,
+    required ValueWidgetBuilder<T> builder,
     this.child,
-  });
+  }) : builder = InScopeBuilder(scope: scope).wrap3(builder);
 
   /// The [ValueListenable] to listen to.
   final ValueListenable<T> valueListenable;
@@ -166,9 +167,9 @@ class TomListenableBuilder extends TomBuilderBase {
     super.tomGroup,
     super.scope,
     required this.listenable,
-    required this.builder,
+    required TransitionBuilder builder,
     this.child,
-  });
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The [Listenable] to listen to.
   final Listenable listenable;
@@ -209,10 +210,10 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     required this.tween,
     required this.duration,
     this.curve,
-    required this.builder,
+    required ValueWidgetBuilder<T> builder,
     this.onEnd,
     this.child,
-  }) {
+  }) : builder = InScopeBuilder(scope: scope).wrap3(builder) {
     _resolvedCurve = curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
   }
 
@@ -261,8 +262,8 @@ class TomOrientationBuilder extends TomBuilderBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.builder,
-  });
+    required OrientationWidgetBuilder builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree based on orientation.
   final OrientationWidgetBuilder builder;
@@ -289,8 +290,8 @@ class TomLayoutBuilder extends TomBuilderBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.builder,
-  });
+    required LayoutWidgetBuilder builder,
+  }) : builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   /// The builder function that creates the widget tree based on constraints.
   final LayoutWidgetBuilder builder;

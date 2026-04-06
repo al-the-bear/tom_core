@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -881,8 +882,8 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
     super.tomGroup,
     super.scope,
     this.label,
-    this.builder,
-  }) {
+    MenuAcceleratorChildBuilder? builder,
+  }) : builder = builder != null ? InScopeBuilder(scope: scope).wrap3(builder) : null {
     _resolvedLabel = label ?? resolveResourceOrFail('label');
   }
 

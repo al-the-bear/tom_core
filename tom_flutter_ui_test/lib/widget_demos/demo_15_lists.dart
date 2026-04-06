@@ -13,23 +13,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the List Views demo.
-class ListsDemo extends StatelessWidget {
-  const ListsDemo({super.key});
+class ListsDemo extends TomStatelessWidget {
+  ListsDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _ListsDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _ListsDemoContent();
+
   }
 }
 
-class _ListsDemoContent extends StatefulWidget {
-  const _ListsDemoContent();
+class _ListsDemoContent extends TomStatefulWidget {
+  _ListsDemoContent();
 
   @override
   State<_ListsDemoContent> createState() => _ListsDemoContentState();
 }
 
-class _ListsDemoContentState extends State<_ListsDemoContent>
+class _ListsDemoContentState extends TomState<_ListsDemoContent>
     with TickerProviderStateMixin {
   // State for animated list
   final GlobalKey<AnimatedListState> _animatedListKey =
@@ -59,7 +60,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
   int _selectedWheelItem = 0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -68,37 +69,37 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
           children: [
             // Section 1: Basic ListView
             _SectionHeader(
-              tomId: 'demo15.section.basic',
+              tomId: 'section.basic',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildBasicListViewSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Animated Lists
             _SectionHeader(
-              tomId: 'demo15.section.animated',
+              tomId: 'section.animated',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildAnimatedListSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Reorderable & Dismissible
             _SectionHeader(
-              tomId: 'demo15.section.interactive',
+              tomId: 'section.interactive',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildReorderableSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildDismissibleSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Wheel Scroll View
             _SectionHeader(
-              tomId: 'demo15.section.wheel',
+              tomId: 'section.wheel',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildWheelScrollViewSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -114,16 +115,16 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
       children: [
         // TomListView basic
         _DemoCard(
-          tomId: 'demo15.listview',
+          tomId: 'listview',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Static list demo
               TomText(
-                tomId: 'demo15.listview.staticLabel',
+                tomId: 'listview.staticLabel',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomContainer(
                 height: 200,
                 decoration: BoxDecoration(
@@ -151,14 +152,14 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                   ),
                 ),
               ),
-              const TomSizedBox(height: 24),
+              TomSizedBox(height: 24),
 
               // Builder pattern demo
               TomText(
-                tomId: 'demo15.listview.builderLabel',
+                tomId: 'listview.builderLabel',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomContainer(
                 height: 200,
                 decoration: BoxDecoration(
@@ -181,14 +182,14 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                   ),
                 ),
               ),
-              const TomSizedBox(height: 24),
+              TomSizedBox(height: 24),
 
               // Separated list demo
               TomText(
-                tomId: 'demo15.listview.separatedLabel',
+                tomId: 'listview.separatedLabel',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomContainer(
                 height: 200,
                 decoration: BoxDecoration(
@@ -201,7 +202,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                 child: TomListView.separated(
                   padding: const EdgeInsets.all(8),
                   itemCount: 20,
-                  separatorBuilder: (context, index) => const TomDivider(
+                  separatorBuilder: (context, index) => TomDivider(
                     indent: 56,
                   ),
                   itemBuilder: (context, index) => TomListTile(
@@ -213,19 +214,19 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                       ),
                     ),
                     titleText: 'Contact ${index + 1}',
-                    subtitle: const TomText(text: 'Separated with dividers'),
-                    trailing: const TomIcon(icon: Icons.chevron_right),
+                    subtitle: TomText(text: 'Separated with dividers'),
+                    trailing: TomIcon(icon: Icons.chevron_right),
                   ),
                 ),
               ),
-              const TomSizedBox(height: 24),
+              TomSizedBox(height: 24),
 
               // Horizontal list demo
               TomText(
-                tomId: 'demo15.listview.horizontalLabel',
+                tomId: 'listview.horizontalLabel',
                 style: Theme.of(context).textTheme.labelLarge,
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomSizedBox(
                 height: 120,
                 child: TomListView.builder(
@@ -249,7 +250,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                                 color: Colors.white,
                               ),
                             ),
-                            const TomSizedBox(height: 8),
+                            TomSizedBox(height: 8),
                             TomText(
                               text: 'Card ${index + 1}',
                               style: Theme.of(context).textTheme.bodySmall,
@@ -274,15 +275,15 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
 
   Widget _buildAnimatedListSection() {
     return _DemoCard(
-      tomId: 'demo15.animatedList',
+      tomId: 'animatedList',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo15.animatedList.description',
+            tomId: 'animatedList.description',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Control buttons
           TomWrap(
@@ -290,22 +291,22 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
             runSpacing: 8,
             children: [
               TomElevatedButton(
-                tomId: 'demo15.animatedList.add',
+                tomId: 'animatedList.add',
                 onPressed: _addAnimatedItem,
               ),
               TomOutlinedButton(
-                tomId: 'demo15.animatedList.removeFirst',
+                tomId: 'animatedList.removeFirst',
                 onPressed:
                     _animatedItems.isNotEmpty ? _removeFirstAnimatedItem : null,
               ),
               TomOutlinedButton(
-                tomId: 'demo15.animatedList.removeLast',
+                tomId: 'animatedList.removeLast',
                 onPressed:
                     _animatedItems.isNotEmpty ? _removeLastAnimatedItem : null,
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Animated list
           TomContainer(
@@ -340,9 +341,9 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
               },
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo15.animatedList.hint',
+            tomId: 'animatedList.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -404,15 +405,15 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
 
   Widget _buildReorderableSection() {
     return _DemoCard(
-      tomId: 'demo15.reorderable',
+      tomId: 'reorderable',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo15.reorderable.description',
+            tomId: 'reorderable.description',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           TomContainer(
             height: 300,
@@ -454,7 +455,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                       ),
                       titleText: _reorderableItems[i],
                       subtitle:
-                          const TomText(text: 'Long press and drag to reorder'),
+                          TomText(text: 'Long press and drag to reorder'),
                       trailing: ReorderableDragStartListener(
                         index: i,
                         child: TomIcon(
@@ -467,9 +468,9 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo15.reorderable.hint',
+            tomId: 'reorderable.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -485,19 +486,19 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
 
   Widget _buildDismissibleSection() {
     return _DemoCard(
-      tomId: 'demo15.dismissible',
+      tomId: 'dismissible',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo15.dismissible.description',
+            tomId: 'dismissible.description',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Reset button
           TomOutlinedButton(
-            tomId: 'demo15.dismissible.reset',
+            tomId: 'dismissible.reset',
             onPressed: () {
               setState(() {
                 _dismissibleItems.clear();
@@ -511,7 +512,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
               });
             },
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           TomContainer(
             height: 300,
@@ -532,9 +533,9 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                           size: 48,
                           color: Theme.of(context).colorScheme.primary,
                         ),
-                        const TomSizedBox(height: 16),
+                        TomSizedBox(height: 16),
                         TomText(
-                          tomId: 'demo15.dismissible.empty',
+                          tomId: 'dismissible.empty',
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                       ],
@@ -546,7 +547,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                     itemBuilder: (context, index) {
                       final item = _dismissibleItems[index];
                       return TomDismissible(
-                        tomId: 'demo15.dismissible.$index',
+                        tomId: 'dismissible.$index',
                         direction: DismissDirection.horizontal,
                         background: TomContainer(
                           margin: const EdgeInsets.symmetric(vertical: 4),
@@ -556,7 +557,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                           ),
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const TomIcon(
+                          child: TomIcon(
                             icon: Icons.archive,
                             color: Colors.white,
                           ),
@@ -569,7 +570,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                           ),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const TomIcon(
+                          child: TomIcon(
                             icon: Icons.delete,
                             color: Colors.white,
                           ),
@@ -603,7 +604,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                               ),
                             ),
                             titleText: item,
-                            subtitle: const TomText(
+                            subtitle: TomText(
                               text: 'Swipe left to delete, right to archive',
                             ),
                           ),
@@ -612,9 +613,9 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                     },
                   ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo15.dismissible.hint',
+            tomId: 'dismissible.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -645,15 +646,15 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
     ];
 
     return _DemoCard(
-      tomId: 'demo15.wheel',
+      tomId: 'wheel',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo15.wheel.description',
+            tomId: 'wheel.description',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Side by side wheel pickers
           TomRow(
@@ -664,10 +665,10 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                 child: TomColumn(
                   children: [
                     TomText(
-                      tomId: 'demo15.wheel.standard',
+                      tomId: 'wheel.standard',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     TomContainer(
                       height: 180,
                       decoration: BoxDecoration(
@@ -713,17 +714,17 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                   ],
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
 
               // Magnified wheel
               TomExpanded(
                 child: TomColumn(
                   children: [
                     TomText(
-                      tomId: 'demo15.wheel.magnified',
+                      tomId: 'wheel.magnified',
                       style: Theme.of(context).textTheme.labelLarge,
                     ),
-                    const TomSizedBox(height: 8),
+                    TomSizedBox(height: 8),
                     TomContainer(
                       height: 180,
                       decoration: BoxDecoration(
@@ -751,7 +752,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                         ),
                       ),
                     ),
-                    const TomSizedBox(height: 4),
+                    TomSizedBox(height: 4),
                     TomText(
                       text: 'Hour selector',
                       style: Theme.of(context).textTheme.bodySmall,
@@ -761,7 +762,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Selected month display
           TomContainer(
@@ -778,7 +779,7 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
                   icon: Icons.calendar_month,
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
-                const TomSizedBox(width: 8),
+                TomSizedBox(width: 8),
                 TomText(
                   text: 'Selected: ${months[_selectedWheelItem]}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -789,14 +790,14 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Custom styled wheel
           TomText(
-            tomId: 'demo15.wheel.customLabel',
+            tomId: 'wheel.customLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 200,
             decoration: BoxDecoration(
@@ -857,19 +858,19 @@ class _ListsDemoContentState extends State<_ListsDemoContent>
 // =============================================================================
 
 /// Simple list tile item for basic demos.
-class _ListTileItem extends StatelessWidget {
+class _ListTileItem extends TomStatelessWidget {
   final String title;
   final String subtitle;
   final Widget? leading;
 
-  const _ListTileItem({
+  _ListTileItem({
     required this.title,
     required this.subtitle,
     this.leading,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomCard(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: TomListTile(
@@ -882,17 +883,17 @@ class _ListTileItem extends StatelessWidget {
 }
 
 /// Animated list item with remove button.
-class _AnimatedListItem extends StatelessWidget {
+class _AnimatedListItem extends TomStatelessWidget {
   final String title;
   final VoidCallback onRemove;
 
-  const _AnimatedListItem({
+  _AnimatedListItem({
     required this.title,
     required this.onRemove,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomCard(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: TomListTile(
@@ -904,7 +905,7 @@ class _AnimatedListItem extends StatelessWidget {
           ),
         ),
         titleText: title,
-        subtitle: const TomText(text: 'Animated entry/exit'),
+        subtitle: TomText(text: 'Animated entry/exit'),
         trailing: TomIconButton(
           tooltip: 'Remove item',
           icon: const Icon(Icons.close),
@@ -919,15 +920,15 @@ class _AnimatedListItem extends StatelessWidget {
 // Section Header & Demo Card (Local Helpers)
 // =============================================================================
 
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -939,14 +940,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -964,17 +965,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -986,8 +987,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -998,7 +999,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1006,9 +1007,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

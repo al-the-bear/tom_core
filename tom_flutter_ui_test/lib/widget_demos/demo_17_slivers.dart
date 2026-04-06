@@ -18,23 +18,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Sliver Compositions demo.
-class SliversDemo extends StatelessWidget {
-  const SliversDemo({super.key});
+class SliversDemo extends TomStatelessWidget {
+  SliversDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _SliversDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _SliversDemoContent();
+
   }
 }
 
-class _SliversDemoContent extends StatefulWidget {
-  const _SliversDemoContent();
+class _SliversDemoContent extends TomStatefulWidget {
+  _SliversDemoContent();
 
   @override
   State<_SliversDemoContent> createState() => _SliversDemoContentState();
 }
 
-class _SliversDemoContentState extends State<_SliversDemoContent>
+class _SliversDemoContentState extends TomState<_SliversDemoContent>
     with TickerProviderStateMixin {
   // Scroll controllers
   final ScrollController _basicScrollController = ScrollController();
@@ -70,7 +71,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -78,60 +79,60 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: CustomScrollView Basics
-            _SectionHeader(tomId: 'demo17.section.customScroll'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.customScroll'),
+            TomSizedBox(height: 16),
             _buildCustomScrollViewSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: SliverAppBar Styles
-            _SectionHeader(tomId: 'demo17.section.appBar'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.appBar'),
+            TomSizedBox(height: 16),
             _buildSliverAppBarPinnedSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSliverAppBarFloatingSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSliverAppBarSnapSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: SliverList and SliverGrid
-            _SectionHeader(tomId: 'demo17.section.listGrid'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.listGrid'),
+            TomSizedBox(height: 16),
             _buildSliverListSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSliverGridSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Mixed Content
-            _SectionHeader(tomId: 'demo17.section.mixed'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.mixed'),
+            TomSizedBox(height: 16),
             _buildMixedContentSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildFillRemainingSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Pinned & Floating Headers
-            _SectionHeader(tomId: 'demo17.section.headers'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.headers'),
+            TomSizedBox(height: 16),
             _buildPinnedFloatingHeadersSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 6: Sliver Groups
-            _SectionHeader(tomId: 'demo17.section.groups'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.groups'),
+            TomSizedBox(height: 16),
             _buildSliverGroupsSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 7: Decorated Slivers
-            _SectionHeader(tomId: 'demo17.section.decorated'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.decorated'),
+            TomSizedBox(height: 16),
             _buildDecoratedSliversSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 8: Sliver Visibility
-            _SectionHeader(tomId: 'demo17.section.visibility'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.visibility'),
+            TomSizedBox(height: 16),
             _buildSliverVisibilitySection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -144,15 +145,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildCustomScrollViewSection() {
     return _DemoCard(
-      tomId: 'demo17.customScroll',
+      tomId: 'customScroll',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.customScroll.basicLabel',
+            tomId: 'customScroll.basicLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -199,9 +200,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.customScroll.hint',
+            tomId: 'customScroll.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -218,15 +219,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverAppBarPinnedSection() {
     return _DemoCard(
-      tomId: 'demo17.pinnedAppBar',
+      tomId: 'pinnedAppBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.pinnedAppBar.demoLabel',
+            tomId: 'pinnedAppBar.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -283,9 +284,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.pinnedAppBar.hint',
+            tomId: 'pinnedAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -298,15 +299,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverAppBarFloatingSection() {
     return _DemoCard(
-      tomId: 'demo17.floatingAppBar',
+      tomId: 'floatingAppBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.floatingAppBar.demoLabel',
+            tomId: 'floatingAppBar.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -349,9 +350,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.floatingAppBar.hint',
+            tomId: 'floatingAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -364,15 +365,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverAppBarSnapSection() {
     return _DemoCard(
-      tomId: 'demo17.snapAppBar',
+      tomId: 'snapAppBar',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.snapAppBar.demoLabel',
+            tomId: 'snapAppBar.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -422,9 +423,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.snapAppBar.hint',
+            tomId: 'snapAppBar.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -441,15 +442,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverListSection() {
     return _DemoCard(
-      tomId: 'demo17.sliverList',
+      tomId: 'sliverList',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.sliverList.typesLabel',
+            tomId: 'sliverList.typesLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             decoration: BoxDecoration(
@@ -563,9 +564,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.sliverList.hint',
+            tomId: 'sliverList.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -578,15 +579,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverGridSection() {
     return _DemoCard(
-      tomId: 'demo17.sliverGrid',
+      tomId: 'sliverGrid',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.sliverGrid.demoLabel',
+            tomId: 'sliverGrid.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -645,9 +646,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.sliverGrid.hint',
+            tomId: 'sliverGrid.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -664,15 +665,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildMixedContentSection() {
     return _DemoCard(
-      tomId: 'demo17.mixedContent',
+      tomId: 'mixedContent',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.mixedContent.demoLabel',
+            tomId: 'mixedContent.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 400,
             decoration: BoxDecoration(
@@ -793,9 +794,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.mixedContent.hint',
+            tomId: 'mixedContent.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -873,15 +874,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildFillRemainingSection() {
     return _DemoCard(
-      tomId: 'demo17.fillRemaining',
+      tomId: 'fillRemaining',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.fillRemaining.demoLabel',
+            tomId: 'fillRemaining.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 300,
             decoration: BoxDecoration(
@@ -949,9 +950,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.fillRemaining.hint',
+            tomId: 'fillRemaining.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -968,15 +969,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildPinnedFloatingHeadersSection() {
     return _DemoCard(
-      tomId: 'demo17.pinnedFloating',
+      tomId: 'pinnedFloating',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.pinnedFloating.demoLabel',
+            tomId: 'pinnedFloating.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             decoration: BoxDecoration(
@@ -1102,9 +1103,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.pinnedFloating.hint',
+            tomId: 'pinnedFloating.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1121,15 +1122,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverGroupsSection() {
     return _DemoCard(
-      tomId: 'demo17.groups',
+      tomId: 'groups',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.groups.demoLabel',
+            tomId: 'groups.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             decoration: BoxDecoration(
@@ -1273,9 +1274,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.groups.hint',
+            tomId: 'groups.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1292,15 +1293,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildDecoratedSliversSection() {
     return _DemoCard(
-      tomId: 'demo17.decorated',
+      tomId: 'decorated',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.decorated.demoLabel',
+            tomId: 'decorated.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomContainer(
             height: 350,
             decoration: BoxDecoration(
@@ -1415,9 +1416,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.decorated.hint',
+            tomId: 'decorated.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1434,15 +1435,15 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
 
   Widget _buildSliverVisibilitySection() {
     return _DemoCard(
-      tomId: 'demo17.visibility',
+      tomId: 'visibility',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo17.visibility.demoLabel',
+            tomId: 'visibility.demoLabel',
             style: Theme.of(context).textTheme.labelLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Controls
           TomRow(
@@ -1465,7 +1466,7 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           TomContainer(
             height: 250,
@@ -1574,9 +1575,9 @@ class _SliversDemoContentState extends State<_SliversDemoContent>
               ],
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo17.visibility.hint',
+            tomId: 'visibility.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1628,15 +1629,15 @@ class _PersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
 // Section Header & Demo Card (Local Helpers)
 // =============================================================================
 
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1648,14 +1649,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1673,17 +1674,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1695,8 +1696,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1707,7 +1708,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1715,9 +1716,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

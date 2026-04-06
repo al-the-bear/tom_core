@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
@@ -312,117 +313,117 @@ class WidgetDemosTab extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         _buildCategoryHeader(context, 'Input & Actions', Icons.touch_app),
-        const DemoTile(
+        TomScope.withScope('demo01', () => DemoTile(
           title: 'Buttons',
           description: 'ElevatedButton, TextButton, IconButton, FAB, and more',
           screen: ButtonsDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo02', () => DemoTile(
           title: 'Text Inputs',
           description: 'TextField, SearchBar, Autocomplete, DatePickers, and more',
           screen: InputsDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo03', () => DemoTile(
           title: 'Selection Controls',
           description: 'Dropdowns, Popup Menus, Menu Anchors, Segmented Controls',
           screen: SelectionDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo04', () => DemoTile(
           title: 'Toggles & Options',
           description: 'Checkbox, Switch, Radio, ToggleButtons, ExpansionTile',
           screen: ToggleDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo05', () => DemoTile(
           title: 'Sliders & Ranges',
           description: 'Slider, RangeSlider, CupertinoSlider, Stepper',
           screen: SliderDemo(),
-        ),
+        )),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Layout & Structure', Icons.dashboard),
-        const DemoTile(
+        TomScope.withScope('demo06', () => DemoTile(
           title: 'Cards & Panels',
           description: 'Card, ExpansionPanel, ListTile variants, Material surfaces',
           screen: CardPanelDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo07', () => DemoTile(
           title: 'Layout Widgets',
           description: 'Row, Column, Stack, Wrap, Flow, Flex, Table',
           screen: LayoutContainersDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo08', () => DemoTile(
           title: 'Scrollable Containers',
           description: 'ListView, GridView, SingleChildScrollView, PageView',
           screen: ScrollableContainersDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo09', () => DemoTile(
           title: 'Dialogs & Overlays',
           description: 'AlertDialog, BottomSheet, SnackBar, Tooltip, Banner',
           screen: DialogModalGalleryDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo10', () => DemoTile(
           title: 'Tables & Data',
           description: 'DataTable, PaginatedDataTable, sorting and selection',
           screen: DataTablesDemo(),
-        ),
+        )),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Display & Info', Icons.info),
-        const DemoTile(
+        TomScope.withScope('demo11', () => DemoTile(
           title: 'Labels & Text',
           description: 'Text, RichText, SelectableText, Badge, Chip',
           screen: LabelsDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo12', () => DemoTile(
           title: 'Images & Media',
           description: 'Image, Icon, CircleAvatar, FadeInImage, decorations',
           screen: ImagesDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo13', () => DemoTile(
           title: 'Navigation',
           description: 'AppBar, TabBar, BottomNavigationBar, Drawer, NavigationRail',
           screen: NavigationDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo14', () => DemoTile(
           title: 'Progress Indicators',
           description: 'CircularProgressIndicator, LinearProgressIndicator, RefreshIndicator',
           screen: ProgressDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo15', () => DemoTile(
           title: 'Lists & Items',
           description: 'ListTile, CheckboxListTile, SwitchListTile, Dismissible',
           screen: ListsDemo(),
-        ),
+        )),
         const SizedBox(height: 16),
         _buildCategoryHeader(context, 'Advanced', Icons.auto_awesome),
-        const DemoTile(
+        TomScope.withScope('demo16', () => DemoTile(
           title: 'Trees & Hierarchies',
           description: 'TreeView, expandable tree nodes, drag-and-drop trees',
           screen: TreesDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo17', () => DemoTile(
           title: 'Slivers',
           description: 'SliverAppBar, SliverList, SliverGrid, SliverPersistentHeader',
           screen: SliversDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo18', () => DemoTile(
           title: 'Animated Widgets',
           description: 'AnimatedContainer, AnimatedOpacity, Hero, AnimatedSwitcher',
           screen: AnimatedDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo19', () => DemoTile(
           title: 'Visual Effects',
           description: 'BackdropFilter, ShaderMask, ColorFiltered, ClipPath',
           screen: EffectsDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo20', () => DemoTile(
           title: 'Interactions',
           description: 'GestureDetector, Draggable, InkWell, MouseRegion',
           screen: InteractionsDemo(),
-        ),
-        const DemoTile(
+        )),
+        TomScope.withScope('demo21', () => DemoTile(
           title: 'Resource Resolution',
           description: 'How widgets resolve labels, icons, tooltips from resources',
           screen: ResourceResolutionDemo(),
-        ),
+        )),
       ],
     );
   }

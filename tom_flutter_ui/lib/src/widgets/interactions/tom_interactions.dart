@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -582,13 +583,13 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.builder,
+    required DragTargetBuilder<T> builder,
     this.onWillAcceptWithDetails,
     this.onAcceptWithDetails,
     this.onLeave,
     this.onMove,
     this.hitTestBehavior,
-  }) {
+  }) : builder = InScopeBuilder(scope: scope).wrap3(builder) {
     _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(resolveResourceOrNull('hitTestBehavior')) ?? HitTestBehavior.translucent;
   }
 

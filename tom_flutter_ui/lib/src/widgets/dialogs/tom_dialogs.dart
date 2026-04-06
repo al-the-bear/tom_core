@@ -398,7 +398,7 @@ class TomBottomSheet extends TomDialogBase {
     super.scope,
     this.animationController,
     required this.onClosing,
-    required this.builder,
+    required WidgetBuilder builder,
     this.backgroundColor,
     this.elevation,
     this.shape,
@@ -408,7 +408,7 @@ class TomBottomSheet extends TomDialogBase {
     this.showDragHandle,
     this.onDragStart,
     this.onDragEnd,
-  }) {
+  }) : builder = InScopeBuilder(scope: scope).wrap1(builder) {
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedEnableDrag = resolveBoolOrNull('enableDrag') ?? enableDrag;
@@ -847,7 +847,7 @@ class TomModalBottomSheet extends TomDialogBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.builder,
+    required WidgetBuilder builder,
     this.backgroundColor,
     this.barrierLabel,
     this.elevation,
@@ -865,7 +865,7 @@ class TomModalBottomSheet extends TomDialogBase {
     this.routeSettings,
     this.transitionAnimationController,
     this.anchorPoint,
-  });
+  }) : builder = InScopeBuilder(scope: scope).wrap1(builder);
 
   @override
   Widget buildContent(BuildContext context) {

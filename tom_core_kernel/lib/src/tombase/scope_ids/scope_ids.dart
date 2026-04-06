@@ -11,6 +11,16 @@ abstract class TomScope {
     return runZoned(body, zoneValues: { TomScope: TomScopeBase(scopeId: scope, parentScope: current)  }); 
   }
 
+  /// Runs [body] inside this scope's zone.
+  ///
+  /// If this scope is already the current zone scope (identical reference),
+  /// [body] is executed directly without creating a new zone.
+  /// This prevents duplicate scope nesting.
+  T runInScope<T>(T Function() body) {
+    if (identical(this, current)) return body();
+    return runZoned(body, zoneValues: {TomScope: this});
+  }
+
   /// Builds the scope path for any TomScope instance.
   /// Returns a dot-separated string (e.g., "app.checkout.orderForm").
   static String buildScopePath(TomScope scope) {
@@ -55,4 +65,65 @@ mixin TomScopeMixin on Object implements TomScope {
 
   @override
   String getScopePath() => TomScope.buildScopePath(this);
+
+  @override
+  T runInScope<T>(T Function() body) {
+    if (identical(this, TomScope.current)) return body();
+    return runZoned(body, zoneValues: {TomScope: this});
+  }
+}
+
+/// Captures a [TomScope] at construction time and wraps callback functions
+/// so they execute within that scope when called later.
+///
+/// Flutter calls builder callbacks (e.g., `itemBuilder`, `builder`) outside
+/// the original zone. This wrapper ensures Tom widgets created inside those
+/// callbacks still get the correct scope for resource resolution.
+///
+/// Usage in Tom widget constructors:
+/// ```dart
+/// class TomFoo extends TomNodeBase {
+///   final WidgetBuilder _builder;
+///   TomFoo({required WidgetBuilder builder, super.scope})
+///       : _builder = InScopeBuilder(scope: scope).wrap1(builder);
+/// }
+/// ```
+class InScopeBuilder {
+  final TomScope _scope;
+
+  InScopeBuilder({TomScope? scope})
+      : _scope = scope ?? TomScope.current;
+
+  /// Wraps a 1-argument callback.
+  R Function(A) wrap1<R, A>(R Function(A) fn) =>
+      (a) => _scope.runInScope(() => fn(a));
+
+  /// Wraps a 2-argument callback.
+  R Function(A, B) wrap2<R, A, B>(R Function(A, B) fn) =>
+      (a, b) => _scope.runInScope(() => fn(a, b));
+
+  /// Wraps a 3-argument callback.
+  R Function(A, B, C) wrap3<R, A, B, C>(R Function(A, B, C) fn) =>
+      (a, b, c) => _scope.runInScope(() => fn(a, b, c));
+
+  /// Wraps a 4-argument callback.
+  R Function(A, B, C, D) wrap4<R, A, B, C, D>(R Function(A, B, C, D) fn) =>
+      (a, b, c, d) => _scope.runInScope(() => fn(a, b, c, d));
+
+  /// Wraps a 5-argument callback.
+  R Function(A, B, C, D, E) wrap5<R, A, B, C, D, E>(
+          R Function(A, B, C, D, E) fn) =>
+      (a, b, c, d, e) => _scope.runInScope(() => fn(a, b, c, d, e));
+
+  /// Wraps a callback with one positional and named parameters.
+  /// Use for Flutter's [InputCounterWidgetBuilder] and similar typedefs
+  /// that use named parameters.
+  R Function(A, {required B currentLength, required C maxLength, required D isFocused})
+      wrapCounter<R, A, B, C, D>(
+          R Function(A, {required B currentLength, required C maxLength, required D isFocused}) fn) =>
+      (a, {required currentLength, required maxLength, required isFocused}) =>
+          _scope.runInScope(() => fn(a,
+              currentLength: currentLength,
+              maxLength: maxLength,
+              isFocused: isFocused));
 }

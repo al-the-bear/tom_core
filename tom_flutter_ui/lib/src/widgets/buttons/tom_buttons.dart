@@ -49,7 +49,7 @@ class TomElevatedButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -139,7 +139,7 @@ class TomTextButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -228,7 +228,7 @@ class TomOutlinedButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -319,7 +319,7 @@ class TomFilledButton extends TomButtonBase {
     this.label,
     this.tonal = false,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -856,7 +856,7 @@ class TomMenuItemButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedStyle = style ?? _resolveStyle();
   }
 
@@ -928,7 +928,7 @@ class TomSubmenuButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedStyle = style ?? _resolveStyle();
     _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
     _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
@@ -1493,7 +1493,7 @@ class TomCupertinoButton extends TomButtonBase {
     this.alignment = Alignment.center,
     this.filled = false,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
     _resolvedColor = color ?? resolveColorOrNull('color');
     _resolvedMinSize = minSize ?? resolveDoubleOrNull('minSize');
@@ -1567,7 +1567,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
   }
 
   @override
@@ -1620,7 +1620,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
   }
 
   @override
@@ -1931,7 +1931,7 @@ class TomMaterialButton extends TomButtonBase {
     this.child,
     this.label,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
     _resolvedDisabledTextColor = disabledTextColor ?? resolveColorOrNull('disabledTextColor');
     _resolvedColor = color ?? resolveColorOrNull('color');

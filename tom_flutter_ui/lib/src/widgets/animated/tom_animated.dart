@@ -83,10 +83,11 @@ class TomAnimatedBuilder extends TomAnimatedBase {
     super.scope,
     Listenable? listenable,
     Listenable? animation,
-    required this.builder,
+    required TransitionBuilder builder,
     this.child,
   })  : _listenable = listenable,
-        _animation = animation;
+        _animation = animation,
+        builder = InScopeBuilder(scope: scope).wrap2(builder);
 
   Listenable get effectiveListenable {
     final anim = _animation ?? _listenable;
@@ -246,9 +247,9 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     this.secondCurve = Curves.linear,
     this.sizeCurve = Curves.linear,
     this.alignment,
-    this.layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
+    AnimatedCrossFadeBuilder layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
     this.excludeBottomFocus,
-  }) {
+  }) : layoutBuilder = InScopeBuilder(scope: scope).wrap4(layoutBuilder) {
     _resolvedExcludeBottomFocus = excludeBottomFocus ?? resolveBoolOrNull('excludeBottomFocus') ?? true;
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
@@ -901,9 +902,10 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
     this.reverseDuration,
     this.switchInCurve = Curves.linear,
     this.switchOutCurve = Curves.linear,
-    this.transitionBuilder = AnimatedSwitcher.defaultTransitionBuilder,
-    this.layoutBuilder = AnimatedSwitcher.defaultLayoutBuilder,
-  }) {
+    AnimatedSwitcherTransitionBuilder transitionBuilder = AnimatedSwitcher.defaultTransitionBuilder,
+    AnimatedSwitcherLayoutBuilder layoutBuilder = AnimatedSwitcher.defaultLayoutBuilder,
+  }) : transitionBuilder = InScopeBuilder(scope: scope).wrap2(transitionBuilder),
+       layoutBuilder = InScopeBuilder(scope: scope).wrap2(layoutBuilder) {
 
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
   }
@@ -943,11 +945,12 @@ class TomHero extends TomAnimatedBase {
     super.scope,
     required this.tag,
     this.createRectTween,
-    this.flightShuttleBuilder,
-    this.placeholderBuilder,
+    HeroFlightShuttleBuilder? flightShuttleBuilder,
+    HeroPlaceholderBuilder? placeholderBuilder,
     this.transitionOnUserGestures,
     required this.child,
-  }) {
+  }) : flightShuttleBuilder = flightShuttleBuilder != null ? InScopeBuilder(scope: scope).wrap5(flightShuttleBuilder) : null,
+       placeholderBuilder = placeholderBuilder != null ? InScopeBuilder(scope: scope).wrap3(placeholderBuilder) : null {
     _resolvedTransitionOnUserGestures = transitionOnUserGestures ?? resolveBoolOrNull('transitionOnUserGestures') ?? false;
   }
 

@@ -21,6 +21,10 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
   @override
   Widget build(BuildContext context) {
+    return constructionScope.runInScope(() => _buildWithAuth(context));
+  }
+
+  Widget _buildWithAuth(BuildContext context) {
     final authState = basePath != null
         ? TomUIAuthorization.resolveAuth(basePath!)
         : TomAuthState.fullAccess;

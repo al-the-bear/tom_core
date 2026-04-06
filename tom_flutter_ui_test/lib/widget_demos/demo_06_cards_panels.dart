@@ -14,23 +14,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Card & Panel Layouts demo.
-class CardPanelDemo extends StatelessWidget {
-  const CardPanelDemo({super.key});
+class CardPanelDemo extends TomStatelessWidget {
+  CardPanelDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _CardPanelDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _CardPanelDemoContent();
+
   }
 }
 
-class _CardPanelDemoContent extends StatefulWidget {
-  const _CardPanelDemoContent();
+class _CardPanelDemoContent extends TomStatefulWidget {
+  _CardPanelDemoContent();
 
   @override
   State<_CardPanelDemoContent> createState() => _CardPanelDemoContentState();
 }
 
-class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
+class _CardPanelDemoContentState extends TomState<_CardPanelDemoContent> {
   // ===========================================================================
   // Section 2: Expansion Tiles state
   // ===========================================================================
@@ -50,7 +51,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
   double _aclElevation = 2;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -58,40 +59,40 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Cards
-            _SectionHeader(tomId: 'demo06.section.cards'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.cards'),
+            TomSizedBox(height: 16),
             _buildCardVariantsSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildProductCardSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Expansion Tiles
-            _SectionHeader(tomId: 'demo06.section.expansionTiles'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.expansionTiles'),
+            TomSizedBox(height: 16),
             _buildExpansionTileSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildCupertinoExpansionTileSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Expansion Panel Lists
-            _SectionHeader(tomId: 'demo06.section.expansionPanels'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.expansionPanels'),
+            TomSizedBox(height: 16),
             _buildExpansionPanelSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Material & Ink
-            _SectionHeader(tomId: 'demo06.section.materialInk'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.materialInk'),
+            TomSizedBox(height: 16),
             _buildMaterialSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildInkSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo
-            _SectionHeader(tomId: 'demo06.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildAclCardSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -106,13 +107,13 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.cardVariants',
+      tomId: 'cardVariants',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Elevated card
-          TomText(tomId: 'demo06.cardVariants.elevatedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cardVariants.elevatedLabel'),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 4,
             child: TomPadding(
@@ -123,19 +124,19 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                     icon: Icons.layers,
                     color: theme.colorScheme.primary,
                   ),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomColumn(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TomText(
-                          tomId: 'demo06.cardVariants.elevatedTitle',
+                          tomId: 'cardVariants.elevatedTitle',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TomText(
-                          tomId: 'demo06.cardVariants.elevatedDesc',
+                          tomId: 'cardVariants.elevatedDesc',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -147,11 +148,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Outlined card
-          TomText(tomId: 'demo06.cardVariants.outlinedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cardVariants.outlinedLabel'),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -166,19 +167,19 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                     icon: Icons.crop_square,
                     color: theme.colorScheme.primary,
                   ),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomColumn(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TomText(
-                          tomId: 'demo06.cardVariants.outlinedTitle',
+                          tomId: 'cardVariants.outlinedTitle',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TomText(
-                          tomId: 'demo06.cardVariants.outlinedDesc',
+                          tomId: 'cardVariants.outlinedDesc',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -190,11 +191,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Filled card
-          TomText(tomId: 'demo06.cardVariants.filledLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cardVariants.filledLabel'),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 0,
             color: theme.colorScheme.surfaceContainerHighest,
@@ -206,19 +207,19 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                     icon: Icons.square_rounded,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomColumn(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TomText(
-                          tomId: 'demo06.cardVariants.filledTitle',
+                          tomId: 'cardVariants.filledTitle',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TomText(
-                          tomId: 'demo06.cardVariants.filledDesc',
+                          tomId: 'cardVariants.filledDesc',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -230,11 +231,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Elevation comparison row
-          TomText(tomId: 'demo06.cardVariants.elevationLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cardVariants.elevationLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -254,7 +255,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                         ),
                       ),
                     ),
-                    const TomSizedBox(height: 4),
+                    TomSizedBox(height: 4),
                     TomText(
                       text: '${elev.toInt()}dp',
                       style: theme.textTheme.labelSmall?.copyWith(
@@ -274,7 +275,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.productCard',
+      tomId: 'productCard',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -305,9 +306,9 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                           color: theme.colorScheme.onPrimaryContainer
                               .withValues(alpha: 0.5),
                         ),
-                        const TomSizedBox(height: 8),
+                        TomSizedBox(height: 8),
                         TomText(
-                          tomId: 'demo06.productCard.imagePlaceholder',
+                          tomId: 'productCard.imagePlaceholder',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onPrimaryContainer
                                 .withValues(alpha: 0.7),
@@ -327,13 +328,13 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TomText(
-                            tomId: 'demo06.productCard.productName',
+                            tomId: 'productCard.productName',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           TomText(
-                            tomId: 'demo06.productCard.price',
+                            tomId: 'productCard.price',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.primary,
@@ -341,14 +342,14 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                           ),
                         ],
                       ),
-                      const TomSizedBox(height: 4),
+                      TomSizedBox(height: 4),
                       TomText(
-                        tomId: 'demo06.productCard.productDescription',
+                        tomId: 'productCard.productDescription',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const TomSizedBox(height: 8),
+                      TomSizedBox(height: 8),
                       // Star rating
                       TomRow(
                         children: [
@@ -357,24 +358,24 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                                 size: 16, color: Colors.amber.shade600),
                           Icon(Icons.star_half,
                               size: 16, color: Colors.amber.shade600),
-                          const TomSizedBox(width: 4),
+                          TomSizedBox(width: 4),
                           TomText(
-                            tomId: 'demo06.productCard.rating',
+                            tomId: 'productCard.rating',
                             style: theme.textTheme.bodySmall,
                           ),
                         ],
                       ),
-                      const TomSizedBox(height: 12),
+                      TomSizedBox(height: 12),
                       // Action buttons
                       TomRow(
                         children: [
                           TomExpanded(
                             child: TomFilledButton(
-                              tomId: 'demo06.productCard.addToCart',
+                              tomId: 'productCard.addToCart',
                               onPressed: () {},
                             ),
                           ),
-                          const TomSizedBox(width: 8),
+                          TomSizedBox(width: 8),
                           TomIconButton(
                             tooltip: 'Favorite',
                             icon: const Icon(Icons.favorite_border),
@@ -388,11 +389,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Action card with horizontal layout
-          TomText(tomId: 'demo06.productCard.actionCardLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'productCard.actionCardLabel'),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 1,
             child: TomPadding(
@@ -413,19 +414,19 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       ),
                     ),
                   ),
-                  const TomSizedBox(width: 16),
+                  TomSizedBox(width: 16),
                   TomExpanded(
                     child: TomColumn(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TomText(
-                          tomId: 'demo06.productCard.shippingTitle',
+                          tomId: 'productCard.shippingTitle',
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         TomText(
-                          tomId: 'demo06.productCard.shippingDesc',
+                          tomId: 'productCard.shippingDesc',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -455,7 +456,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.expansionTile',
+      tomId: 'expansionTile',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -488,7 +489,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
 
           // Shipping Address (expanded by default)
           TomCard(
@@ -510,17 +511,17 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       TomText(
-                        tomId: 'demo06.expansionTile.addressName',
+                        tomId: 'expansionTile.addressName',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TomText(tomId: 'demo06.expansionTile.addressLine1'),
-                      TomText(tomId: 'demo06.expansionTile.addressLine2'),
-                      TomText(tomId: 'demo06.expansionTile.addressCountry'),
-                      const TomSizedBox(height: 8),
+                      TomText(tomId: 'expansionTile.addressLine1'),
+                      TomText(tomId: 'expansionTile.addressLine2'),
+                      TomText(tomId: 'expansionTile.addressCountry'),
+                      TomSizedBox(height: 8),
                       TomTextButton(
-                        tomId: 'demo06.expansionTile.editAddress',
+                        tomId: 'expansionTile.editAddress',
                         onPressed: () {},
                       ),
                     ],
@@ -529,7 +530,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
 
           // Payment Method (collapsed by default)
           TomCard(
@@ -553,16 +554,16 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       TomRow(
                         children: [
                           const Icon(Icons.credit_card, size: 20),
-                          const TomSizedBox(width: 8),
+                          TomSizedBox(width: 8),
                           TomText(
-                            tomId: 'demo06.expansionTile.cardInfo',
+                            tomId: 'expansionTile.cardInfo',
                             style: theme.textTheme.bodyMedium,
                           ),
                         ],
                       ),
-                      const TomSizedBox(height: 4),
+                      TomSizedBox(height: 4),
                       TomText(
-                        tomId: 'demo06.expansionTile.cardExpiry',
+                        tomId: 'expansionTile.cardExpiry',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -573,11 +574,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Nested expansion tiles
-          TomText(tomId: 'demo06.expansionTile.nestedLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'expansionTile.nestedLabel'),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -598,7 +599,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       TomPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: TomText(
-                          tomId: 'demo06.expansionTile.notifContent',
+                          tomId: 'expansionTile.notifContent',
                           style: theme.textTheme.bodySmall,
                         ),
                       ),
@@ -615,7 +616,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       TomPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         child: TomText(
-                          tomId: 'demo06.expansionTile.privacyContent',
+                          tomId: 'expansionTile.privacyContent',
                           style: theme.textTheme.bodySmall,
                         ),
                       ),
@@ -657,7 +658,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.cupertinoExpansion',
+      tomId: 'cupertinoExpansion',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -682,7 +683,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomCard(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -715,12 +716,12 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
 
   Widget _buildExpansionPanelSection() {
     return _DemoCard(
-      tomId: 'demo06.expansionPanel',
+      tomId: 'expansionPanel',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo06.expansionPanel.faqTitle'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'expansionPanel.faqTitle'),
+          TomSizedBox(height: 12),
           TomExpansionPanelList(
             expansionCallback: (panelIndex, isExpanded) {
               setState(() {
@@ -798,13 +799,13 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.material',
+      tomId: 'material',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Elevation levels
-          TomText(tomId: 'demo06.material.elevationLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'material.elevationLabel'),
+          TomSizedBox(height: 12),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -826,7 +827,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                         ),
                       ),
                     ),
-                    const TomSizedBox(height: 4),
+                    TomSizedBox(height: 4),
                     TomText(
                       text: '${elev.toInt()}dp',
                       style: theme.textTheme.labelSmall,
@@ -835,11 +836,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                 ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Material types
-          TomText(tomId: 'demo06.material.typesLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'material.typesLabel'),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 12,
             runSpacing: 12,
@@ -871,11 +872,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Material with shape
-          TomText(tomId: 'demo06.material.shapesLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'material.shapesLabel'),
+          TomSizedBox(height: 12),
           TomRow(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -885,7 +886,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 color: theme.colorScheme.primaryContainer,
-                child: const TomSizedBox(width: 60, height: 60),
+                child: TomSizedBox(width: 60, height: 60),
               ),
               TomMaterial(
                 elevation: 2,
@@ -893,19 +894,19 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 color: theme.colorScheme.secondaryContainer,
-                child: const TomSizedBox(width: 60, height: 60),
+                child: TomSizedBox(width: 60, height: 60),
               ),
               TomMaterial(
                 elevation: 2,
                 shape: const CircleBorder(),
                 color: theme.colorScheme.tertiaryContainer,
-                child: const TomSizedBox(width: 60, height: 60),
+                child: TomSizedBox(width: 60, height: 60),
               ),
               TomMaterial(
                 elevation: 2,
                 shape: const StadiumBorder(),
                 color: theme.colorScheme.errorContainer,
-                child: const TomSizedBox(width: 80, height: 40),
+                child: TomSizedBox(width: 80, height: 40),
               ),
             ],
           ),
@@ -939,13 +940,13 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
     final theme = Theme.of(context);
 
     return _DemoCard(
-      tomId: 'demo06.ink',
+      tomId: 'ink',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic ink with splash
-          TomText(tomId: 'demo06.ink.splashLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'ink.splashLabel'),
+          TomSizedBox(height: 12),
           TomMaterial(
             color: theme.colorScheme.surfaceContainerLow,
             borderRadius: BorderRadius.circular(8),
@@ -956,7 +957,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                 padding: const EdgeInsets.all(24),
                 child: TomCenter(
                   child: TomText(
-                    tomId: 'demo06.ink.tapHere',
+                    tomId: 'ink.tapHere',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.primary,
                     ),
@@ -965,11 +966,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Ink decoration
-          TomText(tomId: 'demo06.ink.decorationLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'ink.decorationLabel'),
+          TomSizedBox(height: 12),
           TomMaterial(
             color: Colors.transparent,
             child: TomInk(
@@ -979,7 +980,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                 onTap: () {},
                 child: TomCenter(
                   child: TomText(
-                    tomId: 'demo06.ink.decoratedInk',
+                    tomId: 'ink.decoratedInk',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                     ),
@@ -988,11 +989,11 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Ink with gradient decoration
-          TomText(tomId: 'demo06.ink.gradientLabel'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'ink.gradientLabel'),
+          TomSizedBox(height: 12),
           TomMaterial(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -1012,7 +1013,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                 onTap: () {},
                 child: TomCenter(
                   child: TomText(
-                    tomId: 'demo06.ink.gradientText',
+                    tomId: 'ink.gradientText',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,
@@ -1033,10 +1034,10 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
 
   Widget _buildAclCardSection() {
     return _DemoCard(
-      tomId: 'demo06.aclCard',
+      tomId: 'aclCard',
       child: AclBuilder()
           // Row 1: Label + Card with elevation slider
-          .append(TomText(tomId: 'demo06.aclCard.elevationLabel'))
+          .append(TomText(tomId: 'aclCard.elevationLabel'))
           .append(
             TomSlider(
               value: _aclElevation,
@@ -1072,9 +1073,9 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                       icon: Icons.auto_awesome,
                       color: Theme.of(context).colorScheme.primary,
                     ),
-                    const TomSizedBox(width: 8),
+                    TomSizedBox(width: 8),
                     TomText(
-                      tomId: 'demo06.aclCard.previewText',
+                      tomId: 'aclCard.previewText',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -1096,7 +1097,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
                 TomPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: TomText(
-                    tomId: 'demo06.aclCard.moreInfo',
+                    tomId: 'aclCard.moreInfo',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -1108,7 +1109,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
           // Row 4: Buttons
           .append(
             TomTextButton(
-              tomId: 'demo06.aclCard.reset',
+              tomId: 'aclCard.reset',
               onPressed: () {
                 setState(() {
                   _aclElevation = 2;
@@ -1120,7 +1121,7 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
           .gap()
           .append(
             TomFilledButton(
-              tomId: 'demo06.aclCard.apply',
+              tomId: 'aclCard.apply',
               onPressed: () {},
             ),
             dist: 8,
@@ -1135,15 +1136,15 @@ class _CardPanelDemoContentState extends State<_CardPanelDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1155,14 +1156,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1180,17 +1181,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -1209,11 +1210,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1235,9 +1236,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

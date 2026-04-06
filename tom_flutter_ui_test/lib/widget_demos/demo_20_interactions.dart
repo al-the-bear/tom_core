@@ -14,24 +14,25 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Interactions & Gestures demo.
-class InteractionsDemo extends StatelessWidget {
-  const InteractionsDemo({super.key});
+class InteractionsDemo extends TomStatelessWidget {
+  InteractionsDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _InteractionsDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _InteractionsDemoContent();
+
   }
 }
 
-class _InteractionsDemoContent extends StatefulWidget {
-  const _InteractionsDemoContent();
+class _InteractionsDemoContent extends TomStatefulWidget {
+  _InteractionsDemoContent();
 
   @override
   State<_InteractionsDemoContent> createState() =>
       _InteractionsDemoContentState();
 }
 
-class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
+class _InteractionsDemoContentState extends TomState<_InteractionsDemoContent> {
   // State for gesture detector demo
   String _gestureInfo = 'Interact with the area below';
   Offset _panPosition = Offset.zero;
@@ -59,7 +60,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
   String _mouseEvent = 'Move mouse over the region';
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -68,51 +69,51 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
           children: [
             // Section 1: Gesture Detection
             _SectionHeader(
-              tomId: 'demo20.section.gesture',
+              tomId: 'section.gesture',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildGestureDetectorSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Ink Effects
             _SectionHeader(
-              tomId: 'demo20.section.ink',
+              tomId: 'section.ink',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildInkEffectsSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Drag and Drop
             _SectionHeader(
-              tomId: 'demo20.section.dragdrop',
+              tomId: 'section.dragdrop',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildDragDropSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Long Press Drag
             _SectionHeader(
-              tomId: 'demo20.section.longpress',
+              tomId: 'section.longpress',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildLongPressDragSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Pointer Blocking
             _SectionHeader(
-              tomId: 'demo20.section.pointer',
+              tomId: 'section.pointer',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildPointerBlockingSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 6: Mouse Region
             _SectionHeader(
-              tomId: 'demo20.section.mouse',
+              tomId: 'section.mouse',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildMouseRegionSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -125,7 +126,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
 
   Widget _buildGestureDetectorSection() {
     return _DemoCard(
-      tomId: 'demo20.gestureDetector',
+      tomId: 'gestureDetector',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -142,7 +143,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   Icons.touch_app,
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     text: _gestureInfo,
@@ -155,13 +156,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Tap gestures demo
           TomText(
             text: 'Tap Gestures:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomWrap(
             spacing: 12,
             runSpacing: 12,
@@ -187,13 +188,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Pan gesture demo
           TomText(
             text: 'Pan/Drag Gesture:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomGestureDetector(
             onPanUpdate: (details) {
               setState(() {
@@ -241,13 +242,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Scale gesture demo
           TomText(
             text: 'Scale/Pinch Gesture:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomGestureDetector(
             onScaleUpdate: (details) {
               setState(() {
@@ -283,9 +284,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo20.gestureDetector.hint',
+            tomId: 'gestureDetector.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -311,7 +312,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 24),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomText(
             text: label,
             style: const TextStyle(fontSize: 11),
@@ -331,7 +332,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
       children: [
         // InkWell demo
         _DemoCard(
-          tomId: 'demo20.inkWell',
+          tomId: 'inkWell',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -359,7 +360,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ),
                 ],
               ),
-              const TomSizedBox(height: 16),
+              TomSizedBox(height: 16),
               // Interactive InkWell with state display
               TomInkWell(
                 onTap: () => setState(() => _inkWellPressed = !_inkWellPressed),
@@ -393,7 +394,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      const TomSizedBox(width: 12),
+                      TomSizedBox(width: 12),
                       TomText(
                         text:
                             _inkWellPressed ? 'Activated!' : 'Tap for ink splash',
@@ -409,9 +410,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ),
                 ),
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomText(
-                tomId: 'demo20.inkWell.hint',
+                tomId: 'inkWell.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -420,10 +421,10 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
         // InkResponse demo
         _DemoCard(
-          tomId: 'demo20.inkResponse',
+          tomId: 'inkResponse',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -478,7 +479,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                         color: Theme.of(context).colorScheme.outline,
                       ),
                     ),
-                    child: const TomColumn(
+                    child: TomColumn(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.brush, size: 24),
@@ -493,9 +494,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ),
                 ],
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomText(
-                tomId: 'demo20.inkResponse.hint',
+                tomId: 'inkResponse.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -529,13 +530,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const TomCenter(
+              child: TomCenter(
                 child: Icon(Icons.water_drop, size: 28),
               ),
             ),
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           text: label,
           style: const TextStyle(fontSize: 11),
@@ -558,7 +559,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
     ];
 
     return _DemoCard(
-      tomId: 'demo20.dragDrop',
+      tomId: 'dragDrop',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -566,7 +567,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
             text: 'Drag colors to the target area:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           // Draggable sources
           TomWrap(
             spacing: 12,
@@ -620,7 +621,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               );
             }).toList(),
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
           // Drag target
           TomDragTarget<Color>(
             onWillAcceptWithDetails: (details) => true,
@@ -660,7 +661,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                                   ? _draggedColor
                                   : Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
-                            const TomSizedBox(height: 8),
+                            TomSizedBox(height: 8),
                             TomText(
                               text: isHovering ? 'Release to drop' : 'Drop colors here',
                               style: TextStyle(
@@ -689,7 +690,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               );
             },
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           if (_droppedColors.isNotEmpty)
             TomFilledButton(
               label: 'Reset',
@@ -697,11 +698,11 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               onPressed: () => setState(() {
                 _droppedColors.clear();
               }),
-              child: const TomText(text: 'Reset'),
+              child: TomText(text: 'Reset'),
             ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo20.dragDrop.hint',
+            tomId: 'dragDrop.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -718,7 +719,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
 
   Widget _buildLongPressDragSection() {
     return _DemoCard(
-      tomId: 'demo20.longPressDrag',
+      tomId: 'longPressDrag',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -732,7 +733,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                       text: 'Long press to drag:',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    const TomSizedBox(height: 12),
+                    TomSizedBox(height: 12),
                     TomWrap(
                       spacing: 12,
                       children: [
@@ -744,7 +745,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ],
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               // Drop counter
               TomDragTarget<IconData>(
                 onWillAcceptWithDetails: (_) => true,
@@ -778,7 +779,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                           text: '$_longPressDragCount',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
-                        const TomText(
+                        TomText(
                           text: 'Dropped',
                           style: TextStyle(fontSize: 12),
                         ),
@@ -789,9 +790,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo20.longPressDrag.hint',
+            tomId: 'longPressDrag.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -852,18 +853,18 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
       children: [
         // AbsorbPointer demo
         _DemoCard(
-          tomId: 'demo20.absorbPointer',
+          tomId: 'absorbPointer',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TomRow(
                 children: [
-                  const TomText(text: 'Absorb Pointer: '),
+                  TomText(text: 'Absorb Pointer: '),
                   Switch(
                     value: _absorbPointer,
                     onChanged: (value) => setState(() => _absorbPointer = value),
                   ),
-                  const TomSizedBox(width: 8),
+                  TomSizedBox(width: 8),
                   Chip(
                     label: TomText(
                       text: _absorbPointer ? 'Blocking' : 'Passing',
@@ -874,7 +875,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ),
                 ],
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomStack(
                 children: [
                   TomContainer(
@@ -892,20 +893,20 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                           label: 'Button 1',
                           onPressed: () =>
                               setState(() => _blockedTapCount++),
-                          child: const TomText(text: 'Button 1'),
+                          child: TomText(text: 'Button 1'),
                         ),
                         TomFilledButton(
                           label: 'Button 2',
                           tonal: true,
                           onPressed: () =>
                               setState(() => _blockedTapCount++),
-                          child: const TomText(text: 'Button 2'),
+                          child: TomText(text: 'Button 2'),
                         ),
                         TomOutlinedButton(
                           label: 'Button 3',
                           onPressed: () =>
                               setState(() => _blockedTapCount++),
-                          child: const TomText(text: 'Button 3'),
+                          child: TomText(text: 'Button 3'),
                         ),
                       ],
                     ),
@@ -919,7 +920,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                             color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const TomCenter(
+                          child: TomCenter(
                             child: TomColumn(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -937,14 +938,14 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                     ),
                 ],
               ),
-              const TomSizedBox(height: 8),
+              TomSizedBox(height: 8),
               TomText(
                 text: 'Tap count: $_blockedTapCount',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomText(
-                tomId: 'demo20.absorbPointer.hint',
+                tomId: 'absorbPointer.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -953,21 +954,21 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
         // IgnorePointer demo
         _DemoCard(
-          tomId: 'demo20.ignorePointer',
+          tomId: 'ignorePointer',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TomRow(
                 children: [
-                  const TomText(text: 'Ignore Pointer: '),
+                  TomText(text: 'Ignore Pointer: '),
                   Switch(
                     value: _ignorePointer,
                     onChanged: (value) => setState(() => _ignorePointer = value),
                   ),
-                  const TomSizedBox(width: 8),
+                  TomSizedBox(width: 8),
                   Chip(
                     label: TomText(
                       text: _ignorePointer ? 'Ignoring' : 'Handling',
@@ -978,7 +979,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ),
                 ],
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomContainer(
                 height: 120,
                 decoration: BoxDecoration(
@@ -999,7 +1000,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                             ),
                           );
                         },
-                        child: const TomCenter(
+                        child: TomCenter(
                           child: TomText(
                             text: 'Background Layer (tap me)',
                             style: TextStyle(color: Colors.blue),
@@ -1037,7 +1038,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                                 color:
                                     _ignorePointer ? Colors.orange : Colors.grey,
                               ),
-                              const TomSizedBox(height: 4),
+                              TomSizedBox(height: 4),
                               TomText(
                                 text: _ignorePointer
                                     ? 'Pass through'
@@ -1057,9 +1058,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                   ],
                 ),
               ),
-              const TomSizedBox(height: 12),
+              TomSizedBox(height: 12),
               TomText(
-                tomId: 'demo20.ignorePointer.hint',
+                tomId: 'ignorePointer.hint',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: FontStyle.italic,
@@ -1078,7 +1079,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
 
   Widget _buildMouseRegionSection() {
     return _DemoCard(
-      tomId: 'demo20.mouseRegion',
+      tomId: 'mouseRegion',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1099,7 +1100,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                       ? Theme.of(context).colorScheme.onPrimaryContainer
                       : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     text: _mouseEvent,
@@ -1123,7 +1124,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Mouse region demo area
           TomMouseRegion(
             onEnter: (event) => setState(() {
@@ -1182,7 +1183,7 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
-                        const TomSizedBox(height: 8),
+                        TomSizedBox(height: 8),
                         TomText(
                           text: _isHovering
                               ? 'Tracking mouse position'
@@ -1220,13 +1221,13 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               ),
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           // Cursor examples
           TomText(
             text: 'Cursor Examples:',
             style: Theme.of(context).textTheme.titleSmall,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomWrap(
             spacing: 12,
             runSpacing: 12,
@@ -1241,9 +1242,9 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
               _buildCursorExample('Forbidden', SystemMouseCursors.forbidden),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
-            tomId: 'demo20.mouseRegion.hint',
+            tomId: 'mouseRegion.hint',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   fontStyle: FontStyle.italic,
@@ -1283,15 +1284,15 @@ class _InteractionsDemoContentState extends State<_InteractionsDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1303,14 +1304,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -1328,17 +1329,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1350,8 +1351,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -1362,7 +1363,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -1370,9 +1371,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

@@ -13,23 +13,24 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Slider & Range Controls demo.
-class SliderDemo extends StatelessWidget {
-  const SliderDemo({super.key});
+class SliderDemo extends TomStatelessWidget {
+  SliderDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _SliderDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _SliderDemoContent();
+
   }
 }
 
-class _SliderDemoContent extends StatefulWidget {
-  const _SliderDemoContent();
+class _SliderDemoContent extends TomStatefulWidget {
+  _SliderDemoContent();
 
   @override
   State<_SliderDemoContent> createState() => _SliderDemoContentState();
 }
 
-class _SliderDemoContentState extends State<_SliderDemoContent> {
+class _SliderDemoContentState extends TomState<_SliderDemoContent> {
   // ===========================================================================
   // Section 1: Basic Sliders state
   // ===========================================================================
@@ -80,7 +81,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
   double _aclCupertino = 0.5;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -88,38 +89,38 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Section 1: Basic Sliders
-            _SectionHeader(tomId: 'demo05.section.basic'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.basic'),
+            TomSizedBox(height: 16),
             _buildBasicSliderSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Range Sliders
-            _SectionHeader(tomId: 'demo05.section.range'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.range'),
+            TomSizedBox(height: 16),
             _buildRangeSliderSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Cupertino Sliders
-            _SectionHeader(tomId: 'demo05.section.cupertino'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.cupertino'),
+            TomSizedBox(height: 16),
             _buildCupertinoSliderSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Slider Applications
-            _SectionHeader(tomId: 'demo05.section.applications'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.applications'),
+            TomSizedBox(height: 16),
             _buildAudioPlayerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildColorPickerSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildImageAdjustmentsSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: ACL Layout Demo
-            _SectionHeader(tomId: 'demo05.section.acl'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.acl'),
+            TomSizedBox(height: 16),
             _buildAclSliderSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -132,13 +133,13 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 
   Widget _buildBasicSliderSection() {
     return _DemoCard(
-      tomId: 'demo05.basicSlider',
+      tomId: 'basicSlider',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic continuous slider
-          TomText(tomId: 'demo05.basicSlider.basicLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.basicLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomText(
@@ -168,15 +169,15 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // With label
-          TomText(tomId: 'demo05.basicSlider.volumeLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.volumeLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
-              TomText(tomId: 'demo05.basicSlider.volumeName'),
-              const TomSizedBox(width: 16),
+              TomText(tomId: 'basicSlider.volumeName'),
+              TomSizedBox(width: 16),
               TomExpanded(
                 child: TomSlider(
                   value: _labeledVolume,
@@ -195,11 +196,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Discrete with divisions
-          TomText(tomId: 'demo05.basicSlider.discreteLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.discreteLabel'),
+          TomSizedBox(height: 8),
           TomSlider(
             value: _discreteValue,
             min: 0,
@@ -221,11 +222,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // With value label overlay
-          TomText(tomId: 'demo05.basicSlider.valueLabelTitle'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.valueLabelTitle'),
+          TomSizedBox(height: 8),
           TomSlider(
             value: _valueLabelSlider,
             min: 0,
@@ -234,11 +235,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
             label: _valueLabelSlider.round().toString(),
             onChanged: (v) => setState(() => _valueLabelSlider = v),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Custom track/thumb styling
-          TomText(tomId: 'demo05.basicSlider.customLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.customLabel'),
+          TomSizedBox(height: 8),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: Colors.teal,
@@ -264,11 +265,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
             ),
           ),
 
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Disabled slider
-          TomText(tomId: 'demo05.basicSlider.disabledLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'basicSlider.disabledLabel'),
+          TomSizedBox(height: 8),
           TomSlider(
             value: 0.5,
             onChanged: null,
@@ -284,13 +285,13 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 
   Widget _buildRangeSliderSection() {
     return _DemoCard(
-      tomId: 'demo05.rangeSlider',
+      tomId: 'rangeSlider',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Price range
-          TomText(tomId: 'demo05.rangeSlider.priceLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'rangeSlider.priceLabel'),
+          TomSizedBox(height: 8),
           TomRangeSlider(
             values: _priceRange,
             min: 0,
@@ -314,7 +315,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                 ),
-                TomText(tomId: 'demo05.rangeSlider.priceRangeLabel'),
+                TomText(tomId: 'rangeSlider.priceRangeLabel'),
                 TomText(
                   text: '\$${_priceRange.end.round()}',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -325,11 +326,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Age range (discrete)
-          TomText(tomId: 'demo05.rangeSlider.ageLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'rangeSlider.ageLabel'),
+          TomSizedBox(height: 8),
           TomRangeSlider(
             values: _ageRange,
             min: 18,
@@ -347,11 +348,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Time range
-          TomText(tomId: 'demo05.rangeSlider.timeLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'rangeSlider.timeLabel'),
+          TomSizedBox(height: 8),
           TomRangeSlider(
             values: _timeRange,
             min: 0,
@@ -372,11 +373,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Disabled range slider
-          TomText(tomId: 'demo05.rangeSlider.disabledLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'rangeSlider.disabledLabel'),
+          TomSizedBox(height: 8),
           TomRangeSlider(
             values: const RangeValues(30, 70),
             min: 0,
@@ -394,13 +395,13 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 
   Widget _buildCupertinoSliderSection() {
     return _DemoCard(
-      tomId: 'demo05.cupertinoSlider',
+      tomId: 'cupertinoSlider',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Brightness
-          TomText(tomId: 'demo05.cupertinoSlider.brightnessLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSlider.brightnessLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               const Icon(CupertinoIcons.sun_min, size: 20),
@@ -414,11 +415,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               const Icon(CupertinoIcons.sun_max_fill, size: 20),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
 
           // Volume
-          TomText(tomId: 'demo05.cupertinoSlider.volumeLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSlider.volumeLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               const Icon(CupertinoIcons.volume_down, size: 20),
@@ -432,11 +433,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               const Icon(CupertinoIcons.volume_up, size: 20),
             ],
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
 
           // Custom colors
-          TomText(tomId: 'demo05.cupertinoSlider.customLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSlider.customLabel'),
+          TomSizedBox(height: 8),
           TomCupertinoSlider(
             value: _cupertinoCustom,
             activeColor: CupertinoColors.activeBlue,
@@ -450,11 +451,11 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
                   ),
             ),
           ),
-          const TomSizedBox(height: 20),
+          TomSizedBox(height: 20),
 
           // With value display
-          TomText(tomId: 'demo05.cupertinoSlider.displayLabel'),
-          const TomSizedBox(height: 8),
+          TomText(tomId: 'cupertinoSlider.displayLabel'),
+          TomSizedBox(height: 8),
           TomRow(
             children: [
               TomExpanded(
@@ -464,7 +465,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
                       setState(() => _cupertinoDisplay = v),
                 ),
               ),
-              const TomSizedBox(width: 16),
+              TomSizedBox(width: 16),
               TomSizedBox(
                 width: 50,
                 child: TomText(
@@ -493,25 +494,25 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
     final totalSec = totalSeconds % 60;
 
     return _DemoCard(
-      tomId: 'demo05.audioPlayer',
+      tomId: 'audioPlayer',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Now playing info
           TomText(
-            tomId: 'demo05.audioPlayer.nowPlaying',
+            tomId: 'audioPlayer.nowPlaying',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomText(
-            tomId: 'demo05.audioPlayer.trackInfo',
+            tomId: 'audioPlayer.trackInfo',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Progress slider
           TomSlider(
@@ -537,13 +538,13 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Volume
           TomRow(
             children: [
-              TomText(tomId: 'demo05.audioPlayer.volumeName'),
-              const TomSizedBox(width: 8),
+              TomText(tomId: 'audioPlayer.volumeName'),
+              TomSizedBox(width: 8),
               const Icon(Icons.volume_down, size: 20),
               TomExpanded(
                 child: TomSlider(
@@ -568,7 +569,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
     );
 
     return _DemoCard(
-      tomId: 'demo05.colorPicker',
+      tomId: 'colorPicker',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -579,7 +580,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
             color: Colors.red,
             onChanged: (v) => setState(() => _redValue = v),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
 
           // Green channel
           _buildColorChannel(
@@ -588,7 +589,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
             color: Colors.green,
             onChanged: (v) => setState(() => _greenValue = v),
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
 
           // Blue channel
           _buildColorChannel(
@@ -597,16 +598,16 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
             color: Colors.blue,
             onChanged: (v) => setState(() => _blueValue = v),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Preview
           TomRow(
             children: [
               TomText(
-                tomId: 'demo05.colorPicker.previewLabel',
+                tomId: 'colorPicker.previewLabel',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomExpanded(
                 child: TomContainer(
                   height: 48,
@@ -619,7 +620,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
                   ),
                 ),
               ),
-              const TomSizedBox(width: 12),
+              TomSizedBox(width: 12),
               TomText(
                 text:
                     '#${(previewColor.r * 255.0).round().clamp(0, 255).toRadixString(16).padLeft(2, '0')}'
@@ -706,46 +707,46 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 
   Widget _buildImageAdjustmentsSection() {
     return _DemoCard(
-      tomId: 'demo05.imageAdjust',
+      tomId: 'imageAdjust',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildAdjustmentSlider(
-            tomId: 'demo05.imageAdjust.brightness',
+            tomId: 'imageAdjust.brightness',
             value: _brightness,
             min: -100,
             max: 100,
             onChanged: (v) => setState(() => _brightness = v),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           _buildAdjustmentSlider(
-            tomId: 'demo05.imageAdjust.contrast',
+            tomId: 'imageAdjust.contrast',
             value: _contrast,
             min: -100,
             max: 100,
             onChanged: (v) => setState(() => _contrast = v),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           _buildAdjustmentSlider(
-            tomId: 'demo05.imageAdjust.saturation',
+            tomId: 'imageAdjust.saturation',
             value: _saturation,
             min: -100,
             max: 100,
             onChanged: (v) => setState(() => _saturation = v),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           _buildAdjustmentSlider(
-            tomId: 'demo05.imageAdjust.exposure',
+            tomId: 'imageAdjust.exposure',
             value: _exposure,
             min: -100,
             max: 100,
             onChanged: (v) => setState(() => _exposure = v),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
           TomCenter(
             child: TomFilledButton(
               tonal: true,
-              tomId: 'demo05.imageAdjust.reset',
+              tomId: 'imageAdjust.reset',
               onPressed: () {
                 setState(() {
                   _brightness = 0;
@@ -808,10 +809,10 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 
   Widget _buildAclSliderSection() {
     return _DemoCard(
-      tomId: 'demo05.aclSlider',
+      tomId: 'aclSlider',
       child: AclBuilder()
           // Row 1: Label + Slider
-          .append(TomText(tomId: 'demo05.aclSlider.sliderLabel'))
+          .append(TomText(tomId: 'aclSlider.sliderLabel'))
           .append(
             TomSlider(
               value: _aclSlider,
@@ -835,7 +836,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           )
           .newRow(dist: 16)
           // Row 2: Label + Range slider
-          .append(TomText(tomId: 'demo05.aclSlider.rangeLabel'))
+          .append(TomText(tomId: 'aclSlider.rangeLabel'))
           .append(
             TomRangeSlider(
               values: _aclRange,
@@ -853,7 +854,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           .expandX()
           .newRow(dist: 16)
           // Row 3: Label + Cupertino slider
-          .append(TomText(tomId: 'demo05.aclSlider.cupertinoLabel'))
+          .append(TomText(tomId: 'aclSlider.cupertinoLabel'))
           .append(
             TomCupertinoSlider(
               value: _aclCupertino,
@@ -875,7 +876,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           // Row 4: Action buttons
           .append(
             TomTextButton(
-              tomId: 'demo05.aclSlider.reset',
+              tomId: 'aclSlider.reset',
               onPressed: () {
                 setState(() {
                   _aclSlider = 50;
@@ -888,7 +889,7 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
           .gap()
           .append(
             TomFilledButton(
-              tomId: 'demo05.aclSlider.apply',
+              tomId: 'aclSlider.apply',
               onPressed: () {},
             ),
             dist: 8,
@@ -903,15 +904,15 @@ class _SliderDemoContentState extends State<_SliderDemoContent> {
 // =============================================================================
 
 /// Section header widget for demo sections.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -923,14 +924,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -948,17 +949,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       elevation: 2,
@@ -977,11 +978,11 @@ class _DemoCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TomIcon(
-                    tomId: '$tomId.icon',
+                    tomId: tomId,
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const TomSizedBox(width: 12),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1003,9 +1004,9 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             TomDivider(color: theme.colorScheme.outlineVariant),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],

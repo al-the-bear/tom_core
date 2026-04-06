@@ -15,17 +15,18 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Resource Resolution demo.
-class ResourceResolutionDemo extends StatelessWidget {
-  const ResourceResolutionDemo({super.key});
+class ResourceResolutionDemo extends TomStatelessWidget {
+  ResourceResolutionDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _ResourceResolutionDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _ResourceResolutionDemoContent();
+
   }
 }
 
-class _ResourceResolutionDemoContent extends StatefulWidget {
-  const _ResourceResolutionDemoContent();
+class _ResourceResolutionDemoContent extends TomStatefulWidget {
+  _ResourceResolutionDemoContent();
 
   @override
   State<_ResourceResolutionDemoContent> createState() =>
@@ -33,7 +34,7 @@ class _ResourceResolutionDemoContent extends StatefulWidget {
 }
 
 class _ResourceResolutionDemoContentState
-    extends State<_ResourceResolutionDemoContent> {
+    extends TomState<_ResourceResolutionDemoContent> {
   // State for toggle demos
   bool _switchValue1 = true;
   bool _switchValue2 = false;
@@ -41,7 +42,7 @@ class _ResourceResolutionDemoContentState
   bool _checkboxValue2 = false;
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -49,46 +50,46 @@ class _ResourceResolutionDemoContentState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Introduction
-            _SectionHeader(tomId: 'demo21.section.intro'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.intro'),
+            TomSizedBox(height: 16),
             _buildIntroCard(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 1: Container Parameters
-            _SectionHeader(tomId: 'demo21.section.container'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.container'),
+            TomSizedBox(height: 16),
             _buildContainerSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Text Style Parameters
-            _SectionHeader(tomId: 'demo21.section.textStyle'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.textStyle'),
+            TomSizedBox(height: 16),
             _buildTextStyleSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Color Parameters
-            _SectionHeader(tomId: 'demo21.section.colors'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.colors'),
+            TomSizedBox(height: 16),
             _buildColorSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: Numeric Parameters
-            _SectionHeader(tomId: 'demo21.section.numeric'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.numeric'),
+            TomSizedBox(height: 16),
             _buildNumericSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Toggle Widget Colors
-            _SectionHeader(tomId: 'demo21.section.toggle'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.toggle'),
+            TomSizedBox(height: 16),
             _buildToggleSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 6: Type Lookup Coverage
-            _SectionHeader(tomId: 'demo21.section.lookup'),
-            const TomSizedBox(height: 16),
+            _SectionHeader(tomId: 'section.lookup'),
+            TomSizedBox(height: 16),
             _buildLookupCoverageSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -101,13 +102,13 @@ class _ResourceResolutionDemoContentState
 
   Widget _buildIntroCard() {
     return _DemoCard(
-      tomId: 'demo21.intro',
+      tomId: 'intro',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo21.intro.explanation'),
-          const TomSizedBox(height: 12),
-          TomText(tomId: 'demo21.intro.formats'),
+          TomText(tomId: 'intro.explanation'),
+          TomSizedBox(height: 12),
+          TomText(tomId: 'intro.formats'),
         ],
       ),
     );
@@ -123,68 +124,68 @@ class _ResourceResolutionDemoContentState
       children: [
         // Container with padding from resources
         _DemoCard(
-          tomId: 'demo21.paddingDemo',
+          tomId: 'paddingDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.paddingDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'paddingDemo.info'),
+              TomSizedBox(height: 12),
               TomContainer(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: TomContainer(
-                  tomId: 'demo21.paddedBox',
+                  tomId: 'paddedBox',
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: TomText(tomId: 'demo21.paddedBox.content'),
+                  child: TomText(tomId: 'paddedBox.content'),
                 ),
               ),
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Container with dimensions from resources
         _DemoCard(
-          tomId: 'demo21.sizeDemo',
+          tomId: 'sizeDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.sizeDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'sizeDemo.info'),
+              TomSizedBox(height: 12),
               TomContainer(
-                tomId: 'demo21.sizedBox',
+                tomId: 'sizedBox',
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: TomCenter(child: TomText(tomId: 'demo21.sizedBox.content')),
+                child: TomCenter(child: TomText(tomId: 'sizedBox.content')),
               ),
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Container with margin from resources
         _DemoCard(
-          tomId: 'demo21.marginDemo',
+          tomId: 'marginDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.marginDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'marginDemo.info'),
+              TomSizedBox(height: 12),
               TomContainer(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 padding: const EdgeInsets.all(4),
                 child: TomContainer(
-                  tomId: 'demo21.marginedBox',
+                  tomId: 'marginedBox',
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.tertiaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: TomText(tomId: 'demo21.marginedBox.content'),
+                  child: TomText(tomId: 'marginedBox.content'),
                 ),
               ),
             ],
@@ -200,37 +201,37 @@ class _ResourceResolutionDemoContentState
 
   Widget _buildTextStyleSection() {
     return _DemoCard(
-      tomId: 'demo21.textStyleDemo',
+      tomId: 'textStyleDemo',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo21.textStyleDemo.info'),
-          const TomSizedBox(height: 16),
+          TomText(tomId: 'textStyleDemo.info'),
+          TomSizedBox(height: 16),
 
           // Styled text 1: Large bold blue
           TomAnimatedDefaultTextStyle(
-            tomId: 'demo21.styledText1',
+            tomId: 'styledText1',
             style: const TextStyle(fontSize: 12), // Fallback if no resource
             duration: const Duration(milliseconds: 300),
-            child: TomText(tomId: 'demo21.styledText1.content'),
+            child: TomText(tomId: 'styledText1.content'),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Styled text 2: Italic purple
           TomAnimatedDefaultTextStyle(
-            tomId: 'demo21.styledText2',
+            tomId: 'styledText2',
             style: const TextStyle(fontSize: 12),
             duration: const Duration(milliseconds: 300),
-            child: TomText(tomId: 'demo21.styledText2.content'),
+            child: TomText(tomId: 'styledText2.content'),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Styled text 3: Spaced green
           TomAnimatedDefaultTextStyle(
-            tomId: 'demo21.styledText3',
+            tomId: 'styledText3',
             style: const TextStyle(fontSize: 12),
             duration: const Duration(milliseconds: 300),
-            child: TomText(tomId: 'demo21.styledText3.content'),
+            child: TomText(tomId: 'styledText3.content'),
           ),
         ],
       ),
@@ -247,80 +248,80 @@ class _ResourceResolutionDemoContentState
       children: [
         // Icon colors
         _DemoCard(
-          tomId: 'demo21.iconColorDemo',
+          tomId: 'iconColorDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.iconColorDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'iconColorDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 children: [
-                  TomIcon(tomId: 'demo21.coloredIcon1', size: 32),
-                  const TomSizedBox(width: 16),
-                  TomIcon(tomId: 'demo21.coloredIcon2', size: 32),
-                  const TomSizedBox(width: 16),
-                  TomIcon(tomId: 'demo21.coloredIcon3', size: 32),
-                  const TomSizedBox(width: 16),
-                  TomIcon(tomId: 'demo21.coloredIcon4', size: 32),
+                  TomIcon(tomId: 'coloredIcon1', size: 32),
+                  TomSizedBox(width: 16),
+                  TomIcon(tomId: 'coloredIcon2', size: 32),
+                  TomSizedBox(width: 16),
+                  TomIcon(tomId: 'coloredIcon3', size: 32),
+                  TomSizedBox(width: 16),
+                  TomIcon(tomId: 'coloredIcon4', size: 32),
                 ],
               ),
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Container colors from resources
         _DemoCard(
-          tomId: 'demo21.containerColorDemo',
+          tomId: 'containerColorDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.containerColorDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'containerColorDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 children: [
                   TomExpanded(
                     child: TomContainer(
-                      tomId: 'demo21.colorBox1',
+                      tomId: 'colorBox1',
                       height: 56,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: TomCenter(
                         child: TomText(
-                          tomId: 'demo21.colorBox1.content',
+                          tomId: 'colorBox1.content',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
                   ),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomContainer(
-                      tomId: 'demo21.colorBox2',
+                      tomId: 'colorBox2',
                       height: 56,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: TomCenter(
                         child: TomText(
-                          tomId: 'demo21.colorBox2.content',
+                          tomId: 'colorBox2.content',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
                   ),
-                  const TomSizedBox(width: 12),
+                  TomSizedBox(width: 12),
                   TomExpanded(
                     child: TomContainer(
-                      tomId: 'demo21.colorBox3',
+                      tomId: 'colorBox3',
                       height: 56,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: TomCenter(
                         child: TomText(
-                          tomId: 'demo21.colorBox3.content',
+                          tomId: 'colorBox3.content',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
@@ -331,25 +332,25 @@ class _ResourceResolutionDemoContentState
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Progress indicator colors
         _DemoCard(
-          tomId: 'demo21.progressColorDemo',
+          tomId: 'progressColorDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.progressColorDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'progressColorDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 children: [
-                  TomCircularProgressIndicator(tomId: 'demo21.progress1', value: 0.7),
-                  const TomSizedBox(width: 24),
-                  TomCircularProgressIndicator(tomId: 'demo21.progress2', value: 0.5),
-                  const TomSizedBox(width: 24),
+                  TomCircularProgressIndicator(tomId: 'progress1', value: 0.7),
+                  TomSizedBox(width: 24),
+                  TomCircularProgressIndicator(tomId: 'progress2', value: 0.5),
+                  TomSizedBox(width: 24),
                   TomExpanded(
                     child: TomLinearProgressIndicator(
-                      tomId: 'demo21.progress3',
+                      tomId: 'progress3',
                       value: 0.6,
                       minHeight: 10,
                     ),
@@ -373,40 +374,40 @@ class _ResourceResolutionDemoContentState
       children: [
         // Card elevation
         _DemoCard(
-          tomId: 'demo21.elevationDemo',
+          tomId: 'elevationDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.elevationDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'elevationDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 children: [
                   TomExpanded(
                     child: TomCard(
-                      tomId: 'demo21.card1',
+                      tomId: 'card1',
                       child: TomPadding(
                         padding: const EdgeInsets.all(16),
-                        child: TomText(tomId: 'demo21.card1.content'),
+                        child: TomText(tomId: 'card1.content'),
                       ),
                     ),
                   ),
-                  const TomSizedBox(width: 16),
+                  TomSizedBox(width: 16),
                   TomExpanded(
                     child: TomCard(
-                      tomId: 'demo21.card2',
+                      tomId: 'card2',
                       child: TomPadding(
                         padding: const EdgeInsets.all(16),
-                        child: TomText(tomId: 'demo21.card2.content'),
+                        child: TomText(tomId: 'card2.content'),
                       ),
                     ),
                   ),
-                  const TomSizedBox(width: 16),
+                  TomSizedBox(width: 16),
                   TomExpanded(
                     child: TomCard(
-                      tomId: 'demo21.card3',
+                      tomId: 'card3',
                       child: TomPadding(
                         padding: const EdgeInsets.all(16),
-                        child: TomText(tomId: 'demo21.card3.content'),
+                        child: TomText(tomId: 'card3.content'),
                       ),
                     ),
                   ),
@@ -415,71 +416,71 @@ class _ResourceResolutionDemoContentState
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Icon sizes
         _DemoCard(
-          tomId: 'demo21.iconSizeDemo',
+          tomId: 'iconSizeDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.iconSizeDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'iconSizeDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  TomIcon(tomId: 'demo21.sizedIcon1'),
-                  const TomSizedBox(width: 16),
-                  TomIcon(tomId: 'demo21.sizedIcon2'),
-                  const TomSizedBox(width: 16),
-                  TomIcon(tomId: 'demo21.sizedIcon3'),
+                  TomIcon(tomId: 'sizedIcon1'),
+                  TomSizedBox(width: 16),
+                  TomIcon(tomId: 'sizedIcon2'),
+                  TomSizedBox(width: 16),
+                  TomIcon(tomId: 'sizedIcon3'),
                 ],
               ),
             ],
           ),
         ),
-        const TomSizedBox(height: 16),
+        TomSizedBox(height: 16),
 
         // Opacity
         _DemoCard(
-          tomId: 'demo21.opacityDemo',
+          tomId: 'opacityDemo',
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(tomId: 'demo21.opacityDemo.info'),
-              const TomSizedBox(height: 12),
+              TomText(tomId: 'opacityDemo.info'),
+              TomSizedBox(height: 12),
               TomRow(
                 children: [
                   TomAnimatedOpacity(
-                    tomId: 'demo21.opacity1',
+                    tomId: 'opacity1',
                     duration: const Duration(milliseconds: 300),
                     child: TomContainer(
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'demo21.opacity1.content')),
+                      child: TomCenter(child: TomText(tomId: 'opacity1.content')),
                     ),
                   ),
-                  const TomSizedBox(width: 16),
+                  TomSizedBox(width: 16),
                   TomAnimatedOpacity(
-                    tomId: 'demo21.opacity2',
+                    tomId: 'opacity2',
                     duration: const Duration(milliseconds: 300),
                     child: TomContainer(
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'demo21.opacity2.content')),
+                      child: TomCenter(child: TomText(tomId: 'opacity2.content')),
                     ),
                   ),
-                  const TomSizedBox(width: 16),
+                  TomSizedBox(width: 16),
                   TomAnimatedOpacity(
-                    tomId: 'demo21.opacity3',
+                    tomId: 'opacity3',
                     duration: const Duration(milliseconds: 300),
                     child: TomContainer(
                       width: 60,
                       height: 60,
                       color: Theme.of(context).colorScheme.primary,
-                      child: TomCenter(child: TomText(tomId: 'demo21.opacity3.content')),
+                      child: TomCenter(child: TomText(tomId: 'opacity3.content')),
                     ),
                   ),
                 ],
@@ -497,53 +498,53 @@ class _ResourceResolutionDemoContentState
 
   Widget _buildToggleSection() {
     return _DemoCard(
-      tomId: 'demo21.toggleDemo',
+      tomId: 'toggleDemo',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo21.toggleDemo.info'),
-          const TomSizedBox(height: 16),
+          TomText(tomId: 'toggleDemo.info'),
+          TomSizedBox(height: 16),
 
           // Switches with colors from resources
           TomRow(
             children: [
               TomSwitch(
-                tomId: 'demo21.switch1',
+                tomId: 'switch1',
                 value: _switchValue1,
                 onChanged: (v) => setState(() => _switchValue1 = v),
               ),
-              const TomSizedBox(width: 8),
-              TomText(tomId: 'demo21.switch1.label'),
-              const TomSizedBox(width: 32),
+              TomSizedBox(width: 8),
+              TomText(tomId: 'switch1.label'),
+              TomSizedBox(width: 32),
               TomSwitch(
-                tomId: 'demo21.switch2',
+                tomId: 'switch2',
                 value: _switchValue2,
                 onChanged: (v) => setState(() => _switchValue2 = v),
               ),
-              const TomSizedBox(width: 8),
-              TomText(tomId: 'demo21.switch2.label'),
+              TomSizedBox(width: 8),
+              TomText(tomId: 'switch2.label'),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Checkboxes with colors from resources
           TomRow(
             children: [
               TomCheckbox(
-                tomId: 'demo21.checkbox1',
+                tomId: 'checkbox1',
                 value: _checkboxValue1,
                 onChanged: (v) => setState(() => _checkboxValue1 = v ?? false),
               ),
-              const TomSizedBox(width: 8),
-              TomText(tomId: 'demo21.checkbox1.label'),
-              const TomSizedBox(width: 32),
+              TomSizedBox(width: 8),
+              TomText(tomId: 'checkbox1.label'),
+              TomSizedBox(width: 32),
               TomCheckbox(
-                tomId: 'demo21.checkbox2',
+                tomId: 'checkbox2',
                 value: _checkboxValue2,
                 onChanged: (v) => setState(() => _checkboxValue2 = v ?? false),
               ),
-              const TomSizedBox(width: 8),
-              TomText(tomId: 'demo21.checkbox2.label'),
+              TomSizedBox(width: 8),
+              TomText(tomId: 'checkbox2.label'),
             ],
           ),
         ],
@@ -573,23 +574,23 @@ class _ResourceResolutionDemoContentState
         : '#${colorValue.toARGB32().toRadixString(16).toUpperCase()}';
 
     return _DemoCard(
-      tomId: 'demo21.lookupDemo',
+      tomId: 'lookupDemo',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(tomId: 'demo21.lookupDemo.info'),
-          const TomSizedBox(height: 12),
+          TomText(tomId: 'lookupDemo.info'),
+          TomSizedBox(height: 12),
           if (iconValue != null)
             TomRow(
               children: [
                 TomIcon(icon: iconValue, size: 18, color: colorValue),
-                const TomSizedBox(width: 8),
+                TomSizedBox(width: 8),
                 TomText(text: 'icon resolved: $iconValue'),
               ],
             )
           else
-            const TomText(text: 'icon resolved: null'),
-          const TomSizedBox(height: 8),
+            TomText(text: 'icon resolved: null'),
+          TomSizedBox(height: 8),
           TomText(text: 'text: $textValue'),
           TomText(text: 'color: $colorHex'),
           TomText(text: 'double: $doubleValue'),
@@ -609,13 +610,13 @@ class _ResourceResolutionDemoContentState
 // =============================================================================
 
 /// Section header with title and subtitle from resources.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({required this.tomId});
+  _SectionHeader({required this.tomId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -627,14 +628,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -652,17 +653,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card with title, subtitle, and icon from resources.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 8),
@@ -673,8 +674,8 @@ class _DemoCard extends StatelessWidget {
           children: [
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon', size: 24),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId, size: 24),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomColumn(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +697,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             child,
           ],
         ),

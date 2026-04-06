@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -175,8 +176,10 @@ class TomTextField extends TomInputBase {
     this.undoController,
     this.label,
     this.hint,
-    this.buildCounter,
-  }) {
+    InputCounterWidgetBuilder? buildCounter,
+  }) : buildCounter = buildCounter != null
+           ? InScopeBuilder(scope: scope).wrapCounter(buildCounter)
+           : null {
     _resolvedLabel = label ?? resolveResourceOrFail('label');
     _resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
     _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
@@ -593,12 +596,15 @@ class TomAutocomplete<T extends Object> extends TomInputBase {
     super.scope,
     required this.optionsBuilder,
     this.displayStringForOption = RawAutocomplete.defaultStringForOption,
-    this.fieldViewBuilder = _defaultFieldViewBuilder,
+    AutocompleteFieldViewBuilder fieldViewBuilder = _defaultFieldViewBuilder,
     this.onSelected,
-    this.optionsViewBuilder,
+    AutocompleteOptionsViewBuilder<T>? optionsViewBuilder,
     this.optionsViewOpenDirection = OptionsViewOpenDirection.down,
     this.initialValue,
-  });
+  }) : fieldViewBuilder = InScopeBuilder(scope: scope).wrap4(fieldViewBuilder),
+       optionsViewBuilder = optionsViewBuilder != null
+           ? InScopeBuilder(scope: scope).wrap3(optionsViewBuilder)
+           : null;
 
   static Widget _defaultFieldViewBuilder(
     BuildContext context,
@@ -666,8 +672,8 @@ class TomSearchAnchor extends TomInputBase {
     super.scope,
     this.isFullScreen = false,
     this.searchController,
-    this.builder,
-    required this.suggestionsBuilder,
+    SearchAnchorChildBuilder? builder,
+    required SuggestionsBuilder suggestionsBuilder,
     this.viewLeading,
     this.viewTrailing,
     this.viewHintText,
@@ -682,7 +688,10 @@ class TomSearchAnchor extends TomInputBase {
     this.viewConstraints,
     this.textCapitalization,
     this.viewOnSubmitted,
-  }) {
+  }) : builder = builder != null
+           ? InScopeBuilder(scope: scope).wrap2(builder)
+           : null,
+       suggestionsBuilder = InScopeBuilder(scope: scope).wrap2(suggestionsBuilder) {
     _resolvedHint = viewHintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
     _resolvedViewBackgroundColor = viewBackgroundColor ?? resolveColorOrNull('viewBackgroundColor');
     _resolvedViewElevation = viewElevation ?? resolveDoubleOrNull('viewElevation');

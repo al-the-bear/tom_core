@@ -35,6 +35,12 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   /// such as when creating widgets outside of a TomScope zone.
   final TomScope? scope;
 
+  /// The scope that was active when this widget was constructed.
+  ///
+  /// Captured at construction time so that [build] can re-enter the same
+  /// scope zone even though Flutter calls [build] outside the original zone.
+  final TomScope constructionScope;
+
   /// The resolved canonical resource base path for this node.
   ///
   /// Computed once at construction time as `<scopePath>.<tomId>` where
@@ -44,7 +50,8 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   final String? basePath;
 
   TomNodeBase({super.key, this.tomId, this.tomGroup, this.scope})
-      : basePath = _resolveBasePath(tomId, scope) {
+      : constructionScope = scope ?? TomScope.current,
+        basePath = _resolveBasePath(tomId, scope) {
     tomGroup?.register(this);
   }
 

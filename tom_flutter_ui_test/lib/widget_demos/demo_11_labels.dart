@@ -14,30 +14,31 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Main entry point for the Labels demo.
-class LabelsDemo extends StatelessWidget {
-  const LabelsDemo({super.key});
+class LabelsDemo extends TomStatelessWidget {
+  LabelsDemo({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _LabelsDemoContent();
+  Widget buildContent(BuildContext context) {
+    return _LabelsDemoContent();
+
   }
 }
 
-class _LabelsDemoContent extends StatefulWidget {
-  const _LabelsDemoContent();
+class _LabelsDemoContent extends TomStatefulWidget {
+  _LabelsDemoContent();
 
   @override
   State<_LabelsDemoContent> createState() => _LabelsDemoContentState();
 }
 
-class _LabelsDemoContentState extends State<_LabelsDemoContent> {
+class _LabelsDemoContentState extends TomState<_LabelsDemoContent> {
   // State for interactive demos
   final Set<String> _selectedFilterChips = {'dart', 'flutter'};
   String _selectedChoiceChip = 'medium';
   final Set<String> _selectedInputChips = {'tag1'};
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     return TomSingleChildScrollView(
       child: TomPadding(
         padding: const EdgeInsets.all(24),
@@ -46,53 +47,53 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
           children: [
             // Section 1: Text Styles
             _SectionHeader(
-              tomId: 'demo11.section.text',
+              tomId: 'section.text',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildTextSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 2: Rich & Selectable Text
             _SectionHeader(
-              tomId: 'demo11.section.rich',
+              tomId: 'section.rich',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildRichTextSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildSelectableTextSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 3: Badges
             _SectionHeader(
-              tomId: 'demo11.section.badge',
+              tomId: 'section.badge',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildBadgeSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 4: List Tiles
             _SectionHeader(
-              tomId: 'demo11.section.listTile',
+              tomId: 'section.listTile',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildListTileSection(),
-            const TomSizedBox(height: 32),
+            TomSizedBox(height: 32),
 
             // Section 5: Chips (with ACL demo)
             _SectionHeader(
-              tomId: 'demo11.section.chips',
+              tomId: 'section.chips',
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             _buildChipSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildFilterChipSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildChoiceChipSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildActionChipSection(),
-            const TomSizedBox(height: 24),
+            TomSizedBox(height: 24),
             _buildInputChipSection(),
-            const TomSizedBox(height: 48),
+            TomSizedBox(height: 48),
           ],
         ),
       ),
@@ -106,60 +107,60 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildTextSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.text',
+      tomId: 'text',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Display styles
           TomText(
-            tomId: 'demo11.text.display',
+            tomId: 'text.display',
             style: theme.textTheme.displaySmall,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Headline styles
           TomText(
-            tomId: 'demo11.text.headline',
+            tomId: 'text.headline',
             style: theme.textTheme.headlineMedium,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Title styles
           TomText(
-            tomId: 'demo11.text.titleStyle',
+            tomId: 'text.titleStyle',
             style: theme.textTheme.titleLarge,
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
 
           // Body styles
           TomText(
-            tomId: 'demo11.text.body',
+            tomId: 'text.body',
             style: theme.textTheme.bodyLarge,
           ),
-          const TomSizedBox(height: 8),
+          TomSizedBox(height: 8),
           TomText(
-            tomId: 'demo11.text.bodySmall',
+            tomId: 'text.bodySmall',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Label styles
           TomText(
-            tomId: 'demo11.text.labelLarge',
+            tomId: 'text.labelLarge',
             style: theme.textTheme.labelLarge?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
-          const TomSizedBox(height: 4),
+          TomSizedBox(height: 4),
           TomText(
-            tomId: 'demo11.text.labelSmall',
+            tomId: 'text.labelSmall',
             style: theme.textTheme.labelSmall?.copyWith(
               letterSpacing: 1.5,
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Styled text variants
           TomWrap(
@@ -167,37 +168,37 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             runSpacing: 8,
             children: [
               TomText(
-                tomId: 'demo11.text.primary',
+                tomId: 'text.primary',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               TomText(
-                tomId: 'demo11.text.error',
+                tomId: 'text.error',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.error,
                 ),
               ),
               TomText(
-                tomId: 'demo11.text.italic',
+                tomId: 'text.italic',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontStyle: FontStyle.italic,
                 ),
               ),
               TomText(
-                tomId: 'demo11.text.underline',
+                tomId: 'text.underline',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   decoration: TextDecoration.underline,
                 ),
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Overflow handling
           TomText(
-            tomId: 'demo11.text.overflow',
+            tomId: 'text.overflow',
             overflow: TextOverflow.ellipsis,
             maxLines: 1,
             style: theme.textTheme.bodyMedium,
@@ -214,7 +215,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildRichTextSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.richText',
+      tomId: 'richText',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -256,7 +257,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Rich text with links simulation
           TomRichText(
@@ -283,7 +284,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               ],
             ),
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Rich text with multiple font sizes
           TomRichText(
@@ -322,30 +323,30 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildSelectableTextSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.selectableText',
+      tomId: 'selectableText',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Basic selectable text
           TomSelectableText(
-            tomId: 'demo11.selectableText.basic',
+            tomId: 'selectableText.basic',
             style: theme.textTheme.bodyLarge,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Selectable text with custom cursor
           TomSelectableText(
-            tomId: 'demo11.selectableText.cursor',
+            tomId: 'selectableText.cursor',
             style: theme.textTheme.bodyMedium,
             cursorColor: theme.colorScheme.secondary,
             cursorWidth: 3,
             showCursor: true,
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Multi-line selectable
           TomSelectableText(
-            tomId: 'demo11.selectableText.multiline',
+            tomId: 'selectableText.multiline',
             style: theme.textTheme.bodyMedium,
             maxLines: 3,
             textAlign: TextAlign.justify,
@@ -362,7 +363,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildBadgeSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.badge',
+      tomId: 'badge',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -372,25 +373,25 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             runSpacing: 16,
             children: [
               TomBadge(
-                tomId: 'demo11.badge.notifications',
+                tomId: 'badge.notifications',
                 labelText: '5',
                 child: TomIcon(icon: Icons.notifications_outlined),
               ),
               TomBadge(
-                tomId: 'demo11.badge.messages',
+                tomId: 'badge.messages',
                 labelText: '12',
                 backgroundColor: theme.colorScheme.error,
                 child: TomIcon(icon: Icons.mail_outlined),
               ),
               TomBadge(
-                tomId: 'demo11.badge.cart',
+                tomId: 'badge.cart',
                 labelText: '3',
                 backgroundColor: theme.colorScheme.tertiary,
                 child: TomIcon(icon: Icons.shopping_cart_outlined),
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Large count badge
           TomWrap(
@@ -398,7 +399,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             runSpacing: 16,
             children: [
               TomBadge(
-                tomId: 'demo11.badge.large',
+                tomId: 'badge.large',
                 labelText: '99+',
                 child: TomIcon(icon: Icons.inbox_outlined),
               ),
@@ -407,14 +408,14 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 labelText: '',
                 isLabelVisible: false,
                 child: TomIconButton(
-                  tomId: 'demo11.badge.dot.button',
+                  tomId: 'badge.dot.button',
                   icon: const Icon(Icons.account_circle_outlined),
                   onPressed: () {},
                 ),
               ),
             ],
           ),
-          const TomSizedBox(height: 24),
+          TomSizedBox(height: 24),
 
           // Badges with custom styling
           TomWrap(
@@ -427,7 +428,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 textColor: theme.colorScheme.onPrimaryContainer,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 child: TomText(
-                  tomId: 'demo11.badge.custom.feature',
+                  tomId: 'badge.custom.feature',
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -437,7 +438,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 textColor: theme.colorScheme.onSecondaryContainer,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 child: TomText(
-                  tomId: 'demo11.badge.custom.product',
+                  tomId: 'badge.custom.product',
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -455,32 +456,32 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildListTileSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.listTile',
+      tomId: 'listTile',
       child: TomColumn(
         children: [
           // Basic list tile
           TomListTile(
-            tomId: 'demo11.listTile.basic',
+            tomId: 'listTile.basic',
             titleText: 'Basic List Tile',
-            subtitle: const TomText(text: 'A simple list tile with title and subtitle'),
+            subtitle: TomText(text: 'A simple list tile with title and subtitle'),
             leading: TomIcon(icon: Icons.info_outline),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
 
           // List tile with trailing
           TomListTile(
-            tomId: 'demo11.listTile.trailing',
+            tomId: 'listTile.trailing',
             titleText: 'Settings',
-            subtitle: const TomText(text: 'Configure your preferences'),
+            subtitle: TomText(text: 'Configure your preferences'),
             leading: TomIcon(icon: Icons.settings_outlined),
             trailing: TomIcon(icon: Icons.chevron_right),
             onTap: () {},
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
 
           // Three-line list tile
           TomListTile(
-            tomId: 'demo11.listTile.threeLine',
+            tomId: 'listTile.threeLine',
             titleText: 'John Doe',
             subtitle: TomText(
               text: 'Software Engineer\nAvailable for freelance work',
@@ -497,23 +498,23 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               onPressed: () {},
             ),
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
 
           // Dense list tile
           TomListTile(
-            tomId: 'demo11.listTile.dense',
+            tomId: 'listTile.dense',
             titleText: 'Dense List Tile',
-            subtitle: const TomText(text: 'Compact layout'),
+            subtitle: TomText(text: 'Compact layout'),
             leading: TomIcon(icon: Icons.compress),
             dense: true,
           ),
-          const TomDivider(height: 1),
+          TomDivider(height: 1),
 
           // Selected list tile
           TomListTile(
-            tomId: 'demo11.listTile.selected',
+            tomId: 'listTile.selected',
             titleText: 'Selected Item',
-            subtitle: const TomText(text: 'This tile is selected'),
+            subtitle: TomText(text: 'This tile is selected'),
             leading: TomIcon(icon: Icons.check_circle),
             selected: true,
             selectedColor: theme.colorScheme.primary,
@@ -531,7 +532,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildChipSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.chip',
+      tomId: 'chip',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -541,11 +542,11 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             runSpacing: 8,
             children: [
               TomChip(
-                tomId: 'demo11.chip.basic',
+                tomId: 'chip.basic',
                 labelText: 'Basic Chip',
               ),
               TomChip(
-                tomId: 'demo11.chip.avatar',
+                tomId: 'chip.avatar',
                 labelText: 'With Avatar',
                 avatar: CircleAvatar(
                   radius: 12,
@@ -554,13 +555,13 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 ),
               ),
               TomChip(
-                tomId: 'demo11.chip.delete',
+                tomId: 'chip.delete',
                 labelText: 'Deletable',
                 onDeleted: () {},
               ),
             ],
           ),
-          const TomSizedBox(height: 16),
+          TomSizedBox(height: 16),
 
           // Styled chips
           TomWrap(
@@ -592,23 +593,23 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildFilterChipSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.filterChip',
+      tomId: 'filterChip',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo11.filterChip.instruction',
+            tomId: 'filterChip.instruction',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               TomFilterChip(
-                tomId: 'demo11.filterChip.dart',
+                tomId: 'filterChip.dart',
                 labelText: 'Dart',
                 selected: _selectedFilterChips.contains('dart'),
                 onSelected: (selected) {
@@ -622,7 +623,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 },
               ),
               TomFilterChip(
-                tomId: 'demo11.filterChip.flutter',
+                tomId: 'filterChip.flutter',
                 labelText: 'Flutter',
                 selected: _selectedFilterChips.contains('flutter'),
                 onSelected: (selected) {
@@ -636,7 +637,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 },
               ),
               TomFilterChip(
-                tomId: 'demo11.filterChip.web',
+                tomId: 'filterChip.web',
                 labelText: 'Web',
                 selected: _selectedFilterChips.contains('web'),
                 onSelected: (selected) {
@@ -650,7 +651,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 },
               ),
               TomFilterChip(
-                tomId: 'demo11.filterChip.mobile',
+                tomId: 'filterChip.mobile',
                 labelText: 'Mobile',
                 selected: _selectedFilterChips.contains('mobile'),
                 onSelected: (selected) {
@@ -665,7 +666,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
             text: 'Selected: ${_selectedFilterChips.join(", ")}',
             style: theme.textTheme.bodySmall,
@@ -678,23 +679,23 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
   Widget _buildChoiceChipSection() {
     final theme = Theme.of(context);
     return _DemoCard(
-      tomId: 'demo11.choiceChip',
+      tomId: 'choiceChip',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TomText(
-            tomId: 'demo11.choiceChip.instruction',
+            tomId: 'choiceChip.instruction',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
               TomChoiceChip(
-                tomId: 'demo11.choiceChip.small',
+                tomId: 'choiceChip.small',
                 labelText: 'Small',
                 selected: _selectedChoiceChip == 'small',
                 onSelected: (selected) {
@@ -704,7 +705,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 },
               ),
               TomChoiceChip(
-                tomId: 'demo11.choiceChip.medium',
+                tomId: 'choiceChip.medium',
                 labelText: 'Medium',
                 selected: _selectedChoiceChip == 'medium',
                 onSelected: (selected) {
@@ -714,7 +715,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 },
               ),
               TomChoiceChip(
-                tomId: 'demo11.choiceChip.large',
+                tomId: 'choiceChip.large',
                 labelText: 'Large',
                 selected: _selectedChoiceChip == 'large',
                 onSelected: (selected) {
@@ -725,7 +726,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
               ),
             ],
           ),
-          const TomSizedBox(height: 12),
+          TomSizedBox(height: 12),
           TomText(
             text: 'Selected size: $_selectedChoiceChip',
             style: theme.textTheme.bodySmall,
@@ -737,7 +738,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
 
   Widget _buildActionChipSection() {
     return _DemoCard(
-      tomId: 'demo11.actionChip',
+      tomId: 'actionChip',
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -746,25 +747,25 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
             runSpacing: 8,
             children: [
               TomActionChip(
-                tomId: 'demo11.actionChip.share',
+                tomId: 'actionChip.share',
                 labelText: 'Share',
                 avatar: TomIcon(icon: Icons.share, size: 18),
                 onPressed: () {},
               ),
               TomActionChip(
-                tomId: 'demo11.actionChip.save',
+                tomId: 'actionChip.save',
                 labelText: 'Save',
                 avatar: TomIcon(icon: Icons.bookmark_border, size: 18),
                 onPressed: () {},
               ),
               TomActionChip(
-                tomId: 'demo11.actionChip.copy',
+                tomId: 'actionChip.copy',
                 labelText: 'Copy Link',
                 avatar: TomIcon(icon: Icons.link, size: 18),
                 onPressed: () {},
               ),
               TomActionChip(
-                tomId: 'demo11.actionChip.download',
+                tomId: 'actionChip.download',
                 labelText: 'Download',
                 avatar: TomIcon(icon: Icons.download, size: 18),
                 onPressed: () {},
@@ -784,23 +785,23 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
     return Directionality(
       textDirection: textDirection,
       child: _DemoCard(
-        tomId: 'demo11.inputChip',
+        tomId: 'inputChip',
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TomText(
-              tomId: 'demo11.inputChip.instruction',
+              tomId: 'inputChip.instruction',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 12),
+            TomSizedBox(height: 12),
             TomWrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 TomInputChip(
-                  tomId: 'demo11.inputChip.tag1',
+                  tomId: 'inputChip.tag1',
                   labelText: 'Tag 1',
                   selected: _selectedInputChips.contains('tag1'),
                   onSelected: (selected) {
@@ -817,7 +818,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                   },
                 ),
                 TomInputChip(
-                  tomId: 'demo11.inputChip.tag2',
+                  tomId: 'inputChip.tag2',
                   labelText: 'Tag 2',
                   selected: _selectedInputChips.contains('tag2'),
                   avatar: CircleAvatar(
@@ -838,7 +839,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                   },
                 ),
                 TomInputChip(
-                  tomId: 'demo11.inputChip.tag3',
+                  tomId: 'inputChip.tag3',
                   labelText: 'Tag 3',
                   selected: _selectedInputChips.contains('tag3'),
                   onSelected: (selected) {
@@ -856,7 +857,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                 ),
               ],
             ),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
             // RTL/LTR info
             TomRow(
               children: [
@@ -866,7 +867,7 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
                       : Icons.format_textdirection_l_to_r,
                   size: 16,
                 ),
-                const TomSizedBox(width: 8),
+                TomSizedBox(width: 8),
                 TomText(
                   text: direction == AclDirection.rtl
                       ? 'Right-to-Left layout'
@@ -887,15 +888,15 @@ class _LabelsDemoContentState extends State<_LabelsDemoContent> {
 // =============================================================================
 
 /// Section header with title, subtitle, and gradient divider.
-class _SectionHeader extends StatelessWidget {
+class _SectionHeader extends TomStatelessWidget {
   final String tomId;
 
-  const _SectionHeader({
+  _SectionHeader({
     required this.tomId,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -907,14 +908,14 @@ class _SectionHeader extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const TomSizedBox(height: 4),
+        TomSizedBox(height: 4),
         TomText(
           tomId: '$tomId.subtitle',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const TomSizedBox(height: 8),
+        TomSizedBox(height: 8),
         TomContainer(
           height: 2,
           decoration: BoxDecoration(
@@ -932,17 +933,17 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Demo card widget for individual widget showcases.
-class _DemoCard extends StatelessWidget {
+class _DemoCard extends TomStatelessWidget {
   final String tomId;
   final Widget child;
 
-  const _DemoCard({
+  _DemoCard({
     required this.tomId,
     required this.child,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final theme = Theme.of(context);
     return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
@@ -954,8 +955,8 @@ class _DemoCard extends StatelessWidget {
             // Title row with icon
             TomRow(
               children: [
-                TomIcon(tomId: '$tomId.icon'),
-                const TomSizedBox(width: 12),
+                TomIcon(tomId: tomId),
+                TomSizedBox(width: 12),
                 TomExpanded(
                   child: TomText(
                     tomId: '$tomId.title',
@@ -966,7 +967,7 @@ class _DemoCard extends StatelessWidget {
                 ),
               ],
             ),
-            const TomSizedBox(height: 8),
+            TomSizedBox(height: 8),
             // Description
             TomText(
               tomId: '$tomId.description',
@@ -974,9 +975,9 @@ class _DemoCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const TomSizedBox(height: 16),
-            const TomDivider(),
-            const TomSizedBox(height: 16),
+            TomSizedBox(height: 16),
+            TomDivider(),
+            TomSizedBox(height: 16),
             // Widget showcase area
             child,
           ],
