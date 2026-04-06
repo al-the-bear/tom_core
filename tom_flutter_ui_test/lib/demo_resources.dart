@@ -3299,6 +3299,8 @@ const _demo26CardResources = <String, String>{
 };
 
 const _demo26WidgetResources = <String, String>{
+  // Apply button (root scope)
+  'demo26.apply.label': 'Apply (Rebuild All)',
   // BasicSectionProvider: demo26.basic.*
   'demo26.basic.title.label': 'Basic Section',
   'demo26.basic.description.label': 'This section demonstrates widgets created inside a TomScreenElementsProviderBase. All widgets resolve resources under demo26.basic.',
