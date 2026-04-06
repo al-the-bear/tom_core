@@ -17,11 +17,27 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // Element Providers
 // =============================================================================
 
-/// Top-level provider for the "basic" section.
+/// Root provider for the entire demo.
+///
+/// Scope path: demo26
+class Demo26Provider extends TomScreenElementsProviderBase {
+  Demo26Provider() : super('demo26');
+
+  /// Nested sub-provider: demo26.basic
+  late final basic = BasicSectionProvider(this);
+
+  /// Nested sub-provider: demo26.actions
+  late final actions = ActionsSectionProvider(this);
+
+  /// Nested sub-provider: demo26.composite
+  late final composite = CompositeSectionProvider(this);
+}
+
+/// Provider for the "basic" section.
 ///
 /// Scope path: demo26.basic
 class BasicSectionProvider extends TomScreenElementsProviderBase {
-  BasicSectionProvider([TomScreenElementsProvider? parent])
+  BasicSectionProvider(TomScreenElementsProvider parent)
       : super('basic', parent);
 
   late final title = TomText(
@@ -96,11 +112,12 @@ class MetadataSectionProvider extends TomScreenElementsProviderBase {
   );
 }
 
-/// Standalone provider for the "actions" section (no parent — uses zone scope).
+/// Provider for the "actions" section.
 ///
 /// Scope path: demo26.actions
 class ActionsSectionProvider extends TomScreenElementsProviderBase {
-  ActionsSectionProvider() : super('actions');
+  ActionsSectionProvider(TomScreenElementsProvider parent)
+      : super('actions', parent);
 
   late final saveButton = TomElevatedButton(
     tomId: 'save',
@@ -125,7 +142,8 @@ class ActionsSectionProvider extends TomScreenElementsProviderBase {
 ///
 /// Scope path: demo26.composite
 class CompositeSectionProvider extends TomScreenElementsProviderBase {
-  CompositeSectionProvider() : super('composite');
+  CompositeSectionProvider(TomScreenElementsProvider parent)
+      : super('composite', parent);
 
   late final header = TomText(
     tomId: 'header',
@@ -196,10 +214,8 @@ class _ScopeActionDemoContent extends TomStatefulWidget {
 
 class _ScopeActionDemoContentState
     extends TomState<_ScopeActionDemoContent> {
-  // Providers created once, reused across rebuilds
-  late final demo26 = BasicSectionProvider();
-  late final _actionsProvider = ActionsSectionProvider();
-  late final _compositeProvider = CompositeSectionProvider();
+  // Single root provider — all sections nested as fields
+  late final demo26 = Demo26Provider();
 
   @override
   Widget buildContent(BuildContext context) {
@@ -249,15 +265,15 @@ class _ScopeActionDemoContentState
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          demo26.title,
+          demo26.basic.title,
           TomSizedBox(height: 8),
-          demo26.description,
+          demo26.basic.description,
           TomSizedBox(height: 16),
           TomRow(
             children: [
-              demo26.actionButton,
+              demo26.basic.actionButton,
               TomSizedBox(width: 12),
-              demo26.infoButton,
+              demo26.basic.infoButton,
             ],
           ),
         ],
@@ -275,9 +291,9 @@ class _ScopeActionDemoContentState
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              demo26.title,
+              demo26.basic.title,
               TomSizedBox(height: 8),
-              demo26.description,
+              demo26.basic.description,
             ],
           ),
         ),
@@ -289,11 +305,11 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                demo26.details.label,
+                demo26.basic.details.label,
                 TomSizedBox(height: 8),
-                demo26.details.statusChip,
+                demo26.basic.details.statusChip,
                 TomSizedBox(height: 8),
-                demo26.details.editButton,
+                demo26.basic.details.editButton,
               ],
             ),
           ),
@@ -306,9 +322,9 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                demo26.details.metadata.createdLabel,
+                demo26.basic.details.metadata.createdLabel,
                 TomSizedBox(height: 4),
-                demo26.details.metadata.modifiedLabel,
+                demo26.basic.details.metadata.modifiedLabel,
               ],
             ),
           ),
@@ -323,11 +339,11 @@ class _ScopeActionDemoContentState
       child: TomRow(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          _actionsProvider.deleteButton,
+          demo26.actions.deleteButton,
           const Spacer(),
-          _actionsProvider.cancelButton,
+          demo26.actions.cancelButton,
           TomSizedBox(width: 12),
-          _actionsProvider.saveButton,
+          demo26.actions.saveButton,
         ],
       ),
     );
@@ -339,12 +355,12 @@ class _ScopeActionDemoContentState
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _compositeProvider.header,
+          demo26.composite.header,
           TomSizedBox(height: 16),
           // Address sub-section via TomAclBuilder
           TomAclBuilder<AddressSubProvider>(
             id: 'addressAcl',
-            elementProvider: _compositeProvider.address,
+            elementProvider: demo26.composite.address,
             title: 'Address',
           )
               .append((p) => p.streetField)
@@ -355,7 +371,7 @@ class _ScopeActionDemoContentState
           // Contact sub-section via TomAclBuilder
           TomAclBuilder<ContactSubProvider>(
             id: 'contactAcl',
-            elementProvider: _compositeProvider.contact,
+            elementProvider: demo26.composite.contact,
             title: 'Contact',
           )
               .append((p) => p.emailField)
@@ -370,14 +386,15 @@ class _ScopeActionDemoContentState
   Widget _buildScopePathVisualization(BuildContext context) {
     final theme = Theme.of(context);
     final entries = <(String, String)>[
-      ('BasicSectionProvider', demo26.getScopePath()),
-      ('DetailsSectionProvider', demo26.details.getScopePath()),
+      ('Demo26Provider', demo26.getScopePath()),
+      ('BasicSectionProvider', demo26.basic.getScopePath()),
+      ('DetailsSectionProvider', demo26.basic.details.getScopePath()),
       ('MetadataSectionProvider',
-          demo26.details.metadata.getScopePath()),
-      ('ActionsSectionProvider', _actionsProvider.getScopePath()),
-      ('CompositeSectionProvider', _compositeProvider.getScopePath()),
-      ('AddressSubProvider', _compositeProvider.address.getScopePath()),
-      ('ContactSubProvider', _compositeProvider.contact.getScopePath()),
+          demo26.basic.details.metadata.getScopePath()),
+      ('ActionsSectionProvider', demo26.actions.getScopePath()),
+      ('CompositeSectionProvider', demo26.composite.getScopePath()),
+      ('AddressSubProvider', demo26.composite.address.getScopePath()),
+      ('ContactSubProvider', demo26.composite.contact.getScopePath()),
     ];
 
     return _DemoCard(
