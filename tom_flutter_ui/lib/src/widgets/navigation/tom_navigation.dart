@@ -55,7 +55,7 @@ class TomNavigationRail extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     this.selectedIndex,
-    this.onDestinationSelected,
+    ValueChanged<int>? onDestinationSelected,
     required this.destinations,
     this.leading,
     this.trailing,
@@ -73,7 +73,7 @@ class TomNavigationRail extends TomNavigationBase {
     this.selectedIconTheme,
     this.unselectedIconTheme,
     this.extended = false,
-  }) {
+  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex = selectedIndex ?? resolveIntOrNull('selectedIndex');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
@@ -168,7 +168,7 @@ class TomNavigationBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     this.selectedIndex = 0,
-    this.onDestinationSelected,
+    ValueChanged<int>? onDestinationSelected,
     required this.destinations,
     this.backgroundColor,
     this.indicatorColor,
@@ -182,7 +182,7 @@ class TomNavigationBar extends TomNavigationBase {
     this.labelTextStyle,
     this.iconTheme,
     this.overlayColor,
-  }) {
+  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex = resolveIntOrNull('selectedIndex') ?? selectedIndex;
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
@@ -289,14 +289,14 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     this.unselectedLabelStyle,
     this.dragStartBehavior,
     this.overlayColor,
-    this.onTap,
+    ValueChanged<int>? onTap,
     this.automaticIndicatorColorAdjustment = true,
     this.physics,
     this.splashFactory,
     this.splashBorderRadius,
     this.tabAlignment,
     this.textScaler,
-  }) {
+  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
     _resolvedIsScrollable = resolveBoolOrNull('isScrollable') ?? isScrollable;
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
     _resolvedIndicatorColor = indicatorColor ?? resolveColorOrNull('indicatorColor');
@@ -398,7 +398,7 @@ class TomNavigationDrawer extends TomNavigationBase {
     super.scope,
     required this.children,
     this.selectedIndex,
-    this.onDestinationSelected,
+    ValueChanged<int>? onDestinationSelected,
     this.backgroundColor,
     this.shadowColor,
     this.surfaceTintColor,
@@ -406,7 +406,7 @@ class TomNavigationDrawer extends TomNavigationBase {
     this.indicatorColor,
     this.indicatorShape,
     this.tilePadding,
-  }) {
+  }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex = selectedIndex ?? resolveIntOrNull('selectedIndex');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
@@ -552,7 +552,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
     super.scope,
     required this.items,
     this.currentIndex = 0,
-    this.onTap,
+    ValueChanged<int>? onTap,
     this.elevation,
     this.type,
     this.fixedColor,
@@ -571,7 +571,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
     this.enableFeedback,
     this.landscapeLayout,
     this.mouseCursor,
-  }) {
+  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
     _resolvedCurrentIndex = resolveIntOrNull('currentIndex') ?? currentIndex;
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
@@ -654,15 +654,18 @@ class TomStepper extends TomNavigationBase {
     this.currentStep = 0,
     this.type = StepperType.vertical,
     this.physics,
-    this.onStepTapped,
-    this.onStepContinue,
-    this.onStepCancel,
-    this.controlsBuilder,
+    VoidCallback? onStepTapped,
+    VoidCallback? onStepContinue,
+    VoidCallback? onStepCancel,
+    Widget Function(BuildContext, ControlsDetails)? controlsBuilder,
     this.elevation,
     this.margin,
     this.connectorThickness,
     this.connectorColor,
-  }) {
+  }) : onStepTapped = InScopeBuilder(scope: scope).wrap0n(onStepTapped),
+       onStepContinue = InScopeBuilder(scope: scope).wrap0n(onStepContinue),
+       onStepCancel = InScopeBuilder(scope: scope).wrap0n(onStepCancel),
+       controlsBuilder = InScopeBuilder(scope: scope).wrap2n(controlsBuilder) {
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedConnectorThickness = connectorThickness ?? resolveDoubleOrNull('connectorThickness');
@@ -763,14 +766,14 @@ class TomPageView extends TomNavigationBase {
     this.reverse = false,
     this.physics,
     this.pageSnapping = true,
-    this.onPageChanged,
+    ValueChanged<int>? onPageChanged,
     this.dragStartBehavior = DragStartBehavior.start,
     this.allowImplicitScrolling = false,
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.scrollBehavior,
     this.padEnds = true,
-  });
+  }) : onPageChanged = InScopeBuilder(scope: scope).wrap1n(onPageChanged);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -819,7 +822,7 @@ class TomCupertinoTabBar extends TomNavigationBase {
     super.tomGroup,
     super.scope,
     required this.items,
-    this.onTap,
+    ValueChanged<int>? onTap,
     this.currentIndex = 0,
     this.backgroundColor,
     this.activeColor,
@@ -827,7 +830,7 @@ class TomCupertinoTabBar extends TomNavigationBase {
     this.iconSize,
     this.height,
     this.border,
-  }) {
+  }) : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 30.0;
@@ -1378,9 +1381,9 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     this.otherAccountsPicturesSize = const Size.square(40.0),
     this.accountName,
     this.accountEmail,
-    this.onDetailsPressed,
+    VoidCallback? onDetailsPressed,
     this.arrowColor,
-  }) {
+  }) : onDetailsPressed = InScopeBuilder(scope: scope).wrap0n(onDetailsPressed) {
     _resolvedArrowColor = arrowColor ?? resolveColorOrNull('arrowColor') ?? Colors.white;
   }
 
@@ -1420,8 +1423,8 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     super.scope,
     this.color,
     this.previousPageTitle,
-    this.onPressed,
-  }) {
+    VoidCallback? onPressed,
+  }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
     _resolvedPreviousPageTitle = previousPageTitle ?? resolveResourceOrNull('previousPageTitle');
   }

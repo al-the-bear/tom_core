@@ -167,7 +167,7 @@ class TomRefreshIndicator extends TomProgressBase {
     super.tomGroup,
     super.scope,
     required this.child,
-    required this.onRefresh,
+    required Future<void> Function() onRefresh,
     this.displacement = 40.0,
     this.edgeOffset = 0.0,
     this.color,
@@ -177,7 +177,7 @@ class TomRefreshIndicator extends TomProgressBase {
     this.semanticsValue,
     this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
     this.triggerMode = 0,
-  }) {
+  }) : onRefresh = InScopeBuilder(scope: scope).wrap0(onRefresh) {
     _resolvedLabel = semanticsLabel ?? resolveResourceOrNull('semanticsLabel') ?? (tomId != null ? resolveResourceOrFail('label') : null);
     _resolvedSemanticsValue = semanticsValue ?? resolveResourceOrNull('semanticsValue');
     _resolvedDisplacement = resolveDoubleOrNull('displacement') ?? displacement;
@@ -316,9 +316,10 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     super.scope,
     this.refreshTriggerPullDistance,
     this.refreshIndicatorExtent,
-    this.builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
-    this.onRefresh,
-  }) {
+    RefreshControlIndicatorBuilder? builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
+    RefreshCallback? onRefresh,
+  }) : builder = InScopeBuilder(scope: scope).wrap5n(builder),
+       onRefresh = InScopeBuilder(scope: scope).wrap0n(onRefresh) {
     _resolvedRefreshTriggerPullDistance = refreshTriggerPullDistance ?? resolveDoubleOrNull('refreshTriggerPullDistance') ?? 100.0;
     _resolvedRefreshIndicatorExtent = refreshIndicatorExtent ?? resolveDoubleOrNull('refreshIndicatorExtent') ?? 60.0;
   }

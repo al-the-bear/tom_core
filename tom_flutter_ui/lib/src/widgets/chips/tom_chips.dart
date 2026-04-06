@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -60,7 +61,7 @@ class TomFilterChip extends TomChipBase {
     super.tomGroup,
     super.scope,
     required this.selected,
-    this.onSelected,
+    ValueChanged<bool>? onSelected,
     this.avatar,
     this.label,
     this.labelText,
@@ -81,10 +82,11 @@ class TomFilterChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
     this.deleteIcon,
-    this.onDeleted,
+    VoidCallback? onDeleted,
     this.deleteIconColor,
     this.deleteButtonTooltipMessage,
-  }) {
+  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
+       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
@@ -204,7 +206,7 @@ class TomChoiceChip extends TomChipBase {
     super.tomGroup,
     super.scope,
     required this.selected,
-    this.onSelected,
+    ValueChanged<bool>? onSelected,
     this.avatar,
     this.label,
     this.labelText,
@@ -222,7 +224,7 @@ class TomChoiceChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  }) {
+  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _chipLabel = label ?? Text(_resolvedLabel);
     _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
@@ -328,7 +330,7 @@ class TomActionChip extends TomChipBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.avatar,
     this.label,
     this.labelText,
@@ -345,7 +347,7 @@ class TomActionChip extends TomChipBase {
     this.visualDensity,
     this.elevation,
     this.pressElevation,
-  }) {
+  }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
@@ -467,9 +469,9 @@ class TomInputChip extends TomChipBase {
     super.scope,
     this.selected = false,
     this.isEnabled = true,
-    this.onSelected,
-    this.onDeleted,
-    this.onPressed,
+    ValueChanged<bool>? onSelected,
+    VoidCallback? onDeleted,
+    VoidCallback? onPressed,
     this.avatar,
     this.label,
     this.labelText,
@@ -493,7 +495,9 @@ class TomInputChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
     this.tooltip,
-  }) {
+  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
+       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
+       onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
@@ -639,12 +643,12 @@ class TomRawChip extends TomChipBase {
     this.labelPadding,
     this.selected = false,
     this.isEnabled = true,
-    this.onSelected,
+    ValueChanged<bool>? onSelected,
     this.deleteIcon,
-    this.onDeleted,
+    VoidCallback? onDeleted,
     this.deleteIconColor,
     this.deleteButtonTooltipMessage,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.pressElevation,
     this.showCheckmark,
     this.checkmarkColor,
@@ -662,7 +666,9 @@ class TomRawChip extends TomChipBase {
     this.materialTapTargetSize,
     this.elevation,
     this.tooltip,
-  }) {
+  }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
+       onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
+       onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);

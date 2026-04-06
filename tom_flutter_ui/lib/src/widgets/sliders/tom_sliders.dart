@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 
@@ -40,9 +41,9 @@ class TomSlider extends TomSliderBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
-    this.onChangeStart,
-    this.onChangeEnd,
+    ValueChanged<double>? onChanged,
+    ValueChanged<double>? onChangeStart,
+    ValueChanged<double>? onChangeEnd,
     this.min = 0.0,
     this.max = 1.0,
     this.divisions,
@@ -51,11 +52,14 @@ class TomSlider extends TomSliderBase {
     this.inactiveColor,
     this.thumbColor,
     this.overlayColor,
-    this.semanticFormatterCallback,
+    SemanticFormatterCallback? semanticFormatterCallback,
     this.focusNode,
     this.autofocus = false,
     this.allowedInteraction,
-  }) {
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
+       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
+       semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
     _resolvedLabel = label ?? resolveResourceOrNull('label');
     _resolvedMin = resolveDoubleOrNull('min') ?? min;
     _resolvedMax = resolveDoubleOrNull('max') ?? max;
@@ -119,9 +123,9 @@ class TomRangeSlider extends TomSliderBase {
     super.tomGroup,
     super.scope,
     required this.values,
-    this.onChanged,
-    this.onChangeStart,
-    this.onChangeEnd,
+    ValueChanged<RangeValues>? onChanged,
+    ValueChanged<RangeValues>? onChangeStart,
+    ValueChanged<RangeValues>? onChangeEnd,
     this.min = 0.0,
     this.max = 1.0,
     this.divisions,
@@ -129,8 +133,11 @@ class TomRangeSlider extends TomSliderBase {
     this.activeColor,
     this.inactiveColor,
     this.overlayColor,
-    this.semanticFormatterCallback,
-  }) {
+    SemanticFormatterCallback? semanticFormatterCallback,
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
+       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
+       semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
     _resolvedMin = resolveDoubleOrNull('min') ?? min;
     _resolvedMax = resolveDoubleOrNull('max') ?? max;
     _resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
@@ -185,15 +192,17 @@ class TomCupertinoSlider extends TomSliderBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
-    this.onChangeStart,
-    this.onChangeEnd,
+    ValueChanged<double>? onChanged,
+    ValueChanged<double>? onChangeStart,
+    ValueChanged<double>? onChangeEnd,
     this.min = 0.0,
     this.max = 1.0,
     this.divisions,
     this.activeColor,
     this.thumbColor = CupertinoColors.white,
-  }) {
+  }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
+       onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
+       onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd) {
     _resolvedMin = resolveDoubleOrNull('min') ?? min;
     _resolvedMax = resolveDoubleOrNull('max') ?? max;
     _resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
