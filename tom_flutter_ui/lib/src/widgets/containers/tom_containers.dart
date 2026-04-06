@@ -2630,6 +2630,7 @@ class TomCupertinoFormSection extends TomContainerBase {
 
   // Pre-resolved resource values
   late final EdgeInsetsGeometry _resolvedMargin;
+  late final Color? _resolvedBackgroundColor;
 
   TomCupertinoFormSection({
     super.key,
@@ -2646,11 +2647,12 @@ class TomCupertinoFormSection extends TomContainerBase {
     this.insetGrouped = false,
   }) {
     _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? EdgeInsets.zero;
+    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
   }
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedBgColor = backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
+    final resolvedBgColor = _resolvedBackgroundColor ?? CupertinoColors.systemGroupedBackground.resolveFrom(context);
     if (insetGrouped) {
       return CupertinoFormSection.insetGrouped(
         header: header,

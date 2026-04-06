@@ -259,6 +259,7 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
   late final double _resolvedValue;
   late final double _resolvedTrackHeight;
   late final EdgeInsetsGeometry _resolvedPadding;
+  late final Color? _resolvedColor;
 
   TomCupertinoLinearActivityIndicator({
     super.key,
@@ -273,13 +274,14 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
     _resolvedValue = value ?? resolveDoubleOrNull('value') ?? 0.0;
     _resolvedTrackHeight = trackHeight ?? resolveDoubleOrNull('trackHeight') ?? 4.0;
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? EdgeInsets.zero;
+    _resolvedColor = color ?? resolveColorOrNull('color');
   }
 
   @override
   Widget buildContent(BuildContext context) {
     // CupertinoActivityIndicator doesn't have a linear variant by default.
     // Using MaterialLinearProgressIndicator with Cupertino styling.
-    final resolvedColor = color ?? resolveColorOrNull('color') ??
+    final resolvedColor = _resolvedColor ??
         CupertinoTheme.of(context).primaryColor;
 
     return Padding(
