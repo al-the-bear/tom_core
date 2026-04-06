@@ -1,4 +1,5 @@
 export 'animated/tom_animated.dart';
+export 'builders/tom_builders.dart';
 export 'buttons/tom_buttons.dart';
 export 'chips/tom_chips.dart';
 export 'containers/acl/tom_acl.dart';

@@ -37,6 +37,9 @@ import 'widget_demos/demo_19_effects.dart';
 import 'widget_demos/demo_20_interactions.dart';
 import 'widget_demos/demo_21_resource_resolution.dart';
 import 'widget_demos/demo_22_extension_widgets.dart';
+import 'widget_demos/demo_23_builders_clips.dart';
+import 'widget_demos/demo_24_containers_layout.dart';
+import 'widget_demos/demo_25_remaining_widgets.dart';
 
 /// Global locale settings service instance.
 final localeSettingsService = LocaleSettingsService();
@@ -429,6 +432,21 @@ class WidgetDemosTab extends StatelessWidget {
           title: 'Extension Widgets',
           description: 'AppBar, NavigationDestination, TableCell, CupertinoTabView, RefreshProgressIndicator',
           screen: ExtensionWidgetsDemo(),
+        )),
+        TomScope.withScope('demo23', () => DemoTile(
+          title: 'Builders, Clips & Base',
+          description: 'FutureBuilder, StreamBuilder, LayoutBuilder, Clips, Opacity, RawChip, EditableText',
+          screen: BuildersClipsDemo(),
+        )),
+        TomScope.withScope('demo24', () => DemoTile(
+          title: 'Containers & Layout',
+          description: 'Scaffold, DecoratedBox, Transform, Flow, CustomPaint, GridTile, Slivers',
+          screen: ContainersLayoutDemo(),
+        )),
+        TomScope.withScope('demo25', () => DemoTile(
+          title: 'Remaining Widgets',
+          description: 'Dialogs, Buttons, Navigation, Labels, Lists, Images',
+          screen: RemainingWidgetsDemo(),
         )),
       ],
     );
