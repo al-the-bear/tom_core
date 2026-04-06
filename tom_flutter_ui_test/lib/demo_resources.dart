@@ -3242,6 +3242,21 @@ const _demo25CardResources = <String, String>{
   'demo25.demo.reorderableList.subtitle.label': 'Drag-to-reorder list items',
 };
 
+// Demo 25: Picker dialog text resources
+// Primary texts are always resolved; secondary texts (errors, hints, labels)
+// fall back to Flutter's built-in MaterialLocalizations when not in resources.
+const _demo25PickerResources = <String, String>{
+  // TomDateRangePickerDialog
+  'demo25.dateRange.demo.help': 'Select date range',
+  'demo25.dateRange.demo.cancel': 'Cancel',
+  'demo25.dateRange.demo.confirm': 'OK',
+  'demo25.dateRange.demo.save': 'Save',
+  // TomTimePickerDialog
+  'demo25.timePicker.demo.help': 'Select time',
+  'demo25.timePicker.demo.cancel': 'Cancel',
+  'demo25.timePicker.demo.confirm': 'OK',
+};
+
 /// Initializes the Tom UI resource and icon adapters for the demo app.
 ///
 /// Call this in `main()` before `runApp()`.
@@ -3258,6 +3273,7 @@ void initializeDemoResources() {
     ..._demo24CardResources,
     ..._demo25SectionResources,
     ..._demo25CardResources,
+    ..._demo25PickerResources,
   };
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(allResources),

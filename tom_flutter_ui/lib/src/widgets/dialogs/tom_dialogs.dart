@@ -1347,13 +1347,13 @@ class TomDatePickerDialog extends TomDialogBase {
     this.switchToCalendarEntryModeIcon,
   }) {
     _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType'));
-    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
-    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
-    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
-    _resolvedErrorFormatText = errorFormatText ?? (tomId != null ? resolveResourceOrFail('errorFormat') : null);
-    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
-    _resolvedFieldHintText = fieldHintText ?? (tomId != null ? resolveResourceOrFail('fieldHint') : null);
-    _resolvedFieldLabelText = fieldLabelText ?? (tomId != null ? resolveResourceOrFail('fieldLabel') : null);
+    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
+    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
+    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
+    _resolvedErrorFormatText = errorFormatText ?? resolveResourceOrNull('errorFormat');
+    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
+    _resolvedFieldHintText = fieldHintText ?? resolveResourceOrNull('fieldHint');
+    _resolvedFieldLabelText = fieldLabelText ?? resolveResourceOrNull('fieldLabel');
   }
 
   @override
@@ -1444,17 +1444,17 @@ class TomDateRangePickerDialog extends TomDialogBase {
     this.switchToCalendarEntryModeIcon,
   }) {
     _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType')) ?? TextInputType.datetime;
-    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
-    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
-    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
-    _resolvedSaveText = saveText ?? (tomId != null ? resolveResourceOrFail('save') : null);
-    _resolvedErrorFormatText = errorFormatText ?? (tomId != null ? resolveResourceOrFail('errorFormat') : null);
-    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
-    _resolvedErrorInvalidRangeText = errorInvalidRangeText ?? (tomId != null ? resolveResourceOrFail('errorInvalidRange') : null);
-    _resolvedFieldStartHintText = fieldStartHintText ?? (tomId != null ? resolveResourceOrFail('fieldStartHint') : null);
-    _resolvedFieldEndHintText = fieldEndHintText ?? (tomId != null ? resolveResourceOrFail('fieldEndHint') : null);
-    _resolvedFieldStartLabelText = fieldStartLabelText ?? (tomId != null ? resolveResourceOrFail('fieldStartLabel') : null);
-    _resolvedFieldEndLabelText = fieldEndLabelText ?? (tomId != null ? resolveResourceOrFail('fieldEndLabel') : null);
+    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
+    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
+    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
+    _resolvedSaveText = saveText ?? resolveResourceOrNull('save');
+    _resolvedErrorFormatText = errorFormatText ?? resolveResourceOrNull('errorFormat');
+    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
+    _resolvedErrorInvalidRangeText = errorInvalidRangeText ?? resolveResourceOrNull('errorInvalidRange');
+    _resolvedFieldStartHintText = fieldStartHintText ?? resolveResourceOrNull('fieldStartHint');
+    _resolvedFieldEndHintText = fieldEndHintText ?? resolveResourceOrNull('fieldEndHint');
+    _resolvedFieldStartLabelText = fieldStartLabelText ?? resolveResourceOrNull('fieldStartLabel');
+    _resolvedFieldEndLabelText = fieldEndLabelText ?? resolveResourceOrNull('fieldEndLabel');
   }
 
   @override
@@ -1522,12 +1522,12 @@ class TomTimePickerDialog extends TomDialogBase {
     this.orientation,
     EntryModeChangeCallback? onEntryModeChanged,
   })  : onEntryModeChanged = InScopeBuilder(scope: scope).wrap1n(onEntryModeChanged) {
-    _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
-    _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
-    _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
-    _resolvedErrorInvalidText = errorInvalidText ?? (tomId != null ? resolveResourceOrFail('errorInvalid') : null);
-    _resolvedHourLabelText = hourLabelText ?? (tomId != null ? resolveResourceOrFail('hourLabel') : null);
-    _resolvedMinuteLabelText = minuteLabelText ?? (tomId != null ? resolveResourceOrFail('minuteLabel') : null);
+    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
+    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
+    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
+    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
+    _resolvedHourLabelText = hourLabelText ?? resolveResourceOrNull('hourLabel');
+    _resolvedMinuteLabelText = minuteLabelText ?? resolveResourceOrNull('minuteLabel');
   }
 
   @override
