@@ -94,6 +94,10 @@ class InScopeBuilder {
   InScopeBuilder({TomScope? scope})
       : _scope = scope ?? TomScope.current;
 
+  /// Wraps a 0-argument callback.
+  R Function() wrap0<R>(R Function() fn) =>
+      () => _scope.runInScope(() => fn());
+
   /// Wraps a 1-argument callback.
   R Function(A) wrap1<R, A>(R Function(A) fn) =>
       (a) => _scope.runInScope(() => fn(a));
@@ -114,6 +118,31 @@ class InScopeBuilder {
   R Function(A, B, C, D, E) wrap5<R, A, B, C, D, E>(
           R Function(A, B, C, D, E) fn) =>
       (a, b, c, d, e) => _scope.runInScope(() => fn(a, b, c, d, e));
+
+  /// Wraps a nullable 0-argument callback. Returns null if [fn] is null.
+  R Function()? wrap0n<R>(R Function()? fn) =>
+      fn == null ? null : wrap0(fn);
+
+  /// Wraps a nullable 1-argument callback. Returns null if [fn] is null.
+  R Function(A)? wrap1n<R, A>(R Function(A)? fn) =>
+      fn == null ? null : wrap1(fn);
+
+  /// Wraps a nullable 2-argument callback. Returns null if [fn] is null.
+  R Function(A, B)? wrap2n<R, A, B>(R Function(A, B)? fn) =>
+      fn == null ? null : wrap2(fn);
+
+  /// Wraps a nullable 3-argument callback. Returns null if [fn] is null.
+  R Function(A, B, C)? wrap3n<R, A, B, C>(R Function(A, B, C)? fn) =>
+      fn == null ? null : wrap3(fn);
+
+  /// Wraps a nullable 4-argument callback. Returns null if [fn] is null.
+  R Function(A, B, C, D)? wrap4n<R, A, B, C, D>(R Function(A, B, C, D)? fn) =>
+      fn == null ? null : wrap4(fn);
+
+  /// Wraps a nullable 5-argument callback. Returns null if [fn] is null.
+  R Function(A, B, C, D, E)? wrap5n<R, A, B, C, D, E>(
+          R Function(A, B, C, D, E)? fn) =>
+      fn == null ? null : wrap5(fn);
 
   /// Wraps a callback with one positional and named parameters.
   /// Use for Flutter's [InputCounterWidgetBuilder] and similar typedefs

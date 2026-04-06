@@ -158,11 +158,11 @@ class TomExpansionTile extends TomContainerBase {
     this.collapsedShape,
     this.clipBehavior,
     this.controlAffinity,
-    this.onExpansionChanged,
+    ValueChanged<bool>? onExpansionChanged,
     this.children = const [],
     this.dense = false,
     this.showTrailingIcon = true,
-  }) {
+  })  : onExpansionChanged = InScopeBuilder(scope: scope).wrap1n(onExpansionChanged) {
     _resolvedTitle = titleText ?? resolveResourceOrFail('label');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedCollapsedBackgroundColor = collapsedBackgroundColor ?? resolveColorOrNull('collapsedBackgroundColor');
@@ -2404,8 +2404,8 @@ class TomCarouselView extends TomContainerBase {
     this.controller,
     this.scrollDirection = Axis.horizontal,
     this.reverse = false,
-    this.onTap,
-  }) {
+    ValueChanged<int>? onTap,
+  })  : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
@@ -2970,16 +2970,18 @@ class TomInteractiveViewer extends TomContainerBase {
     this.maxScale,
     this.minScale,
     this.interactionEndFrictionCoefficient,
-    this.onInteractionEnd,
-    this.onInteractionStart,
-    this.onInteractionUpdate,
+    GestureScaleEndCallback? onInteractionEnd,
+    GestureScaleStartCallback? onInteractionStart,
+    GestureScaleUpdateCallback? onInteractionUpdate,
     this.panEnabled,
     this.scaleEnabled,
     this.scaleFactor,
     this.transformationController,
     this.alignment,
     required this.child,
-  }) {
+  })  : onInteractionEnd = InScopeBuilder(scope: scope).wrap1n(onInteractionEnd),
+        onInteractionStart = InScopeBuilder(scope: scope).wrap1n(onInteractionStart),
+        onInteractionUpdate = InScopeBuilder(scope: scope).wrap1n(onInteractionUpdate) {
     _resolvedBoundaryMargin = boundaryMargin ?? resolveEdgeInsetsOrNull('boundaryMargin') ?? EdgeInsets.zero;
     _resolvedConstrained = constrained ?? resolveBoolOrNull('constrained') ?? true;
     _resolvedMaxScale = maxScale ?? resolveDoubleOrNull('maxScale') ?? 2.5;

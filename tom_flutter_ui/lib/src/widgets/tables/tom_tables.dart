@@ -61,7 +61,7 @@ class TomDataTable extends TomTableBase {
     required this.columns,
     this.sortColumnIndex,
     this.sortAscending = true,
-    this.onSelectAll,
+    ValueSetter<bool?>? onSelectAll,
     this.decoration,
     this.dataRowColor,
     this.dataRowMinHeight,
@@ -79,7 +79,7 @@ class TomDataTable extends TomTableBase {
     this.border,
     this.clipBehavior = Clip.none,
     required this.rows,
-  }) {
+  })  : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll) {
     _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
     _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
     _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight');
@@ -194,7 +194,7 @@ class TomPaginatedDataTable extends TomTableBase {
     required this.columns,
     this.sortColumnIndex,
     this.sortAscending = true,
-    this.onSelectAll,
+    ValueSetter<bool?>? onSelectAll,
     this.dataRowMinHeight,
     this.dataRowMaxHeight,
     this.headingRowHeight,
@@ -203,7 +203,7 @@ class TomPaginatedDataTable extends TomTableBase {
     this.showCheckboxColumn = true,
     this.showFirstLastButtons = false,
     this.initialFirstRowIndex = 0,
-    this.onPageChanged,
+    ValueChanged<int>? onPageChanged,
     this.rowsPerPage = PaginatedDataTable.defaultRowsPerPage,
     this.availableRowsPerPage = const [
       PaginatedDataTable.defaultRowsPerPage,
@@ -211,14 +211,16 @@ class TomPaginatedDataTable extends TomTableBase {
       PaginatedDataTable.defaultRowsPerPage * 5,
       PaginatedDataTable.defaultRowsPerPage * 10,
     ],
-    this.onRowsPerPageChanged,
+    ValueChanged<int?>? onRowsPerPageChanged,
     this.dragStartBehavior = DragStartBehavior.start,
     this.arrowHeadColor,
     this.checkboxHorizontalMargin,
     this.headingRowColor,
     this.showEmptyRows = false,
     required this.source,
-  }) {
+  })  : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll),
+        onPageChanged = InScopeBuilder(scope: scope).wrap1n(onPageChanged),
+        onRowsPerPageChanged = InScopeBuilder(scope: scope).wrap1n(onRowsPerPageChanged) {
     _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
     _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
     _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight') ?? kMinInteractiveDimension;
@@ -441,9 +443,9 @@ class TomReorderableListView extends TomTableBase {
     super.tomGroup,
     super.scope,
     required this.children,
-    required this.onReorder,
-    this.onReorderStart,
-    this.onReorderEnd,
+    required ReorderCallback onReorder,
+    void Function(int)? onReorderStart,
+    void Function(int)? onReorderEnd,
     this.itemExtent,
     this.prototypeItem,
     this.proxyDecorator,
@@ -464,7 +466,9 @@ class TomReorderableListView extends TomTableBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
     this.autoScrollerVelocityScalar,
-  }) {
+  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+        onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
+        onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
     _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
     _resolvedAnchor = anchor ?? resolveDoubleOrNull('anchor') ?? 0.0;

@@ -197,13 +197,14 @@ class TomTreeSliver<T> extends TomTreeBase {
     TreeSliverNodeBuilder treeNodeBuilder = TreeSliver.defaultTreeNodeBuilder,
     this.treeRowExtentBuilder = TreeSliver.defaultTreeRowExtentBuilder,
     this.controller,
-    this.onNodeToggle,
+    TreeSliverNodeCallback? onNodeToggle,
     this.toggleAnimationStyle,
     this.indentation = TreeSliverIndentationType.standard,
     this.addAutomaticKeepAlives,
     this.addRepaintBoundaries,
     this.addSemanticIndexes,
-  }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder) {
+  }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder),
+       onNodeToggle = InScopeBuilder(scope: scope).wrap1n(onNodeToggle) {
     _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
     _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? resolveBoolOrNull('addRepaintBoundaries') ?? true;
     _resolvedAddSemanticIndexes = addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;

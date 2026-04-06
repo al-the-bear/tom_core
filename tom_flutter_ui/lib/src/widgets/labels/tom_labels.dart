@@ -178,7 +178,7 @@ class TomSelectableText extends TomLabelBase {
     this.cursorRadius,
     this.cursorColor,
     this.dragStartBehavior,
-    this.onTap,
+    VoidCallback? onTap,
     this.scrollPhysics,
     this.semanticsLabel,
     this.textWidthBasis,
@@ -186,8 +186,9 @@ class TomSelectableText extends TomLabelBase {
     this.contextMenuBuilder,
     this.magnifierConfiguration,
     this.selectionControls,
-    this.onSelectionChanged,
-  }) {
+    SelectionChangedCallback? onSelectionChanged,
+  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
+        onSelectionChanged = InScopeBuilder(scope: scope).wrap2n(onSelectionChanged) {
     _resolvedText = text ?? resolveResourceOrFail('label');
     _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
     _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
@@ -513,8 +514,8 @@ class TomListTile extends TomLabelBase {
     this.leadingAndTrailingTextStyle,
     this.contentPadding,
     this.enabled = true,
-    this.onTap,
-    this.onLongPress,
+    VoidCallback? onTap,
+    VoidCallback? onLongPress,
     this.selected = false,
     this.focusColor,
     this.hoverColor,
@@ -530,7 +531,8 @@ class TomListTile extends TomLabelBase {
     this.minTileHeight,
     this.titleAlignment,
     this.mouseCursor,
-  }) {
+  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress) {
     _resolvedTitle = titleText ?? resolveResourceOrFail('label');
     _resolvedIsThreeLine = resolveBoolOrNull('isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? resolveBoolOrNull('dense');
@@ -662,7 +664,7 @@ class TomChip extends TomLabelBase {
     this.labelPadding,
     this.padding,
     this.deleteIcon,
-    this.onDeleted,
+    VoidCallback? onDeleted,
     this.deleteIconColor,
     this.deleteButtonTooltipMessage,
     this.side,
@@ -676,7 +678,7 @@ class TomChip extends TomLabelBase {
     this.visualDensity,
     this.iconTheme,
     this.color,
-  }) {
+  })  : onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
     _resolvedLabel = labelText ?? resolveResourceOrFail('label');
     _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');

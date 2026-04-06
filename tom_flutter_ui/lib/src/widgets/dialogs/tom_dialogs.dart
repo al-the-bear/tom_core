@@ -399,7 +399,7 @@ class TomBottomSheet extends TomDialogBase {
     super.tomGroup,
     super.scope,
     this.animationController,
-    required this.onClosing,
+    required VoidCallback onClosing,
     required WidgetBuilder builder,
     this.backgroundColor,
     this.elevation,
@@ -408,9 +408,12 @@ class TomBottomSheet extends TomDialogBase {
     this.constraints,
     this.enableDrag = true,
     this.showDragHandle,
-    this.onDragStart,
-    this.onDragEnd,
-  }) : builder = InScopeBuilder(scope: scope).wrap1(builder) {
+    BottomSheetDragStartHandler? onDragStart,
+    BottomSheetDragEndHandler? onDragEnd,
+  }) : builder = InScopeBuilder(scope: scope).wrap1(builder),
+       onClosing = InScopeBuilder(scope: scope).wrap0(onClosing),
+       onDragStart = InScopeBuilder(scope: scope).wrap1n(onDragStart),
+       onDragEnd = _wrapDragEndHandler(scope, onDragEnd) {
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedEnableDrag = resolveBoolOrNull('enableDrag') ?? enableDrag;
@@ -577,8 +580,8 @@ class TomMaterialBanner extends TomDialogBase {
     this.forceActionsBelow = false,
     this.overflowAlignment = OverflowBarAlignment.end,
     this.animation,
-    this.onVisible,
-  }) {
+    VoidCallback? onVisible,
+  })  : onVisible = InScopeBuilder(scope: scope).wrap0n(onVisible) {
     _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
@@ -674,9 +677,9 @@ class TomTooltip extends TomDialogBase {
     this.enableTapToDismiss = true,
     this.triggerMode,
     this.enableFeedback,
-    this.onTriggered,
+    TooltipTriggeredCallback? onTriggered,
     this.child,
-  }) {
+  })  : onTriggered = InScopeBuilder(scope: scope).wrap0n(onTriggered) {
     _resolvedMessage = richMessage != null ? null : (message ?? resolveResourceOrFail('tooltip'));
     _resolvedHeight = height ?? resolveDoubleOrNull('height');
     _resolvedVerticalOffset = verticalOffset ?? resolveDoubleOrNull('verticalOffset');
@@ -1517,8 +1520,8 @@ class TomTimePickerDialog extends TomDialogBase {
     this.minuteLabelText,
     this.initialEntryMode = TimePickerEntryMode.dial,
     this.orientation,
-    this.onEntryModeChanged,
-  }) {
+    EntryModeChangeCallback? onEntryModeChanged,
+  })  : onEntryModeChanged = InScopeBuilder(scope: scope).wrap1n(onEntryModeChanged) {
     _resolvedCancelText = cancelText ?? (tomId != null ? resolveResourceOrFail('cancel') : null);
     _resolvedConfirmText = confirmText ?? (tomId != null ? resolveResourceOrFail('confirm') : null);
     _resolvedHelpText = helpText ?? (tomId != null ? resolveResourceOrFail('help') : null);
@@ -1542,6 +1545,17 @@ class TomTimePickerDialog extends TomDialogBase {
       onEntryModeChanged: onEntryModeChanged,
     );
   }
+}
+
+BottomSheetDragEndHandler? _wrapDragEndHandler(
+  TomScope? scope,
+  BottomSheetDragEndHandler? handler,
+) {
+  if (handler == null) return null;
+  final s = InScopeBuilder(scope: scope);
+  return (DragEndDetails details, {required bool isClosing}) {
+    s.wrap0(() => handler(details, isClosing: isClosing))();
+  };
 }
 
 TextInputType? _resolveTextInputType(String? value) {
@@ -1590,10 +1604,10 @@ class TomSimpleDialogOption extends TomDialogBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.padding,
     this.child,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
   }
 

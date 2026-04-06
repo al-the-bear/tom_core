@@ -37,10 +37,10 @@ class TomElevatedButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onLongPress,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+    ValueChanged<bool>? onHover,
+    ValueChanged<bool>? onFocusChange,
     this.style,
     this.focusNode,
     this.autofocus = false,
@@ -48,7 +48,10 @@ class TomElevatedButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
@@ -127,10 +130,10 @@ class TomTextButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onLongPress,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+    ValueChanged<bool>? onHover,
+    ValueChanged<bool>? onFocusChange,
     this.style,
     this.focusNode,
     this.autofocus = false,
@@ -138,7 +141,10 @@ class TomTextButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
@@ -216,10 +222,10 @@ class TomOutlinedButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onLongPress,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+    ValueChanged<bool>? onHover,
+    ValueChanged<bool>? onFocusChange,
     this.style,
     this.focusNode,
     this.autofocus = false,
@@ -227,7 +233,10 @@ class TomOutlinedButton extends TomButtonBase {
     this.icon,
     this.child,
     this.label,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
@@ -306,10 +315,10 @@ class TomFilledButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onLongPress,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+    ValueChanged<bool>? onHover,
+    ValueChanged<bool>? onFocusChange,
     this.style,
     this.focusNode,
     this.autofocus = false,
@@ -318,7 +327,10 @@ class TomFilledButton extends TomButtonBase {
     this.child,
     this.label,
     this.tonal = false,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+        onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
@@ -452,7 +464,7 @@ class TomFloatingActionButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.child,
     this.tooltip,
     this.foregroundColor,
@@ -474,7 +486,8 @@ class TomFloatingActionButton extends TomButtonBase {
     this.icon,
     this.label,
     this.heroTag,
-  })  : _variant = _FABVariant.regular,
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _FABVariant.regular,
         extendedIconLabelChild = null {
     _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
     _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
@@ -502,7 +515,7 @@ class TomFloatingActionButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.child,
     this.tooltip,
     this.foregroundColor,
@@ -520,7 +533,8 @@ class TomFloatingActionButton extends TomButtonBase {
     this.autofocus = false,
     this.focusNode,
     this.heroTag,
-  })  : _variant = _FABVariant.small,
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _FABVariant.small,
         isExtended = null,
         mini = false,
         icon = null,
@@ -552,7 +566,7 @@ class TomFloatingActionButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.child,
     this.tooltip,
     this.foregroundColor,
@@ -570,7 +584,8 @@ class TomFloatingActionButton extends TomButtonBase {
     this.autofocus = false,
     this.focusNode,
     this.heroTag,
-  })  : _variant = _FABVariant.large,
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _FABVariant.large,
         isExtended = null,
         mini = false,
         icon = null,
@@ -602,7 +617,7 @@ class TomFloatingActionButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.label,
     this.icon,
     this.tooltip,
@@ -623,7 +638,8 @@ class TomFloatingActionButton extends TomButtonBase {
     this.isExtended,
     this.extendedIconLabelChild,
     this.heroTag,
-  })  : _variant = _FABVariant.extended,
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _FABVariant.extended,
         child = null,
         mini = false {
     _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
@@ -842,9 +858,9 @@ class TomMenuItemButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onPressed,
+    VoidCallback? onHover,
+    VoidCallback? onFocusChange,
     this.focusNode,
     this.shortcut,
     this.style,
@@ -855,7 +871,9 @@ class TomMenuItemButton extends TomButtonBase {
     this.closeOnActivate = true,
     this.child,
     this.label,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -913,10 +931,10 @@ class TomSubmenuButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onOpen,
-    this.onClose,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onOpen,
+    VoidCallback? onClose,
+    VoidCallback? onHover,
+    VoidCallback? onFocusChange,
     this.focusNode,
     this.style,
     this.menuStyle,
@@ -927,7 +945,10 @@ class TomSubmenuButton extends TomButtonBase {
     required this.menuChildren,
     this.child,
     this.label,
-  }) {
+  })  : onOpen = InScopeBuilder(scope: scope).wrap0n(onOpen),
+        onClose = InScopeBuilder(scope: scope).wrap0n(onClose),
+        onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedStyle = style ?? _resolveStyle();
     _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
@@ -993,13 +1014,13 @@ class TomSegmentedButton<T extends Object> extends TomButtonBase {
     super.scope,
     required this.segments,
     required this.selected,
-    this.onSelectionChanged,
+    ValueChanged<Set<T>>? onSelectionChanged,
     this.multiSelectionEnabled = false,
     this.emptySelectionAllowed = false,
     this.style,
     this.showSelectedIcon = true,
     this.selectedIcon,
-  }) {
+  })  : onSelectionChanged = InScopeBuilder(scope: scope).wrap1n(onSelectionChanged) {
     _resolvedStyle = style ?? _resolveStyle();
   }
 
@@ -1072,7 +1093,7 @@ class TomIconButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.iconSize,
     this.visualDensity,
     this.padding,
@@ -1092,7 +1113,8 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.regular {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _IconButtonVariant.regular {
     _initResolvedFields();
   }
 
@@ -1102,7 +1124,7 @@ class TomIconButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.iconSize,
     this.visualDensity,
     this.padding,
@@ -1122,7 +1144,8 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.filled {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _IconButtonVariant.filled {
     _initResolvedFields();
   }
 
@@ -1132,7 +1155,7 @@ class TomIconButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.iconSize,
     this.visualDensity,
     this.padding,
@@ -1152,7 +1175,8 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.filledTonal {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _IconButtonVariant.filledTonal {
     _initResolvedFields();
   }
 
@@ -1162,7 +1186,7 @@ class TomIconButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.iconSize,
     this.visualDensity,
     this.padding,
@@ -1182,7 +1206,8 @@ class TomIconButton extends TomButtonBase {
     this.icon,
     this.tooltip,
     this.focusNode,
-  }) : _variant = _IconButtonVariant.outlined {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        _variant = _IconButtonVariant.outlined {
     _initResolvedFields();
   }
 
@@ -1347,9 +1372,9 @@ class TomBackButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.color,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedColor = color ?? resolveColorOrNull('color');
   }
 
@@ -1377,9 +1402,9 @@ class TomCloseButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.color,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedColor = color ?? resolveColorOrNull('color');
   }
 
@@ -1491,7 +1516,7 @@ class TomCupertinoButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.child,
     this.label,
     this.padding,
@@ -1502,7 +1527,7 @@ class TomCupertinoButton extends TomButtonBase {
     this.borderRadius = const BorderRadius.all(Radius.circular(8.0)),
     this.alignment = Alignment.center,
     this.filled = false,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
     _resolvedColor = color ?? resolveColorOrNull('color');
@@ -1567,16 +1592,18 @@ class TomCheckboxMenuButton extends TomButtonBase {
     super.tomGroup,
     super.scope,
     this.value,
-    this.onChanged,
+    ValueChanged<bool?>? onChanged,
     this.tristate = false,
     this.isError = false,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onHover,
+    VoidCallback? onFocusChange,
     this.focusNode,
     this.shortcut,
     this.child,
     this.label,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
+        onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
   }
 
@@ -1621,15 +1648,17 @@ class TomRadioMenuButton<T> extends TomButtonBase {
     super.scope,
     required this.value,
     this.groupValue,
-    this.onChanged,
+    ValueChanged<T?>? onChanged,
     this.toggleable = false,
-    this.onHover,
-    this.onFocusChange,
+    VoidCallback? onHover,
+    VoidCallback? onFocusChange,
     this.focusNode,
     this.shortcut,
     this.child,
     this.label,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
+        onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
+        onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
   }
 
@@ -1691,11 +1720,11 @@ class TomCupertinoActionSheetAction extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    required this.onPressed,
+    required VoidCallback onPressed,
     this.isDefaultAction = false,
     this.isDestructiveAction = false,
     required this.child,
-  });
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0(onPressed);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1726,12 +1755,12 @@ class TomCupertinoDialogAction extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.isDefaultAction = false,
     this.isDestructiveAction = false,
     this.textStyle,
     required this.child,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
   }
 
@@ -1767,12 +1796,12 @@ class TomCupertinoContextMenuAction extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
+    VoidCallback? onPressed,
     this.isDefaultAction = false,
     this.isDestructiveAction = false,
     this.trailingIcon,
     required this.child,
-  });
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed);
 
   @override
   Widget buildContent(BuildContext context) {
@@ -1811,14 +1840,14 @@ class TomExpandIcon extends TomButtonBase {
     super.tomGroup,
     super.scope,
     this.isExpanded = false,
-    this.onPressed,
+    ValueChanged<bool>? onPressed,
     this.size,
     this.padding = const EdgeInsets.all(8.0),
     this.color,
     this.disabledColor,
     this.expandedColor,
     this.semanticLabel,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
     _resolvedSize = size ?? resolveDoubleOrNull('size') ?? 24.0;
     _resolvedColor = color ?? resolveColorOrNull('color');
     _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
@@ -1909,9 +1938,9 @@ class TomMaterialButton extends TomButtonBase {
     super.tomId,
     super.tomGroup,
     super.scope,
-    this.onPressed,
-    this.onLongPress,
-    this.onHighlightChanged,
+    VoidCallback? onPressed,
+    VoidCallback? onLongPress,
+    ValueChanged<bool>? onHighlightChanged,
     this.mouseCursor,
     this.textTheme,
     this.textColor,
@@ -1940,7 +1969,9 @@ class TomMaterialButton extends TomButtonBase {
     this.enableFeedback = true,
     this.child,
     this.label,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
+        onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
+        onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged) {
     _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
     _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
     _resolvedDisabledTextColor = disabledTextColor ?? resolveColorOrNull('disabledTextColor');
@@ -2116,8 +2147,9 @@ class TomSnackBarAction extends SnackBarAction {
     Color? textColor,
     Color? disabledTextColor,
     String? label,
-    required super.onPressed,
+    required VoidCallback onPressed,
   }) : super(
+          onPressed: InScopeBuilder(scope: scope).wrap0(onPressed),
           label: label ?? TomCtr.text(_p(tomId, scope, 'label')),
           textColor: textColor ?? TomCtr.color(_p(tomId, scope, 'textColor')),
           disabledTextColor: disabledTextColor ?? TomCtr.color(_p(tomId, scope, 'disabledTextColor')),

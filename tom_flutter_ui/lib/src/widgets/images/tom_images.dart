@@ -235,12 +235,13 @@ class TomCircleAvatar extends TomImageBase {
     this.foregroundColor,
     this.backgroundImage,
     this.foregroundImage,
-    this.onBackgroundImageError,
-    this.onForegroundImageError,
+    ImageErrorListener? onBackgroundImageError,
+    ImageErrorListener? onForegroundImageError,
     this.radius,
     this.minRadius,
     this.maxRadius,
-  }) {
+  })  : onBackgroundImageError = InScopeBuilder(scope: scope).wrap2n(onBackgroundImageError),
+        onForegroundImageError = InScopeBuilder(scope: scope).wrap2n(onForegroundImageError) {
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
     _resolvedRadius = radius ?? resolveDoubleOrNull('radius');

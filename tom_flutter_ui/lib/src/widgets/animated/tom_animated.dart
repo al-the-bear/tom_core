@@ -39,8 +39,8 @@ class TomAnimatedAlign extends TomAnimatedBase {
     this.widthFactor,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
     _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
@@ -159,8 +159,8 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.clipBehavior = Clip.none,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedColor = color ?? resolveColorOrNull('color');
     _resolvedWidth = width ?? resolveDoubleOrNull('width');
     _resolvedHeight = height ?? resolveDoubleOrNull('height');
@@ -315,8 +315,8 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     this.textHeightBehavior,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedStyle = _resolveTextStyle('style');
     _resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap') ?? true;
     _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
@@ -375,8 +375,8 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     this.child,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
     _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
@@ -427,9 +427,9 @@ class TomAnimatedOpacity extends TomAnimatedBase {
     this.opacity,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
+    VoidCallback? onEnd,
     this.alwaysIncludeSemantics,
-  }) {
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
     _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
@@ -471,8 +471,8 @@ class TomAnimatedPadding extends TomAnimatedBase {
     this.child,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
   }
@@ -538,8 +538,8 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     this.animateShadowColor,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedElevation = elevation ?? resolveDoubleOrFail('elevation');
     _resolvedColor = color ?? resolveColorOrFail('color');
     _resolvedAnimateColor = animateColor ?? resolveBoolOrNull('animateColor') ?? true;
@@ -701,8 +701,8 @@ class TomAnimatedRotation extends TomAnimatedBase {
     this.filterQuality,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedTurns = turns ?? resolveDoubleOrFail('turns');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
@@ -755,8 +755,8 @@ class TomAnimatedScale extends TomAnimatedBase {
     this.filterQuality,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedScale = scale ?? resolveDoubleOrFail('scale');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
@@ -808,8 +808,8 @@ class TomAnimatedSize extends TomAnimatedBase {
     this.reverseDuration,
     this.curve = Curves.linear,
     this.clipBehavior = Clip.hardEdge,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
   }
@@ -856,8 +856,8 @@ class TomAnimatedSlide extends TomAnimatedBase {
     this.offset,
     this.duration,
     this.curve = Curves.linear,
-    this.onEnd,
-  }) {
+    VoidCallback? onEnd,
+  })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
     _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
   }

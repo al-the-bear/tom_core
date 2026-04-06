@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -42,7 +43,7 @@ class TomSwitch extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool>? onChanged,
     this.activeColor,
     this.activeTrackColor,
     this.inactiveThumbColor,
@@ -59,7 +60,7 @@ class TomSwitch extends TomToggleBase {
     this.autofocus = false,
     this.overlayColor,
     this.splashRadius,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedActiveTrackColor = activeTrackColor ?? resolveColorOrNull('activeTrackColor');
     _resolvedInactiveThumbColor = inactiveThumbColor ?? resolveColorOrNull('inactiveThumbColor');
@@ -132,7 +133,7 @@ class TomCheckbox extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool?>? onChanged,
     this.tristate = false,
     this.activeColor,
     this.fillColor,
@@ -147,7 +148,7 @@ class TomCheckbox extends TomToggleBase {
     this.isError = false,
     this.focusNode,
     this.autofocus = false,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedCheckColor = checkColor ?? resolveColorOrNull('checkColor');
     _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
@@ -233,7 +234,7 @@ class TomRadio<T> extends TomToggleBase {
     super.scope,
     required this.value,
     this.groupValue,
-    this.onChanged,
+    ValueChanged<T?>? onChanged,
     this.activeColor,
     this.fillColor,
     this.focusColor,
@@ -244,7 +245,7 @@ class TomRadio<T> extends TomToggleBase {
     this.toggleable = false,
     this.focusNode,
     this.autofocus = false,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
     _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
@@ -329,7 +330,7 @@ class TomSwitchListTile extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool>? onChanged,
     this.title,
     this.titleText,
     this.subtitle,
@@ -350,7 +351,7 @@ class TomSwitchListTile extends TomToggleBase {
     this.visualDensity,
     this.enableFeedback,
     this.hoverColor,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedTitle = titleText ?? resolveResourceOrNull('titleText') ?? resolveResourceOrFail('label');
     _resolvedIsThreeLine = resolveBoolOrNull('isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? resolveBoolOrNull('dense');
@@ -458,7 +459,7 @@ class TomCheckboxListTile extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool?>? onChanged,
     this.title,
     this.titleText,
     this.subtitle,
@@ -479,7 +480,7 @@ class TomCheckboxListTile extends TomToggleBase {
     this.autofocus = false,
     this.focusNode,
     this.checkboxShape,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedTitle = titleText ?? resolveResourceOrNull('titleText') ?? resolveResourceOrFail('label');
     _resolvedIsThreeLine = resolveBoolOrNull('isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? resolveBoolOrNull('dense');
@@ -589,7 +590,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     super.scope,
     required this.value,
     this.groupValue,
-    this.onChanged,
+    ValueChanged<T?>? onChanged,
     this.title,
     this.titleText,
     this.subtitle,
@@ -608,7 +609,7 @@ class TomRadioListTile<T> extends TomToggleBase {
     this.focusNode,
     this.shape,
     this.fillColor,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedTitle = titleText ?? resolveResourceOrFail('label');
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedTileColor = tileColor ?? resolveColorOrNull('tileColor');
@@ -710,7 +711,7 @@ class TomToggleButtons extends TomToggleBase {
     super.scope,
     required this.children,
     required this.isSelected,
-    this.onPressed,
+    ValueChanged<int>? onPressed,
     this.color,
     this.selectedColor,
     this.disabledColor,
@@ -730,7 +731,7 @@ class TomToggleButtons extends TomToggleBase {
     this.verticalDirection = VerticalDirection.down,
     this.constraints,
     this.textStyle,
-  }) {
+  })  : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
     _resolvedColor = color ?? resolveColorOrNull('color');
     _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
     _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
@@ -806,7 +807,7 @@ class TomCupertinoSwitch extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool>? onChanged,
     this.activeTrackColor,
     this.thumbColor,
     this.trackColor,
@@ -817,7 +818,7 @@ class TomCupertinoSwitch extends TomToggleBase {
     this.offLabelColor,
     this.focusNode,
     this.autofocus = false,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveTrackColor = activeTrackColor ?? resolveColorOrNull('activeTrackColor');
     _resolvedThumbColor = thumbColor ?? resolveColorOrNull('thumbColor');
     _resolvedTrackColor = trackColor ?? resolveColorOrNull('trackColor');
@@ -881,7 +882,7 @@ class TomCupertinoCheckbox extends TomToggleBase {
     super.tomGroup,
     super.scope,
     required this.value,
-    this.onChanged,
+    ValueChanged<bool?>? onChanged,
     this.activeColor,
     this.inactiveColor,
     this.checkColor,
@@ -892,7 +893,7 @@ class TomCupertinoCheckbox extends TomToggleBase {
     this.side,
     this.shape,
     this.semanticLabel,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedInactiveColor = inactiveColor ?? resolveColorOrNull('inactiveColor');
     _resolvedCheckColor = checkColor ?? resolveColorOrNull('checkColor');
@@ -961,7 +962,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
     super.scope,
     required this.value,
     required this.groupValue,
-    this.onChanged,
+    ValueChanged<T?>? onChanged,
     this.mouseCursor,
     this.toggleable = false,
     this.activeColor,
@@ -971,7 +972,7 @@ class TomCupertinoRadio<T> extends TomToggleBase {
     this.focusNode,
     this.autofocus = false,
     this.useCheckmarkStyle = false,
-  }) {
+  })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged) {
     _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
     _resolvedInactiveColor = inactiveColor ?? resolveColorOrNull('inactiveColor');
     _resolvedFillColor = fillColor ?? resolveColorOrNull('fillColor');

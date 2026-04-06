@@ -367,10 +367,10 @@ class TomDismissible extends TomListBase {
     required this.child,
     this.background,
     this.secondaryBackground,
-    this.confirmDismiss,
-    this.onResize,
-    this.onUpdate,
-    this.onDismissed,
+    ConfirmDismissCallback? confirmDismiss,
+    VoidCallback? onResize,
+    DismissUpdateCallback? onUpdate,
+    DismissDirectionCallback? onDismissed,
     this.direction = DismissDirection.horizontal,
     this.resizeDuration = const Duration(milliseconds: 300),
     this.dismissThresholds = const {},
@@ -378,7 +378,10 @@ class TomDismissible extends TomListBase {
     this.crossAxisEndOffset,
     this.dragStartBehavior = DragStartBehavior.start,
     this.behavior = HitTestBehavior.opaque,
-  }) {
+  })  : confirmDismiss = InScopeBuilder(scope: scope).wrap1n(confirmDismiss),
+        onResize = InScopeBuilder(scope: scope).wrap0n(onResize),
+        onUpdate = InScopeBuilder(scope: scope).wrap1n(onUpdate),
+        onDismissed = InScopeBuilder(scope: scope).wrap1n(onDismissed) {
     _resolvedCrossAxisEndOffset = crossAxisEndOffset ?? resolveDoubleOrNull('crossAxisEndOffset') ?? 0.0;
   }
 
@@ -452,13 +455,13 @@ class TomListWheelScrollView extends TomListBase {
     this.overAndUnderCenterOpacity,
     this.itemExtent,
     this.squeeze,
-    this.onSelectedItemChanged,
+    ValueChanged<int>? onSelectedItemChanged,
     this.renderChildrenOutsideViewport = false,
     this.clipBehavior = Clip.hardEdge,
     this.restorationId,
     this.scrollBehavior,
     required this.childDelegate,
-  }) {
+  })  : onSelectedItemChanged = InScopeBuilder(scope: scope).wrap1n(onSelectedItemChanged) {
     _resolvedDiameterRatio = diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
     _resolvedPerspective = perspective ?? resolveDoubleOrNull('perspective') ?? RenderListWheelViewport.defaultPerspective;
     _resolvedOffAxisFraction = offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0;
@@ -529,12 +532,12 @@ class TomCupertinoListTile extends TomListBase {
     this.additionalInfo,
     this.leading,
     this.trailing,
-    this.onTap,
+    VoidCallback? onTap,
     this.backgroundColor,
     this.padding,
     this.leadingSize,
     this.leadingToTitle,
-  }) {
+  })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
     _resolvedTitle = titleText ?? resolveResourceOrNull('titleText') ?? resolveResourceOrFail('label');
     _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
@@ -669,9 +672,9 @@ class TomReorderableList extends TomListBase {
     super.tomGroup,
     super.scope,
     required this.childrenDelegate,
-    required this.onReorder,
-    this.onReorderStart,
-    this.onReorderEnd,
+    required ReorderCallback onReorder,
+    void Function(int)? onReorderStart,
+    void Function(int)? onReorderEnd,
     this.itemExtent,
     this.itemExtentBuilder,
     this.prototypeItem,
@@ -689,7 +692,9 @@ class TomReorderableList extends TomListBase {
     this.dragStartBehavior = DragStartBehavior.start,
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
     this.restorationId,
-  }) {
+  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+        onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
+        onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
     _resolvedShrinkWrap = shrinkWrap ?? resolveBoolOrNull('shrinkWrap') ?? false;
     _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
@@ -752,14 +757,16 @@ class TomSliverReorderableList extends TomListBase {
     super.scope,
     required this.itemBuilder,
     required this.itemCount,
-    required this.onReorder,
-    this.onReorderStart,
-    this.onReorderEnd,
+    required ReorderCallback onReorder,
+    void Function(int)? onReorderStart,
+    void Function(int)? onReorderEnd,
     this.itemExtent,
     this.itemExtentBuilder,
     this.prototypeItem,
     this.proxyDecorator,
-  }) {
+  })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
+        onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
+        onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
     _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
   }
 
