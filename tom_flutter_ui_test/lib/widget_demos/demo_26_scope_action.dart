@@ -197,7 +197,7 @@ class _ScopeActionDemoContent extends TomStatefulWidget {
 class _ScopeActionDemoContentState
     extends TomState<_ScopeActionDemoContent> {
   // Providers created once, reused across rebuilds
-  late final _basicProvider = BasicSectionProvider();
+  late final demo26 = BasicSectionProvider();
   late final _actionsProvider = ActionsSectionProvider();
   late final _compositeProvider = CompositeSectionProvider();
 
@@ -249,15 +249,15 @@ class _ScopeActionDemoContentState
       child: TomColumn(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _basicProvider.title,
+          demo26.title,
           TomSizedBox(height: 8),
-          _basicProvider.description,
+          demo26.description,
           TomSizedBox(height: 16),
           TomRow(
             children: [
-              _basicProvider.actionButton,
+              demo26.actionButton,
               TomSizedBox(width: 12),
-              _basicProvider.infoButton,
+              demo26.infoButton,
             ],
           ),
         ],
@@ -275,9 +275,9 @@ class _ScopeActionDemoContentState
           child: TomColumn(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _basicProvider.title,
+              demo26.title,
               TomSizedBox(height: 8),
-              _basicProvider.description,
+              demo26.description,
             ],
           ),
         ),
@@ -289,11 +289,11 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _basicProvider.details.label,
+                demo26.details.label,
                 TomSizedBox(height: 8),
-                _basicProvider.details.statusChip,
+                demo26.details.statusChip,
                 TomSizedBox(height: 8),
-                _basicProvider.details.editButton,
+                demo26.details.editButton,
               ],
             ),
           ),
@@ -306,9 +306,9 @@ class _ScopeActionDemoContentState
             child: TomColumn(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _basicProvider.details.metadata.createdLabel,
+                demo26.details.metadata.createdLabel,
                 TomSizedBox(height: 4),
-                _basicProvider.details.metadata.modifiedLabel,
+                demo26.details.metadata.modifiedLabel,
               ],
             ),
           ),
@@ -370,10 +370,10 @@ class _ScopeActionDemoContentState
   Widget _buildScopePathVisualization(BuildContext context) {
     final theme = Theme.of(context);
     final entries = <(String, String)>[
-      ('BasicSectionProvider', _basicProvider.getScopePath()),
-      ('DetailsSectionProvider', _basicProvider.details.getScopePath()),
+      ('BasicSectionProvider', demo26.getScopePath()),
+      ('DetailsSectionProvider', demo26.details.getScopePath()),
       ('MetadataSectionProvider',
-          _basicProvider.details.metadata.getScopePath()),
+          demo26.details.metadata.getScopePath()),
       ('ActionsSectionProvider', _actionsProvider.getScopePath()),
       ('CompositeSectionProvider', _compositeProvider.getScopePath()),
       ('AddressSubProvider', _compositeProvider.address.getScopePath()),
