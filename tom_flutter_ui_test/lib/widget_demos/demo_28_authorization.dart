@@ -169,9 +169,9 @@ class _AuthorizationDemoContent extends TomStatefulWidget {
 class _AuthorizationDemoContentState
     extends TomState<_AuthorizationDemoContent> {
   final _authAdapter = DemoAuthorizationAdapter();
-  late final _adminProvider = AdminSectionProvider();
-  late final _groupedProvider = GroupedSectionProvider();
-  late final _profileProvider = ProfileSectionProvider();
+  late AdminSectionProvider _adminProvider = AdminSectionProvider();
+  late GroupedSectionProvider _groupedProvider = GroupedSectionProvider();
+  late ProfileSectionProvider _profileProvider = ProfileSectionProvider();
 
   // UI state for toggle controls
   bool _deleteHidden = false;
@@ -185,6 +185,15 @@ class _AuthorizationDemoContentState
     super.initState();
     // Install our demo adapter
     TomUIAuthorization.adapter = _authAdapter;
+  }
+
+  /// Recreates all providers and widgets from scratch.
+  void _applyFromScratch() {
+    setState(() {
+      _adminProvider = AdminSectionProvider();
+      _groupedProvider = GroupedSectionProvider();
+      _profileProvider = ProfileSectionProvider();
+    });
   }
 
   void _updateAuthRules() {
@@ -218,6 +227,16 @@ class _AuthorizationDemoContentState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Apply button — rebuilds all providers from scratch
+            Align(
+              alignment: Alignment.centerRight,
+              child: TomElevatedButton(
+                tomId: 'apply',
+                onPressed: _applyFromScratch,
+              ),
+            ),
+            TomSizedBox(height: 16),
+
             // Section 1: Authorization Controls
             _SectionHeader(tomId: 'section.controls'),
             TomSizedBox(height: 16),

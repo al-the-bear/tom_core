@@ -214,16 +214,8 @@ class _ScopeActionDemoContent extends TomStatefulWidget {
 
 class _ScopeActionDemoContentState
     extends TomState<_ScopeActionDemoContent> {
-  // Single root provider — all sections nested as fields.
-  // Non-final so the "Apply" button can recreate everything from scratch.
-  late Demo26Provider demo26 = Demo26Provider();
-
-  /// Recreates all providers and widgets from scratch.
-  void _applyFromScratch() {
-    setState(() {
-      demo26 = Demo26Provider();
-    });
-  }
+  // Single root provider — all sections nested as fields
+  late final demo26 = Demo26Provider();
 
   @override
   Widget buildContent(BuildContext context) {
@@ -233,16 +225,6 @@ class _ScopeActionDemoContentState
         child: TomColumn(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Apply button — rebuilds all providers from scratch
-            Align(
-              alignment: Alignment.centerRight,
-              child: TomElevatedButton(
-                tomId: 'apply',
-                onPressed: _applyFromScratch,
-              ),
-            ),
-            TomSizedBox(height: 16),
-
             // Section 1: Basic Provider
             _SectionHeader(tomId: 'section.basic'),
             TomSizedBox(height: 16),
