@@ -1670,8 +1670,11 @@ class _AclContainerState extends State<AclContainer> {
     final hasExpandY = row.components.any((c) => c.expandY);
     final hasGapSlots = row.components.any((c) => c.isGap);
     // When autoFillWidth is set (from expandWidth on the Acl/AclLayout),
-    // treat all rows as width-filling so components share space evenly.
-    final hasExpandX = hasExplicitExpandX || (widget.autoFillWidth && canExpandHorizontally);
+    // treat rows without explicit gap slots as width-filling so components
+    // share space evenly. Rows with gap slots already fill width via the
+    // Spacer — auto-expanding their non-gap components would squeeze them.
+    final autoExpand = widget.autoFillWidth && canExpandHorizontally && !hasGapSlots;
+    final hasExpandX = hasExplicitExpandX || autoExpand;
     final rowFillsWidth = hasExpandX || hasGapSlots;
 
     final gapWeightSum = hasGapSlots
@@ -1843,9 +1846,8 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       // Effective expandX: true when the component has the flag OR when
-      // autoFillWidth is set and the container can expand horizontally.
-      final effectiveExpandX = component.expandX ||
-          (widget.autoFillWidth && canExpandHorizontally);
+      // autoExpand applies (no gap slots in this row).
+      final effectiveExpandX = component.expandX || autoExpand;
 
       if (!isFlexNativeChild &&
           (!effectiveExpandX || !canExpandHorizontally)) {

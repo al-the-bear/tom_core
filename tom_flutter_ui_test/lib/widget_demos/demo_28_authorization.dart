@@ -412,8 +412,8 @@ class _AuthorizationDemoContentState
         title: 'User Profile',
       )
           .append((p) => p.nameField)
-          .append((p) => p.emailField)
-          .newRow()
+          .append((p) => p.emailField, dist: 16)
+          .newRow(dist: 16)
           .append((p) => p.roleField)
           .newRow()
           .gapRow()

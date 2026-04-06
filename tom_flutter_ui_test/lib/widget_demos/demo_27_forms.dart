@@ -268,10 +268,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             title: 'Personal Information',
           )
               .append((p) => p.firstNameField)
-              .append((p) => p.lastNameField)
-              .newRow()
+              .append((p) => p.lastNameField, dist: 16)
+              .newRow(dist: 16)
               .append((p) => p.emailField)
-              .append((p) => p.phoneField)
+              .append((p) => p.phoneField, dist: 16)
               .build(context),
           TomSizedBox(height: 16),
           // Address section via ACL
@@ -281,10 +281,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             title: 'Address',
           )
               .append((p) => p.streetField)
-              .newRow()
+              .newRow(dist: 16)
               .append((p) => p.cityField)
-              .append((p) => p.zipField)
-              .newRow()
+              .append((p) => p.zipField, dist: 16)
+              .newRow(dist: 16)
               .append((p) => p.countryField)
               .build(context),
           TomSizedBox(height: 24),
@@ -315,7 +315,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             children: [
               TomExpanded(
                 child: TomText(
-                  tomId: 'settings.notificationsLabel',
+                  tomId: 'notificationsLabel',
                   scope: _settingsProvider,
                 ),
               ),
@@ -327,7 +327,7 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             children: [
               TomExpanded(
                 child: TomText(
-                  tomId: 'settings.darkModeLabel',
+                  tomId: 'darkModeLabel',
                   scope: _settingsProvider,
                 ),
               ),
@@ -354,21 +354,21 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
         padding: const EdgeInsets.all(8),
       )
           .append((p) => p.personal.firstNameField)
-          .append((p) => p.personal.lastNameField)
-          .newRow()
+          .append((p) => p.personal.lastNameField, dist: 16)
+          .newRow(dist: 16)
           .append((p) => p.personal.emailField)
-          .newRow()
+          .newRow(dist: 16)
           .append((p) => p.address.streetField)
-          .newRow()
+          .newRow(dist: 16)
           .append((p) => p.address.cityField)
-          .append((p) => p.address.zipField)
-          .append((p) => p.address.countryField)
+          .append((p) => p.address.zipField, dist: 16)
+          .append((p) => p.address.countryField, dist: 16)
           .newRow()
           .gapRow()
           .newRow()
           .gap()
-          .append((p) => p.resetButton)
-          .append((p) => p.saveButton)
+          .append((p) => p.resetButton, dist: 16)
+          .append((p) => p.saveButton, dist: 16)
           .build(context),
     );
   }
