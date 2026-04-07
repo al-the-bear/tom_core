@@ -285,10 +285,15 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
               .append((p) => p.cityField, dist: 16)
               .append((p) => p.zipField, dist: 16)
               .newRow()
-              .append((p) => p.countryField, dist: 16 )
-              .newRow(dist:16).setRowAlignment(RowAlignment.right)
-              .append( (p) => _contactProvider.resetButton, dist: 16).setMSize(200,0).setXSize(300, 0)
-              .append( (p) => _contactProvider.saveButton, dist: 16).setMSize(200,0).setXSize(300,0)
+              .append((p) => p.countryField, dist: 16)
+              .newRow()
+              .setRowAlignment(RowAlignment.right)
+              .append((p) => _contactProvider.resetButton, dist: 16)
+              .setMSize(200, 20)
+              .setXSize(300, 20)
+              .append((p) => _contactProvider.saveButton, dist: 16)
+              .setMSize(200, 20)
+              .setXSize(300, 20)
               .build(context),
           TomSizedBox(height: 24),
 
