@@ -327,9 +327,10 @@ class TomWidgetTreeCollector {
     void visitor(Element element) {
       final widget = element.widget;
       if (widget is TomPolicyNodeBase) {
-        final scope = TomNodeScope.of(element);
-        final fullPath = _resolveFullPath(widget, scope);
-        final authState = TomAuthorization.resolveAuth(fullPath);
+        final fullPath = widget.basePath;
+        final authState = (fullPath != null)
+            ? TomAuthorization.resolveAuth(fullPath)
+            : TomAuthState.full;
         
         result.add(TomAuthInfo(
           widgetType: widget.runtimeType.toString(),
@@ -366,11 +367,10 @@ class TomWidgetInfo {
   });
   
   factory TomWidgetInfo.fromWidget(TomNodeBase widget, Element element) {
-    final scope = TomNodeScope.of(element);
     return TomWidgetInfo(
       widgetType: widget.runtimeType.toString(),
       tomId: widget.tomId,
-      fullIdPath: scope?.fullIdPath,
+      fullIdPath: widget.basePath,
       groupName: widget.authorizationGroup?.id,
       debugLabel: widget.debugLabel,
       depth: _calculateDepth(element),
