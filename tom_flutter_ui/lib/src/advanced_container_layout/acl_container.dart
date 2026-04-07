@@ -1854,7 +1854,7 @@ class _AclContainerState extends State<AclContainer> {
 
       if (!isFlexNativeChild && (!component.expandY || !canExpandVertically)) {
         final preferredHeight = component.preferredSize?.height;
-        if (preferredHeight != null) {
+        if (preferredHeight != null && preferredHeight > 0) {
           child = SizedBox(height: preferredHeight, child: child);
         }
       }
