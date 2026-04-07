@@ -258,23 +258,47 @@ class AclBuilder {
 
   // ── Per-component sizing ───────────────────────────────────────────────────
 
+  /// Sets a preferred size on the current component.
+  ///
+  /// Pass 0 for [width] or [height] to leave that dimension unchanged
+  /// (preserving any previously set value, or defaulting to 0 / 0).
   AclBuilder setPSize(double width, double height) {
     if (_currentComponent != null) {
-      _currentComponent!.preferredSize = Size(width, height);
+      final cur = _currentComponent!.preferredSize;
+      _currentComponent!.preferredSize = Size(
+        width == 0 ? (cur?.width ?? 0) : width,
+        height == 0 ? (cur?.height ?? 0) : height,
+      );
     }
     return this;
   }
 
+  /// Sets a minimum size on the current component.
+  ///
+  /// Pass 0 for [width] or [height] to leave that dimension unchanged
+  /// (preserving any previously set value, or defaulting to 0 / 0).
   AclBuilder setMSize(double width, double height) {
     if (_currentComponent != null) {
-      _currentComponent!.minimumSize = Size(width, height);
+      final cur = _currentComponent!.minimumSize;
+      _currentComponent!.minimumSize = Size(
+        width == 0 ? (cur?.width ?? 0) : width,
+        height == 0 ? (cur?.height ?? 0) : height,
+      );
     }
     return this;
   }
 
+  /// Sets a maximum size on the current component.
+  ///
+  /// Pass 0 for [width] or [height] to leave that dimension unchanged
+  /// (preserving any previously set value, or defaulting to infinity / infinity).
   AclBuilder setXSize(double width, double height) {
     if (_currentComponent != null) {
-      _currentComponent!.maximumSize = Size(width, height);
+      final cur = _currentComponent!.maximumSize;
+      _currentComponent!.maximumSize = Size(
+        width == 0 ? (cur?.width ?? double.infinity) : width,
+        height == 0 ? (cur?.height ?? double.infinity) : height,
+      );
     }
     return this;
   }

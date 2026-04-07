@@ -1175,6 +1175,20 @@ class _AclContainerState extends State<AclContainer> {
                   rowWidgets.add(SizedBox(height: row.gapRowMinSize));
                 }
               }
+            } else {
+              // Unbounded or scrollable context: gap rows cannot expand, but
+              // still honour minSize as fixed spacing and render separators.
+              if (row.separator != null) {
+                final sepHeight = math.max(9.0, row.gapRowMinSize);
+                rowWidgets.add(
+                  SizedBox(
+                    height: sepHeight,
+                    child: _buildSeparatorWidget(row.separator!),
+                  ),
+                );
+              } else if (row.gapRowMinSize > 0) {
+                rowWidgets.add(SizedBox(height: row.gapRowMinSize));
+              }
             }
             continue;
           }
