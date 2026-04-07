@@ -21,8 +21,7 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
   TomPolicyNodeBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
