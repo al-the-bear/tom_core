@@ -1,8 +1,8 @@
 # Tom Action Integration Specification
 
-**Status:** Design Specification (Not yet implemented)  
-**Date:** 2026-04-02  
-**Package:** `tom_flutter_ui`
+**Status:** Partially Implemented (core action classes + authorization model)
+**Date:** 2026-04-07
+**Package:** `tom_flutter_ui` (actions), `tom_core_kernel` (authorization primitives)
 
 ---
 
@@ -36,15 +36,25 @@ Actions in the Tom UI framework are the **behavioral counterpart to widgets**. W
 4. **Triggers are unified** — a button, menu, keyboard shortcut, or context menu triggers the same action
 5. **Resources are consistent** — label, icon, tooltip come from the resource adapter
 
-### Key Classes (Specified, Not Yet Implemented)
+### Key Classes
 
-| Class | Purpose |
-|-------|---------|
-| `TomAction<TContext, TUndo>` | Base class for all actions |
-| `TomActionController` | Container for related actions |
-| `TomActionContext` | Base context available to all actions |
-| `TomActionTransaction` | Groups sub-actions for atomic undo |
-| `TomActionTrigger` | Connects widgets to actions |
+| Class | Purpose | Location |
+|-------|---------|----------|
+| `TomAction<TContext, TUndo>` | Base class for all actions | `tom_flutter_ui` |
+| `TomActionController` | Container for related actions | `tom_flutter_ui` |
+| `TomActionContext` | Base context available to all actions | `tom_flutter_ui` |
+| `TomActionTransaction` | Groups sub-actions for atomic undo | `tom_flutter_ui` |
+| `TomActionTrigger` | Connects widgets to actions | `tom_flutter_ui` |
+| `TomActionUndo` | Tag interface for undo state objects | `tom_flutter_ui` |
+| `TomUndoHistory` | Undo/redo stack management | `tom_flutter_ui` |
+| `TomCompositeAction` | Multi-step action with guards | `tom_flutter_ui` |
+| `TomDualAction` | Execute/reverse pair | `tom_flutter_ui` |
+| `TomAuthState` | Four-state authorization enum (none/disabled/read/full) | `tom_core_kernel` |
+| `TomAuthorizer` | Per-widget/action auth modifier | `tom_core_kernel` |
+| `TomAuthorizerStrategy` | How authorizer interacts with resource auth | `tom_core_kernel` |
+| `TomUIStateController` | Build-time narrowing callback | `tom_core_kernel` |
+| `TomAuthorizationGroup` | Group of related authorizables | `tom_core_kernel` |
+| `TomAuthorization` | Global singleton for resolving auth state | `tom_core_kernel` |
 
 ---
 
@@ -87,31 +97,33 @@ The button's visibility and resources come from its widget path. The action's au
 
 Widget and action authorization are independent but combine to determine the final button state.
 
-**Authorization values:**
-- Widget: `none` (hidden), `read` (readonly), `full` (editable)
-- Action: `full` (triggerable) or `none` (protected) — treat `read` as `none`
+**Authorization values (four-state model):**
+- Widget: `none` (hidden), `disabled` (greyed out), `read` (readonly), `full` (editable)
+- Action: `full` (triggerable), `disabled` (greyed out), or `none` (hidden) — treat `read` as `disabled`
 
 | Widget Auth | Action Auth | Result |
 |-------------|-------------|--------|
 | `full` | `full` | Button enabled |
-| `full` | `none`/`read` | Button disabled |
+| `full` | `disabled`/`read` | Button disabled |
+| `full` | `none` | Button disabled (action exists but unavailable) |
 | `read` | any | Button disabled |
+| `disabled` | any | Button disabled (greyed out) |
 | `none` | any | Button hidden |
 
 **Key insight:** When widget is `full` but action is `none`, the button is **disabled** (visible but greyed out), not hidden. This lets users see that an action exists but is currently unavailable.
 
-### Widget Authorization via `authorizor`
+### Widget Authorization via `authorizer`
 
-Widgets can link to action authorization via the `authorizor` field:
+Widgets can link to action authorization via the `authorizer` field:
 
 ```dart
 TomWidget( 
-  authorizor: action.authorizor, 
+  authorizer: action.authorizer, 
   onPressed: action.actionTrigger((ctx, tx) => {...}),
 );
 ```
 
-The `authorizor` provides a `TomAuthorizor` that resolves the action's authorization at instantiation time (no BuildContext needed).
+The `authorizer` provides a `TomAuthorizer` that resolves the action's authorization at instantiation time (no BuildContext needed).
 
 ---
 
@@ -129,12 +141,12 @@ Actions have no "readonly" state because an action either can be triggered or ca
 
 ### Authorization Resolution
 
-Action authorization uses `TomActionAuthorization`:
+Action authorization uses `TomAuthorization`:
 
 ```dart
 extension ActionAuthorization on TomAction {
   bool isAuthorized() {
-    bool actionAuth = !TomActionAuthorization.isProtected(controller.fullPath + '.' + actionId);
+    bool actionAuth = !TomAuthorization.isProtected(controller.fullPath + '.' + actionId);
     bool groupAuth = group != null ? group.isVisible() : true; // no group -> visible
     return actionAuth && groupAuth;
   }
@@ -162,7 +174,7 @@ class DeleteOrderAction extends TomAction<OrderActionContext, Order> {
   @override
   String get actionId => 'delete';
   
-  TomGroup? get group;  // shares visibility with other mutations
+  TomAuthorizationGroup? get authorizationGroup;  // shares visibility with other mutations
 }
 ```
 
@@ -180,7 +192,7 @@ abstract class TomAction<TContext extends TomActionContext, TUndo> {
   String get actionId;
   
   /// Optional group membership for collective visibility control.
-  TomGroup? group;
+  TomAuthorizationGroup? group;
   
   /// Back-reference set during initialization
   TomActionController controller;
@@ -301,7 +313,7 @@ Current buttons use `VoidCallback? onPressed`:
 class TomElevatedButton extends TomButtonBase {
   final VoidCallback? onPressed;
   // This get extended (see above):
-  final CustomAuthorization? authorizor;  // NEW: custom authorization
+  final TomAuthorizer? authorizer;  // NEW: custom authorization
   // ...
 }
 ```
@@ -319,7 +331,7 @@ The goal is to optionally bind buttons directly to actions:
 
 var button = TomElevatedButton( 
     tomId: "saveButton",
-    authorizor: saveAction.authorizor,
+    authorizer: saveAction.authorizer,
     onPressed: saveAction.actionTrigger(
        contextBuilder: (widgetCtx) => OrderActionContext(
             appState: appState,
@@ -346,7 +358,7 @@ TomPopupMenuButton(
   itemBuilder: (context) => [
     TomPopupMenuItem(
       tomId: 'editItem',
-      authorizor: editAction.authorizor,
+      authorizer: editAction.authorizer,
       onTap: editAction.actionTrigger(
         contextBuilder: (_) => OrderActionContext(...),
       ),
@@ -354,7 +366,7 @@ TomPopupMenuButton(
     ),
     TomPopupMenuItem(
       tomId: 'deleteItem',
-      authorizor: deleteAction.authorizor,
+      authorizer: deleteAction.authorizer,
       onTap: deleteAction.actionTrigger(
         contextBuilder: (_) => OrderActionContext(...),
       ),
@@ -372,13 +384,13 @@ TomDropdownMenu(
   dropdownMenuEntries: [
     TomDropdownMenuEntry(
       value: 'approve',
-      authorizor: approveAction.authorizor,
+      authorizer: approveAction.authorizer,
       onPressed: approveAction.actionTrigger(...),
       label: approveAction.label,
     ),
     TomDropdownMenuEntry(
       value: 'reject',
-      authorizor: rejectAction.authorizor,
+      authorizer: rejectAction.authorizer,
       onPressed: rejectAction.actionTrigger(...),
       label: rejectAction.label,
     ),
@@ -394,7 +406,7 @@ TomContextMenu(
   actions: [
     TomContextMenuAction(
       tomId: 'copyAction',
-      authorizor: copyAction.authorizor,
+      authorizer: copyAction.authorizer,
       onPressed: copyAction.actionTrigger(...),
       child: Row(children: [
         Icon(copyAction.icon),
@@ -409,13 +421,13 @@ TomContextMenu(
 
 ### Multiple Actions
 
-When a widget is linked to more than one action, use `TomMultiAuthorizor` to combine authorization:
+When a widget is linked to more than one action, use `TomMultiAuthorizer` to combine authorization:
 
 ```dart
 // Multi-action authorization: button enabled only if ALL actions are authorized
-authorizor: TomMultiAuthorizor([
-  action1.authorizor,
-  action2.authorizor,
+authorizer: TomMultiAuthorizer([
+  action1.authorizer,
+  action2.authorizer,
 ])
 ```
 
@@ -424,7 +436,7 @@ authorizor: TomMultiAuthorizor([
 ```dart
 TomListTile(
   tomId: 'orderRow',
-  authorizor: TomMultiAuthorizor([viewAction.authorizor, editAction.authorizor]),
+  authorizer: TomMultiAuthorizer([viewAction.authorizer, editAction.authorizer]),
   onTap: viewAction.actionTrigger(
     contextBuilder: (_) => OrderActionContext(...),
   ),
@@ -445,7 +457,7 @@ final validateAndSave = TomActionSequence([
 
 TomElevatedButton(
   tomId: 'saveBtn',
-  authorizor: validateAndSave.authorizor,  // Combined: all must be authorized
+  authorizer: validateAndSave.authorizer,  // Combined: all must be authorized
   onPressed: validateAndSave.actionTrigger(
     contextBuilder: (_) => FormActionContext(...),
   ),
@@ -458,7 +470,7 @@ TomElevatedButton(
 // Choose action based on state
 TomElevatedButton(
   tomId: 'toggleBtn',
-  authorizor: TomMultiAuthorizor([enableAction.authorizor, disableAction.authorizor]),
+  authorizer: TomMultiAuthorizer([enableAction.authorizer, disableAction.authorizer]),
   onPressed: () {
     final action = isEnabled ? disableAction : enableAction;
     action.execute(context);
@@ -470,32 +482,39 @@ TomElevatedButton(
 
 ## 6. Widgets Requiring Modification
 
-With instantiation-time resource and authorization resolution (no BuildContext required), the following widgets can now be fully integrated that were previously problematic:
+### Implemented (authorizer, scope, and auth model)
 
-### Widgets to Modify (add `authorizor` and `scope` parameters)
+The following have been added to **all** Tom widget base classes (`TomNodeBase`, `TomPolicyNodeBase`, `TomFamilyBase`, and `TomWidgetMixin`):
 
-| Widget | Modification Required |
-|--------|----------------------|
-| All button widgets | Add `authorizor` parameter for action authorization |
-| All container widgets | Add optional `scope` parameter for scope inheritance |
-| `TomPopupMenuItem` | Add `authorizor` for menu item visibility/enabled state |
-| `TomDropdownMenuEntry` | Add `authorizor` for entry visibility/enabled state |
-| `TomContextMenuAction` | Add `authorizor` for context menu item state |
-| `TomListTile` | Add `authorizor` for tile-level authorization |
+| Parameter | Type | Purpose |
+|-----------|------|---------|
+| `authorizer` | `TomAuthorizer?` | Per-widget authorization modifier |
+| `authorizerStrategy` | `TomAuthorizerStrategy` | How authorizer interacts with resource auth (default: narrowsOnly) |
+| `uiStateController` | `TomUIStateController?` | Build-time state narrowing callback |
+| `authorizationGroup` | `TomAuthorizationGroup?` | Group membership (replaces old `tomGroup`) |
 
-### Widgets to Add
+Authorization resolution order: resource auth → authorizer → uiStateController (each can only narrow).
+
+Four-state build behavior in `TomPolicyNodeBase`:
+| State | Visual |
+|-------|--------|
+| `none` | `SizedBox.shrink()` (hidden) |
+| `disabled` | `AbsorbPointer` + 0.38 opacity |
+| `read` | Readonly style applied via `TomThemeScope` |
+| `full` | Normal interactive content |
+
+### Widgets Still Needed
 
 | Widget | Purpose |
 |--------|---------|
 | `TomActionButton` | Action-first button that takes a `TomAction` directly |
 | `TomActionMenuItem` | Menu item that takes a `TomAction` directly |
-| `TomFormScope` | Provides form scope to descendants |
 
-### New Action Accessors on TomAction
+### Action Accessors on TomAction
 
 | Accessor | Type | Purpose |
 |----------|------|---------|
-| `authorizor` | `TomAuthorizor` | Authorization provider for widgets |
+| `authorizer` | `TomAuthorizer` | Authorization provider for widgets |
 | `label` | `String` | Resolved label text |
 | `tooltip` | `String?` | Resolved tooltip text |
 | `icon` | `IconData?` | Resolved icon |

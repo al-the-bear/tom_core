@@ -634,7 +634,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
     // Container-level authorization
     final auth = TomUIAuthorization.resolveAuth(containerPath);
-    if (!auth.visible) return const SizedBox.shrink();
+    if (!auth.isVisible) return const SizedBox.shrink();
 
     // Resolve unset parameters from resources
     if (_explicitTitle == null) {
@@ -696,7 +696,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
     // ACL containers no longer create new scopes - scoping is external
     Widget result = acl;
-    if (auth.readonly) {
+    if (auth == TomAuthState.read) {
       final style = TomThemeScope.readonlyStyleOf(context);
       result = style.apply(result);
     }

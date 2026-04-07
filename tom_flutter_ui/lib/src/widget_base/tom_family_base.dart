@@ -1,6 +1,3 @@
-import 'package:flutter/widgets.dart';
-
-import '../resource_auth/tom_auth_state.dart';
 import 'tom_policy_node_base.dart';
 import 'tom_widget_family.dart';
 
@@ -10,15 +7,21 @@ import 'tom_widget_family.dart';
 /// via [families]. Extends [TomPolicyNodeBase] so authorization is always
 /// enforced.
 abstract class TomFamilyBase extends TomPolicyNodeBase {
-  TomFamilyBase({super.key, super.tomId, super.tomGroup, super.scope});
+  TomFamilyBase({
+    super.key,
+    super.tomId,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
+  });
 
   /// The primary widget family for this widget.
   TomWidgetFamily get family;
 
   /// All families this widget belongs to. Defaults to just [family].
-  ///
-  /// Override for multi-family widgets (e.g., a date picker that is both
-  /// [TomWidgetFamily.formField] and [TomWidgetFamily.dateTimePicker]).
   Set<TomWidgetFamily> get families => {family};
 
   /// Whether this widget belongs to the given [type].
@@ -30,15 +33,16 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
 // ────────────────────────────────────────────────────────────────────────────
 
 /// Base for the Button family.
-///
-/// Button widgets trigger actions. They connect to the action system via
-/// typed [ActionTrigger] callbacks and have no direct state binding.
 abstract class TomButtonBase extends TomFamilyBase {
   TomButtonBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -50,8 +54,12 @@ abstract class TomInputBase extends TomFamilyBase {
   TomInputBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -63,8 +71,12 @@ abstract class TomSelectBase extends TomFamilyBase {
   TomSelectBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -76,8 +88,12 @@ abstract class TomToggleBase extends TomFamilyBase {
   TomToggleBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -89,8 +105,12 @@ abstract class TomSliderBase extends TomFamilyBase {
   TomSliderBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -98,37 +118,20 @@ abstract class TomSliderBase extends TomFamilyBase {
 }
 
 /// Base for the Container family (structural wrapper widgets).
-///
-/// Containers resolve their own resources and authorization using their
-/// [tomId] but do NOT create new scopes for child widgets. Scoping is
-/// managed at higher levels via [TomScope].
 abstract class TomContainerBase extends TomFamilyBase {
   TomContainerBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
   TomWidgetFamily get family => TomWidgetFamily.container;
-
-  @override
-  Widget build(BuildContext context) {
-    // Self-path: <scopePath>.<tomId>
-    final selfPath = basePath;
-
-    final authState = selfPath != null
-        ? TomUIAuthorization.resolveAuth(selfPath)
-        : TomAuthState.fullAccess;
-
-    if (!authState.visible) return const SizedBox.shrink();
-
-    if (authState.readonly) {
-      return buildReadonly(context);
-    }
-    return buildContent(context);
-  }
 }
 
 /// Base for the Dialog family.
@@ -136,8 +139,12 @@ abstract class TomDialogBase extends TomFamilyBase {
   TomDialogBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -149,8 +156,12 @@ abstract class TomTableBase extends TomFamilyBase {
   TomTableBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -162,8 +173,12 @@ abstract class TomLabelBase extends TomFamilyBase {
   TomLabelBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -175,8 +190,12 @@ abstract class TomImageBase extends TomFamilyBase {
   TomImageBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -188,8 +207,12 @@ abstract class TomNavigationBase extends TomFamilyBase {
   TomNavigationBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -201,8 +224,12 @@ abstract class TomProgressBase extends TomFamilyBase {
   TomProgressBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -214,8 +241,12 @@ abstract class TomChipBase extends TomFamilyBase {
   TomChipBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -227,8 +258,12 @@ abstract class TomListBase extends TomFamilyBase {
   TomListBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -240,8 +275,12 @@ abstract class TomTreeBase extends TomFamilyBase {
   TomTreeBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -253,8 +292,12 @@ abstract class TomSliverBase extends TomFamilyBase {
   TomSliverBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -266,8 +309,12 @@ abstract class TomAnimatedBase extends TomFamilyBase {
   TomAnimatedBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -279,8 +326,12 @@ abstract class TomEffectBase extends TomFamilyBase {
   TomEffectBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -292,8 +343,12 @@ abstract class TomInteractionBase extends TomFamilyBase {
   TomInteractionBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override
@@ -305,8 +360,12 @@ abstract class TomBuilderBase extends TomFamilyBase {
   TomBuilderBase({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
   });
 
   @override

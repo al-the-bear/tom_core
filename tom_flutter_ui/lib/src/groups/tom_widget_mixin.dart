@@ -1,85 +1,62 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../resource_auth/tom_auth_state.dart';
 import '../resource_auth/tom_resources.dart';
 import '../theme/tom_theme.dart';
-import '../widget_base/tom_authorizable.dart';
-import 'tom_ui_group.dart';
 
 /// Mixin for Tom widgets that extend Flutter widgets directly.
 ///
 /// This mixin provides the Tom UI concerns (ID, group, authorization, resources)
-/// to widgets that extend their Flutter originals:
-///
-/// ```dart
-/// class TomTab extends Tab with TomWidgetMixin {
-///   TomTab({required this.tomId, this.tomGroup, ...});
-///
-///   @override
-///   final String tomId;
-///
-///   @override
-///   final TomUIGroup? tomGroup;
-/// }
-/// ```
-///
-/// The mixin provides:
-/// - [tomId] — abstract, must be implemented
-/// - [tomGroup] — optional group membership (TomUIGroup object)
-/// - [basePath] — canonical resource base path
-/// - [getAuth] — authorization state lookup
-/// - [getText] — text resource lookup
-/// - [checkHidden] — returns `SizedBox.shrink()` if hidden
-/// - [applyReadonly] — applies readonly styling
-/// - Group registration hooks for StatefulWidgets
+/// to widgets that extend their Flutter originals.
 ///
 /// Implements [TomAuthorizable] for type-safe group registration.
 mixin TomWidgetMixin on Widget implements TomAuthorizable {
-  /// The local widget ID (without prefix).
-  ///
-  /// This is combined with parent scope IDs to create the canonical path.
-  /// Can be null for drop-in Flutter compatibility.
   @override
   String? get tomId;
 
-  /// Optional group membership.
-  ///
-  /// When set, the widget registers with the group on mount using weak
-  /// references. Groups are created manually and passed directly.
   @override
-  TomUIGroup? get tomGroup => null;
+  TomAuthorizationGroup? get authorizationGroup => null;
 
-  /// Optional explicit scope for resource/auth lookups.
-  ///
-  /// When provided, this scope is used instead of [TomScope.current].
-  /// This is useful when the implicit zone-based scope isn't available,
-  /// such as when creating widgets outside of a TomScope zone.
   TomScope? get scope => null;
 
-  /// The resolved canonical resource base path for this widget.
-  ///
-  /// Computed as `<scopePath>.<tomId>` where scopePath comes from
-  /// either [scope] or [TomScope.current].
-  ///
-  /// `null` if this widget has no [tomId].
-  ///
-  /// Concrete classes should override this with a `final` field
-  /// for one-time computation in the constructor initializer list.
+  /// Optional per-widget authorizer.
+  TomAuthorizer? get authorizer => null;
+
+  /// Authorizer strategy. Defaults to narrowing only.
+  TomAuthorizerStrategy get authorizerStrategy =>
+      TomAuthorizerStrategy.authorizerNarrowsOnly;
+
+  /// Optional build-time state controller.
+  TomUIStateController? get uiStateController => null;
+
   String? get basePath {
     if (tomId == null) return null;
     final effectiveScope = scope ?? TomScope.current;
     final scopePath = effectiveScope.getScopePath();
-    if (scopePath.isNotEmpty) {
-      return '$scopePath.$tomId';
-    }
+    if (scopePath.isNotEmpty) return '$scopePath.$tomId';
     return tomId;
   }
 
-  /// Gets authorization state for this widget.
+  /// Gets the effective authorization state for this widget.
+  ///
+  /// Combines resource auth, authorizer, and UI state controller.
   TomAuthState getAuth() {
-    if (basePath == null) return TomAuthState.fullAccess;
-    return TomUIAuthorization.resolveAuth(basePath!);
+    // 1. Resource-based authorization
+    var state = (basePath != null)
+        ? TomAuthorization.resolveAuth(basePath!)
+        : TomAuthState.full;
+
+    // 2. Per-widget authorizer
+    if (authorizer != null) {
+      state = authorizer!.effectiveAuth(state);
+    }
+
+    // 3. Build-time UI state controller (can only narrow)
+    if (uiStateController != null) {
+      state = uiStateController!.apply(state);
+    }
+
+    return state;
   }
 
   /// Gets a text resource for this widget.
@@ -91,69 +68,43 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   }
 
   /// Returns `SizedBox.shrink()` if authorization says hidden, `null` otherwise.
-  ///
-  /// Call at the start of `build()` methods:
-  /// ```dart
-  /// @override
-  /// Widget build(BuildContext context) {
-  ///   final hidden = checkHidden();
-  ///   if (hidden != null) return hidden;
-  ///   // ... normal build
-  /// }
-  /// ```
   Widget? checkHidden() {
-    if (!getAuth().visible) return const SizedBox.shrink();
+    final auth = getAuth();
+    if (auth == TomAuthState.none) return const SizedBox.shrink();
     return null;
   }
 
-  /// Wraps [child] in readonly style if authorization says readonly.
-  ///
-  /// The readonly style is resolved from [TomThemeScope].
-  Widget applyReadonly(BuildContext context, Widget child) {
-    if (getAuth().readonly) {
-      final style = TomThemeScope.readonlyStyleOf(context);
-      return style.apply(child);
+  /// Applies the appropriate visual treatment based on auth state.
+  Widget applyAuthState(BuildContext context, Widget child) {
+    final auth = getAuth();
+    switch (auth) {
+      case TomAuthState.none:
+        return const SizedBox.shrink();
+      case TomAuthState.disabled:
+        return AbsorbPointer(
+          child: Opacity(opacity: 0.38, child: child),
+        );
+      case TomAuthState.read:
+        final style = TomThemeScope.readonlyStyleOf(context);
+        return style.apply(child);
+      case TomAuthState.full:
+        return child;
     }
-    return child;
   }
 
-  /// Registers this widget with its group.
-  ///
-  /// For **StatefulWidgets**, call from `State.initState()`:
-  /// ```dart
-  /// @override
-  /// void initState() {
-  ///   super.initState();
-  ///   widget.registerWithGroup();
-  /// }
-  /// ```
-  ///
-  /// For **StatelessWidgets**, registration is handled by calling this
-  /// in a wrapper or during build tracking.
   void registerWithGroup() {
-    tomGroup?.register(this);
+    authorizationGroup?.register(this);
   }
 
-  /// Unregisters this widget from its group.
-  ///
-  /// For **StatefulWidgets**, call from `State.dispose()`:
-  /// ```dart
-  /// @override
-  /// void dispose() {
-  ///   widget.unregisterFromGroup();
-  ///   super.dispose();
-  /// }
-  /// ```
-  ///
-  /// Note: This is optional since groups use weak references.
   void unregisterFromGroup() {
-    tomGroup?.unregister(this);
+    authorizationGroup?.unregister(this);
   }
 
-  /// Debug description for this widget.
   String get debugLabel {
     final parts = <String>['id: $tomId'];
-    if (tomGroup != null) parts.add('group: ${tomGroup!.groupId}');
+    if (authorizationGroup != null) {
+      parts.add('group: ${authorizationGroup!.groupId}');
+    }
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
 

@@ -1200,7 +1200,7 @@ class _AclContainerState extends State<AclContainer> {
               groupName: row.group,
             );
             rowAuthState = TomUIAuthorization.resolveAuth(rowPath);
-            if (!rowAuthState.visible) {
+            if (!rowAuthState.isVisible) {
               contentRowIndex++;
               continue;
             }
@@ -1777,7 +1777,7 @@ class _AclContainerState extends State<AclContainer> {
           rowId: row.id,
         );
         authState = TomUIAuthorization.resolveAuth(componentPolicyPath);
-        if (!authState.visible) {
+        if (!authState.isVisible) {
           children.add(const SizedBox.shrink());
           continue;
         }
@@ -1792,7 +1792,7 @@ class _AclContainerState extends State<AclContainer> {
         fullPath: componentPolicyPath,
       );
 
-      if (rowAuthState?.readonly == true || authState?.readonly == true) {
+      if (rowAuthState == TomAuthState.read || authState == TomAuthState.read) {
         final style = TomThemeScope.readonlyStyleOf(context);
         child = style.apply(child);
       }

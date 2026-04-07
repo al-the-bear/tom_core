@@ -1,18 +1,19 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../groups/tom_ui_group.dart';
 import '../resource_auth/tom_colors.dart';
 import '../resource_auth/tom_icons.dart';
 import '../resource_auth/tom_resources.dart';
-import 'tom_authorizable.dart';
 
 /// Base class for all Tom UI elements (widgets, actions, containers).
 ///
 /// Provides:
 /// - [tomId] — unique ID within its scope.
-/// - [tomGroup] — optional group membership (TomUIGroup object).
+/// - [authorizationGroup] — optional group membership.
 /// - [scope] — optional explicit scope (defaults to [TomScope.current]).
+/// - [authorizer] — optional per-widget authorizer.
+/// - [authorizerStrategy] — how authorizer interacts with resource auth.
+/// - [uiStateController] — build-time state narrowing callback.
 /// - Resource path resolution via [basePath].
 /// - Debug identity via [debugLabel].
 ///
@@ -26,33 +27,49 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomAuthorizationGroup? authorizationGroup;
 
   /// Optional explicit scope for resource/auth lookups.
   ///
   /// When provided, this scope is used instead of [TomScope.current].
-  /// This is useful when the implicit zone-based scope isn't available,
-  /// such as when creating widgets outside of a TomScope zone.
   final TomScope? scope;
 
-  /// The scope that was active when this widget was constructed.
+  /// Optional per-widget authorizer that can modify authorization outcomes.
   ///
-  /// Captured at construction time so that [build] can re-enter the same
-  /// scope zone even though Flutter calls [build] outside the original zone.
+  /// When set, the authorizer is consulted after resource-based authorization
+  /// and can modify the effective state according to [authorizerStrategy].
+  final TomAuthorizer? authorizer;
+
+  /// Strategy controlling how [authorizer] interacts with resource auth.
+  ///
+  /// Defaults to [TomAuthorizerStrategy.authorizerNarrowsOnly].
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  /// Build-time callback that can further narrow the widget's state.
+  ///
+  /// Runs at build time (not construction time) and can only narrow,
+  /// never widen, the effective authorization state.
+  final TomUIStateController? uiStateController;
+
+  /// The scope that was active when this widget was constructed.
   final TomScope constructionScope;
 
   /// The resolved canonical resource base path for this node.
-  ///
-  /// Computed once at construction time as `<scopePath>.<tomId>` where
-  /// scopePath comes from either [scope] or [TomScope.current].
-  ///
-  /// `null` if this node has no [tomId].
   final String? basePath;
 
-  TomNodeBase({super.key, this.tomId, this.tomGroup, this.scope})
-      : constructionScope = scope ?? TomScope.current,
+  TomNodeBase({
+    super.key,
+    this.tomId,
+    TomAuthorizationGroup? authorizationGroup,
+    @Deprecated('Use authorizationGroup instead') TomAuthorizationGroup? tomGroup,
+    this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
+  })  : authorizationGroup = authorizationGroup ?? tomGroup,
+        constructionScope = scope ?? TomScope.current,
         basePath = _resolveBasePath(tomId, scope) {
-    tomGroup?.register(this);
+    (authorizationGroup ?? tomGroup)?.register(this);
   }
 
   static String? _resolveBasePath(String? tomId, TomScope? scope) {
@@ -316,7 +333,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   String get debugLabel {
     final parts = <String>[];
     if (tomId != null) parts.add('id: $tomId');
-    if (tomGroup != null) parts.add('group: ${tomGroup!.groupId}');
+    if (authorizationGroup != null) parts.add('group: ${authorizationGroup!.groupId}');
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
 }

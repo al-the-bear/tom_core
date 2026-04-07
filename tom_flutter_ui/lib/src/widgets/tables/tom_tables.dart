@@ -565,12 +565,12 @@ class _TomAuthContent extends StatelessWidget {
     final auth = TomUIAuthorization.resolveAuth(basePath!);
 
     // Hidden: return empty
-    if (!auth.visible) {
+    if (!auth.isVisible) {
       return const SizedBox.shrink();
     }
 
     // Readonly: apply styling
-    if (auth.readonly) {
+    if (auth == TomAuthState.read) {
       final style = TomThemeScope.readonlyStyleOf(context);
       return style.apply(child);
     }
@@ -736,13 +736,13 @@ class TomDataColumn extends DataColumn {
   /// ```
   bool isVisible(BuildContext context) {
     if (basePath == null) return true;
-    return TomUIAuthorization.resolveAuth(basePath!).visible;
+    return TomUIAuthorization.resolveAuth(basePath!).isVisible;
   }
 
   /// Returns true if this column should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (basePath == null) return false;
-    return TomUIAuthorization.resolveAuth(basePath!).readonly;
+    return TomUIAuthorization.resolveAuth(basePath!) == TomAuthState.read;
   }
 }
 
@@ -809,12 +809,12 @@ class TomDataRow extends DataRow {
   /// ```
   bool isVisible(BuildContext context) {
     if (basePath == null) return true;
-    return TomUIAuthorization.resolveAuth(basePath!).visible;
+    return TomUIAuthorization.resolveAuth(basePath!).isVisible;
   }
 
   /// Returns true if this row should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (basePath == null) return false;
-    return TomUIAuthorization.resolveAuth(basePath!).readonly;
+    return TomUIAuthorization.resolveAuth(basePath!) == TomAuthState.read;
   }
 }

@@ -40,7 +40,7 @@ class TomCard extends TomContainerBase {
   TomCard({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.color,
     this.shadowColor,
@@ -135,7 +135,7 @@ class TomExpansionTile extends TomContainerBase {
   TomExpansionTile({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.title,
     this.titleText,
@@ -258,7 +258,7 @@ class TomScaffold extends TomContainerBase {
   TomScaffold({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.appBar,
     this.body,
@@ -363,7 +363,7 @@ class TomAppBar extends StatelessWidget
   @override
   final String? tomId;
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
   @override
   final TomScope? scope;
   @override
@@ -372,7 +372,7 @@ class TomAppBar extends StatelessWidget
   TomAppBar({
     super.key,
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -405,7 +405,7 @@ class TomAppBar extends StatelessWidget
     this.shape,
     this.notificationPredicate = defaultScrollNotificationPredicate,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
+    authorizationGroup?.register(this);
   }
 
   @override
@@ -550,7 +550,7 @@ class TomBottomAppBar extends TomContainerBase {
   TomBottomAppBar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.child,
     this.color,
@@ -609,7 +609,7 @@ class TomDivider extends TomContainerBase {
   TomDivider({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.height,
     this.thickness,
@@ -671,7 +671,7 @@ class TomContainer extends TomContainerBase {
   TomContainer({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.child,
     this.alignment,
@@ -747,7 +747,7 @@ class TomColumn extends TomContainerBase {
   TomColumn({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.max,
@@ -788,7 +788,7 @@ class TomRow extends TomContainerBase {
   TomRow({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.max,
@@ -836,7 +836,7 @@ class TomWrap extends TomContainerBase {
   TomWrap({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.direction = Axis.horizontal,
     this.alignment = WrapAlignment.start,
@@ -884,7 +884,7 @@ class TomStack extends TomContainerBase {
   TomStack({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.alignment = AlignmentDirectional.topStart,
     this.textDirection,
@@ -927,7 +927,7 @@ class TomIndexedStack extends TomContainerBase {
   TomIndexedStack({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.index = 0,
     this.alignment = AlignmentDirectional.topStart,
@@ -969,7 +969,7 @@ class TomSizedBox extends TomContainerBase {
   TomSizedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.width,
     this.height,
@@ -997,7 +997,7 @@ class TomConstrainedBox extends TomContainerBase {
   TomConstrainedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.constraints,
     this.child,
@@ -1023,7 +1023,7 @@ class TomPadding extends TomContainerBase {
   TomPadding({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.padding,
     this.child,
@@ -1053,7 +1053,7 @@ class TomCenter extends TomContainerBase {
   TomCenter({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.widthFactor,
     this.heightFactor,
@@ -1087,7 +1087,7 @@ class TomAlign extends TomContainerBase {
   TomAlign({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.alignment = Alignment.center,
     this.widthFactor,
@@ -1117,7 +1117,7 @@ class TomAspectRatio extends TomContainerBase {
   TomAspectRatio({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.aspectRatio,
     this.child,
@@ -1142,7 +1142,7 @@ class TomFittedBox extends TomContainerBase {
   TomFittedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.fit = BoxFit.contain,
     this.alignment = Alignment.center,
@@ -1175,7 +1175,7 @@ class TomFractionallySizedBox extends TomContainerBase {
   TomFractionallySizedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.alignment = Alignment.center,
     this.widthFactor,
@@ -1204,7 +1204,7 @@ class TomIntrinsicHeight extends TomContainerBase {
   TomIntrinsicHeight({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.child,
   });
@@ -1228,7 +1228,7 @@ class TomIntrinsicWidth extends TomContainerBase {
   TomIntrinsicWidth({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.stepWidth,
     this.stepHeight,
@@ -1275,7 +1275,7 @@ class TomMaterial extends TomContainerBase {
   TomMaterial({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.type = MaterialType.canvas,
     this.elevation,
@@ -1342,7 +1342,7 @@ class TomDecoratedBox extends TomContainerBase {
   TomDecoratedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.decoration,
     this.position = DecorationPosition.background,
@@ -1369,7 +1369,7 @@ class TomClipRRect extends TomContainerBase {
   TomClipRRect({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.borderRadius = BorderRadius.zero,
     this.clipper,
@@ -1397,7 +1397,7 @@ class TomClipOval extends TomContainerBase {
   TomClipOval({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.clipper,
     this.clipBehavior = Clip.antiAlias,
@@ -1423,7 +1423,7 @@ class TomClipRect extends TomContainerBase {
   TomClipRect({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.clipper,
     this.clipBehavior = Clip.hardEdge,
@@ -1502,7 +1502,7 @@ class TomSliverAppBar extends TomContainerBase {
   TomSliverAppBar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -1621,7 +1621,7 @@ class TomSliverToBoxAdapter extends TomContainerBase {
   TomSliverToBoxAdapter({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.child,
   });
@@ -1639,7 +1639,7 @@ class TomSliverList extends TomContainerBase {
   TomSliverList({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.delegate,
   });
@@ -1658,7 +1658,7 @@ class TomSliverGrid extends TomContainerBase {
   TomSliverGrid({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.delegate,
     required this.gridDelegate,
@@ -1682,7 +1682,7 @@ class TomSliverFillRemaining extends TomContainerBase {
   TomSliverFillRemaining({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.child,
     this.hasScrollBody = true,
@@ -1724,7 +1724,7 @@ class TomCustomScrollView extends TomContainerBase {
   TomCustomScrollView({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
@@ -1792,7 +1792,7 @@ class TomExpansionPanel {
   final String? tomId;
 
   /// Optional group membership.
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   /// Callback that builds the header widget.
   final ExpansionPanelHeaderBuilder headerBuilder;
@@ -1817,7 +1817,7 @@ class TomExpansionPanel {
 
   TomExpansionPanel({
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     required this.headerBuilder,
     required this.body,
     this.isExpanded = false,
@@ -1862,7 +1862,7 @@ class TomExpansionPanelList extends TomContainerBase {
   TomExpansionPanelList({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.children = const [],
     this.expansionCallback,
@@ -1912,7 +1912,7 @@ class TomInk extends TomContainerBase {
   TomInk({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.padding,
     this.color,
@@ -1978,7 +1978,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   @override
   final TomScope? scope;
@@ -1989,14 +1989,14 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   /// Creates a Tom Expanded widget with optional resource resolution.
   TomExpanded({
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     super.key,
     super.flex,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
-    tomGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
+    authorizationGroup?.register(this);
   }
 }
 
@@ -2021,7 +2021,7 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   @override
   final TomScope? scope;
@@ -2032,15 +2032,15 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   /// Creates a Tom Flexible widget with optional resource resolution.
   TomFlexible({
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     super.key,
     super.flex,
     super.fit,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
-    tomGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
+    authorizationGroup?.register(this);
   }
 }
 
@@ -2061,7 +2061,7 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   @override
   final TomScope? scope;
@@ -2072,12 +2072,12 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   /// Creates a Tom Spacer widget.
   TomSpacer({
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     super.key,
     super.flex,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
+    authorizationGroup?.register(this);
   }
 }
 
@@ -2115,7 +2115,7 @@ class TomPositioned extends TomContainerBase {
   TomPositioned({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.left,
     this.top,
@@ -2132,7 +2132,7 @@ class TomPositioned extends TomContainerBase {
   TomPositioned.fill({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.left = 0.0,
     this.top = 0.0,
@@ -2191,7 +2191,7 @@ class TomPositionedDirectional extends TomContainerBase {
   TomPositionedDirectional({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.start,
     this.top,
@@ -2234,7 +2234,7 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   @override
   final TomScope? scope;
@@ -2245,14 +2245,14 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   /// Creates a Tom TableCell widget with optional resource resolution.
   TomTableCell({
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     super.key,
     super.verticalAlignment,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
-    tomGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
+    authorizationGroup?.register(this);
   }
 }
 
@@ -2275,7 +2275,7 @@ class TomSafeArea extends TomContainerBase {
   TomSafeArea({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.left = true,
     this.top = true,
@@ -2323,7 +2323,7 @@ class TomSingleChildScrollView extends TomContainerBase {
   TomSingleChildScrollView({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
@@ -2391,7 +2391,7 @@ class TomCarouselView extends TomContainerBase {
   TomCarouselView({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.children,
     this.padding,
@@ -2453,7 +2453,7 @@ class TomVisibility extends TomContainerBase {
   TomVisibility({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.child,
     this.replacement = const SizedBox.shrink(),
@@ -2493,7 +2493,7 @@ class TomOffstage extends TomContainerBase {
   TomOffstage({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.offstage = true,
     this.child,
@@ -2525,7 +2525,7 @@ class TomCupertinoPageScaffold extends TomContainerBase {
   TomCupertinoPageScaffold({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.navigationBar,
     this.backgroundColor,
@@ -2563,7 +2563,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
   TomCupertinoTabScaffold({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.tabBar,
     required IndexedWidgetBuilder tabBuilder,
@@ -2604,7 +2604,7 @@ class TomCupertinoFormRow extends TomContainerBase {
   TomCupertinoFormRow({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.child,
     this.prefix,
@@ -2647,7 +2647,7 @@ class TomCupertinoFormSection extends TomContainerBase {
   TomCupertinoFormSection({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.children,
     this.header,
@@ -2712,7 +2712,7 @@ class TomNestedScrollView extends TomContainerBase {
   TomNestedScrollView({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.controller,
     this.scrollDirection = Axis.vertical,
@@ -2777,7 +2777,7 @@ class TomScrollbar extends TomContainerBase {
   TomScrollbar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.child,
     this.controller,
@@ -2832,7 +2832,7 @@ class TomCupertinoScrollbar extends TomContainerBase {
   TomCupertinoScrollbar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.child,
     this.controller,
@@ -2889,7 +2889,7 @@ class TomDraggableScrollableSheet extends TomContainerBase {
   TomDraggableScrollableSheet({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.initialChildSize,
     this.minChildSize,
@@ -2961,7 +2961,7 @@ class TomInteractiveViewer extends TomContainerBase {
   TomInteractiveViewer({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.clipBehavior = Clip.hardEdge,
     this.panAxis = PanAxis.free,
@@ -3035,7 +3035,7 @@ class TomClipPath extends TomContainerBase {
   TomClipPath({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.clipper,
     this.clipBehavior = Clip.antiAlias,
@@ -3065,7 +3065,7 @@ class TomColoredBox extends TomContainerBase {
   TomColoredBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.color,
     this.child,
@@ -3096,7 +3096,7 @@ class TomOpacity extends TomContainerBase {
   TomOpacity({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.opacity,
     this.alwaysIncludeSemantics = false,
@@ -3133,7 +3133,7 @@ class TomTransform extends TomContainerBase {
   TomTransform({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.transform,
     this.origin,
@@ -3177,7 +3177,7 @@ class TomRotatedBox extends TomContainerBase {
   TomRotatedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.quarterTurns,
     this.child,
@@ -3213,7 +3213,7 @@ class TomOverflowBar extends TomContainerBase {
   TomOverflowBar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.spacing,
     this.alignment,
@@ -3263,7 +3263,7 @@ class TomOverflowBox extends TomContainerBase {
   TomOverflowBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.alignment = Alignment.center,
     this.minWidth,
@@ -3310,7 +3310,7 @@ class TomSizedOverflowBox extends TomContainerBase {
   TomSizedOverflowBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.size,
     this.alignment = Alignment.center,
@@ -3340,7 +3340,7 @@ class TomUnconstrainedBox extends TomContainerBase {
   TomUnconstrainedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.textDirection,
     this.alignment = Alignment.center,
@@ -3375,7 +3375,7 @@ class TomConstraintsTransformBox extends TomContainerBase {
   TomConstraintsTransformBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.textDirection,
     this.alignment = Alignment.center,
@@ -3413,7 +3413,7 @@ class TomLimitedBox extends TomContainerBase {
   TomLimitedBox({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.maxWidth,
     this.maxHeight,
@@ -3447,7 +3447,7 @@ class TomBaseline extends TomContainerBase {
   TomBaseline({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.baseline,
     required this.baselineType,
@@ -3480,7 +3480,7 @@ class TomListBody extends TomContainerBase {
   TomListBody({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.mainAxis = Axis.vertical,
     this.reverse,
@@ -3510,7 +3510,7 @@ class TomFlow extends TomContainerBase {
   TomFlow({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.delegate,
     this.clipBehavior,
@@ -3539,7 +3539,7 @@ class TomCustomMultiChildLayout extends TomContainerBase {
   TomCustomMultiChildLayout({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.delegate,
     this.children = const <Widget>[],
@@ -3564,7 +3564,7 @@ class TomCustomSingleChildLayout extends TomContainerBase {
   TomCustomSingleChildLayout({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.delegate,
     this.child,
@@ -3597,7 +3597,7 @@ class TomCustomPaint extends TomContainerBase {
   TomCustomPaint({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.painter,
     this.foregroundPainter,
@@ -3646,7 +3646,7 @@ class TomPhysicalModel extends TomContainerBase {
   TomPhysicalModel({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.shape = BoxShape.rectangle,
     this.clipBehavior = Clip.none,
@@ -3700,7 +3700,7 @@ class TomPhysicalShape extends TomContainerBase {
   TomPhysicalShape({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.clipper,
     this.clipBehavior = Clip.none,
@@ -3741,7 +3741,7 @@ class TomFractionalTranslation extends TomContainerBase {
   TomFractionalTranslation({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     required this.translation,
     this.transformHitTests,
@@ -3771,7 +3771,7 @@ class TomGridTile extends TomContainerBase {
   TomGridTile({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.header,
     this.footer,
@@ -3804,7 +3804,7 @@ class TomGridTileBar extends TomContainerBase {
   TomGridTileBar({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.backgroundColor,
     this.leading,
@@ -3847,7 +3847,7 @@ class TomCupertinoExpansionTile extends TomContainerBase {
   TomCupertinoExpansionTile({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.title,
     this.titleText,
@@ -3880,7 +3880,7 @@ class TomClipRSuperellipse extends TomContainerBase {
   TomClipRSuperellipse({
     super.key,
     super.tomId,
-    super.tomGroup,
+    super.authorizationGroup,
     super.scope,
     this.borderRadius = BorderRadius.zero,
     this.clipBehavior = Clip.antiAlias,
@@ -3905,7 +3905,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? tomGroup;
+  final TomUIGroup? authorizationGroup;
 
   @override
   final TomScope? scope;
@@ -3916,7 +3916,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   TomCupertinoTabView({
     super.key,
     this.tomId,
-    this.tomGroup,
+    this.authorizationGroup,
     this.scope,
     super.builder,
     super.navigatorKey,
@@ -3927,6 +3927,6 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
     super.navigatorObservers,
     super.restorationScopeId,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    tomGroup?.register(this);
+    authorizationGroup?.register(this);
   }
 }
