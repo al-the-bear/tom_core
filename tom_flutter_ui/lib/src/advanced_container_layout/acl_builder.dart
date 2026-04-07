@@ -291,13 +291,13 @@ class AclBuilder {
   /// Sets a maximum size on the current component.
   ///
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
-  /// (preserving any previously set value, or defaulting to infinity / infinity).
+  /// (preserving any previously set value).
   AclBuilder setXSize(double width, double height) {
     if (_currentComponent != null) {
       final cur = _currentComponent!.maximumSize;
       _currentComponent!.maximumSize = Size(
-        width == 0 ? (cur?.width ?? double.infinity) : width,
-        height == 0 ? (cur?.height ?? double.infinity) : height,
+        width == 0 ? (cur?.width ?? 0) : width,
+        height == 0 ? (cur?.height ?? 0) : height,
       );
     }
     return this;
