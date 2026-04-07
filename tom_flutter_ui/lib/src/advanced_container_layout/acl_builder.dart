@@ -860,43 +860,20 @@ class AclBuilder {
     return this;
   }
 
-  /// Builds the final [Acl] widget, optionally wrapped with layout controls.
-  ///
-  /// - [expandWidth] — makes the container fill the available horizontal
-  ///   space. Propagated into the [Acl] widget so it sets tight width
-  ///   constraints internally (including through title [Stack]).
-  /// - [expandHeight] — wraps in [Expanded] so the container fills the
-  ///   available vertical space. The parent must be a [Flex] widget (e.g.
-  ///   [Column], [Row]).
-  /// - [width] — explicit width; applied via outer [SizedBox].
-  /// - [height] — explicit height; applied via outer [SizedBox].
-  /// - [margin] — outer spacing applied outside the container.
-  /// - [scrollableX] — overrides the builder-level horizontal scroll flag.
-  /// - [scrollableY] — overrides the builder-level vertical scroll flag.
-  Widget build({
-    bool expandWidth = true,
-    bool expandHeight = false,
-    double? width,
-    double? height,
-    EdgeInsetsGeometry? margin,
-    bool? scrollableX,
-    bool? scrollableY,
-  }) {
+  Acl build() {
     // Sort variants by atWidth ascending so the narrowest (most specific)
     // variant matches first during selection.
     final sortedVariants = List<AclVariant>.from(_variants)
       ..sort((a, b) => a.atWidth.compareTo(b.atWidth));
 
-    Widget result = Acl(
+    return Acl(
       rows: _rows.map((row) => row.toRow()).toList(),
       borderStyle: _borderStyle,
       focusedBorderStyle: _focusedBorderStyle,
       padding: _padding,
       backgroundColor: _backgroundColor,
-      scrollableX: scrollableX ?? _scrollableX,
-      scrollableY: scrollableY ?? _scrollableY,
-      expandWidth: expandWidth,
-      expandHeight: expandHeight,
+      scrollableX: _scrollableX,
+      scrollableY: _scrollableY,
       title: _title,
       titleWidget: _titleWidget,
       titleStyle: _titleStyle,
@@ -914,23 +891,6 @@ class AclBuilder {
       variants: sortedVariants,
       direction: _direction,
     );
-
-    // Explicit width/height via outer SizedBox
-    if (width != null || height != null) {
-      result = SizedBox(width: width, height: height, child: result);
-    }
-
-    // expandHeight wraps in Expanded (parent must be a Flex widget)
-    if (expandHeight && height == null) {
-      result = Expanded(child: result);
-    }
-
-    // Outer margin
-    if (margin != null) {
-      result = Padding(padding: margin, child: result);
-    }
-
-    return result;
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

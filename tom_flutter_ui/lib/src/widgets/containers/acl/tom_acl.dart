@@ -324,26 +324,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   ///
   /// The returned widget must be placed in a [BuildContext] that has a
   /// [TomThemeScope] ancestor for readonly styling (falls back to default).
-  ///
-  /// Layout parameters:
-  /// - [expandWidth] — fills available horizontal space (default `true`).
-  /// - [expandHeight] — wraps in [Expanded] to fill available vertical space.
-  ///   The parent must be a [Flex] widget (e.g. [Column], [Row]).
-  /// - [width] — explicit width; overrides [expandWidth] when set.
-  /// - [height] — explicit height; overrides [expandHeight] when set.
-  /// - [margin] — outer spacing applied outside the container.
-  /// - [scrollableX] — overrides horizontal scroll flag.
-  /// - [scrollableY] — overrides vertical scroll flag.
-  Widget build(
-    BuildContext context, {
-    bool expandWidth = true,
-    bool expandHeight = false,
-    double? width,
-    double? height,
-    EdgeInsetsGeometry? margin,
-    bool? scrollableX,
-    bool? scrollableY,
-  }) {
+  Widget build(BuildContext context) {
     // Self-path: <scopePath>.<id>
     final scopePath = TomScope.current.getScopePath();
     final containerPath = scopePath.isNotEmpty ? '$scopePath.$id' : id;
@@ -408,15 +389,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       if (resAlign != null) _builder.setAclTitleBorderAlign(resAlign);
     }
 
-    final acl = _builder.build(
-      expandWidth: expandWidth,
-      expandHeight: expandHeight,
-      width: width,
-      height: height,
-      margin: margin,
-      scrollableX: scrollableX,
-      scrollableY: scrollableY,
-    );
+    final acl = _builder.build();
 
     // ACL containers no longer create new scopes - scoping is external
     Widget result = acl;
