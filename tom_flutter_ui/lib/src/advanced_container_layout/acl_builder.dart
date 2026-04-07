@@ -173,8 +173,19 @@ class AclBuilder {
 
   // ── Component placement ────────────────────────────────────────────────────
 
+  /// Applies a default preferred size of `Size(1, 0)` to the current
+  /// component if no preferred size was explicitly set. Called whenever
+  /// the current-component scope is about to change (append, gap, newRow,
+  /// gapRow, build).
+  void _finalizeCurrentComponent() {
+    if (_currentComponent != null && _currentComponent!.preferredSize == null) {
+      _currentComponent!.preferredSize = const Size(1, 0);
+    }
+  }
+
   /// Appends a component to the current row.
   AclBuilder append(Widget child, {double dist = 0}) {
+    _finalizeCurrentComponent();
     final canAttachComponentKey =
         child is! Flexible && child is! Expanded && child is! Spacer;
     if (canAttachComponentKey && _rowByObject.containsKey(child)) {
@@ -211,6 +222,7 @@ class AclBuilder {
 
   /// Inserts an elastic horizontal gap slot into the current row.
   AclBuilder gap({double weight = 1}) {
+    _finalizeCurrentComponent();
     final gapWidget = const SizedBox.shrink();
     final data = _ComponentData(
       child: gapWidget,
@@ -227,6 +239,7 @@ class AclBuilder {
 
   /// Starts a new content row.
   AclBuilder newRow({double dist = 0}) {
+    _finalizeCurrentComponent();
     _currentRow = _RowData()..gapBefore = dist;
     _rows.add(_currentRow);
     _currentComponent = null;
@@ -243,6 +256,7 @@ class AclBuilder {
   /// * A pure spacing gapRow renders at [minSize] height, or collapses to
   ///   nothing if [minSize] is 0 (the default).
   AclBuilder gapRow({double weight = 1, AclSeparator? separator, double minSize = 0}) {
+    _finalizeCurrentComponent();
     final gapRowData = _RowData()
       ..isGapRow = true
       ..gapRowWeight = weight
@@ -885,6 +899,7 @@ class AclBuilder {
   }
 
   Acl build() {
+    _finalizeCurrentComponent();
     // Sort variants by atWidth ascending so the narrowest (most specific)
     // variant matches first during selection.
     final sortedVariants = List<AclVariant>.from(_variants)
