@@ -34,7 +34,7 @@ class TomCircularProgressIndicator extends TomProgressBase {
   TomCircularProgressIndicator({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.value,
     this.backgroundColor,
@@ -96,7 +96,7 @@ class TomLinearProgressIndicator extends TomProgressBase {
   TomLinearProgressIndicator({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.value,
     this.backgroundColor,
@@ -164,7 +164,7 @@ class TomRefreshIndicator extends TomProgressBase {
   TomRefreshIndicator({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.child,
     required Future<void> Function() onRefresh,
@@ -221,7 +221,7 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
   TomCupertinoActivityIndicator({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.animating = true,
     this.radius = 10.0,
@@ -264,7 +264,7 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
   TomCupertinoLinearActivityIndicator({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.value,
     this.color,
@@ -312,7 +312,7 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
   TomCupertinoSliverRefreshControl({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.refreshTriggerPullDistance,
     this.refreshIndicatorExtent,

@@ -52,7 +52,7 @@ class TomNavigationRail extends TomNavigationBase {
   TomNavigationRail({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.selectedIndex,
     ValueChanged<int>? onDestinationSelected,
@@ -165,7 +165,7 @@ class TomNavigationBar extends TomNavigationBase {
   TomNavigationBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.selectedIndex = 0,
     ValueChanged<int>? onDestinationSelected,
@@ -269,7 +269,7 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
   TomTabBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.tabs,
     this.controller,
@@ -394,7 +394,7 @@ class TomNavigationDrawer extends TomNavigationBase {
   TomNavigationDrawer({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.children,
     this.selectedIndex,
@@ -465,7 +465,7 @@ class TomDrawer extends TomNavigationBase {
   TomDrawer({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.child,
     this.backgroundColor,
@@ -548,7 +548,7 @@ class TomBottomNavigationBar extends TomNavigationBase {
   TomBottomNavigationBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.items,
     this.currentIndex = 0,
@@ -648,7 +648,7 @@ class TomStepper extends TomNavigationBase {
   TomStepper({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.steps,
     this.currentStep = 0,
@@ -712,7 +712,7 @@ class TomTabBarView extends TomNavigationBase {
   TomTabBarView({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.children,
     this.controller,
@@ -758,7 +758,7 @@ class TomPageView extends TomNavigationBase {
   TomPageView({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.children,
     this.controller,
@@ -819,7 +819,7 @@ class TomCupertinoTabBar extends TomNavigationBase {
   TomCupertinoTabBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.items,
     ValueChanged<int>? onTap,
@@ -878,7 +878,7 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
   TomCupertinoNavigationBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -953,7 +953,7 @@ class TomBreadcrumb extends TomNavigationBase {
   TomBreadcrumb({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.items,
     this.separator = const Text(' / '),
@@ -1220,7 +1220,7 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
   TomCupertinoSliverNavigationBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.largeTitle,
     this.leading,
@@ -1281,7 +1281,7 @@ class TomFlexibleSpaceBar extends TomNavigationBase {
   TomFlexibleSpaceBar({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.title,
     this.background,
@@ -1324,7 +1324,7 @@ class TomDrawerHeader extends TomNavigationBase {
   TomDrawerHeader({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.decoration,
     this.padding,
@@ -1371,7 +1371,7 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
   TomUserAccountsDrawerHeader({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.decoration,
     this.margin = const EdgeInsets.only(bottom: 8.0),
@@ -1419,7 +1419,7 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
   TomCupertinoNavigationBarBackButton({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.color,
     this.previousPageTitle,
@@ -1457,7 +1457,7 @@ class TomTabPageSelector extends TomNavigationBase {
   TomTabPageSelector({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.controller,
     this.indicatorSize,

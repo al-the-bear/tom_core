@@ -10,8 +10,7 @@ abstract class TomFamilyBase extends TomPolicyNodeBase {
   TomFamilyBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -37,8 +36,7 @@ abstract class TomButtonBase extends TomFamilyBase {
   TomButtonBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -54,8 +52,7 @@ abstract class TomInputBase extends TomFamilyBase {
   TomInputBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -71,8 +68,7 @@ abstract class TomSelectBase extends TomFamilyBase {
   TomSelectBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -88,8 +84,7 @@ abstract class TomToggleBase extends TomFamilyBase {
   TomToggleBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -105,8 +100,7 @@ abstract class TomSliderBase extends TomFamilyBase {
   TomSliderBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -122,8 +116,7 @@ abstract class TomContainerBase extends TomFamilyBase {
   TomContainerBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -139,8 +132,7 @@ abstract class TomDialogBase extends TomFamilyBase {
   TomDialogBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -156,8 +148,7 @@ abstract class TomTableBase extends TomFamilyBase {
   TomTableBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -173,8 +164,7 @@ abstract class TomLabelBase extends TomFamilyBase {
   TomLabelBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -190,8 +180,7 @@ abstract class TomImageBase extends TomFamilyBase {
   TomImageBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -207,8 +196,7 @@ abstract class TomNavigationBase extends TomFamilyBase {
   TomNavigationBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -224,8 +212,7 @@ abstract class TomProgressBase extends TomFamilyBase {
   TomProgressBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -241,8 +228,7 @@ abstract class TomChipBase extends TomFamilyBase {
   TomChipBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -258,8 +244,7 @@ abstract class TomListBase extends TomFamilyBase {
   TomListBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -275,8 +260,7 @@ abstract class TomTreeBase extends TomFamilyBase {
   TomTreeBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -292,8 +276,7 @@ abstract class TomSliverBase extends TomFamilyBase {
   TomSliverBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -309,8 +292,7 @@ abstract class TomAnimatedBase extends TomFamilyBase {
   TomAnimatedBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -326,8 +308,7 @@ abstract class TomEffectBase extends TomFamilyBase {
   TomEffectBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -343,8 +324,7 @@ abstract class TomInteractionBase extends TomFamilyBase {
   TomInteractionBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,
@@ -360,8 +340,7 @@ abstract class TomBuilderBase extends TomFamilyBase {
   TomBuilderBase({
     super.key,
     super.tomId,
-    super.authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') super.tomGroup,
+    super.tomGroup,
     super.scope,
     super.authorizer,
     super.authorizerStrategy,

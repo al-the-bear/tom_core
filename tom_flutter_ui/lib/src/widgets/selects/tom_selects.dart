@@ -59,7 +59,7 @@ class TomDropdownButton<T> extends TomSelectBase {
   TomDropdownButton({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.value,
     this.items,
@@ -195,7 +195,7 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   TomPopupMenuButton({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required PopupMenuItemBuilder<T> itemBuilder,
     this.initialValue,
@@ -324,7 +324,7 @@ class TomDropdownMenu<T> extends TomSelectBase {
   TomDropdownMenu({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.initialSelection,
     ValueChanged<T?>? onSelected,
@@ -434,7 +434,7 @@ class TomMenuAnchor extends TomSelectBase {
   TomMenuAnchor({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.menuChildren,
     this.controller,
@@ -542,7 +542,7 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   TomDropdownButtonFormField({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.items,
     this.value,
@@ -674,7 +674,7 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
   TomCupertinoSlidingSegmentedControl({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.children,
     required this.groupValue,
@@ -946,7 +946,7 @@ class TomCupertinoPicker extends TomSelectBase {
   TomCupertinoPicker({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     this.diameterRatio,
     this.backgroundColor,
@@ -1009,7 +1009,7 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
   TomCupertinoSegmentedControl({
     super.key,
     super.tomId,
-    super.authorizationGroup,
+    super.tomGroup,
     super.scope,
     required this.children,
     this.groupValue,
