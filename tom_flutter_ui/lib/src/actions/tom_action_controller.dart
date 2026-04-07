@@ -6,7 +6,7 @@ import 'tom_action.dart';
 ///
 /// Each controller has a unique [controllerId] and maintains a registry of
 /// its actions. The controller provides the first segment of action
-/// canonical paths: `ac-<controllerId>.a-<actionId>`.
+/// canonical paths: `<controllerId>.<actionId>`.
 ///
 /// ```dart
 /// class OrderController extends TomActionController {
@@ -55,7 +55,7 @@ class TomActionController {
   }
 
   /// The canonical path prefix for actions in this controller.
-  String get canonicalPrefix => 'ac-$controllerId';
+  String get canonicalPrefix => controllerId;
 
   /// Gets the authorization state for this controller as a whole.
   TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPrefix);

@@ -87,8 +87,8 @@ abstract class TomAction<TContext extends TomActionContext,
 
   /// The canonical authorization path for this action.
   ///
-  /// Format: `ac-<controllerId>.a-<actionId>`
-  String get canonicalPath => 'ac-${controller.controllerId}.a-$actionId';
+  /// Format: `<controllerId>.<actionId>`
+  String get canonicalPath => '${controller.controllerId}.$actionId';
 
   /// Whether this action can execute given the current [context].
   ///
