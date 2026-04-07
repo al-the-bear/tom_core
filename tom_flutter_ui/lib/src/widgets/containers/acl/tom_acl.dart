@@ -163,19 +163,19 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   }
 
   /// Sets a preferred size on the current component.
-  TomAclBuilder<T> setPSize(double width, double height) {
+  TomAclBuilder<T> setPSize(double width, [double height = 0]) {
     _builder.setPSize(width, height);
     return this;
   }
 
   /// Sets a minimum size on the current component.
-  TomAclBuilder<T> setMSize(double width, double height) {
+  TomAclBuilder<T> setMSize(double width, [double height = 0]) {
     _builder.setMSize(width, height);
     return this;
   }
 
   /// Sets a maximum size on the current component.
-  TomAclBuilder<T> setXSize(double width, double height) {
+  TomAclBuilder<T> setXSize(double width, [double height = 0]) {
     _builder.setXSize(width, height);
     return this;
   }

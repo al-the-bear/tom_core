@@ -282,7 +282,7 @@ class AclBuilder {
   ///
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
   /// (preserving any previously set value, or defaulting to 0 / 0).
-  AclBuilder setPSize(double width, double height) {
+  AclBuilder setPSize(double width, [double height = 0]) {
     if (_currentComponent != null) {
       final cur = _currentComponent!.preferredSize;
       _currentComponent!.preferredSize = Size(
@@ -297,7 +297,7 @@ class AclBuilder {
   ///
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
   /// (preserving any previously set value, or defaulting to 0 / 0).
-  AclBuilder setMSize(double width, double height) {
+  AclBuilder setMSize(double width, [double height = 0]) {
     if (_currentComponent != null) {
       final cur = _currentComponent!.minimumSize;
       _currentComponent!.minimumSize = Size(
@@ -312,7 +312,7 @@ class AclBuilder {
   ///
   /// Pass 0 for [width] or [height] to leave that dimension unchanged
   /// (preserving any previously set value).
-  AclBuilder setXSize(double width, double height) {
+  AclBuilder setXSize(double width, [double height = 0]) {
     if (_currentComponent != null) {
       final cur = _currentComponent!.maximumSize;
       _currentComponent!.maximumSize = Size(
