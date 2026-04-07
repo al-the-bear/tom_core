@@ -734,7 +734,7 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
   /// Creates a Tom PopupMenuItem.
   TomPopupMenuItem({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.value,
@@ -747,14 +747,14 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
     super.mouseCursor,
     required super.child,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -798,19 +798,19 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
   /// Creates a Tom PopupMenuDivider.
   TomPopupMenuDivider({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.height,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -860,7 +860,7 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
   /// Creates a Tom CheckedPopupMenuItem.
   TomCheckedPopupMenuItem({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.value,
@@ -872,14 +872,14 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     super.mouseCursor,
     super.child,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1060,7 +1060,7 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
   /// Creates a Tom DropdownMenuItem.
   TomDropdownMenuItem({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.onTap,
@@ -1069,14 +1069,14 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
     super.alignment,
     required super.child,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;

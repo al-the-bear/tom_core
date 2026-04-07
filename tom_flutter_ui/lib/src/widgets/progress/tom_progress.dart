@@ -351,7 +351,7 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   @override
   final String? tomId;
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -362,7 +362,7 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   TomRefreshProgressIndicator({
     super.key,
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     double? value,
     Color? backgroundColor,
@@ -382,7 +382,7 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
           semanticsLabel: semanticsLabel ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsLabel')),
           semanticsValue: semanticsValue ?? TomCtr.textOrNull(_p(tomId, scope, 'semanticsValue')),
         ) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   /// Helper to build full path with suffix.

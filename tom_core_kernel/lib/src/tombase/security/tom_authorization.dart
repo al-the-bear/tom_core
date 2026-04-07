@@ -73,7 +73,7 @@ enum TomAuthState {
 ///
 /// Implementers gain:
 /// - [tomId] for resource-based authorization lookups
-/// - [authorizationGroup] for group-level visibility control
+/// - [tomGroup] for group-level visibility control
 ///
 /// Implemented by:
 /// - Tom widgets (via TomNodeBase, TomWidgetMixin)
@@ -89,7 +89,7 @@ abstract interface class TomAuthorizable {
   /// The authorization group this element belongs to, if any.
   ///
   /// Groups enable collective visibility control.
-  TomAuthorizationGroup? get authorizationGroup;
+  TomAuthorizationGroup? get tomGroup;
 }
 
 // =============================================================================
@@ -210,7 +210,7 @@ abstract class TomAuthorizationAdapter {
 /// TomAuthorization.adapter = MyAuthorizationAdapter();
 ///
 /// // Usage anywhere
-/// final auth = TomAuthorization.resolveAuth('r-checkout.w-email');
+/// final auth = TomAuthorization.resolveAuth('checkout.email');
 /// ```
 class TomAuthorization {
   TomAuthorization._();

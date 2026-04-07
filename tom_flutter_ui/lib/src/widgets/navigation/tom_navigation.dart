@@ -1014,7 +1014,7 @@ class TomTab extends Tab with TomWidgetMixin {
   /// At least one of [text], [icon], or [child] must be non-null.
   TomTab({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.text,
@@ -1023,14 +1023,14 @@ class TomTab extends Tab with TomWidgetMixin {
     super.height,
     super.child,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1078,7 +1078,7 @@ class TomNavigationDestination extends NavigationDestination
   /// Creates a Tom NavigationDestination.
   TomNavigationDestination({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     required super.icon,
@@ -1087,14 +1087,14 @@ class TomNavigationDestination extends NavigationDestination
     super.tooltip,
     super.enabled,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1143,7 +1143,7 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
   /// Creates a Tom NavigationDrawerDestination.
   TomNavigationDrawerDestination({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     required super.icon,
@@ -1152,14 +1152,14 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
     super.backgroundColor,
     super.enabled,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;

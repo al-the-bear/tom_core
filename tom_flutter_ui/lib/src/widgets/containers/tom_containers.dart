@@ -363,7 +363,7 @@ class TomAppBar extends StatelessWidget
   @override
   final String? tomId;
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
   @override
   final TomScope? scope;
   @override
@@ -372,7 +372,7 @@ class TomAppBar extends StatelessWidget
   TomAppBar({
     super.key,
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -405,7 +405,7 @@ class TomAppBar extends StatelessWidget
     this.shape,
     this.notificationPredicate = defaultScrollNotificationPredicate,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   @override
@@ -1978,7 +1978,7 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -1989,14 +1989,14 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   /// Creates a Tom Expanded widget with optional resource resolution.
   TomExpanded({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.flex,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
-    authorizationGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
   }
 }
 
@@ -2021,7 +2021,7 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2032,15 +2032,15 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   /// Creates a Tom Flexible widget with optional resource resolution.
   TomFlexible({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.flex,
     super.fit,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
-    authorizationGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
   }
 }
 
@@ -2061,7 +2061,7 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2072,12 +2072,12 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   /// Creates a Tom Spacer widget.
   TomSpacer({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.flex,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 }
 
@@ -2234,7 +2234,7 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -2245,14 +2245,14 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   /// Creates a Tom TableCell widget with optional resource resolution.
   TomTableCell({
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.key,
     super.verticalAlignment,
     Widget? child,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, authorizationGroup)) {
-    authorizationGroup?.register(this);
+       super(child: child ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'child'), scope, tomGroup)) {
+    tomGroup?.register(this);
   }
 }
 
@@ -3905,7 +3905,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   final String? tomId;
 
   @override
-  final TomUIGroup? authorizationGroup;
+  final TomUIGroup? tomGroup;
 
   @override
   final TomScope? scope;
@@ -3916,7 +3916,7 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   TomCupertinoTabView({
     super.key,
     this.tomId,
-    this.authorizationGroup,
+    this.tomGroup,
     this.scope,
     super.builder,
     super.navigatorKey,
@@ -3927,6 +3927,6 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
     super.navigatorObservers,
     super.restorationScopeId,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 }

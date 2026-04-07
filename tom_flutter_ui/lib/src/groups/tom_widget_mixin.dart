@@ -15,7 +15,7 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   String? get tomId;
 
   @override
-  TomAuthorizationGroup? get authorizationGroup => null;
+  TomAuthorizationGroup? get tomGroup => null;
 
   TomScope? get scope => null;
 
@@ -93,17 +93,17 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
   }
 
   void registerWithGroup() {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
   }
 
   void unregisterFromGroup() {
-    authorizationGroup?.unregister(this);
+    tomGroup?.unregister(this);
   }
 
   String get debugLabel {
     final parts = <String>['id: $tomId'];
-    if (authorizationGroup != null) {
-      parts.add('group: ${authorizationGroup!.groupId}');
+    if (tomGroup != null) {
+      parts.add('group: ${tomGroup!.groupId}');
     }
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }

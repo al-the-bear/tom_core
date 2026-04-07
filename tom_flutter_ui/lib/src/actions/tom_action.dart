@@ -70,15 +70,15 @@ abstract class TomAction<TContext extends TomActionContext,
   final TomScope? scope;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   TomAction({
     required this.actionId,
     required this.controller,
     this.scope,
-    this.authorizationGroup,
+    this.tomGroup,
   }) {
-    authorizationGroup?.register(this);
+    tomGroup?.register(this);
     controller.registerAction(this);
   }
 
@@ -157,7 +157,7 @@ abstract class TomSimpleAction<TContext extends TomActionContext>
     required super.actionId,
     required super.controller,
     super.scope,
-    super.authorizationGroup,
+    super.tomGroup,
   });
 
   /// Executes the simple action (no undo state returned).

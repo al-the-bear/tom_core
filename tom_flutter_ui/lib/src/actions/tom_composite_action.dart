@@ -38,7 +38,7 @@ class TomCompositeAction extends TomAction<TomActionContext, TomActionUndo> {
     required this.steps,
     this.stopOnGuardFailure = true,
     super.scope,
-    super.authorizationGroup,
+    super.tomGroup,
   });
 
   @override
@@ -113,7 +113,7 @@ class TomDualAction<TCtx1 extends TomActionContext,
     required this.secondContextBuilder,
     this.secondGuard,
     super.scope,
-    super.authorizationGroup,
+    super.tomGroup,
   });
 
   @override

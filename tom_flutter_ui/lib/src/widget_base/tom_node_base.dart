@@ -9,7 +9,7 @@ import '../resource_auth/tom_resources.dart';
 ///
 /// Provides:
 /// - [tomId] — unique ID within its scope.
-/// - [authorizationGroup] — optional group membership.
+/// - [tomGroup] — optional group membership.
 /// - [scope] — optional explicit scope (defaults to [TomScope.current]).
 /// - [authorizer] — optional per-widget authorizer.
 /// - [authorizerStrategy] — how authorizer interacts with resource auth.
@@ -27,7 +27,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   final String? tomId;
 
   @override
-  final TomAuthorizationGroup? authorizationGroup;
+  final TomAuthorizationGroup? tomGroup;
 
   /// Optional explicit scope for resource/auth lookups.
   ///
@@ -60,16 +60,14 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   TomNodeBase({
     super.key,
     this.tomId,
-    TomAuthorizationGroup? authorizationGroup,
-    @Deprecated('Use authorizationGroup instead') TomAuthorizationGroup? tomGroup,
+    this.tomGroup,
     this.scope,
     this.authorizer,
     this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
-  })  : authorizationGroup = authorizationGroup ?? tomGroup,
-        constructionScope = scope ?? TomScope.current,
+  })  : constructionScope = scope ?? TomScope.current,
         basePath = _resolveBasePath(tomId, scope) {
-    (authorizationGroup ?? tomGroup)?.register(this);
+      tomGroup?.register(this);
   }
 
   static String? _resolveBasePath(String? tomId, TomScope? scope) {
@@ -333,7 +331,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   String get debugLabel {
     final parts = <String>[];
     if (tomId != null) parts.add('id: $tomId');
-    if (authorizationGroup != null) parts.add('group: ${authorizationGroup!.groupId}');
+    if (tomGroup != null) parts.add('group: ${tomGroup!.groupId}');
     return '${runtimeType.toString()}(${parts.join(', ')})';
   }
 }
