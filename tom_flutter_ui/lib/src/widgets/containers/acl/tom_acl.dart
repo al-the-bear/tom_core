@@ -7,6 +7,7 @@ import '../../../theme/tom_theme.dart';
 import '../../../widget_base/tom_style_resolvers.dart';
 import '../../../advanced_container_layout/acl_builder.dart';
 import '../../../advanced_container_layout/acl_container.dart';
+import '../../../advanced_container_layout/acl_device_context.dart';
 import '../../../advanced_container_layout/acl_group_visibility.dart';
 import '../../../advanced_container_layout/row_alignment.dart';
 import '../../../widget_base/tom_screen_elements_provider.dart';
@@ -179,6 +180,178 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
+  /// Sets the preferred width using a character count.
+  TomAclBuilder<T> setPWidthInChars(
+    int chars, {
+    double charWidth = 8,
+    double height = 40,
+  }) {
+    _builder.setPWidthInChars(chars, charWidth: charWidth, height: height);
+    return this;
+  }
+
+  /// Sets the minimum width using a character count.
+  TomAclBuilder<T> setMWidthInChars(int chars, {double charWidth = 8}) {
+    _builder.setMWidthInChars(chars, charWidth: charWidth);
+    return this;
+  }
+
+  /// Sets the maximum width using a character count.
+  TomAclBuilder<T> setXWidthInChars(int chars, {double charWidth = 8}) {
+    _builder.setXWidthInChars(chars, charWidth: charWidth);
+    return this;
+  }
+
+  /// Sets a flag attribute on the current component.
+  TomAclBuilder<T> setAttr(int attr) {
+    _builder.setAttr(attr);
+    return this;
+  }
+
+  /// Clears a flag attribute on the current component.
+  TomAclBuilder<T> clearAttr(int attr) {
+    _builder.clearAttr(attr);
+    return this;
+  }
+
+  /// Sets a size reference to another component.
+  TomAclBuilder<T> setComp(Object reference, int otherAttr) {
+    _builder.setComp(reference, otherAttr);
+    return this;
+  }
+
+  /// Constrains the current component to the same width as [reference].
+  TomAclBuilder<T> sameWidthAs(Object reference) {
+    _builder.sameWidthAs(reference);
+    return this;
+  }
+
+  /// Constrains the current component to the same height as [reference].
+  TomAclBuilder<T> sameHeightAs(Object reference) {
+    _builder.sameHeightAs(reference);
+    return this;
+  }
+
+  /// Constrains the current component to the same size as [reference].
+  TomAclBuilder<T> sameSize(Object reference) {
+    _builder.sameSize(reference);
+    return this;
+  }
+
+  // ── Per-component row cross-alignment ─────────────────────────────────────
+
+  /// Aligns the current component to the top of the row.
+  TomAclBuilder<T> alignTopInRow() {
+    _builder.alignTopInRow();
+    return this;
+  }
+
+  /// Aligns the current component to the middle of the row.
+  TomAclBuilder<T> alignMiddleInRow() {
+    _builder.alignMiddleInRow();
+    return this;
+  }
+
+  /// Aligns the current component to the bottom of the row.
+  TomAclBuilder<T> alignBottomInRow() {
+    _builder.alignBottomInRow();
+    return this;
+  }
+
+  // ── Cross-row horizontal alignment ────────────────────────────────────────
+
+  TomAclBuilder<T> alignLeftToLeft(Object reference, {double gap = 0}) {
+    _builder.alignLeftToLeft(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignLeftToCenter(Object reference, {double gap = 0}) {
+    _builder.alignLeftToCenter(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignLeftToRight(Object reference, {double gap = 0}) {
+    _builder.alignLeftToRight(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignCenterToLeft(Object reference, {double gap = 0}) {
+    _builder.alignCenterToLeft(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignCenterToCenter(Object reference, {double gap = 0}) {
+    _builder.alignCenterToCenter(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignCenterToRight(Object reference, {double gap = 0}) {
+    _builder.alignCenterToRight(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignRightToLeft(Object reference, {double gap = 0}) {
+    _builder.alignRightToLeft(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignRightToCenter(Object reference, {double gap = 0}) {
+    _builder.alignRightToCenter(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignRightToRight(Object reference, {double gap = 0}) {
+    _builder.alignRightToRight(reference, gap: gap);
+    return this;
+  }
+
+  // ── Same-row vertical alignment ───────────────────────────────────────────
+
+  TomAclBuilder<T> alignTopToTop(Object reference, {double gap = 0}) {
+    _builder.alignTopToTop(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignTopToMiddle(Object reference, {double gap = 0}) {
+    _builder.alignTopToMiddle(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignTopToBottom(Object reference, {double gap = 0}) {
+    _builder.alignTopToBottom(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignMiddleToTop(Object reference, {double gap = 0}) {
+    _builder.alignMiddleToTop(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignMiddleToMiddle(Object reference, {double gap = 0}) {
+    _builder.alignMiddleToMiddle(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignMiddleToBottom(Object reference, {double gap = 0}) {
+    _builder.alignMiddleToBottom(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignBottomToTop(Object reference, {double gap = 0}) {
+    _builder.alignBottomToTop(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignBottomToMiddle(Object reference, {double gap = 0}) {
+    _builder.alignBottomToMiddle(reference, gap: gap);
+    return this;
+  }
+
+  TomAclBuilder<T> alignBottomToBottom(Object reference, {double gap = 0}) {
+    _builder.alignBottomToBottom(reference, gap: gap);
+    return this;
+  }
+
   /// Sets the component ID.
   TomAclBuilder<T> setId(String componentId) {
     _builder.setId(componentId);
@@ -291,9 +464,56 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
+  /// Sets the container border insets.
+  TomAclBuilder<T> setAclBorderInsets(EdgeInsetsGeometry insets) {
+    _builder.setAclBorderInsets(insets);
+    return this;
+  }
+
+  /// Sets the focused border style.
+  TomAclBuilder<T> setAclFocusedBorderStyle(AclBorderStyle style) {
+    _builder.setAclFocusedBorderStyle(style);
+    return this;
+  }
+
   /// Sets the container padding.
   TomAclBuilder<T> setAclPadding(EdgeInsetsGeometry padding) {
     _builder.setAclPadding(padding);
+    return this;
+  }
+
+  /// Sets the container padding from explicit LTRB values.
+  TomAclBuilder<T> setAclPaddingPx(
+    double left,
+    double top,
+    double right,
+    double bottom,
+  ) {
+    _builder.setAclPaddingPx(left, top, right, bottom);
+    return this;
+  }
+
+  /// Sets the top padding.
+  TomAclBuilder<T> setAclPaddingTop(double value) {
+    _builder.setAclPaddingTop(value);
+    return this;
+  }
+
+  /// Sets the bottom padding.
+  TomAclBuilder<T> setAclPaddingBottom(double value) {
+    _builder.setAclPaddingBottom(value);
+    return this;
+  }
+
+  /// Sets the left padding.
+  TomAclBuilder<T> setAclPaddingLeft(double value) {
+    _builder.setAclPaddingLeft(value);
+    return this;
+  }
+
+  /// Sets the right padding.
+  TomAclBuilder<T> setAclPaddingRight(double value) {
+    _builder.setAclPaddingRight(value);
     return this;
   }
 
@@ -306,6 +526,89 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// Sets the layout direction (LTR/RTL).
   TomAclBuilder<T> setAclDirection(AclDirection direction) {
     _builder.setAclDirection(direction);
+    return this;
+  }
+
+  /// Sets default flags for new components.
+  TomAclBuilder<T> setAclDefaultFlags(int flags) {
+    _builder.setAclDefaultFlags(flags);
+    return this;
+  }
+
+  /// Gets the current default flags.
+  int get defaultFlags => _builder.defaultFlags;
+
+  /// Sets the container title.
+  TomAclBuilder<T> setAclTitle(String? title) {
+    _builder.setAclTitle(title);
+    return this;
+  }
+
+  /// Sets the container title widget.
+  TomAclBuilder<T> setAclTitleWidget(Widget? widget) {
+    _builder.setAclTitleWidget(widget);
+    return this;
+  }
+
+  /// Sets the title text style.
+  TomAclBuilder<T> setAclTitleStyle(TextStyle style) {
+    _builder.setAclTitleStyle(style);
+    return this;
+  }
+
+  /// Sets the title position.
+  TomAclBuilder<T> setAclTitlePosition(AclTitlePosition position) {
+    _builder.setAclTitlePosition(position);
+    return this;
+  }
+
+  /// Sets the title border alignment.
+  TomAclBuilder<T> setAclTitleBorderAlign(AclTitleBorderAlign align) {
+    _builder.setAclTitleBorderAlign(align);
+    return this;
+  }
+
+  /// Sets the title vertical offset.
+  TomAclBuilder<T> setAclTitleVerticalOffset(double offset) {
+    _builder.setAclTitleVerticalOffset(offset);
+    return this;
+  }
+
+  // ── Inline Component Variants ─────────────────────────────────────────────
+
+  /// Begins an inline variant block.
+  TomAclBuilder<T> startVariant({
+    double? width,
+    double? height,
+    AclInputMode? input,
+    AclFormFactor? formFactor,
+    Orientation? orientation,
+    Set<TargetPlatform>? platforms,
+    bool? isWeb,
+    AclDensity? density,
+    TextDirection? textDirection,
+    double? minAccessibilityScale,
+    AclVariantDetector? detector,
+  }) {
+    _builder.startVariant(
+      width: width,
+      height: height,
+      input: input,
+      formFactor: formFactor,
+      orientation: orientation,
+      platforms: platforms,
+      isWeb: isWeb,
+      density: density,
+      textDirection: textDirection,
+      minAccessibilityScale: minAccessibilityScale,
+      detector: detector,
+    );
+    return this;
+  }
+
+  /// Ends an inline variant block.
+  TomAclBuilder<T> endVariant() {
+    _builder.endVariant();
     return this;
   }
 
