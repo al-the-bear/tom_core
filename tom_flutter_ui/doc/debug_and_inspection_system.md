@@ -329,14 +329,14 @@ class TomWidgetTreeCollector {
       if (widget is TomPolicyNodeBase) {
         final scope = TomNodeScope.of(element);
         final fullPath = _resolveFullPath(widget, scope);
-        final authState = TomUIAuthorization.resolveAuth(fullPath);
+        final authState = TomAuthorization.resolveAuth(fullPath);
         
         result.add(TomAuthInfo(
           widgetType: widget.runtimeType.toString(),
           tomId: widget.tomId,
           fullPath: fullPath,
           authState: authState,
-          groupMembership: widget.group,
+          groupMembership: widget.authorizationGroup?.id,
         ));
       }
       element.visitChildren(visitor);
@@ -371,7 +371,7 @@ class TomWidgetInfo {
       widgetType: widget.runtimeType.toString(),
       tomId: widget.tomId,
       fullIdPath: scope?.fullIdPath,
-      groupName: widget.group,
+      groupName: widget.authorizationGroup?.id,
       debugLabel: widget.debugLabel,
       depth: _calculateDepth(element),
     );
@@ -484,15 +484,15 @@ Accesses global singletons for auth and resource data:
 class TomAuthCollector {
   /// Resolves authorization for a path and returns full trace.
   static TomAuthTrace resolveWithTrace(String path) {
-    final state = TomUIAuthorization.resolveAuth(path);
-    final adapter = TomUIAuthorization.adapter;
+    final state = TomAuthorization.resolveAuth(path);
+    final adapter = TomAuthorization.adapter;
     
     // Collect lookup hierarchy
     final hierarchy = <String, TomAuthState>{};
     final segments = path.split('.');
     for (int i = 1; i <= segments.length; i++) {
       final subpath = segments.take(i).join('.');
-      hierarchy[subpath] = TomUIAuthorization.resolveAuth(subpath);
+      hierarchy[subpath] = TomAuthorization.resolveAuth(subpath);
     }
     
     return TomAuthTrace(
@@ -585,9 +585,10 @@ class _AuthInfoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stateColor = switch (info.authState) {
-      TomAuthState(visible: false) => Colors.red,
-      TomAuthState(readonly: true) => Colors.orange,
-      _ => Colors.green,
+      TomAuthState.none => Colors.red,
+      TomAuthState.disabled => Colors.grey,
+      TomAuthState.read => Colors.orange,
+      TomAuthState.full => Colors.green,
     };
     
     return ListTile(
@@ -1131,8 +1132,7 @@ class AuthorizationExporter implements DebugExporter {
     final buffer = StringBuffer('# Authorization State Export\n\n');
     for (final info in data) {
       buffer.writeln('- path: ${info.fullPath}');
-      buffer.writeln('  visible: ${info.authState.visible}');
-      buffer.writeln('  readonly: ${info.authState.readonly}');
+      buffer.writeln('  state: ${info.authState.name}');
       if (info.groupMembership != null) {
         buffer.writeln('  group: ${info.groupMembership}');
       }
@@ -1143,12 +1143,12 @@ class AuthorizationExporter implements DebugExporter {
   
   String _toMarkdown() {
     final buffer = StringBuffer('# Authorization State Export\n\n');
-    buffer.writeln('| Path | Visible | Readonly | Group |');
-    buffer.writeln('|------|---------|----------|-------|');
+    buffer.writeln('| Path | Auth State | Group |');
+    buffer.writeln('|------|------------|-------|');
     for (final info in data) {
       buffer.writeln(
-        '| `${info.fullPath}` | ${info.authState.visible} | '
-        '${info.authState.readonly} | ${info.groupMembership ?? '-'} |',
+        '| `${info.fullPath}` | ${info.authState.name} | '
+        '${info.groupMembership ?? '-'} |',
       );
     }
     return buffer.toString();
