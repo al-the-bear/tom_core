@@ -173,13 +173,19 @@ class AclBuilder {
 
   // ── Component placement ────────────────────────────────────────────────────
 
-  /// Applies a default preferred size of `Size(1, 0)` to the current
-  /// component if no preferred size was explicitly set. Called whenever
-  /// the current-component scope is about to change (append, gap, newRow,
-  /// gapRow, build).
+  /// Default preferred width for components without an explicit preferred size.
+  /// Large enough to prevent buttons/small widgets from collapsing next to
+  /// elastic gaps, but still participates proportionally in the grow/shrink
+  /// distribution alongside explicitly sized components.
+  static const double _defaultPreferredWidth = 150;
+
+  /// Applies a default preferred size to the current component if no preferred
+  /// size was explicitly set. Called whenever the current-component scope is
+  /// about to change (append, gap, newRow, gapRow, build).
   void _finalizeCurrentComponent() {
     if (_currentComponent != null && _currentComponent!.preferredSize == null) {
-      _currentComponent!.preferredSize = const Size(1, 0);
+      _currentComponent!.preferredSize =
+          const Size(_defaultPreferredWidth, 0);
     }
   }
 
