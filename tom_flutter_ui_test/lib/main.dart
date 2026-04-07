@@ -3,8 +3,9 @@
 /// A comprehensive demo app showcasing all tom_flutter_ui widgets and features.
 /// The app is organized into multiple tabs:
 /// - ACL Demos: Advanced Container Layout system demos
-/// - Widget Demos: Individual widget showcases (20 categories)
-/// - Roadmap: Future development plans
+/// - Widget Demos: Individual widget showcases (20+ categories)
+/// - Forms/Actions: Form framework demos
+/// - Authorization/Resources: Widget authorization and resource demos
 library;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
 import 'demo_resources.dart';
+import 'forms_demos/forms_demos.dart';
 import 'locale_settings.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
@@ -120,7 +122,7 @@ class MainTabsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Tom Flutter UI'),
@@ -129,10 +131,12 @@ class MainTabsPage extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           bottom: const TabBar(
+            isScrollable: true,
             tabs: [
               Tab(icon: Icon(Icons.grid_view), text: 'ACL Demos'),
               Tab(icon: Icon(Icons.widgets), text: 'Widget Demos'),
-              Tab(icon: Icon(Icons.map), text: 'Roadmap'),
+              Tab(icon: Icon(Icons.dynamic_form), text: 'Forms/Actions'),
+              Tab(icon: Icon(Icons.security), text: 'Authorization/Resources'),
             ],
           ),
         ),
@@ -140,7 +144,8 @@ class MainTabsPage extends StatelessWidget {
           children: [
             AclDemosTab(),
             WidgetDemosTab(),
-            RoadmapTab(),
+            FormsActionsTab(),
+            AuthorizationResourcesTab(),
           ],
         ),
       ),
@@ -463,11 +468,6 @@ class WidgetDemosTab extends StatelessWidget {
           description: 'Form fields in scoped providers, validation, ACL form layout',
           screen: FormsDemo(),
         )),
-        TomScope.withScope('demo28', () => DemoTile(
-          title: 'Authorization',
-          description: 'Widget visibility, readonly state, group authorization, TomUIGroup',
-          screen: AuthorizationDemo(),
-        )),
       ],
     );
   }
@@ -504,139 +504,54 @@ class WidgetDemosTab extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Roadmap Tab
+// Forms/Actions Tab
 // ---------------------------------------------------------------------------
 
-/// Tab showing development roadmap and future plans.
-class RoadmapTab extends StatelessWidget {
-  const RoadmapTab({super.key});
+/// Tab showing form framework demos.
+class FormsActionsTab extends StatelessWidget {
+  const FormsActionsTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        DemoTile(
+          title: 'Forms Overview',
+          description:
+              'TomForm field types: email, password, text, int, double — with validation',
+          screen: FormsOverviewDemo(),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Authorization/Resources Tab
+// ---------------------------------------------------------------------------
+
+/// Tab showing authorization and resource resolution demos.
+class AuthorizationResourcesTab extends StatelessWidget {
+  const AuthorizationResourcesTab({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildRoadmapSection(
-          context,
-          title: 'Phase 1: Core Infrastructure',
-          status: 'Completed',
-          statusColor: Colors.green,
-          items: [
-            'ACL (Advanced Container Layout) system',
-            'Basic widget library structure',
-            'Theme integration',
-          ],
-        ),
-        _buildRoadmapSection(
-          context,
-          title: 'Phase 2: Widget Demos',
-          status: 'Completed',
-          statusColor: Colors.green,
-          items: [
-            'Button variants and states',
-            'Input components with validation',
-            'Selection and toggle controls',
-            'Layout composition patterns',
-            'Navigation widgets',
-            'Animation showcases',
-            'All 20 demo categories implemented',
-          ],
-        ),
-        _buildRoadmapSection(
-          context,
-          title: 'Phase 3: Advanced Features',
-          status: 'Planned',
-          statusColor: Colors.blue,
-          items: [
-            'Form validation framework',
-            'Table with sorting and filtering',
-            'Tree view with lazy loading',
-            'Rich text editing',
-            'Chart and data visualization',
-          ],
-        ),
-        _buildRoadmapSection(
-          context,
-          title: 'Phase 4: Platform Integration',
-          status: 'Future',
-          statusColor: Colors.grey,
-          items: [
-            'Platform-adaptive widgets',
-            'Accessibility improvements',
-            'Internationalization support',
-            'Performance optimizations',
-          ],
-        ),
+        TomScope.withScope('demo21', () => DemoTile(
+          title: 'Resource Resolution',
+          description: 'How widgets resolve labels, icons, tooltips from resources',
+          screen: ResourceResolutionDemo(),
+        )),
+        TomScope.withScope('demo28', () => DemoTile(
+          title: 'Authorization',
+          description:
+              'Widget visibility, readonly state, group authorization, TomUIGroup',
+          screen: AuthorizationDemo(),
+        )),
       ],
-    );
-  }
-
-  Widget _buildRoadmapSection(
-    BuildContext context, {
-    required String title,
-    required String status,
-    required Color statusColor,
-    required List<String> items,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.w500,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ...items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      status == 'Completed'
-                          ? Icons.check_circle
-                          : Icons.circle_outlined,
-                      size: 16,
-                      color: status == 'Completed' ? Colors.green : Colors.grey,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(item)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
