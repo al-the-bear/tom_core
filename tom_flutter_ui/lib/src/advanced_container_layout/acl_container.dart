@@ -359,14 +359,6 @@ class AclContainer extends StatefulWidget {
   /// If null, falls back to the nearest [AclDirectionScope], then [AclDirection.ltr].
   final AclDirection? direction;
 
-  /// When true, row components automatically fill the available horizontal
-  /// space even without explicit [AclFlags.expandX]. Components are wrapped
-  /// in [Flexible] with equal flex weight and the row uses
-  /// [MainAxisSize.max]. This prevents multiple unconstrained children
-  /// (e.g. TextFields) from each expanding to the full container width and
-  /// overflowing.
-  final bool autoFillWidth;
-
   const AclContainer({
     super.key,
     required this.rows,
@@ -376,7 +368,6 @@ class AclContainer extends StatefulWidget {
     this.backgroundColor,
     this.scrollableX = false,
     this.scrollableY = false,
-    this.autoFillWidth = false,
     this.preferredContainerSize,
     this.minimumContainerSize,
     this.maximumContainerSize,
@@ -1666,15 +1657,9 @@ class _AclContainerState extends State<AclContainer> {
       RowAlignment.right => MainAxisAlignment.end,
     };
 
-    final hasExplicitExpandX = row.components.any((c) => c.expandX && !c.isGap);
+    final hasExpandX = row.components.any((c) => c.expandX && !c.isGap);
     final hasExpandY = row.components.any((c) => c.expandY);
     final hasGapSlots = row.components.any((c) => c.isGap);
-    // When autoFillWidth is set (from expandWidth on the Acl/AclLayout),
-    // treat rows without explicit gap slots as width-filling so components
-    // share space evenly. Rows with gap slots already fill width via the
-    // Spacer — auto-expanding their non-gap components would squeeze them.
-    final autoExpand = widget.autoFillWidth && canExpandHorizontally && !hasGapSlots;
-    final hasExpandX = hasExplicitExpandX || autoExpand;
     final rowFillsWidth = hasExpandX || hasGapSlots;
 
     final gapWeightSum = hasGapSlots
@@ -1845,12 +1830,8 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      // Effective expandX: true when the component has the flag OR when
-      // autoExpand applies (no gap slots in this row).
-      final effectiveExpandX = component.expandX || autoExpand;
-
       if (!isFlexNativeChild &&
-          (!effectiveExpandX || !canExpandHorizontally)) {
+          (!component.expandX || !canExpandHorizontally)) {
         final effectiveWidth = fittedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
           child = SizedBox(width: effectiveWidth, child: child);
@@ -1867,7 +1848,7 @@ class _AclContainerState extends State<AclContainer> {
       final hasFiniteMaxWidth =
           (component.maximumSize?.width ?? double.infinity).isFinite;
       if (!isFlexNativeChild &&
-          effectiveExpandX &&
+          component.expandX &&
           canExpandHorizontally &&
           !hasFiniteMaxWidth) {
         child = SizedBox(width: double.infinity, child: child);
@@ -1933,7 +1914,7 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (effectiveExpandX && canExpandHorizontally) {
+      if (component.expandX && canExpandHorizontally) {
         final hasOwnFlexParentData = child is Flexible || child is Spacer;
         if (!hasOwnFlexParentData) {
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
@@ -1963,13 +1944,24 @@ class _AclContainerState extends State<AclContainer> {
     if (!rowFillsWidth && canExpandHorizontally) {
       rowWidget = LayoutBuilder(
         builder: (context, constraints) {
+          // Count non-flex children to divide available width fairly.
+          // Without this, each unconstrained child (e.g. TextField) would
+          // expand to the full container width, causing overflow when
+          // multiple such children share a row.
+          final nonFlexCount = children.where(
+            (c) => c is! Flexible && c is! Spacer,
+          ).length;
+          final perChildMax = nonFlexCount > 1
+              ? constraints.maxWidth / nonFlexCount
+              : constraints.maxWidth;
+
           final boundedChildren = children
               .map(
                 (child) => child is Flexible || child is Spacer
                     ? child
                     : ConstrainedBox(
                         constraints: BoxConstraints(
-                          maxWidth: constraints.maxWidth,
+                          maxWidth: perChildMax,
                         ),
                         child: child,
                       ),
@@ -2159,7 +2151,6 @@ class AclLayout extends StatelessWidget {
       backgroundColor: backgroundColor,
       scrollableX: scrollableX,
       scrollableY: scrollableY,
-      autoFillWidth: expandWidth,
       preferredContainerSize: preferredContainerSize,
       minimumContainerSize: minimumContainerSize,
       maximumContainerSize: maximumContainerSize,
@@ -2333,7 +2324,6 @@ class Acl extends AclLayout {
             backgroundColor: backgroundColor,
             scrollableX: scrollableX,
             scrollableY: scrollableY,
-            autoFillWidth: expandWidth,
             preferredContainerSize: preferredContainerSize,
             minimumContainerSize: minimumContainerSize,
             maximumContainerSize: maximumContainerSize,

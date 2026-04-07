@@ -267,10 +267,10 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             elementProvider: _contactProvider.personal,
             title: 'Personal Information',
           )
-              .append((p) => p.firstNameField)
+              .append((p) => p.firstNameField, dist: 16)
               .append((p) => p.lastNameField, dist: 16)
               .newRow()
-              .append((p) => p.emailField)
+              .append((p) => p.emailField, dist: 16)
               .append((p) => p.phoneField, dist: 16)
               .build(context),
           TomSizedBox(height: 16),
@@ -280,22 +280,18 @@ class _FormsDemoContentState extends TomState<_FormsDemoContent> {
             elementProvider: _contactProvider.address,
             title: 'Address',
           )
-              .append((p) => p.streetField)
+              .append((p) => p.streetField, dist: 16)
               .newRow()
-              .append((p) => p.cityField)
+              .append((p) => p.cityField, dist: 16)
               .append((p) => p.zipField, dist: 16)
               .newRow()
-              .append((p) => p.countryField)
+              .append((p) => p.countryField, dist: 16 )
+              .newRow(dist:16).setRowAlignment(RowAlignment.right)
+              .append( (p) => _contactProvider.resetButton, dist: 16).setMSize(200,0).setXSize(300, 0)
+              .append( (p) => _contactProvider.saveButton, dist: 16).setMSize(200,0).setXSize(300,0)
               .build(context),
           TomSizedBox(height: 24),
-          TomRow(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _contactProvider.resetButton,
-              TomSizedBox(width: 12),
-              _contactProvider.saveButton,
-            ],
-          ),
+
         ],
       ),
     );
