@@ -49,7 +49,7 @@ class DemoAuthorizationAdapter implements TomUIAuthorizationAdapter {
         return _rules[parentPath]!;
       }
     }
-    return TomAuthState.fullAccess;
+    return TomAuthState.full;
   }
 }
 
@@ -200,19 +200,19 @@ class _AuthorizationDemoContentState
     _authAdapter.clearRules();
 
     if (_deleteHidden) {
-      _authAdapter.setRule('demo28.admin.delete', TomAuthState.hidden);
+      _authAdapter.setRule('demo28.admin.delete', TomAuthState.none);
     }
     if (_editReadonly) {
-      _authAdapter.setRule('demo28.admin.edit', TomAuthState.readOnly);
+      _authAdapter.setRule('demo28.admin.edit', TomAuthState.read);
     }
     if (_profileReadonly) {
-      _authAdapter.setRule('demo28.profile', TomAuthState.readOnly);
+      _authAdapter.setRule('demo28.profile', TomAuthState.read);
     }
     if (_profileHidden) {
-      _authAdapter.setRule('demo28.profile', TomAuthState.hidden);
+      _authAdapter.setRule('demo28.profile', TomAuthState.none);
     }
     if (_premiumHidden) {
-      _authAdapter.setRule('demo28.grouped.premium', TomAuthState.hidden);
+      _authAdapter.setRule('demo28.grouped.premium', TomAuthState.none);
     }
   }
 
@@ -445,14 +445,14 @@ class _AuthorizationDemoContentState
           for (final path in paths) ...[
             Builder(builder: (context) {
               final auth = TomUIAuthorization.resolveAuth(path);
-              final stateLabel = !auth.visible
+              final stateLabel = !auth.isVisible
                   ? 'HIDDEN'
-                  : auth.readonly
+                  : auth == TomAuthState.read
                       ? 'READONLY'
                       : 'FULL ACCESS';
-              final stateColor = !auth.visible
+              final stateColor = !auth.isVisible
                   ? Colors.red
-                  : auth.readonly
+                  : auth == TomAuthState.read
                       ? Colors.orange
                       : Colors.green;
 
