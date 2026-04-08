@@ -5,18 +5,26 @@
 /// TomIntField, TomDoubleField — the reflection-based form framework
 /// for declarative form creation with built-in validation.
 ///
-/// Note: The TomForm base class requires `@tomReflector` code generation.
-/// These demos show the field widgets and validation patterns directly.
+/// Note: TomForm uses @tomReflector code generation for automatic field
+/// discovery.  Here we demonstrate the form field classes standalone
+/// (without TomForm) so that reflection setup is not required.
+/// In a production app with reflection enabled, fields are created
+/// inside a TomForm subclass and managed as a group.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+import 'package:tom_flutter_ui/src/forms/tom_form.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart' hide TomTextField;
 
 // =============================================================================
 // Forms Overview Demo
 // =============================================================================
 
-/// Overview of the TomForm module and its field types.
+/// Overview of the TomForm module demonstrating the actual field classes.
+///
+/// Each field is an instance of its concrete type (TomEmailField,
+/// TomPasswordField, etc.).  The demo exercises validate(), save(),
+/// reset() and getField() — the same APIs used in production forms.
 class FormsOverviewDemo extends StatefulWidget {
   const FormsOverviewDemo({super.key});
 
@@ -25,45 +33,87 @@ class FormsOverviewDemo extends StatefulWidget {
 }
 
 class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _ratingController = TextEditingController();
+  // ── Real form field instances ──────────────────────────────────────────
+  late final TomEmailField _email;
+  late final TomPasswordField _password;
+  late final TomTextField _username;
+  late final TomIntField _age;
+  late final TomDoubleField _rating;
 
-  String? _emailError;
-  String? _passwordError;
-  String? _usernameError;
-  String? _ageError;
-  String? _ratingError;
+  late final List<TomField> _fields;
 
   Map<String, Object>? _savedValues;
   bool _formValid = false;
 
   @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _usernameController.dispose();
-    _ageController.dispose();
-    _ratingController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+
+    // Create field instances with explicit labels and decoration params.
+    // In production these come from resource lookup; here we pass them
+    // directly to show the override mechanism.
+    _email = TomEmailField(
+      'email',
+      '',
+      labelText: 'Email',
+      helperText: 'TomEmailField — validates email format',
+      prefixIcon: const Icon(Icons.email),
+    );
+
+    _password = TomPasswordField(
+      'password',
+      '',
+      labelText: 'Password',
+      helperText: 'TomPasswordField — obscured, min 6 chars',
+      prefixIcon: const Icon(Icons.lock),
+      valueValidator: (value) {
+        if (value.isEmpty) return 'password.errors.required';
+        if (value.length < 6) return 'password.errors.tooShort';
+        return null;
+      },
+    );
+
+    _username = TomTextField(
+      'username',
+      '',
+      labelText: 'Username',
+      helperText: 'TomTextField — required text field',
+      prefixIcon: const Icon(Icons.person),
+      valueValidator: (value) {
+        if (value.isEmpty) return 'username.errors.required';
+        return null;
+      },
+    );
+
+    _age = TomIntField(
+      'age',
+      0,
+      min: 0,
+      max: 150,
+      labelText: 'Age',
+      helperText: 'TomIntField — integer, range 0–150',
+      prefixIcon: const Icon(Icons.cake),
+    );
+
+    _rating = TomDoubleField(
+      'rating',
+      0.0,
+      min: 0.0,
+      max: 5.0,
+      labelText: 'Rating',
+      helperText: 'TomDoubleField — decimal, range 0.0–5.0',
+      prefixIcon: const Icon(Icons.star),
+    );
+
+    _fields = [_email, _password, _username, _age, _rating];
   }
 
   void _validateAll() {
-    setState(() {
-      _emailError = _validateEmail(_emailController.text);
-      _passwordError = _validatePassword(_passwordController.text);
-      _usernameError = _validateRequired(_usernameController.text, 'Username');
-      _ageError = _validateInt(_ageController.text, min: 0, max: 150);
-      _ratingError = _validateDouble(_ratingController.text, min: 0, max: 5);
-
-      _formValid = _emailError == null &&
-          _passwordError == null &&
-          _usernameError == null &&
-          _ageError == null &&
-          _ratingError == null;
-    });
+    bool valid = true;
+    for (final field in _fields) {
+      valid = field.validate() && valid;
+    }
+    setState(() => _formValid = valid);
   }
 
   void _saveForm() {
@@ -71,69 +121,20 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     if (_formValid) {
       setState(() {
         _savedValues = {
-          'email': _emailController.text,
-          'password': _passwordController.text,
-          'username': _usernameController.text,
-          'age': int.tryParse(_ageController.text) ?? 0,
-          'rating': double.tryParse(_ratingController.text) ?? 0.0,
+          for (final field in _fields) field.fieldName: field.save(),
         };
       });
     }
   }
 
   void _resetForm() {
+    for (final field in _fields) {
+      if (field is TomTextFieldBase) field.reset();
+    }
     setState(() {
-      _emailController.clear();
-      _passwordController.clear();
-      _usernameController.clear();
-      _ageController.clear();
-      _ratingController.clear();
-      _emailError = null;
-      _passwordError = null;
-      _usernameError = null;
-      _ageError = null;
-      _ratingError = null;
       _savedValues = null;
       _formValid = false;
     });
-  }
-
-  String? _validateEmail(String value) {
-    if (value.isEmpty) return 'Email is required';
-    final emailRegex = RegExp(
-      r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)+$",
-    );
-    if (!emailRegex.hasMatch(value)) return 'Invalid email address';
-    return null;
-  }
-
-  String? _validatePassword(String value) {
-    if (value.isEmpty) return 'Password is required';
-    if (value.length < 6) return 'Password must be at least 6 characters';
-    return null;
-  }
-
-  String? _validateRequired(String value, String fieldName) {
-    if (value.isEmpty) return '$fieldName is required';
-    return null;
-  }
-
-  String? _validateInt(String value, {int? min, int? max}) {
-    if (value.isEmpty) return null;
-    final intVal = int.tryParse(value);
-    if (intVal == null) return 'Must be a whole number';
-    if (min != null && intVal < min) return 'Must be at least $min';
-    if (max != null && intVal > max) return 'Must be at most $max';
-    return null;
-  }
-
-  String? _validateDouble(String value, {double? min, double? max}) {
-    if (value.isEmpty) return null;
-    final doubleVal = double.tryParse(value);
-    if (doubleVal == null) return 'Must be a number';
-    if (min != null && doubleVal < min) return 'Must be at least $min';
-    if (max != null && doubleVal > max) return 'Must be at most $max';
-    return null;
   }
 
   @override
@@ -160,15 +161,18 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'The forms module (tom_flutter_ui/lib/src/forms/) provides '
-                    'a reflection-based form framework with declarative field '
-                    'creation and built-in validation.\n\n'
-                    'Available field types:\n'
+                    'The forms module provides a reflection-based form '
+                    'framework with declarative field creation and built-in '
+                    'validation.\n\n'
+                    'Fields shown below are real instances of:\n'
                     '• TomTextField — standard text input\n'
                     '• TomEmailField — email with validation\n'
                     '• TomPasswordField — obscured text\n'
                     '• TomIntField — integer with min/max\n'
-                    '• TomDoubleField — decimal with min/max',
+                    '• TomDoubleField — decimal with min/max\n\n'
+                    'Each field supports the resource lookup pattern for '
+                    'labels, helper text, hints, and icons.  Explicit '
+                    'parameters override resource values.',
                     style: theme.textTheme.bodyMedium,
                   ),
                 ],
@@ -193,76 +197,20 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Email field (TomEmailField equivalent)
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      helperText: 'TomEmailField — validates email format',
-                      errorText: _emailError,
-                      prefixIcon: const Icon(Icons.email),
-                    ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password field (TomPasswordField equivalent)
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      helperText: 'TomPasswordField — obscured, min 6 chars',
-                      errorText: _passwordError,
-                      prefixIcon: const Icon(Icons.lock),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Username field (TomTextField equivalent)
-                  TextField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      helperText: 'TomTextField — required text field',
-                      errorText: _usernameError,
-                      prefixIcon: const Icon(Icons.person),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Age field (TomIntField equivalent)
-                  TextField(
-                    controller: _ageController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Age',
-                      helperText: 'TomIntField — integer, range 0–150',
-                      errorText: _ageError,
-                      prefixIcon: const Icon(Icons.cake),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Rating field (TomDoubleField equivalent)
-                  TextField(
-                    controller: _ratingController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: InputDecoration(
-                      labelText: 'Rating',
-                      helperText: 'TomDoubleField — decimal, range 0.0–5.0',
-                      errorText: _ratingError,
-                      prefixIcon: const Icon(Icons.star),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  // Render each field using its getField() method
+                  for (final field in _fields) ...[
+                    field.getField(),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Action buttons
                   Row(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: _validateAll,
+                        onPressed: () {
+                          _validateAll();
+                          setState(() {});
+                        },
                         icon: const Icon(Icons.check),
                         label: const Text('Validate'),
                       ),

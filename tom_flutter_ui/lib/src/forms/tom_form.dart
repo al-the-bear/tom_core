@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../resource_auth/tom_resources.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
 
 @tomReflector
@@ -71,8 +72,8 @@ abstract class TomField<T> extends TomObject<T> {
 
   TomField(
     this.fieldName,
-    this.initialValue,
-    this.form, {
+    this.initialValue, {
+    this.form,
     this.obscureText = false,
   }) : super(initialValue) {
     scope = TomScope.current.getScopePath();
@@ -80,7 +81,7 @@ abstract class TomField<T> extends TomObject<T> {
 
   late String scope;
   String fieldName;
-  TomForm form;
+  TomForm? form;
   T initialValue;
   bool obscureText;
 
@@ -95,6 +96,15 @@ abstract class TomField<T> extends TomObject<T> {
 }
 
 /// Base class for text-based form fields with TextEditingController support.
+///
+/// Individual [InputDecoration] parameters (e.g. [labelText], [helperText],
+/// [prefixIcon]) follow the resource lookup pattern:
+///   1. Explicit parameter value (highest priority)
+///   2. Resource lookup via scope path (`$scope.$fieldName.$suffix`)
+///   3. `null` / absent (lowest priority)
+///
+/// This allows resources to provide default values while code can override
+/// any specific field at construction time.
 class TomTextFieldBase<T> extends TomField<T> {
   /// Returns translated text with scope prefix applied.
   String t(String key) =>
@@ -115,11 +125,25 @@ class TomTextFieldBase<T> extends TomField<T> {
   late String Function(T) _valueToTextConverter;
   late T Function(String) _valueConverter;
 
+  // Individual InputDecoration parameters — override resource lookup.
+  final String? labelText;
+  final String? helperText;
+  final String? hintText;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
+  final bool? enabled;
+
   TomTextFieldBase(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
     super.obscureText,
+    this.labelText,
+    this.helperText,
+    this.hintText,
+    this.prefixIcon,
+    this.suffixIcon,
+    this.enabled,
     T Function(String)? valueConverter,
     String Function(T)? valueToTextConverter,
     String? Function(String)? inputValidator,
@@ -220,20 +244,49 @@ class TomTextFieldBase<T> extends TomField<T> {
   @override
   String? get errorText => _errorText.value;
 
+  // ---------------------------------------------------------------------------
+  // Resource resolution helpers
+  // ---------------------------------------------------------------------------
+
+  /// Resolves a text resource, returning `null` if the key doesn't exist.
+  String? _resolveTextOrNull(String key) {
+    if (translationExists(key)) return t(key);
+    return null;
+  }
+
+  /// Resolves an icon from resources, returning an [Icon] widget or `null`.
+  Widget? _resolveIconOrNull(String key) {
+    final basePath = scope.isEmpty ? fieldName : '$scope.$fieldName';
+    if (!TomUIResources.resourceExists(basePath, key)) return null;
+    final iconData = TomUIResources.resolveIcon(basePath, key);
+    if (iconData != null) return Icon(iconData);
+    return null;
+  }
+
   @override
   Widget getField() {
-    final String labelText = t("$fieldName.label");
-    final String helperText = t("$fieldName.helperText");
+    // Parameter → resource → null
+    final resolvedLabel = labelText ?? _resolveTextOrNull('$fieldName.label') ?? fieldName;
+    final resolvedHelper = helperText ?? _resolveTextOrNull('$fieldName.helperText');
+    final resolvedHint = hintText ?? _resolveTextOrNull('$fieldName.hintText');
+    final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
+    final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
+
     return ValueListenableBuilder(
       builder: (context, value, widget) {
         return TextField(
           decoration: InputDecoration(
-            label: Text(labelText),
-            helperText: helperText,
+            labelText: resolvedLabel,
+            helperText: resolvedHelper,
+            hintText: resolvedHint,
             errorText: _errorText.value,
+            prefixIcon: resolvedPrefixIcon,
+            suffixIcon: resolvedSuffixIcon,
+            enabled: enabled ?? true,
           ),
           controller: _textEditingController,
           obscureText: obscureText,
+          enabled: enabled ?? true,
         );
       },
       valueListenable: _errorText,
@@ -268,9 +321,15 @@ class TomTextFieldBase<T> extends TomField<T> {
 class TomTextField extends TomTextFieldBase<String> {
   TomTextField(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
     super.obscureText,
+    super.labelText,
+    super.helperText,
+    super.hintText,
+    super.prefixIcon,
+    super.suffixIcon,
+    super.enabled,
     super.inputValidator,
     super.valueValidator,
   });
@@ -280,8 +339,14 @@ class TomTextField extends TomTextFieldBase<String> {
 class TomPasswordField extends TomTextFieldBase<String> {
   TomPasswordField(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
+    super.labelText,
+    super.helperText,
+    super.hintText,
+    super.prefixIcon,
+    super.suffixIcon,
+    super.enabled,
     super.inputValidator,
     super.valueValidator,
   }) : super(obscureText: true);
@@ -291,9 +356,15 @@ class TomPasswordField extends TomTextFieldBase<String> {
 class TomEmailField extends TomTextFieldBase<String> {
   TomEmailField(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
     super.obscureText,
+    super.labelText,
+    super.helperText,
+    super.hintText,
+    super.prefixIcon,
+    super.suffixIcon,
+    super.enabled,
     super.inputValidator,
   }) {
     _valueValidators.add((value) {
@@ -321,10 +392,16 @@ class TomIntField extends TomTextFieldBase<int> {
 
   TomIntField(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
     this.min,
     this.max,
+    super.labelText,
+    super.helperText,
+    super.hintText,
+    super.prefixIcon,
+    super.suffixIcon,
+    super.enabled,
     super.inputValidator,
     super.valueValidator,
   }) : super(
@@ -364,10 +441,16 @@ class TomDoubleField extends TomTextFieldBase<double> {
 
   TomDoubleField(
     super.fieldName,
-    super.initialValue,
-    super.form, {
+    super.initialValue, {
+    super.form,
     this.min,
     this.max,
+    super.labelText,
+    super.helperText,
+    super.hintText,
+    super.prefixIcon,
+    super.suffixIcon,
+    super.enabled,
     super.inputValidator,
     super.valueValidator,
   }) : super(
@@ -413,11 +496,11 @@ class TestForm extends TomForm {
 
   @override
   void createFormElements() {
-    email = TomEmailField('email', '', this);
-    password = TomPasswordField('password', '', this);
-    username = TomTextField('username', '', this);
-    age = TomIntField('age', 0, this, min: 0, max: 150);
-    rating = TomDoubleField('rating', 0.0, this, min: 0.0, max: 5.0);
+    email = TomEmailField('email', '', form: this);
+    password = TomPasswordField('password', '', form: this);
+    username = TomTextField('username', '', form: this);
+    age = TomIntField('age', 0, form: this, min: 0, max: 150);
+    rating = TomDoubleField('rating', 0.0, form: this, min: 0.0, max: 5.0);
     
   }
 }
