@@ -20,7 +20,7 @@ class _TestField<T> extends TomField<T> {
   });
 
   @override
-  Widget getField() => const SizedBox.shrink();
+  Widget get widget => const SizedBox.shrink();
 }
 
 // ---------------------------------------------------------------------------
@@ -88,7 +88,7 @@ void main() {
       );
 
       // Validate to produce error
-      field.validateField();
+      field.validate();
 
       field.reset();
       expect(field.validationState, isA<ValidationSuccess>());
@@ -144,38 +144,38 @@ void main() {
       expect(field.validationState, isA<ValidationSuccess>());
     });
 
-    test('validateField returns success when no validators', () async {
+    test('validate returns success when no validators', () async {
       final field = _TestField<String>('name', 'Alice');
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
     });
 
-    test('validateField runs validators and returns error', () async {
+    test('validate runs validators and returns error', () async {
       final field = _TestField<String>(
         'name',
         '',
         validators: [Validators.required()],
       );
 
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationError>());
       expect((result as ValidationError).errorKey, 'error.required');
       expect(field.validationState, isA<ValidationError>());
     });
 
-    test('validateField returns success when validators pass', () async {
+    test('validate returns success when validators pass', () async {
       final field = _TestField<String>(
         'name',
         'Alice',
         validators: [Validators.required()],
       );
 
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
       expect(field.validationState, isA<ValidationSuccess>());
     });
 
-    test('validateField stops on first error', () async {
+    test('validate stops on first error', () async {
       var secondCalled = false;
       final field = _TestField<String>(
         'name',
@@ -189,11 +189,11 @@ void main() {
         ],
       );
 
-      await field.validateField();
+      await field.validate();
       expect(secondCalled, isFalse);
     });
 
-    test('validateField handles async validators', () async {
+    test('validate handles async validators', () async {
       final field = _TestField<String>(
         'name',
         'test',
@@ -205,7 +205,7 @@ void main() {
         ],
       );
 
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
     });
   });
@@ -340,7 +340,7 @@ void main() {
         'test',
         validators: [Validators.required()],
       );
-      await field.validateField();
+      await field.validate();
       expect(() => field.dispose(), returnsNormally);
     });
   });
@@ -361,21 +361,5 @@ void main() {
     });
   });
 
-  group('TomField — legacy methods', () {
-    test('validate returns true by default', () {
-      final field = _TestField<String>('name', 'Alice');
-      expect(field.validate(), isTrue);
-    });
-
-    test('save returns current value', () {
-      final field = _TestField<String>('name', 'Alice');
-      field.set('Bob');
-      expect(field.save(), 'Bob');
-    });
-
-    test('errorText is null by default', () {
-      final field = _TestField<String>('name', 'Alice');
-      expect(field.errorText, isNull);
-    });
-  });
 }
+

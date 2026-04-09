@@ -26,7 +26,7 @@ class _TestField<T> extends TomField<T> {
   });
 
   @override
-  Widget getField() => const SizedBox.shrink();
+  Widget get widget => const SizedBox.shrink();
 }
 
 void main() {
@@ -54,23 +54,23 @@ void main() {
       expect(field.isDirty, isFalse);
     });
 
-    test('validateField fires FieldValidatedEvent on success (no form)', () async {
+    test('validate fires FieldValidatedEvent on success (no form)', () async {
       final field = _TestField<String>(
         'name',
         'test',
         validators: [Validators.required()],
       );
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
     });
 
-    test('validateField fires FieldValidatedEvent on error (no form)', () async {
+    test('validate fires FieldValidatedEvent on error (no form)', () async {
       final field = _TestField<String>(
         'name',
         '',
         validators: [Validators.required()],
       );
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationError>());
     });
   });
@@ -134,8 +134,8 @@ void main() {
         validators: [Validators.required()],
       );
 
-      final nameResult = await name.validateField();
-      final emailResult = await email.validateField();
+      final nameResult = await name.validate();
+      final emailResult = await email.validate();
 
       expect(nameResult, isA<ValidationError>());
       expect(emailResult, isA<ValidationSuccess>());
@@ -149,7 +149,7 @@ void main() {
       ];
 
       final results = await Future.wait(
-        fields.map((f) => f.validateField()),
+        fields.map((f) => f.validate()),
       );
 
       expect(results[0], isA<ValidationSuccess>());
@@ -171,7 +171,7 @@ void main() {
       expect(field.isDirty, isTrue);
 
       // Validate
-      final result = await field.validateField();
+      final result = await field.validate();
       expect(result, isA<ValidationSuccess>());
 
       // Commit — makes 'modified' the new initial

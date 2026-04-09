@@ -81,7 +81,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
     getMembers().entries.where((entry) => entry.value is TomField).forEach((
       entry,
     ) {
-      fields[entry.key] = entry.value as TomField;
+      final field = entry.value as TomField;
+      field.form = this;
+      fields[entry.key] = field;
     });
   }
 
@@ -92,16 +94,6 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// Subclasses create their fields here (called inside form's scope).
   void createFormElements();
-
-  // --- Widget accessors (backward compatible) ---
-
-  List<Widget> getFieldWidgets() {
-    return fields.values.map((field) => field.getField()).toList();
-  }
-
-  Widget getFieldWidget(String name) {
-    return fields[name]!.getField();
-  }
 
   // --- Binding (§5) ---
 
@@ -123,12 +115,11 @@ abstract class TomForm<T extends TomClass> extends TomClass
   bool save() {
     if (!isValid) return false;
     onSaving();
-    final values = getFormValues();
-    _binding?.setValues(values);
-    _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
+    _binding?.setValues(getValues());
     for (final field in fields.values) {
       field.commit();
     }
+    _initialSnapshot = Map<String, dynamic>.unmodifiable(getValues());
     onSaved();
     _fireEvent(FormSavedEvent(source: formId));
     return true;
@@ -160,7 +151,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   Future<List<FormValidationError>> validate() async {
     // 1. Validate all fields in parallel
     final fieldResults = await Future.wait(
-      fields.values.map((f) => f.validateField()),
+      fields.values.map((f) => f.validate()),
     );
 
     // 2. Collect field-level errors
@@ -193,15 +184,6 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Get a field by its ID.
   TomField? getField(String fieldId) => fields[fieldId];
 
-  /// Get the current values of all fields.
-  Map<String, dynamic> getFormValues() {
-    final result = <String, dynamic>{};
-    for (final entry in fields.entries) {
-      result[entry.key] = entry.value.get();
-    }
-    return result;
-  }
-
   /// Get the initial snapshot (values at bind time / last save).
   Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
 
@@ -214,15 +196,6 @@ abstract class TomForm<T extends TomClass> extends TomClass
   List<TomField> get dirtyFields => fields.values
       .where((f) => f.isDirty)
       .toList();
-
-  /// A map of field names to error texts for all fields with errors.
-  Map<String, String?> errors() {
-    final result = <String, String?>{};
-    for (var element in fields.values) {
-      result[element.fieldId] = element.errorText;
-    }
-    return result;
-  }
 
   // --- Lifecycle hooks ---
 
@@ -392,9 +365,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Debounce duration for change-triggered validation. Default: 300ms.
   Duration get validationDebounce => const Duration(milliseconds: 300);
 
-  /// Validate the current value using the new validation system.
+  /// Validate the current value.
   /// Runs all [validators] sequentially, stopping on first error.
-  Future<ValidationResult> validateField() async {
+  Future<ValidationResult> validate() async {
     _validationState = const ValidationPending();
 
     for (final validator in validators) {
@@ -417,21 +390,10 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     return _validationState;
   }
 
-  // --- Legacy validation (for backward compatibility with existing fields) ---
-
-  /// Legacy validate method. Override in concrete fields.
-  bool validate() => true;
-
-  /// Legacy save method. Override in concrete fields.
-  T save() => get();
-
-  /// Legacy error text. Override in concrete fields.
-  String? get errorText => null;
-
   // --- Widget ---
 
-  /// Returns the widget for this field. Override in concrete subclasses.
-  Widget getField();
+  /// The implementation widget for this field (overridden by concrete classes).
+  Widget get widget;
 
   // --- Lifecycle ---
 
@@ -553,6 +515,8 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     if (valid) {
       currentRawValue = value;
       _errorText.value = null;
+      // Sync text to TomObject value (bypass override to avoid controller loop)
+      super.set(_valueConverter(value));
     } else {
       _textEditingController.text = currentRawValue;
       _textEditingController.selection = TextSelection.collapsed(
@@ -565,30 +529,6 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     }
   }
 
-  @override
-  bool validate() {
-    bool valid = true;
-    for (var valueValidator in _valueValidators) {
-      String? error = valueValidator(_textEditingController.value.text);
-      if (error != null && _errorText.value == null) {
-        _errorText.value = t(error);
-      }
-      if (error != null) {
-        valid = false;
-      }
-    }
-    if (valid) {
-      _errorText.value = null;
-    }
-    return valid;
-  }
-
-  @override
-  T save() {
-    return super.set(_valueConverter(_textEditingController.value.text));
-  }
-
-  @override
   String? get errorText => _errorText.value;
 
   // ---------------------------------------------------------------------------
@@ -604,7 +544,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   }
 
   @override
-  Widget getField() {
+  Widget get widget {
     // Parameter → resource → null
     final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$fieldId.label') ?? fieldId;
     final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$fieldId.helperText');
