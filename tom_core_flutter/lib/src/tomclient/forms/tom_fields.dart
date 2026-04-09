@@ -5,8 +5,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 class TomFieldOld<T> extends TomObject<T> {
   String Function(String) get t =>
       TomTextResourceProvider.getAppResources().getText;
-  bool Function(String) get translationExists =>
-      TomTextResourceProvider.getAppResources().exists;
+  String? Function(String) get tOrNull =>
+      TomTextResourceProvider.getAppResources().getTextOrNull;
   Object Function(String) get c =>
       TomConfigResourceProvider.getAppConfig().getText;
   bool Function(String) get configExists =>
@@ -37,9 +37,10 @@ class TomFieldOld<T> extends TomObject<T> {
       _inputValidators.add(inputValidator);
     }
     String patternKey = "$formName.$fieldName.pattern";
-    if (translationExists(patternKey)) {
+    final pattern = tOrNull(patternKey);
+    if (pattern != null) {
       _inputValidators.add((String value) {
-        if (RegExp(t(patternKey)).hasMatch(value)) {
+        if (RegExp(pattern).hasMatch(value)) {
           return null;
         } else {
           return t("$formName.$fieldName.errors.pattern");

@@ -93,8 +93,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   /// - No resource exists for this suffix
   String? resolveResourceOrNull(String suffix) {
     if (basePath == null) return null;
-    if (!TomUIResources.resourceExists(basePath!, suffix)) return null;
-    return TomUIResources.resolveText(basePath!, suffix);
+    return TomUIResources.resolveTextOrNull(basePath!, suffix);
   }
 
   /// Resolves a required text resource relative to this node's base path.
@@ -132,15 +131,7 @@ abstract class TomNodeBase extends StatelessWidget implements TomAuthorizable {
   /// 2. Look up [IconData] from [TomUIIcons] provider
   IconData? resolveIcon() {
     if (basePath == null) return null;
-
-    // Get icon name from resources
-    final iconName = TomUIResources.resolveText(basePath!, 'icon');
-
-    // Skip if it returns the key itself (no resource found)
-    if (iconName.endsWith('.icon')) return null;
-
-    // Look up IconData from icon provider
-    return TomUIIcons.resolveIcon(iconName);
+    return TomUIResources.resolveIcon(basePath!, 'icon');
   }
 
   // ===========================================================================

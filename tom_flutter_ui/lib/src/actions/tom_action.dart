@@ -126,22 +126,17 @@ abstract class TomAction<TContext extends TomActionContext,
   ///
   /// Looks up `<canonicalPath>.label` in the resource system.
   String get label {
-    if (TomUIResources.resourceExists('$canonicalPath', 'label')) {
-      return TomUIResources.resolveText('$canonicalPath', 'label');
-    }
-    return actionId;
+    return TomUIResources.resolveTextOrNull('$canonicalPath', 'label') ?? actionId;
   }
 
   /// Resolves the action's tooltip from resources.
   String? get tooltip {
-    if (!TomUIResources.resourceExists('$canonicalPath', 'tooltip')) return null;
-    return TomUIResources.resolveText('$canonicalPath', 'tooltip');
+    return TomUIResources.resolveTextOrNull('$canonicalPath', 'tooltip');
   }
 
   /// Resolves the action's icon name from resources.
   String? get iconName {
-    if (!TomUIResources.resourceExists('$canonicalPath', 'icon')) return null;
-    return TomUIResources.resolveText('$canonicalPath', 'icon');
+    return TomUIResources.resolveTextOrNull('$canonicalPath', 'icon');
   }
 
   @override

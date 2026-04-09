@@ -518,8 +518,7 @@ class TomAppBar extends StatelessWidget
 
   String? _resolveStringOrNull(String suffix) {
     if (basePath == null) return null;
-    if (!TomUIResources.resourceExists(basePath!, suffix)) return null;
-    return TomUIResources.resolveText(basePath!, suffix);
+    return TomUIResources.resolveTextOrNull(basePath!, suffix);
   }
 }
 

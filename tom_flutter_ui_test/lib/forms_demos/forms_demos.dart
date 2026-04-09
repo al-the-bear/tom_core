@@ -1,8 +1,8 @@
 /// Forms/Actions Demos
 ///
 /// Demonstrates the form system from `tom_flutter_ui/lib/src/forms/`.
-/// Shows TomForm, TomTextField, TomEmailField, TomPasswordField,
-/// TomIntField, TomDoubleField — the reflection-based form framework
+/// Shows TomForm, TomStringFormField, TomEmailFormField, TomPasswordFormField,
+/// TomIntFormField, TomDoubleFormField — the reflection-based form framework
 /// for declarative form creation with built-in validation.
 ///
 /// Note: TomForm uses @tomReflector code generation for automatic field
@@ -14,7 +14,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/src/forms/tom_form.dart';
-import 'package:tom_flutter_ui/tom_flutter_ui.dart' hide TomTextField;
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // =============================================================================
 // Forms Overview Demo
@@ -22,8 +22,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart' hide TomTextField;
 
 /// Overview of the TomForm module demonstrating the actual field classes.
 ///
-/// Each field is an instance of its concrete type (TomEmailField,
-/// TomPasswordField, etc.).  The demo exercises validate(), save(),
+/// Each field is an instance of its concrete type (TomEmailFormField,
+/// TomPasswordFormField, etc.).  The demo exercises validate(), save(),
 /// reset() and getField() — the same APIs used in production forms.
 class FormsOverviewDemo extends StatefulWidget {
   const FormsOverviewDemo({super.key});
@@ -34,11 +34,11 @@ class FormsOverviewDemo extends StatefulWidget {
 
 class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
   // ── Real form field instances ──────────────────────────────────────────
-  late final TomEmailField _email;
-  late final TomPasswordField _password;
-  late final TomTextField _username;
-  late final TomIntField _age;
-  late final TomDoubleField _rating;
+  late final TomEmailFormField _email;
+  late final TomPasswordFormField _password;
+  late final TomStringFormField _username;
+  late final TomIntFormField _age;
+  late final TomDoubleFormField _rating;
 
   late final List<TomField> _fields;
 
@@ -52,19 +52,19 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     // Create field instances with explicit labels and decoration params.
     // In production these come from resource lookup; here we pass them
     // directly to show the override mechanism.
-    _email = TomEmailField(
+    _email = TomEmailFormField(
       'email',
       '',
       labelText: 'Email',
-      helperText: 'TomEmailField — validates email format',
+      helperText: 'TomEmailFormField — validates email format',
       prefixIcon: const Icon(Icons.email),
     );
 
-    _password = TomPasswordField(
+    _password = TomPasswordFormField(
       'password',
       '',
       labelText: 'Password',
-      helperText: 'TomPasswordField — obscured, min 6 chars',
+      helperText: 'TomPasswordFormField — obscured, min 6 chars',
       prefixIcon: const Icon(Icons.lock),
       valueValidator: (value) {
         if (value.isEmpty) return 'password.errors.required';
@@ -73,11 +73,11 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       },
     );
 
-    _username = TomTextField(
+    _username = TomStringFormField(
       'username',
       '',
       labelText: 'Username',
-      helperText: 'TomTextField — required text field',
+      helperText: 'TomStringFormField — required text field',
       prefixIcon: const Icon(Icons.person),
       valueValidator: (value) {
         if (value.isEmpty) return 'username.errors.required';
@@ -85,23 +85,23 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
       },
     );
 
-    _age = TomIntField(
+    _age = TomIntFormField(
       'age',
       0,
       min: 0,
       max: 150,
       labelText: 'Age',
-      helperText: 'TomIntField — integer, range 0–150',
+      helperText: 'TomIntFormField — integer, range 0–150',
       prefixIcon: const Icon(Icons.cake),
     );
 
-    _rating = TomDoubleField(
+    _rating = TomDoubleFormField(
       'rating',
       0.0,
       min: 0.0,
       max: 5.0,
       labelText: 'Rating',
-      helperText: 'TomDoubleField — decimal, range 0.0–5.0',
+      helperText: 'TomDoubleFormField — decimal, range 0.0–5.0',
       prefixIcon: const Icon(Icons.star),
     );
 
@@ -129,7 +129,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
 
   void _resetForm() {
     for (final field in _fields) {
-      if (field is TomTextFieldBase) field.reset();
+      if (field is TomTextFormFieldBase) field.reset();
     }
     setState(() {
       _savedValues = null;
@@ -165,11 +165,11 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
                     'framework with declarative field creation and built-in '
                     'validation.\n\n'
                     'Fields shown below are real instances of:\n'
-                    '• TomTextField — standard text input\n'
-                    '• TomEmailField — email with validation\n'
-                    '• TomPasswordField — obscured text\n'
-                    '• TomIntField — integer with min/max\n'
-                    '• TomDoubleField — decimal with min/max\n\n'
+                    '• TomStringFormField — standard text input\n'
+                    '• TomEmailFormField — email with validation\n'
+                    '• TomPasswordFormField — obscured text\n'
+                    '• TomIntFormField — integer with min/max\n'
+                    '• TomDoubleFormField — decimal with min/max\n\n'
                     'Each field supports the resource lookup pattern for '
                     'labels, helper text, hints, and icons.  Explicit '
                     'parameters override resource values.',

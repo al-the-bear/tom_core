@@ -105,14 +105,14 @@ abstract class TomField<T> extends TomObject<T> {
 ///
 /// This allows resources to provide default values while code can override
 /// any specific field at construction time.
-class TomTextFieldBase<T> extends TomField<T> {
+class TomTextFormFieldBase<T> extends TomField<T> {
   /// Returns translated text with scope prefix applied.
   String t(String key) =>
       TomTextResourceProvider.getAppResources().getText('$scope.$key');
   
-  /// Checks if a translation exists with scope prefix applied.
-  bool translationExists(String key) =>
-      TomTextResourceProvider.getAppResources().exists('$scope.$key');
+  /// Returns translated text or `null` if no resource exists.
+  String? tOrNull(String key) =>
+      TomTextResourceProvider.getAppResources().getTextOrNull('$scope.$key');
 
   late TextEditingController _textEditingController;
   String currentRawValue = "";
@@ -133,7 +133,7 @@ class TomTextFieldBase<T> extends TomField<T> {
   final Widget? suffixIcon;
   final bool? enabled;
 
-  TomTextFieldBase(
+  TomTextFormFieldBase(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -162,10 +162,10 @@ class TomTextFieldBase<T> extends TomField<T> {
     }
 
     // Check for pattern validator in resources
-    String patternKey = "$fieldName.pattern";
-    if (translationExists(patternKey)) {
+    final pattern = tOrNull('$fieldName.pattern');
+    if (pattern != null) {
       _inputValidators.add((String value) {
-        if (RegExp(t(patternKey)).hasMatch(value)) {
+        if (RegExp(pattern).hasMatch(value)) {
           return null;
         } else {
           return t("$fieldName.errors.pattern");
@@ -249,15 +249,12 @@ class TomTextFieldBase<T> extends TomField<T> {
   // ---------------------------------------------------------------------------
 
   /// Resolves a text resource, returning `null` if the key doesn't exist.
-  String? _resolveTextOrNull(String key) {
-    if (translationExists(key)) return t(key);
-    return null;
-  }
+  String? _resolveTextOrNull(String key) =>
+      TomTextResourceProvider.getAppResources().getTextOrNull('$scope.$key');
 
   /// Resolves an icon from resources, returning an [Icon] widget or `null`.
   Widget? _resolveIconOrNull(String key) {
     final basePath = scope.isEmpty ? fieldName : '$scope.$fieldName';
-    if (!TomUIResources.resourceExists(basePath, key)) return null;
     final iconData = TomUIResources.resolveIcon(basePath, key);
     if (iconData != null) return Icon(iconData);
     return null;
@@ -317,9 +314,9 @@ class TomTextFieldBase<T> extends TomField<T> {
   }
 }
 
-/// Standard text field for string input.
-class TomTextField extends TomTextFieldBase<String> {
-  TomTextField(
+/// Standard string form field for text input.
+class TomStringFormField extends TomTextFormFieldBase<String> {
+  TomStringFormField(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -335,9 +332,9 @@ class TomTextField extends TomTextFieldBase<String> {
   });
 }
 
-/// Password field with obscured text.
-class TomPasswordField extends TomTextFieldBase<String> {
-  TomPasswordField(
+/// Password form field with obscured text.
+class TomPasswordFormField extends TomTextFormFieldBase<String> {
+  TomPasswordFormField(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -352,9 +349,9 @@ class TomPasswordField extends TomTextFieldBase<String> {
   }) : super(obscureText: true);
 }
 
-/// Email field with built-in email validation.
-class TomEmailField extends TomTextFieldBase<String> {
-  TomEmailField(
+/// Email form field with built-in email validation.
+class TomEmailFormField extends TomTextFormFieldBase<String> {
+  TomEmailFormField(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -385,12 +382,12 @@ class TomEmailField extends TomTextFieldBase<String> {
   }
 }
 
-/// Integer field with int conversion and optional min/max validation.
-class TomIntField extends TomTextFieldBase<int> {
+/// Integer form field with int conversion and optional min/max validation.
+class TomIntFormField extends TomTextFormFieldBase<int> {
   final int? min;
   final int? max;
 
-  TomIntField(
+  TomIntFormField(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -434,12 +431,12 @@ class TomIntField extends TomTextFieldBase<int> {
   }
 }
 
-/// Double/decimal field with double conversion and optional min/max validation.
-class TomDoubleField extends TomTextFieldBase<double> {
+/// Double/decimal form field with double conversion and optional min/max validation.
+class TomDoubleFormField extends TomTextFormFieldBase<double> {
   final double? min;
   final double? max;
 
-  TomDoubleField(
+  TomDoubleFormField(
     super.fieldName,
     super.initialValue, {
     super.form,
@@ -488,19 +485,19 @@ class TomDoubleField extends TomTextFieldBase<double> {
 class TestForm extends TomForm {
   TestForm() : super(formId: "test_form");
 
-  late final TomEmailField email;
-  late final TomPasswordField password;
-  late final TomTextField username;
-  late final TomIntField age;
-  late final TomDoubleField rating;
+  late final TomEmailFormField email;
+  late final TomPasswordFormField password;
+  late final TomStringFormField username;
+  late final TomIntFormField age;
+  late final TomDoubleFormField rating;
 
   @override
   void createFormElements() {
-    email = TomEmailField('email', '', form: this);
-    password = TomPasswordField('password', '', form: this);
-    username = TomTextField('username', '', form: this);
-    age = TomIntField('age', 0, form: this, min: 0, max: 150);
-    rating = TomDoubleField('rating', 0.0, form: this, min: 0.0, max: 5.0);
+    email = TomEmailFormField('email', '', form: this);
+    password = TomPasswordFormField('password', '', form: this);
+    username = TomStringFormField('username', '', form: this);
+    age = TomIntFormField('age', 0, form: this, min: 0, max: 150);
+    rating = TomDoubleFormField('rating', 0.0, form: this, min: 0.0, max: 5.0);
     
   }
 }

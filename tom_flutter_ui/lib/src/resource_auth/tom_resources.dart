@@ -47,6 +47,14 @@ class TomUIResources {
     return _provider.getText(key);
   }
 
+  /// Resolves the text resource for [basePath] + [suffix].
+  ///
+  /// Returns `null` if no text resource is found.
+  static String? resolveTextOrNull(String basePath, String suffix) {
+    final key = '$basePath.$suffix';
+    return _provider.getTextOrNull(key);
+  }
+
   /// Whether a resource exists for [basePath] + [suffix].
   static bool resourceExists(String basePath, String suffix) {
     final key = '$basePath.$suffix';
@@ -62,8 +70,7 @@ class TomUIResources {
   /// Returns `null` if no resource found.
   static dynamic resolveValue(String basePath, String suffix) {
     final key = '$basePath.$suffix';
-    if (!_provider.existsObject(key)) return null;
-    return _provider.getObject(key);
+    return _provider.getObjectOrNull(key);
   }
 
   /// Resolves a list from resources for [basePath] + [suffix].

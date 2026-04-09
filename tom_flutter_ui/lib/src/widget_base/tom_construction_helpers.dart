@@ -64,8 +64,7 @@ class TomCtr {
   /// Resolves text from the full path, returning null if no resource.
   static String? textOrNull(String? path) {
     if (path == null) return null;
-    if (!TomUIResources.resourceExists(path, '')) return null;
-    return TomUIResources.resolveText(path, '');
+    return TomUIResources.resolveTextOrNull(path, '');
   }
 
   // ===========================================================================
