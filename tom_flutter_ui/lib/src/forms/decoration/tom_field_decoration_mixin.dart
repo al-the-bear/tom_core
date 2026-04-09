@@ -66,25 +66,50 @@ mixin TomFieldDecorationMixin on TomField {
       if (desc != null) children.add(desc);
     }
 
-    // Label row
-    final label = _buildLabelRow(style, theme);
-    if (label != null) {
-      children.add(label);
-      children.add(SizedBox(height: style.labelFieldGap));
-    }
+    // Inline label: label and input in same row
+    if (style.labelPlacement == LabelPlacement.inline) {
+      final label = _buildLabelRow(style, theme);
 
-    // Error above field
-    if (style.errorPlacement == ErrorPlacement.above ||
-        style.errorPlacement == ErrorPlacement.both) {
-      final error = _buildError(style, theme);
-      if (error != null) {
-        children.add(error);
-        children.add(SizedBox(height: style.errorFieldGap));
+      // Error above field
+      if (style.errorPlacement == ErrorPlacement.above ||
+          style.errorPlacement == ErrorPlacement.both) {
+        final error = _buildError(style, theme);
+        if (error != null) {
+          children.add(error);
+          children.add(SizedBox(height: style.errorFieldGap));
+        }
       }
-    }
 
-    // Input row with action icons
-    children.add(_buildInputRow(style, innerWidget));
+      children.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            if (label != null) ...[label, SizedBox(width: style.labelFieldGap * 2)],
+            Expanded(child: _buildInputRow(style, innerWidget)),
+          ],
+        ),
+      );
+    } else {
+      // Label row above field (default / above / hidden / floating)
+      final label = _buildLabelRow(style, theme);
+      if (label != null) {
+        children.add(label);
+        children.add(SizedBox(height: style.labelFieldGap));
+      }
+
+      // Error above field
+      if (style.errorPlacement == ErrorPlacement.above ||
+          style.errorPlacement == ErrorPlacement.both) {
+        final error = _buildError(style, theme);
+        if (error != null) {
+          children.add(error);
+          children.add(SizedBox(height: style.errorFieldGap));
+        }
+      }
+
+      // Input row with action icons
+      children.add(_buildInputRow(style, innerWidget));
+    }
 
     // Error below field
     if (style.errorPlacement == ErrorPlacement.below ||

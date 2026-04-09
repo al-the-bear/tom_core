@@ -107,6 +107,41 @@ void main() {
       expect(find.text('Full Name'), findsNothing);
     });
 
+    testWidgets('renders label inline (same row) when inline placement',
+        (tester) async {
+      final field = _DecoratedTestField(
+        'name',
+        '',
+        labelText: 'Full Name',
+      );
+
+      await tester.pumpWidget(_wrap(
+        field.widget,
+        style: const TomFormStyle(labelPlacement: LabelPlacement.inline),
+      ));
+
+      // Label and input should both be present
+      expect(find.text('Full Name'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget);
+
+      // They should share a common Row ancestor (inline layout)
+      final labelElement = find.text('Full Name').evaluate().first;
+      // Walk up to find the Row that contains both label and input
+      Row? inlineRow;
+      labelElement.visitAncestorElements((element) {
+        if (element.widget is Row) {
+          final row = element.widget as Row;
+          // The inline row should contain an Expanded child (the input)
+          if (row.children.any((c) => c is Expanded)) {
+            inlineRow = row;
+            return false;
+          }
+        }
+        return true;
+      });
+      expect(inlineRow, isNotNull, reason: 'Label and input share an inline Row');
+    });
+
     testWidgets('no label row when labelText is null', (tester) async {
       final field = _DecoratedTestField('name', '');
 

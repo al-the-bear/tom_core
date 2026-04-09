@@ -123,6 +123,20 @@ void main() {
     test('compact differs from material3', () {
       expect(TomFormStyle.compact, isNot(equals(TomFormStyle.material3)));
     });
+
+    test('hashCode differs when only disabledOpacity differs', () {
+      const a = TomFormStyle(disabledOpacity: 0.5);
+      const b = TomFormStyle(disabledOpacity: 0.3);
+      expect(a, isNot(equals(b)));
+      expect(a.hashCode, isNot(equals(b.hashCode)));
+    });
+
+    test('hashCode differs when only readOnlyBackground differs', () {
+      const a = TomFormStyle(readOnlyBackground: Color(0xFF000000));
+      const b = TomFormStyle(readOnlyBackground: Color(0xFFFFFFFF));
+      expect(a, isNot(equals(b)));
+      expect(a.hashCode, isNot(equals(b.hashCode)));
+    });
   });
 
   group('TomFormStyle — fromResources', () {

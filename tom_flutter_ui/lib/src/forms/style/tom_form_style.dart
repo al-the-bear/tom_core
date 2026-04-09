@@ -245,27 +245,32 @@ class TomFormStyle {
 
   @override
   int get hashCode => Object.hash(
-        labelPlacement,
-        errorPlacement,
-        requiredIndicator,
-        descriptionPlacement,
-        actionIconPlacement,
-        fieldSpacing,
-        fieldGroupSpacing,
-        labelFieldGap,
-        errorFieldGap,
-        fieldContentPadding,
-        fieldBorder,
-        focusedBorder,
-        errorBorder,
-        borderRadius,
-        groupDecoration,
-        groupPadding,
-        labelStyle,
-        hintStyle,
-        errorStyle,
-        descriptionStyle,
-        // Note: Object.hash limited to 20 args, use hashValues for remaining
+        Object.hash(
+          labelPlacement,
+          errorPlacement,
+          requiredIndicator,
+          descriptionPlacement,
+          actionIconPlacement,
+          fieldSpacing,
+          fieldGroupSpacing,
+          labelFieldGap,
+          errorFieldGap,
+          fieldContentPadding,
+          fieldBorder,
+        ),
+        Object.hash(
+          focusedBorder,
+          errorBorder,
+          borderRadius,
+          groupDecoration,
+          groupPadding,
+          labelStyle,
+          hintStyle,
+          errorStyle,
+          descriptionStyle,
+          disabledOpacity,
+          readOnlyBackground,
+        ),
       );
 
   // --- Private enum parsers for fromResources ---
