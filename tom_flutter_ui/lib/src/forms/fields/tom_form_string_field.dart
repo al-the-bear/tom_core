@@ -264,6 +264,21 @@ class TomFormStringDropdown extends TomFormStringField
     super.uiStateController,
   });
 
+  // Override labelText/descriptionText to resolve through the
+  // TomFormStringField resource resolution logic rather than
+  // TomFieldDecorationMixin's default (null).
+  // Mixin linearization places the mixin between this class and the
+  // superclass, so without these overrides the mixin's null-returning
+  // getters would shadow the superclass's resource-resolving getters.
+
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
   @override
   Widget get widget => _TomFormStringDropdownWidget(field: this);
 }

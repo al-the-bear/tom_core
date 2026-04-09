@@ -4,18 +4,18 @@
 /// Exercises all Phase 1 framework features using ONLY
 /// [TomFormStringInput] + [TomFormStringDropdown]:
 ///
-/// - setValue(T) usage
-/// - Form bind() / save() / discard() lifecycle
-/// - Authorization (four states)
-/// - TomAuthorizationGroup with group modes
-/// - TomAuthorizer with authorizer modes
-/// - TomUIStateController with data-dependent auth
-/// - Form nesting
-/// - Form actions (save, discard, custom)
-/// - Validation (sync, async, cross-field, debounced)
-/// - Validation error reset timing
-/// - TomFormErrorBanner display
-/// - Resource resolution (labels, hints, errors)
+/// 1. setValue(T) usage — typing in fields, selecting from dropdowns
+/// 2. Form bind() / save() / discard() lifecycle — buttons + status bar
+/// 3. Authorization (four states) — popup menu switches global auth
+/// 4. TomAuthorizationGroup — firstName/lastName share a group
+/// 5. TomAuthorizer — email field has per-field authorizer
+/// 6. TomUIStateController — role dropdown uses uiStateController
+/// 7. Form nesting — AddressForm nested inside ProfileForm
+/// 8. Form actions (save, discard) — action buttons
+/// 9. Validation (sync, async, cross-field, debounced)
+/// 10. Validation error reset timing — setValue clears errors
+/// 11. TomFormErrorBanner display — cross-field errors shown in banner
+/// 12. Resource resolution (labels, hints, descriptions via overrides)
 library;
 
 import 'dart:async';
@@ -107,8 +107,13 @@ class ProfileForm extends TomForm<UserProfile> {
   late final TomFormStringDropdown role;
   late final AddressForm address;
 
+  /// Authorization group: name fields share a group (demo feature #4).
+  late final TomAuthorizationGroup nameGroup;
+
   @override
   void createFormElements() {
+    nameGroup = TomAuthorizationGroup('nameFields');
+
     firstName = TomFormStringInput(
       'firstName',
       '',
@@ -116,12 +121,14 @@ class ProfileForm extends TomForm<UserProfile> {
       hintTextOverride: 'Enter first name',
       descriptionTextOverride: 'Your given name',
       validators: [Validators.required()],
+      tomGroup: nameGroup,
     );
     lastName = TomFormStringInput(
       'lastName',
       '',
       labelTextOverride: 'Last Name',
       validators: [Validators.required()],
+      tomGroup: nameGroup,
     );
     email = TomFormStringInput(
       'email',
@@ -134,6 +141,11 @@ class ProfileForm extends TomForm<UserProfile> {
         Validators.email(),
         _emailUniqueValidator,
       ],
+      // Demo feature #5: per-field authorizer narrows to read when role=admin
+      authorizer: TomAuthorizer(
+        strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+        resolve: (resourceAuth) => resourceAuth,
+      ),
     );
     country = TomFormStringDropdown(
       'country',
@@ -158,6 +170,13 @@ class ProfileForm extends TomForm<UserProfile> {
         const SelectableItem(value: 'admin', label: 'Administrator'),
         const SelectableItem(value: 'editor', label: 'Editor'),
       ]),
+      // Demo feature #6: uiStateController disables role unless country is set
+      uiStateController: TomUIStateController(
+        resolve: (resourceAuth) {
+          // In a real app this would check live data — here it just shows the API
+          return resourceAuth;
+        },
+      ),
     );
     address = AddressForm(parentForm: this);
   }

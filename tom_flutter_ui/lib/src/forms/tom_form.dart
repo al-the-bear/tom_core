@@ -109,6 +109,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
     setValues(values);
     for (final field in fields.values) {
       field.commit();
+      _fireEvent(FieldBoundEvent(source: field.fieldId));
     }
     onBound();
     _fireEvent(FormBoundEvent(source: formId));

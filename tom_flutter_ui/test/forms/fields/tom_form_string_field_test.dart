@@ -454,6 +454,41 @@ void main() {
       final result = await field.validate();
       expect(result, isA<ValidationError>());
     });
+
+    test('labelText resolves through override (not mixin default)', () {
+      final field = TomFormStringDropdown(
+        'country',
+        '',
+        source: StaticSelectableSource([
+          const SelectableItem(value: 'US', label: 'US'),
+        ]),
+        labelTextOverride: 'Country Label',
+      );
+      expect(field.labelText, 'Country Label');
+    });
+
+    test('descriptionText resolves through override (not mixin default)', () {
+      final field = TomFormStringDropdown(
+        'country',
+        '',
+        source: StaticSelectableSource([
+          const SelectableItem(value: 'US', label: 'US'),
+        ]),
+        descriptionTextOverride: 'Pick your country',
+      );
+      expect(field.descriptionText, 'Pick your country');
+    });
+
+    test('labelText is null when no override and no resource', () {
+      final field = TomFormStringDropdown(
+        'country',
+        '',
+        source: StaticSelectableSource([
+          const SelectableItem(value: 'US', label: 'US'),
+        ]),
+      );
+      expect(field.labelText, isNull);
+    });
   });
 
   group('TomFormStringDropdown — widget rendering', () {
@@ -472,6 +507,40 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+    });
+
+    testWidgets('renders label via decoration mixin', (tester) async {
+      final field = TomFormStringDropdown(
+        'country',
+        '',
+        source: StaticSelectableSource([
+          const SelectableItem(value: 'US', label: 'United States'),
+        ]),
+        labelTextOverride: 'Country Label',
+      );
+
+      await tester.pumpWidget(_wrap(field.widget));
+      await tester.pumpAndSettle();
+
+      // Label should render through TomFieldDecorationMixin anatomy
+      expect(find.text('Country Label'), findsOneWidget);
+    });
+
+    testWidgets('renders description via decoration mixin', (tester) async {
+      final field = TomFormStringDropdown(
+        'country',
+        '',
+        source: StaticSelectableSource([
+          const SelectableItem(value: 'US', label: 'United States'),
+        ]),
+        labelTextOverride: 'Country',
+        descriptionTextOverride: 'Select your country of residence',
+      );
+
+      await tester.pumpWidget(_wrap(field.widget));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Select your country of residence'), findsOneWidget);
     });
 
     testWidgets('hides when auth is none', (tester) async {
