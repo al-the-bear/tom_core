@@ -214,6 +214,27 @@ class TomTextResourceProvider {
     return resources[s] != null ? resources[s]! : s;
   }
 
+  /// Retrieves the configuration value at the given path.
+  ///
+  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
+  /// using dot notation (e.g., 'api.timeout').
+  ///
+  /// If the configuration is not found, returns null as a fallback,
+  /// which helps identify missing configuration during development.
+  ///
+  /// [s] - The configuration key or path to retrieve.
+  ///
+  /// Returns the value if found (can be any type), or null if not found.
+  Object? getObjectOrNull(String s) {
+    try {
+      dynamic value = getObjectFromTree(resources, s);
+      return value;
+    } catch (ex) {
+      // fall through
+    }
+    return resources[s] != null ? resources[s]! : null;
+  }
+
   /// Retrieves the text value at the given path.
   ///
   /// Supports both flat keys (e.g., 'title') and hierarchical paths
@@ -235,6 +256,29 @@ class TomTextResourceProvider {
     return (resources[s] != null && resources[s] is String)
         ? resources[s]! as String
         : s;
+  }
+
+   /// Retrieves the text value at the given path.
+  ///
+  /// Supports both flat keys (e.g., 'title') and hierarchical paths
+  /// using dot notation (e.g., 'screens.home.title').
+  ///
+  /// If the resource is not found, returns null as a fallback,
+  /// which helps identify missing resources during development.
+  ///
+  /// [s] - The resource key or path to retrieve.
+  ///
+  /// Returns the text value if found, or null if not found.
+  String? getTextOrNull(String s) {
+    try {
+      dynamic value = getObjectFromTree(resources, s);
+      if (value is String) return value;
+    } catch (ex) {
+      // fall through
+    }
+    return (resources[s] != null && resources[s] is String)
+        ? resources[s]! as String
+        : null;
   }
 }
 
