@@ -33,7 +33,7 @@ abstract class TomUIColorAdapter {
 /// Usage flow:
 /// ```dart
 /// // 1. Get color name from resources
-/// final colorName = TomUIResources.resolveText('w-errorCard', 'color');
+/// final colorName = TomCtr.text('w-errorCard', 'color');
 /// // -> returns "mRed" or "#FF0000"
 ///
 /// // 2. Get Color from color provider

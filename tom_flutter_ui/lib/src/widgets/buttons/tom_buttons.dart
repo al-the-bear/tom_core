@@ -1213,7 +1213,7 @@ class TomIconButton extends TomButtonBase {
 
   void _initResolvedFields() {
     _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
-    _resolvedIcon = _TomCtr.icon(basePath, 'icon');
+    _resolvedIcon = _resolveIconWidget();
     _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize');
     _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
     _resolvedColor = color ?? TomCtr.color(basePath, 'color');
@@ -1229,7 +1229,7 @@ class TomIconButton extends TomButtonBase {
   }
 
   /// Resolves the icon widget from parameter or resources.
-  Widget _TomCtr.icon(basePath, 'icon') {
+  Widget _resolveIconWidget() {
     if (icon != null) return icon!;
     final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData != null) return Icon(iconData);

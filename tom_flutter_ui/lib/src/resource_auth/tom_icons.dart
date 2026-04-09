@@ -32,7 +32,7 @@ abstract class TomUIIconAdapter {
 /// Usage flow:
 /// ```dart
 /// // 1. Get icon name from resources
-/// final iconName = TomUIResources.resolveText('w-saveButton', 'icon');
+/// final iconName = TomCtr.text('w-saveButton', 'icon');
 /// // -> returns "mSave"
 ///
 /// // 2. Get IconData from icon provider

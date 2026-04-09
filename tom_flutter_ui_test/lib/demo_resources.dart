@@ -2842,7 +2842,7 @@ class _DemoResources {
     'demo21.lookupDemo.title.label': 'Core Lookup API Coverage',
     'demo21.lookupDemo.subtitle.label': 'all supported lookup types resolved at least once',
     'demo21.lookupDemo.info.label':
-        'This card reads each typed API directly from TomUIResources.',
+        'This card reads each typed API directly from TomCtr.',
 
     // Text sample for direct resolveText(basePath, suffix)
     'demo21.lookup.text': 'Hello from resolveText',
