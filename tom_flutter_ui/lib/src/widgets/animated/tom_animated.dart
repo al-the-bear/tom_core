@@ -41,10 +41,10 @@ class TomAnimatedAlign extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
-    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
+    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
+    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -161,17 +161,17 @@ class TomAnimatedContainer extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
     _resolvedForegroundDecoration = foregroundDecoration ?? _resolveDecoration('foregroundDecoration');
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
     _resolvedTransformAlignment = transformAlignment ?? _resolveAlignment('transformAlignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -250,9 +250,9 @@ class TomAnimatedCrossFade extends TomAnimatedBase {
     AnimatedCrossFadeBuilder layoutBuilder = AnimatedCrossFade.defaultLayoutBuilder,
     this.excludeBottomFocus,
   }) : layoutBuilder = InScopeBuilder(scope: scope).wrap4(layoutBuilder) {
-    _resolvedExcludeBottomFocus = excludeBottomFocus ?? resolveBoolOrNull('excludeBottomFocus') ?? true;
+    _resolvedExcludeBottomFocus = excludeBottomFocus ?? TomCtr.boolVal(basePath, 'excludeBottomFocus') ?? true;
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -318,9 +318,9 @@ class TomAnimatedDefaultTextStyle extends TomAnimatedBase {
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedStyle = _resolveTextStyle('style');
-    _resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap') ?? true;
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedSoftWrap = softWrap ?? TomCtr.boolVal(basePath, 'softWrap') ?? true;
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -377,10 +377,10 @@ class TomAnimatedFractionallySizedBox extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
-    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -430,9 +430,9 @@ class TomAnimatedOpacity extends TomAnimatedBase {
     VoidCallback? onEnd,
     this.alwaysIncludeSemantics,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
-    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
+    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ?? false;
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -473,8 +473,8 @@ class TomAnimatedPadding extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -540,13 +540,13 @@ class TomAnimatedPhysicalModel extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedElevation = elevation ?? resolveDoubleOrFail('elevation');
-    _resolvedColor = color ?? resolveColorOrFail('color');
-    _resolvedAnimateColor = animateColor ?? resolveBoolOrNull('animateColor') ?? true;
-    _resolvedShadowColor = shadowColor ?? resolveColorOrFail('shadowColor');
-    _resolvedAnimateShadowColor = animateShadowColor ?? resolveBoolOrNull('animateShadowColor') ?? true;
+    _resolvedElevation = elevation ?? TomCtr.doubleOrFail(basePath, 'elevation');
+    _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
+    _resolvedAnimateColor = animateColor ?? TomCtr.boolVal(basePath, 'animateColor') ?? true;
+    _resolvedShadowColor = shadowColor ?? TomCtr.colorOrFail(basePath, 'shadowColor');
+    _resolvedAnimateShadowColor = animateShadowColor ?? TomCtr.boolVal(basePath, 'animateShadowColor') ?? true;
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -703,9 +703,9 @@ class TomAnimatedRotation extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedTurns = turns ?? resolveDoubleOrFail('turns');
+    _resolvedTurns = turns ?? TomCtr.doubleOrFail(basePath, 'turns');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -757,9 +757,9 @@ class TomAnimatedScale extends TomAnimatedBase {
     this.curve = Curves.linear,
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedScale = scale ?? resolveDoubleOrFail('scale');
+    _resolvedScale = scale ?? TomCtr.doubleOrFail(basePath, 'scale');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -811,7 +811,7 @@ class TomAnimatedSize extends TomAnimatedBase {
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -859,7 +859,7 @@ class TomAnimatedSlide extends TomAnimatedBase {
     VoidCallback? onEnd,
   })  : onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
     _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -907,7 +907,7 @@ class TomAnimatedSwitcher extends TomAnimatedBase {
   }) : transitionBuilder = InScopeBuilder(scope: scope).wrap2(transitionBuilder),
        layoutBuilder = InScopeBuilder(scope: scope).wrap2(layoutBuilder) {
 
-    _resolvedDuration = duration ?? Duration(milliseconds: resolveIntOrNull('duration') ?? 300);
+    _resolvedDuration = duration ?? Duration(milliseconds: TomCtr.intVal(basePath, 'duration') ?? 300);
   }
 
   @override
@@ -951,7 +951,7 @@ class TomHero extends TomAnimatedBase {
     required this.child,
   }) : flightShuttleBuilder = flightShuttleBuilder != null ? InScopeBuilder(scope: scope).wrap5(flightShuttleBuilder) : null,
        placeholderBuilder = placeholderBuilder != null ? InScopeBuilder(scope: scope).wrap3(placeholderBuilder) : null {
-    _resolvedTransitionOnUserGestures = transitionOnUserGestures ?? resolveBoolOrNull('transitionOnUserGestures') ?? false;
+    _resolvedTransitionOnUserGestures = transitionOnUserGestures ?? TomCtr.boolVal(basePath, 'transitionOnUserGestures') ?? false;
   }
 
   @override

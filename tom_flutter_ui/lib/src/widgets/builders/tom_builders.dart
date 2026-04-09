@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 
 // ────────────────────────────────────────────────────────────────────────────
 // TomStatefulBuilder
@@ -215,7 +216,7 @@ class TomTweenAnimationBuilder<T extends Object> extends TomBuilderBase {
     this.child,
   }) : builder = InScopeBuilder(scope: scope).wrap3(builder),
        onEnd = InScopeBuilder(scope: scope).wrap0n(onEnd) {
-    _resolvedCurve = curve ?? _resolveCurve(resolveResourceOrNull('curve')) ?? Curves.linear;
+    _resolvedCurve = curve ?? _resolveCurve(TomCtr.textOrNull(basePath, 'curve')) ?? Curves.linear;
   }
 
   /// The tween to animate.

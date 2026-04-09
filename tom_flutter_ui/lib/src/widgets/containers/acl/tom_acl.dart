@@ -2,7 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../../resource_auth/tom_auth_state.dart';
-import '../../../resource_auth/tom_resources.dart';
+import '../../../widget_base/tom_construction_helpers.dart';
 import '../../../theme/tom_theme.dart';
 import '../../../widget_base/tom_style_resolvers.dart';
 import '../../../advanced_container_layout/acl_builder.dart';
@@ -16,7 +16,7 @@ import '../../../widget_base/tom_screen_elements_provider.dart';
 ///
 /// - **Element provider** — typed access to screen elements via `(T p) => p.field`.
 /// - **Authorization** — container-level visibility check via [TomUIAuthorization].
-/// - **Resources** — container title resolved from [TomUIResources] if not explicit.
+/// - **Resources** — container title resolved from [TomCtr] if not explicit.
 /// - **Identity scope** — wraps the result in [TomScope] for descendant resolution.
 ///
 /// The wrapper delegates all layout operations to a standard [AclBuilder].
@@ -638,21 +638,21 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
     // Resolve unset parameters from resources
     if (_explicitTitle == null) {
-      final resourceTitle = TomUIResources.resolveText(containerPath, 'title');
+      final resourceTitle = TomCtr.text(containerPath, 'title');
       // Only use resource title if it doesn't look like a missing-key fallback
       if (!resourceTitle.contains('.title')) {
         _builder.setAclTitle(resourceTitle);
       }
     }
     if (!_explicitPadding) {
-      final resPadding = TomUIResources.resolveEdgeInsets(
+      final resPadding = TomCtr.edgeInsets(
         containerPath,
         'padding',
       );
       if (resPadding != null) _builder.setAclPadding(resPadding);
     }
     if (!_explicitBackgroundColor) {
-      final resBg = TomUIResources.resolveColor(
+      final resBg = TomCtr.color(
         containerPath,
         'backgroundColor',
       );
@@ -666,7 +666,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
       if (resStyle != null) _builder.setAclTitleStyle(resStyle);
     }
     if (!_explicitTitleVerticalOffset) {
-      final resOffset = TomUIResources.resolveDouble(
+      final resOffset = TomCtr.doubleVal(
         containerPath,
         'titleVerticalOffset',
       );
@@ -706,20 +706,20 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
   AclBorderStyle? _resolveBorderStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath!, suffix);
+    final map = TomCtr.map(basePath!, suffix);
     if (map == null || map.isEmpty) return null;
     return AclBorderStyle(
       kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
       color:
-          TomUIResources.resolveColor(basePath!, '$suffix.color') ??
+          TomCtr.color(basePath!, '$suffix.color') ??
           const Color(0x00000000),
       lineWidth:
-          TomUIResources.resolveDouble(basePath!, '$suffix.lineWidth') ?? 1.0,
-      rounded: TomUIResources.resolveBool(basePath!, '$suffix.rounded') ?? false,
+          TomCtr.doubleVal(basePath!, '$suffix.lineWidth') ?? 1.0,
+      rounded: TomCtr.boolVal(basePath!, '$suffix.rounded') ?? false,
       borderRadius:
-          TomUIResources.resolveDouble(basePath!, '$suffix.borderRadius') ?? 0.0,
+          TomCtr.doubleVal(basePath!, '$suffix.borderRadius') ?? 0.0,
       borderInsets:
-          TomUIResources.resolveEdgeInsets(basePath!, '$suffix.borderInsets') ??
+          TomCtr.edgeInsets(basePath!, '$suffix.borderInsets') ??
           EdgeInsets.zero,
     );
   }
@@ -735,7 +735,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitlePosition] from a resource text at [basePath]/titlePosition.
   AclTitlePosition? _resolveTitlePosition(String basePath) {
-    final value = TomUIResources.resolveValue(basePath!, 'titlePosition');
+    final value = TomCtr.value(basePath!, 'titlePosition');
     if (value == null) return null;
     final text = value.toString();
     for (final pos in AclTitlePosition.values) {
@@ -746,7 +746,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitleBorderAlign] from a resource text at [basePath]/titleBorderAlign.
   AclTitleBorderAlign? _resolveTitleBorderAlign(String basePath) {
-    final value = TomUIResources.resolveValue(basePath!, 'titleBorderAlign');
+    final value = TomCtr.value(basePath!, 'titleBorderAlign');
     if (value == null) return null;
     final text = value.toString();
     for (final align in AclTitleBorderAlign.values) {

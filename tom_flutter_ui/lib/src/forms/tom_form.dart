@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../resource_auth/tom_resources.dart';
+import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
 
 @tomReflector
@@ -107,12 +107,10 @@ abstract class TomField<T> extends TomObject<T> {
 /// any specific field at construction time.
 class TomTextFormFieldBase<T> extends TomField<T> {
   /// Returns translated text with scope prefix applied.
-  String t(String key) =>
-      TomTextResourceProvider.getAppResources().getText('$scope.$key');
+  String t(String key) => TomCtr.text(scope, key);
   
   /// Returns translated text or `null` if no resource exists.
-  String? tOrNull(String key) =>
-      TomTextResourceProvider.getAppResources().getTextOrNull('$scope.$key');
+  String? tOrNull(String key) => TomCtr.textOrNull(scope, key);
 
   late TextEditingController _textEditingController;
   String currentRawValue = "";
@@ -248,14 +246,10 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   // Resource resolution helpers
   // ---------------------------------------------------------------------------
 
-  /// Resolves a text resource, returning `null` if the key doesn't exist.
-  String? _resolveTextOrNull(String key) =>
-      TomTextResourceProvider.getAppResources().getTextOrNull('$scope.$key');
-
   /// Resolves an icon from resources, returning an [Icon] widget or `null`.
   Widget? _resolveIconOrNull(String key) {
-    final basePath = scope.isEmpty ? fieldName : '$scope.$fieldName';
-    final iconData = TomUIResources.resolveIcon(basePath, key);
+    final bp = scope.isEmpty ? fieldName : '$scope.$fieldName';
+    final iconData = TomCtr.icon(bp, key);
     if (iconData != null) return Icon(iconData);
     return null;
   }
@@ -263,9 +257,9 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   @override
   Widget getField() {
     // Parameter → resource → null
-    final resolvedLabel = labelText ?? _resolveTextOrNull('$fieldName.label') ?? fieldName;
-    final resolvedHelper = helperText ?? _resolveTextOrNull('$fieldName.helperText');
-    final resolvedHint = hintText ?? _resolveTextOrNull('$fieldName.hintText');
+    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$fieldName.label') ?? fieldName;
+    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$fieldName.helperText');
+    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$fieldName.hintText');
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 

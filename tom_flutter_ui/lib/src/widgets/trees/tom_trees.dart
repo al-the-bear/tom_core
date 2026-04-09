@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom custom TreeView widget.
@@ -36,10 +37,10 @@ class TomTreeView extends TomTreeBase {
     this.shrinkWrap = false,
     this.physics,
   }) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedIndentation = indentation ?? resolveDoubleOrNull('indentation') ?? 24.0;
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedInitiallyExpanded = resolveBoolOrNull('initiallyExpanded');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedIndentation = indentation ?? TomCtr.doubleVal(basePath, 'indentation') ?? 24.0;
+    _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
+    _resolvedInitiallyExpanded = TomCtr.boolVal(basePath, 'initiallyExpanded');
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
   }
 
@@ -205,9 +206,9 @@ class TomTreeSliver<T> extends TomTreeBase {
     this.addSemanticIndexes,
   }) : treeNodeBuilder = InScopeBuilder(scope: scope).wrap3(treeNodeBuilder),
        onNodeToggle = InScopeBuilder(scope: scope).wrap1n(onNodeToggle) {
-    _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? resolveBoolOrNull('addAutomaticKeepAlives') ?? true;
-    _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? resolveBoolOrNull('addRepaintBoundaries') ?? true;
-    _resolvedAddSemanticIndexes = addSemanticIndexes ?? resolveBoolOrNull('addSemanticIndexes') ?? true;
+    _resolvedAddAutomaticKeepAlives = addAutomaticKeepAlives ?? TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ?? true;
+    _resolvedAddRepaintBoundaries = addRepaintBoundaries ?? TomCtr.boolVal(basePath, 'addRepaintBoundaries') ?? true;
+    _resolvedAddSemanticIndexes = addSemanticIndexes ?? TomCtr.boolVal(basePath, 'addSemanticIndexes') ?? true;
   }
 
   @override

@@ -59,12 +59,12 @@ class _SelectionDemoContentState extends TomState<_SelectionDemoContent> {
 
   /// Resolves a text resource by tomId and suffix.
   String _resolveText(String tomId, String suffix) {
-    return TomUIResources.resolveText(tomId, suffix);
+    return TomCtr.text(tomId, suffix);
   }
 
   /// Resolves a color from resources by tomId.
   Color? _resolveColor(String tomId) {
-    final colorName = TomUIResources.resolveText(tomId, 'color');
+    final colorName = TomCtr.text(tomId, 'color');
     return TomUIColors.resolveColor(colorName);
   }
 

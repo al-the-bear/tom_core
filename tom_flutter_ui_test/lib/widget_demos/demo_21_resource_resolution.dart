@@ -559,15 +559,15 @@ class _ResourceResolutionDemoContentState
   Widget _buildLookupCoverageSection() {
     const basePath = 'demo21.lookup';
 
-    final textValue = TomUIResources.resolveText(basePath, 'text');
-    final colorValue = TomUIResources.resolveColor(basePath, 'color');
-    final iconValue = TomUIResources.resolveIcon(basePath, 'icon');
-    final doubleValue = TomUIResources.resolveDouble(basePath, 'double');
-    final intValue = TomUIResources.resolveInt(basePath, 'int');
-    final boolValue = TomUIResources.resolveBool(basePath, 'bool');
-    final edgeInsetsValue = TomUIResources.resolveEdgeInsets(basePath, 'edgeInsets');
-    final listValue = TomUIResources.resolveList(basePath, 'list');
-    final mapValue = TomUIResources.resolveMap(basePath, 'map');
+    final textValue = TomCtr.text(basePath, 'text');
+    final colorValue = TomCtr.color(basePath, 'color');
+    final iconValue = TomCtr.icon(basePath, 'icon');
+    final doubleValue = TomCtr.doubleVal(basePath, 'double');
+    final intValue = TomCtr.intVal(basePath, 'int');
+    final boolValue = TomCtr.boolVal(basePath, 'bool');
+    final edgeInsetsValue = TomCtr.edgeInsets(basePath, 'edgeInsets');
+    final listValue = TomCtr.list(basePath, 'list');
+    final mapValue = TomCtr.map(basePath, 'map');
 
     final colorHex = colorValue == null
         ? 'null'

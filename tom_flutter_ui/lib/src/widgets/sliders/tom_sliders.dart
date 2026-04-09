@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 
 /// Tom wrapper for [Slider].
 ///
@@ -60,14 +61,14 @@ class TomSlider extends TomSliderBase {
        onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
        onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
        semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
-    _resolvedLabel = label ?? resolveResourceOrNull('label');
-    _resolvedMin = resolveDoubleOrNull('min') ?? min;
-    _resolvedMax = resolveDoubleOrNull('max') ?? max;
-    _resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
-    _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
-    _resolvedInactiveColor = inactiveColor ?? resolveColorOrNull('inactiveColor');
-    _resolvedThumbColor = thumbColor ?? resolveColorOrNull('thumbColor');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label');
+    _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
+    _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
+    _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');
+    _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
+    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
+    _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
   }
 
   @override
@@ -138,11 +139,11 @@ class TomRangeSlider extends TomSliderBase {
        onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
        onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd),
        semanticFormatterCallback = InScopeBuilder(scope: scope).wrap1n(semanticFormatterCallback) {
-    _resolvedMin = resolveDoubleOrNull('min') ?? min;
-    _resolvedMax = resolveDoubleOrNull('max') ?? max;
-    _resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
-    _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
-    _resolvedInactiveColor = inactiveColor ?? resolveColorOrNull('inactiveColor');
+    _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
+    _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
+    _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');
+    _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
+    _resolvedInactiveColor = inactiveColor ?? TomCtr.color(basePath, 'inactiveColor');
   }
 
   @override
@@ -203,11 +204,11 @@ class TomCupertinoSlider extends TomSliderBase {
   }) : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
        onChangeStart = InScopeBuilder(scope: scope).wrap1n(onChangeStart),
        onChangeEnd = InScopeBuilder(scope: scope).wrap1n(onChangeEnd) {
-    _resolvedMin = resolveDoubleOrNull('min') ?? min;
-    _resolvedMax = resolveDoubleOrNull('max') ?? max;
-    _resolvedDivisions = divisions ?? resolveIntOrNull('divisions');
-    _resolvedActiveColor = activeColor ?? resolveColorOrNull('activeColor');
-    _resolvedThumbColor = resolveColorOrNull('thumbColor') ?? thumbColor;
+    _resolvedMin = TomCtr.doubleVal(basePath, 'min') ?? min;
+    _resolvedMax = TomCtr.doubleVal(basePath, 'max') ?? max;
+    _resolvedDivisions = divisions ?? TomCtr.intVal(basePath, 'divisions');
+    _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
+    _resolvedThumbColor = TomCtr.color(basePath, 'thumbColor') ?? thumbColor;
   }
 
   @override

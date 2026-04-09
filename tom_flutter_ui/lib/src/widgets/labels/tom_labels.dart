@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [Text].
@@ -58,10 +59,10 @@ class TomText extends TomLabelBase {
     this.textWidthBasis,
     this.textHeightBehavior,
   }) {
-    _resolvedText = text ?? resolveResourceOrFail('label');
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedSoftWrap = softWrap ?? resolveBoolOrNull('softWrap');
-    _resolvedSemanticsLabel = semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
+    _resolvedText = text ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedSoftWrap = softWrap ?? TomCtr.boolVal(basePath, 'softWrap');
+    _resolvedSemanticsLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel');
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
     _resolvedTextHeightBehavior = textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior');
@@ -189,15 +190,15 @@ class TomSelectableText extends TomLabelBase {
     SelectionChangedCallback? onSelectionChanged,
   })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
         onSelectionChanged = InScopeBuilder(scope: scope).wrap2n(onSelectionChanged) {
-    _resolvedText = text ?? resolveResourceOrFail('label');
-    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedShowCursor = resolveBoolOrNull('showCursor') ?? showCursor;
-    _resolvedCursorWidth = resolveDoubleOrNull('cursorWidth') ?? cursorWidth;
-    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    _resolvedSemanticsLabel = semanticsLabel ?? resolveResourceOrNull('semanticsLabel');
+    _resolvedText = text ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedShowCursor = TomCtr.boolVal(basePath, 'showCursor') ?? showCursor;
+    _resolvedCursorWidth = TomCtr.doubleVal(basePath, 'cursorWidth') ?? cursorWidth;
+    _resolvedCursorHeight = cursorHeight ?? TomCtr.doubleVal(basePath, 'cursorHeight');
+    _resolvedSemanticsLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel');
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedScrollPhysics = scrollPhysics ?? _resolveScrollPhysics('scrollPhysics');
     _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
@@ -296,9 +297,9 @@ class TomRichText extends TomLabelBase {
     this.selectionRegistrar,
     this.selectionColor,
   }) {
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedSelectionColor = selectionColor ?? resolveColorOrNull('selectionColor');
-    _resolvedSoftWrap = resolveBoolOrNull('softWrap') ?? softWrap;
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedSelectionColor = selectionColor ?? TomCtr.color(basePath, 'selectionColor');
+    _resolvedSoftWrap = TomCtr.boolVal(basePath, 'softWrap') ?? softWrap;
     _resolvedStrutStyle = strutStyle ?? _resolveStrutStyle('strutStyle');
     _resolvedTextHeightBehavior = textHeightBehavior ?? _resolveTextHeightBehavior('textHeightBehavior');
   }
@@ -379,16 +380,16 @@ class TomBadge extends TomLabelBase {
     this.smallSize,
     this.largeSize,
   }) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
-    _resolvedSmallSize = smallSize ?? resolveDoubleOrNull('smallSize');
-    _resolvedLargeSize = largeSize ?? resolveDoubleOrNull('largeSize');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
+    _resolvedSmallSize = smallSize ?? TomCtr.doubleVal(basePath, 'smallSize');
+    _resolvedLargeSize = largeSize ?? TomCtr.doubleVal(basePath, 'largeSize');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
     _resolvedOffset = offset ?? _resolveOffset('offset');
-    _resolvedIsLabelVisible = resolveBoolOrNull('isLabelVisible') ?? isLabelVisible;
+    _resolvedIsLabelVisible = TomCtr.boolVal(basePath, 'isLabelVisible') ?? isLabelVisible;
   }
 
   @override
@@ -533,26 +534,26 @@ class TomListTile extends TomLabelBase {
     this.mouseCursor,
   })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress) {
-    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    _resolvedIsThreeLine = resolveBoolOrNull('isThreeLine') ?? isThreeLine;
-    _resolvedDense = dense ?? resolveBoolOrNull('dense');
-    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
-    _resolvedSelected = resolveBoolOrNull('selected') ?? selected;
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
-    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
-    _resolvedContentPadding = contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedTileColor = tileColor ?? resolveColorOrNull('tileColor');
-    _resolvedSelectedTileColor = selectedTileColor ?? resolveColorOrNull('selectedTileColor');
-    _resolvedHorizontalTitleGap = horizontalTitleGap ?? resolveDoubleOrNull('horizontalTitleGap');
-    _resolvedMinVerticalPadding = minVerticalPadding ?? resolveDoubleOrNull('minVerticalPadding');
-    _resolvedMinLeadingWidth = minLeadingWidth ?? resolveDoubleOrNull('minLeadingWidth');
-    _resolvedMinTileHeight = minTileHeight ?? resolveDoubleOrNull('minTileHeight');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedIsThreeLine = TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
+    _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
+    _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
+    _resolvedSelected = TomCtr.boolVal(basePath, 'selected') ?? selected;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedIconColor = iconColor ?? TomCtr.color(basePath, 'iconColor');
+    _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
+    _resolvedContentPadding = contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
+    _resolvedSelectedTileColor = selectedTileColor ?? TomCtr.color(basePath, 'selectedTileColor');
+    _resolvedHorizontalTitleGap = horizontalTitleGap ?? TomCtr.doubleVal(basePath, 'horizontalTitleGap');
+    _resolvedMinVerticalPadding = minVerticalPadding ?? TomCtr.doubleVal(basePath, 'minVerticalPadding');
+    _resolvedMinLeadingWidth = minLeadingWidth ?? TomCtr.doubleVal(basePath, 'minLeadingWidth');
+    _resolvedMinTileHeight = minTileHeight ?? TomCtr.doubleVal(basePath, 'minTileHeight');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
@@ -679,12 +680,12 @@ class TomChip extends TomLabelBase {
     this.iconTheme,
     this.color,
   })  : onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
   }
 
@@ -801,9 +802,9 @@ class TomAboutListTile extends TomLabelBase {
     this.aboutBoxChildren,
     this.dense = false,
   }) {
-    _resolvedApplicationName = applicationName ?? resolveResourceOrNull('applicationName');
-    _resolvedApplicationVersion = applicationVersion ?? resolveResourceOrNull('applicationVersion');
-    _resolvedApplicationLegalese = applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
+    _resolvedApplicationName = applicationName ?? TomCtr.textOrNull(basePath, 'applicationName');
+    _resolvedApplicationVersion = applicationVersion ?? TomCtr.textOrNull(basePath, 'applicationVersion');
+    _resolvedApplicationLegalese = applicationLegalese ?? TomCtr.textOrNull(basePath, 'applicationLegalese');
   }
 
   @override
@@ -849,11 +850,11 @@ class TomVerticalDivider extends TomLabelBase {
     this.endIndent,
     this.color,
   }) {
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
-    _resolvedIndent = indent ?? resolveDoubleOrNull('indent');
-    _resolvedEndIndent = endIndent ?? resolveDoubleOrNull('endIndent');
-    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedThickness = thickness ?? TomCtr.doubleVal(basePath, 'thickness');
+    _resolvedIndent = indent ?? TomCtr.doubleVal(basePath, 'indent');
+    _resolvedEndIndent = endIndent ?? TomCtr.doubleVal(basePath, 'endIndent');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
 
   @override
@@ -886,7 +887,7 @@ class TomMenuAcceleratorLabel extends TomLabelBase {
     this.label,
     MenuAcceleratorChildBuilder? builder,
   }) : builder = builder != null ? InScopeBuilder(scope: scope).wrap3(builder) : null {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
   }
 
   @override
@@ -925,8 +926,8 @@ class TomBanner extends TomLabelBase {
     this.textStyle = _kTextStyle,
     this.color,
   }) {
-    _resolvedMessage = message ?? resolveResourceOrFail('message');
-    _resolvedColor = color ?? resolveColorOrNull('color') ?? _kColor;
+    _resolvedMessage = message ?? TomCtr.textOrFail(basePath, 'message');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color') ?? _kColor;
   }
 
   static const Color _kColor = Color(0xA0B71C1C);

@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../resource_auth/tom_colors.dart';
-import '../resource_auth/tom_resources.dart';
+import 'tom_construction_helpers.dart';
 
 /// Phase 3: Complex style resolution helpers for Tom UI widgets.
 ///
@@ -64,7 +64,7 @@ class TomStyleResolvers {
 
   /// Resolves a [TextStyle] from resources at [basePath].[suffix].
   static TextStyle? resolveTextStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseTextStyle(map);
   }
 
@@ -117,7 +117,7 @@ class TomStyleResolvers {
 
   /// Resolves a [ButtonStyle] from resources at [basePath].[suffix].
   static ButtonStyle? resolveButtonStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseButtonStyle(map);
   }
 
@@ -189,7 +189,7 @@ class TomStyleResolvers {
   /// Resolves an [InputDecoration] from resources at [basePath].[suffix].
   static InputDecoration? resolveInputDecoration(
       String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseInputDecoration(map);
   }
 
@@ -221,7 +221,7 @@ class TomStyleResolvers {
 
   /// Resolves a [MenuStyle] from resources at [basePath].[suffix].
   static MenuStyle? resolveMenuStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseMenuStyle(map);
   }
 
@@ -274,7 +274,7 @@ class TomStyleResolvers {
 
   /// Resolves a [ShapeBorder] from resources at [basePath].[suffix].
   static ShapeBorder? resolveShapeBorder(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseShapeBorder(map);
   }
 
@@ -304,7 +304,7 @@ class TomStyleResolvers {
 
   /// Resolves a [BorderSide] from resources at [basePath].[suffix].
   static BorderSide? resolveBorderSide(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseBorderSide(map);
   }
 
@@ -349,7 +349,7 @@ class TomStyleResolvers {
 
   /// Resolves a [BorderRadius] from resources at [basePath].[suffix].
   static BorderRadius? resolveBorderRadius(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null) return null;
     // If the map has a simple 'radius' key, treat as uniform
     if (map.containsKey('radius')) {
@@ -390,7 +390,7 @@ class TomStyleResolvers {
 
   /// Resolves a [Decoration] from resources at [basePath].[suffix].
   static Decoration? resolveDecoration(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseDecoration(map);
   }
 
@@ -420,7 +420,7 @@ class TomStyleResolvers {
 
   /// Resolves [BoxConstraints] from resources at [basePath].[suffix].
   static BoxConstraints? resolveBoxConstraints(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseBoxConstraints(map);
   }
 
@@ -480,7 +480,7 @@ class TomStyleResolvers {
 
   /// Resolves an [AlignmentGeometry] from resources at [basePath].[suffix].
   static AlignmentGeometry? resolveAlignment(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null) return null;
     // Support both direct value and nested 'alignment' key
     if (map.containsKey('alignment')) {
@@ -520,7 +520,7 @@ class TomStyleResolvers {
 
   /// Resolves an [Offset] from resources at [basePath].[suffix].
   static Offset? resolveOffset(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null) return null;
     return parseOffset(map);
   }
@@ -575,7 +575,7 @@ class TomStyleResolvers {
 
   /// Resolves a [TableBorder] from resources at [basePath].[suffix].
   static TableBorder? resolveTableBorder(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseTableBorder(map);
   }
 
@@ -618,7 +618,7 @@ class TomStyleResolvers {
 
   /// Resolves a [VisualDensity] from resources at [basePath].[suffix].
   static VisualDensity? resolveVisualDensity(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null) return null;
     if (map.containsKey('visualDensity')) {
       return parseVisualDensity(map['visualDensity']);
@@ -658,7 +658,7 @@ class TomStyleResolvers {
 
   /// Resolves an [IconThemeData] from resources at [basePath].[suffix].
   static IconThemeData? resolveIconThemeData(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseIconThemeData(map);
   }
 
@@ -697,7 +697,7 @@ class TomStyleResolvers {
 
   /// Resolves a [StrutStyle] from resources at [basePath].[suffix].
   static StrutStyle? resolveStrutStyle(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseStrutStyle(map);
   }
 
@@ -743,7 +743,7 @@ class TomStyleResolvers {
   /// Resolves a [TextHeightBehavior] from resources at [basePath].[suffix].
   static TextHeightBehavior? resolveTextHeightBehavior(
       String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     return parseTextHeightBehavior(map);
   }
 
@@ -793,7 +793,7 @@ class TomStyleResolvers {
 
   /// Resolves a [ScrollPhysics] from resources at [basePath].[suffix].
   static ScrollPhysics? resolveScrollPhysics(String basePath, String suffix) {
-    final map = TomUIResources.resolveMap(basePath, suffix);
+    final map = TomCtr.map(basePath, suffix);
     if (map == null) return null;
     if (map.containsKey('physics')) {
       return parseScrollPhysics(map['physics']);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';import 'package:flutter/cupertino.dart';i
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [ListView].
@@ -197,17 +198,17 @@ class TomListView extends TomListBase {
   }
 
   void _initResolvedFields() {
-    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedAddAutomaticKeepAlives = resolveBoolOrNull('addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
-    _resolvedAddRepaintBoundaries = resolveBoolOrNull('addRepaintBoundaries') ?? addRepaintBoundaries;
-    _resolvedAddSemanticIndexes = resolveBoolOrNull('addSemanticIndexes') ?? addSemanticIndexes;
+    _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
+    _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
+    _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedSemanticChildCount = semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedAddAutomaticKeepAlives = TomCtr.boolVal(basePath, 'addAutomaticKeepAlives') ?? addAutomaticKeepAlives;
+    _resolvedAddRepaintBoundaries = TomCtr.boolVal(basePath, 'addRepaintBoundaries') ?? addRepaintBoundaries;
+    _resolvedAddSemanticIndexes = TomCtr.boolVal(basePath, 'addSemanticIndexes') ?? addSemanticIndexes;
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
   }
 
@@ -307,11 +308,11 @@ class TomAnimatedList extends TomListBase {
     this.padding,
     this.clipBehavior = Clip.hardEdge,
   }) : itemBuilder = InScopeBuilder(scope: scope).wrap3(itemBuilder) {
-    _resolvedInitialItemCount = resolveIntOrNull('initialItemCount') ?? initialItemCount;
-    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedInitialItemCount = TomCtr.intVal(basePath, 'initialItemCount') ?? initialItemCount;
+    _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
+    _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
+    _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
   }
 
@@ -382,7 +383,7 @@ class TomDismissible extends TomListBase {
         onResize = InScopeBuilder(scope: scope).wrap0n(onResize),
         onUpdate = InScopeBuilder(scope: scope).wrap1n(onUpdate),
         onDismissed = InScopeBuilder(scope: scope).wrap1n(onDismissed) {
-    _resolvedCrossAxisEndOffset = crossAxisEndOffset ?? resolveDoubleOrNull('crossAxisEndOffset') ?? 0.0;
+    _resolvedCrossAxisEndOffset = crossAxisEndOffset ?? TomCtr.doubleVal(basePath, 'crossAxisEndOffset') ?? 0.0;
   }
 
   @override
@@ -462,16 +463,16 @@ class TomListWheelScrollView extends TomListBase {
     this.scrollBehavior,
     required this.childDelegate,
   })  : onSelectedItemChanged = InScopeBuilder(scope: scope).wrap1n(onSelectedItemChanged) {
-    _resolvedDiameterRatio = diameterRatio ?? resolveDoubleOrNull('diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
-    _resolvedPerspective = perspective ?? resolveDoubleOrNull('perspective') ?? RenderListWheelViewport.defaultPerspective;
-    _resolvedOffAxisFraction = offAxisFraction ?? resolveDoubleOrNull('offAxisFraction') ?? 0.0;
-    _resolvedMagnification = magnification ?? resolveDoubleOrNull('magnification') ?? 1.0;
-    _resolvedOverAndUnderCenterOpacity = overAndUnderCenterOpacity ?? resolveDoubleOrNull('overAndUnderCenterOpacity') ?? 1.0;
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrFail('itemExtent');
-    _resolvedSqueeze = squeeze ?? resolveDoubleOrNull('squeeze') ?? 1.0;
-    _resolvedUseMagnifier = resolveBoolOrNull('useMagnifier') ?? useMagnifier;
-    _resolvedRenderChildrenOutsideViewport = resolveBoolOrNull('renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedDiameterRatio = diameterRatio ?? TomCtr.doubleVal(basePath, 'diameterRatio') ?? RenderListWheelViewport.defaultDiameterRatio;
+    _resolvedPerspective = perspective ?? TomCtr.doubleVal(basePath, 'perspective') ?? RenderListWheelViewport.defaultPerspective;
+    _resolvedOffAxisFraction = offAxisFraction ?? TomCtr.doubleVal(basePath, 'offAxisFraction') ?? 0.0;
+    _resolvedMagnification = magnification ?? TomCtr.doubleVal(basePath, 'magnification') ?? 1.0;
+    _resolvedOverAndUnderCenterOpacity = overAndUnderCenterOpacity ?? TomCtr.doubleVal(basePath, 'overAndUnderCenterOpacity') ?? 1.0;
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
+    _resolvedSqueeze = squeeze ?? TomCtr.doubleVal(basePath, 'squeeze') ?? 1.0;
+    _resolvedUseMagnifier = TomCtr.boolVal(basePath, 'useMagnifier') ?? useMagnifier;
+    _resolvedRenderChildrenOutsideViewport = TomCtr.boolVal(basePath, 'renderChildrenOutsideViewport') ?? renderChildrenOutsideViewport;
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
   }
 
   @override
@@ -538,11 +539,11 @@ class TomCupertinoListTile extends TomListBase {
     this.leadingSize,
     this.leadingToTitle,
   })  : onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
-    _resolvedTitle = titleText ?? resolveResourceOrNull('titleText') ?? resolveResourceOrFail('label');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedLeadingSize = leadingSize ?? resolveDoubleOrNull('leadingSize') ?? 28.0;
-    _resolvedLeadingToTitle = leadingToTitle ?? resolveDoubleOrNull('leadingToTitle') ?? 12.0;
+    _resolvedTitle = titleText ?? TomCtr.textOrNull(basePath, 'titleText') ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedLeadingSize = leadingSize ?? TomCtr.doubleVal(basePath, 'leadingSize') ?? 28.0;
+    _resolvedLeadingToTitle = leadingToTitle ?? TomCtr.doubleVal(basePath, 'leadingToTitle') ?? 12.0;
   }
 
   @override
@@ -610,11 +611,11 @@ class TomCupertinoListSection extends TomListBase {
     this.decoration,
     this.separatorColor,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor') ?? CupertinoColors.systemBackground;
-    _resolvedTopMargin = topMargin ?? resolveDoubleOrNull('topMargin');
-    _resolvedHasLeading = hasLeading ?? resolveBoolOrNull('hasLeading') ?? true;
-    _resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0 ? additionalDividerMargin : resolveDoubleOrNull('additionalDividerMargin') ?? 0.0;
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? const EdgeInsets.only(bottom: 8.0);
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor') ?? CupertinoColors.systemBackground;
+    _resolvedTopMargin = topMargin ?? TomCtr.doubleVal(basePath, 'topMargin');
+    _resolvedHasLeading = hasLeading ?? TomCtr.boolVal(basePath, 'hasLeading') ?? true;
+    _resolvedAdditionalDividerMargin = additionalDividerMargin != 0.0 ? additionalDividerMargin : TomCtr.doubleVal(basePath, 'additionalDividerMargin') ?? 0.0;
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin') ?? const EdgeInsets.only(bottom: 8.0);
   }
 
   @override
@@ -695,11 +696,11 @@ class TomReorderableList extends TomListBase {
   })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
-    _resolvedShrinkWrap = shrinkWrap ?? resolveBoolOrNull('shrinkWrap') ?? false;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedAnchor = anchor != 0.0 ? anchor : resolveDoubleOrNull('anchor') ?? 0.0;
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    _resolvedShrinkWrap = shrinkWrap ?? TomCtr.boolVal(basePath, 'shrinkWrap') ?? false;
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedAnchor = anchor != 0.0 ? anchor : TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
+    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
   }
 
   @override
@@ -767,7 +768,7 @@ class TomSliverReorderableList extends TomListBase {
   })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
   }
 
   @override

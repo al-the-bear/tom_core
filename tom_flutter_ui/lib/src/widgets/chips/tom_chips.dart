@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [FilterChip].
@@ -87,22 +88,22 @@ class TomFilterChip extends TomChipBase {
     this.deleteButtonTooltipMessage,
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
     _chipLabel = label ?? Text(_resolvedLabel);
-    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
-    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
+    _resolvedCheckmarkColor = checkmarkColor ?? TomCtr.color(basePath, 'checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? TomCtr.color(basePath, 'selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');
+    _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedShowCheckmark = resolveBoolOrNull('showCheckmark') ?? showCheckmark;
-    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
+    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedShowCheckmark = TomCtr.boolVal(basePath, 'showCheckmark') ?? showCheckmark;
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? TomCtr.textOrNull(basePath, 'deleteButtonTooltipMessage');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
@@ -225,18 +226,18 @@ class TomChoiceChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
     _chipLabel = label ?? Text(_resolvedLabel);
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? TomCtr.color(basePath, 'selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
@@ -348,17 +349,17 @@ class TomActionChip extends TomChipBase {
     this.elevation,
     this.pressElevation,
   }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
@@ -498,23 +499,23 @@ class TomInputChip extends TomChipBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
        onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
-    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
+    _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
+    _resolvedCheckmarkColor = checkmarkColor ?? TomCtr.color(basePath, 'checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? TomCtr.color(basePath, 'selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
-    _resolvedShowCheckmark = resolveBoolOrNull('showCheckmark') ?? showCheckmark;
+    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? TomCtr.textOrNull(basePath, 'deleteButtonTooltipMessage');
+    _resolvedShowCheckmark = TomCtr.boolVal(basePath, 'showCheckmark') ?? showCheckmark;
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');
@@ -669,23 +670,23 @@ class TomRawChip extends TomChipBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onDeleted = InScopeBuilder(scope: scope).wrap0n(onDeleted),
        onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = labelText ?? resolveResourceOrFail('label');
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
+    _resolvedLabel = labelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
     _chipLabel = label ?? Text(_resolvedLabel);
-    _resolvedDeleteIconColor = deleteIconColor ?? resolveColorOrNull('deleteIconColor');
-    _resolvedPressElevation = pressElevation ?? resolveDoubleOrNull('pressElevation');
-    _resolvedCheckmarkColor = checkmarkColor ?? resolveColorOrNull('checkmarkColor');
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedSelectedShadowColor = selectedShadowColor ?? resolveColorOrNull('selectedShadowColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedDeleteIconColor = deleteIconColor ?? TomCtr.color(basePath, 'deleteIconColor');
+    _resolvedPressElevation = pressElevation ?? TomCtr.doubleVal(basePath, 'pressElevation');
+    _resolvedCheckmarkColor = checkmarkColor ?? TomCtr.color(basePath, 'checkmarkColor');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedSelectedShadowColor = selectedShadowColor ?? TomCtr.color(basePath, 'selectedShadowColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedLabelStyle = labelStyle ?? _resolveTextStyle('labelStyle');
-    _resolvedLabelPadding = labelPadding ?? resolveEdgeInsetsOrNull('labelPadding');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? resolveResourceOrNull('deleteButtonTooltipMessage');
+    _resolvedLabelPadding = labelPadding ?? TomCtr.edgeInsets(basePath, 'labelPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedDeleteButtonTooltipMessage = deleteButtonTooltipMessage ?? TomCtr.textOrNull(basePath, 'deleteButtonTooltipMessage');
     _resolvedShape = shape ?? _resolveShapeBorder('shape') as OutlinedBorder?;
     _resolvedSide = side ?? _resolveBorderSide('side');
     _resolvedVisualDensity = visualDensity ?? _resolveVisualDensity('visualDensity');

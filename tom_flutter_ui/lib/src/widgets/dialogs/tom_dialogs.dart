@@ -115,21 +115,21 @@ class TomAlertDialog extends TomDialogBase {
     this.alignment,
     this.scrollable = false,
   }) {
-    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
-    _resolvedIconPadding = iconPadding ?? resolveEdgeInsetsOrNull('iconPadding');
-    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
-    _resolvedTitlePadding = titlePadding ?? resolveEdgeInsetsOrNull('titlePadding');
-    _resolvedContentPadding = contentPadding ?? resolveEdgeInsetsOrNull('contentPadding');
-    _resolvedActionsPadding = actionsPadding ?? resolveEdgeInsetsOrNull('actionsPadding');
-    _resolvedActionsOverflowButtonSpacing = actionsOverflowButtonSpacing ?? resolveDoubleOrNull('actionsOverflowButtonSpacing');
-    _resolvedButtonPadding = buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedSemanticLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel');
-    _resolvedInsetPadding = resolveEdgeInsetsOrNull('insetPadding') ?? insetPadding;
-    _resolvedScrollable = resolveBoolOrNull('scrollable') ?? scrollable;
+    _resolvedTitle = titleText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'title') : null);
+    _resolvedIconPadding = iconPadding ?? TomCtr.edgeInsets(basePath, 'iconPadding');
+    _resolvedIconColor = iconColor ?? TomCtr.color(basePath, 'iconColor');
+    _resolvedTitlePadding = titlePadding ?? TomCtr.edgeInsets(basePath, 'titlePadding');
+    _resolvedContentPadding = contentPadding ?? TomCtr.edgeInsets(basePath, 'contentPadding');
+    _resolvedActionsPadding = actionsPadding ?? TomCtr.edgeInsets(basePath, 'actionsPadding');
+    _resolvedActionsOverflowButtonSpacing = actionsOverflowButtonSpacing ?? TomCtr.doubleVal(basePath, 'actionsOverflowButtonSpacing');
+    _resolvedButtonPadding = buttonPadding ?? TomCtr.edgeInsets(basePath, 'buttonPadding');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedSemanticLabel = semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
+    _resolvedInsetPadding = TomCtr.edgeInsets(basePath, 'insetPadding') ?? insetPadding;
+    _resolvedScrollable = TomCtr.boolVal(basePath, 'scrollable') ?? scrollable;
     _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
     _resolvedContentTextStyle = contentTextStyle ?? _resolveTextStyle('contentTextStyle');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
@@ -242,15 +242,15 @@ class TomSimpleDialog extends TomDialogBase {
     this.shape,
     this.alignment,
   }) {
-    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
-    _resolvedTitlePadding = resolveEdgeInsetsOrNull('titlePadding') ?? titlePadding;
-    _resolvedContentPadding = resolveEdgeInsetsOrNull('contentPadding') ?? contentPadding;
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedSemanticLabel = semanticLabel ?? resolveResourceOrNull('semanticLabel');
-    _resolvedInsetPadding = insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
+    _resolvedTitle = titleText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'title') : null);
+    _resolvedTitlePadding = TomCtr.edgeInsets(basePath, 'titlePadding') ?? titlePadding;
+    _resolvedContentPadding = TomCtr.edgeInsets(basePath, 'contentPadding') ?? contentPadding;
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedSemanticLabel = semanticLabel ?? TomCtr.textOrNull(basePath, 'semanticLabel');
+    _resolvedInsetPadding = insetPadding ?? TomCtr.edgeInsets(basePath, 'insetPadding');
     _resolvedTitleTextStyle = titleTextStyle ?? _resolveTextStyle('titleTextStyle');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
@@ -333,11 +333,11 @@ class TomDialog extends TomDialogBase {
     this.alignment,
     this.child,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedInsetPadding = insetPadding ?? resolveEdgeInsetsOrNull('insetPadding');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedInsetPadding = insetPadding ?? TomCtr.edgeInsets(basePath, 'insetPadding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
   }
@@ -414,10 +414,10 @@ class TomBottomSheet extends TomDialogBase {
        onClosing = InScopeBuilder(scope: scope).wrap0(onClosing),
        onDragStart = InScopeBuilder(scope: scope).wrap1n(onDragStart),
        onDragEnd = _wrapDragEndHandler(scope, onDragEnd) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedEnableDrag = resolveBoolOrNull('enableDrag') ?? enableDrag;
-    _resolvedShowDragHandle = showDragHandle ?? resolveBoolOrNull('showDragHandle');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedEnableDrag = TomCtr.boolVal(basePath, 'enableDrag') ?? enableDrag;
+    _resolvedShowDragHandle = showDragHandle ?? TomCtr.boolVal(basePath, 'showDragHandle');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
   }
@@ -582,15 +582,15 @@ class TomMaterialBanner extends TomDialogBase {
     this.animation,
     VoidCallback? onVisible,
   })  : onVisible = InScopeBuilder(scope: scope).wrap0n(onVisible) {
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
-    _resolvedLeadingPadding = leadingPadding ?? resolveEdgeInsetsOrNull('leadingPadding');
-    _resolvedForceActionsBelow = resolveBoolOrNull('forceActionsBelow') ?? forceActionsBelow;
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedDividerColor = dividerColor ?? TomCtr.color(basePath, 'dividerColor');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
+    _resolvedLeadingPadding = leadingPadding ?? TomCtr.edgeInsets(basePath, 'leadingPadding');
+    _resolvedForceActionsBelow = TomCtr.boolVal(basePath, 'forceActionsBelow') ?? forceActionsBelow;
     _resolvedContentTextStyle = contentTextStyle ?? _resolveTextStyle('contentTextStyle');
   }
 
@@ -680,11 +680,11 @@ class TomTooltip extends TomDialogBase {
     TooltipTriggeredCallback? onTriggered,
     this.child,
   })  : onTriggered = InScopeBuilder(scope: scope).wrap0n(onTriggered) {
-    _resolvedMessage = richMessage != null ? null : (message ?? resolveResourceOrFail('tooltip'));
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
-    _resolvedVerticalOffset = verticalOffset ?? resolveDoubleOrNull('verticalOffset');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedMessage = richMessage != null ? null : (message ?? TomCtr.textOrFail(basePath, 'tooltip'));
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
+    _resolvedVerticalOffset = verticalOffset ?? TomCtr.doubleVal(basePath, 'verticalOffset');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
   }
@@ -756,7 +756,7 @@ class TomCupertinoAlertDialog extends TomDialogBase {
     this.actionScrollController,
     this.insetAnimationCurve,
   }) {
-    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+    _resolvedTitle = titleText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'title') : null);
   }
 
   @override
@@ -803,7 +803,7 @@ class TomCupertinoActionSheet extends TomDialogBase {
     this.actionScrollController,
     this.cancelButton,
   }) {
-    _resolvedTitle = titleText ?? (tomId != null ? resolveResourceOrFail('title') : null);
+    _resolvedTitle = titleText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'title') : null);
   }
 
   @override
@@ -1241,9 +1241,9 @@ class TomAboutDialog extends TomDialogBase {
     this.applicationLegalese,
     this.children,
   }) {
-    _resolvedApplicationName = applicationName ?? (tomId != null ? resolveResourceOrFail('applicationName') : null);
-    _resolvedApplicationVersion = applicationVersion ?? (tomId != null ? resolveResourceOrFail('applicationVersion') : null);
-    _resolvedApplicationLegalese = applicationLegalese ?? (tomId != null ? resolveResourceOrFail('applicationLegalese') : null);
+    _resolvedApplicationName = applicationName ?? (tomId != null ? TomCtr.textOrFail(basePath, 'applicationName') : null);
+    _resolvedApplicationVersion = applicationVersion ?? (tomId != null ? TomCtr.textOrFail(basePath, 'applicationVersion') : null);
+    _resolvedApplicationLegalese = applicationLegalese ?? (tomId != null ? TomCtr.textOrFail(basePath, 'applicationLegalese') : null);
   }
 
   @override
@@ -1278,7 +1278,7 @@ class TomCupertinoContextMenu extends TomDialogBase {
     required this.actions,
     this.enableHapticFeedback,
   }) {
-    _resolvedEnableHapticFeedback = enableHapticFeedback ?? resolveBoolOrNull('enableHapticFeedback') ?? false;
+    _resolvedEnableHapticFeedback = enableHapticFeedback ?? TomCtr.boolVal(basePath, 'enableHapticFeedback') ?? false;
   }
 
   @override
@@ -1346,14 +1346,14 @@ class TomDatePickerDialog extends TomDialogBase {
     this.switchToInputEntryModeIcon,
     this.switchToCalendarEntryModeIcon,
   }) {
-    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType'));
-    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
-    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
-    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
-    _resolvedErrorFormatText = errorFormatText ?? resolveResourceOrNull('errorFormat');
-    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
-    _resolvedFieldHintText = fieldHintText ?? resolveResourceOrNull('fieldHint');
-    _resolvedFieldLabelText = fieldLabelText ?? resolveResourceOrNull('fieldLabel');
+    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(TomCtr.textOrNull(basePath, 'keyboardType'));
+    _resolvedCancelText = cancelText ?? TomCtr.textOrNull(basePath, 'cancel');
+    _resolvedConfirmText = confirmText ?? TomCtr.textOrNull(basePath, 'confirm');
+    _resolvedHelpText = helpText ?? TomCtr.textOrNull(basePath, 'help');
+    _resolvedErrorFormatText = errorFormatText ?? TomCtr.textOrNull(basePath, 'errorFormat');
+    _resolvedErrorInvalidText = errorInvalidText ?? TomCtr.textOrNull(basePath, 'errorInvalid');
+    _resolvedFieldHintText = fieldHintText ?? TomCtr.textOrNull(basePath, 'fieldHint');
+    _resolvedFieldLabelText = fieldLabelText ?? TomCtr.textOrNull(basePath, 'fieldLabel');
   }
 
   @override
@@ -1443,18 +1443,18 @@ class TomDateRangePickerDialog extends TomDialogBase {
     this.switchToInputEntryModeIcon,
     this.switchToCalendarEntryModeIcon,
   }) {
-    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(resolveResourceOrNull('keyboardType')) ?? TextInputType.datetime;
-    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
-    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
-    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
-    _resolvedSaveText = saveText ?? resolveResourceOrNull('save');
-    _resolvedErrorFormatText = errorFormatText ?? resolveResourceOrNull('errorFormat');
-    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
-    _resolvedErrorInvalidRangeText = errorInvalidRangeText ?? resolveResourceOrNull('errorInvalidRange');
-    _resolvedFieldStartHintText = fieldStartHintText ?? resolveResourceOrNull('fieldStartHint');
-    _resolvedFieldEndHintText = fieldEndHintText ?? resolveResourceOrNull('fieldEndHint');
-    _resolvedFieldStartLabelText = fieldStartLabelText ?? resolveResourceOrNull('fieldStartLabel');
-    _resolvedFieldEndLabelText = fieldEndLabelText ?? resolveResourceOrNull('fieldEndLabel');
+    _resolvedKeyboardType = keyboardType ?? _resolveTextInputType(TomCtr.textOrNull(basePath, 'keyboardType')) ?? TextInputType.datetime;
+    _resolvedHelpText = helpText ?? TomCtr.textOrNull(basePath, 'help');
+    _resolvedCancelText = cancelText ?? TomCtr.textOrNull(basePath, 'cancel');
+    _resolvedConfirmText = confirmText ?? TomCtr.textOrNull(basePath, 'confirm');
+    _resolvedSaveText = saveText ?? TomCtr.textOrNull(basePath, 'save');
+    _resolvedErrorFormatText = errorFormatText ?? TomCtr.textOrNull(basePath, 'errorFormat');
+    _resolvedErrorInvalidText = errorInvalidText ?? TomCtr.textOrNull(basePath, 'errorInvalid');
+    _resolvedErrorInvalidRangeText = errorInvalidRangeText ?? TomCtr.textOrNull(basePath, 'errorInvalidRange');
+    _resolvedFieldStartHintText = fieldStartHintText ?? TomCtr.textOrNull(basePath, 'fieldStartHint');
+    _resolvedFieldEndHintText = fieldEndHintText ?? TomCtr.textOrNull(basePath, 'fieldEndHint');
+    _resolvedFieldStartLabelText = fieldStartLabelText ?? TomCtr.textOrNull(basePath, 'fieldStartLabel');
+    _resolvedFieldEndLabelText = fieldEndLabelText ?? TomCtr.textOrNull(basePath, 'fieldEndLabel');
   }
 
   @override
@@ -1522,12 +1522,12 @@ class TomTimePickerDialog extends TomDialogBase {
     this.orientation,
     EntryModeChangeCallback? onEntryModeChanged,
   })  : onEntryModeChanged = InScopeBuilder(scope: scope).wrap1n(onEntryModeChanged) {
-    _resolvedCancelText = cancelText ?? resolveResourceOrNull('cancel');
-    _resolvedConfirmText = confirmText ?? resolveResourceOrNull('confirm');
-    _resolvedHelpText = helpText ?? resolveResourceOrNull('help');
-    _resolvedErrorInvalidText = errorInvalidText ?? resolveResourceOrNull('errorInvalid');
-    _resolvedHourLabelText = hourLabelText ?? resolveResourceOrNull('hourLabel');
-    _resolvedMinuteLabelText = minuteLabelText ?? resolveResourceOrNull('minuteLabel');
+    _resolvedCancelText = cancelText ?? TomCtr.textOrNull(basePath, 'cancel');
+    _resolvedConfirmText = confirmText ?? TomCtr.textOrNull(basePath, 'confirm');
+    _resolvedHelpText = helpText ?? TomCtr.textOrNull(basePath, 'help');
+    _resolvedErrorInvalidText = errorInvalidText ?? TomCtr.textOrNull(basePath, 'errorInvalid');
+    _resolvedHourLabelText = hourLabelText ?? TomCtr.textOrNull(basePath, 'hourLabel');
+    _resolvedMinuteLabelText = minuteLabelText ?? TomCtr.textOrNull(basePath, 'minuteLabel');
   }
 
   @override
@@ -1608,7 +1608,7 @@ class TomSimpleDialogOption extends TomDialogBase {
     this.padding,
     this.child,
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -1645,9 +1645,9 @@ class TomLicensePage extends TomDialogBase {
     this.applicationIcon,
     this.applicationLegalese,
   }) {
-    _resolvedApplicationName = applicationName ?? resolveResourceOrNull('applicationName');
-    _resolvedApplicationVersion = applicationVersion ?? resolveResourceOrNull('applicationVersion');
-    _resolvedApplicationLegalese = applicationLegalese ?? resolveResourceOrNull('applicationLegalese');
+    _resolvedApplicationName = applicationName ?? TomCtr.textOrNull(basePath, 'applicationName');
+    _resolvedApplicationVersion = applicationVersion ?? TomCtr.textOrNull(basePath, 'applicationVersion');
+    _resolvedApplicationLegalese = applicationLegalese ?? TomCtr.textOrNull(basePath, 'applicationLegalese');
   }
 
   @override

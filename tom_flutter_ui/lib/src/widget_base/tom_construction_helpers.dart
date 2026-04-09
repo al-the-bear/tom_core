@@ -2,33 +2,34 @@ import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../groups/tom_ui_group.dart';
-import '../resource_auth/tom_resources.dart';
+import '../resource_auth/tom_colors.dart';
+import '../resource_auth/tom_icons.dart';
 import '../widgets/labels/tom_labels.dart';
 
-/// Static helpers for construction-time resource resolution.
+/// Single entry point for all resource resolution in Tom UI.
 ///
-/// These methods resolve resources at widget construction time,
-/// taking a pre-resolved full path. The path should be computed once
-/// in the widget constructor using [resolvePath].
+/// All methods accept an optional [suffix] that is appended to [basePath]
+/// with a dot separator. When [suffix] is empty, [basePath] is used as-is.
 ///
-/// Example:
+/// Two usage patterns:
 /// ```dart
-/// class TomSnackBarAction extends SnackBarAction {
-///   final String? _path;
+/// // Full pre-resolved path (construction helpers):
+/// TomCtr.text('$_path.label')
 ///
-///   TomSnackBarAction({
-///     String? tomId,
-///     TomScope? scope,
-///     String? label,
-///     ...
-///   }) : _path = TomCtr.resolvePath(tomId, scope),
-///        super(
-///          label: label ?? TomCtr.text('$_path.label'),
-///        );
-/// }
+/// // Base path + suffix (widget build methods):
+/// TomCtr.textOrNull(basePath, 'label')
 /// ```
 class TomCtr {
   TomCtr._();
+
+  static TomTextResourceProvider get _provider =>
+      TomTextResourceProvider.getAppResources();
+
+  /// Builds a resource key from [basePath] and optional [suffix].
+  static String _key(String basePath, String suffix) {
+    if (suffix.isEmpty) return basePath;
+    return '$basePath.$suffix';
+  }
 
   // ===========================================================================
   // Path Resolution (called once in constructor)
@@ -53,54 +54,256 @@ class TomCtr {
   // Text Resolution
   // ===========================================================================
 
-  /// Resolves text from the full path.
+  /// Resolves text from resources.
   ///
-  /// Returns resolved text, or empty string if path is null.
-  static String text(String? path) {
-    if (path == null) return '';
-    return TomUIResources.resolveText(path, '');
+  /// Returns resolved text, or empty string if [basePath] is null.
+  /// If no resource is found, returns the key as a development indicator.
+  static String text(String? basePath, [String suffix = '']) {
+    if (basePath == null) return '';
+    return _provider.getText(_key(basePath, suffix));
   }
 
-  /// Resolves text from the full path, returning null if no resource.
-  static String? textOrNull(String? path) {
-    if (path == null) return null;
-    return TomUIResources.resolveTextOrNull(path, '');
+  /// Resolves text from resources, returning null if no resource.
+  static String? textOrNull(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    return _provider.getTextOrNull(_key(basePath, suffix));
+  }
+
+  /// Resolves a required text resource.
+  ///
+  /// Throws [StateError] if [basePath] is null.
+  /// If tomId is set but no resource exists, returns the key for development
+  /// visibility.
+  static String textOrFail(String? basePath, String suffix) {
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup.',
+      );
+    }
+    final key = _key(basePath, suffix);
+    if (!_provider.exists(key) && !_provider.existsObject(key)) {
+      return key;
+    }
+    return _provider.getText(key);
+  }
+
+  // ===========================================================================
+  // Existence Check
+  // ===========================================================================
+
+  /// Whether a resource exists for [basePath] + [suffix].
+  static bool exists(String? basePath, [String suffix = '']) {
+    if (basePath == null) return false;
+    final key = _key(basePath, suffix);
+    return _provider.exists(key) || _provider.existsObject(key);
   }
 
   // ===========================================================================
   // Color Resolution
   // ===========================================================================
 
-  /// Resolves a color from the full path.
-  static Color? color(String? path) {
-    if (path == null) return null;
-    return TomUIResources.resolveColor(path, '');
+  /// Resolves a color from resources.
+  ///
+  /// The resource value should be a color name (e.g., "mRed", "cSystemBlue")
+  /// or hex string (e.g., "#FF5733") that [TomUIColors] can resolve.
+  static Color? color(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    if (value == null) return null;
+    if (value is String) return TomUIColors.resolveColor(value);
+    if (value is int) return Color(value);
+    return null;
+  }
+
+  /// Resolves a required color from resources.
+  ///
+  /// Throws [StateError] if [basePath] is null, no resource exists,
+  /// or the value cannot be parsed as a color.
+  static Color colorOrFail(String? basePath, String suffix) {
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup.',
+      );
+    }
+    final key = _key(basePath, suffix);
+    if (!_provider.exists(key) && !_provider.existsObject(key)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a color '
+        'resource value at $key.',
+      );
+    }
+    final value = _provider.getObjectOrNull(key);
+    if (value == null) {
+      throw StateError('Resource $key must be a valid color.');
+    }
+    Color? result;
+    if (value is String) result = TomUIColors.resolveColor(value);
+    if (value is int) result = Color(value);
+    if (result == null) {
+      throw StateError('Resource $key must be a valid color.');
+    }
+    return result;
+  }
+
+  // ===========================================================================
+  // Icon Resolution
+  // ===========================================================================
+
+  /// Resolves an icon from resources.
+  ///
+  /// The resource value should be an icon name (e.g., "mAdd", "mSettings")
+  /// that [TomUIIcons] can resolve.
+  static IconData? icon(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    if (value == null) return null;
+    if (value is String) return TomUIIcons.resolveIcon(value);
+    return null;
   }
 
   // ===========================================================================
   // Numeric Resolution
   // ===========================================================================
 
-  /// Resolves a double from the full path.
-  static double? doubleVal(String? path) {
-    if (path == null) return null;
-    return TomUIResources.resolveDouble(path, '');
+  /// Resolves a double from resources.
+  ///
+  /// Accepts double, int, or parseable string values.
+  static double? doubleVal(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
-  /// Resolves an int from the full path.
-  static int? intVal(String? path) {
-    if (path == null) return null;
-    return TomUIResources.resolveInt(path, '');
+  /// Resolves a required double from resources.
+  ///
+  /// Throws [StateError] if [basePath] is null, no resource exists,
+  /// or the value is not numeric.
+  static double doubleOrFail(String? basePath, String suffix) {
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup.',
+      );
+    }
+    final key = _key(basePath, suffix);
+    if (!_provider.exists(key) && !_provider.existsObject(key)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a numeric '
+        'resource value at $key.',
+      );
+    }
+    final result = doubleVal(basePath, suffix);
+    if (result == null) {
+      throw StateError('Resource $key must be numeric.');
+    }
+    return result;
+  }
+
+  /// Resolves an int from resources.
+  ///
+  /// Accepts int, double (truncated), or parseable string values.
+  static int? intVal(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  /// Resolves a required int from resources.
+  ///
+  /// Throws [StateError] if [basePath] is null, no resource exists,
+  /// or the value is not numeric.
+  static int intOrFail(String? basePath, String suffix) {
+    if (basePath == null) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a tomId for '
+        'resource lookup.',
+      );
+    }
+    final key = _key(basePath, suffix);
+    if (!_provider.exists(key) && !_provider.existsObject(key)) {
+      throw StateError(
+        'Tom widget requires either an explicit $suffix or a numeric '
+        'resource value at $key.',
+      );
+    }
+    final result = intVal(basePath, suffix);
+    if (result == null) {
+      throw StateError('Resource $key must be an int.');
+    }
+    return result;
+  }
+
+  // ===========================================================================
+  // Bool Resolution
+  // ===========================================================================
+
+  /// Resolves a bool from resources.
+  ///
+  /// Accepts bool values or string "true"/"false".
+  static bool? boolVal(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is String) {
+      if (value.toLowerCase() == 'true') return true;
+      if (value.toLowerCase() == 'false') return false;
+    }
+    return null;
   }
 
   // ===========================================================================
   // EdgeInsets Resolution
   // ===========================================================================
 
-  /// Resolves EdgeInsets from the full path.
-  static EdgeInsets? edgeInsets(String? path) {
-    if (path == null) return null;
-    return TomUIResources.resolveEdgeInsets(path, '');
+  /// Resolves EdgeInsets from resources.
+  ///
+  /// Accepts:
+  /// - A single number for uniform insets
+  /// - An array \[all\], \[horizontal, vertical\], or \[left, top, right, bottom\]
+  /// - A map with keys: "all", "horizontal", "vertical", "left", "top", "right", "bottom"
+  static EdgeInsets? edgeInsets(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final value = _provider.getObjectOrNull(_key(basePath, suffix));
+    return _parseEdgeInsets(value);
+  }
+
+  // ===========================================================================
+  // Generic Value Resolution
+  // ===========================================================================
+
+  /// Resolves any value from resources.
+  static dynamic value(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    return _provider.getObjectOrNull(_key(basePath, suffix));
+  }
+
+  /// Resolves a list from resources.
+  ///
+  /// Returns `null` if no resource found or the resource is not a list.
+  static List<dynamic>? list(String? basePath, [String suffix = '']) {
+    final v = value(basePath, suffix);
+    if (v is List) return v;
+    return null;
+  }
+
+  /// Resolves a map from resources.
+  ///
+  /// Returns `null` if no resource found or the resource is not a map.
+  static Map<String, dynamic>? map(String? basePath, [String suffix = '']) {
+    final v = value(basePath, suffix);
+    if (v is Map<String, dynamic>) return v;
+    return null;
   }
 
   // ===========================================================================
@@ -114,13 +317,6 @@ class TomCtr {
   /// path with scope prefix. TomText will resolve the scope path itself.
   ///
   /// Returns `null` if [tomId] is null.
-  ///
-  /// Example:
-  /// ```dart
-  /// // For a snackbar with tomId 'saveSuccess', create child content:
-  /// TomCtr.defaultText('saveSuccess.content', scope, tomGroup)
-  /// // TomText will look up: <scopePath>.saveSuccess.content.label
-  /// ```
   static TomText? defaultText(
     String? tomId, [
     TomScope? scope,
@@ -138,8 +334,6 @@ class TomCtr {
   ///
   /// Unlike [defaultText], this never returns null — returns a `SizedBox.shrink()`
   /// if [tomId] is null.
-  ///
-  /// See [defaultText] for parameter details.
   static Widget defaultTextOrEmpty(
     String? tomId, [
     TomScope? scope,
@@ -156,8 +350,62 @@ class TomCtr {
   /// Helper for building a child tomId from parent tomId.
   ///
   /// Returns `'$tomId.$suffix'` if tomId is not null, otherwise null.
-  /// Use this when passing tomId to [defaultText] or [defaultTextOrEmpty].
   static String? childTomId(String? tomId, String suffix) {
     return tomId != null ? '$tomId.$suffix' : null;
+  }
+
+  // ===========================================================================
+  // Private Helpers
+  // ===========================================================================
+
+  static EdgeInsets? _parseEdgeInsets(dynamic value) {
+    if (value == null) return null;
+
+    // Single number = uniform
+    if (value is num) return EdgeInsets.all(value.toDouble());
+
+    // Array format
+    if (value is List) {
+      if (value.length == 1 && value[0] is num) {
+        return EdgeInsets.all((value[0] as num).toDouble());
+      }
+      if (value.length == 2 && value[0] is num && value[1] is num) {
+        return EdgeInsets.symmetric(
+          horizontal: (value[0] as num).toDouble(),
+          vertical: (value[1] as num).toDouble(),
+        );
+      }
+      if (value.length == 4) {
+        return EdgeInsets.only(
+          left: (value[0] as num?)?.toDouble() ?? 0,
+          top: (value[1] as num?)?.toDouble() ?? 0,
+          right: (value[2] as num?)?.toDouble() ?? 0,
+          bottom: (value[3] as num?)?.toDouble() ?? 0,
+        );
+      }
+    }
+
+    // Map format
+    if (value is Map<String, dynamic>) {
+      if (value.containsKey('all')) {
+        return EdgeInsets.all((value['all'] as num).toDouble());
+      }
+      return EdgeInsets.only(
+        left: (value['left'] as num?)?.toDouble() ??
+            (value['horizontal'] as num?)?.toDouble() ??
+            0,
+        top: (value['top'] as num?)?.toDouble() ??
+            (value['vertical'] as num?)?.toDouble() ??
+            0,
+        right: (value['right'] as num?)?.toDouble() ??
+            (value['horizontal'] as num?)?.toDouble() ??
+            0,
+        bottom: (value['bottom'] as num?)?.toDouble() ??
+            (value['vertical'] as num?)?.toDouble() ??
+            0,
+      );
+    }
+
+    return null;
   }
 }

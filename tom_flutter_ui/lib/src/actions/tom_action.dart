@@ -1,6 +1,6 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../resource_auth/tom_resources.dart';
+import '../widget_base/tom_construction_helpers.dart';
 import 'tom_action_context.dart';
 import 'tom_action_controller.dart';
 import 'tom_action_transaction.dart';
@@ -126,17 +126,17 @@ abstract class TomAction<TContext extends TomActionContext,
   ///
   /// Looks up `<canonicalPath>.label` in the resource system.
   String get label {
-    return TomUIResources.resolveTextOrNull('$canonicalPath', 'label') ?? actionId;
+    return TomCtr.textOrNull(canonicalPath, 'label') ?? actionId;
   }
 
   /// Resolves the action's tooltip from resources.
   String? get tooltip {
-    return TomUIResources.resolveTextOrNull('$canonicalPath', 'tooltip');
+    return TomCtr.textOrNull(canonicalPath, 'tooltip');
   }
 
   /// Resolves the action's icon name from resources.
   String? get iconName {
-    return TomUIResources.resolveTextOrNull('$canonicalPath', 'icon');
+    return TomCtr.textOrNull(canonicalPath, 'icon');
   }
 
   @override

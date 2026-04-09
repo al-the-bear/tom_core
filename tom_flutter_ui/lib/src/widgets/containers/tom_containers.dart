@@ -7,7 +7,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../groups/tom_ui_group.dart';
 import '../../groups/tom_widget_mixin.dart';
-import '../../resource_auth/tom_resources.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../../widget_base/tom_style_resolvers.dart';
@@ -53,14 +52,14 @@ class TomCard extends TomContainerBase {
     this.semanticContainer = true,
     this.child,
   }) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedBorderOnForeground = resolveBoolOrNull('borderOnForeground') ?? borderOnForeground;
-    _resolvedSemanticContainer = resolveBoolOrNull('semanticContainer') ?? semanticContainer;
+    _resolvedBorderOnForeground = TomCtr.boolVal(basePath, 'borderOnForeground') ?? borderOnForeground;
+    _resolvedSemanticContainer = TomCtr.boolVal(basePath, 'semanticContainer') ?? semanticContainer;
   }
 
   @override
@@ -163,21 +162,21 @@ class TomExpansionTile extends TomContainerBase {
     this.dense = false,
     this.showTrailingIcon = true,
   })  : onExpansionChanged = InScopeBuilder(scope: scope).wrap1n(onExpansionChanged) {
-    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedCollapsedBackgroundColor = collapsedBackgroundColor ?? resolveColorOrNull('collapsedBackgroundColor');
-    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
-    _resolvedCollapsedTextColor = collapsedTextColor ?? resolveColorOrNull('collapsedTextColor');
-    _resolvedIconColor = iconColor ?? resolveColorOrNull('iconColor');
-    _resolvedCollapsedIconColor = collapsedIconColor ?? resolveColorOrNull('collapsedIconColor');
-    _resolvedChildrenPadding = childrenPadding ?? resolveEdgeInsetsOrNull('childrenPadding');
-    _resolvedTilePadding = tilePadding ?? resolveEdgeInsetsOrNull('tilePadding');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedCollapsedBackgroundColor = collapsedBackgroundColor ?? TomCtr.color(basePath, 'collapsedBackgroundColor');
+    _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
+    _resolvedCollapsedTextColor = collapsedTextColor ?? TomCtr.color(basePath, 'collapsedTextColor');
+    _resolvedIconColor = iconColor ?? TomCtr.color(basePath, 'iconColor');
+    _resolvedCollapsedIconColor = collapsedIconColor ?? TomCtr.color(basePath, 'collapsedIconColor');
+    _resolvedChildrenPadding = childrenPadding ?? TomCtr.edgeInsets(basePath, 'childrenPadding');
+    _resolvedTilePadding = tilePadding ?? TomCtr.edgeInsets(basePath, 'tilePadding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedCollapsedShape = collapsedShape ?? _resolveShapeBorder('collapsedShape');
-    _resolvedInitiallyExpanded = resolveBoolOrNull('initiallyExpanded') ?? initiallyExpanded;
-    _resolvedMaintainState = resolveBoolOrNull('maintainState') ?? maintainState;
-    _resolvedDense = resolveBoolOrNull('dense') ?? dense;
-    _resolvedShowTrailingIcon = resolveBoolOrNull('showTrailingIcon') ?? showTrailingIcon;
+    _resolvedInitiallyExpanded = TomCtr.boolVal(basePath, 'initiallyExpanded') ?? initiallyExpanded;
+    _resolvedMaintainState = TomCtr.boolVal(basePath, 'maintainState') ?? maintainState;
+    _resolvedDense = TomCtr.boolVal(basePath, 'dense') ?? dense;
+    _resolvedShowTrailingIcon = TomCtr.boolVal(basePath, 'showTrailingIcon') ?? showTrailingIcon;
   }
 
   @override
@@ -282,15 +281,15 @@ class TomScaffold extends TomContainerBase {
     this.endDrawerEnableOpenDragGesture = true,
     this.restorationId,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedDrawerScrimColor = drawerScrimColor ?? resolveColorOrNull('drawerScrimColor');
-    _resolvedDrawerEdgeDragWidth = drawerEdgeDragWidth ?? resolveDoubleOrNull('drawerEdgeDragWidth');
-    _resolvedPrimary = resolveBoolOrNull('primary') ?? primary;
-    _resolvedExtendBody = resolveBoolOrNull('extendBody') ?? extendBody;
-    _resolvedExtendBodyBehindAppBar = resolveBoolOrNull('extendBodyBehindAppBar') ?? extendBodyBehindAppBar;
-    _resolvedDrawerEnableOpenDragGesture = resolveBoolOrNull('drawerEnableOpenDragGesture') ?? drawerEnableOpenDragGesture;
-    _resolvedEndDrawerEnableOpenDragGesture = resolveBoolOrNull('endDrawerEnableOpenDragGesture') ?? endDrawerEnableOpenDragGesture;
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedDrawerScrimColor = drawerScrimColor ?? TomCtr.color(basePath, 'drawerScrimColor');
+    _resolvedDrawerEdgeDragWidth = drawerEdgeDragWidth ?? TomCtr.doubleVal(basePath, 'drawerEdgeDragWidth');
+    _resolvedPrimary = TomCtr.boolVal(basePath, 'primary') ?? primary;
+    _resolvedExtendBody = TomCtr.boolVal(basePath, 'extendBody') ?? extendBody;
+    _resolvedExtendBodyBehindAppBar = TomCtr.boolVal(basePath, 'extendBodyBehindAppBar') ?? extendBodyBehindAppBar;
+    _resolvedDrawerEnableOpenDragGesture = TomCtr.boolVal(basePath, 'drawerEnableOpenDragGesture') ?? drawerEnableOpenDragGesture;
+    _resolvedEndDrawerEnableOpenDragGesture = TomCtr.boolVal(basePath, 'endDrawerEnableOpenDragGesture') ?? endDrawerEnableOpenDragGesture;
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
   }
 
   @override
@@ -417,7 +416,7 @@ class TomAppBar extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final resolvedTitleText =
-        titleText ?? _resolveStringOrNull('titleText');
+        titleText ?? TomCtr.textOrNull(basePath, 'titleText');
     final resolvedTitle =
         resolvedTitleText ?? (tomId != null ? getText('label') : null);
     final effectiveTitle =
@@ -425,37 +424,37 @@ class TomAppBar extends StatelessWidget
 
     // Phase 2: Resolve optional parameters from resources
     final resolvedAutomaticallyImplyLeading =
-        resolveBoolOrNull('automaticallyImplyLeading') ?? automaticallyImplyLeading;
+        TomCtr.boolVal(basePath, 'automaticallyImplyLeading') ?? automaticallyImplyLeading;
     final resolvedElevation =
-        elevation ?? resolveDoubleOrNull('elevation');
+        elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     final resolvedScrolledUnderElevation =
-        scrolledUnderElevation ?? resolveDoubleOrNull('scrolledUnderElevation');
+        scrolledUnderElevation ?? TomCtr.doubleVal(basePath, 'scrolledUnderElevation');
     final resolvedShadowColor =
-        shadowColor ?? resolveColorOrNull('shadowColor');
+        shadowColor ?? TomCtr.color(basePath, 'shadowColor');
     final resolvedSurfaceTintColor =
-        surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+        surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
     final resolvedBackgroundColor =
-        backgroundColor ?? resolveColorOrNull('backgroundColor');
+        backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     final resolvedForegroundColor =
-        foregroundColor ?? resolveColorOrNull('foregroundColor');
+        foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
     final resolvedTitleSpacing =
-        titleSpacing ?? resolveDoubleOrNull('titleSpacing');
+        titleSpacing ?? TomCtr.doubleVal(basePath, 'titleSpacing');
     final resolvedToolbarHeight =
-        toolbarHeight ?? resolveDoubleOrNull('toolbarHeight');
+        toolbarHeight ?? TomCtr.doubleVal(basePath, 'toolbarHeight');
     final resolvedLeadingWidth =
-        leadingWidth ?? resolveDoubleOrNull('leadingWidth');
+        leadingWidth ?? TomCtr.doubleVal(basePath, 'leadingWidth');
     final resolvedPrimary =
-        resolveBoolOrNull('primary') ?? primary;
+        TomCtr.boolVal(basePath, 'primary') ?? primary;
     final resolvedCenterTitle =
-        centerTitle ?? resolveBoolOrNull('centerTitle');
+        centerTitle ?? TomCtr.boolVal(basePath, 'centerTitle');
     final resolvedExcludeHeaderSemantics =
-        resolveBoolOrNull('excludeHeaderSemantics') ?? excludeHeaderSemantics;
+        TomCtr.boolVal(basePath, 'excludeHeaderSemantics') ?? excludeHeaderSemantics;
     final resolvedToolbarOpacity =
-        resolveDoubleOrNull('toolbarOpacity') ?? toolbarOpacity;
+        TomCtr.doubleVal(basePath, 'toolbarOpacity') ?? toolbarOpacity;
     final resolvedBottomOpacity =
-        resolveDoubleOrNull('bottomOpacity') ?? bottomOpacity;
+        TomCtr.doubleVal(basePath, 'bottomOpacity') ?? bottomOpacity;
     final resolvedForceMaterialTransparency =
-        resolveBoolOrNull('forceMaterialTransparency') ?? forceMaterialTransparency;
+        TomCtr.boolVal(basePath, 'forceMaterialTransparency') ?? forceMaterialTransparency;
 
     // Phase 3: Resolve complex objects from resources
     final resolvedIconTheme =
@@ -515,11 +514,6 @@ class TomAppBar extends StatelessWidget
     if (basePath == null) return null;
     return TomStyleResolvers.resolveShapeBorder(basePath!, suffix);
   }
-
-  String? _resolveStringOrNull(String suffix) {
-    if (basePath == null) return null;
-    return TomUIResources.resolveTextOrNull(basePath!, suffix);
-  }
 }
 
 /// Tom wrapper for [BottomAppBar].
@@ -562,13 +556,13 @@ class TomBottomAppBar extends TomContainerBase {
     this.shadowColor,
     this.surfaceTintColor,
   }) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedNotchMargin = resolveDoubleOrNull('notchMargin') ?? notchMargin;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedNotchMargin = TomCtr.doubleVal(basePath, 'notchMargin') ?? notchMargin;
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -616,11 +610,11 @@ class TomDivider extends TomContainerBase {
     this.endIndent,
     this.color,
   }) {
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
-    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
-    _resolvedIndent = indent ?? resolveDoubleOrNull('indent');
-    _resolvedEndIndent = endIndent ?? resolveDoubleOrNull('endIndent');
-    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
+    _resolvedThickness = thickness ?? TomCtr.doubleVal(basePath, 'thickness');
+    _resolvedIndent = indent ?? TomCtr.doubleVal(basePath, 'indent');
+    _resolvedEndIndent = endIndent ?? TomCtr.doubleVal(basePath, 'endIndent');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
 
   @override
@@ -686,11 +680,11 @@ class TomContainer extends TomContainerBase {
     this.width,
     this.height,
   }) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
     _resolvedForegroundDecoration = foregroundDecoration ?? _resolveDecoration('foregroundDecoration');
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
@@ -848,8 +842,8 @@ class TomWrap extends TomContainerBase {
     this.clipBehavior = Clip.none,
     this.children = const [],
   }) {
-    _resolvedSpacing = spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
-    _resolvedRunSpacing = runSpacing ?? resolveDoubleOrNull('runSpacing') ?? 0.0;
+    _resolvedSpacing = spacing ?? TomCtr.doubleVal(basePath, 'spacing') ?? 0.0;
+    _resolvedRunSpacing = runSpacing ?? TomCtr.doubleVal(basePath, 'runSpacing') ?? 0.0;
   }
 
   @override
@@ -934,7 +928,7 @@ class TomIndexedStack extends TomContainerBase {
     this.sizing = StackFit.loose,
     this.children = const [],
   }) {
-    _resolvedIndex = index ?? resolveIntOrNull('index');
+    _resolvedIndex = index ?? TomCtr.intVal(basePath, 'index');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
   }
 
@@ -974,8 +968,8 @@ class TomSizedBox extends TomContainerBase {
     this.height,
     this.child,
   }) {
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
   }
 
   @override
@@ -1027,7 +1021,7 @@ class TomPadding extends TomContainerBase {
     required this.padding,
     this.child,
   }) {
-    _resolvedPadding = resolveEdgeInsetsOrNull('padding') ?? padding;
+    _resolvedPadding = TomCtr.edgeInsets(basePath, 'padding') ?? padding;
   }
 
   @override
@@ -1058,8 +1052,8 @@ class TomCenter extends TomContainerBase {
     this.heightFactor,
     this.child,
   }) {
-    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
-    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
   }
 
   @override
@@ -1093,8 +1087,8 @@ class TomAlign extends TomContainerBase {
     this.heightFactor,
     this.child,
   }) {
-    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
-    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
   }
 
   @override
@@ -1181,8 +1175,8 @@ class TomFractionallySizedBox extends TomContainerBase {
     this.heightFactor,
     this.child,
   }) {
-    _resolvedWidthFactor = widthFactor ?? resolveDoubleOrNull('widthFactor');
-    _resolvedHeightFactor = heightFactor ?? resolveDoubleOrNull('heightFactor');
+    _resolvedWidthFactor = widthFactor ?? TomCtr.doubleVal(basePath, 'widthFactor');
+    _resolvedHeightFactor = heightFactor ?? TomCtr.doubleVal(basePath, 'heightFactor');
   }
 
   @override
@@ -1233,8 +1227,8 @@ class TomIntrinsicWidth extends TomContainerBase {
     this.stepHeight,
     this.child,
   }) {
-    _resolvedStepWidth = stepWidth ?? resolveDoubleOrNull('stepWidth');
-    _resolvedStepHeight = stepHeight ?? resolveDoubleOrNull('stepHeight');
+    _resolvedStepWidth = stepWidth ?? TomCtr.doubleVal(basePath, 'stepWidth');
+    _resolvedStepHeight = stepHeight ?? TomCtr.doubleVal(basePath, 'stepHeight');
   }
 
   @override
@@ -1289,10 +1283,10 @@ class TomMaterial extends TomContainerBase {
     this.animationDuration = kThemeChangeDuration,
     this.child,
   }) {
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation') ?? 0.0;
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
@@ -1538,17 +1532,17 @@ class TomSliverAppBar extends TomContainerBase {
     this.forceMaterialTransparency = false,
     this.clipBehavior,
   }) {
-    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedScrolledUnderElevation = scrolledUnderElevation ?? resolveDoubleOrNull('scrolledUnderElevation');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
-    _resolvedTitleSpacing = titleSpacing ?? resolveDoubleOrNull('titleSpacing');
-    _resolvedExpandedHeight = expandedHeight ?? resolveDoubleOrNull('expandedHeight');
-    _resolvedCollapsedHeight = collapsedHeight ?? resolveDoubleOrNull('collapsedHeight');
-    _resolvedLeadingWidth = leadingWidth ?? resolveDoubleOrNull('leadingWidth');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedScrolledUnderElevation = scrolledUnderElevation ?? TomCtr.doubleVal(basePath, 'scrolledUnderElevation');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+    _resolvedTitleSpacing = titleSpacing ?? TomCtr.doubleVal(basePath, 'titleSpacing');
+    _resolvedExpandedHeight = expandedHeight ?? TomCtr.doubleVal(basePath, 'expandedHeight');
+    _resolvedCollapsedHeight = collapsedHeight ?? TomCtr.doubleVal(basePath, 'collapsedHeight');
+    _resolvedLeadingWidth = leadingWidth ?? TomCtr.doubleVal(basePath, 'leadingWidth');
     _resolvedIconTheme = iconTheme ?? _resolveIconThemeData('iconTheme');
     _resolvedActionsIconTheme = actionsIconTheme ?? _resolveIconThemeData('actionsIconTheme');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
@@ -1742,7 +1736,7 @@ class TomCustomScrollView extends TomContainerBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
   }) {
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
+    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
   }
 
   @override
@@ -1870,9 +1864,9 @@ class TomExpansionPanelList extends TomContainerBase {
     this.dividerColor,
     this.elevation,
   }) {
-    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 2;
-    _resolvedExpandedHeaderPadding = expandedHeaderPadding ?? resolveEdgeInsetsOrNull('expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0);
+    _resolvedDividerColor = dividerColor ?? TomCtr.color(basePath, 'dividerColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation') ?? 2;
+    _resolvedExpandedHeaderPadding = expandedHeaderPadding ?? TomCtr.edgeInsets(basePath, 'expandedHeaderPadding') ?? const EdgeInsets.symmetric(vertical: 16.0);
   }
 
   @override
@@ -1920,10 +1914,10 @@ class TomInk extends TomContainerBase {
     this.height,
     this.child,
   }) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
   }
 
@@ -2144,12 +2138,12 @@ class TomPositioned extends TomContainerBase {
   }
 
   void _initResolvedFields() {
-    _resolvedLeft = left ?? resolveDoubleOrNull('left');
-    _resolvedTop = top ?? resolveDoubleOrNull('top');
-    _resolvedRight = right ?? resolveDoubleOrNull('right');
-    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedLeft = left ?? TomCtr.doubleVal(basePath, 'left');
+    _resolvedTop = top ?? TomCtr.doubleVal(basePath, 'top');
+    _resolvedRight = right ?? TomCtr.doubleVal(basePath, 'right');
+    _resolvedBottom = bottom ?? TomCtr.doubleVal(basePath, 'bottom');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
   }
 
   @override
@@ -2200,12 +2194,12 @@ class TomPositionedDirectional extends TomContainerBase {
     this.height,
     required this.child,
   }) {
-    _resolvedStart = start ?? resolveDoubleOrNull('start');
-    _resolvedTop = top ?? resolveDoubleOrNull('top');
-    _resolvedEnd = end ?? resolveDoubleOrNull('end');
-    _resolvedBottom = bottom ?? resolveDoubleOrNull('bottom');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedStart = start ?? TomCtr.doubleVal(basePath, 'start');
+    _resolvedTop = top ?? TomCtr.doubleVal(basePath, 'top');
+    _resolvedEnd = end ?? TomCtr.doubleVal(basePath, 'end');
+    _resolvedBottom = bottom ?? TomCtr.doubleVal(basePath, 'bottom');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
   }
 
   @override
@@ -2336,8 +2330,8 @@ class TomSingleChildScrollView extends TomContainerBase {
     this.keyboardDismissBehavior = ScrollViewKeyboardDismissBehavior.manual,
   }) {
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -2405,12 +2399,12 @@ class TomCarouselView extends TomContainerBase {
     this.reverse = false,
     ValueChanged<int>? onTap,
   })  : onTap = InScopeBuilder(scope: scope).wrap1n(onTap) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
-    _resolvedShrinkExtent = shrinkExtent ?? resolveDoubleOrNull('shrinkExtent');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    _resolvedShrinkExtent = shrinkExtent ?? TomCtr.doubleVal(basePath, 'shrinkExtent');
   }
 
   @override
@@ -2497,7 +2491,7 @@ class TomOffstage extends TomContainerBase {
     this.offstage = true,
     this.child,
   }) {
-    _resolvedOffstage = resolveBoolOrNull('offstage') ?? offstage;
+    _resolvedOffstage = TomCtr.boolVal(basePath, 'offstage') ?? offstage;
   }
 
   @override
@@ -2531,7 +2525,7 @@ class TomCupertinoPageScaffold extends TomContainerBase {
     this.resizeToAvoidBottomInset = true,
     required this.child,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   @override
@@ -2571,7 +2565,7 @@ class TomCupertinoTabScaffold extends TomContainerBase {
     this.resizeToAvoidBottomInset = true,
     this.restorationId,
   }) : tabBuilder = InScopeBuilder(scope: scope).wrap2(tabBuilder) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   @override
@@ -2611,7 +2605,7 @@ class TomCupertinoFormRow extends TomContainerBase {
     this.helper,
     this.error,
   }) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -2657,8 +2651,8 @@ class TomCupertinoFormSection extends TomContainerBase {
     this.clipBehavior = Clip.none,
     this.insetGrouped = false,
   }) {
-    _resolvedMargin = margin ?? resolveEdgeInsetsOrNull('margin') ?? EdgeInsets.zero;
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedMargin = margin ?? TomCtr.edgeInsets(basePath, 'margin') ?? EdgeInsets.zero;
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   @override
@@ -2725,8 +2719,8 @@ class TomNestedScrollView extends TomContainerBase {
     this.restorationId,
     this.scrollBehavior,
   }) : headerSliverBuilder = InScopeBuilder(scope: scope).wrap2(headerSliverBuilder) {
-    _resolvedFloatHeaderSlivers = floatHeaderSlivers ?? resolveBoolOrNull('floatHeaderSlivers') ?? false;
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
+    _resolvedFloatHeaderSlivers = floatHeaderSlivers ?? TomCtr.boolVal(basePath, 'floatHeaderSlivers') ?? false;
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
     _resolvedPhysics = physics ?? _resolveScrollPhysics('physics');
   }
 
@@ -2788,10 +2782,10 @@ class TomScrollbar extends TomContainerBase {
     this.interactive,
     this.scrollbarOrientation,
   }) {
-    _resolvedThumbVisibility = thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
-    _resolvedTrackVisibility = trackVisibility ?? resolveBoolOrNull('trackVisibility');
-    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness');
-    _resolvedInteractive = interactive ?? resolveBoolOrNull('interactive');
+    _resolvedThumbVisibility = thumbVisibility ?? TomCtr.boolVal(basePath, 'thumbVisibility');
+    _resolvedTrackVisibility = trackVisibility ?? TomCtr.boolVal(basePath, 'trackVisibility');
+    _resolvedThickness = thickness ?? TomCtr.doubleVal(basePath, 'thickness');
+    _resolvedInteractive = interactive ?? TomCtr.boolVal(basePath, 'interactive');
   }
 
   @override
@@ -2842,9 +2836,9 @@ class TomCupertinoScrollbar extends TomContainerBase {
     this.radiusWhileDragging = CupertinoScrollbar.defaultRadiusWhileDragging,
     this.notificationPredicate,
   }) {
-    _resolvedThumbVisibility = thumbVisibility ?? resolveBoolOrNull('thumbVisibility');
-    _resolvedThickness = thickness ?? resolveDoubleOrNull('thickness') ?? CupertinoScrollbar.defaultThickness;
-    _resolvedThicknessWhileDragging = thicknessWhileDragging ?? resolveDoubleOrNull('thicknessWhileDragging') ?? CupertinoScrollbar.defaultThicknessWhileDragging;
+    _resolvedThumbVisibility = thumbVisibility ?? TomCtr.boolVal(basePath, 'thumbVisibility');
+    _resolvedThickness = thickness ?? TomCtr.doubleVal(basePath, 'thickness') ?? CupertinoScrollbar.defaultThickness;
+    _resolvedThicknessWhileDragging = thicknessWhileDragging ?? TomCtr.doubleVal(basePath, 'thicknessWhileDragging') ?? CupertinoScrollbar.defaultThicknessWhileDragging;
   }
 
   @override
@@ -2901,12 +2895,12 @@ class TomDraggableScrollableSheet extends TomContainerBase {
     this.shouldCloseOnMinExtent,
     required ScrollableWidgetBuilder builder,
   }) : builder = InScopeBuilder(scope: scope).wrap2(builder) {
-    _resolvedInitialChildSize = initialChildSize ?? resolveDoubleOrNull('initialChildSize') ?? 0.5;
-    _resolvedMinChildSize = minChildSize ?? resolveDoubleOrNull('minChildSize') ?? 0.25;
-    _resolvedMaxChildSize = maxChildSize ?? resolveDoubleOrNull('maxChildSize') ?? 1.0;
-    _resolvedExpand = expand ?? resolveBoolOrNull('expand') ?? true;
-    _resolvedSnap = snap ?? resolveBoolOrNull('snap') ?? false;
-    _resolvedShouldCloseOnMinExtent = shouldCloseOnMinExtent ?? resolveBoolOrNull('shouldCloseOnMinExtent') ?? true;
+    _resolvedInitialChildSize = initialChildSize ?? TomCtr.doubleVal(basePath, 'initialChildSize') ?? 0.5;
+    _resolvedMinChildSize = minChildSize ?? TomCtr.doubleVal(basePath, 'minChildSize') ?? 0.25;
+    _resolvedMaxChildSize = maxChildSize ?? TomCtr.doubleVal(basePath, 'maxChildSize') ?? 1.0;
+    _resolvedExpand = expand ?? TomCtr.boolVal(basePath, 'expand') ?? true;
+    _resolvedSnap = snap ?? TomCtr.boolVal(basePath, 'snap') ?? false;
+    _resolvedShouldCloseOnMinExtent = shouldCloseOnMinExtent ?? TomCtr.boolVal(basePath, 'shouldCloseOnMinExtent') ?? true;
   }
 
   @override
@@ -2981,14 +2975,14 @@ class TomInteractiveViewer extends TomContainerBase {
   })  : onInteractionEnd = InScopeBuilder(scope: scope).wrap1n(onInteractionEnd),
         onInteractionStart = InScopeBuilder(scope: scope).wrap1n(onInteractionStart),
         onInteractionUpdate = InScopeBuilder(scope: scope).wrap1n(onInteractionUpdate) {
-    _resolvedBoundaryMargin = boundaryMargin ?? resolveEdgeInsetsOrNull('boundaryMargin') ?? EdgeInsets.zero;
-    _resolvedConstrained = constrained ?? resolveBoolOrNull('constrained') ?? true;
-    _resolvedMaxScale = maxScale ?? resolveDoubleOrNull('maxScale') ?? 2.5;
-    _resolvedMinScale = minScale ?? resolveDoubleOrNull('minScale') ?? 0.8;
-    _resolvedInteractionEndFrictionCoefficient = interactionEndFrictionCoefficient ?? resolveDoubleOrNull('interactionEndFrictionCoefficient') ?? 0.0000135;
-    _resolvedPanEnabled = panEnabled ?? resolveBoolOrNull('panEnabled') ?? true;
-    _resolvedScaleEnabled = scaleEnabled ?? resolveBoolOrNull('scaleEnabled') ?? true;
-    _resolvedScaleFactor = scaleFactor ?? resolveDoubleOrNull('scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
+    _resolvedBoundaryMargin = boundaryMargin ?? TomCtr.edgeInsets(basePath, 'boundaryMargin') ?? EdgeInsets.zero;
+    _resolvedConstrained = constrained ?? TomCtr.boolVal(basePath, 'constrained') ?? true;
+    _resolvedMaxScale = maxScale ?? TomCtr.doubleVal(basePath, 'maxScale') ?? 2.5;
+    _resolvedMinScale = minScale ?? TomCtr.doubleVal(basePath, 'minScale') ?? 0.8;
+    _resolvedInteractionEndFrictionCoefficient = interactionEndFrictionCoefficient ?? TomCtr.doubleVal(basePath, 'interactionEndFrictionCoefficient') ?? 0.0000135;
+    _resolvedPanEnabled = panEnabled ?? TomCtr.boolVal(basePath, 'panEnabled') ?? true;
+    _resolvedScaleEnabled = scaleEnabled ?? TomCtr.boolVal(basePath, 'scaleEnabled') ?? true;
+    _resolvedScaleFactor = scaleFactor ?? TomCtr.doubleVal(basePath, 'scaleFactor') ?? kDefaultMouseScrollToScaleFactor;
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.topLeft;
   }
 
@@ -3069,7 +3063,7 @@ class TomColoredBox extends TomContainerBase {
     this.color,
     this.child,
   }) {
-    _resolvedColor = color ?? resolveColorOrFail('color');
+    _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
   }
 
   @override
@@ -3101,7 +3095,7 @@ class TomOpacity extends TomContainerBase {
     this.alwaysIncludeSemantics = false,
     this.child,
   }) {
-    _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
+    _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
   }
 
   @override
@@ -3142,7 +3136,7 @@ class TomTransform extends TomContainerBase {
     this.child,
   }) {
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment');
-    _resolvedTransformHitTests = transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
+    _resolvedTransformHitTests = transformHitTests ?? TomCtr.boolVal(basePath, 'transformHitTests') ?? true;
   }
 
   @override
@@ -3181,7 +3175,7 @@ class TomRotatedBox extends TomContainerBase {
     this.quarterTurns,
     this.child,
   }) {
-    _resolvedQuarterTurns = quarterTurns ?? resolveIntOrFail('quarterTurns');
+    _resolvedQuarterTurns = quarterTurns ?? TomCtr.intOrFail(basePath, 'quarterTurns');
   }
 
   @override
@@ -3222,8 +3216,8 @@ class TomOverflowBar extends TomContainerBase {
     this.textDirection,
     this.children = const <Widget>[],
   }) {
-    _resolvedSpacing = spacing ?? resolveDoubleOrNull('spacing') ?? 0.0;
-    _resolvedOverflowSpacing = overflowSpacing ?? resolveDoubleOrNull('overflowSpacing') ?? 0.0;
+    _resolvedSpacing = spacing ?? TomCtr.doubleVal(basePath, 'spacing') ?? 0.0;
+    _resolvedOverflowSpacing = overflowSpacing ?? TomCtr.doubleVal(basePath, 'overflowSpacing') ?? 0.0;
   }
 
   @override
@@ -3272,10 +3266,10 @@ class TomOverflowBox extends TomContainerBase {
     this.fit = OverflowBoxFit.max,
     this.child,
   }) {
-    _resolvedMinWidth = minWidth ?? resolveDoubleOrNull('minWidth');
-    _resolvedMaxWidth = maxWidth ?? resolveDoubleOrNull('maxWidth');
-    _resolvedMinHeight = minHeight ?? resolveDoubleOrNull('minHeight');
-    _resolvedMaxHeight = maxHeight ?? resolveDoubleOrNull('maxHeight');
+    _resolvedMinWidth = minWidth ?? TomCtr.doubleVal(basePath, 'minWidth');
+    _resolvedMaxWidth = maxWidth ?? TomCtr.doubleVal(basePath, 'maxWidth');
+    _resolvedMinHeight = minHeight ?? TomCtr.doubleVal(basePath, 'minHeight');
+    _resolvedMaxHeight = maxHeight ?? TomCtr.doubleVal(basePath, 'maxHeight');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
   }
 
@@ -3418,8 +3412,8 @@ class TomLimitedBox extends TomContainerBase {
     this.maxHeight,
     this.child,
   }) {
-    _resolvedMaxWidth = maxWidth ?? resolveDoubleOrNull('maxWidth') ?? double.infinity;
-    _resolvedMaxHeight = maxHeight ?? resolveDoubleOrNull('maxHeight') ?? double.infinity;
+    _resolvedMaxWidth = maxWidth ?? TomCtr.doubleVal(basePath, 'maxWidth') ?? double.infinity;
+    _resolvedMaxHeight = maxHeight ?? TomCtr.doubleVal(basePath, 'maxHeight') ?? double.infinity;
   }
 
   @override
@@ -3452,7 +3446,7 @@ class TomBaseline extends TomContainerBase {
     required this.baselineType,
     this.child,
   }) {
-    _resolvedBaseline = baseline ?? resolveDoubleOrFail('baseline');
+    _resolvedBaseline = baseline ?? TomCtr.doubleOrFail(basePath, 'baseline');
   }
 
   @override
@@ -3485,7 +3479,7 @@ class TomListBody extends TomContainerBase {
     this.reverse,
     this.children = const <Widget>[],
   }) {
-    _resolvedReverse = reverse ?? resolveBoolOrNull('reverse') ?? false;
+    _resolvedReverse = reverse ?? TomCtr.boolVal(basePath, 'reverse') ?? false;
   }
 
   @override
@@ -3605,8 +3599,8 @@ class TomCustomPaint extends TomContainerBase {
     this.willChange,
     this.child,
   }) {
-    _resolvedIsComplex = isComplex ?? resolveBoolOrNull('isComplex') ?? false;
-    _resolvedWillChange = willChange ?? resolveBoolOrNull('willChange') ?? false;
+    _resolvedIsComplex = isComplex ?? TomCtr.boolVal(basePath, 'isComplex') ?? false;
+    _resolvedWillChange = willChange ?? TomCtr.boolVal(basePath, 'willChange') ?? false;
   }
 
   @override
@@ -3655,9 +3649,9 @@ class TomPhysicalModel extends TomContainerBase {
     this.shadowColor,
     this.child,
   }) {
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    _resolvedColor = color ?? resolveColorOrFail('color');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation') ?? 0.0;
+    _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor') ?? const Color(0xFF000000);
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
   }
 
@@ -3708,9 +3702,9 @@ class TomPhysicalShape extends TomContainerBase {
     this.shadowColor,
     this.child,
   }) {
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation') ?? 0.0;
-    _resolvedColor = color ?? resolveColorOrFail('color');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor') ?? const Color(0xFF000000);
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation') ?? 0.0;
+    _resolvedColor = color ?? TomCtr.colorOrFail(basePath, 'color');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor') ?? const Color(0xFF000000);
   }
 
   @override
@@ -3746,7 +3740,7 @@ class TomFractionalTranslation extends TomContainerBase {
     this.transformHitTests,
     this.child,
   }) {
-    _resolvedTransformHitTests = transformHitTests ?? resolveBoolOrNull('transformHitTests') ?? true;
+    _resolvedTransformHitTests = transformHitTests ?? TomCtr.boolVal(basePath, 'transformHitTests') ?? true;
   }
 
   @override
@@ -3811,7 +3805,7 @@ class TomGridTileBar extends TomContainerBase {
     this.subtitle,
     this.trailing,
   }) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
   }
 
   @override
@@ -3854,7 +3848,7 @@ class TomCupertinoExpansionTile extends TomContainerBase {
     this.controller,
     this.transitionMode = ExpansionTileTransitionMode.fade,
   }) {
-    _resolvedTitle = titleText ?? resolveResourceOrFail('label');
+    _resolvedTitle = titleText ?? TomCtr.textOrFail(basePath, 'label');
   }
 
   @override

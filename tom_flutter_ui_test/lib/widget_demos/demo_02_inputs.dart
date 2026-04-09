@@ -50,16 +50,16 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
   // Sample data for autocomplete - resolved from resources
   List<String> _getCountries() {
     return [
-      TomUIResources.resolveText('demo02.countries', 'us'),
-      TomUIResources.resolveText('demo02.countries', 'uk'),
-      TomUIResources.resolveText('demo02.countries', 'ca'),
-      TomUIResources.resolveText('demo02.countries', 'au'),
-      TomUIResources.resolveText('demo02.countries', 'de'),
-      TomUIResources.resolveText('demo02.countries', 'fr'),
-      TomUIResources.resolveText('demo02.countries', 'jp'),
-      TomUIResources.resolveText('demo02.countries', 'br'),
-      TomUIResources.resolveText('demo02.countries', 'in'),
-      TomUIResources.resolveText('demo02.countries', 'cn'),
+      TomCtr.text('demo02.countries', 'us'),
+      TomCtr.text('demo02.countries', 'uk'),
+      TomCtr.text('demo02.countries', 'ca'),
+      TomCtr.text('demo02.countries', 'au'),
+      TomCtr.text('demo02.countries', 'de'),
+      TomCtr.text('demo02.countries', 'fr'),
+      TomCtr.text('demo02.countries', 'jp'),
+      TomCtr.text('demo02.countries', 'br'),
+      TomCtr.text('demo02.countries', 'in'),
+      TomCtr.text('demo02.countries', 'cn'),
     ];
   }
 
@@ -77,9 +77,9 @@ class _InputsDemoContentState extends TomState<_InputsDemoContent> {
     final hours = duration.inHours;
     final minutes = duration.inMinutes % 60;
     final seconds = duration.inSeconds % 60;
-    final h = TomUIResources.resolveText('demo02.duration', 'hours');
-    final m = TomUIResources.resolveText('demo02.duration', 'minutes');
-    final s = TomUIResources.resolveText('demo02.duration', 'seconds');
+    final h = TomCtr.text('demo02.duration', 'hours');
+    final m = TomCtr.text('demo02.duration', 'minutes');
+    final s = TomCtr.text('demo02.duration', 'seconds');
     return '$hours$h $minutes$m $seconds$s';
   }
 

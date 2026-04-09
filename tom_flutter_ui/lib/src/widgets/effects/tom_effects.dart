@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 
 // =============================================================================
 // Section II: Effect Widgets
@@ -31,7 +32,7 @@ class TomBackdropFilter extends TomEffectBase {
     this.blendMode,
     this.child,
   }) {
-    _resolvedBlendMode = blendMode ?? _resolveBlendMode(resolveResourceOrNull('blendMode')) ?? BlendMode.srcOver;
+    _resolvedBlendMode = blendMode ?? _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ?? BlendMode.srcOver;
   }
 
   @override
@@ -89,7 +90,7 @@ class TomShaderMask extends TomEffectBase {
     this.blendMode,
     this.child,
   }) {
-    _resolvedBlendMode = blendMode ?? _resolveBlendMode(resolveResourceOrNull('blendMode')) ?? BlendMode.modulate;
+    _resolvedBlendMode = blendMode ?? _resolveBlendMode(TomCtr.textOrNull(basePath, 'blendMode')) ?? BlendMode.modulate;
   }
 
   @override
@@ -269,7 +270,7 @@ class TomSensitiveContent extends TomEffectBase {
     this.sensitivity,
     required this.child,
   }) {
-    _resolvedSensitivity = sensitivity ?? _resolveContentSensitivity(resolveResourceOrNull('sensitivity')) ?? ContentSensitivity.autoSensitive;
+    _resolvedSensitivity = sensitivity ?? _resolveContentSensitivity(TomCtr.textOrNull(basePath, 'sensitivity')) ?? ContentSensitivity.autoSensitive;
   }
 
   @override

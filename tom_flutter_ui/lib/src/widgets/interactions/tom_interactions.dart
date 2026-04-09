@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 // =============================================================================
@@ -156,8 +157,8 @@ class TomGestureDetector extends TomInteractionBase {
         onForcePressPeak = InScopeBuilder(scope: scope).wrap1n(onForcePressPeak),
         onForcePressUpdate = InScopeBuilder(scope: scope).wrap1n(onForcePressUpdate),
         onForcePressEnd = InScopeBuilder(scope: scope).wrap1n(onForcePressEnd) {
-    _resolvedExcludeFromSemantics = excludeFromSemantics ?? resolveBoolOrNull('excludeFromSemantics') ?? false;
-    _resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ?? resolveBoolOrNull('trackpadScrollCausesScale') ?? false;
+    _resolvedExcludeFromSemantics = excludeFromSemantics ?? TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? false;
+    _resolvedTrackpadScrollCausesScale = trackpadScrollCausesScale ?? TomCtr.boolVal(basePath, 'trackpadScrollCausesScale') ?? false;
     _resolvedTrackpadScrollToScaleFactor = _resolveOffset('trackpadScrollToScaleFactor') ?? trackpadScrollToScaleFactor;
   }
 
@@ -317,17 +318,17 @@ class TomInkWell extends TomInteractionBase {
         onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedRadius = radius ?? resolveDoubleOrNull('radius');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedRadius = radius ?? TomCtr.doubleVal(basePath, 'radius');
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
     _resolvedCustomBorder = customBorder ?? _resolveShapeBorder('customBorder');
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback') ?? true;
-    _resolvedExcludeFromSemantics = resolveBoolOrNull('excludeFromSemantics') ?? excludeFromSemantics;
-    _resolvedCanRequestFocus = resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
+    _resolvedExcludeFromSemantics = TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? excludeFromSemantics;
+    _resolvedCanRequestFocus = TomCtr.boolVal(basePath, 'canRequestFocus') ?? canRequestFocus;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
   }
 
   @override
@@ -469,16 +470,16 @@ class TomInkResponse extends TomInteractionBase {
         onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedContainedInkWell = containedInkWell ?? resolveBoolOrNull('containedInkWell') ?? false;
-    _resolvedRadius = radius ?? resolveDoubleOrNull('radius');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback') ?? true;
-    _resolvedExcludeFromSemantics = excludeFromSemantics ?? resolveBoolOrNull('excludeFromSemantics') ?? false;
-    _resolvedAutofocus = autofocus ?? resolveBoolOrNull('autofocus') ?? false;
-    _resolvedCanRequestFocus = canRequestFocus ?? resolveBoolOrNull('canRequestFocus') ?? true;
+    _resolvedContainedInkWell = containedInkWell ?? TomCtr.boolVal(basePath, 'containedInkWell') ?? false;
+    _resolvedRadius = radius ?? TomCtr.doubleVal(basePath, 'radius');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback') ?? true;
+    _resolvedExcludeFromSemantics = excludeFromSemantics ?? TomCtr.boolVal(basePath, 'excludeFromSemantics') ?? false;
+    _resolvedAutofocus = autofocus ?? TomCtr.boolVal(basePath, 'autofocus') ?? false;
+    _resolvedCanRequestFocus = canRequestFocus ?? TomCtr.boolVal(basePath, 'canRequestFocus') ?? true;
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
     _resolvedCustomBorder = customBorder ?? _resolveShapeBorder('customBorder');
   }
@@ -589,10 +590,10 @@ class TomDraggable<T extends Object> extends TomInteractionBase {
         onDraggableCanceled = InScopeBuilder(scope: scope).wrap2n(onDraggableCanceled),
         onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
         onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
-    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? resolveIntOrNull('maxSimultaneousDrags');
-    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? resolveBoolOrNull('ignoringFeedbackSemantics') ?? true;
-    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? resolveBoolOrNull('ignoringFeedbackPointer') ?? true;
-    _resolvedRootOverlay = rootOverlay ?? resolveBoolOrNull('rootOverlay') ?? false;
+    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
+    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ?? true;
+    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ?? true;
+    _resolvedRootOverlay = rootOverlay ?? TomCtr.boolVal(basePath, 'rootOverlay') ?? false;
     _resolvedFeedbackOffset = _resolveOffset('feedbackOffset') ?? feedbackOffset;
   }
 
@@ -656,7 +657,7 @@ class TomDragTarget<T extends Object> extends TomInteractionBase {
        onAcceptWithDetails = InScopeBuilder(scope: scope).wrap1n(onAcceptWithDetails),
        onLeave = InScopeBuilder(scope: scope).wrap1n(onLeave),
        onMove = InScopeBuilder(scope: scope).wrap1n(onMove) {
-    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(resolveResourceOrNull('hitTestBehavior')) ?? HitTestBehavior.translucent;
+    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(TomCtr.textOrNull(basePath, 'hitTestBehavior')) ?? HitTestBehavior.translucent;
   }
 
   @override
@@ -727,10 +728,10 @@ class TomLongPressDraggable<T extends Object> extends TomInteractionBase {
         onDraggableCanceled = InScopeBuilder(scope: scope).wrap2n(onDraggableCanceled),
         onDragEnd = InScopeBuilder(scope: scope).wrap1n(onDragEnd),
         onDragCompleted = InScopeBuilder(scope: scope).wrap0n(onDragCompleted) {
-    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? resolveIntOrNull('maxSimultaneousDrags');
-    _resolvedHapticFeedbackOnStart = hapticFeedbackOnStart ?? resolveBoolOrNull('hapticFeedbackOnStart') ?? true;
-    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? resolveBoolOrNull('ignoringFeedbackSemantics') ?? true;
-    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? resolveBoolOrNull('ignoringFeedbackPointer') ?? true;
+    _resolvedMaxSimultaneousDrags = maxSimultaneousDrags ?? TomCtr.intVal(basePath, 'maxSimultaneousDrags');
+    _resolvedHapticFeedbackOnStart = hapticFeedbackOnStart ?? TomCtr.boolVal(basePath, 'hapticFeedbackOnStart') ?? true;
+    _resolvedIgnoringFeedbackSemantics = ignoringFeedbackSemantics ?? TomCtr.boolVal(basePath, 'ignoringFeedbackSemantics') ?? true;
+    _resolvedIgnoringFeedbackPointer = ignoringFeedbackPointer ?? TomCtr.boolVal(basePath, 'ignoringFeedbackPointer') ?? true;
   }
 
   @override
@@ -775,7 +776,7 @@ class TomAbsorbPointer extends TomInteractionBase {
     this.absorbing,
     this.child,
   }) {
-    _resolvedAbsorbing = absorbing ?? resolveBoolOrNull('absorbing') ?? true;
+    _resolvedAbsorbing = absorbing ?? TomCtr.boolVal(basePath, 'absorbing') ?? true;
   }
 
   @override
@@ -805,7 +806,7 @@ class TomIgnorePointer extends TomInteractionBase {
     this.ignoring,
     this.child,
   }) {
-    _resolvedIgnoring = ignoring ?? resolveBoolOrNull('ignoring') ?? true;
+    _resolvedIgnoring = ignoring ?? TomCtr.boolVal(basePath, 'ignoring') ?? true;
   }
 
   @override
@@ -848,8 +849,8 @@ class TomMouseRegion extends TomInteractionBase {
   })  : onEnter = InScopeBuilder(scope: scope).wrap1n(onEnter),
         onExit = InScopeBuilder(scope: scope).wrap1n(onExit),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover) {
-    _resolvedOpaque = opaque ?? resolveBoolOrNull('opaque') ?? true;
-    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(resolveResourceOrNull('hitTestBehavior'));
+    _resolvedOpaque = opaque ?? TomCtr.boolVal(basePath, 'opaque') ?? true;
+    _resolvedHitTestBehavior = hitTestBehavior ?? _resolveHitTestBehavior(TomCtr.textOrNull(basePath, 'hitTestBehavior'));
   }
 
   @override

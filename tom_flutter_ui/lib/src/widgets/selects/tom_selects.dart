@@ -87,21 +87,21 @@ class TomDropdownButton<T> extends TomSelectBase {
     this.hint,
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
-    _resolvedHint = hint ?? resolveResourceOrNull('hint') ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedElevation = elevation ?? resolveIntOrNull('elevation') ?? 8;
-    _resolvedIconDisabledColor = iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
-    _resolvedIconEnabledColor = iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
-    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
-    _resolvedItemHeight = itemHeight ?? resolveDoubleOrNull('itemHeight');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedDropdownColor = dropdownColor ?? resolveColorOrNull('dropdownColor');
-    _resolvedMenuMaxHeight = menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
-    _resolvedIsDense = resolveBoolOrNull('isDense') ?? isDense;
-    _resolvedIsExpanded = resolveBoolOrNull('isExpanded') ?? isExpanded;
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedHint = hint ?? TomCtr.textOrNull(basePath, 'hint') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedElevation = elevation ?? TomCtr.intVal(basePath, 'elevation') ?? 8;
+    _resolvedIconDisabledColor = iconDisabledColor ?? TomCtr.color(basePath, 'iconDisabledColor');
+    _resolvedIconEnabledColor = iconEnabledColor ?? TomCtr.color(basePath, 'iconEnabledColor');
+    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 24.0;
+    _resolvedItemHeight = itemHeight ?? TomCtr.doubleVal(basePath, 'itemHeight');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedDropdownColor = dropdownColor ?? TomCtr.color(basePath, 'dropdownColor');
+    _resolvedMenuMaxHeight = menuMaxHeight ?? TomCtr.doubleVal(basePath, 'menuMaxHeight');
+    _resolvedIsDense = TomCtr.boolVal(basePath, 'isDense') ?? isDense;
+    _resolvedIsExpanded = TomCtr.boolVal(basePath, 'isExpanded') ?? isExpanded;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedStyle = style ?? _resolveTextStyle();
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
   }
@@ -220,15 +220,15 @@ class TomPopupMenuButton<T> extends TomSelectBase {
   }) : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
        onCanceled = InScopeBuilder(scope: scope).wrap0n(onCanceled),
        itemBuilder = InScopeBuilder(scope: scope).wrap1(itemBuilder) {
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedShadowColor = shadowColor ?? resolveColorOrNull('shadowColor');
-    _resolvedSurfaceTintColor = surfaceTintColor ?? resolveColorOrNull('surfaceTintColor');
-    _resolvedPadding = resolveEdgeInsetsOrNull('padding') ?? padding;
-    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
-    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedShadowColor = shadowColor ?? TomCtr.color(basePath, 'shadowColor');
+    _resolvedSurfaceTintColor = surfaceTintColor ?? TomCtr.color(basePath, 'surfaceTintColor');
+    _resolvedPadding = TomCtr.edgeInsets(basePath, 'padding') ?? padding;
+    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize');
+    _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
     _resolvedOffset = offset ?? _resolveOffset('offset') ?? Offset.zero;
@@ -352,17 +352,17 @@ class TomDropdownMenu<T> extends TomSelectBase {
     SearchCallback<T>? searchCallback,
   })  : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
         searchCallback = InScopeBuilder(scope: scope).wrap2n(searchCallback) {
-    _resolvedLabel = label ?? resolveResourceOrNull('label') ?? resolveResourceOrFail('label');
-    _resolvedHint = hintText ?? resolveResourceOrNull('hintText') ?? resolveResourceOrNull('hint') ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedHelperText = helperText ?? resolveResourceOrNull('helperText');
-    _resolvedErrorText = errorText ?? resolveResourceOrNull('errorText');
-    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedMenuHeight = menuHeight ?? resolveDoubleOrNull('menuHeight');
-    _resolvedEnableFilter = resolveBoolOrNull('enableFilter') ?? enableFilter;
-    _resolvedEnableSearch = resolveBoolOrNull('enableSearch') ?? enableSearch;
-    _resolvedExpandedInsets = expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
-    _resolvedRequestFocusOnTap = resolveBoolOrNull('requestFocusOnTap') ?? requestFocusOnTap;
+    _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label') ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedHint = hintText ?? TomCtr.textOrNull(basePath, 'hintText') ?? TomCtr.textOrNull(basePath, 'hint') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedHelperText = helperText ?? TomCtr.textOrNull(basePath, 'helperText');
+    _resolvedErrorText = errorText ?? TomCtr.textOrNull(basePath, 'errorText');
+    _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedMenuHeight = menuHeight ?? TomCtr.doubleVal(basePath, 'menuHeight');
+    _resolvedEnableFilter = TomCtr.boolVal(basePath, 'enableFilter') ?? enableFilter;
+    _resolvedEnableSearch = TomCtr.boolVal(basePath, 'enableSearch') ?? enableSearch;
+    _resolvedExpandedInsets = expandedInsets ?? TomCtr.edgeInsets(basePath, 'expandedInsets');
+    _resolvedRequestFocusOnTap = TomCtr.boolVal(basePath, 'requestFocusOnTap') ?? requestFocusOnTap;
     _resolvedTextStyle = textStyle ?? _resolveTextStyle();
     _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
   }
@@ -453,7 +453,7 @@ class TomMenuAnchor extends TomSelectBase {
            ? InScopeBuilder(scope: scope).wrap3(builder)
            : null {
     _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
-    _resolvedConsumeOutsideTap = resolveBoolOrNull('consumeOutsideTap') ?? consumeOutsideTap;
+    _resolvedConsumeOutsideTap = TomCtr.boolVal(basePath, 'consumeOutsideTap') ?? consumeOutsideTap;
     _resolvedStyle = style ?? _resolveMenuStyle();
   }
 
@@ -576,21 +576,21 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
         onTap = InScopeBuilder(scope: scope).wrap0n(onTap),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedLabel = resolveResourceOrFail('label');
+    _resolvedLabel = TomCtr.textOrFail(basePath, 'label');
     _effectiveDecoration = decoration ?? _resolveInputDecoration() ?? InputDecoration(labelText: _resolvedLabel);
-    _resolvedElevation = elevation ?? resolveIntOrNull('elevation') ?? 8;
-    _resolvedIconDisabledColor = iconDisabledColor ?? resolveColorOrNull('iconDisabledColor');
-    _resolvedIconEnabledColor = iconEnabledColor ?? resolveColorOrNull('iconEnabledColor');
-    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize') ?? 24.0;
-    _resolvedItemHeight = itemHeight ?? resolveDoubleOrNull('itemHeight');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedDropdownColor = dropdownColor ?? resolveColorOrNull('dropdownColor');
-    _resolvedMenuMaxHeight = menuMaxHeight ?? resolveDoubleOrNull('menuMaxHeight');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedIsDense = resolveBoolOrNull('isDense') ?? isDense;
-    _resolvedIsExpanded = resolveBoolOrNull('isExpanded') ?? isExpanded;
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedEnableFeedback = enableFeedback ?? resolveBoolOrNull('enableFeedback');
+    _resolvedElevation = elevation ?? TomCtr.intVal(basePath, 'elevation') ?? 8;
+    _resolvedIconDisabledColor = iconDisabledColor ?? TomCtr.color(basePath, 'iconDisabledColor');
+    _resolvedIconEnabledColor = iconEnabledColor ?? TomCtr.color(basePath, 'iconEnabledColor');
+    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize') ?? 24.0;
+    _resolvedItemHeight = itemHeight ?? TomCtr.doubleVal(basePath, 'itemHeight');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedDropdownColor = dropdownColor ?? TomCtr.color(basePath, 'dropdownColor');
+    _resolvedMenuMaxHeight = menuMaxHeight ?? TomCtr.doubleVal(basePath, 'menuMaxHeight');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedIsDense = TomCtr.boolVal(basePath, 'isDense') ?? isDense;
+    _resolvedIsExpanded = TomCtr.boolVal(basePath, 'isExpanded') ?? isExpanded;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedEnableFeedback = enableFeedback ?? TomCtr.boolVal(basePath, 'enableFeedback');
     _resolvedAlignment = _resolveAlignment('alignment') ?? alignment;
     _resolvedStyle = style ?? _resolveTextStyle();
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
@@ -683,9 +683,9 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     this.padding,
     this.backgroundColor,
   })  : onValueChanged = InScopeBuilder(scope: scope).wrap1(onValueChanged) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedThumbColor = thumbColor ?? resolveColorOrNull('thumbColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedThumbColor = thumbColor ?? TomCtr.color(basePath, 'thumbColor');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding') ?? const EdgeInsets.symmetric(vertical: 2, horizontal: 3);
   }
 
   @override
@@ -960,12 +960,12 @@ class TomCupertinoPicker extends TomSelectBase {
     this.selectionOverlay = const CupertinoPickerDefaultSelectionOverlay(),
     this.looping = false,
   })  : onSelectedItemChanged = InScopeBuilder(scope: scope).wrap1(onSelectedItemChanged) {
-    _resolvedDiameterRatio = diameterRatio ?? resolveDoubleOrNull('diameterRatio');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedOffAxisFraction = offAxisFraction ?? resolveDoubleOrNull('offAxisFraction');
-    _resolvedMagnification = magnification ?? resolveDoubleOrNull('magnification');
-    _resolvedSqueeze = squeeze ?? resolveDoubleOrNull('squeeze');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedDiameterRatio = diameterRatio ?? TomCtr.doubleVal(basePath, 'diameterRatio');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedOffAxisFraction = offAxisFraction ?? TomCtr.doubleVal(basePath, 'offAxisFraction');
+    _resolvedMagnification = magnification ?? TomCtr.doubleVal(basePath, 'magnification');
+    _resolvedSqueeze = squeeze ?? TomCtr.doubleVal(basePath, 'squeeze');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
   }
 
   @override
@@ -1020,11 +1020,11 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     this.pressedColor,
     this.padding,
   })  : onValueChanged = InScopeBuilder(scope: scope).wrap1(onValueChanged) {
-    _resolvedUnselectedColor = unselectedColor ?? resolveColorOrNull('unselectedColor');
-    _resolvedSelectedColor = selectedColor ?? resolveColorOrNull('selectedColor');
-    _resolvedBorderColor = borderColor ?? resolveColorOrNull('borderColor');
-    _resolvedPressedColor = pressedColor ?? resolveColorOrNull('pressedColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedUnselectedColor = unselectedColor ?? TomCtr.color(basePath, 'unselectedColor');
+    _resolvedSelectedColor = selectedColor ?? TomCtr.color(basePath, 'selectedColor');
+    _resolvedBorderColor = borderColor ?? TomCtr.color(basePath, 'borderColor');
+    _resolvedPressedColor = pressedColor ?? TomCtr.color(basePath, 'pressedColor');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override

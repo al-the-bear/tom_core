@@ -52,7 +52,7 @@ class TomElevatedButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -91,7 +91,7 @@ class TomElevatedButton extends TomButtonBase {
 
   /// Builds an Icon widget from resolved icon data, or null if not available.
   Widget? _buildResolvedIcon() {
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData == null) return null;
     return Icon(iconData);
   }
@@ -145,7 +145,7 @@ class TomTextButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -183,7 +183,7 @@ class TomTextButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon() {
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData == null) return null;
     return Icon(iconData);
   }
@@ -237,7 +237,7 @@ class TomOutlinedButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -275,7 +275,7 @@ class TomOutlinedButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon() {
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData == null) return null;
     return Icon(iconData);
   }
@@ -331,7 +331,7 @@ class TomFilledButton extends TomButtonBase {
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHover = InScopeBuilder(scope: scope).wrap1n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap1n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedIcon = icon ?? _buildResolvedIcon();
     _resolvedStyle = style ?? _resolveStyle();
   }
@@ -397,7 +397,7 @@ class TomFilledButton extends TomButtonBase {
   }
 
   Widget? _buildResolvedIcon() {
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData == null) return null;
     return Icon(iconData);
   }
@@ -489,22 +489,22 @@ class TomFloatingActionButton extends TomButtonBase {
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
         _variant = _FABVariant.regular,
         extendedIconLabelChild = null {
-    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
-    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
-    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
+    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedFocusElevation = focusElevation ?? TomCtr.doubleVal(basePath, 'focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? TomCtr.doubleVal(basePath, 'hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? TomCtr.doubleVal(basePath, 'highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? TomCtr.doubleVal(basePath, 'disabledElevation');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedMini = resolveBoolOrNull('mini') ?? mini;
-    _resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
-    _resolvedLabel = label ?? resolveResourceOrNull('label');
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedMini = TomCtr.boolVal(basePath, 'mini') ?? mini;
+    _resolvedIsExtended = isExtended ?? TomCtr.boolVal(basePath, 'isExtended');
+    _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label');
     _resolvedIcon = _resolveIconWidget();
     _resolvedChild = _resolveChild();
   }
@@ -540,19 +540,19 @@ class TomFloatingActionButton extends TomButtonBase {
         icon = null,
         label = null,
         extendedIconLabelChild = null {
-    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
-    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
-    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
+    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedFocusElevation = focusElevation ?? TomCtr.doubleVal(basePath, 'focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? TomCtr.doubleVal(basePath, 'hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? TomCtr.doubleVal(basePath, 'highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? TomCtr.doubleVal(basePath, 'disabledElevation');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
     _resolvedMini = false;
     _resolvedIsExtended = null;
     _resolvedLabel = null;
@@ -591,19 +591,19 @@ class TomFloatingActionButton extends TomButtonBase {
         icon = null,
         label = null,
         extendedIconLabelChild = null {
-    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
-    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
-    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
+    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedFocusElevation = focusElevation ?? TomCtr.doubleVal(basePath, 'focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? TomCtr.doubleVal(basePath, 'hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? TomCtr.doubleVal(basePath, 'highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? TomCtr.doubleVal(basePath, 'disabledElevation');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
     _resolvedMini = false;
     _resolvedIsExtended = null;
     _resolvedLabel = null;
@@ -642,22 +642,22 @@ class TomFloatingActionButton extends TomButtonBase {
         _variant = _FABVariant.extended,
         child = null,
         mini = false {
-    _resolvedTooltip = tooltip ?? resolveResourceOrNull('tooltip');
-    _resolvedForegroundColor = foregroundColor ?? resolveColorOrNull('foregroundColor');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
-    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrNull(basePath, 'tooltip');
+    _resolvedForegroundColor = foregroundColor ?? TomCtr.color(basePath, 'foregroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedFocusElevation = focusElevation ?? TomCtr.doubleVal(basePath, 'focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? TomCtr.doubleVal(basePath, 'hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? TomCtr.doubleVal(basePath, 'highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? TomCtr.doubleVal(basePath, 'disabledElevation');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
     _resolvedMini = false;
-    _resolvedIsExtended = isExtended ?? resolveBoolOrNull('isExtended');
-    _resolvedLabel = label ?? resolveResourceOrNull('label');
+    _resolvedIsExtended = isExtended ?? TomCtr.boolVal(basePath, 'isExtended');
+    _resolvedLabel = label ?? TomCtr.textOrNull(basePath, 'label');
     _resolvedIcon = _resolveIconWidget();
     _resolvedChild = null;
   }
@@ -665,7 +665,7 @@ class TomFloatingActionButton extends TomButtonBase {
   /// Resolves the child widget from parameter or resources.
   Widget? _resolveChild() {
     if (child != null) return child;
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData != null) return Icon(iconData);
     return null;
   }
@@ -673,7 +673,7 @@ class TomFloatingActionButton extends TomButtonBase {
   /// Resolves the icon widget from parameter or resources.
   Widget? _resolveIconWidget() {
     if (icon != null) return icon;
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData != null) return Icon(iconData);
     return null;
   }
@@ -874,7 +874,7 @@ class TomMenuItemButton extends TomButtonBase {
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedStyle = style ?? _resolveStyle();
   }
 
@@ -949,7 +949,7 @@ class TomSubmenuButton extends TomButtonBase {
         onClose = InScopeBuilder(scope: scope).wrap0n(onClose),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
     _resolvedStyle = style ?? _resolveStyle();
     _resolvedMenuStyle = menuStyle ?? _resolveMenuStyle();
     _resolvedAlignmentOffset = alignmentOffset ?? _resolveOffset('alignmentOffset');
@@ -1212,26 +1212,26 @@ class TomIconButton extends TomButtonBase {
   }
 
   void _initResolvedFields() {
-    _resolvedTooltip = tooltip ?? resolveResourceOrFail('tooltip');
-    _resolvedIcon = _resolveIcon();
-    _resolvedIconSize = iconSize ?? resolveDoubleOrNull('iconSize');
-    _resolvedSplashRadius = splashRadius ?? resolveDoubleOrNull('splashRadius');
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedTooltip = tooltip ?? TomCtr.textOrFail(basePath, 'tooltip');
+    _resolvedIcon = _TomCtr.icon(basePath, 'icon');
+    _resolvedIconSize = iconSize ?? TomCtr.doubleVal(basePath, 'iconSize');
+    _resolvedSplashRadius = splashRadius ?? TomCtr.doubleVal(basePath, 'splashRadius');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedAlignment = alignment ?? _resolveAlignment('alignment') ?? Alignment.center;
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
     _resolvedStyle = style ?? _resolveStyle();
   }
 
   /// Resolves the icon widget from parameter or resources.
-  Widget _resolveIcon() {
+  Widget _TomCtr.icon(basePath, 'icon') {
     if (icon != null) return icon!;
-    final iconData = resolveIcon();
+    final iconData = TomCtr.icon(basePath, 'icon');
     if (iconData != null) return Icon(iconData);
     // Fallback to placeholder icon
     return const Icon(Icons.error_outline);
@@ -1375,7 +1375,7 @@ class TomBackButton extends TomButtonBase {
     VoidCallback? onPressed,
     this.color,
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
 
   @override
@@ -1405,7 +1405,7 @@ class TomCloseButton extends TomButtonBase {
     VoidCallback? onPressed,
     this.color,
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedColor = color ?? resolveColorOrNull('color');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
   }
 
   @override
@@ -1446,12 +1446,12 @@ class TomDropdownMenuEntry<T> extends TomButtonBase {
     this.style,
     this.labelWidget,
   }) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
   }
 
   /// Creates the underlying [DropdownMenuEntry] for use in a [DropdownMenu].
   DropdownMenuEntry<T> toEntry(BuildContext context) {
-    final resolvedLabel = label ?? resolveResourceOrFail('label');
+    final resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
 
     // Phase 3: Resolve ButtonStyle from resources
     final resolvedStyle = style ?? _resolveStyle();
@@ -1528,11 +1528,11 @@ class TomCupertinoButton extends TomButtonBase {
     this.alignment = Alignment.center,
     this.filled = false,
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedMinSize = minSize ?? resolveDoubleOrNull('minSize');
-    _resolvedPressedOpacity = pressedOpacity ?? resolveDoubleOrNull('pressedOpacity');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedMinSize = minSize ?? TomCtr.doubleVal(basePath, 'minSize');
+    _resolvedPressedOpacity = pressedOpacity ?? TomCtr.doubleVal(basePath, 'pressedOpacity');
   }
 
   @override
@@ -1604,7 +1604,7 @@ class TomCheckboxMenuButton extends TomButtonBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
   }
 
   @override
@@ -1659,7 +1659,7 @@ class TomRadioMenuButton<T> extends TomButtonBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onHover = InScopeBuilder(scope: scope).wrap0n(onHover),
         onFocusChange = InScopeBuilder(scope: scope).wrap0n(onFocusChange) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
   }
 
   @override
@@ -1848,10 +1848,10 @@ class TomExpandIcon extends TomButtonBase {
     this.expandedColor,
     this.semanticLabel,
   })  : onPressed = InScopeBuilder(scope: scope).wrap1n(onPressed) {
-    _resolvedSize = size ?? resolveDoubleOrNull('size') ?? 24.0;
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedExpandedColor = expandedColor ?? resolveColorOrNull('expandedColor');
+    _resolvedSize = size ?? TomCtr.doubleVal(basePath, 'size') ?? 24.0;
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedExpandedColor = expandedColor ?? TomCtr.color(basePath, 'expandedColor');
   }
 
   @override
@@ -1972,24 +1972,24 @@ class TomMaterialButton extends TomButtonBase {
   })  : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed),
         onLongPress = InScopeBuilder(scope: scope).wrap0n(onLongPress),
         onHighlightChanged = InScopeBuilder(scope: scope).wrap1n(onHighlightChanged) {
-    _resolvedLabel = label ?? (child == null ? resolveResourceOrFail('label') : '');
-    _resolvedTextColor = textColor ?? resolveColorOrNull('textColor');
-    _resolvedDisabledTextColor = disabledTextColor ?? resolveColorOrNull('disabledTextColor');
-    _resolvedColor = color ?? resolveColorOrNull('color');
-    _resolvedDisabledColor = disabledColor ?? resolveColorOrNull('disabledColor');
-    _resolvedFocusColor = focusColor ?? resolveColorOrNull('focusColor');
-    _resolvedHoverColor = hoverColor ?? resolveColorOrNull('hoverColor');
-    _resolvedHighlightColor = highlightColor ?? resolveColorOrNull('highlightColor');
-    _resolvedSplashColor = splashColor ?? resolveColorOrNull('splashColor');
-    _resolvedElevation = elevation ?? resolveDoubleOrNull('elevation');
-    _resolvedFocusElevation = focusElevation ?? resolveDoubleOrNull('focusElevation');
-    _resolvedHoverElevation = hoverElevation ?? resolveDoubleOrNull('hoverElevation');
-    _resolvedHighlightElevation = highlightElevation ?? resolveDoubleOrNull('highlightElevation');
-    _resolvedDisabledElevation = disabledElevation ?? resolveDoubleOrNull('disabledElevation');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedLabel = label ?? (child == null ? TomCtr.textOrFail(basePath, 'label') : '');
+    _resolvedTextColor = textColor ?? TomCtr.color(basePath, 'textColor');
+    _resolvedDisabledTextColor = disabledTextColor ?? TomCtr.color(basePath, 'disabledTextColor');
+    _resolvedColor = color ?? TomCtr.color(basePath, 'color');
+    _resolvedDisabledColor = disabledColor ?? TomCtr.color(basePath, 'disabledColor');
+    _resolvedFocusColor = focusColor ?? TomCtr.color(basePath, 'focusColor');
+    _resolvedHoverColor = hoverColor ?? TomCtr.color(basePath, 'hoverColor');
+    _resolvedHighlightColor = highlightColor ?? TomCtr.color(basePath, 'highlightColor');
+    _resolvedSplashColor = splashColor ?? TomCtr.color(basePath, 'splashColor');
+    _resolvedElevation = elevation ?? TomCtr.doubleVal(basePath, 'elevation');
+    _resolvedFocusElevation = focusElevation ?? TomCtr.doubleVal(basePath, 'focusElevation');
+    _resolvedHoverElevation = hoverElevation ?? TomCtr.doubleVal(basePath, 'hoverElevation');
+    _resolvedHighlightElevation = highlightElevation ?? TomCtr.doubleVal(basePath, 'highlightElevation');
+    _resolvedDisabledElevation = disabledElevation ?? TomCtr.doubleVal(basePath, 'disabledElevation');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedShape = shape ?? _resolveShapeBorder('shape');
-    _resolvedMinWidth = minWidth ?? resolveDoubleOrNull('minWidth');
-    _resolvedHeight = height ?? resolveDoubleOrNull('height');
+    _resolvedMinWidth = minWidth ?? TomCtr.doubleVal(basePath, 'minWidth');
+    _resolvedHeight = height ?? TomCtr.doubleVal(basePath, 'height');
   }
 
   @override
@@ -2078,10 +2078,10 @@ class TomButtonBar extends TomButtonBase {
     this.overflowDirection,
     this.overflowButtonSpacing,
   }) {
-    _resolvedButtonMinWidth = buttonMinWidth ?? resolveDoubleOrNull('buttonMinWidth');
-    _resolvedButtonHeight = buttonHeight ?? resolveDoubleOrNull('buttonHeight');
-    _resolvedButtonPadding = buttonPadding ?? resolveEdgeInsetsOrNull('buttonPadding');
-    _resolvedOverflowButtonSpacing = overflowButtonSpacing ?? resolveDoubleOrNull('overflowButtonSpacing');
+    _resolvedButtonMinWidth = buttonMinWidth ?? TomCtr.doubleVal(basePath, 'buttonMinWidth');
+    _resolvedButtonHeight = buttonHeight ?? TomCtr.doubleVal(basePath, 'buttonHeight');
+    _resolvedButtonPadding = buttonPadding ?? TomCtr.edgeInsets(basePath, 'buttonPadding');
+    _resolvedOverflowButtonSpacing = overflowButtonSpacing ?? TomCtr.doubleVal(basePath, 'overflowButtonSpacing');
   }
 
   @override

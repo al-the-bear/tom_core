@@ -80,17 +80,17 @@ class TomDataTable extends TomTableBase {
     this.clipBehavior = Clip.none,
     required this.rows,
   })  : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll) {
-    _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
-    _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
-    _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight');
-    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight');
-    _resolvedHeadingRowHeight = headingRowHeight ?? resolveDoubleOrNull('headingRowHeight');
-    _resolvedHorizontalMargin = horizontalMargin ?? resolveDoubleOrNull('horizontalMargin');
-    _resolvedColumnSpacing = columnSpacing ?? resolveDoubleOrNull('columnSpacing');
-    _resolvedDividerThickness = dividerThickness ?? resolveDoubleOrNull('dividerThickness');
-    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
-    _resolvedShowCheckboxColumn = resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
-    _resolvedShowBottomBorder = resolveBoolOrNull('showBottomBorder') ?? showBottomBorder;
+    _resolvedSortColumnIndex = sortColumnIndex ?? TomCtr.intVal(basePath, 'sortColumnIndex');
+    _resolvedSortAscending = TomCtr.boolVal(basePath, 'sortAscending') ?? sortAscending;
+    _resolvedDataRowMinHeight = dataRowMinHeight ?? TomCtr.doubleVal(basePath, 'dataRowMinHeight');
+    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? TomCtr.doubleVal(basePath, 'dataRowMaxHeight');
+    _resolvedHeadingRowHeight = headingRowHeight ?? TomCtr.doubleVal(basePath, 'headingRowHeight');
+    _resolvedHorizontalMargin = horizontalMargin ?? TomCtr.doubleVal(basePath, 'horizontalMargin');
+    _resolvedColumnSpacing = columnSpacing ?? TomCtr.doubleVal(basePath, 'columnSpacing');
+    _resolvedDividerThickness = dividerThickness ?? TomCtr.doubleVal(basePath, 'dividerThickness');
+    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? TomCtr.doubleVal(basePath, 'checkboxHorizontalMargin');
+    _resolvedShowCheckboxColumn = TomCtr.boolVal(basePath, 'showCheckboxColumn') ?? showCheckboxColumn;
+    _resolvedShowBottomBorder = TomCtr.boolVal(basePath, 'showBottomBorder') ?? showBottomBorder;
     _resolvedDataTextStyle = dataTextStyle ?? _resolveTextStyle('dataTextStyle');
     _resolvedHeadingTextStyle = headingTextStyle ?? _resolveTextStyle('headingTextStyle');
     _resolvedDecoration = decoration ?? _resolveDecoration('decoration');
@@ -221,19 +221,19 @@ class TomPaginatedDataTable extends TomTableBase {
   })  : onSelectAll = InScopeBuilder(scope: scope).wrap1n(onSelectAll),
         onPageChanged = InScopeBuilder(scope: scope).wrap1n(onPageChanged),
         onRowsPerPageChanged = InScopeBuilder(scope: scope).wrap1n(onRowsPerPageChanged) {
-    _resolvedSortColumnIndex = sortColumnIndex ?? resolveIntOrNull('sortColumnIndex');
-    _resolvedSortAscending = resolveBoolOrNull('sortAscending') ?? sortAscending;
-    _resolvedDataRowMinHeight = dataRowMinHeight ?? resolveDoubleOrNull('dataRowMinHeight') ?? kMinInteractiveDimension;
-    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? resolveDoubleOrNull('dataRowMaxHeight') ?? kMinInteractiveDimension;
-    _resolvedHeadingRowHeight = headingRowHeight ?? resolveDoubleOrNull('headingRowHeight') ?? 56.0;
-    _resolvedHorizontalMargin = horizontalMargin ?? resolveDoubleOrNull('horizontalMargin') ?? 24.0;
-    _resolvedColumnSpacing = columnSpacing ?? resolveDoubleOrNull('columnSpacing') ?? 56.0;
-    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? resolveDoubleOrNull('checkboxHorizontalMargin');
-    _resolvedShowCheckboxColumn = resolveBoolOrNull('showCheckboxColumn') ?? showCheckboxColumn;
-    _resolvedShowFirstLastButtons = resolveBoolOrNull('showFirstLastButtons') ?? showFirstLastButtons;
-    _resolvedInitialFirstRowIndex = initialFirstRowIndex ?? resolveIntOrNull('initialFirstRowIndex');
-    _resolvedRowsPerPage = resolveIntOrNull('rowsPerPage') ?? rowsPerPage;
-    _resolvedShowEmptyRows = resolveBoolOrNull('showEmptyRows') ?? showEmptyRows;
+    _resolvedSortColumnIndex = sortColumnIndex ?? TomCtr.intVal(basePath, 'sortColumnIndex');
+    _resolvedSortAscending = TomCtr.boolVal(basePath, 'sortAscending') ?? sortAscending;
+    _resolvedDataRowMinHeight = dataRowMinHeight ?? TomCtr.doubleVal(basePath, 'dataRowMinHeight') ?? kMinInteractiveDimension;
+    _resolvedDataRowMaxHeight = dataRowMaxHeight ?? TomCtr.doubleVal(basePath, 'dataRowMaxHeight') ?? kMinInteractiveDimension;
+    _resolvedHeadingRowHeight = headingRowHeight ?? TomCtr.doubleVal(basePath, 'headingRowHeight') ?? 56.0;
+    _resolvedHorizontalMargin = horizontalMargin ?? TomCtr.doubleVal(basePath, 'horizontalMargin') ?? 24.0;
+    _resolvedColumnSpacing = columnSpacing ?? TomCtr.doubleVal(basePath, 'columnSpacing') ?? 56.0;
+    _resolvedCheckboxHorizontalMargin = checkboxHorizontalMargin ?? TomCtr.doubleVal(basePath, 'checkboxHorizontalMargin');
+    _resolvedShowCheckboxColumn = TomCtr.boolVal(basePath, 'showCheckboxColumn') ?? showCheckboxColumn;
+    _resolvedShowFirstLastButtons = TomCtr.boolVal(basePath, 'showFirstLastButtons') ?? showFirstLastButtons;
+    _resolvedInitialFirstRowIndex = initialFirstRowIndex ?? TomCtr.intVal(basePath, 'initialFirstRowIndex');
+    _resolvedRowsPerPage = TomCtr.intVal(basePath, 'rowsPerPage') ?? rowsPerPage;
+    _resolvedShowEmptyRows = TomCtr.boolVal(basePath, 'showEmptyRows') ?? showEmptyRows;
   }
 
   @override
@@ -365,13 +365,13 @@ class TomGridView extends TomTableBase {
     this.restorationId,
     this.clipBehavior = Clip.hardEdge,
   }) {
-    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    _resolvedSemanticChildCount = semanticChildCount ?? resolveIntOrNull('semanticChildCount');
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
+    _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
+    _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
+    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedSemanticChildCount = semanticChildCount ?? TomCtr.intVal(basePath, 'semanticChildCount');
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -469,16 +469,16 @@ class TomReorderableListView extends TomTableBase {
   })  : onReorder = InScopeBuilder(scope: scope).wrap2(onReorder),
         onReorderStart = InScopeBuilder(scope: scope).wrap1n(onReorderStart),
         onReorderEnd = InScopeBuilder(scope: scope).wrap1n(onReorderEnd) {
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
-    _resolvedCacheExtent = cacheExtent ?? resolveDoubleOrNull('cacheExtent');
-    _resolvedAnchor = anchor ?? resolveDoubleOrNull('anchor') ?? 0.0;
-    _resolvedAutoScrollerVelocityScalar = autoScrollerVelocityScalar ?? resolveDoubleOrNull('autoScrollerVelocityScalar');
-    _resolvedBuildDefaultDragHandles = resolveBoolOrNull('buildDefaultDragHandles') ?? buildDefaultDragHandles;
-    _resolvedReverse = resolveBoolOrNull('reverse') ?? reverse;
-    _resolvedPrimary = primary ?? resolveBoolOrNull('primary');
-    _resolvedShrinkWrap = resolveBoolOrNull('shrinkWrap') ?? shrinkWrap;
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
+    _resolvedCacheExtent = cacheExtent ?? TomCtr.doubleVal(basePath, 'cacheExtent');
+    _resolvedAnchor = anchor ?? TomCtr.doubleVal(basePath, 'anchor') ?? 0.0;
+    _resolvedAutoScrollerVelocityScalar = autoScrollerVelocityScalar ?? TomCtr.doubleVal(basePath, 'autoScrollerVelocityScalar');
+    _resolvedBuildDefaultDragHandles = TomCtr.boolVal(basePath, 'buildDefaultDragHandles') ?? buildDefaultDragHandles;
+    _resolvedReverse = TomCtr.boolVal(basePath, 'reverse') ?? reverse;
+    _resolvedPrimary = primary ?? TomCtr.boolVal(basePath, 'primary');
+    _resolvedShrinkWrap = TomCtr.boolVal(basePath, 'shrinkWrap') ?? shrinkWrap;
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 // =============================================================================
@@ -93,7 +94,7 @@ class TomSliverConstrainedCrossAxis extends TomSliverBase {
     this.maxExtent,
     required this.sliver,
   }) {
-    _resolvedMaxExtent = maxExtent ?? resolveDoubleOrFail('maxExtent');
+    _resolvedMaxExtent = maxExtent ?? TomCtr.doubleOrFail(basePath, 'maxExtent');
   }
 
   @override
@@ -123,7 +124,7 @@ class TomSliverCrossAxisExpanded extends TomSliverBase {
     this.flex,
     required this.sliver,
   }) {
-    _resolvedFlex = flex ?? resolveIntOrNull('flex') ?? 1;
+    _resolvedFlex = flex ?? TomCtr.intVal(basePath, 'flex') ?? 1;
   }
 
   @override
@@ -178,8 +179,8 @@ class TomSliverFillViewport extends TomSliverBase {
     this.viewportFraction,
     this.padEnds = true,
   }) {
-    _resolvedViewportFraction = viewportFraction ?? resolveDoubleOrNull('viewportFraction') ?? 1.0;
-    _resolvedPadEnds = resolveBoolOrNull('padEnds') ?? padEnds;
+    _resolvedViewportFraction = viewportFraction ?? TomCtr.doubleVal(basePath, 'viewportFraction') ?? 1.0;
+    _resolvedPadEnds = TomCtr.boolVal(basePath, 'padEnds') ?? padEnds;
   }
 
   @override
@@ -210,7 +211,7 @@ class TomSliverFixedExtentList extends TomSliverBase {
     required this.delegate,
     this.itemExtent,
   }) {
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrFail('itemExtent');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleOrFail(basePath, 'itemExtent');
   }
 
   @override
@@ -284,7 +285,7 @@ class TomSliverOffstage extends TomSliverBase {
     this.offstage,
     required this.sliver,
   }) {
-    _resolvedOffstage = offstage ?? resolveBoolOrNull('offstage') ?? true;
+    _resolvedOffstage = offstage ?? TomCtr.boolVal(basePath, 'offstage') ?? true;
   }
 
   @override
@@ -317,8 +318,8 @@ class TomSliverOpacity extends TomSliverBase {
     this.alwaysIncludeSemantics,
     required this.sliver,
   }) {
-    _resolvedOpacity = opacity ?? resolveDoubleOrFail('opacity');
-    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? resolveBoolOrNull('alwaysIncludeSemantics') ?? false;
+    _resolvedOpacity = opacity ?? TomCtr.doubleOrFail(basePath, 'opacity');
+    _resolvedAlwaysIncludeSemantics = alwaysIncludeSemantics ?? TomCtr.boolVal(basePath, 'alwaysIncludeSemantics') ?? false;
   }
 
   @override
@@ -349,7 +350,7 @@ class TomSliverPadding extends TomSliverBase {
     this.padding,
     required this.sliver,
   }) {
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
   }
 
   @override
@@ -389,8 +390,8 @@ class TomSliverPersistentHeader extends TomSliverBase {
     this.pinned,
     this.floating,
   }) {
-    _resolvedPinned = pinned ?? resolveBoolOrNull('pinned') ?? false;
-    _resolvedFloating = floating ?? resolveBoolOrNull('floating') ?? false;
+    _resolvedPinned = pinned ?? TomCtr.boolVal(basePath, 'pinned') ?? false;
+    _resolvedFloating = floating ?? TomCtr.boolVal(basePath, 'floating') ?? false;
   }
 
   @override
@@ -484,11 +485,11 @@ class TomSliverSafeArea extends TomSliverBase {
     this.minimum,
     required this.sliver,
   }) {
-    _resolvedLeft = left ?? resolveBoolOrNull('left') ?? true;
-    _resolvedTop = top ?? resolveBoolOrNull('top') ?? true;
-    _resolvedRight = right ?? resolveBoolOrNull('right') ?? true;
-    _resolvedBottom = bottom ?? resolveBoolOrNull('bottom') ?? true;
-    _resolvedMinimum = minimum ?? resolveEdgeInsetsOrNull('minimum') ?? EdgeInsets.zero;
+    _resolvedLeft = left ?? TomCtr.boolVal(basePath, 'left') ?? true;
+    _resolvedTop = top ?? TomCtr.boolVal(basePath, 'top') ?? true;
+    _resolvedRight = right ?? TomCtr.boolVal(basePath, 'right') ?? true;
+    _resolvedBottom = bottom ?? TomCtr.boolVal(basePath, 'bottom') ?? true;
+    _resolvedMinimum = minimum ?? TomCtr.edgeInsets(basePath, 'minimum') ?? EdgeInsets.zero;
   }
 
   @override
@@ -564,12 +565,12 @@ class TomSliverVisibility extends TomSliverBase {
     this.maintainSemantics,
     this.maintainInteractivity,
   }) {
-    _resolvedVisible = visible ?? resolveBoolOrNull('visible') ?? true;
-    _resolvedMaintainState = maintainState ?? resolveBoolOrNull('maintainState') ?? false;
-    _resolvedMaintainAnimation = maintainAnimation ?? resolveBoolOrNull('maintainAnimation') ?? false;
-    _resolvedMaintainSize = maintainSize ?? resolveBoolOrNull('maintainSize') ?? false;
-    _resolvedMaintainSemantics = maintainSemantics ?? resolveBoolOrNull('maintainSemantics') ?? false;
-    _resolvedMaintainInteractivity = maintainInteractivity ?? resolveBoolOrNull('maintainInteractivity') ?? false;
+    _resolvedVisible = visible ?? TomCtr.boolVal(basePath, 'visible') ?? true;
+    _resolvedMaintainState = maintainState ?? TomCtr.boolVal(basePath, 'maintainState') ?? false;
+    _resolvedMaintainAnimation = maintainAnimation ?? TomCtr.boolVal(basePath, 'maintainAnimation') ?? false;
+    _resolvedMaintainSize = maintainSize ?? TomCtr.boolVal(basePath, 'maintainSize') ?? false;
+    _resolvedMaintainSemantics = maintainSemantics ?? TomCtr.boolVal(basePath, 'maintainSemantics') ?? false;
+    _resolvedMaintainInteractivity = maintainInteractivity ?? TomCtr.boolVal(basePath, 'maintainInteractivity') ?? false;
   }
 
   @override

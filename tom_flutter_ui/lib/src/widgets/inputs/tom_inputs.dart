@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_family_base.dart';
+import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_style_resolvers.dart';
 
 /// Tom wrapper for [TextField].
@@ -186,30 +187,30 @@ class TomTextField extends TomInputBase {
        buildCounter = buildCounter != null
            ? InScopeBuilder(scope: scope).wrapCounter(buildCounter)
            : null {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
-    _resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
-    _resolvedCursorErrorColor = cursorErrorColor ?? resolveColorOrNull('cursorErrorColor');
-    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
-    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedObscureText = resolveBoolOrNull('obscureText') ?? obscureText;
-    _resolvedAutocorrect = resolveBoolOrNull('autocorrect') ?? autocorrect;
-    _resolvedEnableSuggestions = resolveBoolOrNull('enableSuggestions') ?? enableSuggestions;
-    _resolvedExpands = resolveBoolOrNull('expands') ?? expands;
-    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
-    _resolvedReadOnly = resolveBoolOrNull('readOnly') ?? readOnly;
-    _resolvedShowCursor = showCursor ?? resolveBoolOrNull('showCursor');
-    _resolvedObscuringCharacter = obscuringCharacter ?? resolveResourceOrNull('obscuringCharacter') ?? '•';
-    _resolvedScrollPadding = resolveEdgeInsetsOrNull('scrollPadding') ?? scrollPadding;
-    _resolvedEnableInteractiveSelection = enableInteractiveSelection ?? resolveBoolOrNull('enableInteractiveSelection');
-    _resolvedRestorationId = restorationId ?? resolveResourceOrNull('restorationId');
-    _resolvedScribbleEnabled = resolveBoolOrNull('scribbleEnabled') ?? scribbleEnabled;
-    _resolvedEnableIMEPersonalizedLearning = resolveBoolOrNull('enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
-    _resolvedCanRequestFocus = resolveBoolOrNull('canRequestFocus') ?? canRequestFocus;
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedHint = hint ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
+    _resolvedCursorErrorColor = cursorErrorColor ?? TomCtr.color(basePath, 'cursorErrorColor');
+    _resolvedCursorHeight = cursorHeight ?? TomCtr.doubleVal(basePath, 'cursorHeight');
+    _resolvedCursorWidth = cursorWidth ?? TomCtr.doubleVal(basePath, 'cursorWidth') ?? 2.0;
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
+    _resolvedMaxLength = maxLength ?? TomCtr.intVal(basePath, 'maxLength');
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedObscureText = TomCtr.boolVal(basePath, 'obscureText') ?? obscureText;
+    _resolvedAutocorrect = TomCtr.boolVal(basePath, 'autocorrect') ?? autocorrect;
+    _resolvedEnableSuggestions = TomCtr.boolVal(basePath, 'enableSuggestions') ?? enableSuggestions;
+    _resolvedExpands = TomCtr.boolVal(basePath, 'expands') ?? expands;
+    _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
+    _resolvedReadOnly = TomCtr.boolVal(basePath, 'readOnly') ?? readOnly;
+    _resolvedShowCursor = showCursor ?? TomCtr.boolVal(basePath, 'showCursor');
+    _resolvedObscuringCharacter = obscuringCharacter ?? TomCtr.textOrNull(basePath, 'obscuringCharacter') ?? '•';
+    _resolvedScrollPadding = TomCtr.edgeInsets(basePath, 'scrollPadding') ?? scrollPadding;
+    _resolvedEnableInteractiveSelection = enableInteractiveSelection ?? TomCtr.boolVal(basePath, 'enableInteractiveSelection');
+    _resolvedRestorationId = restorationId ?? TomCtr.textOrNull(basePath, 'restorationId');
+    _resolvedScribbleEnabled = TomCtr.boolVal(basePath, 'scribbleEnabled') ?? scribbleEnabled;
+    _resolvedEnableIMEPersonalizedLearning = TomCtr.boolVal(basePath, 'enableIMEPersonalizedLearning') ?? enableIMEPersonalizedLearning;
+    _resolvedCanRequestFocus = TomCtr.boolVal(basePath, 'canRequestFocus') ?? canRequestFocus;
     _resolvedStyle = style ?? _resolveTextStyle();
     _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
     _resolvedScrollPhysics = scrollPhysics ?? _resolveScrollPhysics('scrollPhysics');
@@ -415,17 +416,17 @@ class TomTextFormField extends TomInputBase {
         onFieldSubmitted = InScopeBuilder(scope: scope).wrap1n(onFieldSubmitted),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
-    _resolvedHint = hint ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
-    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
-    _resolvedAutofocus = resolveBoolOrNull('autofocus') ?? autofocus;
-    _resolvedObscureText = resolveBoolOrNull('obscureText') ?? obscureText;
-    _resolvedAutocorrect = resolveBoolOrNull('autocorrect') ?? autocorrect;
-    _resolvedInitialValue = initialValue ?? resolveResourceOrNull('initialValue');
-    _resolvedEnabled = resolveBoolOrNull('enabled') ?? enabled;
-    _resolvedReadOnly = resolveBoolOrNull('readOnly') ?? readOnly;
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedHint = hint ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
+    _resolvedMaxLength = maxLength ?? TomCtr.intVal(basePath, 'maxLength');
+    _resolvedAutofocus = TomCtr.boolVal(basePath, 'autofocus') ?? autofocus;
+    _resolvedObscureText = TomCtr.boolVal(basePath, 'obscureText') ?? obscureText;
+    _resolvedAutocorrect = TomCtr.boolVal(basePath, 'autocorrect') ?? autocorrect;
+    _resolvedInitialValue = initialValue ?? TomCtr.textOrNull(basePath, 'initialValue');
+    _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
+    _resolvedReadOnly = TomCtr.boolVal(basePath, 'readOnly') ?? readOnly;
     _resolvedStyle = style ?? _resolveTextStyle();
     _resolvedDecoration = _resolveDecoration(_resolvedLabel, _resolvedHint);
   }
@@ -552,8 +553,8 @@ class TomSearchBar extends TomInputBase {
     this.textCapitalization = TextCapitalization.none,
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onTap = InScopeBuilder(scope: scope).wrap0n(onTap) {
-    _resolvedHint = hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedAutoFocus = resolveBoolOrNull('autoFocus') ?? autoFocus;
+    _resolvedHint = hintText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedAutoFocus = TomCtr.boolVal(basePath, 'autoFocus') ?? autoFocus;
     _resolvedConstraints = constraints ?? _resolveBoxConstraints('constraints');
   }
 
@@ -704,11 +705,11 @@ class TomSearchAnchor extends TomInputBase {
            ? InScopeBuilder(scope: scope).wrap2(builder)
            : null,
        suggestionsBuilder = InScopeBuilder(scope: scope).wrap2(suggestionsBuilder) {
-    _resolvedHint = viewHintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedViewBackgroundColor = viewBackgroundColor ?? resolveColorOrNull('viewBackgroundColor');
-    _resolvedViewElevation = viewElevation ?? resolveDoubleOrNull('viewElevation');
-    _resolvedViewSurfaceTintColor = viewSurfaceTintColor ?? resolveColorOrNull('viewSurfaceTintColor');
-    _resolvedDividerColor = dividerColor ?? resolveColorOrNull('dividerColor');
+    _resolvedHint = viewHintText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedViewBackgroundColor = viewBackgroundColor ?? TomCtr.color(basePath, 'viewBackgroundColor');
+    _resolvedViewElevation = viewElevation ?? TomCtr.doubleVal(basePath, 'viewElevation');
+    _resolvedViewSurfaceTintColor = viewSurfaceTintColor ?? TomCtr.color(basePath, 'viewSurfaceTintColor');
+    _resolvedDividerColor = dividerColor ?? TomCtr.color(basePath, 'dividerColor');
     _resolvedHeaderTextStyle = headerTextStyle ?? _resolveTextStyle('headerTextStyle');
     _resolvedHeaderHintStyle = headerHintStyle ?? _resolveTextStyle('headerHintStyle');
   }
@@ -848,12 +849,12 @@ class TomEditableText extends TomInputBase {
         onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onEditingComplete = InScopeBuilder(scope: scope).wrap0n(onEditingComplete),
         onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted) {
-    _resolvedBackgroundCursorColor = backgroundCursorColor ?? resolveColorOrNull('backgroundCursorColor') ?? Colors.grey;
-    _resolvedSelectionColor = selectionColor ?? resolveColorOrNull('selectionColor');
-    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth') ?? 2.0;
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
+    _resolvedBackgroundCursorColor = backgroundCursorColor ?? TomCtr.color(basePath, 'backgroundCursorColor') ?? Colors.grey;
+    _resolvedSelectionColor = selectionColor ?? TomCtr.color(basePath, 'selectionColor');
+    _resolvedCursorHeight = cursorHeight ?? TomCtr.doubleVal(basePath, 'cursorHeight');
+    _resolvedCursorWidth = cursorWidth ?? TomCtr.doubleVal(basePath, 'cursorWidth') ?? 2.0;
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
   }
 
   @override
@@ -981,11 +982,11 @@ class TomCupertinoTextField extends TomInputBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onEditingComplete = InScopeBuilder(scope: scope).wrap0n(onEditingComplete),
         onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted) {
-    _resolvedPlaceholder = placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding') ?? const EdgeInsets.all(7.0);
-    _resolvedMaxLines = maxLines ?? resolveIntOrNull('maxLines');
-    _resolvedMinLines = minLines ?? resolveIntOrNull('minLines');
-    _resolvedMaxLength = maxLength ?? resolveIntOrNull('maxLength');
+    _resolvedPlaceholder = placeholder ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding') ?? const EdgeInsets.all(7.0);
+    _resolvedMaxLines = maxLines ?? TomCtr.intVal(basePath, 'maxLines');
+    _resolvedMinLines = minLines ?? TomCtr.intVal(basePath, 'minLines');
+    _resolvedMaxLength = maxLength ?? TomCtr.intVal(basePath, 'maxLength');
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
   }
@@ -1111,8 +1112,8 @@ class TomCupertinoDatePicker extends TomInputBase {
     this.showDayOfWeek = false,
     this.itemExtent,
   })  : onDateTimeChanged = InScopeBuilder(scope: scope).wrap1(onDateTimeChanged) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent') ?? 32.0;
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent') ?? 32.0;
   }
 
   @override
@@ -1203,14 +1204,14 @@ class TomCupertinoSearchTextField extends TomInputBase {
   })  : onChanged = InScopeBuilder(scope: scope).wrap1n(onChanged),
         onSubmitted = InScopeBuilder(scope: scope).wrap1n(onSubmitted),
         onSuffixTap = InScopeBuilder(scope: scope).wrap0n(onSuffixTap) {
-    _resolvedPlaceholder = placeholder ?? resolveResourceOrFail('hint');
+    _resolvedPlaceholder = placeholder ?? TomCtr.textOrFail(basePath, 'hint');
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedBorderRadius = borderRadius ?? _resolveBorderRadius('borderRadius');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedItemColor = itemColor ?? resolveColorOrNull('itemColor');
-    _resolvedItemSize = itemSize ?? resolveDoubleOrNull('itemSize');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedItemColor = itemColor ?? TomCtr.color(basePath, 'itemColor');
+    _resolvedItemSize = itemSize ?? TomCtr.doubleVal(basePath, 'itemSize');
   }
 
   @override
@@ -1284,8 +1285,8 @@ class TomCupertinoTimerPicker extends TomInputBase {
     this.itemExtent,
     required ValueChanged<Duration> onTimerDurationChanged,
   })  : onTimerDurationChanged = InScopeBuilder(scope: scope).wrap1(onTimerDurationChanged) {
-    _resolvedBackgroundColor = backgroundColor ?? resolveColorOrNull('backgroundColor');
-    _resolvedItemExtent = itemExtent ?? resolveDoubleOrNull('itemExtent');
+    _resolvedBackgroundColor = backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
+    _resolvedItemExtent = itemExtent ?? TomCtr.doubleVal(basePath, 'itemExtent');
   }
 
   @override
@@ -1384,10 +1385,10 @@ class TomInputDatePickerFormField extends TomInputBase {
     this.focusNode,
   })  : onDateSubmitted = InScopeBuilder(scope: scope).wrap1n(onDateSubmitted),
         onDateSaved = InScopeBuilder(scope: scope).wrap1n(onDateSaved) {
-    _resolvedLabelText = fieldLabelText ?? resolveResourceOrFail('label');
-    _resolvedHintText = fieldHintText ?? resolveResourceOrFail('hint');
-    _resolvedErrorFormat = errorFormatText ?? resolveResourceOrFail('errorFormat');
-    _resolvedErrorInvalid = errorInvalidText ?? resolveResourceOrFail('errorInvalid');
+    _resolvedLabelText = fieldLabelText ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedHintText = fieldHintText ?? TomCtr.textOrFail(basePath, 'hint');
+    _resolvedErrorFormat = errorFormatText ?? TomCtr.textOrFail(basePath, 'errorFormat');
+    _resolvedErrorInvalid = errorInvalidText ?? TomCtr.textOrFail(basePath, 'errorInvalid');
   }
 
   @override
@@ -1575,14 +1576,14 @@ class TomCupertinoTextFormFieldRow extends TomInputBase {
         onFieldSubmitted = InScopeBuilder(scope: scope).wrap1n(onFieldSubmitted),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedPlaceholder = placeholder ?? (tomId != null ? resolveResourceOrFail('hint') : null);
+    _resolvedPlaceholder = placeholder ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
     _resolvedStyle = style ?? _resolveTextStyle('style');
     _resolvedPlaceholderStyle = placeholderStyle ?? _resolveTextStyle('placeholderStyle');
-    _resolvedPadding = padding ?? resolveEdgeInsetsOrNull('padding');
-    _resolvedCursorWidth = cursorWidth ?? resolveDoubleOrNull('cursorWidth');
-    _resolvedCursorHeight = cursorHeight ?? resolveDoubleOrNull('cursorHeight');
-    _resolvedCursorColor = cursorColor ?? resolveColorOrNull('cursorColor');
-    _resolvedScrollPadding = scrollPadding ?? resolveEdgeInsetsOrNull('scrollPadding');
+    _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedCursorWidth = cursorWidth ?? TomCtr.doubleVal(basePath, 'cursorWidth');
+    _resolvedCursorHeight = cursorHeight ?? TomCtr.doubleVal(basePath, 'cursorHeight');
+    _resolvedCursorColor = cursorColor ?? TomCtr.color(basePath, 'cursorColor');
+    _resolvedScrollPadding = scrollPadding ?? TomCtr.edgeInsets(basePath, 'scrollPadding');
   }
 
   @override
@@ -1740,13 +1741,13 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
   })  : onSelected = InScopeBuilder(scope: scope).wrap1n(onSelected),
         onSaved = InScopeBuilder(scope: scope).wrap1n(onSaved),
         validator = InScopeBuilder(scope: scope).wrap1n(validator) {
-    _resolvedLabel = label ?? resolveResourceOrFail('label');
-    _resolvedHint = hintText ?? (tomId != null ? resolveResourceOrFail('hint') : null);
-    _resolvedHelper = helperText ?? (tomId != null ? resolveResourceOrFail('helper') : null);
+    _resolvedLabel = label ?? TomCtr.textOrFail(basePath, 'label');
+    _resolvedHint = hintText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
+    _resolvedHelper = helperText ?? (tomId != null ? TomCtr.textOrFail(basePath, 'helper') : null);
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
-    _resolvedWidth = width ?? resolveDoubleOrNull('width');
-    _resolvedMenuHeight = menuHeight ?? resolveDoubleOrNull('menuHeight');
-    _resolvedExpandedInsets = expandedInsets ?? resolveEdgeInsetsOrNull('expandedInsets');
+    _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
+    _resolvedMenuHeight = menuHeight ?? TomCtr.doubleVal(basePath, 'menuHeight');
+    _resolvedExpandedInsets = expandedInsets ?? TomCtr.edgeInsets(basePath, 'expandedInsets');
   }
 
   @override
