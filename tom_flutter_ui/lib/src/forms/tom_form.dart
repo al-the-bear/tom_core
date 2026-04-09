@@ -289,6 +289,26 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Whether the field value differs from initial.
   bool get isDirty => get() != _initialValue;
 
+  /// Set a new value from user interaction.
+  ///
+  /// Fires [FieldValueChangedEvent], clears any validation error immediately,
+  /// and schedules debounced re-validation.
+  void setValue(T newValue) {
+    final oldValue = get();
+    if (newValue == oldValue) return;
+    set(newValue);
+    form?._fireEvent(FieldValueChangedEvent(
+      source: fieldId,
+      oldValue: oldValue,
+      newValue: newValue,
+    ));
+    // Clear error immediately for UX responsiveness
+    _validationState = const ValidationSuccess();
+    // Debounced re-validation
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(validationDebounce, () => validate());
+  }
+
   /// Commit current value as the new initial value.
   void commit() {
     _initialValue = get();
@@ -606,9 +626,12 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   }
 }
 
-/// Standard string form field for text input.
-class TomStringFormField extends TomTextFormFieldBase<String> {
-  TomStringFormField(
+/// **Legacy** standard string form field for text input.
+///
+/// Prefer [TomFormStringInput] from Phase 1 for new code.
+@Deprecated('Use TomFormStringInput instead')
+class TomStringFormFieldClassic extends TomTextFormFieldBase<String> {
+  TomStringFormFieldClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -624,9 +647,12 @@ class TomStringFormField extends TomTextFormFieldBase<String> {
   });
 }
 
-/// Password form field with obscured text.
-class TomPasswordFormField extends TomTextFormFieldBase<String> {
-  TomPasswordFormField(
+/// **Legacy** password form field with obscured text.
+///
+/// Prefer [TomFormStringInput] with `obscureText: true` for new code.
+@Deprecated('Use TomFormStringInput with obscureText: true instead')
+class TomPasswordFormFieldClassic extends TomTextFormFieldBase<String> {
+  TomPasswordFormFieldClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -641,9 +667,12 @@ class TomPasswordFormField extends TomTextFormFieldBase<String> {
   }) : super(obscureText: true);
 }
 
-/// Email form field with built-in email validation.
-class TomEmailFormField extends TomTextFormFieldBase<String> {
-  TomEmailFormField(
+/// **Legacy** email form field with built-in email validation.
+///
+/// Prefer [TomFormStringInput] with email validators for new code.
+@Deprecated('Use TomFormStringInput with email validators instead')
+class TomEmailFormFieldClassic extends TomTextFormFieldBase<String> {
+  TomEmailFormFieldClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -674,12 +703,13 @@ class TomEmailFormField extends TomTextFormFieldBase<String> {
   }
 }
 
-/// Integer form field with int conversion and optional min/max validation.
-class TomIntFormField extends TomTextFormFieldBase<int> {
+/// **Legacy** integer form field with int conversion and optional min/max validation.
+@Deprecated('Use typed form fields from Phase 2+ instead')
+class TomIntFormFieldClassic extends TomTextFormFieldBase<int> {
   final int? min;
   final int? max;
 
-  TomIntFormField(
+  TomIntFormFieldClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -723,12 +753,13 @@ class TomIntFormField extends TomTextFormFieldBase<int> {
   }
 }
 
-/// Double/decimal form field with double conversion and optional min/max validation.
-class TomDoubleFormField extends TomTextFormFieldBase<double> {
+/// **Legacy** double/decimal form field with double conversion and optional min/max validation.
+@Deprecated('Use typed form fields from Phase 2+ instead')
+class TomDoubleFormFieldClassic extends TomTextFormFieldBase<double> {
   final double? min;
   final double? max;
 
-  TomDoubleFormField(
+  TomDoubleFormFieldClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -772,24 +803,33 @@ class TomDoubleFormField extends TomTextFormFieldBase<double> {
   }
 }
 
-/// Test form demonstrating the form field system.
+/// Legacy test form demonstrating the classic form field system.
 @tomReflector
-class TestForm extends TomForm<TomClass> {
-  TestForm() : super(formId: "test_form");
+class TestFormClassic extends TomForm<TomClass> {
+  TestFormClassic() : super(formId: "test_form");
 
-  late final TomEmailFormField email;
-  late final TomPasswordFormField password;
-  late final TomStringFormField username;
-  late final TomIntFormField age;
-  late final TomDoubleFormField rating;
+  // ignore: deprecated_member_use_from_same_package
+  late final TomEmailFormFieldClassic email;
+  // ignore: deprecated_member_use_from_same_package
+  late final TomPasswordFormFieldClassic password;
+  // ignore: deprecated_member_use_from_same_package
+  late final TomStringFormFieldClassic username;
+  // ignore: deprecated_member_use_from_same_package
+  late final TomIntFormFieldClassic age;
+  // ignore: deprecated_member_use_from_same_package
+  late final TomDoubleFormFieldClassic rating;
 
   @override
   void createFormElements() {
-    email = TomEmailFormField('email', '', form: this);
-    password = TomPasswordFormField('password', '', form: this);
-    username = TomStringFormField('username', '', form: this);
-    age = TomIntFormField('age', 0, form: this, min: 0, max: 150);
-    rating = TomDoubleFormField('rating', 0.0, form: this, min: 0.0, max: 5.0);
-    
+    // ignore: deprecated_member_use_from_same_package
+    email = TomEmailFormFieldClassic('email', '', form: this);
+    // ignore: deprecated_member_use_from_same_package
+    password = TomPasswordFormFieldClassic('password', '', form: this);
+    // ignore: deprecated_member_use_from_same_package
+    username = TomStringFormFieldClassic('username', '', form: this);
+    // ignore: deprecated_member_use_from_same_package
+    age = TomIntFormFieldClassic('age', 0, form: this, min: 0, max: 150);
+    // ignore: deprecated_member_use_from_same_package
+    rating = TomDoubleFormFieldClassic('rating', 0.0, form: this, min: 0.0, max: 5.0);
   }
 }

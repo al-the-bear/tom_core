@@ -16,7 +16,7 @@ import '../validation/validators.dart';
 /// `InputDecoration` instead.
 ///
 /// Reads placement settings from [TomFormStyle] via [TomFormStyleScope].
-mixin TomFieldDecorationMixin on TomField {
+mixin TomFieldDecorationMixin<T> on TomField<T> {
   /// Label text — resolved from resources or set explicitly.
   String? get labelText => null;
 
