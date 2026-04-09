@@ -1,8 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
+import 'events/tom_form_event.dart';
+import 'events/tom_form_event_listener.dart';
+import 'validation/form_validation_error.dart';
+import 'validation/validation_result.dart';
+
+// ---------------------------------------------------------------------------
+// TomForm — Form Container (§5)
+// ---------------------------------------------------------------------------
 
 @tomReflector
 abstract class TomForm extends TomClass implements TomScreenElementsProvider {
@@ -16,6 +26,12 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   late final String formId;
   late final TomForm? parentForm;
   late final Map<String, TomField> fields = {};
+
+  /// The bound data object's initial snapshot (values at bind/save time).
+  Map<String, dynamic>? _initialSnapshot;
+
+  /// Event listeners.
+  final List<TomFormEventListener> _listeners = [];
 
   TomForm({required this.formId, this.parentForm}) {
     scope = TomScope.current;
@@ -31,68 +47,350 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
     TomScope.withScope(formId, () => createFormElements());
   }
 
+  /// Subclasses create their fields here (called inside form's scope).
   void createFormElements();
 
-  List<Widget> getFields() {
+  // --- Widget accessors (backward compatible) ---
+
+  List<Widget> getFieldWidgets() {
     return fields.values.map((field) => field.getField()).toList();
   }
 
-  Widget getField(String name) {
+  Widget getFieldWidget(String name) {
     return fields[name]!.getField();
   }
 
-  bool validate() {
-    bool valid = true;
-    for (var element in fields.values) {
-      valid = element.validate() && valid;
+  // --- Binding (§5) ---
+
+  /// Bind to a TomClass instance.
+  void bind(TomClass target) {
+    final values = target.getValues();
+    _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
+    setValues(values);
+    for (final field in fields.values) {
+      field.commit();
     }
-    return valid;
+    onBound();
+    _fireEvent(FormBoundEvent(source: formId));
   }
 
+  /// Save form values back to bound state.
+  /// Returns `false` if the form is not valid.
+  bool saveForm() {
+    if (!isValid) return false;
+    onSaving();
+    final values = getFormValues();
+    _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
+    for (final field in fields.values) {
+      field.commit();
+    }
+    onSaved();
+    _fireEvent(FormSavedEvent(source: formId));
+    return true;
+  }
+
+  /// Discard edits, reset all fields.
+  void discard() {
+    onDiscarding();
+    for (final field in fields.values) {
+      field.reset();
+    }
+    onDiscarded();
+    _fireEvent(FormDiscardedEvent(source: formId));
+  }
+
+  // --- State queries ---
+
+  /// Whether any field's value differs from its initial value.
+  bool get isDirty => fields.values.any((f) => f.isDirty);
+
+  /// Whether all fields currently have a successful validation state.
+  bool get isValid => fields.values.every(
+    (f) => f.validationState is ValidationSuccess,
+  );
+
+  // --- Validation (async — §20) ---
+
+  /// Validate all fields in parallel, then run cross-field validation.
+  Future<List<FormValidationError>> validateAllFields() async {
+    // 1. Validate all fields in parallel
+    final fieldResults = await Future.wait(
+      fields.values.map((f) => f.validateField()),
+    );
+
+    // 2. Collect field-level errors
+    final errors = <FormValidationError>[];
+    for (var i = 0; i < fields.values.length; i++) {
+      final result = fieldResults.elementAt(i);
+      if (result is ValidationError) {
+        final field = fields.values.elementAt(i);
+        errors.add(FormValidationError(
+          errorKey: result.errorKey,
+          params: result.params,
+          fields: [field.fieldName],
+        ));
+      }
+    }
+
+    // 3. Run cross-field validation only if all fields passed
+    if (errors.isEmpty) {
+      errors.addAll(await validateForm());
+    }
+
+    return errors;
+  }
+
+  /// Override for cross-field validation. Always async.
+  Future<List<FormValidationError>> validateForm() async => [];
+
+  // --- Inspection ---
+
+  /// Get a field by its name.
+  TomField? getFieldByName(String fieldName) => fields[fieldName];
+
+  /// Get the current values of all fields.
+  Map<String, dynamic> getFormValues() {
+    final result = <String, dynamic>{};
+    for (final entry in fields.entries) {
+      result[entry.key] = entry.value.get();
+    }
+    return result;
+  }
+
+  /// Get the initial snapshot (values at bind time / last save).
+  Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
+
+  /// All fields that currently have validation errors.
+  List<TomField> get fieldsWithErrors => fields.values
+      .where((f) => f.validationState is ValidationError)
+      .toList();
+
+  /// All fields whose values differ from initial.
+  List<TomField> get dirtyFields => fields.values
+      .where((f) => f.isDirty)
+      .toList();
+
+  /// A map of field names to error texts for all fields with errors.
   Map<String, String?> errors() {
-    Map<String, String?> result = {};
+    final result = <String, String?>{};
     for (var element in fields.values) {
       result[element.fieldName] = element.errorText;
     }
     return result;
   }
 
-  Map<String, Object> save() {
-    Map<String, Object> result = {};
-    mute();
-    for (var element in fields.values) {
-      result[element.fieldName] = element.save();
+  // --- Lifecycle hooks ---
+
+  @protected
+  void onBound() {}
+
+  @protected
+  void onSaving() {}
+
+  @protected
+  void onSaved() {}
+
+  @protected
+  void onDiscarding() {}
+
+  @protected
+  void onDiscarded() {}
+
+  // --- Event system ---
+
+  void addListener(TomFormEventListener listener) {
+    _listeners.add(listener);
+  }
+
+  void removeListener(TomFormEventListener listener) {
+    _listeners.remove(listener);
+  }
+
+  /// Dispatch an event to all registered listeners.
+  void fireEvent(TomFormEvent event) => _fireEvent(event);
+
+  void _fireEvent(TomFormEvent event) {
+    for (final listener in _listeners) {
+      listener.handleEvent(event);
     }
-    unmute();
-    return result;
+  }
+
+  // --- Dispose ---
+
+  void dispose() {
+    for (final field in fields.values) {
+      field.dispose();
+    }
+    _listeners.clear();
   }
 }
 
-abstract class TomField<T> extends TomObject<T> {
+// ---------------------------------------------------------------------------
+// TomField<T> — Base Form Field (§4)
+// ---------------------------------------------------------------------------
 
+abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   TomField(
     this.fieldName,
-    this.initialValue, {
+    this._initialValue, {
     this.form,
     this.obscureText = false,
-  }) : super(initialValue) {
+    this.fieldValidators = const [],
+    this.tomGroup,
+    this.authorizer,
+    this.uiStateController,
+  }) : super(_initialValue) {
     scope = TomScope.current.getScopePath();
+    basePath = scope.isNotEmpty ? '$scope.$fieldName' : fieldName;
   }
 
   late String scope;
+  late final String basePath;
   String fieldName;
   TomForm? form;
-  T initialValue;
   bool obscureText;
 
-  bool validate();
+  // --- Value tracking ---
 
-  T save();
+  T _initialValue;
 
-  String? get errorText;
+  /// The value when the field was initialized or last committed.
+  T get initialValue => _initialValue;
 
+  /// Whether the field value differs from initial.
+  bool get isDirty => get() != _initialValue;
+
+  /// Commit current value as the new initial value.
+  void commit() {
+    _initialValue = get();
+    form?._fireEvent(FieldCommittedEvent(source: fieldName));
+  }
+
+  /// Reset to initial value and clear validation state.
+  void reset() {
+    set(_initialValue);
+    _debounceTimer?.cancel();
+    _validationState = const ValidationSuccess();
+  }
+
+  // --- Authorization ---
+
+  @override
+  TomAuthorizationGroup? tomGroup;
+
+  /// Per-field authorizer (optional).
+  TomAuthorizer? authorizer;
+
+  /// Build-time UI state controller (optional).
+  TomUIStateController? uiStateController;
+
+  @override
+  String? get tomId => basePath;
+
+  /// Resolve the effective authorization state for this field.
+  ///
+  /// Resolution order (§19):
+  /// 1. Resource-based authorization via basePath
+  /// 2. Form authorization (implicit group — always narrows)
+  /// 3. Per-widget authorizer
+  /// 4. Build-time UI state controller
+  TomAuthState resolveEffectiveAuth() {
+    // 1. Resource-based auth
+    var state = TomAuthorization.resolveAuth(basePath);
+
+    // 2. Form auth (narrows)
+    if (form != null) {
+      final formPath = form!.scopePath.isNotEmpty
+          ? '${form!.scopePath}.${form!.formId}'
+          : form!.formId;
+      state = state.narrow(TomAuthorization.resolveAuth(formPath));
+    }
+
+    // 3. Per-widget authorizer
+    if (authorizer != null) {
+      state = authorizer!.effectiveAuth(state);
+    }
+
+    // 4. UI state controller
+    if (uiStateController != null) {
+      state = uiStateController!.apply(state);
+    }
+
+    return state;
+  }
+
+  /// Whether the field is currently editable (full auth).
+  bool get isEditable => resolveEffectiveAuth() == TomAuthState.full;
+
+  /// Whether the field is visible (not `none`).
+  bool get isVisible => resolveEffectiveAuth() != TomAuthState.none;
+
+  // --- Validation ---
+
+  /// Validators applied to this field (new validation system).
+  final List<Validator<T>> fieldValidators;
+
+  /// Current validation state — may be pending, success, or error.
+  ValidationResult _validationState = const ValidationSuccess();
+
+  ValidationResult get validationState => _validationState;
+
+  /// Debounce timer for change-triggered validation.
+  Timer? _debounceTimer;
+
+  /// Debounce duration for change-triggered validation. Default: 300ms.
+  Duration get validationDebounce => const Duration(milliseconds: 300);
+
+  /// Validate the current value using the new validation system.
+  /// Runs all [fieldValidators] sequentially, stopping on first error.
+  Future<ValidationResult> validateField() async {
+    _validationState = const ValidationPending();
+
+    for (final validator in fieldValidators) {
+      final result = await validator(get());
+      if (result is ValidationError) {
+        _validationState = result;
+        form?._fireEvent(FieldValidatedEvent(
+          source: fieldName,
+          result: _validationState,
+        ));
+        return result;
+      }
+    }
+
+    _validationState = const ValidationSuccess();
+    form?._fireEvent(FieldValidatedEvent(
+      source: fieldName,
+      result: _validationState,
+    ));
+    return _validationState;
+  }
+
+  // --- Legacy validation (for backward compatibility with existing fields) ---
+
+  /// Legacy validate method. Override in concrete fields.
+  bool validate() => true;
+
+  /// Legacy save method. Override in concrete fields.
+  T save() => get();
+
+  /// Legacy error text. Override in concrete fields.
+  String? get errorText => null;
+
+  // --- Widget ---
+
+  /// Returns the widget for this field. Override in concrete subclasses.
   Widget getField();
 
+  // --- Lifecycle ---
+
+  /// Dispose resources (timers, controllers, listeners).
+  void dispose() {
+    _debounceTimer?.cancel();
+  }
+
+  @override
+  String toString() => '$runtimeType($fieldName: ${get()}, dirty: $isDirty)';
 }
 
 /// Base class for text-based form fields with TextEditingController support.
@@ -284,8 +582,9 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     );
   }
 
+  @override
   void reset() {
-    set(initialValue);
+    super.reset();
     String textValue = _valueToTextConverter(initialValue);
     _textEditingController.value = TextEditingValue(
       text: textValue,

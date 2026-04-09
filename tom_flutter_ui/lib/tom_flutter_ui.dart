@@ -4,6 +4,7 @@
 // similar to the Java Swing StdAdvancedContainer/AdvancedContainerLike API.
 export 'src/actions/actions.dart';
 export 'src/advanced_container_layout.dart';
+export 'src/forms/tom_forms.dart';
 export 'src/groups/groups.dart';
 export 'src/resource_auth/resource_auth.dart';
 export 'src/theme/theme.dart';
