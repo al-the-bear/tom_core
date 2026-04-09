@@ -19,10 +19,10 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
   _TestField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
-    super.fieldValidators,
+    super.validators,
   });
 
   @override
@@ -58,7 +58,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'test',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
       final result = await field.validateField();
       expect(result, isA<ValidationSuccess>());
@@ -68,7 +68,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         '',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
       final result = await field.validateField();
       expect(result, isA<ValidationError>());
@@ -126,12 +126,12 @@ void main() {
       final name = _TestField<String>(
         'name',
         '',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
       final email = _TestField<String>(
         'email',
         'valid@email.com',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
 
       final nameResult = await name.validateField();
@@ -143,9 +143,9 @@ void main() {
 
     test('parallel validation of multiple fields', () async {
       final fields = [
-        _TestField<String>('a', 'ok', fieldValidators: [Validators.required()]),
-        _TestField<String>('b', '', fieldValidators: [Validators.required()]),
-        _TestField<String>('c', 'ok', fieldValidators: [Validators.required()]),
+        _TestField<String>('a', 'ok', validators: [Validators.required()]),
+        _TestField<String>('b', '', validators: [Validators.required()]),
+        _TestField<String>('c', 'ok', validators: [Validators.required()]),
       ];
 
       final results = await Future.wait(
@@ -163,7 +163,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'initial',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
 
       // Modify

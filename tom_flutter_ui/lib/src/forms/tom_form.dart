@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../actions/tom_action.dart';
+import '../actions/tom_action_controller.dart';
 import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
 import 'events/tom_form_event.dart';
@@ -15,7 +17,8 @@ import 'validation/validation_result.dart';
 // ---------------------------------------------------------------------------
 
 @tomReflector
-abstract class TomForm extends TomClass implements TomScreenElementsProvider {
+abstract class TomForm<T extends TomClass> extends TomClass
+    implements TomScreenElementsProvider, TomActionController {
   /// The scope for this form's resource/authorization lookups.
   @override
   late final TomScope scope;
@@ -23,9 +26,15 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   /// The scope path as a string (convenience getter).
   String get scopePath => scope.getScopePath();
 
+  /// The scope-qualified base path for this form.
+  late final String basePath;
+
   late final String formId;
   late final TomForm? parentForm;
   late final Map<String, TomField> fields = {};
+
+  /// The bound data object (back-reference for save push-back).
+  T? _binding;
 
   /// The bound data object's initial snapshot (values at bind/save time).
   Map<String, dynamic>? _initialSnapshot;
@@ -33,8 +42,42 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   /// Event listeners.
   final List<TomFormEventListener> _listeners = [];
 
+  // --- TomActionController interface ---
+
+  final List<TomAction> _actions = [];
+
+  @override
+  TomAuthorizationGroup? authorizationGroup;
+
+  @override
+  String get controllerId => formId;
+
+  @override
+  String get canonicalPrefix => formId;
+
+  @override
+  TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPrefix);
+
+  @override
+  void registerAction(TomAction action) {
+    _actions.add(action);
+  }
+
+  @override
+  List<TomAction> get actions => List.unmodifiable(_actions);
+
+  @override
+  TomAction? findAction(String actionId) {
+    for (final action in _actions) {
+      if (action.actionId == actionId) return action;
+    }
+    return null;
+  }
+
   TomForm({required this.formId, this.parentForm}) {
     scope = TomScope.current;
+    final parentPath = scope.getScopePath();
+    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
     getMembers().entries.where((entry) => entry.value is TomField).forEach((
       entry,
     ) {
@@ -63,7 +106,8 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   // --- Binding (§5) ---
 
   /// Bind to a TomClass instance.
-  void bind(TomClass target) {
+  void bind(T target) {
+    _binding = target;
     final values = target.getValues();
     _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
     setValues(values);
@@ -76,10 +120,11 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
 
   /// Save form values back to bound state.
   /// Returns `false` if the form is not valid.
-  bool saveForm() {
+  bool save() {
     if (!isValid) return false;
     onSaving();
     final values = getFormValues();
+    _binding?.setValues(values);
     _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
     for (final field in fields.values) {
       field.commit();
@@ -112,7 +157,7 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   // --- Validation (async — §20) ---
 
   /// Validate all fields in parallel, then run cross-field validation.
-  Future<List<FormValidationError>> validateAllFields() async {
+  Future<List<FormValidationError>> validate() async {
     // 1. Validate all fields in parallel
     final fieldResults = await Future.wait(
       fields.values.map((f) => f.validateField()),
@@ -127,7 +172,7 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
         errors.add(FormValidationError(
           errorKey: result.errorKey,
           params: result.params,
-          fields: [field.fieldName],
+          fields: [field.fieldId],
         ));
       }
     }
@@ -145,8 +190,8 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
 
   // --- Inspection ---
 
-  /// Get a field by its name.
-  TomField? getFieldByName(String fieldName) => fields[fieldName];
+  /// Get a field by its ID.
+  TomField? getField(String fieldId) => fields[fieldId];
 
   /// Get the current values of all fields.
   Map<String, dynamic> getFormValues() {
@@ -174,7 +219,7 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
   Map<String, String?> errors() {
     final result = <String, String?>{};
     for (var element in fields.values) {
-      result[element.fieldName] = element.errorText;
+      result[element.fieldId] = element.errorText;
     }
     return result;
   }
@@ -183,6 +228,9 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
 
   @protected
   void onBound() {}
+
+  @protected
+  void onUnbinding() {}
 
   @protected
   void onSaving() {}
@@ -231,22 +279,22 @@ abstract class TomForm extends TomClass implements TomScreenElementsProvider {
 
 abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   TomField(
-    this.fieldName,
+    this.fieldId,
     this._initialValue, {
     this.form,
     this.obscureText = false,
-    this.fieldValidators = const [],
+    this.validators = const [],
     this.tomGroup,
     this.authorizer,
     this.uiStateController,
   }) : super(_initialValue) {
     scope = TomScope.current.getScopePath();
-    basePath = scope.isNotEmpty ? '$scope.$fieldName' : fieldName;
+    basePath = scope.isNotEmpty ? '$scope.$fieldId' : fieldId;
   }
 
   late String scope;
   late final String basePath;
-  String fieldName;
+  String fieldId;
   TomForm? form;
   bool obscureText;
 
@@ -263,7 +311,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Commit current value as the new initial value.
   void commit() {
     _initialValue = get();
-    form?._fireEvent(FieldCommittedEvent(source: fieldName));
+    form?._fireEvent(FieldCommittedEvent(source: fieldId));
   }
 
   /// Reset to initial value and clear validation state.
@@ -286,6 +334,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   @override
   String? get tomId => basePath;
+
+  /// Resolved effective authorization state (see §19 for resolution order).
+  TomAuthState get effectiveAuthState => resolveEffectiveAuth();
 
   /// Resolve the effective authorization state for this field.
   ///
@@ -320,15 +371,15 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   }
 
   /// Whether the field is currently editable (full auth).
-  bool get isEditable => resolveEffectiveAuth() == TomAuthState.full;
+  bool get isEditable => effectiveAuthState == TomAuthState.full;
 
   /// Whether the field is visible (not `none`).
-  bool get isVisible => resolveEffectiveAuth() != TomAuthState.none;
+  bool get isVisible => effectiveAuthState != TomAuthState.none;
 
   // --- Validation ---
 
   /// Validators applied to this field (new validation system).
-  final List<Validator<T>> fieldValidators;
+  final List<Validator<T>> validators;
 
   /// Current validation state — may be pending, success, or error.
   ValidationResult _validationState = const ValidationSuccess();
@@ -342,16 +393,16 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   Duration get validationDebounce => const Duration(milliseconds: 300);
 
   /// Validate the current value using the new validation system.
-  /// Runs all [fieldValidators] sequentially, stopping on first error.
+  /// Runs all [validators] sequentially, stopping on first error.
   Future<ValidationResult> validateField() async {
     _validationState = const ValidationPending();
 
-    for (final validator in fieldValidators) {
+    for (final validator in validators) {
       final result = await validator(get());
       if (result is ValidationError) {
         _validationState = result;
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldName,
+          source: fieldId,
           result: _validationState,
         ));
         return result;
@@ -360,7 +411,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
     _validationState = const ValidationSuccess();
     form?._fireEvent(FieldValidatedEvent(
-      source: fieldName,
+      source: fieldId,
       result: _validationState,
     ));
     return _validationState;
@@ -390,7 +441,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   }
 
   @override
-  String toString() => '$runtimeType($fieldName: ${get()}, dirty: $isDirty)';
+  String toString() => '$runtimeType($fieldId: ${get()}, dirty: $isDirty)';
 }
 
 /// Base class for text-based form fields with TextEditingController support.
@@ -398,7 +449,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 /// Individual [InputDecoration] parameters (e.g. [labelText], [helperText],
 /// [prefixIcon]) follow the resource lookup pattern:
 ///   1. Explicit parameter value (highest priority)
-///   2. Resource lookup via scope path (`$scope.$fieldName.$suffix`)
+///   2. Resource lookup via scope path (`$scope.$fieldId.$suffix`)
 ///   3. `null` / absent (lowest priority)
 ///
 /// This allows resources to provide default values while code can override
@@ -430,7 +481,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   final bool? enabled;
 
   TomTextFormFieldBase(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -458,13 +509,13 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     }
 
     // Check for pattern validator in resources
-    final pattern = tOrNull('$fieldName.pattern');
+    final pattern = tOrNull('$fieldId.pattern');
     if (pattern != null) {
       _inputValidators.add((String value) {
         if (RegExp(pattern).hasMatch(value)) {
           return null;
         } else {
-          return t("$fieldName.errors.pattern");
+          return t("$fieldId.errors.pattern");
         }
       });
     }
@@ -546,7 +597,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
   /// Resolves an icon from resources, returning an [Icon] widget or `null`.
   Widget? _resolveIconOrNull(String key) {
-    final bp = scope.isEmpty ? fieldName : '$scope.$fieldName';
+    final bp = scope.isEmpty ? fieldId : '$scope.$fieldId';
     final iconData = TomCtr.icon(bp, key);
     if (iconData != null) return Icon(iconData);
     return null;
@@ -555,9 +606,9 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   @override
   Widget getField() {
     // Parameter → resource → null
-    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$fieldName.label') ?? fieldName;
-    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$fieldName.helperText');
-    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$fieldName.hintText');
+    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$fieldId.label') ?? fieldId;
+    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$fieldId.helperText');
+    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$fieldId.hintText');
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 
@@ -610,7 +661,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 /// Standard string form field for text input.
 class TomStringFormField extends TomTextFormFieldBase<String> {
   TomStringFormField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -628,7 +679,7 @@ class TomStringFormField extends TomTextFormFieldBase<String> {
 /// Password form field with obscured text.
 class TomPasswordFormField extends TomTextFormFieldBase<String> {
   TomPasswordFormField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     super.labelText,
@@ -645,7 +696,7 @@ class TomPasswordFormField extends TomTextFormFieldBase<String> {
 /// Email form field with built-in email validation.
 class TomEmailFormField extends TomTextFormFieldBase<String> {
   TomEmailFormField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -659,10 +710,10 @@ class TomEmailFormField extends TomTextFormFieldBase<String> {
   }) {
     _valueValidators.add((value) {
       if (value.isEmpty) {
-        return "$fieldName.errors.required";
+        return "$fieldId.errors.required";
       }
       if (!isValidEmail(value)) {
-        return "$fieldName.errors.validEmail";
+        return "$fieldId.errors.validEmail";
       }
       return null;
     });
@@ -681,7 +732,7 @@ class TomIntFormField extends TomTextFormFieldBase<int> {
   final int? max;
 
   TomIntFormField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     this.min,
@@ -702,7 +753,7 @@ class TomIntFormField extends TomTextFormFieldBase<int> {
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
       if (int.tryParse(value) == null) {
-        return "$fieldName.errors.invalidNumber";
+        return "$fieldId.errors.invalidNumber";
       }
       return null;
     });
@@ -713,10 +764,10 @@ class TomIntFormField extends TomTextFormFieldBase<int> {
         final intVal = int.tryParse(value);
         if (intVal == null) return null; // handled by input validator
         if (min != null && intVal < min!) {
-          return "$fieldName.errors.min";
+          return "$fieldId.errors.min";
         }
         if (max != null && intVal > max!) {
-          return "$fieldName.errors.max";
+          return "$fieldId.errors.max";
         }
         return null;
       });
@@ -730,7 +781,7 @@ class TomDoubleFormField extends TomTextFormFieldBase<double> {
   final double? max;
 
   TomDoubleFormField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
     this.min,
@@ -751,7 +802,7 @@ class TomDoubleFormField extends TomTextFormFieldBase<double> {
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
       if (double.tryParse(value) == null) {
-        return "$fieldName.errors.invalidNumber";
+        return "$fieldId.errors.invalidNumber";
       }
       return null;
     });
@@ -762,10 +813,10 @@ class TomDoubleFormField extends TomTextFormFieldBase<double> {
         final doubleVal = double.tryParse(value);
         if (doubleVal == null) return null; // handled by input validator
         if (min != null && doubleVal < min!) {
-          return "$fieldName.errors.min";
+          return "$fieldId.errors.min";
         }
         if (max != null && doubleVal > max!) {
-          return "$fieldName.errors.max";
+          return "$fieldId.errors.max";
         }
         return null;
       });
@@ -775,7 +826,7 @@ class TomDoubleFormField extends TomTextFormFieldBase<double> {
 
 /// Test form demonstrating the form field system.
 @tomReflector
-class TestForm extends TomForm {
+class TestForm extends TomForm<TomClass> {
   TestForm() : super(formId: "test_form");
 
   late final TomEmailFormField email;

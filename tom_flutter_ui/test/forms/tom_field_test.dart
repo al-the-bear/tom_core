@@ -10,10 +10,10 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
   _TestField(
-    super.fieldName,
+    super.fieldId,
     super.initialValue, {
     super.form,
-    super.fieldValidators,
+    super.validators,
     super.authorizer,
     super.uiStateController,
     super.tomGroup,
@@ -84,7 +84,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         '',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
 
       // Validate to produce error
@@ -114,7 +114,7 @@ void main() {
   });
 
   group('TomField — scope and basePath', () {
-    test('basePath is fieldName when no scope', () {
+    test('basePath is fieldId when no scope', () {
       // Outside any zone → default scope → empty scope path
       final field = _TestField<String>('email', '');
       expect(field.basePath, 'email');
@@ -154,7 +154,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         '',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
 
       final result = await field.validateField();
@@ -167,7 +167,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'Alice',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
 
       final result = await field.validateField();
@@ -180,7 +180,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         '',
-        fieldValidators: [
+        validators: [
           Validators.required(),
           (value) {
             secondCalled = true;
@@ -197,7 +197,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'test',
-        fieldValidators: [
+        validators: [
           (value) async {
             await Future.delayed(const Duration(milliseconds: 10));
             return const ValidationSuccess();
@@ -275,6 +275,13 @@ void main() {
       expect(field.resolveEffectiveAuth(), TomAuthState.disabled);
     });
 
+    test('effectiveAuthState getter delegates to resolveEffectiveAuth', () {
+      adapter.setRule('email', TomAuthState.read);
+      final field = _TestField<String>('email', '');
+      expect(field.effectiveAuthState, TomAuthState.read);
+      expect(field.effectiveAuthState, field.resolveEffectiveAuth());
+    });
+
     test('isEditable when full auth', () {
       final field = _TestField<String>('email', '');
       expect(field.isEditable, isTrue);
@@ -331,7 +338,7 @@ void main() {
       final field = _TestField<String>(
         'name',
         'test',
-        fieldValidators: [Validators.required()],
+        validators: [Validators.required()],
       );
       await field.validateField();
       expect(() => field.dispose(), returnsNormally);
@@ -339,7 +346,7 @@ void main() {
   });
 
   group('TomField — toString', () {
-    test('includes runtimeType, fieldName, value, dirty status', () {
+    test('includes runtimeType, fieldId, value, dirty status', () {
       final field = _TestField<String>('name', 'Alice');
       final str = field.toString();
       expect(str, contains('name'));
