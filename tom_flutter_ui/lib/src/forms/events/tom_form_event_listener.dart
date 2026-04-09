@@ -20,6 +20,7 @@ mixin TomFormEventListener {
   void onFormBound(FormBoundEvent event) {}
   void onFormSaved(FormSavedEvent event) {}
   void onFormDiscarded(FormDiscardedEvent event) {}
+  void onFormValidated(FormValidatedEvent event) {}
 
   /// Dispatches an event to the appropriate typed handler.
   void handleEvent(TomFormEvent event) {
@@ -40,6 +41,8 @@ mixin TomFormEventListener {
         onFormSaved(e);
       case FormDiscardedEvent e:
         onFormDiscarded(e);
+      case FormValidatedEvent e:
+        onFormValidated(e);
       default:
         break;
     }

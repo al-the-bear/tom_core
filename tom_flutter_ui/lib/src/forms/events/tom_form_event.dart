@@ -95,3 +95,16 @@ class FormDiscardedEvent extends TomFormEvent {
   FormDiscardedEvent({required super.source})
       : super(description: 'Form discarded');
 }
+
+/// Fired when a form completes validation.
+class FormValidatedEvent extends TomFormEvent {
+  /// The validation errors (empty list = success).
+  final List<Object> errors;
+
+  FormValidatedEvent({required super.source, required this.errors})
+      : super(
+          description: errors.isEmpty
+              ? 'Form validated: success'
+              : 'Form validated: ${errors.length} error(s)',
+        );
+}

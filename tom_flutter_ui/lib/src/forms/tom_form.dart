@@ -9,6 +9,7 @@ import '../widget_base/tom_construction_helpers.dart';
 import '../widget_base/tom_screen_elements_provider.dart';
 import 'events/tom_form_event.dart';
 import 'events/tom_form_event_listener.dart';
+import 'events/tom_form_event_source.dart';
 import 'validation/form_validation_error.dart';
 import 'validation/validation_result.dart';
 
@@ -18,7 +19,10 @@ import 'validation/validation_result.dart';
 
 @tomReflector
 abstract class TomForm<T extends TomClass> extends TomClass
-    implements TomScreenElementsProvider, TomActionController {
+    implements
+        TomScreenElementsProvider,
+        TomActionController,
+        TomFormEventSource {
   /// The scope for this form's resource/authorization lookups.
   @override
   late final TomScope scope;
@@ -173,6 +177,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       errors.addAll(await validateForm());
     }
 
+    _fireEvent(FormValidatedEvent(source: formId, errors: errors));
     return errors;
   }
 
@@ -219,15 +224,18 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   // --- Event system ---
 
+  @override
   void addListener(TomFormEventListener listener) {
     _listeners.add(listener);
   }
 
+  @override
   void removeListener(TomFormEventListener listener) {
     _listeners.remove(listener);
   }
 
   /// Dispatch an event to all registered listeners.
+  @override
   void fireEvent(TomFormEvent event) => _fireEvent(event);
 
   void _fireEvent(TomFormEvent event) {

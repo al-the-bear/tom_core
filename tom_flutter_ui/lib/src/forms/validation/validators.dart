@@ -8,11 +8,21 @@ import 'validation_result.dart';
 class Validators {
   Validators._();
 
-  /// Validates that a string is not empty.
-  static Validator<String> required() => (String value) =>
-      value.isEmpty
+  /// Singleton required validator (for identity-based detection).
+  /// Accepts [dynamic] so it can be stored in validators lists of any field
+  /// type. Dart's contravariance allows `Validator<dynamic>` to also serve
+  /// as `Validator<String>`.
+  static ValidationResult _requiredValidator(dynamic value) =>
+      (value is String && value.isEmpty) || value == null
           ? const ValidationError('error.required')
           : const ValidationSuccess();
+
+  /// The required validator instance (for identity comparison by
+  /// [TomFieldDecorationMixin.hasRequiredValidator]).
+  static final Validator<dynamic> requiredInstance = _requiredValidator;
+
+  /// Validates that a string is not empty.
+  static Validator<String> required() => requiredInstance;
 
   /// Validates that a string matches the given email pattern.
   static Validator<String> email() => pattern(
