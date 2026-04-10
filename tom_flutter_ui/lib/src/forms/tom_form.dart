@@ -60,7 +60,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   String get canonicalPrefix => formId;
 
   @override
-  TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPrefix);
+  TomAuthState get authState => TomAuthorization.resolveAuth(basePath);
 
   @override
   void registerAction(TomAction action) {

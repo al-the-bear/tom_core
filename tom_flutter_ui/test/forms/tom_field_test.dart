@@ -256,7 +256,7 @@ void main() {
         'email',
         '',
         uiStateController: TomUIStateController(
-          resolve: (_) => TomAuthState.disabled,
+          resolve: (_, __) => TomAuthState.disabled,
         ),
       );
       expect(field.resolveEffectiveAuth(), TomAuthState.disabled);
@@ -269,7 +269,7 @@ void main() {
         '',
         authorizer: TomAuthorizer.fixed(TomAuthState.read),
         uiStateController: TomUIStateController(
-          resolve: (_) => TomAuthState.disabled,
+          resolve: (_, __) => TomAuthState.disabled,
         ),
       );
       expect(field.resolveEffectiveAuth(), TomAuthState.disabled);

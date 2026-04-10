@@ -426,9 +426,13 @@ class TomAuthorizer {
 /// TomElevatedButton(
 ///   tomId: 'reorder',
 ///   uiStateController: TomUIStateController(
-///     resolve: (currentAuth) {
+///     resolve: (currentAuth, data) {
 ///       // Disable reorder when list is empty
 ///       if (items.isEmpty) return TomAuthState.disabled;
+///       // Check row-specific ownership
+///       if (data case {'ownerId': int id} when id != currentUserId) {
+///         return TomAuthState.read;
+///       }
 ///       return currentAuth;
 ///     },
 ///   ),
@@ -439,13 +443,18 @@ class TomUIStateController {
   ///
   /// The [currentAuth] is the combined result of resource authorization
   /// and any [TomAuthorizer]. The return value can only narrow this state.
-  final TomAuthState Function(TomAuthState currentAuth) resolve;
+  ///
+  /// The optional [data] parameter provides context for row-level decisions,
+  /// such as checking if the current user owns a list item.
+  final TomAuthState Function(TomAuthState currentAuth, Object? data) resolve;
 
   const TomUIStateController({required this.resolve});
 
   /// Applies this controller, ensuring the result never widens [currentAuth].
-  TomAuthState apply(TomAuthState currentAuth) {
-    final result = resolve(currentAuth);
+  ///
+  /// The optional [data] is passed to the resolver for row-specific decisions.
+  TomAuthState apply(TomAuthState currentAuth, {Object? data}) {
+    final result = resolve(currentAuth, data);
     // Never widen — take the more restrictive
     return currentAuth.narrow(result);
   }
