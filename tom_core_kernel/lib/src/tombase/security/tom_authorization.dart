@@ -74,6 +74,7 @@ enum TomAuthState {
 /// Implementers gain:
 /// - [tomId] for resource-based authorization lookups
 /// - [tomGroup] for group-level visibility control
+/// - [effectiveAuthState] — the resolved authorization state for this element
 ///
 /// Implemented by:
 /// - Tom widgets (via TomNodeBase, TomWidgetMixin)
@@ -90,6 +91,17 @@ abstract interface class TomAuthorizable {
   ///
   /// Groups enable collective visibility control.
   TomAuthorizationGroup? get tomGroup;
+
+  /// The effective authorization state for this element.
+  ///
+  /// This should return the final resolved state after applying:
+  /// 1. Resource-based authorization (via [tomId])
+  /// 2. Group authorization (via [tomGroup])
+  /// 3. Any local overrides or authorizers
+  ///
+  /// Implementers should call their own resolution logic (e.g.,
+  /// `resolveEffectiveAuth()`) and return the result.
+  TomAuthState get effectiveAuthState;
 }
 
 // =============================================================================
@@ -208,6 +220,39 @@ class TomAuthorizationGroup {
       AuthGroupMode.controlsWidest => memberState.narrow(groupState),
       AuthGroupMode.controlsNarrowest => memberState.widen(groupState),
     };
+  }
+
+  /// Whether all visible members share the same effective auth state.
+  ///
+  /// Returns `true` if:
+  /// - The group is empty, or
+  /// - All members have identical [effectiveAuthState] values
+  bool get isUniform {
+    TomAuthState? firstState;
+    for (final member in members) {
+      final state = member.effectiveAuthState;
+      if (state == TomAuthState.none) continue; // Skip hidden members
+      if (firstState == null) {
+        firstState = state;
+      } else if (state != firstState) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// The most restrictive effective auth state among all visible members.
+  ///
+  /// Returns [TomAuthState.full] if the group is empty or all members are hidden.
+  /// State ordering from most to least restrictive: none < disabled < read < full.
+  TomAuthState get mostRestrictive {
+    var result = TomAuthState.full;
+    for (final member in members) {
+      final state = member.effectiveAuthState;
+      if (state == TomAuthState.none) continue; // Skip hidden members
+      result = result.narrow(state);
+    }
+    return result;
   }
 
   /// Finds a member by [tomId] within this group.

@@ -111,6 +111,15 @@ abstract class TomAction<TContext extends TomActionContext,
   /// Gets the authorization state for this action.
   TomAuthState get authState => TomAuthorization.resolveAuth(canonicalPath);
 
+  @override
+  TomAuthState get effectiveAuthState {
+    var state = authState;
+    if (tomGroup != null) {
+      state = tomGroup!.applyMode(state);
+    }
+    return state;
+  }
+
   /// Creates a [TomAuthorizer] backed by this action's authorization.
   ///
   /// Applies the default pattern: widget full + action none = disabled.

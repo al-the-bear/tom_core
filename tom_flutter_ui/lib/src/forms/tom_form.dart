@@ -297,6 +297,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   }) : super(_initialValue) {
     scope = TomScope.current.getScopePath();
     basePath = scope.isNotEmpty ? '$scope.$fieldId' : fieldId;
+    tomGroup?.register(this);
   }
 
   late String scope;
@@ -446,6 +447,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   String? get tomId => basePath;
 
   /// Resolved effective authorization state (see §19 for resolution order).
+  @override
   TomAuthState get effectiveAuthState => resolveEffectiveAuth();
 
   /// Resolve the effective authorization state for this field.

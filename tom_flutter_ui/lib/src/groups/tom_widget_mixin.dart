@@ -56,8 +56,16 @@ mixin TomWidgetMixin on Widget implements TomAuthorizable {
       state = uiStateController!.apply(state);
     }
 
+    // 4. Group authorization (if member of a group)
+    if (tomGroup != null) {
+      state = tomGroup!.applyMode(state);
+    }
+
     return state;
   }
+
+  @override
+  TomAuthState get effectiveAuthState => getAuth();
 
   /// Gets a text resource for this widget.
   ///

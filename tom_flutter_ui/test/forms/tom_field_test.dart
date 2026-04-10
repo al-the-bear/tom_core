@@ -361,5 +361,167 @@ void main() {
     });
   });
 
+  group('TomField — AuthGroupMode', () {
+    late _TestAuthAdapter adapter;
+
+    setUp(() {
+      adapter = _TestAuthAdapter();
+      TomAuthorization.adapter = adapter;
+    });
+
+    tearDown(() {
+      TomAuthorization.reset();
+    });
+
+    test('controlsAll replaces member state with group state', () {
+      // Field would have full access, but group has read
+      adapter.setRule('street', TomAuthState.full);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsAll,
+      );
+      final field = _TestField<String>('street', '', tomGroup: group);
+
+      expect(field.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('controlsWidest narrows member to group ceiling', () {
+      // Field has full, group has read — result should be read (narrower)
+      adapter.setRule('city', TomAuthState.full);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsWidest,
+      );
+      final field = _TestField<String>('city', '', tomGroup: group);
+
+      expect(field.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('controlsWidest keeps narrower member state', () {
+      // Field has disabled, group has full — result stays disabled
+      adapter.setRule('region', TomAuthState.disabled);
+      adapter.setRule('shipping', TomAuthState.full);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsWidest,
+      );
+      final field = _TestField<String>('region', '', tomGroup: group);
+
+      expect(field.effectiveAuthState, TomAuthState.disabled);
+    });
+
+    test('controlsNarrowest widens member to group floor', () {
+      // Field has disabled, group has read — result should be read (wider)
+      adapter.setRule('zip', TomAuthState.disabled);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsNarrowest,
+      );
+      final field = _TestField<String>('zip', '', tomGroup: group);
+
+      expect(field.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('controlsNarrowest keeps wider member state', () {
+      // Field has full, group has read — result stays full (already wider)
+      adapter.setRule('phone', TomAuthState.full);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsNarrowest,
+      );
+      final field = _TestField<String>('phone', '', tomGroup: group);
+
+      expect(field.effectiveAuthState, TomAuthState.full);
+    });
+  });
+
+  group('TomAuthorizationGroup — queries', () {
+    late _TestAuthAdapter adapter;
+
+    setUp(() {
+      adapter = _TestAuthAdapter();
+      TomAuthorization.adapter = adapter;
+    });
+
+    tearDown(() {
+      TomAuthorization.reset();
+    });
+
+    test('isUniform true when all visible members have same state', () {
+      adapter.setRule('street', TomAuthState.read);
+      adapter.setRule('city', TomAuthState.read);
+      adapter.setRule('shipping', TomAuthState.full);
+
+      final group = TomAuthorizationGroup('shipping');
+      final street = _TestField<String>('street', '', tomGroup: group);
+      final city = _TestField<String>('city', '', tomGroup: group);
+
+      // Both should resolve to read (narrowed by group with controlsWidest)
+      expect(street.effectiveAuthState, TomAuthState.read);
+      expect(city.effectiveAuthState, TomAuthState.read);
+      expect(group.isUniform, isTrue);
+    });
+
+    test('isUniform false when visible members have different states', () {
+      // With controlsWidest (default), wider member states are narrowed to group
+      // but narrower states stay narrow. This creates non-uniform states.
+      adapter.setRule('street', TomAuthState.full);
+      adapter.setRule('city', TomAuthState.disabled);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsWidest,
+      );
+      final street = _TestField<String>('street', '', tomGroup: group);
+      final city = _TestField<String>('city', '', tomGroup: group);
+
+      // street full -> narrowed to read; city disabled -> stays disabled
+      expect(street.effectiveAuthState, TomAuthState.read);
+      expect(city.effectiveAuthState, TomAuthState.disabled);
+      expect(group.isUniform, isFalse);
+    });
+
+    test('isUniform true for empty group', () {
+      final group = TomAuthorizationGroup('empty');
+      expect(group.isUniform, isTrue);
+    });
+
+    test('mostRestrictive returns most restrictive visible member state', () {
+      // With controlsWidest mode, wider states are narrowed to group
+      // but narrower states stay as-is. This gives varied effective states.
+      adapter.setRule('street', TomAuthState.full);
+      adapter.setRule('city', TomAuthState.read);
+      adapter.setRule('zip', TomAuthState.disabled);
+      adapter.setRule('shipping', TomAuthState.read);
+
+      final group = TomAuthorizationGroup(
+        'shipping',
+        mode: AuthGroupMode.controlsWidest,
+      );
+      _TestField<String>('street', '', tomGroup: group); // full -> read
+      _TestField<String>('city', '', tomGroup: group);   // read -> read
+      _TestField<String>('zip', '', tomGroup: group);    // disabled -> disabled
+
+      // Most restrictive is disabled (zip)
+      expect(group.mostRestrictive, TomAuthState.disabled);
+    });
+
+    test('mostRestrictive returns full for empty group', () {
+      final group = TomAuthorizationGroup('empty');
+      expect(group.mostRestrictive, TomAuthState.full);
+    });
+  });
+
 }
+
 

@@ -35,7 +35,7 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
 
   /// Resolves the effective [TomAuthState] for this widget.
   ///
-  /// Combines resource auth, authorizer, and UI state controller.
+  /// Combines resource auth, authorizer, UI state controller, and group auth.
   TomAuthState resolveEffectiveAuth() {
     // 1. Resource-based authorization
     var state = basePath != null
@@ -52,8 +52,16 @@ abstract class TomPolicyNodeBase extends TomNodeBase {
       state = uiStateController!.apply(state);
     }
 
+    // 4. Group authorization (if member of a group)
+    if (tomGroup != null) {
+      state = tomGroup!.applyMode(state);
+    }
+
     return state;
   }
+
+  @override
+  TomAuthState get effectiveAuthState => resolveEffectiveAuth();
 
   Widget _buildWithAuth(BuildContext context) {
     final authState = resolveEffectiveAuth();

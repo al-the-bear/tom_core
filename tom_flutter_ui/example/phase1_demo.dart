@@ -188,7 +188,7 @@ class ProfileForm extends TomForm<UserProfile> {
     if (role.get() == 'admin' && !email.get().endsWith('@company.com')) {
       errors.add(FormValidationError(
         errorKey: 'error.adminEmailRequired',
-        fields: ['email', 'role'],
+        fields: [email, role],
       ));
     }
     return errors;
@@ -269,7 +269,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
   void _onSave() async {
     final errors = await _form.validate();
     if (errors.isEmpty) {
-      if (_form.save()) {
+      if (await _form.save()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile saved!')),
