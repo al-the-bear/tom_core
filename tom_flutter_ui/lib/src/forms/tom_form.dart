@@ -102,14 +102,22 @@ abstract class TomForm<T extends TomClass> extends TomClass
   // --- Binding (§5) ---
 
   /// Bind to a TomClass instance.
+  /// Resets all fields to pristine. If a field has `autoValidate = true`,
+  /// it triggers immediate validation after binding.
   void bind(T target) {
     _binding = target;
     final values = target.getValues();
     _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
     setValues(values);
     for (final field in fields.values) {
-      field.commit();
+      field._initialValue = field.get();
+      field._debounceTimer?.cancel();
+      field._validationState = const ValidationPristine();
       _fireEvent(FieldBoundEvent(source: field.fieldId));
+      // Auto-validate fields that request immediate validation
+      if (field.autoValidate) {
+        field.validate();
+      }
     }
     onBound();
     _fireEvent(FormBoundEvent(source: formId));
@@ -146,6 +154,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   bool get isDirty => fields.values.any((f) => f.isDirty);
 
   /// Whether all fields currently have a successful validation state.
+  /// Pristine fields are NOT considered valid (pristine ≠ valid).
   bool get isValid => fields.values.every(
     (f) => f.validationState is ValidationSuccess,
   );
@@ -266,6 +275,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.form,
     this.obscureText = false,
     this.validators = const [],
+    this.autoValidate = false,
     this.tomGroup,
     this.authorizer,
     this.uiStateController,
@@ -292,7 +302,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Set a new value from user interaction.
   ///
-  /// Fires [FieldValueChangedEvent], clears any validation error immediately,
+  /// Fires [FieldValueChangedEvent], transitions out of pristine state,
   /// and schedules debounced re-validation.
   void setValue(T newValue) {
     final oldValue = get();
@@ -303,7 +313,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       oldValue: oldValue,
       newValue: newValue,
     ));
-    // Clear error immediately for UX responsiveness
+    // Transition out of pristine — clear to success for UX responsiveness
     _validationState = const ValidationSuccess();
     // Debounced re-validation
     _debounceTimer?.cancel();
@@ -311,16 +321,19 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   }
 
   /// Commit current value as the new initial value.
+  /// Resets validation state to [ValidationPristine] — no errors shown after save.
   void commit() {
     _initialValue = get();
+    _debounceTimer?.cancel();
+    _validationState = const ValidationPristine();
     form?._fireEvent(FieldCommittedEvent(source: fieldId));
   }
 
-  /// Reset to initial value and clear validation state.
+  /// Reset to initial value and reset validation to pristine.
   void reset() {
     set(_initialValue);
     _debounceTimer?.cancel();
-    _validationState = const ValidationSuccess();
+    _validationState = const ValidationPristine();
   }
 
   // --- Authorization ---
@@ -342,16 +355,25 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Resolve the effective authorization state for this field.
   ///
+  /// CRITICAL: All four layers must be evaluated. Skipping any layer
+  /// (especially group auth) is a severe bug.
+  ///
   /// Resolution order (§19):
   /// 1. Resource-based authorization via basePath
-  /// 2. Form authorization (implicit group — always narrows)
-  /// 3. Per-widget authorizer
-  /// 4. Build-time UI state controller
+  /// 2. Group authorization (applies group's auth via narrowing)
+  /// 3. Form authorization (implicit group — always narrows)
+  /// 4. Per-widget authorizer
+  /// 5. Build-time UI state controller
   TomAuthState resolveEffectiveAuth() {
     // 1. Resource-based auth
     var state = TomAuthorization.resolveAuth(basePath);
 
-    // 2. Form auth (narrows)
+    // 2. Group auth (CRITICAL — must not be skipped)
+    if (tomGroup != null) {
+      state = state.narrow(tomGroup!.authState);
+    }
+
+    // 3. Form auth (narrows)
     if (form != null) {
       final formPath = form!.scopePath.isNotEmpty
           ? '${form!.scopePath}.${form!.formId}'
@@ -359,12 +381,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       state = state.narrow(TomAuthorization.resolveAuth(formPath));
     }
 
-    // 3. Per-widget authorizer
+    // 4. Per-widget authorizer
     if (authorizer != null) {
       state = authorizer!.effectiveAuth(state);
     }
 
-    // 4. UI state controller
+    // 5. UI state controller
     if (uiStateController != null) {
       state = uiStateController!.apply(state);
     }
@@ -383,8 +405,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Validators applied to this field (new validation system).
   final List<Validator<T>> validators;
 
-  /// Current validation state — may be pending, success, or error.
-  ValidationResult _validationState = const ValidationSuccess();
+  /// Whether this field validates immediately on bind without waiting
+  /// for user interaction. Useful for auto-save forms.
+  final bool autoValidate;
+
+  /// Current validation state — starts as [ValidationPristine].
+  ValidationResult _validationState = const ValidationPristine();
 
   ValidationResult get validationState => _validationState;
 

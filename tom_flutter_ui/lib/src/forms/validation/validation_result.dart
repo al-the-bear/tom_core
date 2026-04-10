@@ -2,12 +2,39 @@ import 'dart:async';
 
 /// Result of validating a field value.
 ///
-/// This is a sealed class with three variants:
+/// This is a sealed class with four variants:
+/// - [ValidationPristine] — field has not yet been validated (initial state)
 /// - [ValidationSuccess] — validation passed
 /// - [ValidationError] — validation failed with an error key
 /// - [ValidationPending] — async validation is in progress
 sealed class ValidationResult {
   const ValidationResult();
+}
+
+/// Initial state of every field before the user has interacted with it.
+///
+/// While pristine:
+/// - The field does **not** display validation errors (even if technically invalid)
+/// - The form's `isValid` returns `false` (pristine ≠ valid) but no errors are shown
+///
+/// A field transitions out of pristine when:
+/// - The user modifies the field value (triggers debounced validation)
+/// - The user attempts to save the form (`validate()` forces all pristine fields)
+/// - `autoValidate` is `true` on the field (validates immediately on bind)
+///
+/// After `commit()`, `reset()`, `discard()`, or `bind()` the field returns
+/// to pristine state.
+class ValidationPristine extends ValidationResult {
+  const ValidationPristine();
+
+  @override
+  bool operator ==(Object other) => other is ValidationPristine;
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  String toString() => 'ValidationPristine()';
 }
 
 /// Indicates the field value is valid.

@@ -91,7 +91,7 @@ void main() {
       field.validate();
 
       field.reset();
-      expect(field.validationState, isA<ValidationSuccess>());
+      expect(field.validationState, isA<ValidationPristine>());
     });
 
     test('works with int values', () {
@@ -139,9 +139,9 @@ void main() {
   });
 
   group('TomField — validation', () {
-    test('starts with ValidationSuccess', () {
+    test('starts with ValidationPristine', () {
       final field = _TestField<String>('name', 'Alice');
-      expect(field.validationState, isA<ValidationSuccess>());
+      expect(field.validationState, isA<ValidationPristine>());
     });
 
     test('validate returns success when no validators', () async {

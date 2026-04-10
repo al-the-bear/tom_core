@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../widget_base/tom_construction_helpers.dart';
 import '../style/form_style_enums.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
@@ -221,8 +222,14 @@ mixin TomFieldDecorationMixin<T> on TomField<T> {
     final state = validationState;
     if (state is! ValidationError) return null;
 
+    // Resolve error key through resource system (C14):
+    // resource path → raw key fallback.
+    final message =
+        TomCtr.textOrNull(basePath, 'error.${state.errorKey}') ??
+            state.errorKey;
+
     return Text(
-      state.errorKey,
+      message,
       style: (style.errorStyle ?? theme.textTheme.bodySmall)?.copyWith(
         color: theme.colorScheme.error,
       ),

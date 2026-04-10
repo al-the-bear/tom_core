@@ -98,6 +98,7 @@ void main() {
         ValidationResult result = const ValidationSuccess();
 
         final description = switch (result) {
+          ValidationPristine() => 'pristine',
           ValidationSuccess() => 'success',
           ValidationError(errorKey: final key) => 'error: $key',
           ValidationPending() => 'pending',
@@ -113,6 +114,7 @@ void main() {
         );
 
         final message = switch (result) {
+          ValidationPristine() => 'pristine',
           ValidationSuccess() => 'ok',
           ValidationError(errorKey: final key, params: final p) =>
             '$key (${p?['min']})',

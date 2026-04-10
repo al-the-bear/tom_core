@@ -371,9 +371,9 @@ void main() {
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pump();
 
-      // TextField should show the error
-      final textField = tester.widget<TextField>(find.byType(TextField));
-      expect(textField.decoration!.errorText, isNotNull);
+      // Error text is rendered by the decoration mixin, not InputDecoration.
+      // Look for the error key text in the widget tree.
+      expect(find.text('error.required'), findsOneWidget);
     });
 
     testWidgets('shows spinner during pending validation', (tester) async {

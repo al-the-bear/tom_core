@@ -16,6 +16,7 @@ export 'style/tom_form_style.dart';
 export 'style/tom_form_style_scope.dart';
 export 'decoration/tom_field_decoration_mixin.dart';
 export 'widgets/tom_form_error_banner.dart';
+export 'widgets/tom_multi_observable_builder.dart';
 
 // Phase 1 — concrete string fields
 export 'fields/tom_form_string_field.dart';

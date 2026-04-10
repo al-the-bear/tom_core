@@ -7,7 +7,7 @@ export 'containers/tom_containers.dart';
 export 'dialogs/tom_dialogs.dart';
 export 'effects/tom_effects.dart';
 export 'images/tom_images.dart';
-export 'inputs/tom_inputs.dart' hide TomForm;
+export 'inputs/tom_inputs.dart';
 export 'interactions/tom_interactions.dart';
 export 'labels/tom_labels.dart';
 export 'lists/tom_lists.dart';

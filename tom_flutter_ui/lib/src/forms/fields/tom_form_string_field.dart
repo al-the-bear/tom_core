@@ -10,7 +10,6 @@ import '../decoration/tom_field_decoration_mixin.dart';
 import '../selection/tom_selectable_source.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
-import '../validation/validation_result.dart';
 
 // ---------------------------------------------------------------------------
 // TomFormStringField — Abstract String Field (§6)
@@ -45,6 +44,7 @@ abstract class TomFormStringField extends TomField<String> {
     super.form,
     super.obscureText,
     super.validators,
+    super.autoValidate,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
@@ -75,13 +75,15 @@ abstract class TomFormStringField extends TomField<String> {
 // TomFormStringInput — Concrete Text Input (§7, §8)
 // ---------------------------------------------------------------------------
 
-/// A concrete text-input field that renders as a [TextField] with
-/// [InputDecoration].
+/// A concrete text-input field that renders as a plain [TextField]
+/// wrapped with [TomFieldDecorationMixin] anatomy (label, error, description).
 ///
-/// Uses native Material `InputDecoration` for label, hint, and error
-/// display (checklist C1). Reads styling from [TomFormStyleScope].
+/// Uses `TomFieldDecorationMixin` for consistent visual anatomy across all
+/// field types (checklist C1). The inner [TextField] has no
+/// `InputDecoration` label/error/helper — all anatomy comes from the mixin.
 @tomReflector
-class TomFormStringInput extends TomFormStringField {
+class TomFormStringInput extends TomFormStringField
+    with TomFieldDecorationMixin<String> {
   /// Optional prefix icon for the input.
   final Widget? prefixIcon;
 
@@ -108,10 +110,22 @@ class TomFormStringInput extends TomFormStringField {
     super.form,
     super.obscureText,
     super.validators,
+    super.autoValidate,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
   });
+
+  // Override labelText/descriptionText to resolve through the
+  // TomFormStringField resource resolution logic rather than
+  // TomFieldDecorationMixin's default (null).
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   Widget get widget => _TomFormStringInputWidget(field: this);
@@ -168,28 +182,10 @@ class _TomFormStringInputWidgetState
 
   @override
   Widget build(BuildContext context) {
-    // Auth: hidden → shrink
-    if (!field.isVisible) return const SizedBox.shrink();
-
     final style = TomFormStyleScope.of(context);
 
-    // Validation error text
-    String? errorText;
-    final validationState = field.validationState;
-    if (validationState is ValidationError) {
-      errorText = field.resolveErrorMessage(validationState.errorKey);
-    }
-
-    // Pending spinner suffix
-    Widget? suffixIcon = field.suffixIcon;
-    if (validationState is ValidationPending) {
-      suffixIcon = const SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
-
+    // Plain TextField — no InputDecoration label/error/helper.
+    // All anatomy (label, error, description) comes from TomFieldDecorationMixin.
     final textField = TextField(
       controller: _controller,
       focusNode: _focusNode,
@@ -200,39 +196,21 @@ class _TomFormStringInputWidgetState
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       decoration: InputDecoration(
-        labelText: field.labelText,
         hintText: field.hintText,
-        helperText: field.descriptionText,
-        errorText: errorText,
         prefixIcon: field.prefixIcon,
-        suffixIcon: suffixIcon,
+        suffixIcon: field.suffixIcon,
         contentPadding: style.fieldContentPadding,
         border: style.fieldBorder,
         focusedBorder: style.focusedBorder,
         errorBorder: style.errorBorder,
         enabledBorder: style.fieldBorder,
-        labelStyle: style.labelStyle,
         hintStyle: style.hintStyle,
-        errorStyle: style.errorStyle,
-        helperStyle: style.descriptionStyle,
+        // No labelText, errorText, or helperText — handled by mixin
       ),
     );
 
-    // Auth: disabled → opacity wrapper
-    if (field.effectiveAuthState == TomAuthState.disabled) {
-      return Opacity(opacity: style.disabledOpacity, child: textField);
-    }
-
-    // Auth: read → background wrapper
-    if (field.effectiveAuthState == TomAuthState.read &&
-        style.readOnlyBackground != null) {
-      return ColoredBox(
-        color: style.readOnlyBackground!,
-        child: textField,
-      );
-    }
-
-    return textField;
+    // Wrap with mixin anatomy (label row, error row, description row)
+    return field.decorateField(context, textField);
   }
 }
 
@@ -313,13 +291,33 @@ class _TomFormStringDropdownWidgetState
 
   Future<void> _loadItems() async {
     final items = await field.source.getItems();
-    if (mounted) setState(() => _items = items);
+    if (mounted) {
+      setState(() => _items = items);
+      _resetIfValueMissing(items);
+    }
     // Subscribe to stream for dynamic updates
     final stream = field.source.itemsStream;
     if (stream != null) {
       _subscription = stream.listen((items) {
-        if (mounted) setState(() => _items = items);
+        if (mounted) {
+          setState(() => _items = items);
+          _resetIfValueMissing(items);
+        }
       });
+    }
+  }
+
+  /// C13: When the source items change, reset the field value if the current
+  /// value is no longer present among the available items.
+  void _resetIfValueMissing(List<SelectableItem<String>> items) {
+    final current = field.get();
+    if (current.isEmpty) return;
+    final stillPresent = items.any((item) => item.value == current);
+    if (!stillPresent) {
+      // Reset to the first available value, or empty if none.
+      final firstValue =
+          items.where((i) => i.enabled).firstOrNull?.value ?? '';
+      field.setValue(firstValue);
     }
   }
 
@@ -333,13 +331,6 @@ class _TomFormStringDropdownWidgetState
   @override
   Widget build(BuildContext context) {
     final style = TomFormStyleScope.of(context);
-
-    // Validation error text
-    String? errorText;
-    final validationState = field.validationState;
-    if (validationState is ValidationError) {
-      errorText = field.resolveErrorMessage(validationState.errorKey);
-    }
 
     final dropdown = DropdownButtonFormField<String>(
       initialValue: field.get().isEmpty ? null : field.get(),
@@ -357,14 +348,13 @@ class _TomFormStringDropdownWidgetState
           : null,
       decoration: InputDecoration(
         hintText: field.hintText,
-        errorText: errorText,
         contentPadding: style.fieldContentPadding,
         border: style.fieldBorder,
         focusedBorder: style.focusedBorder,
         errorBorder: style.errorBorder,
         enabledBorder: style.fieldBorder,
         hintStyle: style.hintStyle,
-        errorStyle: style.errorStyle,
+        // No errorText — handled by decorateField() via mixin
       ),
     );
 
