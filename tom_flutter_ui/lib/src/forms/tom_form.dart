@@ -148,6 +148,20 @@ abstract class TomForm<T extends TomClass> extends TomClass
     _fireEvent(FormDiscardedEvent(source: formId));
   }
 
+  /// Detach from the bound state object.
+  ///
+  /// Resets all fields to pristine, clears the binding reference
+  /// and the initial snapshot. Call this when the form is no longer
+  /// editing a data object.
+  void unbind() {
+    onUnbinding();
+    for (final field in fields.values) {
+      field.reset();
+    }
+    _binding = null;
+    _initialSnapshot = null;
+  }
+
   // --- State queries ---
 
   /// Whether any field's value differs from its initial value.
@@ -657,8 +671,8 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 ///
 /// Prefer [TomFormStringInput] from Phase 1 for new code.
 @Deprecated('Use TomFormStringInput instead')
-class TomStringFormFieldClassic extends TomTextFormFieldBase<String> {
-  TomStringFormFieldClassic(
+class TomFormStringInputClassic extends TomTextFormFieldBase<String> {
+  TomFormStringInputClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -678,8 +692,8 @@ class TomStringFormFieldClassic extends TomTextFormFieldBase<String> {
 ///
 /// Prefer [TomFormStringInput] with `obscureText: true` for new code.
 @Deprecated('Use TomFormStringInput with obscureText: true instead')
-class TomPasswordFormFieldClassic extends TomTextFormFieldBase<String> {
-  TomPasswordFormFieldClassic(
+class TomFormPasswordStringInputClassic extends TomTextFormFieldBase<String> {
+  TomFormPasswordStringInputClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -698,8 +712,8 @@ class TomPasswordFormFieldClassic extends TomTextFormFieldBase<String> {
 ///
 /// Prefer [TomFormStringInput] with email validators for new code.
 @Deprecated('Use TomFormStringInput with email validators instead')
-class TomEmailFormFieldClassic extends TomTextFormFieldBase<String> {
-  TomEmailFormFieldClassic(
+class TomFormEmailStringInputClassic extends TomTextFormFieldBase<String> {
+  TomFormEmailStringInputClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -732,11 +746,11 @@ class TomEmailFormFieldClassic extends TomTextFormFieldBase<String> {
 
 /// **Legacy** integer form field with int conversion and optional min/max validation.
 @Deprecated('Use typed form fields from Phase 2+ instead')
-class TomIntFormFieldClassic extends TomTextFormFieldBase<int> {
+class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
   final int? min;
   final int? max;
 
-  TomIntFormFieldClassic(
+  TomFormIntInputClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -782,11 +796,11 @@ class TomIntFormFieldClassic extends TomTextFormFieldBase<int> {
 
 /// **Legacy** double/decimal form field with double conversion and optional min/max validation.
 @Deprecated('Use typed form fields from Phase 2+ instead')
-class TomDoubleFormFieldClassic extends TomTextFormFieldBase<double> {
+class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
   final double? min;
   final double? max;
 
-  TomDoubleFormFieldClassic(
+  TomFormDoubleInputClassic(
     super.fieldId,
     super.initialValue, {
     super.form,
@@ -836,27 +850,27 @@ class TestFormClassic extends TomForm<TomClass> {
   TestFormClassic() : super(formId: "test_form");
 
   // ignore: deprecated_member_use_from_same_package
-  late final TomEmailFormFieldClassic email;
+  late final TomFormEmailStringInputClassic email;
   // ignore: deprecated_member_use_from_same_package
-  late final TomPasswordFormFieldClassic password;
+  late final TomFormPasswordStringInputClassic password;
   // ignore: deprecated_member_use_from_same_package
-  late final TomStringFormFieldClassic username;
+  late final TomFormStringInputClassic username;
   // ignore: deprecated_member_use_from_same_package
-  late final TomIntFormFieldClassic age;
+  late final TomFormIntInputClassic age;
   // ignore: deprecated_member_use_from_same_package
-  late final TomDoubleFormFieldClassic rating;
+  late final TomFormDoubleInputClassic rating;
 
   @override
   void createFormElements() {
     // ignore: deprecated_member_use_from_same_package
-    email = TomEmailFormFieldClassic('email', '', form: this);
+    email = TomFormEmailStringInputClassic('email', '', form: this);
     // ignore: deprecated_member_use_from_same_package
-    password = TomPasswordFormFieldClassic('password', '', form: this);
+    password = TomFormPasswordStringInputClassic('password', '', form: this);
     // ignore: deprecated_member_use_from_same_package
-    username = TomStringFormFieldClassic('username', '', form: this);
+    username = TomFormStringInputClassic('username', '', form: this);
     // ignore: deprecated_member_use_from_same_package
-    age = TomIntFormFieldClassic('age', 0, form: this, min: 0, max: 150);
+    age = TomFormIntInputClassic('age', 0, form: this, min: 0, max: 150);
     // ignore: deprecated_member_use_from_same_package
-    rating = TomDoubleFormFieldClassic('rating', 0.0, form: this, min: 0.0, max: 5.0);
+    rating = TomFormDoubleInputClassic('rating', 0.0, form: this, min: 0.0, max: 5.0);
   }
 }

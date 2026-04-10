@@ -570,28 +570,28 @@ void main() {
   // -------------------------------------------------------------------------
 
   group('Legacy class renames', () {
-    test('TomStringFormFieldClassic exists and works', () {
+    test('TomFormStringInputClassic exists and works', () {
       // ignore: deprecated_member_use
-      final field = TomStringFormFieldClassic('name', '');
+      final field = TomFormStringInputClassic('name', '');
       expect(field, isNotNull);
       expect(field.fieldId, 'name');
     });
 
-    test('TomPasswordFormFieldClassic exists and works', () {
+    test('TomFormPasswordStringInputClassic exists and works', () {
       // ignore: deprecated_member_use
-      final field = TomPasswordFormFieldClassic('pass', '');
+      final field = TomFormPasswordStringInputClassic('pass', '');
       expect(field.obscureText, isTrue);
     });
 
-    test('TomIntFormFieldClassic exists and works', () {
+    test('TomFormIntInputClassic exists and works', () {
       // ignore: deprecated_member_use
-      final field = TomIntFormFieldClassic('age', 0, min: 0, max: 150);
+      final field = TomFormIntInputClassic('age', 0, min: 0, max: 150);
       expect(field, isNotNull);
     });
 
-    test('TomDoubleFormFieldClassic exists and works', () {
+    test('TomFormDoubleInputClassic exists and works', () {
       // ignore: deprecated_member_use
-      final field = TomDoubleFormFieldClassic('rating', 0.0, min: 0.0, max: 5.0);
+      final field = TomFormDoubleInputClassic('rating', 0.0, min: 0.0, max: 5.0);
       expect(field, isNotNull);
     });
   });
