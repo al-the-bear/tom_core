@@ -124,9 +124,10 @@ abstract class TomForm<T extends TomClass> extends TomClass
   }
 
   /// Save form values back to bound state.
-  /// Returns `false` if the form is not valid.
-  bool save() {
-    if (!isValid) return false;
+  /// Runs full validation first — returns `false` if any errors.
+  Future<bool> save() async {
+    final errors = await validate();
+    if (errors.isNotEmpty) return false;
     onSaving();
     _binding?.setValues(getValues());
     for (final field in fields.values) {
@@ -191,7 +192,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
         errors.add(FormValidationError(
           errorKey: result.errorKey,
           params: result.params,
-          fields: [field.fieldId],
+          fields: [field],
         ));
       }
     }
@@ -317,7 +318,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Set a new value from user interaction.
   ///
   /// Fires [FieldValueChangedEvent], transitions out of pristine state,
-  /// and schedules debounced re-validation.
+  /// and schedules debounced re-validation. Fast validators run after
+  /// [validationDebounce]; slow validators run after [slowValidationDebounce].
   void setValue(T newValue) {
     final oldValue = get();
     if (newValue == oldValue) return;
@@ -329,9 +331,84 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     ));
     // Transition out of pristine — clear to success for UX responsiveness
     _validationState = const ValidationSuccess();
+    _slowValidationPending = false;
     // Debounced re-validation
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(validationDebounce, () => validate());
+    _slowDebounceTimer?.cancel();
+    _debounceTimer = Timer(validationDebounce, () => _validateFast());
+    if (hasSlowValidators) {
+      _slowDebounceTimer = Timer(slowValidationDebounce, () => _validateSlow());
+    }
+  }
+
+  /// Run only fast validators (called after fast debounce).
+  Future<void> _validateFast() async {
+    for (final validator in validators) {
+      if (validator is SlowValidator) continue;
+      final result = await (validator as Validator<T>)(get());
+      if (result is ValidationError) {
+        _validationState = result;
+        _slowValidationPending = false;
+        _slowDebounceTimer?.cancel();
+        form?._fireEvent(FieldValidatedEvent(
+          source: fieldId,
+          result: _validationState,
+        ));
+        return;
+      }
+    }
+    // Fast validators passed — keep current state (slow may still be pending)
+    if (!_slowValidationPending) {
+      // No slow validators or they haven't started yet — mark success for now
+      if (!hasSlowValidators) {
+        _validationState = const ValidationSuccess();
+        form?._fireEvent(FieldValidatedEvent(
+          source: fieldId,
+          result: _validationState,
+        ));
+      }
+    }
+  }
+
+  /// Run only slow validators (called after slow debounce).
+  Future<void> _validateSlow() async {
+    // First re-check fast validators (value may have changed)
+    for (final validator in validators) {
+      if (validator is SlowValidator) continue;
+      final result = await (validator as Validator<T>)(get());
+      if (result is ValidationError) {
+        _validationState = result;
+        _slowValidationPending = false;
+        form?._fireEvent(FieldValidatedEvent(
+          source: fieldId,
+          result: _validationState,
+        ));
+        return;
+      }
+    }
+
+    // Run slow validators with pending state
+    _slowValidationPending = true;
+    _validationState = const ValidationPending();
+    final slowValidators = validators.whereType<SlowValidator>().toList();
+    for (final slow in slowValidators) {
+      final result = await slow.validate(get() as dynamic);
+      if (result is ValidationError) {
+        _validationState = result;
+        _slowValidationPending = false;
+        form?._fireEvent(FieldValidatedEvent(
+          source: fieldId,
+          result: _validationState,
+        ));
+        return;
+      }
+    }
+    _slowValidationPending = false;
+    _validationState = const ValidationSuccess();
+    form?._fireEvent(FieldValidatedEvent(
+      source: fieldId,
+      result: _validationState,
+    ));
   }
 
   /// Commit current value as the new initial value.
@@ -339,6 +416,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   void commit() {
     _initialValue = get();
     _debounceTimer?.cancel();
+    _slowDebounceTimer?.cancel();
+    _slowValidationPending = false;
     _validationState = const ValidationPristine();
     form?._fireEvent(FieldCommittedEvent(source: fieldId));
   }
@@ -347,6 +426,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   void reset() {
     set(_initialValue);
     _debounceTimer?.cancel();
+    _slowDebounceTimer?.cancel();
+    _slowValidationPending = false;
     _validationState = const ValidationPristine();
   }
 
@@ -384,7 +465,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
     // 2. Group auth (CRITICAL — must not be skipped)
     if (tomGroup != null) {
-      state = state.narrow(tomGroup!.authState);
+      state = tomGroup!.applyMode(state);
     }
 
     // 3. Form auth (narrows)
@@ -416,8 +497,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   // --- Validation ---
 
-  /// Validators applied to this field (new validation system).
-  final List<Validator<T>> validators;
+  /// Validators applied to this field.
+  ///
+  /// Accepts both [Validator<T>] (fast) and [SlowValidator<T>] (slow).
+  /// Fast validators run without showing a pending spinner.
+  /// Slow validators (e.g., remote API calls) show a spinner and trigger
+  /// after a longer debounce.
+  final List<Object> validators;
 
   /// Whether this field validates immediately on bind without waiting
   /// for user interaction. Useful for auto-save forms.
@@ -428,27 +514,65 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   ValidationResult get validationState => _validationState;
 
-  /// Debounce timer for change-triggered validation.
+  /// Whether slow validation is currently in progress.
+  /// Used by decoration mixin to decide whether to show a spinner.
+  bool _slowValidationPending = false;
+
+  bool get isSlowValidationPending => _slowValidationPending;
+
+  /// Debounce timer for fast validation.
   Timer? _debounceTimer;
 
-  /// Debounce duration for change-triggered validation. Default: 300ms.
+  /// Debounce timer for slow validation (separate, longer).
+  Timer? _slowDebounceTimer;
+
+  /// Debounce duration for fast validation. Default: 300ms.
   Duration get validationDebounce => const Duration(milliseconds: 300);
 
-  /// Validate the current value.
-  /// Runs all [validators] sequentially, stopping on first error.
-  Future<ValidationResult> validate() async {
-    _validationState = const ValidationPending();
+  /// Debounce duration for slow validation. Default: 600ms.
+  Duration get slowValidationDebounce => const Duration(milliseconds: 600);
 
+  /// Whether this field has any slow validators.
+  bool get hasSlowValidators => validators.any((v) => v is SlowValidator);
+
+  /// Validate the current value.
+  ///
+  /// Runs fast validators first (no pending spinner), then slow validators
+  /// (with pending spinner). Stops on first error at any stage.
+  Future<ValidationResult> validate() async {
+    // Run fast validators first — no pending state
     for (final validator in validators) {
-      final result = await validator(get());
+      if (validator is SlowValidator) continue;
+      final result = await (validator as Validator<T>)(get());
       if (result is ValidationError) {
         _validationState = result;
+        _slowValidationPending = false;
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
           result: _validationState,
         ));
         return result;
       }
+    }
+
+    // Run slow validators — show pending state
+    final slowValidators = validators.whereType<SlowValidator>().toList();
+    if (slowValidators.isNotEmpty) {
+      _slowValidationPending = true;
+      _validationState = const ValidationPending();
+      for (final slow in slowValidators) {
+        final result = await slow.validate(get() as dynamic);
+        if (result is ValidationError) {
+          _validationState = result;
+          _slowValidationPending = false;
+          form?._fireEvent(FieldValidatedEvent(
+            source: fieldId,
+            result: _validationState,
+          ));
+          return result;
+        }
+      }
+      _slowValidationPending = false;
     }
 
     _validationState = const ValidationSuccess();
@@ -469,6 +593,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Dispose resources (timers, controllers, listeners).
   void dispose() {
     _debounceTimer?.cancel();
+    _slowDebounceTimer?.cancel();
   }
 
   @override

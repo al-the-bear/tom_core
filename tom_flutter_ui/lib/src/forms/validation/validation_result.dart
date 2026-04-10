@@ -94,3 +94,27 @@ class ValidationPending extends ValidationResult {
 /// Sync validators return the result directly; async validators
 /// return a `Future<ValidationResult>`.
 typedef Validator<T> = FutureOr<ValidationResult> Function(T value);
+
+/// Wraps a validator to mark it as "slow" (e.g., remote API call).
+///
+/// Slow validators differ from fast validators in two ways:
+/// 1. They trigger after a longer debounce (`slowValidationDebounce`)
+/// 2. They show a pending spinner (`ValidationPending`) during execution
+///
+/// Fast validators run immediately after the standard debounce and
+/// do NOT transition through `ValidationPending`.
+///
+/// Usage:
+/// ```dart
+/// TomFormStringInput('email', '',
+///   validators: [
+///     Validators.required(),        // fast — no spinner
+///     Validators.email(),           // fast — no spinner
+///     SlowValidator(checkEmailAvailable), // slow — spinner shown
+///   ],
+/// )
+/// ```
+class SlowValidator<T> {
+  final Validator<T> validate;
+  const SlowValidator(this.validate);
+}

@@ -376,18 +376,21 @@ void main() {
       expect(find.text('error.required'), findsOneWidget);
     });
 
-    testWidgets('shows spinner during pending validation', (tester) async {
+    testWidgets('shows spinner during slow pending validation', (tester) async {
       final completer = Completer<ValidationResult>();
       final field = TomFormStringInput(
         'name',
         'test',
         labelTextOverride: 'Name',
-        validators: [(value) => completer.future],
+        validators: [SlowValidator((value) => completer.future)],
       );
 
       // Start validation (don't await)
       field.validate();
+      // After fast validators pass, slow validation starts → pending
+      await tester.pump(const Duration(milliseconds: 10));
       expect(field.validationState, isA<ValidationPending>());
+      expect(field.isSlowValidationPending, isTrue);
 
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pump();

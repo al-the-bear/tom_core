@@ -207,7 +207,7 @@ mixin TomFieldDecorationMixin<T> on TomField<T> {
   }
 
   Widget? _buildPendingSpinner() {
-    if (validationState is! ValidationPending) return null;
+    if (!isSlowValidationPending) return null;
     return const Padding(
       padding: EdgeInsets.only(left: 8.0),
       child: SizedBox(

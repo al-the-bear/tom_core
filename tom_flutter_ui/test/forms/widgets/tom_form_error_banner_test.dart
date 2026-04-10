@@ -5,8 +5,19 @@ import 'package:tom_flutter_ui/src/forms/events/tom_form_event_listener.dart';
 import 'package:tom_flutter_ui/src/forms/events/tom_form_event_source.dart';
 import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
 import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
+import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
 import 'package:tom_flutter_ui/src/forms/widgets/tom_form_error_banner.dart';
+
+// ---------------------------------------------------------------------------
+// Minimal TomField subclass for test FormValidationError construction
+// ---------------------------------------------------------------------------
+class _TestField<T> extends TomField<T> {
+  _TestField(super.fieldId, super.initialValue);
+
+  @override
+  Widget get widget => const SizedBox.shrink();
+}
 
 // ---------------------------------------------------------------------------
 // Lightweight event source that doesn't require reflection
@@ -42,6 +53,15 @@ Widget _wrap(Widget child, {TomFormStyle? style}) {
 }
 
 void main() {
+  // Reusable test field references for FormValidationError construction
+  final fieldA = _TestField<String>('a', '');
+  final fieldB = _TestField<String>('b', '');
+  final fieldName = _TestField<String>('name', '');
+  final fieldPassword = _TestField<String>('password', '');
+  final fieldConfirmPassword = _TestField<String>('confirmPassword', '');
+  final fieldStartDate = _TestField<String>('startDate', '');
+  final fieldEndDate = _TestField<String>('endDate', '');
+
   group('TomFormErrorBanner — display', () {
     testWidgets('renders nothing when no errors', (tester) async {
       final form = _TestEventSource();
@@ -65,7 +85,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.passwordMismatch',
-            fields: ['password', 'confirmPassword'],
+            fields: [fieldPassword, fieldConfirmPassword],
           ),
         ],
       ));
@@ -86,11 +106,11 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.passwordMismatch',
-            fields: ['password', 'confirmPassword'],
+            fields: [fieldPassword, fieldConfirmPassword],
           ),
           FormValidationError(
             errorKey: 'error.dateRange',
-            fields: ['startDate', 'endDate'],
+            fields: [fieldStartDate, fieldEndDate],
           ),
         ],
       ));
@@ -112,12 +132,12 @@ void main() {
           // Single-field error — should NOT appear in banner
           FormValidationError(
             errorKey: 'error.required',
-            fields: ['name'],
+            fields: [fieldName],
           ),
           // Cross-field error — should appear
           FormValidationError(
             errorKey: 'error.mismatch',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -141,7 +161,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.cross',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -167,7 +187,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.cross',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -193,7 +213,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.cross',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -226,7 +246,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.cross',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -253,7 +273,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.cross',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));
@@ -282,7 +302,7 @@ void main() {
           errors: [
             FormValidationError(
               errorKey: 'error.cross',
-              fields: ['a', 'b'],
+              fields: [fieldA, fieldB],
             ),
           ],
         )),
@@ -322,7 +342,7 @@ void main() {
         errors: [
           FormValidationError(
             errorKey: 'error.from1',
-            fields: ['a', 'b'],
+            fields: [fieldA, fieldB],
           ),
         ],
       ));

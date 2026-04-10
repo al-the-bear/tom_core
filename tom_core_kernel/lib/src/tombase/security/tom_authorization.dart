@@ -93,6 +93,23 @@ abstract interface class TomAuthorizable {
 }
 
 // =============================================================================
+// AuthGroupMode — how a group's auth state applies to members
+// =============================================================================
+
+/// Determines how a [TomAuthorizationGroup]'s auth state applies to its members.
+enum AuthGroupMode {
+  /// Group state replaces all member states (after form-level narrowing).
+  controlsAll,
+
+  /// Group state is the ceiling — members can be narrower but not wider.
+  controlsWidest,
+
+  /// Group state is the floor — members that would be more restrictive
+  /// are elevated to the group's state.
+  controlsNarrowest,
+}
+
+// =============================================================================
 // TomAuthorizationGroup — collective authorization control
 // =============================================================================
 
@@ -102,7 +119,8 @@ abstract interface class TomAuthorizable {
 /// and [authorizationGroup] properties.
 ///
 /// ```dart
-/// final shippingGroup = TomAuthorizationGroup('shipping');
+/// final shippingGroup = TomAuthorizationGroup('shipping',
+///     mode: AuthGroupMode.controlsAll);
 /// TomTextField(tomId: 'street', authorizationGroup: shippingGroup, ...),
 /// TomTextField(tomId: 'city', authorizationGroup: shippingGroup, ...),
 /// ```
@@ -112,6 +130,9 @@ class TomAuthorizationGroup {
   /// The group ID.
   final String groupId;
 
+  /// How this group's auth state applies to its members.
+  final AuthGroupMode mode;
+
   /// Registered members stored as weak references.
   final Set<WeakReference<TomAuthorizable>> _members =
       HashSet<WeakReference<TomAuthorizable>>(
@@ -119,7 +140,7 @@ class TomAuthorizationGroup {
     hashCode: (ref) => identityHashCode(ref.target),
   );
 
-  TomAuthorizationGroup(this.groupId);
+  TomAuthorizationGroup(this.groupId, {this.mode = AuthGroupMode.controlsWidest});
 
   /// Registers a [TomAuthorizable] element with this group.
   void register(TomAuthorizable element) {
@@ -175,6 +196,20 @@ class TomAuthorizationGroup {
     return TomAuthorization.resolveAuth(fullPath);
   }
 
+  /// Applies this group's authorization mode to a member's state.
+  ///
+  /// - [controlsAll]: group state replaces the member's state
+  /// - [controlsWidest]: group state is the ceiling (narrows the member)
+  /// - [controlsNarrowest]: group state is the floor (widens the member)
+  TomAuthState applyMode(TomAuthState memberState) {
+    final groupState = authState;
+    return switch (mode) {
+      AuthGroupMode.controlsAll => groupState,
+      AuthGroupMode.controlsWidest => memberState.narrow(groupState),
+      AuthGroupMode.controlsNarrowest => memberState.widen(groupState),
+    };
+  }
+
   /// Finds a member by [tomId] within this group.
   TomAuthorizable? findMember(String tomId) {
     for (final member in members) {
@@ -184,7 +219,7 @@ class TomAuthorizationGroup {
   }
 
   @override
-  String toString() => 'TomAuthorizationGroup($groupId)';
+  String toString() => 'TomAuthorizationGroup($groupId, mode: $mode)';
 }
 
 // =============================================================================
