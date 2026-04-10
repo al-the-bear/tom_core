@@ -297,6 +297,9 @@ class _AclRowLayout {
   /// Estimated row height from the pre-calc pass.
   final double estimatedHeight;
 
+  /// Minimum horizontal X position (may be negative for shifted components).
+  final double minHorizontalX;
+
   _AclRowLayout({
     required this.fittedWidths,
     required this.horizontalDeltas,
@@ -306,6 +309,7 @@ class _AclRowLayout {
     required this.gapSlotWidths,
     required this.virtualRects,
     required this.estimatedHeight,
+    this.minHorizontalX = 0.0,
   });
 }
 
@@ -890,7 +894,9 @@ class _AclContainerState extends State<AclContainer> {
 
     if (naturalWidth <= availableWidth) {
       // ── Grow phase ─────────────────────────────────────────────────────
-      // Natural-sized (no-hint) components use cached size as seed.
+      // Non-expandX components WITH maxSize can grow up to their max.
+      // Non-expandX components WITHOUT maxSize stay at pref (no grow).
+      // expandX components are handled separately via Flexible.
       final hasRowFiller = row.components.any(
         (c) => (c.expandX && !c.isGap) || c.isGap,
       );
@@ -918,35 +924,30 @@ class _AclContainerState extends State<AclContainer> {
           availableWidth - naturalWidth - naturalExcludedWidth,
         );
         if (effectiveSurplus >= 1) {
-          double totalPref = 0;
+          // Only grow components that have a finite maxSize constraint.
+          // Components without maxSize stay at prefSize (no expansion).
+          double totalGrowable = 0;
           for (int i = 0; i < row.components.length; i++) {
             final comp = row.components[i];
             if (skip(comp)) continue;
             if (comp.useOtherDimX) continue;
-            if (comp.preferredSize == null &&
-                comp.minimumSize == null &&
-                comp.maximumSize == null) {
-              continue;
-            }
-            totalPref += prefWidths[i] ?? 0.0;
+            final max = comp.maximumSize?.width;
+            if (max == null || !max.isFinite) continue; // Skip non-growable
+            final pref = prefWidths[i] ?? 0.0;
+            totalGrowable += math.max(0.0, max - pref);
           }
-          if (totalPref >= 1) {
+          if (totalGrowable >= 1) {
             final grown = <int, double>{};
+            final shareRatio = math.min(1.0, effectiveSurplus / totalGrowable);
             for (int i = 0; i < row.components.length; i++) {
               final comp = row.components[i];
               if (skip(comp)) continue;
               if (comp.useOtherDimX) continue;
-              if (comp.preferredSize == null &&
-                  comp.minimumSize == null &&
-                  comp.maximumSize == null) {
-                continue;
-              }
-              final pref = prefWidths[i] ?? 0.0;
-              final share = effectiveSurplus * pref / totalPref;
               final max = comp.maximumSize?.width;
-              grown[i] = (max != null && max.isFinite)
-                  ? math.min(pref + share, max)
-                  : pref + share;
+              if (max == null || !max.isFinite) continue;
+              final pref = prefWidths[i] ?? 0.0;
+              final growRoom = max - pref;
+              grown[i] = pref + (growRoom * shareRatio);
             }
             if (grown.isNotEmpty) return grown;
           }
@@ -1136,6 +1137,14 @@ class _AclContainerState extends State<AclContainer> {
           overrideRows: effectiveRows,
         );
 
+        // ── Global left overflow: uniform visual shift (Transform, not
+        //    Padding) keeping everything inside the container without
+        //    consuming layout space. ──────────────────────────────────────
+        final globalMinHX = rowLayouts.isEmpty
+            ? 0.0
+            : rowLayouts.map((l) => l.minHorizontalX).reduce(math.min);
+        final globalExtraLeft = globalMinHX < 0 ? -globalMinHX : 0.0;
+
         // ── Assemble Flutter widget tree from pre-computed values ────────
         final List<Widget> rowWidgets = [];
         int contentRowIndex = 0;
@@ -1236,6 +1245,16 @@ class _AclContainerState extends State<AclContainer> {
               : CrossAxisAlignment.start,
           children: rowWidgets,
         );
+
+        // Uniformly shift ALL rows right when any row overflows to the
+        // left.  Transform.translate doesn't consume layout space, so
+        // expandX / constraints stay correct.
+        if (globalExtraLeft > 0) {
+          column = Transform.translate(
+            offset: Offset(globalExtraLeft, 0),
+            child: column,
+          );
+        }
 
         if (!canExpandHorizontally) {
           column = UnconstrainedBox(
@@ -1408,6 +1427,7 @@ class _AclContainerState extends State<AclContainer> {
     // ── Build virtual rects and compute alignment deltas ──────────────────
     double plannedX = 0;
     double maxHorizontalX = 0;
+    double minHorizontalX = 0;
     double rowEstimatedHeight = 0;
     // Same-row virtual rects needed for Y-alignment back-references.
     final sameRowVirtualRects = <Key, Rect>{};
@@ -1487,6 +1507,7 @@ class _AclContainerState extends State<AclContainer> {
 
       final shiftedLeft = plannedX + (hDelta < 0 ? hDelta : 0);
       final shiftedRight = shiftedLeft + estimatedW;
+      minHorizontalX = math.min(minHorizontalX, shiftedLeft);
       maxHorizontalX = math.max(maxHorizontalX, shiftedRight);
 
       final key = comp.componentKey;
@@ -1545,6 +1566,7 @@ class _AclContainerState extends State<AclContainer> {
       gapSlotWidths: gapSlotWidths,
       virtualRects: virtualRects,
       estimatedHeight: rowEstimatedHeight,
+      minHorizontalX: minHorizontalX,
     );
   }
 
@@ -1846,16 +1868,18 @@ class _AclContainerState extends State<AclContainer> {
 
       if (!isFlexNativeChild &&
           (!component.expandX || !canExpandHorizontally)) {
-        final effectiveWidth = fittedWidth ?? component.preferredSize?.width;
+        final effectiveWidth =
+            fittedWidth ?? linkedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
           child = SizedBox(width: effectiveWidth, child: child);
         }
       }
 
       if (!isFlexNativeChild && (!component.expandY || !canExpandVertically)) {
-        final preferredHeight = component.preferredSize?.height;
-        if (preferredHeight != null && preferredHeight > 0) {
-          child = SizedBox(height: preferredHeight, child: child);
+        final effectiveHeight =
+            linkedHeight ?? component.preferredSize?.height;
+        if (effectiveHeight != null && effectiveHeight > 0) {
+          child = SizedBox(height: effectiveHeight, child: child);
         }
       }
 
@@ -1881,22 +1905,8 @@ class _AclContainerState extends State<AclContainer> {
         plannedX + estimatedWidth,
       );
 
-      if (!isFlexNativeChild && component.componentKey != null) {
-        if (component.expandY && canExpandVertically) {
-          // expandY: use a transparent SizedBox to carry the key without
-          // loosening the cross-axis (height) constraints that allow this
-          // component to fill the row.
-          child = SizedBox(key: component.componentKey, child: child);
-        } else {
-          child = Align(
-            key: component.componentKey,
-            alignment: AlignmentDirectional.centerStart,
-            widthFactor: 1,
-            heightFactor: 1,
-            child: child,
-          );
-        }
-      }
+      // NOTE: componentKey wrapping is now done AFTER transforms to ensure
+      // getRect() returns the visually transformed position.
 
       // Skip cross-alignment wrapping for expandY components — they are
       // stretched by CrossAxisAlignment.stretch and must not have their
@@ -1928,9 +1938,28 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
+      // Wrap with componentKey AFTER transforms so getRect() sees final position.
+      if (!isFlexNativeChild && component.componentKey != null) {
+        if (component.expandY && canExpandVertically) {
+          // expandY: use a transparent SizedBox to carry the key without
+          // loosening the cross-axis (height) constraints that allow this
+          // component to fill the row.
+          child = SizedBox(key: component.componentKey, child: child);
+        } else {
+          child = Align(
+            key: component.componentKey,
+            alignment: AlignmentDirectional.centerStart,
+            widthFactor: 1,
+            heightFactor: 1,
+            child: child,
+          );
+        }
+      }
+
       if (component.expandX && canExpandHorizontally) {
-        final hasOwnFlexParentData = child is Flexible || child is Spacer;
-        if (!hasOwnFlexParentData) {
+        // Use isFlexNativeChild (checked on component.child) since `child`
+        // may have been wrapped with AclScope and other widgets by now.
+        if (!isFlexNativeChild) {
           final minW = (component.minimumSize?.width ?? linkedWidth ?? 0).clamp(
             0.0,
             double.maxFinite,
@@ -1953,7 +1982,10 @@ class _AclContainerState extends State<AclContainer> {
     // ── Row widget assembly ───────────────────────────────────────────────────
 
     Widget rowWidget;
-    final double extraLeft = minHorizontalX < 0 ? -minHorizontalX : 0.0;
+    // No per-row horizontal compensation — cross-row alignment requires
+    // all rows to share the same coordinate origin.  A global
+    // Transform.translate on the containing Column handles left overflow.
+    final double extraLeft = 0.0;
 
     if (!rowFillsWidth && canExpandHorizontally) {
       rowWidget = LayoutBuilder(

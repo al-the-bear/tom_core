@@ -1,9 +1,9 @@
 /// Forms/Actions Demos
 ///
 /// Demonstrates the form system from `tom_flutter_ui/lib/src/forms/`.
-/// Shows TomForm, TomStringFormField, TomEmailFormField, TomPasswordFormField,
-/// TomIntFormField, TomDoubleFormField — the reflection-based form framework
-/// for declarative form creation with built-in validation.
+/// Shows TomFormStringInput — the Phase 1 concrete string field — used
+/// in different configurations: plain text, email, password, and numeric
+/// input via keyboard type.
 ///
 /// Note: TomForm uses @tomReflector code generation for automatic field
 /// discovery.  Here we demonstrate the form field classes standalone
@@ -13,7 +13,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // =============================================================================
@@ -34,11 +33,11 @@ class FormsOverviewDemo extends StatefulWidget {
 
 class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
   // ── Real form field instances ──────────────────────────────────────────
-  late final TomEmailFormField _email;
-  late final TomPasswordFormField _password;
-  late final TomStringFormField _username;
-  late final TomIntFormField _age;
-  late final TomDoubleFormField _rating;
+  late final TomFormStringInput _email;
+  late final TomFormStringInput _password;
+  late final TomFormStringInput _username;
+  late final TomFormStringInput _age;
+  late final TomFormStringInput _rating;
 
   late final List<TomField> _fields;
 
@@ -52,84 +51,86 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     // Create field instances with explicit labels and decoration params.
     // In production these come from resource lookup; here we pass them
     // directly to show the override mechanism.
-    _email = TomEmailFormField(
+    _email = TomFormStringInput(
       'email',
       '',
-      labelText: 'Email',
-      helperText: 'TomEmailFormField — validates email format',
+      labelTextOverride: 'Email',
+      hintTextOverride: 'TomFormStringInput — validates email format',
       prefixIcon: const Icon(Icons.email),
+      keyboardType: TextInputType.emailAddress,
+      validators: [Validators.required(), Validators.email()],
     );
 
-    _password = TomPasswordFormField(
+    _password = TomFormStringInput(
       'password',
       '',
-      labelText: 'Password',
-      helperText: 'TomPasswordFormField — obscured, min 6 chars',
+      labelTextOverride: 'Password',
+      hintTextOverride: 'TomFormStringInput — obscured, min 6 chars',
       prefixIcon: const Icon(Icons.lock),
-      valueValidator: (value) {
-        if (value.isEmpty) return 'password.errors.required';
-        if (value.length < 6) return 'password.errors.tooShort';
-        return null;
-      },
+      obscureText: true,
+      validators: [
+        Validators.required(),
+        Validators.minLength(6),
+      ],
     );
 
-    _username = TomStringFormField(
+    _username = TomFormStringInput(
       'username',
       '',
-      labelText: 'Username',
-      helperText: 'TomStringFormField — required text field',
+      labelTextOverride: 'Username',
+      hintTextOverride: 'TomFormStringInput — required text field',
       prefixIcon: const Icon(Icons.person),
-      valueValidator: (value) {
-        if (value.isEmpty) return 'username.errors.required';
-        return null;
-      },
+      validators: [Validators.required()],
     );
 
-    _age = TomIntFormField(
+    _age = TomFormStringInput(
       'age',
-      0,
-      min: 0,
-      max: 150,
-      labelText: 'Age',
-      helperText: 'TomIntFormField — integer, range 0–150',
+      '',
+      labelTextOverride: 'Age',
+      hintTextOverride: 'TomFormStringInput — integer input',
       prefixIcon: const Icon(Icons.cake),
+      keyboardType: TextInputType.number,
     );
 
-    _rating = TomDoubleFormField(
+    _rating = TomFormStringInput(
       'rating',
-      0.0,
-      min: 0.0,
-      max: 5.0,
-      labelText: 'Rating',
-      helperText: 'TomDoubleFormField — decimal, range 0.0–5.0',
+      '',
+      labelTextOverride: 'Rating',
+      hintTextOverride: 'TomFormStringInput — decimal input',
       prefixIcon: const Icon(Icons.star),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
     );
 
     _fields = [_email, _password, _username, _age, _rating];
   }
 
-  void _validateAll() {
+  Future<void> _validateAll() async {
     bool valid = true;
     for (final field in _fields) {
-      valid = field.validate() && valid;
+      final result = await field.validate();
+      if (result is ValidationError) valid = false;
     }
     setState(() => _formValid = valid);
   }
 
-  void _saveForm() {
-    _validateAll();
+  Future<void> _saveForm() async {
+    await _validateAll();
     if (_formValid) {
       setState(() {
         _savedValues = {
-          for (final field in _fields) field.fieldName: field.save(),
+          for (final field in _fields) field.fieldId: field.get(),
         };
+        // Commit all fields (marks current value as initial)
+        for (final field in _fields) {
+          field.commit();
+        }
       });
     }
   }
 
   void _resetForm() {
     for (final field in _fields) {
-      if (field is TomTextFormFieldBase) field.reset();
+      field.reset();
     }
     setState(() {
       _savedValues = null;
@@ -164,14 +165,15 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
                     'The forms module provides a reflection-based form '
                     'framework with declarative field creation and built-in '
                     'validation.\n\n'
-                    'Fields shown below are real instances of:\n'
-                    '• TomStringFormField — standard text input\n'
-                    '• TomEmailFormField — email with validation\n'
-                    '• TomPasswordFormField — obscured text\n'
-                    '• TomIntFormField — integer with min/max\n'
-                    '• TomDoubleFormField — decimal with min/max\n\n'
+                    'Fields shown below are real instances of '
+                    'TomFormStringInput configured for different input types:\n'
+                    '• Username — required text field\n'
+                    '• Email — email format validation\n'
+                    '• Password — obscured text, min length\n'
+                    '• Age — numeric keyboard input\n'
+                    '• Rating — decimal keyboard input\n\n'
                     'Each field supports the resource lookup pattern for '
-                    'labels, helper text, hints, and icons.  Explicit '
+                    'labels, hints, and descriptions.  Explicit '
                     'parameters override resource values.',
                     style: theme.textTheme.bodyMedium,
                   ),
@@ -197,9 +199,9 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Render each field using its getField() method
+                  // Render each field using its widget property
                   for (final field in _fields) ...[
-                    field.getField(),
+                    field.widget,
                     const SizedBox(height: 16),
                   ],
 
@@ -207,8 +209,8 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
                   Row(
                     children: [
                       ElevatedButton.icon(
-                        onPressed: () {
-                          _validateAll();
+                        onPressed: () async {
+                          await _validateAll();
                           setState(() {});
                         },
                         icon: const Icon(Icons.check),
