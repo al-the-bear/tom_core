@@ -725,6 +725,11 @@ class _AclContainerState extends State<AclContainer> {
   Widget build(BuildContext context) {
     Widget content = _buildContent(context);
 
+    // Clip overflow when the available space is smaller than content needs.
+    // This prevents visual overflow (paint outside bounds) and replaces the
+    // yellow/black striped overflow indicator with a clean clip.
+    content = ClipRect(child: content);
+
     // Container-level height/width constraints. minContW is handled inside
     // _buildContent (inside LayoutBuilder) so expandX/gap use the correct width.
     final minContH =
@@ -878,7 +883,13 @@ class _AclContainerState extends State<AclContainer> {
               .clamp(0.0, double.infinity);
       prefWidths[i] = pref;
 
-      final h = (comp.preferredSize?.height ?? comp.minimumSize?.height ?? 0)
+      // Use non-zero preferredSize.height when set explicitly; otherwise
+      // fall through to minimumSize or natural height.  The auto-default
+      // Size(150, 0) sets height to 0 which must NOT suppress intrinsic height.
+      final prefH = comp.preferredSize?.height;
+      final h = (prefH != null && prefH > 0
+              ? prefH
+              : (comp.minimumSize?.height ?? _naturalHeight(comp) ?? 0))
           .clamp(0.0, double.infinity);
       final shiftedLeft = plannedX + (delta < 0 ? delta : 0);
       minHX = math.min(minHX, shiftedLeft);
@@ -957,6 +968,9 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     // ── Shrink phase ────────────────────────────────────────────────────────
+    // Components shrink from preferred towards minimum. When no explicit
+    // minimumSize is set the floor is 0 — NOT preferredSize — so that
+    // auto-defaulted components (150×0) can still participate in shrinking.
     final deficit = naturalWidth - availableWidth;
     double shrinkCap = 0;
     for (int i = 0; i < row.components.length; i++) {
@@ -965,8 +979,7 @@ class _AclContainerState extends State<AclContainer> {
       if (comp.useOtherDimX) continue;
       shrinkCap += math.max(
         0.0,
-        (prefWidths[i] ?? 0) -
-            (comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0),
+        (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? 0),
       );
     }
     if (shrinkCap < 1) return null;
@@ -979,7 +992,7 @@ class _AclContainerState extends State<AclContainer> {
       if (comp.useOtherDimX) continue;
       if (comp.preferredSize == null && comp.minimumSize == null) continue;
       final pref = prefWidths[i] ?? 0.0;
-      final min = comp.minimumSize?.width ?? comp.preferredSize?.width ?? 0.0;
+      final min = comp.minimumSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
     }
     return fitted;
@@ -1600,9 +1613,15 @@ class _AclContainerState extends State<AclContainer> {
   }
 
   double _estimateH(AclComponent comp, double? linkedHeight) {
-    if (linkedHeight != null) return linkedHeight.clamp(0, double.infinity);
-    return (comp.preferredSize?.height ??
-            comp.minimumSize?.height ??
+    if (linkedHeight != null && linkedHeight > 0) {
+      return linkedHeight.clamp(0, double.infinity);
+    }
+    // Treat preferredSize.height == 0 as "no preference" so the natural
+    // height is used.  The auto-default Size(150, 0) must not suppress
+    // intrinsic height for labels and other unsized components.
+    final prefH = comp.preferredSize?.height;
+    if (prefH != null && prefH > 0) return prefH;
+    return (comp.minimumSize?.height ??
             _naturalHeight(comp) ??
             0)
         .clamp(0, double.infinity);
@@ -1833,11 +1852,14 @@ class _AclContainerState extends State<AclContainer> {
                 component.minimumSize?.width ??
                 component.preferredSize?.width)
           : (component.minimumSize?.width ?? component.preferredSize?.width);
+      // Do NOT fall back to preferredSize.height for minHeight — preferred
+      // height is enforced via SizedBox(height:) wrapping.  Using it as
+      // minHeight too prevents Column-based vertical centering inside that
+      // SizedBox.
       final minHeight = component.useOtherDimY
-          ? (linkedHeight ??
-                component.minimumSize?.height ??
-                component.preferredSize?.height)
-          : (component.minimumSize?.height ?? component.preferredSize?.height);
+          ? ((linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
+                component.minimumSize?.height)
+          : component.minimumSize?.height;
       // For useOtherDimX components whose reference is not yet resolved (first frame),
       // fall back to availableWidth as maxWidth — prevents TextField/Dropdown
       // "unbounded width" assertion inside Row(mainAxisSize.max) rows.
@@ -1876,10 +1898,32 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       if (!isFlexNativeChild && (!component.expandY || !canExpandVertically)) {
+        // Treat preferredSize.height == 0 as "no height preference" so that
+        // auto-defaulted components use intrinsic height instead of being
+        // constrained to 0.
+        final rawPrefH = component.preferredSize?.height;
         final effectiveHeight =
-            linkedHeight ?? component.preferredSize?.height;
-        if (effectiveHeight != null && effectiveHeight > 0) {
-          child = SizedBox(height: effectiveHeight, child: child);
+            (linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
+            (rawPrefH != null && rawPrefH > 0 ? rawPrefH : null);
+        if (effectiveHeight != null) {
+          // Vertically centre content inside the allocated height using a
+          // Column with CrossAxisAlignment.stretch.  Stretch preserves the
+          // parent's tight width constraint — unlike Align which loosens it,
+          // breaking expandX (Flexible) components.
+          final verticalAlign = switch (component.rowCrossAlignment) {
+            AclRowCrossAlignment.top => MainAxisAlignment.start,
+            AclRowCrossAlignment.center => MainAxisAlignment.center,
+            AclRowCrossAlignment.bottom => MainAxisAlignment.end,
+          };
+          child = SizedBox(
+            height: effectiveHeight,
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              mainAxisAlignment: verticalAlign,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [child],
+            ),
+          );
         }
       }
 
