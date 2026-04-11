@@ -1869,8 +1869,16 @@ class _AclContainerState extends State<AclContainer> {
                 component.maximumSize?.width ??
                 (availableWidth?.isFinite == true ? availableWidth : null))
           : component.maximumSize?.width;
+      // Skip linkedHeight of 0 for maxHeight — on the first frame the
+      // reference component may have height 0 (auto-default Size(150,0))
+      // and constraining sameHeightAs followers to maxHeight:0 would collapse
+      // them.  After the natural-size cache populates, linkedHeight becomes
+      // the real rendered height and the constraint is correct.
       final maxHeight = component.useOtherDimY
-          ? (linkedHeight ?? component.maximumSize?.height)
+          ? ((linkedHeight != null && linkedHeight > 0
+                  ? linkedHeight
+                  : null) ??
+              component.maximumSize?.height)
           : component.maximumSize?.height;
 
       if (!isFlexNativeChild &&
@@ -1889,15 +1897,12 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      if (!isFlexNativeChild &&
-          (!component.expandX || !canExpandHorizontally)) {
-        final effectiveWidth =
-            fittedWidth ?? linkedWidth ?? component.preferredSize?.width;
-        if (effectiveWidth != null) {
-          child = SizedBox(width: effectiveWidth, child: child);
-        }
-      }
-
+      // ── Height wrapping (BEFORE width) ──────────────────────────────────
+      // Height wrapping is applied first so that the width SizedBox ends up
+      // on the outside.  This is critical for vertical centering: the inner
+      // Column(CrossAxisAlignment.stretch) inherits the tight width
+      // constraint from the outer SizedBox(width:), preserving correct
+      // widths for both expandX and non-expandX components.
       if (!isFlexNativeChild && (!component.expandY || !canExpandVertically)) {
         // Treat preferredSize.height == 0 as "no height preference" so that
         // auto-defaulted components use intrinsic height instead of being
@@ -1907,7 +1912,45 @@ class _AclContainerState extends State<AclContainer> {
             (linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
             (rawPrefH != null && rawPrefH > 0 ? rawPrefH : null);
         if (effectiveHeight != null) {
-          child = SizedBox(height: effectiveHeight, child: child);
+          // For expandX components, do NOT wrap with Column(stretch) — it
+          // would override the ConstrainedBox's maxWidth since the Align
+          // layers above loosen the Flexible's tight constraint, and
+          // Column(stretch) re-tightens to whatever its parent gives.
+          // Non-expandX components have an outer SizedBox(width:) that
+          // supplies the correct tight width for Column(stretch).
+          if (component.expandX && canExpandHorizontally) {
+            child = SizedBox(height: effectiveHeight, child: child);
+          } else {
+            // Vertically centre content inside the allocated height.
+            // Column with CrossAxisAlignment.stretch preserves the parent's
+            // tight width constraint from the outer SizedBox(width:).
+            // Flexible(loose) prevents the child from exceeding the Column's
+            // height when the inner ConstrainedBox has a larger maxHeight.
+            final verticalAlign = switch (component.rowCrossAlignment) {
+              AclRowCrossAlignment.top => MainAxisAlignment.start,
+              AclRowCrossAlignment.center => MainAxisAlignment.center,
+              AclRowCrossAlignment.bottom => MainAxisAlignment.end,
+            };
+            child = SizedBox(
+              height: effectiveHeight,
+              child: Column(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: verticalAlign,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [Flexible(child: child)],
+              ),
+            );
+          }
+        }
+      }
+
+      // ── Width wrapping (OUTSIDE height) ─────────────────────────────────
+      if (!isFlexNativeChild &&
+          (!component.expandX || !canExpandHorizontally)) {
+        final effectiveWidth =
+            fittedWidth ?? linkedWidth ?? component.preferredSize?.width;
+        if (effectiveWidth != null) {
+          child = SizedBox(width: effectiveWidth, child: child);
         }
       }
 

@@ -71,8 +71,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
           ),
         ))
         .setMSize(_fMin, 36).setPSize(280, 36).setAttr(AclFlags.expandX)
-        .append(const SizedBox(width: 16))
-        .append(const SizedBox(width: 70, child: Text('Code')))
+        .append(const SizedBox(width: 70, child: Text('Code')), dist: 16)
         .setPSize(70, 36).setMSize(50, 36)
         .append(projectCodeField) // ← alignment reference
         .setPSize(120, 36).setMSize(80, 36).setXSize(150, 36)
@@ -89,8 +88,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
           ),
         ))
         .setMSize(_fMin, 36).setPSize(280, 36).setAttr(AclFlags.expandX)
-        .append(const SizedBox(width: 16))
-        .append(const SizedBox(width: 70, child: Text('Priority')))
+        .append(const SizedBox(width: 70, child: Text('Priority')), dist: 16)
         .setPSize(70, 36).setMSize(50, 36)
         .append(DropdownButtonFormField<String>(
           decoration: const InputDecoration(
@@ -127,8 +125,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
           ),
         ))
         .setPSize(140, 36).setMSize(90, 36).setXSize(180, 36)
-        .append(const SizedBox(width: 16))           // fixed inter-column gap
-        .append(const SizedBox(width: 70, child: Text('End Date')))
+        .append(const SizedBox(width: 70, child: Text('End Date')), dist: 16)
         .setPSize(70, 36).setMSize(50, 36)
         .append(const TextField(
           decoration: InputDecoration(
@@ -139,7 +136,8 @@ class ComprehensiveFormDemo extends StatelessWidget {
         ))
         .setPSize(140, 36).setMSize(90, 36).setXSize(180, 36)
         // Extra field on same row: right edge aligns with Code field above
-        .append(const SizedBox(width: 44, child: Text(' Days')))
+        .append(const SizedBox(width: 44, child: Text(' Days')), dist: 12)
+        .setPSize(44, 36).setMSize(30, 36)
         .append(const TextField(
           decoration: InputDecoration(
             labelText: '#',
@@ -196,8 +194,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
           ),
         ))
         .setMSize(_fMin, 36).setPSize(220, 36).setAttr(AclFlags.expandX)
-        .append(const SizedBox(width: 16))
-        .append(const SizedBox(width: 90, child: Text('Budget (EUR)')))
+        .append(const SizedBox(width: 90, child: Text('Budget (EUR)')), dist: 16)
         .setPSize(90, 36).setMSize(60, 36)
         .append(budgetField) // ← alignment reference for Approver
         .setPSize(130, 36).setMSize(80, 36).setXSize(160, 36)

@@ -31,10 +31,14 @@ class RowBreakpointsDemo extends StatelessWidget {
           )
               .setAclScrollableY()
               .append(const DemoBox('1', Colors.red), dist: 8)
+              .expandX().setMSize(40, 0)
               .append(const DemoBox('2', Colors.green), dist: 8)
+              .expandX().setMSize(40, 0)
               .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
               .append(const DemoBox('3', Colors.blue), dist: 8)
+              .expandX().setMSize(40, 0)
               .append(const DemoBox('4', Colors.purple), dist: 8)
+              .expandX().setMSize(40, 0)
               .build(),
         ),
         const SizedBox(height: 24),
@@ -60,22 +64,26 @@ class RowBreakpointsDemo extends StatelessWidget {
           )
               .setAclScrollableY()
               .append(const DemoBox('A', Colors.red), dist: 8)
+              .expandX().setMSize(40, 0)
               .addRowBreakpoint(atWidth: 300, splitRowDist: 8)
               .append(const DemoBox('B', Colors.green), dist: 8)
+              .expandX().setMSize(40, 0)
               .addRowBreakpoint(atWidth: 500, splitRowDist: 8)
               .append(const DemoBox('C', Colors.blue), dist: 8)
+              .expandX().setMSize(40, 0)
               .append(const DemoBox('D', Colors.purple), dist: 8)
+              .expandX().setMSize(40, 0)
               .build(),
         ),
         const SizedBox(height: 16),
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const CodeBlock('''
 AclBuilder()
-    .append(Item1, dist: 8)
-    .append(Item2, dist: 8)
+    .append(Item1, dist: 8).expandX().setMSize(40, 0)
+    .append(Item2, dist: 8).expandX().setMSize(40, 0)
     .addRowBreakpoint(atWidth: 400, splitRowDist: 8)
-    .append(Item3, dist: 8)
-    .append(Item4, dist: 8)
+    .append(Item3, dist: 8).expandX().setMSize(40, 0)
+    .append(Item4, dist: 8).expandX().setMSize(40, 0)
     .build()
 '''),
         ],

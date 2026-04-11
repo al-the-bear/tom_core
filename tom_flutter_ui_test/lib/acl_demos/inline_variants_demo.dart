@@ -31,11 +31,15 @@ class InlineVariantsDemo extends StatelessWidget {
           )
               .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Items:')))
+              .setPSize(70, 0)
               // Default variant: three items
               .startVariant()
               .append(const DemoBox('A', Colors.red), dist: 8)
+              .expandX().setMSize(40, 0)
               .append(const DemoBox('B', Colors.green), dist: 8)
+              .expandX().setMSize(40, 0)
               .append(const DemoBox('C', Colors.blue), dist: 8)
+              .expandX().setMSize(40, 0)
               .endVariant()
               // Narrow variant: one combined item
               .startVariant(width: 400)
@@ -79,6 +83,7 @@ class InlineVariantsDemo extends StatelessWidget {
               .setAclScrollableY()
               // Row 1: Name — inline variants
               .append(const SizedBox(width: 80, child: Text('Name:')))
+              .setPSize(80, 0)
               .startVariant()
               .append(
                 const TextField(
@@ -119,6 +124,7 @@ class InlineVariantsDemo extends StatelessWidget {
               // Row 2: Email — always the same
               .newRow(dist: 8)
               .append(const SizedBox(width: 80, child: Text('Email:')))
+              .setPSize(80, 0)
               .append(
                 const TextField(
                   decoration: InputDecoration(
@@ -175,6 +181,7 @@ AclBuilder()
           )
               .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Device:')))
+              .setPSize(70, 0)
               .startVariant(formFactor: AclFormFactor.phone)
               .append(
                 Container(
