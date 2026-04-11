@@ -1852,14 +1852,15 @@ class _AclContainerState extends State<AclContainer> {
                 component.minimumSize?.width ??
                 component.preferredSize?.width)
           : (component.minimumSize?.width ?? component.preferredSize?.width);
-      // Do NOT fall back to preferredSize.height for minHeight — preferred
-      // height is enforced via SizedBox(height:) wrapping.  Using it as
-      // minHeight too prevents Column-based vertical centering inside that
-      // SizedBox.
+      final safePrefH = (component.preferredSize?.height != null &&
+              component.preferredSize!.height > 0)
+          ? component.preferredSize!.height
+          : null;
       final minHeight = component.useOtherDimY
           ? ((linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
-                component.minimumSize?.height)
-          : component.minimumSize?.height;
+                component.minimumSize?.height ??
+                safePrefH)
+          : (component.minimumSize?.height ?? safePrefH);
       // For useOtherDimX components whose reference is not yet resolved (first frame),
       // fall back to availableWidth as maxWidth — prevents TextField/Dropdown
       // "unbounded width" assertion inside Row(mainAxisSize.max) rows.
@@ -1906,24 +1907,7 @@ class _AclContainerState extends State<AclContainer> {
             (linkedHeight != null && linkedHeight > 0 ? linkedHeight : null) ??
             (rawPrefH != null && rawPrefH > 0 ? rawPrefH : null);
         if (effectiveHeight != null) {
-          // Vertically centre content inside the allocated height using a
-          // Column with CrossAxisAlignment.stretch.  Stretch preserves the
-          // parent's tight width constraint — unlike Align which loosens it,
-          // breaking expandX (Flexible) components.
-          final verticalAlign = switch (component.rowCrossAlignment) {
-            AclRowCrossAlignment.top => MainAxisAlignment.start,
-            AclRowCrossAlignment.center => MainAxisAlignment.center,
-            AclRowCrossAlignment.bottom => MainAxisAlignment.end,
-          };
-          child = SizedBox(
-            height: effectiveHeight,
-            child: Column(
-              mainAxisSize: MainAxisSize.max,
-              mainAxisAlignment: verticalAlign,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [child],
-            ),
-          );
+          child = SizedBox(height: effectiveHeight, child: child);
         }
       }
 
