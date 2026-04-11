@@ -1438,6 +1438,56 @@ class _AclContainerState extends State<AclContainer> {
     }
 
     // ── Build virtual rects and compute alignment deltas ──────────────────
+
+    // Pre-compute expandX allocations so that virtual rects for non-expandX
+    // components positioned AFTER an expandX component use the correct X
+    // offsets.  Without this, cross-row alignRightToRight references to
+    // components on the right of an expandX field would see the preferred
+    // width instead of the actual expanded width, producing wrong deltas.
+    final expandXWidths = <int, double>{};
+    if (availableWidth != null && availableWidth.isFinite) {
+      double fixedWidth = 0;
+      double totalExpandXFlex = 0;
+      final expandXCompIndices = <int>[];
+      final expandXFlexes = <int, double>{};
+      for (int i = 0; i < row.components.length; i++) {
+        final comp = row.components[i];
+        if (comp.isGap) {
+          fixedWidth += gapSlotWidths[i] ?? 0;
+          continue;
+        }
+        if (comp.expandX && !comp.isGap) {
+          final minW =
+              (comp.minimumSize?.width ?? linkedWidths[i] ?? 0)
+                  .clamp(0.0, double.maxFinite);
+          final prefW =
+              (fittedWidths[i] ?? comp.preferredSize?.width ?? minW)
+                  .clamp(minW, double.maxFinite);
+          final diff = prefW - minW;
+          final flex = (diff.isFinite ? diff : 1000.0).clamp(1.0, 10000.0);
+          expandXFlexes[i] = flex;
+          expandXCompIndices.add(i);
+          totalExpandXFlex += flex;
+          // Count the preferred width as the minimum allocation.
+          fixedWidth += comp.gapBefore;
+        } else {
+          final w = fittedWidths[i] ??
+              linkedWidths[i] ??
+              comp.preferredSize?.width ??
+              _naturalWidth(comp) ??
+              0;
+          fixedWidth += w + comp.gapBefore;
+        }
+      }
+      if (expandXCompIndices.isNotEmpty && totalExpandXFlex > 0) {
+        final expandPool = math.max(0.0, availableWidth - fixedWidth);
+        for (final i in expandXCompIndices) {
+          final share = expandPool * (expandXFlexes[i]! / totalExpandXFlex);
+          expandXWidths[i] = share.clamp(0.0, double.maxFinite);
+        }
+      }
+    }
+
     double plannedX = 0;
     double maxHorizontalX = 0;
     double minHorizontalX = 0;
@@ -1513,7 +1563,10 @@ class _AclContainerState extends State<AclContainer> {
       }
       horizontalDeltas[i] = hDelta;
 
-      final estimatedW = _estimateW(comp, linkedW, fittedWidths[i]);
+      // For expandX components, use the pre-computed expanded width so that
+      // subsequent components (and cross-row references) see correct offsets.
+      final estimatedW = expandXWidths[i] ??
+          _estimateW(comp, linkedW, fittedWidths[i]);
       final estimatedH = _estimateH(comp, linkedH);
 
       rowEstimatedHeight = math.max(rowEstimatedHeight, estimatedH);
