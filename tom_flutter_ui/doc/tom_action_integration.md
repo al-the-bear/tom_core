@@ -60,24 +60,26 @@ Actions in the Tom UI framework are the **behavioral counterpart to widgets**. W
 
 ## 2. Action ID System
 
-### ID Prefixes
+### Plain IDs — No Prefixes
 
-| Prefix | Element | Example |
-|--------|---------|---------|
-| `a-` | Action | `a-delete`, `a-save` |
-| `ac-` | Action Controller | `ac-orderMgmt`, `ac-userAdmin` |
+Action IDs and controller IDs are plain strings — no prefixes are applied. This is consistent with the widget ID system throughout the Tom UI framework.
+
+| Element | Example ID |
+|---------|------------|
+| Action | `delete`, `save` |
+| Action Controller | `orderMgmt`, `userAdmin` |
 
 ### Canonical Path Construction
 
-An action's canonical path combines the actioncontroller with the action ID:
+An action's canonical path combines the controller ID with the action ID:
 
 ```
-ac-<controller>.a-<action>
+<controllerId>.<actionId>
 ```
 
 **Examples:**
-- `ac-orderMgmt.a-delete` — delete action in orderMgmt controller on orders route
-- `ac-nav.a-logout` — global logout action (no route)
+- `orderMgmt.delete` — delete action in orderMgmt controller
+- `nav.logout` — global logout action
 
 Every action MUST be part of an ActionController.
 
