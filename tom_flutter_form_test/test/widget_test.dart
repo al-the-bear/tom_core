@@ -3,7 +3,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
-import 'package:tom_flutter_form_test/reflection_init.dart';
+import 'package:tom_flutter_form_test/main.reflection.dart';
 
 void main() {
   setUpAll(() {

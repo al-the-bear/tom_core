@@ -10,7 +10,7 @@ import 'state/company_state.dart';
 export 'state/company_state.dart';
 
 // Re-export generated reflection
-export 'reflection_init.reflection.dart';
+export 'main.reflection.dart';
 
 // Dummy main function required for reflection generator
 void main() {}

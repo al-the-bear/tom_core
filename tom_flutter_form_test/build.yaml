@@ -3,6 +3,6 @@ targets:
     builders:
       tom_reflection_generator:reflection_generator:
         generate_for:
-          - lib/reflection_init.dart
+          - lib/main.dart
         options:
           formatted: true
