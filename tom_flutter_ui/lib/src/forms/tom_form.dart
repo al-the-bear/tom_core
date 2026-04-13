@@ -79,9 +79,6 @@ abstract class TomForm<T extends TomClass> extends TomClass
   }
 
   TomForm({required this.formId, this.parentForm}) {
-    scope = TomScope.current;
-    final parentPath = scope.getScopePath();
-    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
     getMembers().entries.where((entry) => entry.value is TomField).forEach((
       entry,
     ) {
@@ -93,6 +90,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   @override
   void prepareForSelfObservation() {
+    scope = TomScope.current;
+    final parentPath = scope.getScopePath();
+    basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
     TomScope.withScope(formId, () => createFormElements());
   }
 
