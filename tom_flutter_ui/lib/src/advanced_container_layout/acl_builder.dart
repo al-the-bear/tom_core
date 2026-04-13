@@ -105,6 +105,10 @@ class AclBuilder {
   _ComponentData? _currentComponent;
 
   int _defaultFlags = 0;
+  double _defaultAppendGap = 0;
+  double _defaultRowGap = 0;
+  Size? _defaultUnknownMinimumSize;
+  Size? _defaultUnknownPreferredSize;
   AclBorderStyle _borderStyle = const AclBorderStyle.none();
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
@@ -173,19 +177,38 @@ class AclBuilder {
 
   // ── Component placement ────────────────────────────────────────────────────
 
-  /// Default preferred width for components without an explicit preferred size.
+  /// Default preferred width for components without an explicit preferred size
+  /// and no custom [_defaultUnknownPreferredSize].
   /// Large enough to prevent buttons/small widgets from collapsing next to
   /// elastic gaps, but still participates proportionally in the grow/shrink
   /// distribution alongside explicitly sized components.
   static const double _defaultPreferredWidth = 150;
 
-  /// Applies a default preferred size to the current component if no preferred
-  /// size was explicitly set. Called whenever the current-component scope is
+  /// Applies default preferred and minimum sizes to the current component if
+  /// no explicit sizes were set. Called whenever the current-component scope is
   /// about to change (append, gap, newRow, gapRow, build).
   void _finalizeCurrentComponent() {
-    if (_currentComponent != null && _currentComponent!.preferredSize == null) {
-      _currentComponent!.preferredSize =
-          const Size(_defaultPreferredWidth, 0);
+    if (_currentComponent == null) return;
+    final c = _currentComponent!;
+    // Apply default preferred size if none was explicitly set.
+    if (c.preferredSize == null) {
+      final dp = _defaultUnknownPreferredSize;
+      if (dp != null) {
+        c.preferredSize = Size(
+          dp.width == 0 ? _defaultPreferredWidth : dp.width,
+          dp.height,
+        );
+      } else {
+        c.preferredSize = const Size(_defaultPreferredWidth, 0);
+      }
+    }
+    // Apply default minimum size if none was explicitly set.
+    if (c.minimumSize == null && _defaultUnknownMinimumSize != null) {
+      final dm = _defaultUnknownMinimumSize!;
+      c.minimumSize = Size(
+        dm.width == 0 ? 0 : dm.width,
+        dm.height == 0 ? 0 : dm.height,
+      );
     }
   }
 
@@ -201,12 +224,19 @@ class AclBuilder {
         'and key generation stay unambiguous.',
       );
     }
+    // Apply default append gap if no explicit dist was specified and this is
+    // not the first component in the current row.
+    final effectiveDist = (dist == 0 &&
+            _defaultAppendGap > 0 &&
+            _currentRow.components.isNotEmpty)
+        ? _defaultAppendGap
+        : dist;
     final componentKey =
         canAttachComponentKey ? _resolveReferenceKey(child) : null;
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
-      gapBefore: dist,
+      gapBefore: effectiveDist,
       componentKey: componentKey,
     );
     // Inherit active group from startGroup()/endGroup() range.
@@ -246,7 +276,10 @@ class AclBuilder {
   /// Starts a new content row.
   AclBuilder newRow({double dist = 0}) {
     _finalizeCurrentComponent();
-    _currentRow = _RowData()..gapBefore = dist;
+    // Apply default row gap if no explicit dist was specified.
+    final effectiveDist =
+        (dist == 0 && _defaultRowGap > 0) ? _defaultRowGap : dist;
+    _currentRow = _RowData()..gapBefore = effectiveDist;
     _rows.add(_currentRow);
     _currentComponent = null;
     return this;
@@ -629,6 +662,69 @@ class AclBuilder {
   }
 
   int get defaultFlags => _defaultFlags;
+
+  /// Sets the default expand-X behaviour for newly appended components.
+  ///
+  /// When [enabled] is `true`, [AclFlags.expandX] is added to the default
+  /// flags so every subsequent [append] call gets expandX automatically.
+  /// When `false`, the flag is removed from the defaults.
+  ///
+  /// Individual components can still override via [clearAttr]/[setAttr].
+  AclBuilder setAclExpandXDefault(bool enabled) {
+    if (enabled) {
+      _defaultFlags |= AclFlags.expandX;
+    } else {
+      _defaultFlags &= ~AclFlags.expandX;
+    }
+    return this;
+  }
+
+  /// Sets the default horizontal gap (in pixels) inserted before each
+  /// appended component that is **not** the first in its row.
+  ///
+  /// Only applies when the individual [append] call does not specify a
+  /// non-zero `dist`. Pass 0 to disable (the default).
+  AclBuilder setAclDefaultAppendGap(int pixels) {
+    _defaultAppendGap = pixels.toDouble();
+    return this;
+  }
+
+  /// Sets the default vertical gap (in pixels) inserted before each new
+  /// content row started with [newRow].
+  ///
+  /// Only applies when the individual [newRow] call does not specify a
+  /// non-zero `dist`. Pass 0 to disable (the default).
+  AclBuilder setAclDefaultRowGap(int pixels) {
+    _defaultRowGap = pixels.toDouble();
+    return this;
+  }
+
+  /// Sets a default minimum size for components that do not have an explicit
+  /// minimum size ([setMSize] / [setMWidthInChars]).
+  ///
+  /// Pass 0 for [width] or [height] to leave that dimension untouched
+  /// (i.e. no default minimum is applied on that axis).
+  ///
+  /// **Note:** setting a minimum that is smaller than the preferred size has no
+  /// visible effect — the preferred size already acts as the floor. Setting a
+  /// minimum that is *larger* than the preferred size in combination with
+  /// [expandX] components creates a "grow up to preferred, then distribute
+  /// remainder to expandX" behaviour (see §6).
+  AclBuilder setAclDefaultUnknownMinimumSize(double width, [double height = 0]) {
+    _defaultUnknownMinimumSize = Size(width, height);
+    return this;
+  }
+
+  /// Sets a default preferred size for components that do not have an explicit
+  /// preferred size ([setPSize] / [setPWidthInChars]).
+  ///
+  /// Replaces the built-in default of 150 × 0. Pass 0 for [width] to keep
+  /// the built-in default width (150); pass 0 for [height] to keep the
+  /// default height of 0 (unconstrained).
+  AclBuilder setAclDefaultUnknownPreferredSize(double width, [double height = 0]) {
+    _defaultUnknownPreferredSize = Size(width, height);
+    return this;
+  }
 
   AclBuilder setAclBorderStyle(AclBorderStyle style) {
     _borderStyle = style;

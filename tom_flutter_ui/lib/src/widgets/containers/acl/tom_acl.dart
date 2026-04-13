@@ -538,6 +538,38 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   /// Gets the current default flags.
   int get defaultFlags => _builder.defaultFlags;
 
+  /// Sets the default expand-X behaviour for newly appended components.
+  TomAclBuilder<T> setAclExpandXDefault(bool enabled) {
+    _builder.setAclExpandXDefault(enabled);
+    return this;
+  }
+
+  /// Sets the default horizontal gap between appended components.
+  TomAclBuilder<T> setAclDefaultAppendGap(int pixels) {
+    _builder.setAclDefaultAppendGap(pixels);
+    return this;
+  }
+
+  /// Sets the default vertical gap between content rows.
+  TomAclBuilder<T> setAclDefaultRowGap(int pixels) {
+    _builder.setAclDefaultRowGap(pixels);
+    return this;
+  }
+
+  /// Sets a default minimum size for components without explicit minimum.
+  TomAclBuilder<T> setAclDefaultUnknownMinimumSize(double width,
+      [double height = 0]) {
+    _builder.setAclDefaultUnknownMinimumSize(width, height);
+    return this;
+  }
+
+  /// Sets a default preferred size for components without explicit preferred size.
+  TomAclBuilder<T> setAclDefaultUnknownPreferredSize(double width,
+      [double height = 0]) {
+    _builder.setAclDefaultUnknownPreferredSize(width, height);
+    return this;
+  }
+
   /// Sets the container title.
   TomAclBuilder<T> setAclTitle(String? title) {
     _builder.setAclTitle(title);
