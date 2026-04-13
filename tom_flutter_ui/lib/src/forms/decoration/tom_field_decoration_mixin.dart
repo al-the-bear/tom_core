@@ -155,6 +155,7 @@ mixin TomFieldDecorationMixin<T> on TomField<T> {
     final labelTextWidget = Text(
       resolvedLabel,
       style: style.labelStyle ?? theme.textTheme.bodyMedium,
+      overflow: TextOverflow.ellipsis,
     );
 
     // Required indicator
@@ -164,7 +165,7 @@ mixin TomFieldDecorationMixin<T> on TomField<T> {
 
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [labelTextWidget, indicator],
+      children: [Flexible(child: labelTextWidget), indicator],
     );
   }
 

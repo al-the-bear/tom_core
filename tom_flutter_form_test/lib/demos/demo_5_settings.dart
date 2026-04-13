@@ -63,18 +63,21 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
     )
         // Row 1: Timezone and Locale
         .append((p) => p.timezone.widget)
-        .gap()
-        .append((p) => p.locale.widget)
+        .expandX()
+        .append((p) => p.locale.widget, dist: 16)
+        .expandX()
         .newRow()
         // Row 2: Currency and Date Format
         .append((p) => p.currency.widget)
-        .gap()
-        .append((p) => p.dateFormat.widget)
+        .expandX()
+        .append((p) => p.dateFormat.widget, dist: 16)
+        .expandX()
         .newRow()
         // Row 3: Notification settings
         .append((p) => p.notificationEmail.widget)
-        .gap()
-        .append((p) => p.notificationFrequency.widget)
+        .expandX()
+        .append((p) => p.notificationFrequency.widget, dist: 16)
+        .expandX()
         .build(context);
 
     return Scaffold(

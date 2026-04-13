@@ -91,16 +91,20 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
       padding: const EdgeInsets.all(16),
     )
         .append((p) => p.street.widget)
+        .expandX()
         .newRow()
         .append((p) => p.street2.widget)
+        .expandX()
         .newRow()
         .append((p) => p.city.widget)
-        .gap()
-        .append((p) => p.state.widget)
-        .gap()
-        .append((p) => p.zipCode.widget)
+        .expandX()
+        .append((p) => p.state.widget, dist: 16)
+        .expandX()
+        .append((p) => p.zipCode.widget, dist: 16)
+        .expandX()
         .newRow()
         .append((p) => p.country.widget)
+        .expandX()
         .build(context);
 
     // CEO section layout
@@ -112,14 +116,17 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
       padding: const EdgeInsets.all(16),
     )
         .append((p) => p.firstName.widget)
-        .gap()
-        .append((p) => p.lastName.widget)
+        .expandX()
+        .append((p) => p.lastName.widget, dist: 16)
+        .expandX()
         .newRow()
         .append((p) => p.email.widget)
-        .gap()
-        .append((p) => p.phone.widget)
+        .expandX()
+        .append((p) => p.phone.widget, dist: 16)
+        .expandX()
         .newRow()
         .append((p) => p.title.widget)
+        .expandX()
         .build(context);
 
     return Scaffold(

@@ -97,7 +97,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               children: [
                 p.name.widget,
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text('Validators: required, minLength(2) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -106,6 +107,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                 ),
               ],
             ))
+        .expandX()
         .newRow()
         // Tax ID - pattern + SlowValidator
         .append((p) => Column(
@@ -114,7 +116,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               children: [
                 p.taxId.widget,
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text('Validators: required, pattern, SLOW (1s) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -125,6 +128,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
               ],
             ))
+        .expandX()
         .newRow()
         // Website - pattern URL
         .append((p) => Column(
@@ -133,7 +137,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               children: [
                 p.website.widget,
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text('Validators: pattern (URL) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -142,6 +147,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                 ),
               ],
             ))
+        .expandX()
         .newRow()
         // Description - maxLength
         .append((p) => Column(
@@ -150,7 +156,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               children: [
                 p.description.widget,
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Text('Validators: maxLength(500) | ',
                         style: TextStyle(fontSize: 11, color: Colors.grey)),
