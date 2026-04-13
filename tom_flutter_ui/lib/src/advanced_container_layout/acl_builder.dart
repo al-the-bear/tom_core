@@ -224,13 +224,9 @@ class AclBuilder {
         'and key generation stay unambiguous.',
       );
     }
-    // Apply default append gap if no explicit dist was specified and this is
-    // not the first component in the current row.
-    final effectiveDist = (dist == 0 &&
-            _defaultAppendGap > 0 &&
-            _currentRow.components.isNotEmpty)
-        ? _defaultAppendGap
-        : dist;
+    // Apply default append gap if no explicit dist was specified.
+    final effectiveDist =
+        (dist == 0 && _defaultAppendGap > 0) ? _defaultAppendGap : dist;
     final componentKey =
         canAttachComponentKey ? _resolveReferenceKey(child) : null;
     _currentComponent = _ComponentData(
@@ -680,7 +676,7 @@ class AclBuilder {
   }
 
   /// Sets the default horizontal gap (in pixels) inserted before each
-  /// appended component that is **not** the first in its row.
+  /// appended component.
   ///
   /// Only applies when the individual [append] call does not specify a
   /// non-zero `dist`. Pass 0 to disable (the default).

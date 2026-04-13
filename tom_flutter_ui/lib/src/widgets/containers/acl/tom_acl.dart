@@ -544,7 +544,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  /// Sets the default horizontal gap between appended components.
+  /// Sets the default horizontal gap before each appended component.
   TomAclBuilder<T> setAclDefaultAppendGap(int pixels) {
     _builder.setAclDefaultAppendGap(pixels);
     return this;
