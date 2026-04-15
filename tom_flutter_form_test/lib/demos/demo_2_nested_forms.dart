@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/form_actions.dart';
+import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
-import '../state/company_state.dart';
+import '../state/application_state.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 2: Nested Forms — Address + Person
 // ---------------------------------------------------------------------------
 
 /// Demonstrates:
-/// - Nested forms (AddressForm, PersonForm inside main form)
-/// - Parent-child form relationships
-/// - Multiple ACL sections in one view
-/// - Form composition patterns
+/// - Nested forms (AddressForm, PersonForm) each bound to a sub-tree of
+///   the global [demoState]
+/// - Multiple ACL sections in one view, titles/padding from resources
+/// - Field labels/hints resolved from resources (scopes: address, person)
+/// - Combined save via [SaveFormAction] accepting multiple forms
+/// - Button labels and status card text resolved from resources (demo2.*)
+/// - Status rebuilt by [TomMultiObservableBuilder] (no setState)
 class Demo2NestedForms extends StatefulWidget {
   const Demo2NestedForms({super.key});
 
@@ -21,30 +27,29 @@ class Demo2NestedForms extends StatefulWidget {
 }
 
 class _Demo2NestedFormsState extends State<Demo2NestedForms> {
-  final _profile = CompanyProfile();
-  late final _addressForm = AddressForm(fieldId: 'headquarters');
-  late final _ceoForm = PersonForm(fieldId: 'ceo');
-  String _status = 'Ready';
+  late final AddressForm _addressForm;
+  late final PersonForm _ceoForm;
+  final _status = TomString('Ready');
+
+  late final _controller = TomActionController(controllerId: 'demo2');
+  late final _save = SaveFormAction(
+    _controller,
+    forms: [_addressForm, _ceoForm],
+    status: _status,
+  );
+  late final _discard = DiscardFormAction(
+    _controller,
+    forms: [_addressForm, _ceoForm],
+    status: _status,
+  );
 
   @override
   void initState() {
     super.initState();
-    // Pre-populate address data
-    _profile.headquarters.street | '123 Main St';
-    _profile.headquarters.city | 'San Francisco';
-    _profile.headquarters.state | 'CA';
-    _profile.headquarters.zipCode | '94102';
-    _profile.headquarters.country | 'US';
-
-    // Pre-populate CEO data
-    _profile.ceo.firstName | 'Jane';
-    _profile.ceo.lastName | 'Doe';
-    _profile.ceo.email | 'jane.doe@acme.example.com';
-    _profile.ceo.title | 'Chief Executive Officer';
-
-    // Bind forms to their respective state sections
-    _addressForm.bind(_profile.headquarters);
-    _ceoForm.bind(_profile.ceo);
+    _addressForm = TomScope.withScope('address', () => AddressForm(fieldId: 'headquarters'));
+    _ceoForm = TomScope.withScope('person', () => PersonForm(fieldId: 'ceo'));
+    _addressForm.bind(demoState.companyProfile.headquarters);
+    _ceoForm.bind(demoState.companyProfile.ceo);
   }
 
   @override
@@ -54,90 +59,46 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    setState(() => _status = 'Validating...');
-    
-    // Validate both forms
-    final addressOk = await _addressForm.save();
-    final ceoOk = await _ceoForm.save();
-    
-    setState(() {
-      if (addressOk && ceoOk) {
-        _status = 'Saved! CEO: ${_profile.ceo.firstName.get()} ${_profile.ceo.lastName.get()}, '
-            'HQ: ${_profile.headquarters.city.get()}';
-      } else {
-        final errors = <String>[];
-        if (!addressOk) errors.add('address');
-        if (!ceoOk) errors.add('CEO info');
-        _status = 'Validation failed in: ${errors.join(', ')}';
-      }
-    });
-  }
-
-  void _discard() {
-    _addressForm.discard();
-    _ceoForm.discard();
-    setState(() => _status = 'Changes discarded');
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Address section layout
     final addressLayout = TomAclBuilder(
       id: 'addressSection',
       elementProvider: _addressForm,
-      title: 'Headquarters Address',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
-        .expandX()
         .newRow()
         .append((p) => p.street2.widget)
-        .expandX()
         .newRow()
         .append((p) => p.city.widget)
-        .expandX()
         .append((p) => p.state.widget, dist: 16)
-        .expandX()
         .append((p) => p.zipCode.widget, dist: 16)
-        .expandX()
         .newRow()
         .append((p) => p.country.widget)
-        .expandX()
         .build(context);
 
-    // CEO section layout
     final ceoLayout = TomAclBuilder(
       id: 'ceoSection',
       elementProvider: _ceoForm,
-      title: 'CEO Information',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         .append((p) => p.firstName.widget)
-        .expandX()
         .append((p) => p.lastName.widget, dist: 16)
-        .expandX()
         .newRow()
         .append((p) => p.email.widget)
-        .expandX()
         .append((p) => p.phone.widget, dist: 16)
-        .expandX()
         .newRow()
         .append((p) => p.title.widget)
-        .expandX()
         .build(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Demo 2: Nested Forms'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
+    return DemoScaffold(
+      title: 'Demo 2: Nested Forms',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: TomFormStyleScope(
-          style: TomFormStyle.material3,
+        child: TomFormStyleScopeLegacy(
+          style: TomFormStyleLegacy.material3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -148,23 +109,38 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton(onPressed: _discard, child: const Text('Discard')),
+                  TextButton(
+                    onPressed: () => _discard.execute(
+                      TomActionContext(),
+                      TomActionTransaction(label: 'discard'),
+                    ),
+                    child: Text(_discard.label),
+                  ),
                   const SizedBox(width: 8),
-                  FilledButton(onPressed: _save, child: const Text('Save All')),
+                  FilledButton(
+                    onPressed: () => _save.execute(
+                      TomActionContext(),
+                      TomActionTransaction(label: 'save'),
+                    ),
+                    child: Text(_save.label),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Status: $_status'),
-                      const SizedBox(height: 4),
-                      Text('Address Dirty: ${_addressForm.isDirty}'),
-                      Text('CEO Dirty: ${_ceoForm.isDirty}'),
-                    ],
+              TomMultiObservableBuilder(
+                observables: [_addressForm, _ceoForm, _status],
+                builder: (context) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${TomCtr.text('demo2.status', 'label')}: ${_status.get()}'),
+                        const SizedBox(height: 4),
+                        Text('${TomCtr.text('demo2.status', 'addressDirty')}: ${_addressForm.isDirty}'),
+                        Text('${TomCtr.text('demo2.status', 'ceoDirty')}: ${_ceoForm.isDirty}'),
+                      ],
+                    ),
                   ),
                 ),
               ),

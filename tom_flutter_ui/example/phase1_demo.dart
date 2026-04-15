@@ -322,8 +322,8 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
           ),
         ],
       ),
-      body: TomFormStyleScope(
-        style: const TomFormStyle(),
+      body: TomFormStyleScopeLegacy(
+        style: const TomFormStyleLegacy(),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(

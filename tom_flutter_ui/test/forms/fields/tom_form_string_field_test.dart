@@ -6,8 +6,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
 import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
 import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope_legacy.dart';
 import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
@@ -16,11 +16,11 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrap(Widget child, {TomFormStyle? style}) {
+Widget _wrap(Widget child, {TomFormStyleLegacy? style}) {
   return MaterialApp(
     home: Scaffold(
       body: style != null
-          ? TomFormStyleScope(style: style, child: child)
+          ? TomFormStyleScopeLegacy(style: style, child: child)
           : child,
     ),
   );
@@ -349,7 +349,7 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyle(readOnlyBackground: Color(0xFFEEEEEE)),
+        style: const TomFormStyleLegacy(readOnlyBackground: Color(0xFFEEEEEE)),
       ));
 
       expect(find.byWidgetPredicate(
@@ -382,7 +382,7 @@ void main() {
         'name',
         'test',
         labelTextOverride: 'Name',
-        validators: [SlowValidator((value) => completer.future)],
+        validators: [SlowValidator<String>((value) => completer.future)],
       );
 
       // Start validation (don't await)
@@ -525,7 +525,7 @@ void main() {
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
 
-      // Label should render through TomFieldDecorationMixin anatomy
+      // Label should render through TomFieldDecorationMixinLegacy anatomy
       expect(find.text('Country Label'), findsOneWidget);
     });
 

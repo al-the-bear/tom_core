@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
-import '../decoration/tom_field_decoration_mixin.dart';
+import '../decoration/tom_field_decoration_mixin_legacy.dart';
 import '../selection/tom_selectable_source.dart';
-import '../style/tom_form_style_scope.dart';
+import '../style/form_style_enums.dart';
+import '../style/tom_form_style_scope_legacy.dart';
 import '../tom_form.dart';
 
 // ---------------------------------------------------------------------------
@@ -76,14 +77,14 @@ abstract class TomFormStringField extends TomField<String> {
 // ---------------------------------------------------------------------------
 
 /// A concrete text-input field that renders as a plain [TextField]
-/// wrapped with [TomFieldDecorationMixin] anatomy (label, error, description).
+/// wrapped with [TomFieldDecorationMixinLegacy] anatomy (label, error, description).
 ///
-/// Uses `TomFieldDecorationMixin` for consistent visual anatomy across all
+/// Uses `TomFieldDecorationMixinLegacy` for consistent visual anatomy across all
 /// field types (checklist C1). The inner [TextField] has no
 /// `InputDecoration` label/error/helper — all anatomy comes from the mixin.
 @tomReflector
 class TomFormStringInput extends TomFormStringField
-    with TomFieldDecorationMixin<String> {
+    with TomFieldDecorationMixinLegacy<String> {
   /// Optional prefix icon for the input.
   final Widget? prefixIcon;
 
@@ -118,7 +119,7 @@ class TomFormStringInput extends TomFormStringField
 
   // Override labelText/descriptionText to resolve through the
   // TomFormStringField resource resolution logic rather than
-  // TomFieldDecorationMixin's default (null).
+  // TomFieldDecorationMixinLegacy's default (null).
   @override
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -155,7 +156,8 @@ class _TomFormStringInputWidgetState
     super.initState();
     _controller = TextEditingController(text: field.get());
     _focusNode = FocusNode();
-    // Observe field value changes (e.g., from bind/reset) and sync to controller
+    // Value observer: fires only on real value changes. Syncs the
+    // controller text and rebuilds to reflect the new value.
     _observer = field >> (observable) {
       if (!_updatingFromField) {
         final newText = (observable as TomObject<String>).get();
@@ -163,11 +165,20 @@ class _TomFormStringInputWidgetState
           _controller.text = newText;
         }
       }
+      if (mounted) setState(() {});
     };
+    // Validation channel: rebuild when validation state changes
+    // (error message, pending spinner, error border/icon).
+    field.validationListenable.addListener(_onValidationChanged);
+  }
+
+  void _onValidationChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    field.validationListenable.removeListener(_onValidationChanged);
     field.removeObserver(_observer);
     _controller.dispose();
     _focusNode.dispose();
@@ -182,10 +193,37 @@ class _TomFormStringInputWidgetState
 
   @override
   Widget build(BuildContext context) {
-    final style = TomFormStyleScope.of(context);
+    final style = TomFormStyleScopeLegacy.of(context);
 
-    // Plain TextField — no InputDecoration label/error/helper.
-    // All anatomy (label, error, description) comes from TomFieldDecorationMixin.
+    // When ErrorPlacement.replaceHint is active and the field is in error
+    // state, show the error message in the hint slot instead of the normal
+    // hint. The mixin's `_buildAnatomyColumn` already skips the error row
+    // for this placement (it only renders above/below/both).
+    String? effectiveHint = field.hintText;
+    TextStyle? effectiveHintStyle = style.hintStyle;
+    final hintIsError = style.errorPlacement == ErrorPlacement.replaceHint &&
+        field.resolveValidationErrorMessage() != null;
+    if (hintIsError) {
+      effectiveHint = field.resolveValidationErrorMessage();
+      final theme = Theme.of(context);
+      effectiveHintStyle = (style.hintStyle ?? theme.textTheme.bodyMedium)
+          ?.copyWith(color: theme.colorScheme.error);
+    } else if (effectiveHint != null && effectiveHint.isNotEmpty) {
+      effectiveHint += field.requiredIndicatorSuffix(style.requiredIndicatorOnHint);
+    }
+
+    // Floating label lives inside InputDecoration; the mixin does not render
+    // a label row for this placement. For every other placement, the
+    // TextField has no labelText and the mixin handles it above/below/inline.
+    String? floatingLabel;
+    if (style.labelPlacement == LabelPlacement.floating) {
+      final resolved = field.labelText;
+      if (resolved != null && resolved.isNotEmpty) {
+        floatingLabel =
+            resolved + field.requiredIndicatorSuffix(style.requiredIndicator);
+      }
+    }
+
     final textField = TextField(
       controller: _controller,
       focusNode: _focusNode,
@@ -196,7 +234,9 @@ class _TomFormStringInputWidgetState
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       decoration: InputDecoration(
-        hintText: field.hintText,
+        labelText: floatingLabel,
+        labelStyle: style.labelStyle,
+        hintText: effectiveHint,
         prefixIcon: field.prefixIcon,
         suffixIcon: field.suffixIcon,
         contentPadding: style.fieldContentPadding,
@@ -204,8 +244,8 @@ class _TomFormStringInputWidgetState
         focusedBorder: style.focusedBorder,
         errorBorder: style.errorBorder,
         enabledBorder: style.fieldBorder,
-        hintStyle: style.hintStyle,
-        // No labelText, errorText, or helperText — handled by mixin
+        hintStyle: effectiveHintStyle,
+        // No errorText or helperText — handled by mixin
       ),
     );
 
@@ -219,12 +259,12 @@ class _TomFormStringInputWidgetState
 // ---------------------------------------------------------------------------
 
 /// A concrete dropdown selection field that renders as a
-/// [DropdownButtonFormField] wrapped with [TomFieldDecorationMixin] anatomy.
+/// [DropdownButtonFormField] wrapped with [TomFieldDecorationMixinLegacy] anatomy.
 ///
 /// Uses [TomSelectableSource<String>] for populating options (checklist I1-I3).
 @tomReflector
 class TomFormStringDropdown extends TomFormStringField
-    with TomFieldDecorationMixin<String> {
+    with TomFieldDecorationMixinLegacy<String> {
   /// The source of selectable items.
   final TomSelectableSource<String> source;
 
@@ -244,7 +284,7 @@ class TomFormStringDropdown extends TomFormStringField
 
   // Override labelText/descriptionText to resolve through the
   // TomFormStringField resource resolution logic rather than
-  // TomFieldDecorationMixin's default (null).
+  // TomFieldDecorationMixinLegacy's default (null).
   // Mixin linearization places the mixin between this class and the
   // superclass, so without these overrides the mixin's null-returning
   // getters would shadow the superclass's resource-resolving getters.
@@ -283,10 +323,16 @@ class _TomFormStringDropdownWidgetState
   void initState() {
     super.initState();
     _loadItems();
-    // Observe field value changes for external updates (bind/reset)
+    // Value observer: fires only on real value changes (e.g. bind/reset).
     _observer = field >> (_) {
       if (mounted) setState(() {});
     };
+    // Validation channel: rebuild on validation transitions.
+    field.validationListenable.addListener(_onValidationChanged);
+  }
+
+  void _onValidationChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadItems() async {
@@ -324,13 +370,28 @@ class _TomFormStringDropdownWidgetState
   @override
   void dispose() {
     _subscription?.cancel();
+    field.validationListenable.removeListener(_onValidationChanged);
     field.removeObserver(_observer);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final style = TomFormStyleScope.of(context);
+    final style = TomFormStyleScopeLegacy.of(context);
+
+    String? effectiveHint = field.hintText;
+    if (effectiveHint != null && effectiveHint.isNotEmpty) {
+      effectiveHint += field.requiredIndicatorSuffix(style.requiredIndicatorOnHint);
+    }
+
+    String? floatingLabel;
+    if (style.labelPlacement == LabelPlacement.floating) {
+      final resolved = field.labelText;
+      if (resolved != null && resolved.isNotEmpty) {
+        floatingLabel =
+            resolved + field.requiredIndicatorSuffix(style.requiredIndicator);
+      }
+    }
 
     final dropdown = DropdownButtonFormField<String>(
       initialValue: field.get().isEmpty ? null : field.get(),
@@ -347,7 +408,9 @@ class _TomFormStringDropdownWidgetState
             }
           : null,
       decoration: InputDecoration(
-        hintText: field.hintText,
+        labelText: floatingLabel,
+        labelStyle: style.labelStyle,
+        hintText: effectiveHint,
         contentPadding: style.fieldContentPadding,
         border: style.fieldBorder,
         focusedBorder: style.focusedBorder,

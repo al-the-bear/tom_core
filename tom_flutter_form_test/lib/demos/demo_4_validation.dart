@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
-import '../state/company_state.dart';
+import '../state/application_state.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 4: Validation — Fast vs Slow validators
@@ -13,8 +15,10 @@ import '../state/company_state.dart';
 /// - Slow validators with pending spinner (SlowValidator)
 /// - Validation debouncing (300ms fast, 600ms slow)
 /// - Compose() for combining validators
-/// - Cross-field validation (override validateForm())
 /// - Validation state observation (ValidationPristine/Success/Error/Pending)
+/// - [TomFormInspector] event log
+/// - Field labels/hints resolved from resources (scope: companyBasicInfo)
+/// - Container title / padding / borderStyle from resources
 class Demo4Validation extends StatefulWidget {
   const Demo4Validation({super.key});
 
@@ -23,15 +27,15 @@ class Demo4Validation extends StatefulWidget {
 }
 
 class _Demo4ValidationState extends State<Demo4Validation> {
-  final _profile = CompanyProfile();
-  late final _form = CompanyBasicInfoForm();
+  late final CompanyBasicInfoForm _form;
   late final _inspector = TomFormInspector();
-  
+
   @override
   void initState() {
     super.initState();
+    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
     _form.addListener(_inspector);
-    _form.bind(_profile);
+    _form.bind(demoState.companyProfile);
   }
 
   @override
@@ -86,10 +90,9 @@ class _Demo4ValidationState extends State<Demo4Validation> {
     final formLayout = TomAclBuilder(
       id: 'validationDemo',
       elementProvider: _form,
-      title: 'Validation Demo',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         // Company Name - required + minLength
         .append((p) => Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,7 +110,6 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                 ),
               ],
             ))
-        .expandX()
         .newRow()
         // Tax ID - pattern + SlowValidator
         .append((p) => Column(
@@ -128,7 +130,6 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic)),
               ],
             ))
-        .expandX()
         .newRow()
         // Website - pattern URL
         .append((p) => Column(
@@ -147,7 +148,6 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                 ),
               ],
             ))
-        .expandX()
         .newRow()
         // Description - maxLength
         .append((p) => Column(
@@ -166,15 +166,11 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                 ),
               ],
             ))
-        .expandX()
         .build(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Demo 4: Validation'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
+    return DemoScaffold(
+      title: 'Demo 4: Validation',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -207,9 +203,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               ),
             ),
             const SizedBox(height: 16),
-            // Form
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
+            TomFormStyleScopeLegacy(
+              style: TomFormStyleLegacy.material3,
               child: formLayout,
             ),
             const SizedBox(height: 16),
@@ -239,7 +234,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
                     const Divider(),
                     ..._inspector.events.reversed.take(5).map((e) => Text(
                           '${e.runtimeType}: ${e.source}',
-                          style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                          style: const TextStyle(
+                              fontSize: 12, fontFamily: 'monospace'),
                         )),
                     if (_inspector.isEmpty)
                       const Text(

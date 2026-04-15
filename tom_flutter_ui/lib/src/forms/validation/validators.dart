@@ -18,7 +18,7 @@ class Validators {
           : const ValidationSuccess();
 
   /// The required validator instance (for identity comparison by
-  /// [TomFieldDecorationMixin.hasRequiredValidator]).
+  /// [TomFieldDecorationMixinLegacy.hasRequiredValidator]).
   static final Validator<dynamic> requiredInstance = _requiredValidator;
 
   /// Validates that a string is not empty.

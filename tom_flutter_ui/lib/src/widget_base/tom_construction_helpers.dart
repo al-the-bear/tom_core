@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -307,6 +308,182 @@ class TomCtr {
   }
 
   // ===========================================================================
+  // TextStyle Resolution
+  // ===========================================================================
+
+  /// Resolves a [TextStyle] from a sub-tree under [basePath] + [suffix].
+  ///
+  /// Reads the following keys (all optional):
+  /// - `fontSize` (double)
+  /// - `fontWeight` (string: "w100".."w900" / "normal" / "bold", or int 100..900)
+  /// - `fontFamily` (string)
+  /// - `color` (color resolvable via [color])
+  /// - `letterSpacing` (double)
+  /// - `fontStyle` (string: "normal" | "italic")
+  ///
+  /// Returns `null` if [basePath] is null or no child key contributes
+  /// anything. Missing fields are left unset on the returned [TextStyle].
+  static TextStyle? textStyle(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final key = _key(basePath, suffix);
+    final fontSize = doubleVal(key, 'fontSize');
+    final fontWeight = _parseFontWeight(textOrNull(key, 'fontWeight'));
+    final fontFamily = textOrNull(key, 'fontFamily');
+    final c = color(key, 'color');
+    final letterSpacing = doubleVal(key, 'letterSpacing');
+    final fontStyleStr = textOrNull(key, 'fontStyle');
+    final fontStyle = fontStyleStr == null
+        ? null
+        : (fontStyleStr == 'italic' ? FontStyle.italic : FontStyle.normal);
+
+    if (fontSize == null &&
+        fontWeight == null &&
+        fontFamily == null &&
+        c == null &&
+        letterSpacing == null &&
+        fontStyle == null) {
+      return null;
+    }
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      fontFamily: fontFamily,
+      color: c,
+      letterSpacing: letterSpacing,
+      fontStyle: fontStyle,
+    );
+  }
+
+  // ===========================================================================
+  // InputBorder Resolution
+  // ===========================================================================
+
+  /// Resolves an [InputBorder] from a sub-tree under [basePath] + [suffix].
+  ///
+  /// Reads:
+  /// - `kind` (string: "outline" | "underline" | "none") — default "outline"
+  /// - `width` (double) — default 1.0
+  /// - `radius` (double) — default 4.0 (outline only)
+  /// - `color` (color resolvable via [color])
+  ///
+  /// Returns `null` if no `kind` key is present (i.e. nothing to build).
+  static InputBorder? inputBorder(String? basePath, [String suffix = '']) {
+    if (basePath == null) return null;
+    final key = _key(basePath, suffix);
+    final kind = textOrNull(key, 'kind');
+    if (kind == null) return null;
+    final width = doubleVal(key, 'width') ?? 1.0;
+    final c = color(key, 'color');
+    final side = BorderSide(
+      color: c ?? const Color(0xFF000000),
+      width: width,
+    );
+    switch (kind) {
+      case 'none':
+        return InputBorder.none;
+      case 'underline':
+        return UnderlineInputBorder(borderSide: side);
+      case 'outline':
+      default:
+        final radius = doubleVal(key, 'radius') ?? 4.0;
+        return OutlineInputBorder(
+          borderSide: side,
+          borderRadius: BorderRadius.all(Radius.circular(radius)),
+        );
+    }
+  }
+
+  // ===========================================================================
+  // WidgetStateProperty<Color> Resolution
+  // ===========================================================================
+
+  /// Resolves a [WidgetStateProperty] of [Color] from resources.
+  ///
+  /// Reads the flat default color at [basePath] + [suffix], and per-state
+  /// overrides at sibling keys `<path>.states.<stateName>`. Recognised state
+  /// names: `hovered`, `focused`, `pressed`, `selected`, `disabled`,
+  /// `error`, `dragged`, `scrolledUnder`. Missing states fall back to the
+  /// default.
+  ///
+  /// Returns `null` when neither the default nor any state override is
+  /// present.
+  static WidgetStateProperty<Color>? widgetStateColor(
+    String? basePath, [
+    String suffix = '',
+  ]) {
+    if (basePath == null) return null;
+    final flatKey = _key(basePath, suffix);
+    final defaultColor = color(flatKey);
+    final statesMap = <WidgetState, Color>{};
+    const stateNames = {
+      'hovered': WidgetState.hovered,
+      'focused': WidgetState.focused,
+      'pressed': WidgetState.pressed,
+      'selected': WidgetState.selected,
+      'disabled': WidgetState.disabled,
+      'error': WidgetState.error,
+      'dragged': WidgetState.dragged,
+      'scrolledUnder': WidgetState.scrolledUnder,
+    };
+    for (final entry in stateNames.entries) {
+      final c = color('$flatKey.states', entry.key);
+      if (c != null) statesMap[entry.value] = c;
+    }
+    if (defaultColor == null && statesMap.isEmpty) return null;
+    return WidgetStateProperty.resolveWith<Color>((states) {
+      for (final entry in statesMap.entries) {
+        if (states.contains(entry.key)) return entry.value;
+      }
+      return defaultColor ?? const Color(0xFF000000);
+    });
+  }
+
+  // ===========================================================================
+  // Breakpointed Resolution
+  // ===========================================================================
+
+  /// Resolves a breakpointed `(value, overrides)` pair from resources.
+  ///
+  /// Reads the flat default at [basePath] + [suffix], and an overrides list
+  /// at sibling key `<path>.breakpoints`. The overrides are expected to be a
+  /// JSON array of `[minWidth, value]` pairs.
+  ///
+  /// [read] parses a raw value (from the default key or from a breakpoint
+  /// pair's second element) into `T`. It receives the raw resource value
+  /// (which may be a String, num, bool, Map, or List depending on the
+  /// underlying resource). Parsers that cannot interpret a given raw value
+  /// should return `null`; such entries are dropped from the overrides list.
+  ///
+  /// Returns `null` if [basePath] is null or neither the default nor the
+  /// breakpoints key is present.
+  static (T? value, List<(double, T)> overrides)? breakpointed<T>(
+    String? basePath,
+    T? Function(dynamic raw) read, [
+    String suffix = '',
+  ]) {
+    if (basePath == null) return null;
+    final flatKey = _key(basePath, suffix);
+    final rawDefault = _provider.getObjectOrNull(flatKey);
+    final rawOverrides = _provider.getObjectOrNull('$flatKey.breakpoints');
+    if (rawDefault == null && rawOverrides == null) return null;
+
+    final defaultValue = rawDefault == null ? null : read(rawDefault);
+    final overrides = <(double, T)>[];
+    if (rawOverrides is List) {
+      for (final entry in rawOverrides) {
+        if (entry is! List || entry.length < 2) continue;
+        final minW = entry[0];
+        if (minW is! num) continue;
+        final parsed = read(entry[1]);
+        if (parsed == null) continue;
+        overrides.add((minW.toDouble(), parsed));
+      }
+      overrides.sort((a, b) => a.$1.compareTo(b.$1));
+    }
+    return (defaultValue, overrides);
+  }
+
+  // ===========================================================================
   // Default Widget Creation
   // ===========================================================================
 
@@ -357,6 +534,22 @@ class TomCtr {
   // ===========================================================================
   // Private Helpers
   // ===========================================================================
+
+  static FontWeight? _parseFontWeight(String? value) {
+    if (value == null) return null;
+    return switch (value) {
+      'w100' => FontWeight.w100,
+      'w200' => FontWeight.w200,
+      'w300' => FontWeight.w300,
+      'w400' || 'normal' => FontWeight.w400,
+      'w500' => FontWeight.w500,
+      'w600' => FontWeight.w600,
+      'w700' || 'bold' => FontWeight.w700,
+      'w800' => FontWeight.w800,
+      'w900' => FontWeight.w900,
+      _ => null,
+    };
+  }
 
   static EdgeInsets? _parseEdgeInsets(dynamic value) {
     if (value == null) return null;

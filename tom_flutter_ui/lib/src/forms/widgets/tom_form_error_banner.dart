@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../events/tom_form_event.dart';
 import '../events/tom_form_event_listener.dart';
 import '../events/tom_form_event_source.dart';
-import '../style/tom_form_style.dart';
-import '../style/tom_form_style_scope.dart';
+import '../style/tom_form_style_legacy.dart';
+import '../style/tom_form_style_scope_legacy.dart';
 import '../validation/form_validation_error.dart';
 
 /// Material-style banner that displays form-level (cross-field) errors.
@@ -83,13 +83,13 @@ class _TomFormErrorBannerState extends State<TomFormErrorBanner>
   Widget build(BuildContext context) {
     if (_errors.isEmpty) return const SizedBox.shrink();
 
-    final style = TomFormStyleScope.of(context);
+    final style = TomFormStyleScopeLegacy.of(context);
     final theme = Theme.of(context);
 
     return _buildBanner(style, theme);
   }
 
-  Widget _buildBanner(TomFormStyle style, ThemeData theme) {
+  Widget _buildBanner(TomFormStyleLegacy style, ThemeData theme) {
     final errorColor = theme.colorScheme.error;
     final errorContainer = theme.colorScheme.errorContainer;
     final onErrorContainer = theme.colorScheme.onErrorContainer;

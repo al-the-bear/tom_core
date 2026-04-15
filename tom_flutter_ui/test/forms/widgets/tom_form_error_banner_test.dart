@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/src/forms/events/tom_form_event.dart';
 import 'package:tom_flutter_ui/src/forms/events/tom_form_event_listener.dart';
 import 'package:tom_flutter_ui/src/forms/events/tom_form_event_source.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope_legacy.dart';
 import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
 import 'package:tom_flutter_ui/src/forms/widgets/tom_form_error_banner.dart';
@@ -42,11 +42,11 @@ class _TestEventSource implements TomFormEventSource {
   int get listenerCount => _listeners.length;
 }
 
-Widget _wrap(Widget child, {TomFormStyle? style}) {
+Widget _wrap(Widget child, {TomFormStyleLegacy? style}) {
   return MaterialApp(
     home: Scaffold(
       body: style != null
-          ? TomFormStyleScope(style: style, child: child)
+          ? TomFormStyleScopeLegacy(style: style, child: child)
           : child,
     ),
   );
@@ -231,13 +231,13 @@ void main() {
   });
 
   group('TomFormErrorBanner — styling', () {
-    testWidgets('uses border radius from TomFormStyle', (tester) async {
+    testWidgets('uses border radius from TomFormStyleLegacy', (tester) async {
       final form = _TestEventSource();
       final banner = TomFormErrorBanner(form: form);
 
       await tester.pumpWidget(_wrap(
         banner,
-        style: const TomFormStyle(borderRadius: 16.0),
+        style: const TomFormStyleLegacy(borderRadius: 16.0),
       ));
 
       // Show errors

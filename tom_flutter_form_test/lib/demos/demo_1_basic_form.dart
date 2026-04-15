@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/form_actions.dart';
+import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
-import '../state/company_state.dart';
+import '../state/application_state.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 1: Basic Form — Company Info
 // ---------------------------------------------------------------------------
 
 /// Demonstrates:
-/// - TomForm binding/save/discard lifecycle
+/// - TomForm bound to global [demoState]
 /// - TomFormStringInput and TomFormStringDropdown usage
 /// - Required, minLength, maxLength, pattern validators
 /// - SlowValidator with pending spinner (Tax ID field)
 /// - ACL layout with append(), newRow(), gap()
+/// - Resources: title / padding / borderStyle / field labels resolved from
+///   demo_resources.json (scope: companyBasicInfo)
+/// - Save / Discard via [SaveFormAction] / [DiscardFormAction]
+/// - Button labels and status card text resolved from resources (demo1.*)
+/// - Status card rebuilt by [TomMultiObservableBuilder] (no setState)
 class Demo1BasicForm extends StatefulWidget {
   const Demo1BasicForm({super.key});
 
@@ -22,19 +30,18 @@ class Demo1BasicForm extends StatefulWidget {
 }
 
 class _Demo1BasicFormState extends State<Demo1BasicForm> {
-  final _profile = CompanyProfile();
-  late final _form = CompanyBasicInfoForm();
-  String _status = 'Ready';
+  late final CompanyBasicInfoForm _form;
+  final _status = TomString('Ready');
+
+  late final _controller = TomActionController(controllerId: 'demo1');
+  late final _save = SaveFormAction(_controller, forms: [_form], status: _status);
+  late final _discard = DiscardFormAction(_controller, forms: [_form], status: _status);
 
   @override
   void initState() {
     super.initState();
-    // Pre-populate some data
-    _profile.name | 'Acme Corporation';
-    _profile.industry | 'tech';
-    _profile.website | 'https://acme.example.com';
-    // Bind form to state
-    _form.bind(_profile);
+    _form = TomScope.withScope('companyBasicInfo', () => CompanyBasicInfoForm());
+    _form.bind(demoState.companyProfile);
   }
 
   @override
@@ -43,80 +50,72 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    setState(() => _status = 'Validating...');
-    final success = await _form.save();
-    setState(() {
-      _status = success
-          ? 'Saved! Name: ${_profile.name.get()}'
-          : 'Validation failed - check fields';
-    });
-  }
-
-  void _discard() {
-    _form.discard();
-    setState(() => _status = 'Changes discarded');
-  }
-
   @override
   Widget build(BuildContext context) {
     final formLayout = TomAclBuilder(
       id: 'basicForm',
       elementProvider: _form,
-      title: 'Company Information',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
-        .expandX()
         .newRow()
         .append((p) => p.industry.widget)
-        .expandX()
+        .addRowBreakpoint(atWidth: 400)
         .append((p) => p.taxId.widget, dist: 16)
-        .expandX()
         .newRow()
         .append((p) => p.website.widget)
-        .expandX()
         .newRow()
         .append((p) => p.description.widget)
-        .expandX()
         .build(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Demo 1: Basic Form'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
+    return DemoScaffold(
+      title: 'Demo 1: Basic Form',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
+            TomFormStyleScopeLegacy(
+              style: TomFormStyleLegacy.material3,
               child: formLayout,
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: _discard, child: const Text('Discard')),
+                TextButton(
+                  onPressed: () => _discard.execute(
+                    TomActionContext(),
+                    TomActionTransaction(label: 'discard'),
+                  ),
+                  child: Text(_discard.label),
+                ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: _save, child: const Text('Save')),
+                FilledButton(
+                  onPressed: () => _save.execute(
+                    TomActionContext(),
+                    TomActionTransaction(label: 'save'),
+                  ),
+                  child: Text(_save.label),
+                ),
               ],
             ),
             const SizedBox(height: 8),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Status: $_status'),
-                    const SizedBox(height: 4),
-                    Text('Dirty: ${_form.isDirty}'),
-                    Text('Valid: ${_form.isValid}'),
-                  ],
+            TomMultiObservableBuilder(
+              observables: [_form, _status],
+              builder: (context) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${TomCtr.text('demo1.status', 'label')}: ${_status.get()}'),
+                      const SizedBox(height: 4),
+                      Text('${TomCtr.text('demo1.status', 'dirty')}: ${_form.isDirty}'),
+                      Text('${TomCtr.text('demo1.status', 'valid')}: ${_form.isValid}'),
+                    ],
+                  ),
                 ),
               ),
             ),

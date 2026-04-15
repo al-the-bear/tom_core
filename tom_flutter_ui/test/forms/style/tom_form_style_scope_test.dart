@@ -1,39 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope_legacy.dart';
 
 void main() {
-  group('TomFormStyleScope — of(context)', () {
+  group('TomFormStyleScopeLegacy — of(context)', () {
     testWidgets('returns material3 when no scope in tree', (tester) async {
-      late TomFormStyle captured;
+      late TomFormStyleLegacy captured;
 
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
             builder: (context) {
-              captured = TomFormStyleScope.of(context);
+              captured = TomFormStyleScopeLegacy.of(context);
               return const SizedBox();
             },
           ),
         ),
       );
 
-      expect(captured, TomFormStyle.material3);
+      expect(captured, TomFormStyleLegacy.material3);
     });
 
     testWidgets('returns provided style from scope', (tester) async {
-      const customStyle = TomFormStyle(fieldSpacing: 32.0, borderRadius: 16.0);
-      late TomFormStyle captured;
+      const customStyle = TomFormStyleLegacy(fieldSpacing: 32.0, borderRadius: 16.0);
+      late TomFormStyleLegacy captured;
 
       await tester.pumpWidget(
         MaterialApp(
-          home: TomFormStyleScope(
+          home: TomFormStyleScopeLegacy(
             style: customStyle,
             child: Builder(
               builder: (context) {
-                captured = TomFormStyleScope.of(context);
+                captured = TomFormStyleScopeLegacy.of(context);
                 return const SizedBox();
               },
             ),
@@ -47,28 +47,28 @@ void main() {
     });
 
     testWidgets('nested scope overrides parent', (tester) async {
-      const parentStyle = TomFormStyle(fieldSpacing: 20.0, borderRadius: 8.0);
-      const childStyle = TomFormStyle(fieldSpacing: 8.0, borderRadius: 4.0);
-      late TomFormStyle parentCaptured;
-      late TomFormStyle childCaptured;
+      const parentStyle = TomFormStyleLegacy(fieldSpacing: 20.0, borderRadius: 8.0);
+      const childStyle = TomFormStyleLegacy(fieldSpacing: 8.0, borderRadius: 4.0);
+      late TomFormStyleLegacy parentCaptured;
+      late TomFormStyleLegacy childCaptured;
 
       await tester.pumpWidget(
         MaterialApp(
-          home: TomFormStyleScope(
+          home: TomFormStyleScopeLegacy(
             style: parentStyle,
             child: Column(
               children: [
                 Builder(
                   builder: (context) {
-                    parentCaptured = TomFormStyleScope.of(context);
+                    parentCaptured = TomFormStyleScopeLegacy.of(context);
                     return const SizedBox();
                   },
                 ),
-                TomFormStyleScope(
+                TomFormStyleScopeLegacy(
                   style: childStyle,
                   child: Builder(
                     builder: (context) {
-                      childCaptured = TomFormStyleScope.of(context);
+                      childCaptured = TomFormStyleScopeLegacy.of(context);
                       return const SizedBox();
                     },
                   ),
@@ -92,11 +92,11 @@ void main() {
         MaterialApp(
           home: StatefulBuilder(
             builder: (context, setState) {
-              return TomFormStyleScope(
-                style: const TomFormStyle(fieldSpacing: 16.0),
+              return TomFormStyleScopeLegacy(
+                style: const TomFormStyleLegacy(fieldSpacing: 16.0),
                 child: Builder(
                   builder: (context) {
-                    TomFormStyleScope.of(context);
+                    TomFormStyleScopeLegacy.of(context);
                     rebuildCount++;
                     return ElevatedButton(
                       onPressed: () {
@@ -123,28 +123,28 @@ void main() {
     });
   });
 
-  group('TomFormStyleScope — compact sub-form', () {
+  group('TomFormStyleScopeLegacy — compact sub-form', () {
     testWidgets('compact scope inside material3 scope', (tester) async {
-      late TomFormStyle outerStyle;
-      late TomFormStyle innerStyle;
+      late TomFormStyleLegacy outerStyle;
+      late TomFormStyleLegacy innerStyle;
 
       await tester.pumpWidget(
         MaterialApp(
-          home: TomFormStyleScope(
-            style: TomFormStyle.material3,
+          home: TomFormStyleScopeLegacy(
+            style: TomFormStyleLegacy.material3,
             child: Column(
               children: [
                 Builder(
                   builder: (context) {
-                    outerStyle = TomFormStyleScope.of(context);
+                    outerStyle = TomFormStyleScopeLegacy.of(context);
                     return const SizedBox();
                   },
                 ),
-                TomFormStyleScope(
-                  style: TomFormStyle.compact,
+                TomFormStyleScopeLegacy(
+                  style: TomFormStyleLegacy.compact,
                   child: Builder(
                     builder: (context) {
-                      innerStyle = TomFormStyleScope.of(context);
+                      innerStyle = TomFormStyleScopeLegacy.of(context);
                       return const SizedBox();
                     },
                   ),

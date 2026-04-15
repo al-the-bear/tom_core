@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
-import '../state/company_state.dart';
+import '../state/application_state.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 3: Authorization — Field-level and Resource-based auth
@@ -15,6 +16,7 @@ import '../state/company_state.dart';
 /// - TomAuthorizationGroup for section-level authorization
 /// - Dynamic auth state changes through resource adapter
 /// - Authorization resolution from resource paths
+/// - Container title / padding / borderStyle from resources
 class Demo3Authorization extends StatefulWidget {
   const Demo3Authorization({super.key});
 
@@ -25,21 +27,16 @@ class Demo3Authorization extends StatefulWidget {
 /// Simple in-memory authorization adapter for the demo.
 class DemoAuthAdapter extends TomAuthorizationAdapter {
   final Map<String, TomAuthState> _rules = {
-    // Default: all fields full access
     'demo3': TomAuthState.full,
-    // Tax ID is read-only (sensitive data)
     'demo3.taxId': TomAuthState.read,
-    // Description is hidden
     'demo3.description': TomAuthState.none,
   };
 
   @override
   TomAuthState resolveAuth(String resourceKeyPath) {
-    // Check for exact match first
     if (_rules.containsKey(resourceKeyPath)) {
       return _rules[resourceKeyPath]!;
     }
-    // Fall back to parent path
     final parts = resourceKeyPath.split('.');
     for (var i = parts.length - 1; i > 0; i--) {
       final parentPath = parts.sublist(0, i).join('.');
@@ -50,17 +47,11 @@ class DemoAuthAdapter extends TomAuthorizationAdapter {
     return TomAuthState.full;
   }
 
-  void setRule(String path, TomAuthState state) {
-    _rules[path] = state;
-  }
-
-  void removeRule(String path) {
-    _rules.remove(path);
-  }
+  void setRule(String path, TomAuthState state) => _rules[path] = state;
+  void removeRule(String path) => _rules.remove(path);
 }
 
 class _Demo3AuthorizationState extends State<Demo3Authorization> {
-  final _profile = CompanyProfile();
   late final DemoAuthAdapter _authAdapter;
   late final CompanyBasicInfoForm _form;
   late final TomAuthorizationGroup _sectionGroup;
@@ -70,26 +61,16 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
   void initState() {
     super.initState();
 
-    // Set up authorization adapter
     _authAdapter = DemoAuthAdapter();
     TomAuthorization.adapter = _authAdapter;
 
-    // Create section authorization group (auth resolved from 'demo3.section')
     _sectionGroup = TomAuthorizationGroup('section');
 
-    // Create form with scope 'demo3'
     _form = TomScope.withScope<CompanyBasicInfoForm>('demo3', () {
       return CompanyBasicInfoForm(authGroup: _sectionGroup);
     });
 
-    // Pre-populate data
-    _profile.name | 'Acme Corporation';
-    _profile.industry | 'tech';
-    _profile.taxId | 'US-12345-ABC';
-    _profile.website | 'https://acme.example.com';
-    _profile.description | 'A leading tech company';
-
-    _form.bind(_profile);
+    _form.bind(demoState.companyProfile);
   }
 
   @override
@@ -99,8 +80,8 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
   }
 
   void _toggleNameReadOnly() {
-    final currentAuth = _authAdapter.resolveAuth('demo3.name');
-    if (currentAuth == TomAuthState.full) {
+    final current = _authAdapter.resolveAuth('demo3.name');
+    if (current == TomAuthState.full) {
       _authAdapter.setRule('demo3.name', TomAuthState.read);
       setState(() => _status = 'Name field: READ-ONLY');
     } else {
@@ -110,9 +91,8 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
   }
 
   void _toggleSectionDisabled() {
-    // Control auth for entire section via resource path
-    final currentAuth = _authAdapter.resolveAuth('demo3.section');
-    if (currentAuth == TomAuthState.full) {
+    final current = _authAdapter.resolveAuth('demo3.section');
+    if (current == TomAuthState.full) {
       _authAdapter.setRule('demo3.section', TomAuthState.disabled);
       setState(() => _status = 'Section: DISABLED (grayed out)');
     } else {
@@ -148,31 +128,22 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
     final formLayout = TomAclBuilder(
       id: 'authDemo',
       elementProvider: _form,
-      title: 'Authorization Demo',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
-        .expandX()
         .newRow()
         .append((p) => p.industry.widget)
-        .expandX()
         .append((p) => p.taxId.widget, dist: 16)
-        .expandX()
         .newRow()
         .append((p) => p.website.widget)
-        .expandX()
         .newRow()
         .append((p) => p.description.widget)
-        .expandX()
         .build(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Demo 3: Authorization'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
+    return DemoScaffold(
+      title: 'Demo 3: Authorization',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -234,9 +205,8 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
               ),
             ),
             const SizedBox(height: 16),
-            // Form
-            TomFormStyleScope(
-              style: TomFormStyle.material3,
+            TomFormStyleScopeLegacy(
+              style: TomFormStyleLegacy.material3,
               child: formLayout,
             ),
           ],

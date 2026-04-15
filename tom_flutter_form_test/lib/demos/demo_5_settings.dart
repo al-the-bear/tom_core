@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/form_actions.dart';
+import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
-import '../state/company_state.dart';
+import '../state/application_state.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 5: Settings Form — Dropdowns and Compact Layout
@@ -10,10 +13,14 @@ import '../state/company_state.dart';
 
 /// Demonstrates:
 /// - Multiple TomFormStringDropdown fields
-/// - Compact form style (TomFormStyle.compact)
-/// - StaticSelectableSource with descriptions
-/// - Settings-style form layout
-/// - Locale/currency pattern validators
+/// - Compact form style (TomFormStyleLegacy.compact)
+/// - StaticSelectableSource with descriptions (timezone)
+/// - Locale / currency pattern validators
+/// - Field labels/hints resolved from resources (scope: companySettings)
+/// - Container title / padding / borderStyle from resources
+/// - Button labels and status card text resolved from resources (demo5.*)
+/// - Save / Discard via [SaveFormAction] / [DiscardFormAction]
+/// - Status rebuilt by [TomMultiObservableBuilder] (no setState)
 class Demo5SettingsForm extends StatefulWidget {
   const Demo5SettingsForm({super.key});
 
@@ -22,14 +29,18 @@ class Demo5SettingsForm extends StatefulWidget {
 }
 
 class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
-  final _profile = CompanyProfile();
-  late final _form = CompanySettingsForm();
-  String _status = 'Ready';
+  late final CompanySettingsForm _form;
+  final _status = TomString('Ready');
+
+  late final _controller = TomActionController(controllerId: 'demo5');
+  late final _save = SaveFormAction(_controller, forms: [_form], status: _status);
+  late final _discard = DiscardFormAction(_controller, forms: [_form], status: _status);
 
   @override
   void initState() {
     super.initState();
-    _form.bind(_profile.settings);
+    _form = TomScope.withScope('companySettings', () => CompanySettingsForm());
+    _form.bind(demoState.companyProfile.settings);
   }
 
   @override
@@ -38,54 +49,27 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
     super.dispose();
   }
 
-  Future<void> _save() async {
-    setState(() => _status = 'Validating...');
-    final success = await _form.save();
-    setState(() {
-      if (success) {
-        final tz = _profile.settings.timezone.get();
-        final cur = _profile.settings.currency.get();
-        _status = 'Saved! Timezone: $tz, Currency: $cur';
-      } else {
-        _status = 'Validation failed';
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final formLayout = TomAclBuilder(
       id: 'settingsForm',
       elementProvider: _form,
-      title: 'Company Settings',
-      borderStyle: const AclBorderStyle.solid(),
-      padding: const EdgeInsets.all(16),
     )
-        // Row 1: Timezone and Locale
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
         .append((p) => p.timezone.widget)
-        .expandX()
         .append((p) => p.locale.widget, dist: 16)
-        .expandX()
         .newRow()
-        // Row 2: Currency and Date Format
         .append((p) => p.currency.widget)
-        .expandX()
         .append((p) => p.dateFormat.widget, dist: 16)
-        .expandX()
         .newRow()
-        // Row 3: Notification settings
         .append((p) => p.notificationEmail.widget)
-        .expandX()
         .append((p) => p.notificationFrequency.widget, dist: 16)
-        .expandX()
         .build(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Demo 5: Settings Form'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SingleChildScrollView(
+    return DemoScaffold(
+      title: 'Demo 5: Settings Form',
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -112,39 +96,45 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
               ),
             ),
             const SizedBox(height: 16),
-            // Form with compact style
-            TomFormStyleScope(
-              style: TomFormStyle.compact,
+            TomFormStyleScopeLegacy(
+              style: TomFormStyleLegacy.compact,
               child: formLayout,
             ),
             const SizedBox(height: 16),
-            // Actions
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () {
-                    _form.discard();
-                    setState(() => _status = 'Changes discarded');
-                  },
-                  child: const Text('Discard'),
+                  onPressed: () => _discard.execute(
+                    TomActionContext(),
+                    TomActionTransaction(label: 'discard'),
+                  ),
+                  child: Text(_discard.label),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: _save, child: const Text('Save')),
+                FilledButton(
+                  onPressed: () => _save.execute(
+                    TomActionContext(),
+                    TomActionTransaction(label: 'save'),
+                  ),
+                  child: Text(_save.label),
+                ),
               ],
             ),
             const SizedBox(height: 8),
-            // Status
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Status: $_status'),
-                    const SizedBox(height: 4),
-                    Text('Dirty: ${_form.isDirty}'),
-                  ],
+            TomMultiObservableBuilder(
+              observables: [_form, _status],
+              builder: (context) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${TomCtr.text('demo5.status', 'label')}: ${_status.get()}'),
+                      const SizedBox(height: 4),
+                      Text('${TomCtr.text('demo5.status', 'dirty')}: ${_form.isDirty}'),
+                    ],
+                  ),
                 ),
               ),
             ),

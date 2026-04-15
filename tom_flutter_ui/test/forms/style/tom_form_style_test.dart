@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
 
 void main() {
-  group('TomFormStyle — defaults', () {
+  group('TomFormStyleLegacy — defaults', () {
     test('default constructor has Material 3 defaults', () {
-      const style = TomFormStyle();
+      const style = TomFormStyleLegacy();
       expect(style.labelPlacement, LabelPlacement.above);
       expect(style.errorPlacement, ErrorPlacement.below);
       expect(style.requiredIndicator, RequiredIndicator.asterisk);
@@ -35,13 +35,13 @@ void main() {
     });
   });
 
-  group('TomFormStyle — named constructors', () {
+  group('TomFormStyleLegacy — named constructors', () {
     test('material3 is the default style', () {
-      expect(TomFormStyle.material3, const TomFormStyle());
+      expect(TomFormStyleLegacy.material3, const TomFormStyleLegacy());
     });
 
     test('compact has floating labels and reduced spacing', () {
-      const compact = TomFormStyle.compact;
+      const compact = TomFormStyleLegacy.compact;
       expect(compact.labelPlacement, LabelPlacement.floating);
       expect(compact.fieldSpacing, 8.0);
       expect(compact.fieldGroupSpacing, 16.0);
@@ -51,9 +51,9 @@ void main() {
     });
   });
 
-  group('TomFormStyle — copyWith', () {
+  group('TomFormStyleLegacy — copyWith', () {
     test('copies all fields when specified', () {
-      const original = TomFormStyle();
+      const original = TomFormStyleLegacy();
       final copied = original.copyWith(
         labelPlacement: LabelPlacement.floating,
         fieldSpacing: 20.0,
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('returns equivalent when no overrides', () {
-      const original = TomFormStyle();
+      const original = TomFormStyleLegacy();
       final copied = original.copyWith();
       expect(copied, original);
     });
@@ -83,7 +83,7 @@ void main() {
       final border = OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
       );
-      final original = TomFormStyle(fieldBorder: border);
+      final original = TomFormStyleLegacy(fieldBorder: border);
       final copied = original.copyWith(fieldSpacing: 20.0);
       expect(copied.fieldBorder, border);
       expect(copied.fieldSpacing, 20.0);
@@ -92,7 +92,7 @@ void main() {
     test('copyWith can override typography', () {
       const labelStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
       const errorStyle = TextStyle(fontSize: 11, color: Colors.red);
-      final style = const TomFormStyle().copyWith(
+      final style = const TomFormStyleLegacy().copyWith(
         labelStyle: labelStyle,
         errorStyle: errorStyle,
       );
@@ -102,48 +102,48 @@ void main() {
     });
   });
 
-  group('TomFormStyle — equality', () {
+  group('TomFormStyleLegacy — equality', () {
     test('identical defaults are equal', () {
-      const a = TomFormStyle();
-      const b = TomFormStyle();
+      const a = TomFormStyleLegacy();
+      const b = TomFormStyleLegacy();
       expect(a, equals(b));
       expect(a.hashCode, equals(b.hashCode));
     });
 
     test('different field spacing not equal', () {
-      const a = TomFormStyle(fieldSpacing: 16.0);
-      const b = TomFormStyle(fieldSpacing: 20.0);
+      const a = TomFormStyleLegacy(fieldSpacing: 16.0);
+      const b = TomFormStyleLegacy(fieldSpacing: 20.0);
       expect(a, isNot(equals(b)));
     });
 
     test('material3 equals default', () {
-      expect(TomFormStyle.material3, const TomFormStyle());
+      expect(TomFormStyleLegacy.material3, const TomFormStyleLegacy());
     });
 
     test('compact differs from material3', () {
-      expect(TomFormStyle.compact, isNot(equals(TomFormStyle.material3)));
+      expect(TomFormStyleLegacy.compact, isNot(equals(TomFormStyleLegacy.material3)));
     });
 
     test('hashCode differs when only disabledOpacity differs', () {
-      const a = TomFormStyle(disabledOpacity: 0.5);
-      const b = TomFormStyle(disabledOpacity: 0.3);
+      const a = TomFormStyleLegacy(disabledOpacity: 0.5);
+      const b = TomFormStyleLegacy(disabledOpacity: 0.3);
       expect(a, isNot(equals(b)));
       expect(a.hashCode, isNot(equals(b.hashCode)));
     });
 
     test('hashCode differs when only readOnlyBackground differs', () {
-      const a = TomFormStyle(readOnlyBackground: Color(0xFF000000));
-      const b = TomFormStyle(readOnlyBackground: Color(0xFFFFFFFF));
+      const a = TomFormStyleLegacy(readOnlyBackground: Color(0xFF000000));
+      const b = TomFormStyleLegacy(readOnlyBackground: Color(0xFFFFFFFF));
       expect(a, isNot(equals(b)));
       expect(a.hashCode, isNot(equals(b.hashCode)));
     });
   });
 
-  group('TomFormStyle — fromResources', () {
+  group('TomFormStyleLegacy — fromResources', () {
     // fromResources calls TomCtr which requires resource initialization.
     // We test the factory with default resource state (returns defaults).
     test('returns defaults when no resources configured', () {
-      final style = TomFormStyle.fromResources('nonexistent.path');
+      final style = TomFormStyleLegacy.fromResources('nonexistent.path');
       expect(style.labelPlacement, LabelPlacement.above);
       expect(style.errorPlacement, ErrorPlacement.below);
       expect(style.fieldSpacing, 16.0);
