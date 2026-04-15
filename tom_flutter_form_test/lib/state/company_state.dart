@@ -117,3 +117,5 @@ class NotificationPrefs extends TomClass {
   late final frequency = TomString('daily');
   late final emailAddress = TomString('');
 }
+
+// ApplicationState and demoState global are in application_state.dart

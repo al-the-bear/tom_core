@@ -214,7 +214,7 @@ class TomFieldStyle {
 // ===========================================================================
 
 /// Partial override for text-input fields.
-class TomStringInputStyle extends _TomFieldPartialStyle {
+class TomStringInputStyle extends TomFieldPartialStyle {
   /// Which text-input look to render. `null` → use the default look.
   final StringInputVariant? variant;
 
@@ -253,7 +253,7 @@ class TomStringInputStyle extends _TomFieldPartialStyle {
 enum StringInputVariant { material, bordered }
 
 /// Partial override for dropdown selection fields.
-class TomDropdownStyle extends _TomFieldPartialStyle {
+class TomDropdownStyle extends TomFieldPartialStyle {
   const TomDropdownStyle({
     super.labelPlacement,
     super.errorPlacement,
@@ -285,7 +285,7 @@ class TomDropdownStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for slider fields.
-class TomSliderStyle extends _TomFieldPartialStyle {
+class TomSliderStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? trackColor;
   final WidgetStateProperty<Color>? activeColor;
   final WidgetStateProperty<Color>? thumbColor;
@@ -324,7 +324,7 @@ class TomSliderStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for checkbox fields.
-class TomCheckboxStyle extends _TomFieldPartialStyle {
+class TomCheckboxStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? fillColor;
   final WidgetStateProperty<Color>? checkColor;
 
@@ -361,7 +361,7 @@ class TomCheckboxStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for switch fields.
-class TomSwitchStyle extends _TomFieldPartialStyle {
+class TomSwitchStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? thumbColor;
   final WidgetStateProperty<Color>? trackColor;
 
@@ -398,7 +398,7 @@ class TomSwitchStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for segmented-button fields.
-class TomSegmentedStyle extends _TomFieldPartialStyle {
+class TomSegmentedStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? selectedColor;
   final WidgetStateProperty<Color>? unselectedColor;
 
@@ -435,7 +435,7 @@ class TomSegmentedStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for radio-group fields.
-class TomRadioGroupStyle extends _TomFieldPartialStyle {
+class TomRadioGroupStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? selectedColor;
 
   const TomRadioGroupStyle({
@@ -470,7 +470,7 @@ class TomRadioGroupStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for date-picker fields.
-class TomDatePickerStyle extends _TomFieldPartialStyle {
+class TomDatePickerStyle extends TomFieldPartialStyle {
   const TomDatePickerStyle({
     super.labelPlacement,
     super.errorPlacement,
@@ -502,7 +502,7 @@ class TomDatePickerStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for time-picker fields.
-class TomTimePickerStyle extends _TomFieldPartialStyle {
+class TomTimePickerStyle extends TomFieldPartialStyle {
   const TomTimePickerStyle({
     super.labelPlacement,
     super.errorPlacement,
@@ -534,7 +534,7 @@ class TomTimePickerStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for file-picker fields.
-class TomFilePickerStyle extends _TomFieldPartialStyle {
+class TomFilePickerStyle extends TomFieldPartialStyle {
   const TomFilePickerStyle({
     super.labelPlacement,
     super.errorPlacement,
@@ -566,7 +566,7 @@ class TomFilePickerStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for chips / multi-select fields.
-class TomChipsStyle extends _TomFieldPartialStyle {
+class TomChipsStyle extends TomFieldPartialStyle {
   final WidgetStateProperty<Color>? selectedColor;
   final WidgetStateProperty<Color>? deletableColor;
 
@@ -603,7 +603,7 @@ class TomChipsStyle extends _TomFieldPartialStyle {
 }
 
 /// Partial override for multiline-input fields.
-class TomMultilineInputStyle extends _TomFieldPartialStyle {
+class TomMultilineInputStyle extends TomFieldPartialStyle {
   final int? minLines;
   final int? maxLines;
 
@@ -640,10 +640,15 @@ class TomMultilineInputStyle extends _TomFieldPartialStyle {
 }
 
 // ---------------------------------------------------------------------------
-// Internal shared partial-override superclass (not exported).
+// Shared partial-override superclass.
+//
+// Every `Tom<Widget>Style` subclass carries this exact property surface, with
+// each field nullable (absence = inherit from base). Exposed so shared
+// helpers (e.g. decoration mixins, [TomFormStyle.resolveFieldStyle]) can
+// accept any sub-style regardless of its concrete type.
 // ---------------------------------------------------------------------------
 
-class _TomFieldPartialStyle {
+class TomFieldPartialStyle {
   final LabelPlacement? labelPlacement;
   final ErrorPlacement? errorPlacement;
   final RequiredIndicator? requiredIndicator;
@@ -678,7 +683,7 @@ class _TomFieldPartialStyle {
   final bool? errorIconEnabled;
   final List<(double, bool)> errorIconEnabledBpOverrides;
 
-  const _TomFieldPartialStyle({
+  const TomFieldPartialStyle({
     this.labelPlacement,
     this.errorPlacement,
     this.requiredIndicator,
@@ -781,6 +786,84 @@ class TomFormStyle {
           ),
         ),
       );
+
+  // --- Per-pair atomic resolution ------------------------------------------
+
+  /// Resolves [defaults] + a per-widget [over] partial override down to a
+  /// fully-populated [TomFieldStyle] at the given [width].
+  ///
+  /// Applies the per-pair atomic rule from [TomFieldStyle.pickPair] to every
+  /// breakpointable property and a simple `over ?? base` fallback to the
+  /// rest. Returns the base unchanged when [over] is null.
+  TomFieldStyle resolveFieldStyle(TomFieldPartialStyle? over, double width) {
+    final base = defaults;
+    if (over == null) return base;
+
+    return TomFieldStyle(
+      labelPlacement: over.labelPlacement ?? base.labelPlacement,
+      errorPlacement: over.errorPlacement ?? base.errorPlacement,
+      requiredIndicator: over.requiredIndicator ?? base.requiredIndicator,
+      requiredIndicatorOnHint:
+          over.requiredIndicatorOnHint ?? base.requiredIndicatorOnHint,
+      descriptionPlacement:
+          over.descriptionPlacement ?? base.descriptionPlacement,
+      actionIconPlacement:
+          over.actionIconPlacement ?? base.actionIconPlacement,
+      labelFieldGap: base.pickPair<double>(
+        width,
+        over.labelFieldGap,
+        over.labelFieldGapBpOverrides,
+        base.labelFieldGap,
+        base.labelFieldGapBpOverrides,
+      ),
+      labelFieldGapBpOverrides: over.labelFieldGap != null
+          ? over.labelFieldGapBpOverrides
+          : base.labelFieldGapBpOverrides,
+      errorFieldGap: base.pickPair<double>(
+        width,
+        over.errorFieldGap,
+        over.errorFieldGapBpOverrides,
+        base.errorFieldGap,
+        base.errorFieldGapBpOverrides,
+      ),
+      errorFieldGapBpOverrides: over.errorFieldGap != null
+          ? over.errorFieldGapBpOverrides
+          : base.errorFieldGapBpOverrides,
+      fieldContentPadding:
+          over.fieldContentPadding ?? base.fieldContentPadding,
+      borderRadius: over.borderRadius ?? base.borderRadius,
+      fieldBorder: over.fieldBorder ?? base.fieldBorder,
+      focusedBorder: over.focusedBorder ?? base.focusedBorder,
+      errorBorder: over.errorBorder ?? base.errorBorder,
+      labelStyle: over.labelStyle ?? base.labelStyle,
+      hintStyle: over.hintStyle ?? base.hintStyle,
+      errorStyle: over.errorStyle ?? base.errorStyle,
+      descriptionStyle: over.descriptionStyle ?? base.descriptionStyle,
+      disabledOpacity: over.disabledOpacity ?? base.disabledOpacity,
+      readOnlyBackground: over.readOnlyBackground ?? base.readOnlyBackground,
+      focusedBackground: over.focusedBackground ?? base.focusedBackground,
+      errorBorderEnabled: base.pickPair<bool>(
+        width,
+        over.errorBorderEnabled,
+        over.errorBorderEnabledBpOverrides,
+        base.errorBorderEnabled,
+        base.errorBorderEnabledBpOverrides,
+      ),
+      errorBorderEnabledBpOverrides: over.errorBorderEnabled != null
+          ? over.errorBorderEnabledBpOverrides
+          : base.errorBorderEnabledBpOverrides,
+      errorIconEnabled: base.pickPair<bool>(
+        width,
+        over.errorIconEnabled,
+        over.errorIconEnabledBpOverrides,
+        base.errorIconEnabled,
+        base.errorIconEnabledBpOverrides,
+      ),
+      errorIconEnabledBpOverrides: over.errorIconEnabled != null
+          ? over.errorIconEnabledBpOverrides
+          : base.errorIconEnabledBpOverrides,
+    );
+  }
 
   TomFormStyle copyWith({
     TomFieldStyle? defaults,

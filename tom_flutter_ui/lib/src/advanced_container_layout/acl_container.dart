@@ -148,6 +148,11 @@ class AclComponent {
   final int flags;
   final double gapBefore;
 
+  /// `true` when [gapBefore] should be replaced at render time by the
+  /// breakpoint-resolved default append gap carried on the parent [AclRow].
+  /// Set by the builder when the caller did not pass an explicit `dist`.
+  final bool gapBeforeIsDefault;
+
   /// Relative weight used when this is a gap slot (isGap == true).
   final double gapWeight;
 
@@ -183,6 +188,7 @@ class AclComponent {
     required this.child,
     this.flags = 0,
     this.gapBefore = 0,
+    this.gapBeforeIsDefault = false,
     this.gapWeight = 1.0,
     this.preferredSize,
     this.minimumSize,
@@ -249,6 +255,20 @@ class AclRow {
   /// Row breakpoints for responsive splitting (see §28).
   final List<AclRowBreakpoint> breakpoints;
 
+  /// Fixed pixel height for this content row (null = intrinsic). Resolved at
+  /// render time via [heightBpOverrides] against the current available width.
+  final double? height;
+
+  /// `(minWidth, height?)` pairs overriding [height] above certain widths.
+  final List<(double, double?)> heightBpOverrides;
+
+  /// Default horizontal gap for components whose `gapBeforeIsDefault` is true.
+  /// Snapshotted from the builder at [AclRow] construction time.
+  final double defaultAppendGap;
+
+  /// `(minWidth, gap)` pairs overriding [defaultAppendGap] above certain widths.
+  final List<(double, double)> defaultAppendGapBpOverrides;
+
   const AclRow({
     required this.components,
     this.alignment = RowAlignment.left,
@@ -261,7 +281,51 @@ class AclRow {
     this.group,
     this.idScope = false,
     this.breakpoints = const [],
+    this.height,
+    this.heightBpOverrides = const [],
+    this.defaultAppendGap = 8.0,
+    this.defaultAppendGapBpOverrides = const [],
   });
+}
+
+/// Returns the effective gapBefore for [comp] inside [row] at the given
+/// [availableWidth], honouring the row's breakpointed default when the
+/// component did not carry an explicit distance.
+double aclEffectiveGapBefore(
+  AclComponent comp,
+  AclRow row,
+  double? availableWidth,
+) {
+  if (!comp.gapBeforeIsDefault) return comp.gapBefore;
+  final base = row.defaultAppendGap;
+  final overrides = row.defaultAppendGapBpOverrides;
+  if (availableWidth == null || overrides.isEmpty) return base;
+  double current = base;
+  double best = double.negativeInfinity;
+  for (final entry in overrides) {
+    final minW = entry.$1;
+    if (minW <= availableWidth && minW >= best) {
+      best = minW;
+      current = entry.$2;
+    }
+  }
+  return current;
+}
+
+/// Resolves a breakpointed row height. Returns null if no height is set.
+double? aclResolveRowHeight(AclRow row, double? availableWidth) {
+  if (row.height == null && row.heightBpOverrides.isEmpty) return null;
+  if (availableWidth == null || row.heightBpOverrides.isEmpty) return row.height;
+  double? current = row.height;
+  double best = double.negativeInfinity;
+  for (final entry in row.heightBpOverrides) {
+    final minW = entry.$1;
+    if (minW <= availableWidth && minW >= best) {
+      best = minW;
+      current = entry.$2;
+    }
+  }
+  return current;
 }
 
 // ── Pre-calculation data structures ──────────────────────────────────────────
@@ -535,6 +599,10 @@ class _AclContainerState extends State<AclContainer> {
             id: i == 0 ? row.id : null,
             group: row.group,
             breakpoints: const [],
+            height: row.height,
+            heightBpOverrides: row.heightBpOverrides,
+            defaultAppendGap: row.defaultAppendGap,
+            defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
           ),
         );
         start = end;
@@ -547,6 +615,10 @@ class _AclContainerState extends State<AclContainer> {
             gapBefore: active.last.splitRowDist,
             group: row.group,
             breakpoints: const [],
+            height: row.height,
+            heightBpOverrides: row.heightBpOverrides,
+            defaultAppendGap: row.defaultAppendGap,
+            defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
           ),
         );
       }
@@ -622,6 +694,10 @@ class _AclContainerState extends State<AclContainer> {
           id: row.id,
           group: row.group,
           breakpoints: row.breakpoints,
+          height: row.height,
+          heightBpOverrides: row.heightBpOverrides,
+          defaultAppendGap: row.defaultAppendGap,
+          defaultAppendGapBpOverrides: row.defaultAppendGapBpOverrides,
         ),
       );
     }
@@ -863,10 +939,11 @@ class _AclContainerState extends State<AclContainer> {
 
       final bool collapseToVisual =
           comp.alignXToKey == null && maxHX < plannedX;
-      if (comp.gapBefore > 0 && !collapseToVisual) plannedX += comp.gapBefore;
+      final effectiveGap = aclEffectiveGapBefore(comp, row, availableWidth);
+      if (effectiveGap > 0 && !collapseToVisual) plannedX += effectiveGap;
 
       final delta = collapseToVisual
-          ? (maxHX + comp.gapBefore - plannedX)
+          ? (maxHX + effectiveGap - plannedX)
           : _calcHorizontalDelta(
               comp: comp,
               plannedX: plannedX,
@@ -1244,6 +1321,14 @@ class _AclContainerState extends State<AclContainer> {
 
           // Row IDs do not create new scopes - scoping is external to containers
 
+          final resolvedRowHeight = aclResolveRowHeight(
+            row,
+            canExpandHorizontally ? effectiveMaxW : null,
+          );
+          if (resolvedRowHeight != null) {
+            builtRow = SizedBox(height: resolvedRowHeight, child: builtRow);
+          }
+
           rowWidgets.add(builtRow);
         }
 
@@ -1469,14 +1554,14 @@ class _AclContainerState extends State<AclContainer> {
           expandXCompIndices.add(i);
           totalExpandXFlex += flex;
           // Count the preferred width as the minimum allocation.
-          fixedWidth += comp.gapBefore;
+          fixedWidth += aclEffectiveGapBefore(comp, row, availableWidth);
         } else {
           final w = fittedWidths[i] ??
               linkedWidths[i] ??
               comp.preferredSize?.width ??
               _naturalWidth(comp) ??
               0;
-          fixedWidth += w + comp.gapBefore;
+          fixedWidth += w + aclEffectiveGapBefore(comp, row, availableWidth);
         }
       }
       if (expandXCompIndices.isNotEmpty && totalExpandXFlex > 0) {
@@ -1519,8 +1604,9 @@ class _AclContainerState extends State<AclContainer> {
       // so they remain in sync.
       double hDelta = 0;
       final priorPlannedX = plannedX;
-      if (comp.gapBefore > 0) {
-        plannedX += comp.gapBefore;
+      final compEffectiveGap = aclEffectiveGapBefore(comp, row, availableWidth);
+      if (compEffectiveGap > 0) {
+        plannedX += compEffectiveGap;
       }
 
       final linkedW = linkedWidths[i];
@@ -1841,9 +1927,10 @@ class _AclContainerState extends State<AclContainer> {
 
       // Always emit gapBefore — the pre-calc always accounts for it in plannedX
       // so the alignmentDelta is always measured from after the gap.
-      if (component.gapBefore > 0) {
-        children.add(SizedBox(width: component.gapBefore));
-        plannedX += component.gapBefore;
+      final renderGap = aclEffectiveGapBefore(component, row, availableWidth);
+      if (renderGap > 0) {
+        children.add(SizedBox(width: renderGap));
+        plannedX += renderGap;
       }
 
       if (alignmentDelta > 0) {

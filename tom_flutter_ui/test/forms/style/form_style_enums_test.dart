@@ -4,8 +4,9 @@ import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
 void main() {
   group('LabelPlacement', () {
     test('has all expected values', () {
-      expect(LabelPlacement.values, hasLength(4));
+      expect(LabelPlacement.values, hasLength(5));
       expect(LabelPlacement.values, contains(LabelPlacement.above));
+      expect(LabelPlacement.values, contains(LabelPlacement.below));
       expect(LabelPlacement.values, contains(LabelPlacement.floating));
       expect(LabelPlacement.values, contains(LabelPlacement.inline));
       expect(LabelPlacement.values, contains(LabelPlacement.hidden));
@@ -14,11 +15,12 @@ void main() {
 
   group('ErrorPlacement', () {
     test('has all expected values', () {
-      expect(ErrorPlacement.values, hasLength(4));
+      expect(ErrorPlacement.values, hasLength(5));
       expect(ErrorPlacement.values, contains(ErrorPlacement.below));
       expect(ErrorPlacement.values, contains(ErrorPlacement.above));
       expect(ErrorPlacement.values, contains(ErrorPlacement.tooltip));
       expect(ErrorPlacement.values, contains(ErrorPlacement.both));
+      expect(ErrorPlacement.values, contains(ErrorPlacement.replaceHint));
     });
   });
 

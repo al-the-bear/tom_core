@@ -203,8 +203,8 @@ class _Demo4ValidationState extends State<Demo4Validation> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScopeLegacy(
-              style: TomFormStyleLegacy.material3,
+            TomFormStyleScope(
+              style: TomFormStyle.material3,
               child: formLayout,
             ),
             const SizedBox(height: 16),

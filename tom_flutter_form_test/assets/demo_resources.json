@@ -1,0 +1,266 @@
+{
+  "basicForm": {
+    "title": "Company Information",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+  "addressSection": {
+    "title": "Headquarters Address",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+  "ceoSection": {
+    "title": "CEO Information",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+  "authDemo": {
+    "title": "Authorization Demo",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+  "validationDemo": {
+    "title": "Validation Demo",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+  "settingsForm": {
+    "title": "Company Settings",
+    "padding": 16,
+    "borderStyle": { "kind": "solid" }
+  },
+
+  "demo1": {
+    "save": {
+      "label": "Save",
+      "validating": "Validating\u2026",
+      "success": "Saved!",
+      "error": "Validation failed \u2014 check fields"
+    },
+    "discard": {
+      "label": "Discard",
+      "success": "Changes discarded"
+    },
+    "status": {
+      "label": "Status",
+      "dirty": "Dirty",
+      "valid": "Valid"
+    }
+  },
+
+  "demo2": {
+    "save": {
+      "label": "Save All",
+      "validating": "Validating\u2026",
+      "success": "Saved!",
+      "error": "Validation failed \u2014 check fields"
+    },
+    "discard": {
+      "label": "Discard",
+      "success": "Changes discarded"
+    },
+    "status": {
+      "label": "Status",
+      "addressDirty": "Address dirty",
+      "ceoDirty": "CEO dirty"
+    }
+  },
+
+  "demo5": {
+    "save": {
+      "label": "Save",
+      "validating": "Validating\u2026",
+      "success": "Saved!",
+      "error": "Validation failed \u2014 check fields"
+    },
+    "discard": {
+      "label": "Discard",
+      "success": "Changes discarded"
+    },
+    "status": {
+      "label": "Status",
+      "dirty": "Dirty"
+    }
+  },
+
+  "companyBasicInfo": {
+    "name": {
+      "label": "Company Name",
+      "hint": "Enter company name",
+      "error": {
+        "required": "Company name is required.",
+        "minLength": "Company name must be at least 2 characters."
+      }
+    },
+    "industry": {
+      "label": "Industry",
+      "hint": "Select industry",
+      "error": {
+        "required": "Please select an industry."
+      }
+    },
+    "taxId": {
+      "label": "Tax ID",
+      "hint": "Enter tax identification number",
+      "description": "Unique tax identification number",
+      "error": {
+        "required": "Tax ID is required."
+      },
+      "taxIdFormat": "Tax ID must contain only uppercase letters, numbers, and dashes.",
+      "taxIdTaken": "This Tax ID is already registered."
+    },
+    "website": {
+      "label": "Website",
+      "hint": "https://example.com",
+      "invalidUrl": "Please enter a valid URL starting with http:// or https://."
+    },
+    "description": {
+      "label": "Description",
+      "hint": "Brief company description",
+      "error": {
+        "maxLength": "Description must not exceed 500 characters."
+      }
+    }
+  },
+
+  "address": {
+    "street": {
+      "label": "Street Address",
+      "hint": "Enter street address",
+      "error": {
+        "required": "Street address is required."
+      }
+    },
+    "street2": {
+      "label": "Street Address 2",
+      "hint": "Apt, Suite, Unit, etc. (optional)"
+    },
+    "city": {
+      "label": "City",
+      "hint": "Enter city",
+      "error": {
+        "required": "City is required."
+      }
+    },
+    "state": {
+      "label": "State/Province",
+      "hint": "Enter state or province"
+    },
+    "zipCode": {
+      "label": "ZIP/Postal Code",
+      "hint": "Enter ZIP or postal code",
+      "error": {
+        "required": "ZIP or postal code is required."
+      }
+    },
+    "country": {
+      "label": "Country",
+      "error": {
+        "required": "Please select a country."
+      }
+    }
+  },
+
+  "person": {
+    "firstName": {
+      "label": "First Name",
+      "hint": "Enter first name",
+      "error": {
+        "required": "First name is required."
+      }
+    },
+    "lastName": {
+      "label": "Last Name",
+      "hint": "Enter last name",
+      "error": {
+        "required": "Last name is required."
+      }
+    },
+    "email": {
+      "label": "Email",
+      "hint": "Enter email address",
+      "error": {
+        "required": "Email address is required.",
+        "email": "Please enter a valid email address."
+      },
+      "invalidEmailDomain": "Email domain does not appear to accept mail."
+    },
+    "phone": {
+      "label": "Phone",
+      "hint": "Enter phone number"
+    },
+    "title": {
+      "label": "Job Title",
+      "hint": "Enter job title"
+    }
+  },
+
+  "companySettings": {
+    "timezone": { "label": "Timezone" },
+    "locale": {
+      "label": "Locale",
+      "hint": "e.g., en_US, de_DE",
+      "invalidLocale": "Locale must be in the format ll_CC (e.g. en_US)."
+    },
+    "currency": {
+      "label": "Currency",
+      "hint": "e.g., USD, EUR, GBP",
+      "error": {
+        "required": "Currency is required."
+      },
+      "invalidCurrency": "Currency must be a 3-letter ISO code (e.g. USD)."
+    },
+    "dateFormat": {
+      "label": "Date Format",
+      "hint": "e.g., yyyy-MM-dd, MM/dd/yyyy"
+    },
+    "notificationEmail": {
+      "label": "Notification Email",
+      "hint": "Email for notifications",
+      "error": {
+        "email": "Please enter a valid email address."
+      }
+    },
+    "notificationFrequency": { "label": "Notification Frequency" }
+  },
+
+  "demo3": {
+    "name": {
+      "label": "Company Name",
+      "hint": "Enter company name",
+      "error": {
+        "required": "Company name is required.",
+        "minLength": "Company name must be at least 2 characters."
+      }
+    },
+    "industry": {
+      "label": "Industry",
+      "hint": "Select industry",
+      "error": {
+        "required": "Please select an industry."
+      }
+    },
+    "taxId": {
+      "label": "Tax ID",
+      "hint": "Enter tax identification number",
+      "description": "Unique tax identification number",
+      "error": {
+        "required": "Tax ID is required."
+      },
+      "taxIdFormat": "Tax ID must contain only uppercase letters, numbers, and dashes.",
+      "taxIdTaken": "This Tax ID is already registered."
+    },
+    "website": {
+      "label": "Website",
+      "hint": "https://example.com",
+      "invalidUrl": "Please enter a valid URL starting with http:// or https://."
+    },
+    "description": {
+      "label": "Description",
+      "hint": "Brief company description",
+      "error": {
+        "maxLength": "Description must not exceed 500 characters."
+      }
+    }
+  }
+}

@@ -4,8 +4,12 @@
 // various screen sizes, that fields in the same row share space correctly,
 // and that all content is reachable via scrolling.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/demos/demo_1_basic_form.dart';
@@ -33,8 +37,14 @@ Future<void> expectNoOverflow(WidgetTester tester) async {
 }
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
+    final resources = json.decode(jsonStr) as Map<String, dynamic>;
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(resources),
+    );
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

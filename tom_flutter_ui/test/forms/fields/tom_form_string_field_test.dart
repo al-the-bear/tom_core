@@ -6,8 +6,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/src/forms/fields/tom_form_string_field.dart';
 import 'package:tom_flutter_ui/src/forms/selection/static_selectable_source.dart';
 import 'package:tom_flutter_ui/src/forms/selection/tom_selectable_source.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
 import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validation_result.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
@@ -16,11 +16,11 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // Helpers
 // ---------------------------------------------------------------------------
 
-Widget _wrap(Widget child, {TomFormStyleLegacy? style}) {
+Widget _wrap(Widget child, {TomFormStyle? style}) {
   return MaterialApp(
     home: Scaffold(
       body: style != null
-          ? TomFormStyleScopeLegacy(style: style, child: child)
+          ? TomFormStyleScope(style: style, child: child)
           : child,
     ),
   );
@@ -349,7 +349,12 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(readOnlyBackground: Color(0xFFEEEEEE)),
+        style: TomFormStyle(
+          defaults: TomFieldStyle(
+            readOnlyBackground:
+                WidgetStatePropertyAll(const Color(0xFFEEEEEE)),
+          ),
+        ),
       ));
 
       expect(find.byWidgetPredicate(
@@ -525,7 +530,7 @@ void main() {
       await tester.pumpWidget(_wrap(field.widget));
       await tester.pumpAndSettle();
 
-      // Label should render through TomFieldDecorationMixinLegacy anatomy
+      // Label should render through TomDropdownDecorationMixin anatomy
       expect(find.text('Country Label'), findsOneWidget);
     });
 
@@ -635,6 +640,193 @@ void main() {
       field.setValue('trigger debounce');
       // Dispose should cancel the timer without errors
       field.dispose();
+    });
+  });
+
+  group('TomFormStringInput — error visuals (Phase 6)', () {
+    const outlinedField = OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFF000000)),
+    );
+    const outlinedError = OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFFD32F2F), width: 2),
+    );
+    const styleWithVisuals = TomFormStyle(
+      defaults: TomFieldStyle(
+        fieldBorder: outlinedField,
+        focusedBorder: outlinedField,
+        errorBorder: outlinedError,
+        errorBorderEnabled: true,
+        errorIconEnabled: true,
+      ),
+    );
+    const styleNoVisuals = TomFormStyle(
+      defaults: TomFieldStyle(
+        fieldBorder: outlinedField,
+        focusedBorder: outlinedField,
+        errorBorder: outlinedError,
+        errorBorderEnabled: false,
+        errorIconEnabled: false,
+      ),
+    );
+
+    testWidgets('no error icon when not in error state', (tester) async {
+      final field = TomFormStringInput(
+        'name',
+        'Alice',
+        labelTextOverride: 'Name',
+        validators: [Validators.requiredInstance],
+      );
+
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+
+      expect(find.byIcon(Icons.error), findsNothing);
+    });
+
+    testWidgets(
+      'shows red error icon when in error and errorIconEnabled',
+      (tester) async {
+        final field = TomFormStringInput(
+          'name',
+          '',
+          labelTextOverride: 'Name',
+          validators: [Validators.requiredInstance],
+        );
+        await field.validate();
+
+        await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+
+        final iconFinder = find.byIcon(Icons.error);
+        expect(iconFinder, findsOneWidget);
+        final icon = tester.widget<Icon>(iconFinder);
+        expect(icon.color, const Color(0xFFD32F2F));
+      },
+    );
+
+    testWidgets(
+      'suppresses error icon when errorIconEnabled is false',
+      (tester) async {
+        final field = TomFormStringInput(
+          'name',
+          '',
+          labelTextOverride: 'Name',
+          validators: [Validators.requiredInstance],
+        );
+        await field.validate();
+
+        await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
+
+        expect(find.byIcon(Icons.error), findsNothing);
+      },
+    );
+
+    testWidgets('swaps border to errorBorder when in error and enabled',
+        (tester) async {
+      final field = TomFormStringInput(
+        'name',
+        '',
+        labelTextOverride: 'Name',
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
+
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+
+      final textField = tester.widget<TextField>(find.byType(TextField));
+      final decoration = textField.decoration!;
+      expect(decoration.enabledBorder, outlinedError);
+      expect(decoration.focusedBorder, outlinedError);
+      expect(decoration.border, outlinedError);
+    });
+
+    testWidgets(
+      'keeps original border when errorBorderEnabled is false',
+      (tester) async {
+        final field = TomFormStringInput(
+          'name',
+          '',
+          labelTextOverride: 'Name',
+          validators: [Validators.requiredInstance],
+        );
+        await field.validate();
+
+        await tester.pumpWidget(_wrap(field.widget, style: styleNoVisuals));
+
+        final textField = tester.widget<TextField>(find.byType(TextField));
+        final decoration = textField.decoration!;
+        expect(decoration.enabledBorder, outlinedField);
+        expect(decoration.focusedBorder, outlinedField);
+      },
+    );
+
+    testWidgets('preserves existing suffix icon alongside error icon',
+        (tester) async {
+      final field = TomFormStringInput(
+        'name',
+        '',
+        labelTextOverride: 'Name',
+        suffixIcon: const Icon(Icons.search, key: ValueKey('search')),
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
+
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+
+      expect(find.byKey(const ValueKey('search')), findsOneWidget);
+      expect(find.byIcon(Icons.error), findsOneWidget);
+    });
+  });
+
+  group('TomFormStringDropdown — error visuals (Phase 6)', () {
+    const outlinedField = OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFF000000)),
+    );
+    const outlinedError = OutlineInputBorder(
+      borderSide: BorderSide(color: Color(0xFFD32F2F), width: 2),
+    );
+    const styleWithVisuals = TomFormStyle(
+      defaults: TomFieldStyle(
+        fieldBorder: outlinedField,
+        focusedBorder: outlinedField,
+        errorBorder: outlinedError,
+        errorBorderEnabled: true,
+        errorIconEnabled: true,
+      ),
+    );
+
+    TomSelectableSource<String> twoOptions() => StaticSelectableSource([
+          const SelectableItem(value: 'a', label: 'Apple'),
+          const SelectableItem(value: 'b', label: 'Banana'),
+        ]);
+
+    testWidgets('shows error icon when in error and enabled', (tester) async {
+      final field = TomFormStringDropdown(
+        'fruit',
+        '',
+        source: twoOptions(),
+        labelTextOverride: 'Fruit',
+        validators: [Validators.requiredInstance],
+      );
+      await field.validate();
+
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.error), findsOneWidget);
+    });
+
+    testWidgets('no error icon when not in error', (tester) async {
+      final field = TomFormStringDropdown(
+        'fruit',
+        'a',
+        source: twoOptions(),
+        labelTextOverride: 'Fruit',
+        validators: [Validators.requiredInstance],
+      );
+
+      await tester.pumpWidget(_wrap(field.widget, style: styleWithVisuals));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.error), findsNothing);
     });
   });
 }

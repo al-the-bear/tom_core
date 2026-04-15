@@ -3,11 +3,13 @@
 // Run with: flutter test test/screenshot_tests.dart --update-goldens
 // Generated PNGs go to: test/goldens/
 
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/demos/demo_1_basic_form.dart';
@@ -61,7 +63,13 @@ Widget buildTestApp(Widget child) {
 
 void main() {
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
+    final resources = json.decode(jsonStr) as Map<String, dynamic>;
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(resources),
+    );
     await loadRealFonts();
   });
 

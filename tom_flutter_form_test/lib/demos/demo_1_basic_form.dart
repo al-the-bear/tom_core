@@ -76,8 +76,8 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TomFormStyleScopeLegacy(
-              style: TomFormStyleLegacy.material3,
+            TomFormStyleScope(
+              style: TomFormStyle.material3,
               child: formLayout,
             ),
             const SizedBox(height: 16),

@@ -10,7 +10,7 @@ import '../state/application_state.dart';
 // Demo 6: Field Layout Options
 // ---------------------------------------------------------------------------
 
-/// Reference demo for the per-field layout options on [TomFormStyleLegacy].
+/// Reference demo for the per-field layout options on [TomFormStyle].
 ///
 /// Switch placements live with the segmented controls — all fields share a
 /// single form instance, so the same data rebuilds under the chosen style.
@@ -47,11 +47,13 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
     super.dispose();
   }
 
-  TomFormStyleLegacy get _style => TomFormStyleLegacy.material3.copyWith(
-        labelPlacement: _labelPlacement,
-        requiredIndicator: _requiredIndicatorOnLabel,
-        requiredIndicatorOnHint: _requiredIndicatorOnHint,
-        descriptionPlacement: _descriptionPlacement,
+  TomFormStyle get _style => TomFormStyle.material3.copyWith(
+        defaults: TomFormStyle.material3.defaults.copyWith(
+          labelPlacement: _labelPlacement,
+          requiredIndicator: _requiredIndicatorOnLabel,
+          requiredIndicatorOnHint: _requiredIndicatorOnHint,
+          descriptionPlacement: _descriptionPlacement,
+        ),
       );
 
   @override
@@ -82,7 +84,7 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
             const SizedBox(height: 16),
             _buildControls(context),
             const SizedBox(height: 16),
-            TomFormStyleScopeLegacy(
+            TomFormStyleScope(
               style: _style,
               child: formLayout,
             ),

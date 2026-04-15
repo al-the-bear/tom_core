@@ -5,9 +5,12 @@
 
 // ignore: unused_import
 import 'state/company_state.dart';
+// ignore: unused_import
+import 'state/application_state.dart';
 
 // Re-export state classes so they're discoverable
 export 'state/company_state.dart';
+export 'state/application_state.dart';
 
 // Re-export generated reflection
 export 'main.reflection.dart';

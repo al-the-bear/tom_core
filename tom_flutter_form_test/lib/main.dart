@@ -1,15 +1,34 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'main.reflection.dart';
-import 'state/company_state.dart';
+import 'state/application_state.dart';
 import 'demos/demo_1_basic_form.dart';
 import 'demos/demo_2_nested_forms.dart';
 import 'demos/demo_3_authorization.dart';
 import 'demos/demo_4_validation.dart';
 import 'demos/demo_5_settings.dart';
+import 'demos/demo_6_field_layout.dart';
+import 'demos/demo_7_error_placement.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   initializeReflection();
+
+  // Load resources from JSON asset and register with the resource provider.
+  final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
+  final resources = json.decode(jsonStr) as Map<String, dynamic>;
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(resources),
+  );
+
+  // Touch demoState so it is initialised (and pre-populated) before the UI
+  // starts — avoids any first-frame jank from lazy field initialisation.
+  demoState;
+
   runApp(const FormDemoApp());
 }
 
@@ -96,6 +115,26 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const Demo5SettingsForm()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.view_agenda_outlined,
+            title: 'Demo 6: Field Layout Options',
+            description: 'Live-switch labelPlacement, requiredIndicator, and '
+                'descriptionPlacement on the same form.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Demo6FieldLayout()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.report_gmailerrorred,
+            title: 'Demo 7: Error Placement',
+            description: 'ErrorPlacement options including replaceHint; '
+                'explains the 3-step error message resolution chain.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Demo7ErrorPlacement()),
             ),
           ),
         ],

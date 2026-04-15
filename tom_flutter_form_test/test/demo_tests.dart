@@ -1,7 +1,11 @@
 // Flutter tests for all 5 form demos.
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
@@ -23,8 +27,14 @@ Widget buildTestApp(Widget child) {
 }
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     initializeReflection();
+    final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
+    final resources = json.decode(jsonStr) as Map<String, dynamic>;
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(resources),
+    );
   });
 
   // ─── Test 1: Demo list shows all 5 demos ──────────────────────────────────
@@ -67,18 +77,20 @@ void main() {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
-    // Enter company name
-    final nameField = find.widgetWithText(TextField, 'Enter company name');
-    expect(nameField, findsOneWidget);
+    // TextField index 0 = name field.
+    // The field is pre-populated so we identify it by index, not hint text.
+    final nameField = find.byType(TextField).at(0);
     await tester.enterText(nameField, 'Test Corp');
     await tester.pumpAndSettle();
 
-    // Tap Save
+    // Tap Save and allow slow validators (taxId, 1 s) to complete.
     await tester.tap(find.text('Save'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    // Status should update (may show validation result)
-    expect(find.textContaining('Test Corp'), findsWidgets);
+    // The field should now contain the entered text.
+    expect(find.widgetWithText(TextField, 'Test Corp'), findsOneWidget);
   });
 
   // ─── Test 4: Demo 1 discard resets fields ─────────────────────────────────
@@ -87,8 +99,8 @@ void main() {
     await tester.pumpWidget(buildTestApp(const Demo1BasicForm()));
     await tester.pumpAndSettle();
 
-    // Enter text
-    final nameField = find.widgetWithText(TextField, 'Enter company name');
+    // Enter text into the name field (index 0; pre-populated, use index).
+    final nameField = find.byType(TextField).at(0);
     await tester.enterText(nameField, 'Modified Corp');
     await tester.pumpAndSettle();
 

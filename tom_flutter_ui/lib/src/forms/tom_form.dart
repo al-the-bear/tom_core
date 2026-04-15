@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -112,7 +113,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final field in fields.values) {
       field._initialValue = field.get();
       field._debounceTimer?.cancel();
-      field._validationState = const ValidationPristine();
+      field._validationNotifier.value = const ValidationPristine();
       _fireEvent(FieldBoundEvent(source: field.fieldId));
       // Auto-validate fields that request immediate validation
       if (field.autoValidate) {
@@ -330,9 +331,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       oldValue: oldValue,
       newValue: newValue,
     ));
-    // Transition out of pristine — clear to success for UX responsiveness
-    _validationState = const ValidationSuccess();
+    // Transition out of pristine — clear to success for UX responsiveness.
     _slowValidationPending = false;
+    _validationNotifier.value = const ValidationSuccess();
     // Debounced re-validation
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
@@ -348,12 +349,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (validator is SlowValidator) continue;
       final result = await (validator as Validator<T>)(get());
       if (result is ValidationError) {
-        _validationState = result;
         _slowValidationPending = false;
         _slowDebounceTimer?.cancel();
+        _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
-          result: _validationState,
+          result: result,
         ));
         return;
       }
@@ -362,10 +363,10 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     if (!_slowValidationPending) {
       // No slow validators or they haven't started yet — mark success for now
       if (!hasSlowValidators) {
-        _validationState = const ValidationSuccess();
+        _validationNotifier.value = const ValidationSuccess();
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
-          result: _validationState,
+          result: _validationNotifier.value,
         ));
       }
     }
@@ -378,11 +379,11 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (validator is SlowValidator) continue;
       final result = await (validator as Validator<T>)(get());
       if (result is ValidationError) {
-        _validationState = result;
         _slowValidationPending = false;
+        _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
-          result: _validationState,
+          result: result,
         ));
         return;
       }
@@ -390,25 +391,25 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
     // Run slow validators with pending state
     _slowValidationPending = true;
-    _validationState = const ValidationPending();
-    final slowValidators = validators.whereType<SlowValidator>().toList();
+    _validationNotifier.value = const ValidationPending();
+    final slowValidators = validators.whereType<SlowValidator<T>>().toList();
     for (final slow in slowValidators) {
-      final result = await slow.validate(get() as dynamic);
+      final result = await slow.validate(get());
       if (result is ValidationError) {
-        _validationState = result;
         _slowValidationPending = false;
+        _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
-          result: _validationState,
+          result: result,
         ));
         return;
       }
     }
     _slowValidationPending = false;
-    _validationState = const ValidationSuccess();
+    _validationNotifier.value = const ValidationSuccess();
     form?._fireEvent(FieldValidatedEvent(
       source: fieldId,
-      result: _validationState,
+      result: _validationNotifier.value,
     ));
   }
 
@@ -419,7 +420,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _slowValidationPending = false;
-    _validationState = const ValidationPristine();
+    _validationNotifier.value = const ValidationPristine();
     form?._fireEvent(FieldCommittedEvent(source: fieldId));
   }
 
@@ -429,7 +430,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _slowValidationPending = false;
-    _validationState = const ValidationPristine();
+    _validationNotifier.value = const ValidationPristine();
   }
 
   // --- Authorization ---
@@ -512,9 +513,19 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   final bool autoValidate;
 
   /// Current validation state — starts as [ValidationPristine].
-  ValidationResult _validationState = const ValidationPristine();
+  /// Backed by a [ValueNotifier] so UI rebuilds are driven independently
+  /// from value-change observers. Validation transitions must NOT call
+  /// [notifyObservers] — that channel is for value changes only.
+  final ValueNotifier<ValidationResult> _validationNotifier =
+      ValueNotifier(const ValidationPristine());
 
-  ValidationResult get validationState => _validationState;
+  /// Listenable fired when the validation state changes. UI code (field
+  /// widgets, `TomFormInspector`, …) should subscribe here rather than
+  /// observing the field as a value.
+  ValueListenable<ValidationResult> get validationListenable =>
+      _validationNotifier;
+
+  ValidationResult get validationState => _validationNotifier.value;
 
   /// Whether slow validation is currently in progress.
   /// Used by decoration mixin to decide whether to show a spinner.
@@ -547,29 +558,29 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (validator is SlowValidator) continue;
       final result = await (validator as Validator<T>)(get());
       if (result is ValidationError) {
-        _validationState = result;
         _slowValidationPending = false;
+        _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
           source: fieldId,
-          result: _validationState,
+          result: result,
         ));
         return result;
       }
     }
 
     // Run slow validators — show pending state
-    final slowValidators = validators.whereType<SlowValidator>().toList();
+    final slowValidators = validators.whereType<SlowValidator<T>>().toList();
     if (slowValidators.isNotEmpty) {
       _slowValidationPending = true;
-      _validationState = const ValidationPending();
+      _validationNotifier.value = const ValidationPending();
       for (final slow in slowValidators) {
-        final result = await slow.validate(get() as dynamic);
+        final result = await slow.validate(get());
         if (result is ValidationError) {
-          _validationState = result;
           _slowValidationPending = false;
+          _validationNotifier.value = result;
           form?._fireEvent(FieldValidatedEvent(
             source: fieldId,
-            result: _validationState,
+            result: result,
           ));
           return result;
         }
@@ -577,12 +588,13 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       _slowValidationPending = false;
     }
 
-    _validationState = const ValidationSuccess();
+    const success = ValidationSuccess();
+    _validationNotifier.value = success;
     form?._fireEvent(FieldValidatedEvent(
       source: fieldId,
-      result: _validationState,
+      result: success,
     ));
-    return _validationState;
+    return success;
   }
 
   // --- Widget ---
@@ -596,6 +608,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   void dispose() {
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
+    _validationNotifier.dispose();
   }
 
   @override

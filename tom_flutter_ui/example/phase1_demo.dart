@@ -172,9 +172,9 @@ class ProfileForm extends TomForm<UserProfile> {
       ]),
       // Demo feature #6: uiStateController disables role unless country is set
       uiStateController: TomUIStateController(
-        resolve: (resourceAuth) {
+        resolve: (currentAuth, data) {
           // In a real app this would check live data — here it just shows the API
-          return resourceAuth;
+          return currentAuth;
         },
       ),
     );
@@ -322,8 +322,8 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
           ),
         ],
       ),
-      body: TomFormStyleScopeLegacy(
-        style: const TomFormStyleLegacy(),
+      body: TomFormStyleScope(
+        style: const TomFormStyle(),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(

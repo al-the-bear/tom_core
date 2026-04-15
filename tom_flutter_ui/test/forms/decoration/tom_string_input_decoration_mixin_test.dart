@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/decoration/tom_field_decoration_mixin_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/decoration/tom_string_input_decoration_mixin.dart';
 import 'package:tom_flutter_ui/src/forms/style/form_style_enums.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_legacy.dart';
-import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope_legacy.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style.dart';
+import 'package:tom_flutter_ui/src/forms/style/tom_form_style_scope.dart';
 import 'package:tom_flutter_ui/src/forms/tom_form.dart';
 import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 
 // ---------------------------------------------------------------------------
 // Concrete test field with decoration mixin
 // ---------------------------------------------------------------------------
-class _DecoratedTestField extends TomField with TomFieldDecorationMixinLegacy {
+class _DecoratedTestField extends TomField<String>
+    with TomStringInputDecorationMixin<String> {
   @override
   final String? labelText;
 
@@ -51,18 +52,18 @@ class _TestAuthAdapter extends TomAuthorizationAdapter {
 // ---------------------------------------------------------------------------
 // Helper to wrap widget in MaterialApp with optional style
 // ---------------------------------------------------------------------------
-Widget _wrap(Widget child, {TomFormStyleLegacy? style}) {
+Widget _wrap(Widget child, {TomFormStyle? style}) {
   return MaterialApp(
     home: Scaffold(
       body: style != null
-          ? TomFormStyleScopeLegacy(style: style, child: child)
+          ? TomFormStyleScope(style: style, child: child)
           : child,
     ),
   );
 }
 
 void main() {
-  group('TomFieldDecorationMixinLegacy — label rendering', () {
+  group('TomStringInputDecorationMixin — label rendering', () {
     testWidgets('renders label text above field', (tester) async {
       final field = _DecoratedTestField(
         'name',
@@ -85,7 +86,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(labelPlacement: LabelPlacement.hidden),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(labelPlacement: LabelPlacement.hidden),
+        ),
       ));
 
       expect(find.text('Full Name'), findsNothing);
@@ -100,7 +103,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(labelPlacement: LabelPlacement.floating),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(labelPlacement: LabelPlacement.floating),
+        ),
       ));
 
       // Floating labels are handled by InputDecoration, not the mixin
@@ -117,7 +122,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(labelPlacement: LabelPlacement.inline),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(labelPlacement: LabelPlacement.inline),
+        ),
       ));
 
       // Label and input should both be present
@@ -152,7 +159,7 @@ void main() {
     });
   });
 
-  group('TomFieldDecorationMixinLegacy — required indicator', () {
+  group('TomStringInputDecorationMixin — required indicator', () {
     testWidgets('shows asterisk for required field', (tester) async {
       final field = _DecoratedTestField(
         'name',
@@ -188,7 +195,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(requiredIndicator: RequiredIndicator.text),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.text),
+        ),
       ));
 
       expect(find.text(' (required)'), findsOneWidget);
@@ -204,7 +213,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(requiredIndicator: RequiredIndicator.none),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(requiredIndicator: RequiredIndicator.none),
+        ),
       ));
 
       expect(find.text(' *'), findsNothing);
@@ -212,7 +223,7 @@ void main() {
     });
   });
 
-  group('TomFieldDecorationMixinLegacy — error display', () {
+  group('TomStringInputDecorationMixin — error display', () {
     testWidgets('shows error below field by default', (tester) async {
       final field = _DecoratedTestField(
         'name',
@@ -241,7 +252,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(errorPlacement: ErrorPlacement.above),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(errorPlacement: ErrorPlacement.above),
+        ),
       ));
 
       expect(find.text('error.required'), findsOneWidget);
@@ -260,7 +273,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(errorPlacement: ErrorPlacement.both),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(errorPlacement: ErrorPlacement.both),
+        ),
       ));
 
       // Should appear twice (above and below)
@@ -283,7 +298,7 @@ void main() {
     });
   });
 
-  group('TomFieldDecorationMixinLegacy — description', () {
+  group('TomStringInputDecorationMixin — description', () {
     testWidgets('shows description below field', (tester) async {
       final field = _DecoratedTestField(
         'name',
@@ -308,8 +323,10 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(
-          descriptionPlacement: DescriptionPlacement.above,
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(
+            descriptionPlacement: DescriptionPlacement.above,
+          ),
         ),
       ));
 
@@ -332,7 +349,7 @@ void main() {
     });
   });
 
-  group('TomFieldDecorationMixinLegacy — auth visuals', () {
+  group('TomStringInputDecorationMixin — auth visuals', () {
     late _TestAuthAdapter adapter;
 
     setUp(() {
@@ -383,7 +400,9 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: const TomFormStyleLegacy(disabledOpacity: 0.3),
+        style: const TomFormStyle(
+          defaults: TomFieldStyle(disabledOpacity: 0.3),
+        ),
       ));
 
       final opacity = tester.widget<Opacity>(find.byType(Opacity));
@@ -401,7 +420,11 @@ void main() {
 
       await tester.pumpWidget(_wrap(
         field.widget,
-        style: TomFormStyleLegacy(readOnlyBackground: Colors.grey.shade200),
+        style: TomFormStyle(
+          defaults: TomFieldStyle(
+            readOnlyBackground: WidgetStatePropertyAll(Colors.grey.shade200),
+          ),
+        ),
       ));
 
       // Find the ColoredBox with our specific readOnlyBackground color
@@ -427,7 +450,7 @@ void main() {
     });
   });
 
-  group('TomFieldDecorationMixinLegacy — pending spinner', () {
+  group('TomStringInputDecorationMixin — pending spinner', () {
     testWidgets('no spinner when validation is not pending', (tester) async {
       final field = _DecoratedTestField(
         'name',

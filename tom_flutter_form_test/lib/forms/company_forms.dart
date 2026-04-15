@@ -121,8 +121,6 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final name = TomFormStringInput(
     'name',
     '',
-    labelTextOverride: 'Company Name',
-    hintTextOverride: 'Enter company name',
     validators: [Validators.required(), Validators.minLength(2)],
   );
 
@@ -131,8 +129,6 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     'industry',
     '',
     source: industrySource,
-    labelTextOverride: 'Industry',
-    hintTextOverride: 'Select industry',
     validators: [Validators.required()],
   );
 
@@ -140,9 +136,6 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final taxId = TomFormStringInput(
     'taxId',
     '',
-    labelTextOverride: 'Tax ID',
-    hintTextOverride: 'Enter tax identification number',
-    descriptionTextOverride: 'Unique tax identification number',
     validators: [
       Validators.required(),
       Validators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
@@ -154,8 +147,6 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final website = TomFormStringInput(
     'website',
     '',
-    labelTextOverride: 'Website',
-    hintTextOverride: 'https://example.com',
     validators: [
       Validators.pattern(
         RegExp(r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'),
@@ -169,8 +160,6 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final description = TomFormStringInput(
     'description',
     '',
-    labelTextOverride: 'Description',
-    hintTextOverride: 'Brief company description',
     maxLength: 500,
     maxLines: 4,
     validators: [Validators.maxLength(500)],
@@ -197,38 +186,28 @@ class AddressForm extends TomForm<Address> {
   late final street = TomFormStringInput(
     'street',
     '',
-    labelTextOverride: 'Street Address',
-    hintTextOverride: 'Enter street address',
     validators: [Validators.required()],
   );
 
   late final street2 = TomFormStringInput(
     'street2',
     '',
-    labelTextOverride: 'Street Address 2',
-    hintTextOverride: 'Apt, Suite, Unit, etc. (optional)',
   );
 
   late final city = TomFormStringInput(
     'city',
     '',
-    labelTextOverride: 'City',
-    hintTextOverride: 'Enter city',
     validators: [Validators.required()],
   );
 
   late final state = TomFormStringInput(
     'state',
     '',
-    labelTextOverride: 'State/Province',
-    hintTextOverride: 'Enter state or province',
   );
 
   late final zipCode = TomFormStringInput(
     'zipCode',
     '',
-    labelTextOverride: 'ZIP/Postal Code',
-    hintTextOverride: 'Enter ZIP or postal code',
     validators: [Validators.required()],
     keyboardType: TextInputType.text,
   );
@@ -237,7 +216,6 @@ class AddressForm extends TomForm<Address> {
     'country',
     'US',
     source: countrySource,
-    labelTextOverride: 'Country',
     validators: [Validators.required()],
   );
 }
@@ -262,24 +240,18 @@ class PersonForm extends TomForm<Person> {
   late final firstName = TomFormStringInput(
     'firstName',
     '',
-    labelTextOverride: 'First Name',
-    hintTextOverride: 'Enter first name',
     validators: [Validators.required()],
   );
 
   late final lastName = TomFormStringInput(
     'lastName',
     '',
-    labelTextOverride: 'Last Name',
-    hintTextOverride: 'Enter last name',
     validators: [Validators.required()],
   );
 
   late final email = TomFormStringInput(
     'email',
     '',
-    labelTextOverride: 'Email',
-    hintTextOverride: 'Enter email address',
     validators: [Validators.required(), Validators.email(), emailDomainValidator],
     keyboardType: TextInputType.emailAddress,
   );
@@ -287,16 +259,12 @@ class PersonForm extends TomForm<Person> {
   late final phone = TomFormStringInput(
     'phone',
     '',
-    labelTextOverride: 'Phone',
-    hintTextOverride: 'Enter phone number',
     keyboardType: TextInputType.phone,
   );
 
   late final title = TomFormStringInput(
     'title',
     '',
-    labelTextOverride: 'Job Title',
-    hintTextOverride: 'Enter job title',
   );
 }
 
@@ -320,14 +288,11 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     'timezone',
     'UTC',
     source: timezoneSource,
-    labelTextOverride: 'Timezone',
   );
 
   late final locale = TomFormStringInput(
     'locale',
     'en_US',
-    labelTextOverride: 'Locale',
-    hintTextOverride: 'e.g., en_US, de_DE',
     validators: [
       Validators.pattern(RegExp(r'^[a-z]{2}_[A-Z]{2}$'), errorKey: 'invalidLocale'),
     ],
@@ -336,8 +301,6 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
   late final currency = TomFormStringInput(
     'currency',
     'USD',
-    labelTextOverride: 'Currency',
-    hintTextOverride: 'e.g., USD, EUR, GBP',
     validators: [
       Validators.required(),
       Validators.pattern(RegExp(r'^[A-Z]{3}$'), errorKey: 'invalidCurrency'),
@@ -347,15 +310,11 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
   late final dateFormat = TomFormStringInput(
     'dateFormat',
     'yyyy-MM-dd',
-    labelTextOverride: 'Date Format',
-    hintTextOverride: 'e.g., yyyy-MM-dd, MM/dd/yyyy',
   );
 
   late final notificationEmail = TomFormStringInput(
     'notificationEmail',
     '',
-    labelTextOverride: 'Notification Email',
-    hintTextOverride: 'Email for notifications',
     validators: [Validators.email()],
     keyboardType: TextInputType.emailAddress,
   );
@@ -364,7 +323,6 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
     'notificationFrequency',
     'daily',
     source: notificationFrequencySource,
-    labelTextOverride: 'Notification Frequency',
   );
 }
 

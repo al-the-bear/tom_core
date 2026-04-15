@@ -17,8 +17,8 @@ class Validators {
           ? const ValidationError('error.required')
           : const ValidationSuccess();
 
-  /// The required validator instance (for identity comparison by
-  /// [TomFieldDecorationMixinLegacy.hasRequiredValidator]).
+  /// The required validator instance (for identity comparison by the
+  /// per-widget decoration mixins to detect required fields).
   static final Validator<dynamic> requiredInstance = _requiredValidator;
 
   /// Validates that a string is not empty.

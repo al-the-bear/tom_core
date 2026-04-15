@@ -205,8 +205,8 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScopeLegacy(
-              style: TomFormStyleLegacy.material3,
+            TomFormStyleScope(
+              style: TomFormStyle.material3,
               child: formLayout,
             ),
           ],

@@ -46,8 +46,10 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
     super.dispose();
   }
 
-  TomFormStyleLegacy get _style => TomFormStyleLegacy.material3.copyWith(
-        errorPlacement: _errorPlacement,
+  TomFormStyle get _style => TomFormStyle.material3.copyWith(
+        defaults: TomFormStyle.material3.defaults.copyWith(
+          errorPlacement: _errorPlacement,
+        ),
       );
 
   void _triggerErrors() {
@@ -91,7 +93,7 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
             const SizedBox(height: 16),
             _buildControls(),
             const SizedBox(height: 16),
-            TomFormStyleScopeLegacy(
+            TomFormStyleScope(
               style: _style,
               child: formLayout,
             ),

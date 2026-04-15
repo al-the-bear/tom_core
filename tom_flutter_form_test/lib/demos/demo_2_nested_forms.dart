@@ -97,8 +97,8 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
       title: 'Demo 2: Nested Forms',
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: TomFormStyleScopeLegacy(
-          style: TomFormStyleLegacy.material3,
+        child: TomFormStyleScope(
+          style: TomFormStyle.material3,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

@@ -117,8 +117,27 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
   // ── Delegated layout methods ──────────────────────────────────────────────
 
   /// Starts a new content row.
-  TomAclBuilder<T> newRow({double dist = 0}) {
-    _builder.newRow(dist: dist);
+  TomAclBuilder<T> newRow({
+    double dist = 0,
+    double? height,
+    List<(double, double?)> heightBpOverrides = const [],
+  }) {
+    _builder.newRow(
+      dist: dist,
+      height: height,
+      heightBpOverrides: heightBpOverrides,
+    );
+    return this;
+  }
+
+  /// Sets the height on the current (most-recently-started) row.
+  ///
+  /// See [AclBuilder.setRowHeight] for semantics.
+  TomAclBuilder<T> setRowHeight(
+    double? height, [
+    List<(double, double?)> heightBpOverrides = const [],
+  ]) {
+    _builder.setRowHeight(height, heightBpOverrides);
     return this;
   }
 
@@ -544,15 +563,39 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  /// Sets the default horizontal gap before each appended component.
-  TomAclBuilder<T> setAclDefaultAppendGap(int pixels) {
-    _builder.setAclDefaultAppendGap(pixels);
+  /// Sets the default horizontal gap before each appended component,
+  /// including the first component of every row.
+  ///
+  /// See [AclBuilder.setAclDefaultAppendGap] for semantics.
+  TomAclBuilder<T> setAclDefaultAppendGap(
+    double gap, [
+    List<(double, double)> gapBpOverrides = const [],
+  ]) {
+    _builder.setAclDefaultAppendGap(gap, gapBpOverrides);
+    return this;
+  }
+
+  /// Sets the builder-wide default row height.
+  ///
+  /// See [AclBuilder.setAclDefaultRowHeight] for semantics.
+  TomAclBuilder<T> setAclDefaultRowHeight(
+    double? height, [
+    List<(double, double?)> heightBpOverrides = const [],
+  ]) {
+    _builder.setAclDefaultRowHeight(height, heightBpOverrides);
     return this;
   }
 
   /// Sets the default vertical gap between content rows.
   TomAclBuilder<T> setAclDefaultRowGap(int pixels) {
     _builder.setAclDefaultRowGap(pixels);
+    return this;
+  }
+
+  /// Sets the default vertical cross-axis alignment for every component
+  /// of every row in this ACL instance. See [AclBuilder.setAclDefaultRowAlignment].
+  TomAclBuilder<T> setAclDefaultRowAlignment(AclRowCrossAlignment alignment) {
+    _builder.setAclDefaultRowAlignment(alignment);
     return this;
   }
 

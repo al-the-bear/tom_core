@@ -6,6 +6,10 @@ enum LabelPlacement {
   /// Label in a row above the field.
   above,
 
+  /// Label in a row directly below the field, between the input and
+  /// the description/helper row (when the description is below).
+  below,
+
   /// Material floating label inside the field (for text inputs).
   floating,
 
@@ -29,6 +33,12 @@ enum ErrorPlacement {
 
   /// Error displayed both above and below.
   both,
+
+  /// Error message takes the hint slot inside the field (visible while
+  /// the input is empty). No separate error row is rendered. Useful for
+  /// very compact layouts — caveat: once the user types, the error is
+  /// no longer visible.
+  replaceHint,
 }
 
 /// Controls how the required indicator is displayed.

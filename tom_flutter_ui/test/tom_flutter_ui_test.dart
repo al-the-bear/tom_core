@@ -407,6 +407,7 @@ void main() {
       );
 
       final acl = AclBuilder()
+          .setAclDefaultAppendGap(0)
           .append(left)
           .setAttr(AclFlags.expandX)
           .setMSize(100, 32)
@@ -595,12 +596,8 @@ void main() {
       },
     );
 
-    // TODO(acl-layout): Row alignment centering not working as expected,
-    // despite the Align wrapper being applied. Needs deeper investigation
-    // of constraint flow through Column and LayoutBuilder.
     testWidgets(
       'row alignment left center right is respected',
-      skip: true,
       (tester) async {
         final centerKey = GlobalKey(debugLabel: 'align-center');
 
@@ -729,6 +726,123 @@ void main() {
       expect(find.text('Left'), findsOneWidget);
       expect(find.text('Right'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('AclBuilder row height (Phase 5)', () {
+    test('newRow height sets per-row height', () {
+      final container = AclBuilder()
+          .append(const Text('A'))
+          .newRow(height: 80)
+          .append(const Text('B'))
+          .build();
+
+      expect(container.rows[0].height, isNull);
+      expect(container.rows[1].height, 80);
+    });
+
+    test('setRowHeight on current row', () {
+      final container = AclBuilder()
+          .append(const Text('A'))
+          .setRowHeight(64)
+          .build();
+
+      expect(container.rows[0].height, 64);
+    });
+
+    test('setAclDefaultRowHeight applied to rows without explicit height', () {
+      final container = AclBuilder()
+          .setAclDefaultRowHeight(48)
+          .append(const Text('A'))
+          .newRow()
+          .append(const Text('B'))
+          .newRow(height: 96)
+          .append(const Text('C'))
+          .build();
+
+      expect(container.rows[0].height, 48);
+      expect(container.rows[1].height, 48);
+      expect(container.rows[2].height, 96);
+    });
+
+    test('row height breakpoint overrides resolve to widest match', () {
+      final row = AclRow(
+        components: const [],
+        height: 40,
+        heightBpOverrides: const [(600, 60), (900, 80)],
+      );
+
+      expect(aclResolveRowHeight(row, 500), 40);
+      expect(aclResolveRowHeight(row, 600), 60);
+      expect(aclResolveRowHeight(row, 850), 60);
+      expect(aclResolveRowHeight(row, 900), 80);
+      expect(aclResolveRowHeight(row, 1200), 80);
+    });
+
+    test('row with no height and no overrides resolves null', () {
+      final row = AclRow(components: const []);
+      expect(aclResolveRowHeight(row, 600), isNull);
+      expect(aclResolveRowHeight(row, null), isNull);
+    });
+  });
+
+  group('AclBuilder append gap defaults (Phase 5)', () {
+    test('default append gap is 8px and applies to first component', () {
+      final container = AclBuilder()
+          .append(const Text('A'))
+          .append(const Text('B'))
+          .build();
+
+      final row = container.rows[0];
+      // Both components tagged as using the default gap
+      expect(row.components[0].gapBeforeIsDefault, true);
+      expect(row.components[1].gapBeforeIsDefault, true);
+      expect(row.defaultAppendGap, 8.0);
+
+      // Resolved effective gap at any width is 8
+      expect(aclEffectiveGapBefore(row.components[0], row, 500), 8.0);
+      expect(aclEffectiveGapBefore(row.components[1], row, 500), 8.0);
+    });
+
+    test('setAclDefaultAppendGap overrides default value', () {
+      final container = AclBuilder()
+          .setAclDefaultAppendGap(0)
+          .append(const Text('A'))
+          .append(const Text('B'))
+          .build();
+
+      final row = container.rows[0];
+      expect(row.defaultAppendGap, 0);
+      expect(aclEffectiveGapBefore(row.components[0], row, 500), 0);
+      expect(aclEffectiveGapBefore(row.components[1], row, 500), 0);
+    });
+
+    test('explicit dist on append suppresses default gap', () {
+      final container = AclBuilder()
+          .append(const Text('A'))
+          .append(const Text('B'), dist: 20)
+          .build();
+
+      final row = container.rows[0];
+      expect(row.components[0].gapBeforeIsDefault, true);
+      expect(row.components[1].gapBeforeIsDefault, false);
+      expect(row.components[1].gapBefore, 20);
+      expect(aclEffectiveGapBefore(row.components[1], row, 500), 20);
+    });
+
+    test('setAclDefaultAppendGap breakpoint overrides resolve by width', () {
+      final container = AclBuilder()
+          .setAclDefaultAppendGap(4, const [(600, 12), (1024, 20)])
+          .append(const Text('A'))
+          .append(const Text('B'))
+          .build();
+
+      final row = container.rows[0];
+      expect(aclEffectiveGapBefore(row.components[0], row, 400), 4);
+      expect(aclEffectiveGapBefore(row.components[0], row, 600), 12);
+      expect(aclEffectiveGapBefore(row.components[0], row, 900), 12);
+      expect(aclEffectiveGapBefore(row.components[0], row, 1024), 20);
+      expect(aclEffectiveGapBefore(row.components[0], row, 2000), 20);
     });
   });
 }

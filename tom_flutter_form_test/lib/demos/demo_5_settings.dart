@@ -13,7 +13,7 @@ import '../state/application_state.dart';
 
 /// Demonstrates:
 /// - Multiple TomFormStringDropdown fields
-/// - Compact form style (TomFormStyleLegacy.compact)
+/// - Compact form style (TomFormStyle.compact)
 /// - StaticSelectableSource with descriptions (timezone)
 /// - Locale / currency pattern validators
 /// - Field labels/hints resolved from resources (scope: companySettings)
@@ -96,8 +96,8 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
               ),
             ),
             const SizedBox(height: 16),
-            TomFormStyleScopeLegacy(
-              style: TomFormStyleLegacy.compact,
+            TomFormStyleScope(
+              style: TomFormStyle.compact,
               child: formLayout,
             ),
             const SizedBox(height: 16),

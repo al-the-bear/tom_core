@@ -11,6 +11,7 @@ class _ComponentData {
   Widget child;
   int flags;
   double gapBefore;
+  bool gapBeforeIsDefault;
   double gapWeight;
   Size? preferredSize;
   Size? minimumSize;
@@ -36,6 +37,7 @@ class _ComponentData {
     required this.child,
     this.flags = 0,
     this.gapBefore = 0,
+    this.gapBeforeIsDefault = false,
     this.gapWeight = 1.0,
     this.componentKey,
   });
@@ -45,6 +47,7 @@ class _ComponentData {
       child: child,
       flags: flags,
       gapBefore: gapBefore,
+      gapBeforeIsDefault: gapBeforeIsDefault,
       gapWeight: gapWeight,
       preferredSize: preferredSize,
       minimumSize: minimumSize,
@@ -81,7 +84,17 @@ class _RowData {
   bool idScope = false;
   List<AclRowBreakpoint> breakpoints = [];
 
-  AclRow toRow() {
+  /// Row-level height (null = inherit builder default).
+  double? height;
+  bool heightIsExplicit = false;
+  List<(double, double?)> heightBpOverrides = const [];
+
+  AclRow toRow({
+    required double defaultAppendGap,
+    required List<(double, double)> defaultAppendGapBpOverrides,
+    required double? fallbackHeight,
+    required List<(double, double?)> fallbackHeightBpOverrides,
+  }) {
     return AclRow(
       components: components.map((c) => c.toComponent()).toList(),
       alignment: alignment,
@@ -94,6 +107,11 @@ class _RowData {
       group: group,
       idScope: idScope,
       breakpoints: breakpoints,
+      height: heightIsExplicit ? height : fallbackHeight,
+      heightBpOverrides:
+          heightIsExplicit ? heightBpOverrides : fallbackHeightBpOverrides,
+      defaultAppendGap: defaultAppendGap,
+      defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
     );
   }
 }
@@ -105,10 +123,14 @@ class AclBuilder {
   _ComponentData? _currentComponent;
 
   int _defaultFlags = 0;
-  double _defaultAppendGap = 0;
+  double _defaultAppendGap = 8.0;
+  List<(double, double)> _defaultAppendGapBpOverrides = const [];
+  double? _defaultRowHeight;
+  List<(double, double?)> _defaultRowHeightBpOverrides = const [];
   double _defaultRowGap = 0;
   Size? _defaultUnknownMinimumSize;
   Size? _defaultUnknownPreferredSize;
+  AclRowCrossAlignment _defaultRowCrossAlignment = AclRowCrossAlignment.center;
   AclBorderStyle _borderStyle = const AclBorderStyle.none();
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
@@ -224,17 +246,23 @@ class AclBuilder {
         'and key generation stay unambiguous.',
       );
     }
-    // Apply default append gap if no explicit dist was specified.
-    final effectiveDist =
-        (dist == 0 && _defaultAppendGap > 0) ? _defaultAppendGap : dist;
+    // When the caller did not pass an explicit non-zero `dist`, tag the
+    // component so the container can resolve the row's breakpoint-aware
+    // default gap at render time instead of baking it in now.
+    final usesDefaultGap = dist == 0;
     final componentKey =
         canAttachComponentKey ? _resolveReferenceKey(child) : null;
     _currentComponent = _ComponentData(
       child: child,
       flags: _defaultFlags,
-      gapBefore: effectiveDist,
+      gapBefore: usesDefaultGap ? 0 : dist,
+      gapBeforeIsDefault: usesDefaultGap,
       componentKey: componentKey,
     );
+    // Apply the ACL-wide default row cross alignment. Per-component
+    // overrides (alignTopInRow / alignMiddleInRow / alignBottomInRow) still
+    // win by setting `rowCrossAlignmentSet = true`.
+    _currentComponent!.rowCrossAlignment = _defaultRowCrossAlignment;
     // Inherit active group from startGroup()/endGroup() range.
     if (_activeGroupName != null) {
       _currentComponent!.group = _activeGroupName;
@@ -270,12 +298,28 @@ class AclBuilder {
   // ── Row management ─────────────────────────────────────────────────────────
 
   /// Starts a new content row.
-  AclBuilder newRow({double dist = 0}) {
+  ///
+  /// Optional [height] fixes the row's rendered height (null falls back to
+  /// the builder's default set via [setAclDefaultRowHeight]). [heightBpOverrides]
+  /// allows per-breakpoint overrides following the standard `(minWidth, value)`
+  /// resolution rule.
+  AclBuilder newRow({
+    double dist = 0,
+    double? height,
+    List<(double, double?)> heightBpOverrides = const [],
+  }) {
     _finalizeCurrentComponent();
     // Apply default row gap if no explicit dist was specified.
     final effectiveDist =
         (dist == 0 && _defaultRowGap > 0) ? _defaultRowGap : dist;
     _currentRow = _RowData()..gapBefore = effectiveDist;
+    final heightIsExplicit = height != null || heightBpOverrides.isNotEmpty;
+    if (heightIsExplicit) {
+      _currentRow
+        ..height = height
+        ..heightBpOverrides = heightBpOverrides
+        ..heightIsExplicit = true;
+    }
     _rows.add(_currentRow);
     _currentComponent = null;
     return this;
@@ -675,13 +719,49 @@ class AclBuilder {
     return this;
   }
 
-  /// Sets the default horizontal gap (in pixels) inserted before each
-  /// appended component.
+  /// Sets the default horizontal gap inserted before every appended
+  /// component of every row, including the first component.
   ///
-  /// Only applies when the individual [append] call does not specify a
-  /// non-zero `dist`. Pass 0 to disable (the default).
-  AclBuilder setAclDefaultAppendGap(int pixels) {
-    _defaultAppendGap = pixels.toDouble();
+  /// Applies only when the individual [append] call does not specify a
+  /// non-zero `dist`. Pass [gap] = 0 to disable (the built-in default is 8).
+  ///
+  /// [gapBpOverrides] is a list of `(minWidth, gap)` pairs; at render time
+  /// the pair with the highest `minWidth <= availableWidth` wins.
+  AclBuilder setAclDefaultAppendGap(
+    double gap, [
+    List<(double, double)> gapBpOverrides = const [],
+  ]) {
+    _defaultAppendGap = gap;
+    _defaultAppendGapBpOverrides = gapBpOverrides;
+    return this;
+  }
+
+  /// Sets the builder-wide default row height (null = intrinsic).
+  ///
+  /// Applied to every row that does not set its own height via
+  /// [setRowHeight] or [newRow]'s `height:` parameter.
+  /// [heightBpOverrides] is a list of `(minWidth, height?)` pairs.
+  AclBuilder setAclDefaultRowHeight(
+    double? height, [
+    List<(double, double?)> heightBpOverrides = const [],
+  ]) {
+    _defaultRowHeight = height;
+    _defaultRowHeightBpOverrides = heightBpOverrides;
+    return this;
+  }
+
+  /// Sets the height on the current (most-recently-started) row.
+  ///
+  /// [heightBpOverrides] follows the same `(minWidth, height?)` shape as
+  /// [setAclDefaultRowHeight]. Passing `null` height with an empty overrides
+  /// list clears the row-level override (the builder default applies).
+  AclBuilder setRowHeight(
+    double? height, [
+    List<(double, double?)> heightBpOverrides = const [],
+  ]) {
+    _currentRow.height = height;
+    _currentRow.heightBpOverrides = heightBpOverrides;
+    _currentRow.heightIsExplicit = true;
     return this;
   }
 
@@ -692,6 +772,30 @@ class AclBuilder {
   /// non-zero `dist`. Pass 0 to disable (the default).
   AclBuilder setAclDefaultRowGap(int pixels) {
     _defaultRowGap = pixels.toDouble();
+    return this;
+  }
+
+  /// Sets the default vertical cross-axis alignment applied to every
+  /// component of every row of this ACL instance.
+  ///
+  /// The global builder default is [AclRowCrossAlignment.center]. Form
+  /// layouts typically prefer [AclRowCrossAlignment.top] so that fields
+  /// whose height grows (e.g. when an error message appears below the
+  /// input) do not drag their neighbours off the baseline.
+  ///
+  /// Per-component overrides via `alignTopInRow() / alignMiddleInRow() /
+  /// alignBottomInRow()` still win for that component.
+  AclBuilder setAclDefaultRowAlignment(AclRowCrossAlignment alignment) {
+    _defaultRowCrossAlignment = alignment;
+    // Retroactively apply to any already-appended components that did not
+    // have an explicit override — keeps call order flexible.
+    for (final row in _rows) {
+      for (final comp in row.components) {
+        if (!comp.rowCrossAlignmentSet) {
+          comp.rowCrossAlignment = alignment;
+        }
+      }
+    }
     return this;
   }
 
@@ -914,7 +1018,16 @@ class AclBuilder {
     _variants.add(AclVariant(
       name: name,
       atWidth: atWidth,
-      rows: variantBuilder._rows.map((r) => r.toRow()).toList(),
+      rows: variantBuilder._rows
+          .map((r) => r.toRow(
+                defaultAppendGap: variantBuilder._defaultAppendGap,
+                defaultAppendGapBpOverrides:
+                    variantBuilder._defaultAppendGapBpOverrides,
+                fallbackHeight: variantBuilder._defaultRowHeight,
+                fallbackHeightBpOverrides:
+                    variantBuilder._defaultRowHeightBpOverrides,
+              ))
+          .toList(),
     ));
     return this;
   }
@@ -1004,7 +1117,14 @@ class AclBuilder {
       ..sort((a, b) => a.atWidth.compareTo(b.atWidth));
 
     return Acl(
-      rows: _rows.map((row) => row.toRow()).toList(),
+      rows: _rows
+          .map((row) => row.toRow(
+                defaultAppendGap: _defaultAppendGap,
+                defaultAppendGapBpOverrides: _defaultAppendGapBpOverrides,
+                fallbackHeight: _defaultRowHeight,
+                fallbackHeightBpOverrides: _defaultRowHeightBpOverrides,
+              ))
+          .toList(),
       borderStyle: _borderStyle,
       focusedBorderStyle: _focusedBorderStyle,
       padding: _padding,
