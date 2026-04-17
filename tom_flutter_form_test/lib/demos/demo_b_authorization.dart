@@ -1,0 +1,476 @@
+import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+import '../common/demo_scaffold.dart';
+import '../forms/customer_form.dart';
+import '../panels/auth_control_panel.dart';
+import '../panels/event_log_panel.dart';
+import '../panels/field_state_table.dart';
+import '../panels/info_panel.dart';
+import '../state/phase1_state.dart';
+
+// ---------------------------------------------------------------------------
+// Demo B — Authorization & Events (Phase 1)
+// ---------------------------------------------------------------------------
+
+/// Two-column layout: customer form on the left; authorization controls and
+/// event log on the right. Exercises every feature from §24b Demo B:
+///
+///   * Four auth states: `full`, `read`, `disabled`, `none` — toggled from
+///     the right-hand panel.
+///   * `TomAuthorizationGroup` with all three [AuthGroupMode]s — switching
+///     modes rebuilds the form with newly-constructed groups (mode is
+///     immutable on the group, so a swap is the clean way to demonstrate it).
+///   * `TomAuthorizer` — narrows the `customerTier` field to read when the
+///     "authorizer" switch is on (simulates a finalized-order lockdown).
+///   * `TomUIStateController` — narrows the `email` field to disabled while
+///     `notes` is empty (data-dependent build-time narrowing).
+///   * Form-level auth ceiling — selecting `read` at the form level narrows
+///     every field; the field-state table reflects this in real time.
+///   * Event log streams every `TomFormEvent` including `FieldAuthChangedEvent`
+///     when auth transitions fire (via `form.changes` rebuild).
+class DemoBAuthorization extends StatefulWidget {
+  const DemoBAuthorization({super.key});
+
+  @override
+  State<DemoBAuthorization> createState() => _DemoBAuthorizationState();
+}
+
+class _DemoBAuthorizationState extends State<DemoBAuthorization> {
+  // --- Auth adapter (owned by this demo) -----------------------------------
+  late final _DemoBAdapter _adapter;
+
+  // --- Form + inspector ----------------------------------------------------
+  CustomerForm? _form;
+  final _inspector = TomFormInspector();
+
+  // --- Panel state ---------------------------------------------------------
+  TomAuthState _formAuth = TomAuthState.full;
+  AuthGroupMode _billingMode = AuthGroupMode.controlsWidest;
+  AuthGroupMode _shippingMode = AuthGroupMode.controlsWidest;
+  String _selectedGroupId = 'billing';
+
+  // Per-field override tracking (for panel display).
+  final Map<String, TomAuthState> _fieldOverrides = {
+    'demoB.customer.fullName': TomAuthState.full,
+    'demoB.customer.email': TomAuthState.full,
+    'demoB.customer.phone': TomAuthState.full,
+    'demoB.customer.customerTier': TomAuthState.full,
+    'demoB.customer.billing': TomAuthState.full,
+    'demoB.customer.shipping': TomAuthState.full,
+  };
+
+  bool _authorizerEnabled = false;
+  bool _uiStateControllerEnabled = false;
+
+  // Per-field FieldAuthChangedEvent tracking — we synthesise these events
+  // manually since `resolveEffectiveAuth` is pull-based.
+  final Map<String, TomAuthState> _lastAuthSeen = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _adapter = _DemoBAdapter();
+    TomAuthorization.adapter = _adapter;
+    _rebuildForm();
+  }
+
+  @override
+  void dispose() {
+    _form?.removeListener(_inspector);
+    _form?.dispose();
+    super.dispose();
+  }
+
+  /// Rebuild the form (required whenever a group mode changes — the mode is
+  /// final on [TomAuthorizationGroup], so we construct fresh groups).
+  void _rebuildForm() {
+    _form?.removeListener(_inspector);
+    _form?.dispose();
+
+    final billingGroup =
+        TomAuthorizationGroup('billing', mode: _billingMode);
+    final shippingGroup =
+        TomAuthorizationGroup('shipping', mode: _shippingMode);
+
+    final form = TomScope.withScope(
+      'demoB',
+      () => CustomerForm(
+        billingGroup: billingGroup,
+        shippingGroup: shippingGroup,
+      ),
+    );
+    _wireAuthorizer(form);
+    _wireUIStateController(form);
+    form.addListener(_inspector);
+    // Bind every form in the nested tree separately so each level's initial
+    // snapshot matches its current values — otherwise nested fields would
+    // appear dirty on first render.
+    form.bind(phase1CustomerState);
+    form.billing.bind(phase1CustomerState.billing);
+    form.shipping.bind(phase1CustomerState.shipping);
+
+    // Observe value changes on the `notes` field so the UI state controller
+    // reacts to data-dependent narrowing, and on customerTier so the
+    // authorizer re-evaluates.
+    form.notes >> (_) => _snapshotAuthAndRebuild();
+    form.customerTier >> (_) => _snapshotAuthAndRebuild();
+
+    _form = form;
+    _snapshotAuthAndRebuild();
+  }
+
+  /// Emit `FieldAuthChangedEvent` entries for every field whose effective
+  /// auth state changed since the last call. Keeps the event log in sync
+  /// with auth transitions that happen outside the observable value stream.
+  void _snapshotAuthAndRebuild() {
+    final form = _form;
+    if (form == null) return;
+    void scanFields(TomForm f) {
+      for (final field in f.fields.values) {
+        final path = field.basePath;
+        final newState = field.effectiveAuthState;
+        final previous = _lastAuthSeen[path];
+        if (previous != null && previous != newState) {
+          _inspector.onFieldAuthChanged(FieldAuthChangedEvent(
+            source: field.fieldId,
+            oldState: previous,
+            newState: newState,
+          ));
+        }
+        _lastAuthSeen[path] = newState;
+      }
+    }
+
+    scanFields(form);
+    scanFields(form.billing);
+    scanFields(form.shipping);
+    if (mounted) setState(() {});
+  }
+
+  void _wireAuthorizer(CustomerForm form) {
+    if (!_authorizerEnabled) return;
+    // "Finalized orders → read-only": when customerTier == 'platinum',
+    // narrow the whole form's address sections to read.
+    TomAuthState resolve(TomAuthState resourceAuth) {
+      if (form.customerTier.get() == 'platinum') return TomAuthState.read;
+      return resourceAuth;
+    }
+
+    final authorizer = TomAuthorizer(
+      strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+      resolve: resolve,
+    );
+    for (final f in form.billing.fields.values) {
+      f.authorizer = authorizer;
+    }
+    for (final f in form.shipping.fields.values) {
+      f.authorizer = authorizer;
+    }
+  }
+
+  void _wireUIStateController(CustomerForm form) {
+    if (!_uiStateControllerEnabled) return;
+    // "Disable email while notes is empty" — contrived but demonstrates the
+    // build-time, data-dependent narrowing.
+    form.email.uiStateController = TomUIStateController(
+      resolve: (currentAuth, _) {
+        if (form.notes.get().toString().trim().isEmpty) {
+          return TomAuthState.disabled;
+        }
+        return currentAuth;
+      },
+    );
+  }
+
+  // --- Control-panel callbacks ---------------------------------------------
+
+  void _onFormAuthChanged(TomAuthState s) {
+    setState(() => _formAuth = s);
+    if (s == TomAuthState.full) {
+      _adapter.removeRule('demoB.customer');
+    } else {
+      _adapter.setRule('demoB.customer', s);
+    }
+    _snapshotAuthAndRebuild();
+  }
+
+  void _onGroupSelected(String id) =>
+      setState(() => _selectedGroupId = id);
+
+  void _onGroupModeChanged(AuthGroupMode mode) {
+    setState(() {
+      if (_selectedGroupId == 'billing') {
+        _billingMode = mode;
+      } else {
+        _shippingMode = mode;
+      }
+    });
+    _rebuildForm();
+  }
+
+  void _onFieldOverrideChanged(String path, TomAuthState state) {
+    setState(() => _fieldOverrides[path] = state);
+    if (state == TomAuthState.full) {
+      _adapter.removeRule(path);
+    } else {
+      _adapter.setRule(path, state);
+    }
+    _snapshotAuthAndRebuild();
+  }
+
+  void _onAuthorizerToggled(bool enabled) {
+    setState(() => _authorizerEnabled = enabled);
+    _rebuildForm();
+  }
+
+  void _onUIStateControllerToggled(bool enabled) {
+    setState(() => _uiStateControllerEnabled = enabled);
+    _rebuildForm();
+  }
+
+  AuthGroupMode get _currentGroupMode =>
+      _selectedGroupId == 'billing' ? _billingMode : _shippingMode;
+
+  // --- Build ---------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    return DemoScaffold(
+      title: 'Demo B — Authorization & Events',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 1000;
+          final form = _buildFormColumn(context);
+          final info = _buildInfoColumn(context);
+          if (isWide) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: form),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2, child: info),
+                ],
+              ),
+            );
+          }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [form, const SizedBox(height: 16), info],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFormColumn(BuildContext context) {
+    final form = _form;
+    if (form == null) return const SizedBox.shrink();
+
+    final layout = TomAclBuilder(
+      id: 'demoBLayout',
+      elementProvider: form,
+    )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
+        .append((p) => p.fullName.widget)
+        .newRow()
+        .append((p) => p.email.widget)
+        .append((p) => p.phone.widget, dist: 16)
+        .newRow()
+        .append((p) => p.customerTier.widget)
+        .newRow()
+        .append((p) => p.notes.widget)
+        .build(context);
+
+    final billingLayout = TomAclBuilder(
+      id: 'demoBBilling',
+      elementProvider: form.billing,
+    )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
+        .append((p) => p.street.widget)
+        .newRow()
+        .append((p) => p.city.widget)
+        .append((p) => p.state.widget, dist: 16)
+        .newRow()
+        .append((p) => p.zipCode.widget)
+        .append((p) => p.country.widget, dist: 16)
+        .build(context);
+
+    final shippingLayout = TomAclBuilder(
+      id: 'demoBShipping',
+      elementProvider: form.shipping,
+    )
+        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
+        .append((p) => p.street.widget)
+        .newRow()
+        .append((p) => p.city.widget)
+        .append((p) => p.state.widget, dist: 16)
+        .newRow()
+        .append((p) => p.zipCode.widget)
+        .append((p) => p.country.widget, dist: 16)
+        .build(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildIntroCard(context),
+        const SizedBox(height: 12),
+        TomFormStyleScope(
+          style: TomFormStyle.material3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              layout,
+              const SizedBox(height: 12),
+              _section(context, 'Billing address', billingLayout),
+              const SizedBox(height: 12),
+              _section(context, 'Shipping address', shippingLayout),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIntroCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('What this demo covers', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 6),
+            const _Bullet('Four auth states per field; form-level ceiling '
+                'narrows everything at once.'),
+            const _Bullet('Billing and shipping live in dedicated '
+                'TomAuthorizationGroups — pick a group on the right to '
+                'toggle its mode (controlsAll / controlsWidest / controlsNarrowest).'),
+            const _Bullet('TomAuthorizer: when on, customer tier "platinum" '
+                'narrows both address sections to read.'),
+            const _Bullet('TomUIStateController: when on, email is disabled '
+                'until the notes field is non-empty.'),
+            const _Bullet('Every transition shows up in the event log — '
+                'value changes, validations, and synthetic '
+                'FieldAuthChangedEvent entries emitted on auth swaps.'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _section(BuildContext context, String title, Widget child) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoColumn(BuildContext context) {
+    final form = _form;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InfoPanel(
+          title: 'Authorization controls',
+          children: [
+            AuthControlPanel(
+              formAuth: _formAuth,
+              onFormAuthChanged: _onFormAuthChanged,
+              groupIds: const ['billing', 'shipping'],
+              selectedGroupId: _selectedGroupId,
+              onGroupSelected: _onGroupSelected,
+              groupMode: _currentGroupMode,
+              onGroupModeChanged: _onGroupModeChanged,
+              fieldOverrides: _fieldOverrides,
+              onFieldOverrideChanged: _onFieldOverrideChanged,
+              authorizerEnabled: _authorizerEnabled,
+              onAuthorizerToggled: _onAuthorizerToggled,
+              uiStateControllerEnabled: _uiStateControllerEnabled,
+              onUIStateControllerToggled: _onUIStateControllerToggled,
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (form != null)
+          InfoPanel(
+            title: 'Field state',
+            children: [
+              FieldStateTable(forms: [form, form.billing, form.shipping]),
+            ],
+          ),
+        const SizedBox(height: 12),
+        if (form != null)
+          InfoPanel(
+            title: 'Event log',
+            children: [
+              EventLogPanel(
+                inspector: _inspector,
+                rebuildOn: Listenable.merge(
+                  [form.changes, form.billing.changes, form.shipping.changes],
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Local auth adapter — rules can be added / removed at runtime via the
+// control panel. Parent-path matching means `demoB.customer` narrows every
+// field beneath it, exercising the "form-level auth ceiling" from §24b.
+// ---------------------------------------------------------------------------
+
+class _DemoBAdapter extends TomAuthorizationAdapter {
+  final Map<String, TomAuthState> _rules = {};
+
+  @override
+  TomAuthState resolveAuth(String resourceKeyPath) {
+    if (_rules.containsKey(resourceKeyPath)) return _rules[resourceKeyPath]!;
+    final parts = resourceKeyPath.split('.');
+    for (var i = parts.length - 1; i > 0; i--) {
+      final parent = parts.sublist(0, i).join('.');
+      if (_rules.containsKey(parent)) return _rules[parent]!;
+    }
+    return TomAuthState.full;
+  }
+
+  void setRule(String path, TomAuthState state) => _rules[path] = state;
+  void removeRule(String path) => _rules.remove(path);
+}
+
+class _Bullet extends StatelessWidget {
+  final String text;
+  const _Bullet(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: Text('• $text'),
+    );
+  }
+}

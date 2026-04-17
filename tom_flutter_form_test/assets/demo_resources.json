@@ -322,5 +322,118 @@
         }
       }
     }
+  },
+
+  "demoA": {
+    "save": {
+      "label": "Save",
+      "validating": "Validating\u2026",
+      "success": "Saved \u2014 fields returned to pristine",
+      "error": "Validation failed \u2014 check fields"
+    },
+    "discard": {
+      "label": "Discard",
+      "success": "Discarded \u2014 reset to last bound values"
+    },
+    "validationForm": {
+      "username": {
+        "label": "Username",
+        "hint": "3-20 letters, digits, or underscores",
+        "description": "Checked for availability on the server (~800ms).",
+        "error": {
+          "required": "Username is required.",
+          "minLength": "Username must be at least {min} characters.",
+          "usernamePattern": "Only letters, digits, and underscores are allowed.",
+          "usernameTaken": "That username is already taken."
+        }
+      },
+      "email": {
+        "label": "Email",
+        "hint": "name@example.com",
+        "error": {
+          "required": "Email is required.",
+          "email": "Enter a valid email address."
+        }
+      },
+      "password": {
+        "label": "Password",
+        "hint": "At least 8 characters",
+        "error": {
+          "required": "Password is required.",
+          "minLength": "Password must be at least {min} characters."
+        }
+      },
+      "confirmPassword": {
+        "label": "Confirm password",
+        "hint": "Retype your password",
+        "error": {
+          "required": "Please confirm your password."
+        }
+      },
+      "website": {
+        "label": "Website (optional)",
+        "hint": "https://example.com",
+        "error": {
+          "invalidUrl": "Enter a valid http(s) URL."
+        }
+      },
+      "error": {
+        "passwordsMismatch": "Passwords do not match."
+      }
+    }
+  },
+
+  "demoB": {
+    "customer": {
+      "fullName": { "label": "Full name", "hint": "First and last name" },
+      "email":    { "label": "Email",    "hint": "name@example.com" },
+      "phone":    { "label": "Phone",    "hint": "+1 555 0100" },
+      "customerTier": {
+        "label": "Customer tier",
+        "description": "Platinum tier triggers the authorizer when enabled."
+      },
+      "notes": {
+        "label": "Notes",
+        "hint": "Classic field \u2014 rendered by TomFormStringInputClassic"
+      },
+      "billing": {
+        "street":  { "label": "Street",  "hint": "Billing street" },
+        "city":    { "label": "City" },
+        "state":   { "label": "State / province" },
+        "zipCode": { "label": "ZIP / postal code" },
+        "country": { "label": "Country" }
+      },
+      "shipping": {
+        "street":  { "label": "Street",  "hint": "Shipping street" },
+        "city":    { "label": "City" },
+        "state":   { "label": "State / province" },
+        "zipCode": { "label": "ZIP / postal code" },
+        "country": { "label": "Country" }
+      }
+    }
+  },
+
+  "demoC": {
+    "customer": {
+      "fullName":     { "label": "Full name", "hint": "First and last name" },
+      "email":        { "label": "Email",    "hint": "name@example.com" },
+      "phone":        { "label": "Phone",    "hint": "+1 555 0100" },
+      "customerTier": { "label": "Customer tier" },
+      "notes":        { "label": "Notes (Classic field)" },
+      "billing": {
+        "street":  { "label": "Billing \u2014 Street" },
+        "city":    { "label": "Billing \u2014 City" },
+        "state":   { "label": "Billing \u2014 State" },
+        "zipCode": { "label": "Billing \u2014 ZIP" },
+        "country": { "label": "Billing \u2014 Country" }
+      },
+      "shipping": {
+        "street":  { "label": "Shipping \u2014 Street" },
+        "city":    { "label": "Shipping \u2014 City" },
+        "state":   { "label": "Shipping \u2014 State" },
+        "zipCode": { "label": "Shipping \u2014 ZIP" },
+        "country": { "label": "Shipping \u2014 Country" }
+      }
+    }
   }
 }

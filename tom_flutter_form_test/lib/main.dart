@@ -16,6 +16,9 @@ import 'demos/demo_7_error_placement.dart';
 import 'demos/demo_8_breakpoints.dart';
 import 'demos/demo_9_preset_showcase.dart';
 import 'demos/demo_10_central_json_style.dart';
+import 'demos/demo_a_lifecycle.dart';
+import 'demos/demo_b_authorization.dart';
+import 'demos/demo_c_nested_theming.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +73,41 @@ class DemoListScreen extends StatelessWidget {
                 'validation, authorization, and ACL layout.',
           ),
           const SizedBox(height: 16),
+          _DemoSectionHeader(label: 'Phase 1 \u2014 Spec-aligned demos'),
+          _DemoTile(
+            icon: Icons.play_circle_outline,
+            title: 'Demo A: Lifecycle & Validation',
+            description: 'bind/save/discard, sync/async/cross-field '
+                'validation, pristine behaviour, error banner, form actions.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoALifecycle()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.admin_panel_settings_outlined,
+            title: 'Demo B: Authorization & Events',
+            description: '4 auth states, groups + modes, authorizer, '
+                'UI-state controller, live event log with '
+                'FieldAuthChangedEvent.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoBAuthorization()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.layers_outlined,
+            title: 'Demo C: Nested Forms & Theming',
+            description: 'Nested CustomerForm + billing/shipping, dirty '
+                'tracking, live TomFormStyle switching, per-section '
+                'styling, styleBpOverrides, Classic + new coexistence.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoCNestedTheming()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(label: 'Supporting reference demos'),
           _DemoTile(
             icon: Icons.edit_document,
             title: 'Demo 1: Basic Form',
@@ -206,6 +244,25 @@ class _DemoHeader extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _DemoSectionHeader extends StatelessWidget {
+  final String label;
+  const _DemoSectionHeader({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
       ),
     );
   }

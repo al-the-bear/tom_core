@@ -24,14 +24,18 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const FormDemoApp());
 
-    // Verify demo tiles are present
-    expect(find.text('Demo 1: Basic Form'), findsOneWidget);
-    expect(find.text('Demo 2: Nested Forms'), findsOneWidget);
-    expect(find.text('Demo 3: Authorization'), findsOneWidget);
-    expect(find.text('Demo 4: Validation'), findsOneWidget);
-    expect(find.text('Demo 5: Settings Form'), findsOneWidget);
-
+    // All tiles are present — scroll each into view before asserting so
+    // the test works regardless of default viewport height. Phase 1 demos
+    // (A/B/C) sit above the legacy numbered ones.
     for (final label in const [
+      'Demo A: Lifecycle & Validation',
+      'Demo B: Authorization & Events',
+      'Demo C: Nested Forms & Theming',
+      'Demo 1: Basic Form',
+      'Demo 2: Nested Forms',
+      'Demo 3: Authorization',
+      'Demo 4: Validation',
+      'Demo 5: Settings Form',
       'Demo 6: Field Layout Options',
       'Demo 7: Error Placement',
       'Demo 8: Breakpoints',
