@@ -46,9 +46,9 @@ class _Demo4ValidationState extends State<Demo4Validation> {
   }
 
   Widget _buildValidationStatus(TomField<Object?> field) {
-    return TomMultiObservableBuilder(
-      observables: [field],
-      builder: (context) {
+    return ListenableBuilder(
+      listenable: field.validationListenable,
+      builder: (context, _) {
         final state = field.validationState;
         IconData icon;
         Color color;

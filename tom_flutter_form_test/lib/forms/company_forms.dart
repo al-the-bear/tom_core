@@ -144,12 +144,20 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   );
 
   /// Website URL with pattern validation.
+  ///
+  /// Requires a full http(s) URL with a dotted domain whose labels don't
+  /// start or end with a hyphen, a TLD of at least two letters, an optional
+  /// port (1-5 digits), and an optional path/query/fragment with no
+  /// whitespace. Anchored with `$` so trailing garbage is rejected.
   late final website = TomFormStringInput(
     'website',
     '',
     validators: [
       Validators.pattern(
-        RegExp(r'^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'),
+        RegExp(
+          r'^https?:\/\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+'
+          r'[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[^\s]*)?$',
+        ),
         errorKey: 'invalidUrl',
       ),
     ],

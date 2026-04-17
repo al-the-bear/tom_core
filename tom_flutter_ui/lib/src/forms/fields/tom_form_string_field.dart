@@ -7,6 +7,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
 import '../decoration/tom_dropdown_decoration_mixin.dart';
+import '../decoration/tom_field_anatomy.dart';
 import '../decoration/tom_string_input_decoration_mixin.dart';
 import '../selection/tom_selectable_source.dart';
 import '../style/form_style_enums.dart';
@@ -186,19 +187,10 @@ class _TomFormStringInputWidgetState
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
 
-    // When ErrorPlacement.replaceHint is active and the field is in error
-    // state, show the error message in the hint slot instead of the normal
-    // hint. The anatomy column skips the error row for this placement.
     String? effectiveHint = field.hintText;
-    TextStyle? effectiveHintStyle = style.hintStyle;
-    final hintIsError = style.errorPlacement == ErrorPlacement.replaceHint &&
-        field.resolveValidationErrorMessage() != null;
-    if (hintIsError) {
-      effectiveHint = field.resolveValidationErrorMessage();
-      final theme = Theme.of(context);
-      effectiveHintStyle = (style.hintStyle ?? theme.textTheme.bodyMedium)
-          ?.copyWith(color: theme.colorScheme.error);
-    } else if (effectiveHint != null && effectiveHint.isNotEmpty) {
+    final TextStyle? effectiveHintStyle =
+        composeHintStyle(style, Theme.of(context));
+    if (effectiveHint != null && effectiveHint.isNotEmpty) {
       effectiveHint +=
           field.requiredIndicatorSuffix(style.requiredIndicatorOnHint);
     }
@@ -216,7 +208,12 @@ class _TomFormStringInputWidgetState
 
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
+      // floatingLabelStyle must be set explicitly so the floating-state
+      // label uses the TomFormStyle colour (cs.primary from the JSON) and
+      // is not overridden by the ambient InputDecorationTheme derived from
+      // whatever MaterialApp theme sits above the TomFormStyleScope.
       labelStyle: style.labelStyle,
+      floatingLabelStyle: style.labelStyle,
       hintText: effectiveHint,
       prefixIcon: field.prefixIcon,
       suffixIcon: field.suffixIcon,
@@ -232,10 +229,11 @@ class _TomFormStringInputWidgetState
     final textField = TextField(
       controller: _controller,
       focusNode: _focusNode,
+      style: style.inputStyle,
       obscureText: field.obscureText,
       keyboardType: field.keyboardType,
       maxLength: field.maxLength,
-      maxLines: field.obscureText ? 1 : field.maxLines,
+      maxLines: field.obscureText ? 1 : (field.maxLines ?? 1),
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       decoration: field.applyErrorVisualsTo(context, baseDecoration),
@@ -282,6 +280,13 @@ class TomFormStringDropdown extends TomFormStringField
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
+  /// Field-level cache of the async-loaded items. Populated on the first
+  /// successful `_loadItems()` and used to synchronously seed a freshly
+  /// mounted state — so remounts caused by anatomy-structure changes
+  /// (e.g. `labelPlacement` flipping between breakpoints) don't flash the
+  /// hint text while `source.getItems()` re-resolves.
+  List<SelectableItem<String>>? _cachedItems;
+
   @override
   Widget get widget => _TomFormStringDropdownWidget(field: this);
 }
@@ -307,6 +312,10 @@ class _TomFormStringDropdownWidgetState
   @override
   void initState() {
     super.initState();
+    // Seed from the field-level cache synchronously so a remount (caused
+    // by anatomy-structure changes between breakpoints) doesn't flash the
+    // hint text for one frame while the async load re-runs.
+    _items = field._cachedItems ?? const [];
     _loadItems();
     _observer = field >> (_) {
       if (mounted) setState(() {});
@@ -320,6 +329,7 @@ class _TomFormStringDropdownWidgetState
 
   Future<void> _loadItems() async {
     final items = await field.source.getItems();
+    field._cachedItems = items;
     if (mounted) {
       setState(() => _items = items);
       _resetIfValueMissing(items);
@@ -327,6 +337,7 @@ class _TomFormStringDropdownWidgetState
     final stream = field.source.itemsStream;
     if (stream != null) {
       _subscription = stream.listen((items) {
+        field._cachedItems = items;
         if (mounted) {
           setState(() => _items = items);
           _resetIfValueMissing(items);
@@ -378,22 +389,24 @@ class _TomFormStringDropdownWidgetState
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
       labelStyle: style.labelStyle,
+      floatingLabelStyle: style.labelStyle,
       hintText: effectiveHint,
       contentPadding: style.fieldContentPadding,
       border: style.fieldBorder,
       focusedBorder: style.focusedBorder,
       errorBorder: style.errorBorder,
       enabledBorder: style.fieldBorder,
-      hintStyle: style.hintStyle,
+      hintStyle: composeHintStyle(style, Theme.of(context)),
     );
 
     final dropdown = DropdownButtonFormField<String>(
       initialValue: field.get().isEmpty ? null : field.get(),
+      style: style.inputStyle,
       items: _items.map((item) {
         return DropdownMenuItem<String>(
           value: item.value,
           enabled: item.enabled,
-          child: Text(item.label),
+          child: Text(item.label, style: style.inputStyle),
         );
       }).toList(),
       onChanged: field.isEditable

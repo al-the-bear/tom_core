@@ -58,6 +58,7 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
     )
         .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
+        .setAclDefaultAppendGap(0)
         .append((p) => p.name.widget)
         .newRow()
         .append((p) => p.industry.widget)
@@ -102,19 +103,22 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
               ],
             ),
             const SizedBox(height: 8),
-            TomMultiObservableBuilder(
-              observables: [_form, _status],
-              builder: (context) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${TomCtr.text('demo1.status', 'label')}: ${_status.get()}'),
-                      const SizedBox(height: 4),
-                      Text('${TomCtr.text('demo1.status', 'dirty')}: ${_form.isDirty}'),
-                      Text('${TomCtr.text('demo1.status', 'valid')}: ${_form.isValid}'),
-                    ],
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => TomMultiObservableBuilder(
+                observables: [_status],
+                builder: (context) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${TomCtr.text('demo1.status', 'label')}: ${_status.get()}'),
+                        const SizedBox(height: 4),
+                        Text('${TomCtr.text('demo1.status', 'dirty')}: ${_form.isDirty}'),
+                        Text('${TomCtr.text('demo1.status', 'valid')}: ${_form.isValid}'),
+                      ],
+                    ),
                   ),
                 ),
               ),

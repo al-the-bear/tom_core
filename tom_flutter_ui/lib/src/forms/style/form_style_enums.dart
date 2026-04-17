@@ -34,11 +34,12 @@ enum ErrorPlacement {
   /// Error displayed both above and below.
   both,
 
-  /// Error message takes the hint slot inside the field (visible while
-  /// the input is empty). No separate error row is rendered. Useful for
-  /// very compact layouts — caveat: once the user types, the error is
-  /// no longer visible.
-  replaceHint,
+  /// Error message takes the description (helper-text) slot below the
+  /// field. If no description is set the row is still rendered so the
+  /// error appears; no separate error row is added. Replaces the previous
+  /// `replaceHint` behaviour (which placed the error in the in-field
+  /// placeholder and was lost the moment the user typed).
+  replaceDescription,
 }
 
 /// Controls how the required indicator is displayed.

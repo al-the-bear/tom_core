@@ -47,6 +47,13 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Event listeners.
   final List<TomFormEventListener> _listeners = [];
 
+  /// Fires on every form event — use to rebuild UI that depends on
+  /// aggregate state such as [isValid] or [fieldsWithErrors], which react
+  /// to validation transitions that are NOT carried on the TomObservable
+  /// value channel.
+  final _FormChangeNotifier _changes = _FormChangeNotifier();
+  Listenable get changes => _changes;
+
   // --- TomActionController interface ---
 
   final List<TomAction> _actions = [];
@@ -268,6 +275,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final listener in _listeners) {
       listener.handleEvent(event);
     }
+    _changes.fire();
   }
 
   // --- Dispose ---
@@ -277,7 +285,14 @@ abstract class TomForm<T extends TomClass> extends TomClass
       field.dispose();
     }
     _listeners.clear();
+    _changes.dispose();
   }
+}
+
+/// Tiny [ChangeNotifier] subclass so `notifyListeners` stays encapsulated
+/// (avoids `invalid_use_of_protected_member` at the call site).
+class _FormChangeNotifier extends ChangeNotifier {
+  void fire() => notifyListeners();
 }
 
 // ---------------------------------------------------------------------------

@@ -262,5 +262,65 @@
         "maxLength": "Description must not exceed 500 characters."
       }
     }
+  },
+
+  "demo10": {
+    "title": "Demo 10 — Central JSON-Driven Form Style",
+    "padding": 16
+  },
+
+  "demo10Form": {
+    "labelPlacement": "floating",
+    "labelFieldGap": 0,
+    "errorFieldGap": 4,
+    "borderRadius": 8,
+    "fieldContentPadding": {
+      "left": 12, "top": 16, "right": 12, "bottom": 12
+    },
+    "fieldBorder":   { "kind": "outline", "width": 1, "color": "cs.outline",  "radius": 8 },
+    "focusedBorder": { "kind": "outline", "width": 2, "color": "cs.primary",  "radius": 8 },
+    "errorBorder":   { "kind": "outline", "width": 2, "color": "cs.error",    "radius": 8 },
+    "labelStyle":    { "fontSize": 13, "fontWeight": "w500", "color": "cs.primary" },
+    "hintStyle":     { "fontSize": 13, "color": "cs.primary" },
+    "inputStyle":    { "fontSize": 14, "color": "cs.primary" },
+    "descriptionStyle": { "fontSize": 11, "color": "cs.onSurfaceVariant" },
+    "hintFontWeight": "w400",
+    "hintOpacity": 0.6,
+    "errorBorderEnabled": true,
+    "errorIconEnabled": true,
+
+    "@bp": {
+      "mobile": {
+        "fieldContentPadding": {
+          "left": 14, "top": 18, "right": 14, "bottom": 14
+        },
+        "labelStyle":  { "fontSize": 14, "fontWeight": "w500", "color": "cs.primary" },
+        "inputStyle":  { "fontSize": 15, "color": "cs.primary" },
+        "hintOpacity": 0.65
+      },
+      "tablet": {
+        "labelStyle":      { "fontSize": 15, "fontWeight": "w600", "color": "cs.primary" },
+        "inputStyle":      { "fontSize": 16, "color": "cs.primary" },
+        "descriptionStyle":{ "fontSize": 12, "color": "cs.onSurfaceVariant" },
+        "theme": {
+          "bodySize": 15,
+          "weights": { "body": "w400", "label": "w600" }
+        }
+      },
+      "desktop": {
+        "labelFieldGap": 12,
+        "errorFieldGap": 8,
+        "fieldContentPadding": {
+          "left": 16, "top": 20, "right": 16, "bottom": 16
+        },
+        "labelStyle":   { "fontSize": 16, "fontWeight": "w600", "color": "cs.primary" },
+        "inputStyle":   { "fontSize": 17, "color": "cs.primary" },
+        "hintOpacity":  0.7,
+        "theme": {
+          "bodySize": 17,
+          "weights": { "body": "w400", "label": "w600" }
+        }
+      }
+    }
   }
 }

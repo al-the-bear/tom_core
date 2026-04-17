@@ -26,10 +26,13 @@ void main() {
       expect(captured, TomFormStyle.material3);
     });
 
-    testWidgets('of() returns the scope style', (tester) async {
-      final style = TomFormStyle.material3.copyWith(
-        stringInputStyle: const TomStringInputStyle(),
-      );
+    testWidgets('of() returns a style that incorporates the scope style',
+        (tester) async {
+      // Use a per-widget override as the distinguishing property — withTheme
+      // does not touch per-widget sub-styles, so it survives the theme pass.
+      const marker = TomStringInputStyle();
+      final style =
+          TomFormStyle.material3.copyWith(stringInputStyle: marker);
       TomFormStyle? captured;
       await tester.pumpWidget(MaterialApp(
         home: TomFormStyleScope(
@@ -39,7 +42,9 @@ void main() {
           ),
         ),
       ));
-      expect(captured, same(style));
+      // The scope applies withTheme after the overlay, so identity is not
+      // preserved; the per-widget sub-style (not touched by withTheme) is.
+      expect(captured!.stringInputStyle, same(marker));
     });
 
     testWidgets('widthOf publishes LayoutBuilder maxWidth', (tester) async {
@@ -75,10 +80,12 @@ void main() {
     });
 
     testWidgets('nested scope overrides outer scope', (tester) async {
-      final outer = TomFormStyle.material3;
-      final inner = TomFormStyle.material3.copyWith(
-        checkboxStyle: const TomCheckboxStyle(),
-      );
+      const outerMarker = TomStringInputStyle();
+      const innerMarker = TomCheckboxStyle();
+      final outer =
+          TomFormStyle.material3.copyWith(stringInputStyle: outerMarker);
+      final inner =
+          TomFormStyle.material3.copyWith(checkboxStyle: innerMarker);
       TomFormStyle? captured;
       await tester.pumpWidget(MaterialApp(
         home: TomFormStyleScope(
@@ -91,7 +98,9 @@ void main() {
           ),
         ),
       ));
-      expect(captured, same(inner));
+      // Inner scope's per-widget sub-style survives; outer's does not.
+      expect(captured!.checkboxStyle, same(innerMarker));
+      expect(captured!.stringInputStyle, isNull);
     });
   });
 }

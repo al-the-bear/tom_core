@@ -127,19 +127,23 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
                 ],
               ),
               const SizedBox(height: 8),
-              TomMultiObservableBuilder(
-                observables: [_addressForm, _ceoForm, _status],
-                builder: (context) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('${TomCtr.text('demo2.status', 'label')}: ${_status.get()}'),
-                        const SizedBox(height: 4),
-                        Text('${TomCtr.text('demo2.status', 'addressDirty')}: ${_addressForm.isDirty}'),
-                        Text('${TomCtr.text('demo2.status', 'ceoDirty')}: ${_ceoForm.isDirty}'),
-                      ],
+              ListenableBuilder(
+                listenable: Listenable.merge(
+                    [_addressForm.changes, _ceoForm.changes]),
+                builder: (context, _) => TomMultiObservableBuilder(
+                  observables: [_status],
+                  builder: (context) => Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${TomCtr.text('demo2.status', 'label')}: ${_status.get()}'),
+                          const SizedBox(height: 4),
+                          Text('${TomCtr.text('demo2.status', 'addressDirty')}: ${_addressForm.isDirty}'),
+                          Text('${TomCtr.text('demo2.status', 'ceoDirty')}: ${_ceoForm.isDirty}'),
+                        ],
+                      ),
                     ),
                   ),
                 ),

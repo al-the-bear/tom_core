@@ -30,5 +30,16 @@ void main() {
     expect(find.text('Demo 3: Authorization'), findsOneWidget);
     expect(find.text('Demo 4: Validation'), findsOneWidget);
     expect(find.text('Demo 5: Settings Form'), findsOneWidget);
+
+    for (final label in const [
+      'Demo 6: Field Layout Options',
+      'Demo 7: Error Placement',
+      'Demo 8: Breakpoints',
+      'Demo 9: Preset Showcase',
+      'Demo 10: Central JSON-Driven Style',
+    ]) {
+      await tester.scrollUntilVisible(find.text(label), 200);
+      expect(find.text(label), findsOneWidget);
+    }
   });
 }

@@ -20,7 +20,7 @@ void main() {
       expect(ErrorPlacement.values, contains(ErrorPlacement.above));
       expect(ErrorPlacement.values, contains(ErrorPlacement.tooltip));
       expect(ErrorPlacement.values, contains(ErrorPlacement.both));
-      expect(ErrorPlacement.values, contains(ErrorPlacement.replaceHint));
+      expect(ErrorPlacement.values, contains(ErrorPlacement.replaceDescription));
     });
   });
 

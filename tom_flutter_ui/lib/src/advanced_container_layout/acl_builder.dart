@@ -127,7 +127,7 @@ class AclBuilder {
   List<(double, double)> _defaultAppendGapBpOverrides = const [];
   double? _defaultRowHeight;
   List<(double, double?)> _defaultRowHeightBpOverrides = const [];
-  double _defaultRowGap = 0;
+  double _defaultRowGap = 8;
   Size? _defaultUnknownMinimumSize;
   Size? _defaultUnknownPreferredSize;
   AclRowCrossAlignment _defaultRowCrossAlignment = AclRowCrossAlignment.center;

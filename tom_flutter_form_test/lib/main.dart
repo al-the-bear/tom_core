@@ -13,6 +13,9 @@ import 'demos/demo_4_validation.dart';
 import 'demos/demo_5_settings.dart';
 import 'demos/demo_6_field_layout.dart';
 import 'demos/demo_7_error_placement.dart';
+import 'demos/demo_8_breakpoints.dart';
+import 'demos/demo_9_preset_showcase.dart';
+import 'demos/demo_10_central_json_style.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,11 +133,43 @@ class DemoListScreen extends StatelessWidget {
           _DemoTile(
             icon: Icons.report_gmailerrorred,
             title: 'Demo 7: Error Placement',
-            description: 'ErrorPlacement options including replaceHint; '
+            description: 'ErrorPlacement options including replaceDescription; '
                 'explains the 3-step error message resolution chain.',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const Demo7ErrorPlacement()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.aspect_ratio,
+            title: 'Demo 8: Breakpoints',
+            description: 'Draggable splitter drives TomFormStyleScope width; '
+                'gaps, error border, and error icon react live via breakpoint '
+                'overrides.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Demo8Breakpoints()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.grid_view,
+            title: 'Demo 9: Preset Showcase',
+            description: 'Grid of field types \u00d7 presets (material3, '
+                'compact, bordered) with a withTheme() toggle.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Demo9PresetShowcase()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.data_object,
+            title: 'Demo 10: Central JSON-Driven Style',
+            description: 'Single root-level TomFormStyleScope; every style '
+                'property plus breakpoint variants defined in '
+                'demo_resources.json.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const Demo10CentralJsonStyle()),
             ),
           ),
         ],

@@ -15,7 +15,8 @@ void main() {
       expect(s.labelFieldGap, 4.0);
       expect(s.errorFieldGap, 4.0);
       expect(s.borderRadius, 8.0);
-      expect(s.disabledOpacity, 0.5);
+      expect(s.disabledOpacity, 0.6);
+      expect(s.readOnlyOpacity, 0.8);
       expect(s.errorBorderEnabled, isFalse);
       expect(s.errorIconEnabled, isFalse);
       expect(s.labelFieldGapBpOverrides, isEmpty);

@@ -9,6 +9,30 @@ import '../style/tom_form_style.dart';
 import '../validation/validation_result.dart';
 import '../validation/validators.dart';
 
+/// Composes the effective hint [TextStyle] by layering
+/// [TomFieldStyle.hintFontWeight] and [TomFieldStyle.hintOpacity] on top of
+/// [TomFieldStyle.hintStyle]. Returns `null` when the style has no hint
+/// configuration at all (lets Flutter's TextField fall through to its own
+/// defaults).
+TextStyle? composeHintStyle(TomFieldStyle style, ThemeData theme) {
+  final base = style.hintStyle ?? theme.textTheme.bodyMedium;
+  if (base == null &&
+      style.hintFontWeight == null &&
+      style.hintOpacity == null) {
+    return null;
+  }
+  var effective = base ?? const TextStyle();
+  if (style.hintFontWeight != null) {
+    effective = effective.copyWith(fontWeight: style.hintFontWeight);
+  }
+  if (style.hintOpacity != null) {
+    final color = effective.color ?? theme.colorScheme.onSurface;
+    final alpha = style.hintOpacity!.clamp(0.0, 1.0);
+    effective = effective.copyWith(color: color.withValues(alpha: alpha));
+  }
+  return effective;
+}
+
 /// True when [validators] contains the canonical Required validator.
 bool fieldHasRequiredValidator(List<Object> validators) {
   for (final v in validators) {
@@ -145,6 +169,12 @@ Widget buildFieldAnatomy({
   );
   if (effectiveAuth == TomAuthState.disabled) {
     content = Opacity(opacity: style.disabledOpacity, child: content);
+  } else if (effectiveAuth == TomAuthState.read) {
+    // Light dim for readonly — keeps content readable but visibly distinct
+    // from editable fields. Sits outside the optional readOnlyBackground
+    // ColoredBox, so a configured background is dimmed uniformly with the
+    // rest of the field.
+    content = Opacity(opacity: style.readOnlyOpacity, child: content);
   }
   return content;
 }
@@ -163,12 +193,43 @@ Widget _anatomyColumn({
 }) {
   final children = <Widget>[];
 
-  final label = _labelRow(style, theme, labelText, hasRequired, isEditable);
+  // Header-block mode: when label is above AND description is above, render
+  // both with a tighter line-height. Material's default bodyMedium height
+  // (~1.43) adds ~6-7px of invisible font leading between the two text
+  // rows; that dwarfs any SizedBox we can reasonably use between them. We
+  // override to 1.15 to reclaim most of that leading while still leaving a
+  // little room for ascenders/descenders.
+  final bool tightHeader = style.labelPlacement == LabelPlacement.above &&
+      style.descriptionPlacement == DescriptionPlacement.above;
+  const double headerBlockHeight = 1.15;
+  final double? headerHeightOverride = tightHeader ? headerBlockHeight : null;
+
+  final label = _labelRow(
+    style, theme, labelText, hasRequired, isEditable,
+    lineHeightOverride: headerHeightOverride,
+  );
+
+  // The description slot is always rendered (transparent when there is no
+  // description text) so every field has the same total height regardless of
+  // whether it carries a description. This keeps row gaps uniform when some
+  // fields in a row have descriptions and others don't.
+  // When replaceDescription is active and the field is in error, the error
+  // message replaces the description slot's text (rendered in error color).
+  final replacingDesc =
+      style.errorPlacement == ErrorPlacement.replaceDescription &&
+          errorMessage != null;
   final descAbove = style.descriptionPlacement == DescriptionPlacement.above
-      ? _description(style, theme, descriptionText)
+      ? _description(style, theme, descriptionText,
+          hasRequired: hasRequired,
+          isEditable: isEditable,
+          errorOverride: replacingDesc ? errorMessage : null,
+          lineHeightOverride: headerHeightOverride)
       : null;
   final descBelow = style.descriptionPlacement == DescriptionPlacement.below
-      ? _description(style, theme, descriptionText)
+      ? _description(style, theme, descriptionText,
+          hasRequired: hasRequired,
+          isEditable: isEditable,
+          errorOverride: replacingDesc ? errorMessage : null)
       : null;
 
   Widget? errorAbove;
@@ -188,7 +249,10 @@ Widget _anatomyColumn({
       label != null && style.labelPlacement == LabelPlacement.below;
 
   if (style.labelPlacement == LabelPlacement.inline) {
-    if (descAbove != null) children.add(descAbove);
+    if (descAbove != null) {
+      children.add(descAbove);
+      children.add(SizedBox(height: style.labelFieldGap));
+    }
     if (errorAbove != null) {
       children.add(errorAbove);
       children.add(SizedBox(height: style.errorFieldGap));
@@ -208,9 +272,17 @@ Widget _anatomyColumn({
   } else {
     if (isLabelAbove) {
       children.add(label);
+      if (descAbove != null) {
+        // No explicit gap here: the tight 1.15 line-height on both Texts
+        // still leaves ~2px of visual breathing room between their glyphs,
+        // which is the desired header-block feel.
+        children.add(descAbove);
+      }
+      children.add(SizedBox(height: style.labelFieldGap));
+    } else if (descAbove != null) {
+      children.add(descAbove);
       children.add(SizedBox(height: style.labelFieldGap));
     }
-    if (descAbove != null) children.add(descAbove);
     if (errorAbove != null) {
       children.add(errorAbove);
       children.add(SizedBox(height: style.errorFieldGap));
@@ -226,7 +298,10 @@ Widget _anatomyColumn({
     children.add(SizedBox(height: style.errorFieldGap));
     children.add(errorBelow);
   }
-  if (descBelow != null) children.add(descBelow);
+  if (descBelow != null) {
+    children.add(SizedBox(height: style.errorFieldGap));
+    children.add(descBelow);
+  }
 
   Widget column = Column(
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,17 +322,22 @@ Widget? _labelRow(
   ThemeData theme,
   String? labelText,
   bool hasRequired,
-  bool isEditable,
-) {
+  bool isEditable, {
+  double? lineHeightOverride,
+}) {
   if (style.labelPlacement == LabelPlacement.hidden ||
       style.labelPlacement == LabelPlacement.floating) {
     return null;
   }
   if (labelText == null || labelText.isEmpty) return null;
 
+  final baseTextStyle = style.labelStyle ?? theme.textTheme.bodyMedium;
+  final effectiveStyle = lineHeightOverride != null
+      ? (baseTextStyle ?? const TextStyle()).copyWith(height: lineHeightOverride)
+      : baseTextStyle;
   final labelWidget = Text(
     labelText,
-    style: style.labelStyle ?? theme.textTheme.bodyMedium,
+    style: effectiveStyle,
     overflow: TextOverflow.ellipsis,
   );
 
@@ -335,17 +415,53 @@ Widget? _error(TomFieldStyle style, ThemeData theme, String? message) {
 Widget _description(
   TomFieldStyle style,
   ThemeData theme,
-  String? descriptionText,
-) {
-  final desc = descriptionText;
+  String? descriptionText, {
+  required bool hasRequired,
+  required bool isEditable,
+  String? errorOverride,
+  double? lineHeightOverride,
+}) {
+  // The description slot is clipped to a single line (ellipsis on overflow)
+  // so every field reserves the same vertical space regardless of
+  // description length. Combined with always rendering the slot, this keeps
+  // field widgets uniform in height — the ACL rows then space evenly.
+  //
+  // Gap management lives in the caller (_anatomyColumn) — this widget is a
+  // bare Text so "description above" and "description below" can use
+  // different spacing rules without this function having to know which.
+  TextStyle? applyHeight(TextStyle? s) => lineHeightOverride != null
+      ? (s ?? const TextStyle()).copyWith(height: lineHeightOverride)
+      : s;
+
+  if (errorOverride != null) {
+    final errorStyle = (style.errorStyle ?? theme.textTheme.bodySmall)
+        ?.copyWith(color: theme.colorScheme.error);
+    return Text(
+      errorOverride,
+      style: applyHeight(errorStyle),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  var desc = descriptionText;
+  if (desc != null && desc.isNotEmpty) {
+    desc += requiredIndicatorSuffixFor(
+      style.requiredIndicatorOnDescription,
+      hasRequired: hasRequired,
+      isEditable: isEditable,
+    );
+  }
   final textStyle = style.descriptionStyle ?? theme.textTheme.bodySmall;
-  return Padding(
-    padding: EdgeInsets.only(top: style.errorFieldGap),
-    child: Text(
-      (desc != null && desc.isNotEmpty) ? desc : ' ',
-      style: (desc != null && desc.isNotEmpty)
-          ? textStyle
-          : textStyle?.copyWith(color: Colors.transparent),
-    ),
+  final effectiveStyle = applyHeight(
+    (desc != null && desc.isNotEmpty)
+        ? textStyle
+        : textStyle?.copyWith(color: Colors.transparent),
+  );
+  return Text(
+    (desc != null && desc.isNotEmpty) ? desc : ' ',
+    style: effectiveStyle,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
   );
 }

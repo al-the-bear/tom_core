@@ -122,18 +122,21 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
               ],
             ),
             const SizedBox(height: 8),
-            TomMultiObservableBuilder(
-              observables: [_form, _status],
-              builder: (context) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${TomCtr.text('demo5.status', 'label')}: ${_status.get()}'),
-                      const SizedBox(height: 4),
-                      Text('${TomCtr.text('demo5.status', 'dirty')}: ${_form.isDirty}'),
-                    ],
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => TomMultiObservableBuilder(
+                observables: [_status],
+                builder: (context) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${TomCtr.text('demo5.status', 'label')}: ${_status.get()}'),
+                        const SizedBox(height: 4),
+                        Text('${TomCtr.text('demo5.status', 'dirty')}: ${_form.isDirty}'),
+                      ],
+                    ),
                   ),
                 ),
               ),

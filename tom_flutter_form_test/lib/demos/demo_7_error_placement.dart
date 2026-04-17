@@ -19,8 +19,10 @@ import '../state/application_state.dart';
 ///   • [ErrorPlacement.below]       — red caption below the input (default).
 ///   • [ErrorPlacement.above]       — red caption above the input.
 ///   • [ErrorPlacement.both]        — caption above *and* below.
-///   • [ErrorPlacement.replaceHint] — error text takes the hint slot inside
-///     the input (compact). Only visible while the input is empty.
+///   • [ErrorPlacement.replaceDescription] — error text takes the description
+///     (helper-text) slot below the field. If no description is set, the
+///     error still appears — the slot materialises for the error. No
+///     separate error caption is rendered.
 class Demo7ErrorPlacement extends StatefulWidget {
   const Demo7ErrorPlacement({super.key});
 
@@ -139,9 +141,10 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
             const _Bullet(
                 'both — caption is mirrored above and below. Useful when users may not see one side.'),
             const _Bullet(
-                'replaceHint — error text takes over the hint slot inside the input. Compact and '
-                'good when form real-estate is scarce, but note the error hides itself as soon as the '
-                'user types (same visibility as a hint).'),
+                'replaceDescription — error text takes over the description (helper-text) slot '
+                'below the field. If no description was set, the slot materialises for the error. '
+                'Compact layouts benefit: no extra error row, but the error stays visible while '
+                'typing (unlike the placeholder).'),
             const SizedBox(height: 8),
             Text(
               'Message resolution',
@@ -183,8 +186,8 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
                 ButtonSegment(value: ErrorPlacement.above, label: Text('above')),
                 ButtonSegment(value: ErrorPlacement.both, label: Text('both')),
                 ButtonSegment(
-                    value: ErrorPlacement.replaceHint,
-                    label: Text('replaceHint')),
+                    value: ErrorPlacement.replaceDescription,
+                    label: Text('replaceDescription')),
               ],
               selected: {_errorPlacement},
               onSelectionChanged: (s) =>

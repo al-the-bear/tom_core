@@ -21,9 +21,11 @@ class TomFieldStyle {
   // --- Anatomy placements --------------------------------------------------
 
   final LabelPlacement labelPlacement;
+  final List<(double, LabelPlacement)> labelPlacementBpOverrides;
   final ErrorPlacement errorPlacement;
   final RequiredIndicator requiredIndicator;
   final RequiredIndicator requiredIndicatorOnHint;
+  final RequiredIndicator requiredIndicatorOnDescription;
   final DescriptionPlacement descriptionPlacement;
   final ActionIconPlacement actionIconPlacement;
 
@@ -45,14 +47,47 @@ class TomFieldStyle {
 
   // --- Typography ----------------------------------------------------------
 
+  /// Style for the user-entered text inside the field (TextField value,
+  /// Dropdown selected label). Distinct from [labelStyle] so the label can
+  /// be bold while the typed value follows a different weight/opacity.
+  final TextStyle? inputStyle;
   final TextStyle? labelStyle;
+  final List<(double, TextStyle)> labelStyleBpOverrides;
   final TextStyle? hintStyle;
+  final List<(double, TextStyle)> hintStyleBpOverrides;
+
+  /// Forced font weight for the hint (placeholder). Applied on top of
+  /// [hintStyle] regardless of what weight the theme's bodyMedium carries —
+  /// so bold labels don't drag the hint along with them.
+  ///
+  /// Default: `FontWeight.w400`.
+  /// Set to `null` to inherit the theme's weight.
+  final FontWeight? hintFontWeight;
+
+  /// Alpha multiplier applied to the hint's effective color, rendering it
+  /// visually subordinate to the label. Clamped to `[0, 1]`.
+  ///
+  /// Default: `0.7`.
+  /// Set to `null` to skip the opacity adjustment (i.e., full opacity).
+  final double? hintOpacity;
+
   final TextStyle? errorStyle;
   final TextStyle? descriptionStyle;
 
   // --- State visuals -------------------------------------------------------
 
+  /// Opacity applied to the whole field when the effective auth state is
+  /// [TomAuthState.disabled]. Default `0.6` — clearly dimmed so the field
+  /// reads as "not available". Lower than [readOnlyOpacity] to keep the two
+  /// states visually distinct on fields that both route through
+  /// `enabled: false` (text inputs, dropdowns).
   final double disabledOpacity;
+
+  /// Opacity applied to the whole field when the effective auth state is
+  /// [TomAuthState.read]. Default `0.8` — a light dim so the content is
+  /// still comfortably readable but the field obviously differs from an
+  /// editable one. Set to `1.0` to paint readonly fields at full opacity.
+  final double readOnlyOpacity;
   final WidgetStateProperty<Color>? readOnlyBackground;
   final WidgetStateProperty<Color>? focusedBackground;
 
@@ -64,9 +99,11 @@ class TomFieldStyle {
 
   const TomFieldStyle({
     this.labelPlacement = LabelPlacement.above,
+    this.labelPlacementBpOverrides = const [],
     this.errorPlacement = ErrorPlacement.below,
     this.requiredIndicator = RequiredIndicator.asterisk,
     this.requiredIndicatorOnHint = RequiredIndicator.none,
+    this.requiredIndicatorOnDescription = RequiredIndicator.none,
     this.descriptionPlacement = DescriptionPlacement.below,
     this.actionIconPlacement = ActionIconPlacement.trailing,
     this.labelFieldGap = 4.0,
@@ -79,11 +116,17 @@ class TomFieldStyle {
     this.fieldBorder,
     this.focusedBorder,
     this.errorBorder,
+    this.inputStyle,
     this.labelStyle,
+    this.labelStyleBpOverrides = const [],
     this.hintStyle,
+    this.hintStyleBpOverrides = const [],
+    this.hintFontWeight = FontWeight.w400,
+    this.hintOpacity = 0.7,
     this.errorStyle,
     this.descriptionStyle,
-    this.disabledOpacity = 0.5,
+    this.disabledOpacity = 0.6,
+    this.readOnlyOpacity = 0.8,
     this.readOnlyBackground,
     this.focusedBackground,
     this.errorBorderEnabled = false,
@@ -137,9 +180,11 @@ class TomFieldStyle {
 
   TomFieldStyle copyWith({
     LabelPlacement? labelPlacement,
+    List<(double, LabelPlacement)>? labelPlacementBpOverrides,
     ErrorPlacement? errorPlacement,
     RequiredIndicator? requiredIndicator,
     RequiredIndicator? requiredIndicatorOnHint,
+    RequiredIndicator? requiredIndicatorOnDescription,
     DescriptionPlacement? descriptionPlacement,
     ActionIconPlacement? actionIconPlacement,
     double? labelFieldGap,
@@ -151,11 +196,19 @@ class TomFieldStyle {
     InputBorder? fieldBorder,
     InputBorder? focusedBorder,
     InputBorder? errorBorder,
+    TextStyle? inputStyle,
     TextStyle? labelStyle,
+    List<(double, TextStyle)>? labelStyleBpOverrides,
     TextStyle? hintStyle,
+    List<(double, TextStyle)>? hintStyleBpOverrides,
+    FontWeight? hintFontWeight,
+    bool hintFontWeightSet = false,
+    double? hintOpacity,
+    bool hintOpacitySet = false,
     TextStyle? errorStyle,
     TextStyle? descriptionStyle,
     double? disabledOpacity,
+    double? readOnlyOpacity,
     WidgetStateProperty<Color>? readOnlyBackground,
     WidgetStateProperty<Color>? focusedBackground,
     bool? errorBorderEnabled,
@@ -165,10 +218,14 @@ class TomFieldStyle {
   }) {
     return TomFieldStyle(
       labelPlacement: labelPlacement ?? this.labelPlacement,
+      labelPlacementBpOverrides:
+          labelPlacementBpOverrides ?? this.labelPlacementBpOverrides,
       errorPlacement: errorPlacement ?? this.errorPlacement,
       requiredIndicator: requiredIndicator ?? this.requiredIndicator,
       requiredIndicatorOnHint:
           requiredIndicatorOnHint ?? this.requiredIndicatorOnHint,
+      requiredIndicatorOnDescription: requiredIndicatorOnDescription ??
+          this.requiredIndicatorOnDescription,
       descriptionPlacement:
           descriptionPlacement ?? this.descriptionPlacement,
       actionIconPlacement: actionIconPlacement ?? this.actionIconPlacement,
@@ -183,11 +240,22 @@ class TomFieldStyle {
       fieldBorder: fieldBorder ?? this.fieldBorder,
       focusedBorder: focusedBorder ?? this.focusedBorder,
       errorBorder: errorBorder ?? this.errorBorder,
+      inputStyle: inputStyle ?? this.inputStyle,
       labelStyle: labelStyle ?? this.labelStyle,
+      labelStyleBpOverrides:
+          labelStyleBpOverrides ?? this.labelStyleBpOverrides,
       hintStyle: hintStyle ?? this.hintStyle,
+      hintStyleBpOverrides:
+          hintStyleBpOverrides ?? this.hintStyleBpOverrides,
+      // Explicit-null semantics: a caller passing `hintFontWeight: null` with
+      // `hintFontWeightSet: true` clears the default (inherit theme weight).
+      hintFontWeight:
+          hintFontWeightSet ? hintFontWeight : this.hintFontWeight,
+      hintOpacity: hintOpacitySet ? hintOpacity : this.hintOpacity,
       errorStyle: errorStyle ?? this.errorStyle,
       descriptionStyle: descriptionStyle ?? this.descriptionStyle,
       disabledOpacity: disabledOpacity ?? this.disabledOpacity,
+      readOnlyOpacity: readOnlyOpacity ?? this.readOnlyOpacity,
       readOnlyBackground: readOnlyBackground ?? this.readOnlyBackground,
       focusedBackground: focusedBackground ?? this.focusedBackground,
       errorBorderEnabled: errorBorderEnabled ?? this.errorBorderEnabled,
@@ -221,9 +289,11 @@ class TomStringInputStyle extends TomFieldPartialStyle {
   const TomStringInputStyle({
     this.variant,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -235,11 +305,17 @@ class TomStringInputStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -256,9 +332,11 @@ enum StringInputVariant { material, bordered }
 class TomDropdownStyle extends TomFieldPartialStyle {
   const TomDropdownStyle({
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -270,11 +348,17 @@ class TomDropdownStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -295,9 +379,11 @@ class TomSliderStyle extends TomFieldPartialStyle {
     this.activeColor,
     this.thumbColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -309,11 +395,17 @@ class TomSliderStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -332,9 +424,11 @@ class TomCheckboxStyle extends TomFieldPartialStyle {
     this.fillColor,
     this.checkColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -346,11 +440,17 @@ class TomCheckboxStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -369,9 +469,11 @@ class TomSwitchStyle extends TomFieldPartialStyle {
     this.thumbColor,
     this.trackColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -383,11 +485,17 @@ class TomSwitchStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -406,9 +514,11 @@ class TomSegmentedStyle extends TomFieldPartialStyle {
     this.selectedColor,
     this.unselectedColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -420,11 +530,17 @@ class TomSegmentedStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -441,9 +557,11 @@ class TomRadioGroupStyle extends TomFieldPartialStyle {
   const TomRadioGroupStyle({
     this.selectedColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -455,11 +573,17 @@ class TomRadioGroupStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -473,9 +597,11 @@ class TomRadioGroupStyle extends TomFieldPartialStyle {
 class TomDatePickerStyle extends TomFieldPartialStyle {
   const TomDatePickerStyle({
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -487,11 +613,17 @@ class TomDatePickerStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -505,9 +637,11 @@ class TomDatePickerStyle extends TomFieldPartialStyle {
 class TomTimePickerStyle extends TomFieldPartialStyle {
   const TomTimePickerStyle({
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -519,11 +653,17 @@ class TomTimePickerStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -537,9 +677,11 @@ class TomTimePickerStyle extends TomFieldPartialStyle {
 class TomFilePickerStyle extends TomFieldPartialStyle {
   const TomFilePickerStyle({
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -551,11 +693,17 @@ class TomFilePickerStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -574,9 +722,11 @@ class TomChipsStyle extends TomFieldPartialStyle {
     this.selectedColor,
     this.deletableColor,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -588,11 +738,17 @@ class TomChipsStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -611,9 +767,11 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
     this.minLines,
     this.maxLines,
     super.labelPlacement,
+    super.labelPlacementBpOverrides,
     super.errorPlacement,
     super.requiredIndicator,
     super.requiredIndicatorOnHint,
+    super.requiredIndicatorOnDescription,
     super.descriptionPlacement,
     super.actionIconPlacement,
     super.labelFieldGap,
@@ -625,11 +783,17 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
+    super.inputStyle,
     super.labelStyle,
+    super.labelStyleBpOverrides,
     super.hintStyle,
+    super.hintStyleBpOverrides,
+    super.hintFontWeight,
+    super.hintOpacity,
     super.errorStyle,
     super.descriptionStyle,
     super.disabledOpacity,
+    super.readOnlyOpacity,
     super.readOnlyBackground,
     super.focusedBackground,
     super.errorBorderEnabled,
@@ -650,9 +814,11 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
 
 class TomFieldPartialStyle {
   final LabelPlacement? labelPlacement;
+  final List<(double, LabelPlacement)> labelPlacementBpOverrides;
   final ErrorPlacement? errorPlacement;
   final RequiredIndicator? requiredIndicator;
   final RequiredIndicator? requiredIndicatorOnHint;
+  final RequiredIndicator? requiredIndicatorOnDescription;
   final DescriptionPlacement? descriptionPlacement;
   final ActionIconPlacement? actionIconPlacement;
 
@@ -668,12 +834,27 @@ class TomFieldPartialStyle {
   final InputBorder? focusedBorder;
   final InputBorder? errorBorder;
 
+  final TextStyle? inputStyle;
   final TextStyle? labelStyle;
+  final List<(double, TextStyle)> labelStyleBpOverrides;
   final TextStyle? hintStyle;
+  final List<(double, TextStyle)> hintStyleBpOverrides;
+
+  /// Per-widget override for [TomFieldStyle.hintFontWeight]. Null means
+  /// "inherit the umbrella default". The explicit-null semantics (clear the
+  /// weight entirely) live on [TomFieldStyle.copyWith], not here — this
+  /// partial class uses nullability for "unset".
+  final FontWeight? hintFontWeight;
+
+  /// Per-widget override for [TomFieldStyle.hintOpacity]. Null means
+  /// "inherit the umbrella default".
+  final double? hintOpacity;
+
   final TextStyle? errorStyle;
   final TextStyle? descriptionStyle;
 
   final double? disabledOpacity;
+  final double? readOnlyOpacity;
   final WidgetStateProperty<Color>? readOnlyBackground;
   final WidgetStateProperty<Color>? focusedBackground;
 
@@ -685,9 +866,11 @@ class TomFieldPartialStyle {
 
   const TomFieldPartialStyle({
     this.labelPlacement,
+    this.labelPlacementBpOverrides = const [],
     this.errorPlacement,
     this.requiredIndicator,
     this.requiredIndicatorOnHint,
+    this.requiredIndicatorOnDescription,
     this.descriptionPlacement,
     this.actionIconPlacement,
     this.labelFieldGap,
@@ -699,11 +882,17 @@ class TomFieldPartialStyle {
     this.fieldBorder,
     this.focusedBorder,
     this.errorBorder,
+    this.inputStyle,
     this.labelStyle,
+    this.labelStyleBpOverrides = const [],
     this.hintStyle,
+    this.hintStyleBpOverrides = const [],
+    this.hintFontWeight,
+    this.hintOpacity,
     this.errorStyle,
     this.descriptionStyle,
     this.disabledOpacity,
+    this.readOnlyOpacity,
     this.readOnlyBackground,
     this.focusedBackground,
     this.errorBorderEnabled,
@@ -797,14 +986,25 @@ class TomFormStyle {
   /// rest. Returns the base unchanged when [over] is null.
   TomFieldStyle resolveFieldStyle(TomFieldPartialStyle? over, double width) {
     final base = defaults;
-    if (over == null) return base;
+    over ??= const TomFieldPartialStyle();
 
     return TomFieldStyle(
-      labelPlacement: over.labelPlacement ?? base.labelPlacement,
+      labelPlacement: base.pickPair<LabelPlacement>(
+        width,
+        over.labelPlacement,
+        over.labelPlacementBpOverrides,
+        base.labelPlacement,
+        base.labelPlacementBpOverrides,
+      ),
+      labelPlacementBpOverrides: over.labelPlacement != null
+          ? over.labelPlacementBpOverrides
+          : base.labelPlacementBpOverrides,
       errorPlacement: over.errorPlacement ?? base.errorPlacement,
       requiredIndicator: over.requiredIndicator ?? base.requiredIndicator,
       requiredIndicatorOnHint:
           over.requiredIndicatorOnHint ?? base.requiredIndicatorOnHint,
+      requiredIndicatorOnDescription: over.requiredIndicatorOnDescription ??
+          base.requiredIndicatorOnDescription,
       descriptionPlacement:
           over.descriptionPlacement ?? base.descriptionPlacement,
       actionIconPlacement:
@@ -835,11 +1035,44 @@ class TomFormStyle {
       fieldBorder: over.fieldBorder ?? base.fieldBorder,
       focusedBorder: over.focusedBorder ?? base.focusedBorder,
       errorBorder: over.errorBorder ?? base.errorBorder,
-      labelStyle: over.labelStyle ?? base.labelStyle,
-      hintStyle: over.hintStyle ?? base.hintStyle,
+      inputStyle: over.inputStyle ?? base.inputStyle,
+      labelStyle: base.pickPair<TextStyle?>(
+        width,
+        over.labelStyle,
+        over.labelStyleBpOverrides
+            .map((e) => (e.$1, e.$2 as TextStyle?))
+            .toList(),
+        base.labelStyle,
+        base.labelStyleBpOverrides
+            .map((e) => (e.$1, e.$2 as TextStyle?))
+            .toList(),
+      ),
+      labelStyleBpOverrides: over.labelStyle != null
+          ? over.labelStyleBpOverrides
+          : base.labelStyleBpOverrides,
+      hintStyle: base.pickPair<TextStyle?>(
+        width,
+        over.hintStyle,
+        over.hintStyleBpOverrides
+            .map((e) => (e.$1, e.$2 as TextStyle?))
+            .toList(),
+        base.hintStyle,
+        base.hintStyleBpOverrides
+            .map((e) => (e.$1, e.$2 as TextStyle?))
+            .toList(),
+      ),
+      hintStyleBpOverrides: over.hintStyle != null
+          ? over.hintStyleBpOverrides
+          : base.hintStyleBpOverrides,
+      // Partial override null = inherit from base, so `over ?? base` is
+      // correct. The explicit-null "disable" case flows via copyWith on the
+      // base, not through the partial.
+      hintFontWeight: over.hintFontWeight ?? base.hintFontWeight,
+      hintOpacity: over.hintOpacity ?? base.hintOpacity,
       errorStyle: over.errorStyle ?? base.errorStyle,
       descriptionStyle: over.descriptionStyle ?? base.descriptionStyle,
       disabledOpacity: over.disabledOpacity ?? base.disabledOpacity,
+      readOnlyOpacity: over.readOnlyOpacity ?? base.readOnlyOpacity,
       readOnlyBackground: over.readOnlyBackground ?? base.readOnlyBackground,
       focusedBackground: over.focusedBackground ?? base.focusedBackground,
       errorBorderEnabled: base.pickPair<bool>(
@@ -926,62 +1159,74 @@ class TomFormStyle {
       return identical(current, originValue) ? themed : current;
     }
 
-    InputBorder? pickBorder(
-      InputBorder? current,
-      InputBorder? originValue,
-      InputBorder themed,
-    ) {
-      return identical(current, originValue) ? themed : current;
+    // Preserve the border variant (null stays null, OutlineInputBorder stays
+    // outlined, UnderlineInputBorder stays underlined) — only swap the
+    // stroke color to the themed one, keeping the original width. This
+    // keeps each preset's visual identity across `withTheme` (including
+    // custom widths set by the user) while still adopting theme colors.
+    InputBorder? reTintBorder(InputBorder? current, Color color) {
+      if (current == null) return null;
+      if (current is OutlineInputBorder) {
+        final side = current.borderSide.copyWith(color: color);
+        return current.copyWith(borderSide: side);
+      }
+      if (current is UnderlineInputBorder) {
+        final side = current.borderSide.copyWith(color: color);
+        return current.copyWith(borderSide: side);
+      }
+      return current;
     }
 
+    // Colour policy per slot:
+    //   • label / input → preserve whatever colour the theme's bodyMedium
+    //     carries. If the theme creator set `bodyMedium.color` that colour
+    //     wins; if they left it null, the rendered Text falls through to
+    //     the ambient DefaultTextStyle (onSurface by convention).
+    //   • error → always `cs.error` (semantic, not theme-choosable).
+    //   • hint / description → muted via `cs.onSurfaceVariant` so they read
+    //     as secondary regardless of what the theme sets for bodyMedium.
+    TextStyle? withColorOrInherit(TextStyle? base) => base;
+    TextStyle? withColor(TextStyle? base, Color color) =>
+        base?.copyWith(color: color);
+
     final themedDefaults = defaults.copyWith(
+      inputStyle: pickTextStyle(
+        defaults.inputStyle,
+        origin.inputStyle,
+        withColorOrInherit(tt.bodyMedium),
+      ),
       labelStyle: pickTextStyle(
         defaults.labelStyle,
         origin.labelStyle,
-        tt.bodyMedium,
+        withColorOrInherit(tt.bodyMedium),
       ),
       hintStyle: pickTextStyle(
         defaults.hintStyle,
         origin.hintStyle,
-        tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+        withColor(tt.bodyMedium, cs.onSurfaceVariant),
       ),
       errorStyle: pickTextStyle(
         defaults.errorStyle,
         origin.errorStyle,
-        tt.bodySmall?.copyWith(color: cs.error),
+        withColor(tt.bodySmall, cs.error),
       ),
       descriptionStyle: pickTextStyle(
         defaults.descriptionStyle,
         origin.descriptionStyle,
-        tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+        withColor(tt.bodySmall, cs.onSurfaceVariant),
       ),
-      fieldBorder: pickBorder(
-        defaults.fieldBorder,
-        origin.fieldBorder,
-        OutlineInputBorder(borderSide: BorderSide(color: cs.outline)),
-      ),
-      focusedBorder: pickBorder(
-        defaults.focusedBorder,
-        origin.focusedBorder,
-        OutlineInputBorder(
-          borderSide: BorderSide(color: cs.primary, width: 2),
-        ),
-      ),
-      errorBorder: pickBorder(
-        defaults.errorBorder,
-        origin.errorBorder,
-        OutlineInputBorder(borderSide: BorderSide(color: cs.error)),
-      ),
+      fieldBorder: reTintBorder(defaults.fieldBorder, cs.outline),
+      focusedBorder: reTintBorder(defaults.focusedBorder, cs.primary),
+      errorBorder: reTintBorder(defaults.errorBorder, cs.error),
       focusedBackground: pickStateColor(
         defaults.focusedBackground,
         origin.focusedBackground,
         WidgetStatePropertyAll(cs.surfaceContainerHighest),
       ),
-      readOnlyBackground: pickStateColor(
-        defaults.readOnlyBackground,
-        origin.readOnlyBackground,
-        WidgetStatePropertyAll(cs.surfaceContainer),
-      ),
+      // readOnlyBackground intentionally NOT auto-derived: a read-only field
+      // should not spontaneously grow a grey fill just because a theme is in
+      // play. Users who want the visual distinction set it explicitly via
+      // style.readOnlyBackground or the `readOnlyBackground` JSON property.
     );
 
     return copyWith(defaults: themedDefaults);

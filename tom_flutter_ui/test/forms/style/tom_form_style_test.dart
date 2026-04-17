@@ -43,8 +43,21 @@ void main() {
         styled.defaults.labelStyle,
         theme.textTheme.bodyMedium,
       );
-      expect(styled.defaults.fieldBorder, isA<OutlineInputBorder>());
+      // fieldBorder is left as the preset had it — null stays null so
+      // withTheme never adds a border where none was declared.
+      expect(styled.defaults.fieldBorder, isNull);
       expect(styled.defaults.focusedBackground, isNotNull);
+    });
+
+    test('withTheme preserves border variant but recolors it', () {
+      final theme = ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFFF00FF)),
+      );
+      final styled = TomFormStyle.bordered.withTheme(theme);
+      expect(styled.defaults.fieldBorder, isA<OutlineInputBorder>());
+      final side =
+          (styled.defaults.fieldBorder! as OutlineInputBorder).borderSide;
+      expect(side.color, theme.colorScheme.outline);
     });
 
     test('preserves user-set labelStyle across withTheme', () {
@@ -74,6 +87,58 @@ void main() {
         styled.stringInputStyle?.variant,
         StringInputVariant.bordered,
       );
+    });
+  });
+
+  group('TomFormStyle — resolveFieldStyle breakpoints', () {
+    const style = TomFormStyle(
+      defaults: TomFieldStyle(
+        labelPlacement: LabelPlacement.floating,
+        labelPlacementBpOverrides: [
+          (400, LabelPlacement.above),
+          (700, LabelPlacement.inline),
+        ],
+        labelStyle: TextStyle(fontSize: 11),
+        labelStyleBpOverrides: [
+          (400, TextStyle(fontSize: 13)),
+          (700, TextStyle(fontSize: 15)),
+        ],
+        hintStyle: TextStyle(fontSize: 11),
+        hintStyleBpOverrides: [
+          (400, TextStyle(fontSize: 13)),
+          (700, TextStyle(fontSize: 15)),
+        ],
+      ),
+    );
+
+    test('labelPlacement resolves by width', () {
+      expect(style.resolveFieldStyle(null, 300).labelPlacement,
+          LabelPlacement.floating);
+      expect(style.resolveFieldStyle(null, 500).labelPlacement,
+          LabelPlacement.above);
+      expect(style.resolveFieldStyle(null, 900).labelPlacement,
+          LabelPlacement.inline);
+    });
+
+    test('labelStyle and hintStyle resolve by width', () {
+      expect(style.resolveFieldStyle(null, 300).labelStyle?.fontSize, 11);
+      expect(style.resolveFieldStyle(null, 500).labelStyle?.fontSize, 13);
+      expect(style.resolveFieldStyle(null, 900).labelStyle?.fontSize, 15);
+      expect(style.resolveFieldStyle(null, 300).hintStyle?.fontSize, 11);
+      expect(style.resolveFieldStyle(null, 900).hintStyle?.fontSize, 15);
+    });
+
+    test('per-widget override atomically replaces the base pair', () {
+      final withOverride = style.copyWith(
+        stringInputStyle: const TomStringInputStyle(
+          labelPlacement: LabelPlacement.hidden,
+        ),
+      );
+      final resolved = withOverride.resolveFieldStyle(
+        withOverride.stringInputStyle,
+        900,
+      );
+      expect(resolved.labelPlacement, LabelPlacement.hidden);
     });
   });
 

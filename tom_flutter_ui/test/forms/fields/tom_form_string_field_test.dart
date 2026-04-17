@@ -733,9 +733,21 @@ void main() {
 
       final textField = tester.widget<TextField>(find.byType(TextField));
       final decoration = textField.decoration!;
-      expect(decoration.enabledBorder, outlinedError);
-      expect(decoration.focusedBorder, outlinedError);
-      expect(decoration.border, outlinedError);
+      // withTheme retints border colors but preserves widths.
+      // The error border had width=2; the field border had width=1.
+      // Verify the error border (not the field border) was applied.
+      for (final border in [
+        decoration.enabledBorder,
+        decoration.focusedBorder,
+        decoration.border,
+      ]) {
+        expect(border, isA<OutlineInputBorder>(), reason: 'border type');
+        expect(
+          (border! as OutlineInputBorder).borderSide.width,
+          2,
+          reason: 'error border width applied',
+        );
+      }
     });
 
     testWidgets(
@@ -753,8 +765,12 @@ void main() {
 
         final textField = tester.widget<TextField>(find.byType(TextField));
         final decoration = textField.decoration!;
-        expect(decoration.enabledBorder, outlinedField);
-        expect(decoration.focusedBorder, outlinedField);
+        // Error border disabled — enabled and focused borders keep the
+        // field border (width 1) rather than the error border (width 2).
+        for (final border in [decoration.enabledBorder, decoration.focusedBorder]) {
+          expect(border, isA<OutlineInputBorder>());
+          expect((border! as OutlineInputBorder).borderSide.width, 1);
+        }
       },
     );
 
