@@ -97,14 +97,22 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
           final form = _buildFormColumn(context);
           final info = _buildInfoColumn(context);
           if (isWide) {
+            // Each column gets its own scroll view so tall content on one
+            // side doesn't force the other to overflow.
             return Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 3, child: form),
+                  Expanded(
+                    flex: 3,
+                    child: SingleChildScrollView(child: form),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(flex: 2, child: info),
+                  Expanded(
+                    flex: 2,
+                    child: SingleChildScrollView(child: info),
+                  ),
                 ],
               ),
             );

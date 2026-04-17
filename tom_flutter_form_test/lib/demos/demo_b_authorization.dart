@@ -250,9 +250,15 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 3, child: form),
+                  Expanded(
+                    flex: 3,
+                    child: SingleChildScrollView(child: form),
+                  ),
                   const SizedBox(width: 16),
-                  Expanded(flex: 2, child: info),
+                  Expanded(
+                    flex: 2,
+                    child: SingleChildScrollView(child: info),
+                  ),
                 ],
               ),
             );

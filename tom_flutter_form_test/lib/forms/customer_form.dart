@@ -69,15 +69,17 @@ class CustomerForm extends TomForm<TomClass> {
 
   // --- Nested address forms -------------------------------------------------
 
+  // Nested forms are discovered via TomClass reflection (getMembers). Do NOT
+  // pass `parent: this` — `parentForm` is a getter so reflection would
+  // register it as a child of the inner form, creating a cycle back to the
+  // outer form (seen as infinite recursion in TomClass.mute / setValues).
   late final billing = AddressForm(
     fieldId: 'billing',
-    parent: this,
     authGroup: billingGroup,
   );
 
   late final shipping = AddressForm(
     fieldId: 'shipping',
-    parent: this,
     authGroup: shippingGroup,
   );
 }
