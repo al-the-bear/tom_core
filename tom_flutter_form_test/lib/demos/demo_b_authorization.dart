@@ -101,8 +101,8 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
         shippingGroup: shippingGroup,
       ),
     );
-    _wireAuthorizer(form);
-    _wireUIStateController(form);
+    _applyAuthorizer(form);
+    _applyUIStateController(form);
     form.addListener(_inspector);
     // Bind every form in the nested tree separately so each level's initial
     // snapshot matches its current values — otherwise nested fields would
@@ -149,39 +149,53 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
     if (mounted) setState(() {});
   }
 
-  void _wireAuthorizer(CustomerForm form) {
-    if (!_authorizerEnabled) return;
-    // "Finalized orders → read-only": when customerTier == 'platinum',
-    // narrow the whole form's address sections to read.
-    TomAuthState resolve(TomAuthState resourceAuth) {
-      if (form.customerTier.get() == 'platinum') return TomAuthState.read;
-      return resourceAuth;
-    }
-
-    final authorizer = TomAuthorizer(
-      strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
-      resolve: resolve,
-    );
-    for (final f in form.billing.fields.values) {
-      f.authorizer = authorizer;
-    }
-    for (final f in form.shipping.fields.values) {
-      f.authorizer = authorizer;
+  /// Applies or removes the demo authorizer on billing + shipping fields in
+  /// place. Mutating the existing form's fields (instead of rebuilding the
+  /// whole form) preserves every field widget's State, so the TextField
+  /// rebuilds with the new `enabled` value instead of remaining wired to a
+  /// disposed field instance.
+  void _applyAuthorizer(CustomerForm form) {
+    if (_authorizerEnabled) {
+      // "Finalized orders → read-only": when customerTier == 'platinum',
+      // narrow the address sections to read via authorizerNarrowsOnly.
+      final authorizer = TomAuthorizer(
+        strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+        resolve: (resourceAuth) =>
+            form.customerTier.get() == 'platinum'
+                ? TomAuthState.read
+                : resourceAuth,
+      );
+      for (final f in form.billing.fields.values) {
+        f.authorizer = authorizer;
+      }
+      for (final f in form.shipping.fields.values) {
+        f.authorizer = authorizer;
+      }
+    } else {
+      for (final f in form.billing.fields.values) {
+        f.authorizer = null;
+      }
+      for (final f in form.shipping.fields.values) {
+        f.authorizer = null;
+      }
     }
   }
 
-  void _wireUIStateController(CustomerForm form) {
-    if (!_uiStateControllerEnabled) return;
-    // "Disable email while notes is empty" — contrived but demonstrates the
-    // build-time, data-dependent narrowing.
-    form.email.uiStateController = TomUIStateController(
-      resolve: (currentAuth, _) {
-        if (form.notes.get().toString().trim().isEmpty) {
-          return TomAuthState.disabled;
-        }
-        return currentAuth;
-      },
-    );
+  void _applyUIStateController(CustomerForm form) {
+    if (_uiStateControllerEnabled) {
+      // "Disable email while notes is empty" — contrived but demonstrates
+      // build-time, data-dependent narrowing.
+      form.email.uiStateController = TomUIStateController(
+        resolve: (currentAuth, _) {
+          if (form.notes.get().toString().trim().isEmpty) {
+            return TomAuthState.disabled;
+          }
+          return currentAuth;
+        },
+      );
+    } else {
+      form.email.uiStateController = null;
+    }
   }
 
   // --- Control-panel callbacks ---------------------------------------------
@@ -222,12 +236,16 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
 
   void _onAuthorizerToggled(bool enabled) {
     setState(() => _authorizerEnabled = enabled);
-    _rebuildForm();
+    final form = _form;
+    if (form != null) _applyAuthorizer(form);
+    _snapshotAuthAndRebuild();
   }
 
   void _onUIStateControllerToggled(bool enabled) {
     setState(() => _uiStateControllerEnabled = enabled);
-    _rebuildForm();
+    final form = _form;
+    if (form != null) _applyUIStateController(form);
+    _snapshotAuthAndRebuild();
   }
 
   AuthGroupMode get _currentGroupMode =>

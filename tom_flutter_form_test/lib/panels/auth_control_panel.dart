@@ -158,26 +158,27 @@ class AuthControlPanel extends StatelessWidget {
         ),
       ];
     }
+    // Stack the label above the dropdown so the full basePath is always
+    // readable — a Row with a fixed-width label ellipsises common paths
+    // like `demoB.customer.customerTier` into uselessness.
     return [
       for (final entry in fieldOverrides.entries)
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(
-                width: 140,
-                child: Text(
-                  entry.key,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+              SelectableText(
+                entry.key,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
               ),
-              Expanded(
-                child: _buildAuthDropdown(
-                  context,
-                  entry.value,
-                  (v) => onFieldOverrideChanged(entry.key, v),
-                ),
+              _buildAuthDropdown(
+                context,
+                entry.value,
+                (v) => onFieldOverrideChanged(entry.key, v),
               ),
             ],
           ),
