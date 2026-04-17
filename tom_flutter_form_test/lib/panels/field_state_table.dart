@@ -94,10 +94,10 @@ class FieldStateTable extends StatelessWidget {
     final validation = field.validationState;
     final color = _rowColour(theme, auth, validation);
     final textStyle = theme.textTheme.bodySmall;
-    final value = field.get();
-    final displayValue = field.obscureText
-        ? (value is String && value.isNotEmpty ? '••••••' : '')
-        : _short(value.toString());
+    // Show the actual value even for obscured fields — this table is for
+    // debugging, so password/obscured fields are rendered in plaintext here
+    // even though the form field itself still masks its own input.
+    final displayValue = _short(field.get().toString());
     return TableRow(
       decoration: BoxDecoration(color: color),
       children: [
