@@ -88,6 +88,10 @@ pubspec.lock
 *.reflectable.dart
 reflectable.dart
 
+# Flutter golden-file test failure artifacts (master/test/diff PNGs,
+# regenerated on every failing run)
+**/test/failures/
+
 # Flutter build
 **/Flutter/ephemeral/
 **/Flutter/App.framework
