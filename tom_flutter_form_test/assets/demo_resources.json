@@ -415,24 +415,101 @@
 
   "demoC": {
     "customer": {
-      "fullName":     { "label": "Full name", "hint": "First and last name" },
-      "email":        { "label": "Email",    "hint": "name@example.com" },
-      "phone":        { "label": "Phone",    "hint": "+1 555 0100" },
-      "customerTier": { "label": "Customer tier" },
-      "notes":        { "label": "Notes (Classic field)" },
+      "fullName": {
+        "label": "Full name",
+        "hint": "First and last name, e.g. Jane Doe",
+        "description": "Appears on receipts and invoices.",
+        "error": {
+          "required": "Full name is required.",
+          "minLength": "Full name must be at least {min} characters."
+        }
+      },
+      "email": {
+        "label": "Email",
+        "hint": "name@example.com",
+        "description": "Primary contact for order updates.",
+        "error": {
+          "required": "Email is required.",
+          "email": "Enter a valid email address."
+        }
+      },
+      "phone": {
+        "label": "Phone",
+        "hint": "+1 555 0100",
+        "description": "International format preferred."
+      },
+      "customerTier": {
+        "label": "Customer tier",
+        "hint": "Standard is the default tier",
+        "description": "Drives discounts and priority handling.",
+        "error": {
+          "required": "Please select a customer tier."
+        }
+      },
+      "notes": {
+        "label": "Notes (Classic field)",
+        "hint": "Free-form notes \u2014 Classic field, no async validation",
+        "helperText": "Legacy TomFormStringInputClassic alongside new fields."
+      },
       "billing": {
-        "street":  { "label": "Billing \u2014 Street" },
-        "city":    { "label": "Billing \u2014 City" },
-        "state":   { "label": "Billing \u2014 State" },
-        "zipCode": { "label": "Billing \u2014 ZIP" },
-        "country": { "label": "Billing \u2014 Country" }
+        "street": {
+          "label": "Street",
+          "hint": "Street and number, e.g. 100 Market Street",
+          "description": "Street address where invoices are sent.",
+          "error": { "required": "Billing street is required." }
+        },
+        "city": {
+          "label": "City",
+          "hint": "City or locality",
+          "description": "Billing city for tax calculation.",
+          "error": { "required": "Billing city is required." }
+        },
+        "state": {
+          "label": "State / province",
+          "hint": "Two-letter code or full name",
+          "description": "Optional for countries without states."
+        },
+        "zipCode": {
+          "label": "ZIP / postal code",
+          "hint": "e.g. 94103",
+          "description": "Used for tax rate lookup.",
+          "error": { "required": "Billing ZIP code is required." }
+        },
+        "country": {
+          "label": "Country",
+          "description": "Country where invoices are addressed.",
+          "error": { "required": "Please pick a country." }
+        }
       },
       "shipping": {
-        "street":  { "label": "Shipping \u2014 Street" },
-        "city":    { "label": "Shipping \u2014 City" },
-        "state":   { "label": "Shipping \u2014 State" },
-        "zipCode": { "label": "Shipping \u2014 ZIP" },
-        "country": { "label": "Shipping \u2014 Country" }
+        "street": {
+          "label": "Street",
+          "hint": "Where the order is delivered",
+          "description": "Include apartment or suite numbers.",
+          "error": { "required": "Shipping street is required." }
+        },
+        "city": {
+          "label": "City",
+          "hint": "Destination city",
+          "description": "City of the shipping address.",
+          "error": { "required": "Shipping city is required." }
+        },
+        "state": {
+          "label": "State / province",
+          "hint": "Two-letter code or full name",
+          "description": "Optional for countries without states."
+        },
+        "zipCode": {
+          "label": "ZIP / postal code",
+          "hint": "e.g. 10007",
+          "description": "Required for courier lookups.",
+          "error": { "required": "Shipping ZIP code is required." }
+        },
+        "country": {
+          "label": "Country",
+          "description": "Destination country.",
+          "error": { "required": "Please pick a country." }
+        }
       }
     }
   }

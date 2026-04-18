@@ -8,10 +8,14 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Reusable nested postal-address form.
 ///
-/// Consumers instantiate with a `fieldId` such as `billing` or `shipping`;
-/// the same class therefore drives both sections of [CustomerForm]. The
-/// form tree (`customer.billing`, `customer.shipping`) deliberately mirrors
-/// the state tree on [CustomerProfile].
+/// Consumers instantiate with a `fieldId` such as `billing` or `shipping`.
+/// The form tree (`customer.billing`, `customer.shipping`) mirrors the
+/// state tree on `CustomerProfile`.
+///
+/// Fields are created inside [createFormElements] so they pick up the
+/// form's own scope (outer.formId) when their `basePath` is built —
+/// without that, late-final fields would init under the outer scope only
+/// and billing/shipping sections would clash on identical basePaths.
 @tomReflector
 class AddressForm extends TomForm<TomClass> {
   AddressForm({
@@ -22,39 +26,38 @@ class AddressForm extends TomForm<TomClass> {
     authorizationGroup = authGroup;
   }
 
+  late final TomFormStringInput street;
+  late final TomFormStringInput city;
+  late final TomFormStringInput state;
+  late final TomFormStringInput zipCode;
+  late final TomFormStringDropdown country;
+
   @override
-  void createFormElements() {}
-
-  late final street = TomFormStringInput(
-    'street',
-    '',
-    validators: [Validators.required()],
-  );
-
-  late final city = TomFormStringInput(
-    'city',
-    '',
-    validators: [Validators.required()],
-  );
-
-  late final state = TomFormStringInput(
-    'state',
-    '',
-  );
-
-  late final zipCode = TomFormStringInput(
-    'zipCode',
-    '',
-    validators: [Validators.required()],
-    keyboardType: TextInputType.text,
-  );
-
-  late final country = TomFormStringDropdown(
-    'country',
-    'US',
-    source: countrySource,
-    validators: [Validators.required()],
-  );
+  void createFormElements() {
+    street = TomFormStringInput(
+      'street',
+      '',
+      validators: [Validators.required()],
+    );
+    city = TomFormStringInput(
+      'city',
+      '',
+      validators: [Validators.required()],
+    );
+    state = TomFormStringInput('state', '');
+    zipCode = TomFormStringInput(
+      'zipCode',
+      '',
+      validators: [Validators.required()],
+      keyboardType: TextInputType.text,
+    );
+    country = TomFormStringDropdown(
+      'country',
+      'US',
+      source: countrySource,
+      validators: [Validators.required()],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

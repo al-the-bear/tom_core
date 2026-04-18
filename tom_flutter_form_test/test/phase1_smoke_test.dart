@@ -55,5 +55,10 @@ void main() {
     expect(find.text('Demo C — Nested Forms & Theming'), findsOneWidget);
     expect(find.text('Theming controls'), findsOneWidget);
     expect(find.text('Form inspection'), findsOneWidget);
+    // Resources should supply descriptions on at least one field — this
+    // check guards against future accidental removal of demoC resource
+    // entries that would make the theming toggles a no-op.
+    expect(find.text('Primary contact for order updates.'), findsOneWidget,
+        reason: 'demoC.customer.email.description must resolve to text.');
   });
 }

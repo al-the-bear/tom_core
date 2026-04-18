@@ -37,7 +37,8 @@ class DemoBAuthorization extends StatefulWidget {
   State<DemoBAuthorization> createState() => _DemoBAuthorizationState();
 }
 
-class _DemoBAuthorizationState extends State<DemoBAuthorization> {
+class _DemoBAuthorizationState extends State<DemoBAuthorization>
+    with TomFormEventListener {
   // --- Auth adapter (owned by this demo) -----------------------------------
   late final _DemoBAdapter _adapter;
 
@@ -68,11 +69,6 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
   // manually since `resolveEffectiveAuth` is pull-based.
   final Map<String, TomAuthState> _lastAuthSeen = {};
 
-  // Hold strong references to the observers we install on form fields.
-  // TomObservable stores its observers via WeakReference, so anything we
-  // don't retain here will be garbage-collected and silently stop firing.
-  final List<Object> _fieldObservers = [];
-
   @override
   void initState() {
     super.initState();
@@ -83,14 +79,31 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
 
   @override
   void dispose() {
+    _form?.removeListener(this);
     _form?.removeListener(_inspector);
     _form?.dispose();
     super.dispose();
   }
 
+  // --- TomFormEventListener -------------------------------------------------
+  //
+  // Demo B listens for value-change events through the form's built-in
+  // event system instead of wiring manual `>>` observers on individual
+  // TomObservables. TomForm holds listeners by strong reference, so we
+  // don't have to baby-sit them to keep them alive; the Classic-field
+  // bypass problem also goes away because FieldValueChangedEvent is only
+  // fired through `setValue`, which every spec-aligned field routes user
+  // input through.
+
+  @override
+  void onFieldValueChanged(FieldValueChangedEvent event) {
+    _snapshotAuthAndRebuild();
+  }
+
   /// Rebuild the form (required whenever a group mode changes — the mode is
   /// final on [TomAuthorizationGroup], so we construct fresh groups).
   void _rebuildForm() {
+    _form?.removeListener(this);
     _form?.removeListener(_inspector);
     _form?.dispose();
 
@@ -108,6 +121,9 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
     );
     _applyAuthorizer(form);
     _applyUIStateController(form);
+    // Subscribe via the form's built-in event bus — addListener keeps a
+    // strong reference, so we don't need to hand-baby-sit observers.
+    form.addListener(this);
     form.addListener(_inspector);
     // Bind every form in the nested tree separately so each level's initial
     // snapshot matches its current values — otherwise nested fields would
@@ -115,14 +131,6 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
     form.bind(phase1CustomerState);
     form.billing.bind(phase1CustomerState.billing);
     form.shipping.bind(phase1CustomerState.shipping);
-
-    // Observe `phone` for the UI state controller and `customerTier` for
-    // the authorizer — when either changes, re-snapshot auth + rebuild.
-    // Hold strong references; TomObservable uses weak refs internally.
-    _fieldObservers
-      ..clear()
-      ..add(form.phone >> (_) => _snapshotAuthAndRebuild())
-      ..add(form.customerTier >> (_) => _snapshotAuthAndRebuild());
 
     _form = form;
     _snapshotAuthAndRebuild();

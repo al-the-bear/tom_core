@@ -10,13 +10,12 @@ import 'address_form.dart';
 
 /// Customer record with nested billing and shipping addresses.
 ///
-/// Nested-form identity path: `customer.billing.*`, `customer.shipping.*`.
-/// Mirrors the shape of `CustomerProfile` so `bind(customer)` round-trips.
-///
-/// Demos B and C both instantiate this form — Demo B attaches a per-section
-/// `TomAuthorizationGroup` so authorization panels can control billing and
-/// shipping as units. Demo C wraps each section in its own
-/// `TomFormStyleScope` to demonstrate per-section theming.
+/// Fields are created inside [createFormElements] so their scope includes
+/// this form's formId. Without that step, a `late final` field would be
+/// lazily initialised outside the form's own scope (under the outer
+/// `TomScope.withScope(...)` call only) and its basePath would be
+/// `<outerScope>.<fieldId>` — causing the two nested AddressForms
+/// (billing + shipping) to collide on identical basePaths.
 @tomReflector
 class CustomerForm extends TomForm<TomClass> {
   final TomAuthorizationGroup? billingGroup;
@@ -25,63 +24,66 @@ class CustomerForm extends TomForm<TomClass> {
   CustomerForm({this.billingGroup, this.shippingGroup})
       : super(formId: 'customer');
 
-  @override
-  void createFormElements() {}
+  late final TomFormStringInput fullName;
+  late final TomFormStringInput email;
+  late final TomFormStringInput phone;
+  late final TomFormStringDropdown customerTier;
 
-  // --- Top-level fields -----------------------------------------------------
-
-  late final fullName = TomFormStringInput(
-    'fullName',
-    '',
-    validators: [Validators.required(), Validators.minLength(2)],
-  );
-
-  late final email = TomFormStringInput(
-    'email',
-    '',
-    validators: [Validators.required(), Validators.email()],
-    keyboardType: TextInputType.emailAddress,
-  );
-
-  late final phone = TomFormStringInput(
-    'phone',
-    '',
-    keyboardType: TextInputType.phone,
-  );
-
-  late final customerTier = TomFormStringDropdown(
-    'customerTier',
-    'standard',
-    source: _tierSource,
-    validators: [Validators.required()],
-  );
-
-  /// Classic field mixed alongside new spec-conforming fields. Demo C exposes
-  /// this to demonstrate Classic ↔ new field coexistence inside the same
-  /// form.
+  /// Classic field mixed alongside new spec-conforming fields. Demo C
+  /// exposes this to demonstrate Classic ↔ new field coexistence inside
+  /// the same form.
   // ignore: deprecated_member_use
-  late final notes = TomFormStringInputClassic(
-    'notes',
-    '',
-    labelText: 'Customer notes (Classic)',
-    hintText: 'Free-form notes — rendered by the legacy Classic field',
-  );
+  late final TomFormStringInputClassic notes;
 
-  // --- Nested address forms -------------------------------------------------
+  late final AddressForm billing;
+  late final AddressForm shipping;
 
-  // Nested forms are discovered via TomClass reflection (getMembers). Do NOT
-  // pass `parent: this` — `parentForm` is a getter so reflection would
-  // register it as a child of the inner form, creating a cycle back to the
-  // outer form (seen as infinite recursion in TomClass.mute / setValues).
-  late final billing = AddressForm(
-    fieldId: 'billing',
-    authGroup: billingGroup,
-  );
+  @override
+  void createFormElements() {
+    fullName = TomFormStringInput(
+      'fullName',
+      '',
+      validators: [Validators.required(), Validators.minLength(2)],
+    );
 
-  late final shipping = AddressForm(
-    fieldId: 'shipping',
-    authGroup: shippingGroup,
-  );
+    email = TomFormStringInput(
+      'email',
+      '',
+      validators: [Validators.required(), Validators.email()],
+      keyboardType: TextInputType.emailAddress,
+    );
+
+    phone = TomFormStringInput(
+      'phone',
+      '',
+      keyboardType: TextInputType.phone,
+    );
+
+    customerTier = TomFormStringDropdown(
+      'customerTier',
+      'standard',
+      source: _tierSource,
+      validators: [Validators.required()],
+    );
+
+    // ignore: deprecated_member_use
+    notes = TomFormStringInputClassic(
+      'notes',
+      '',
+      labelText: 'Customer notes (Classic)',
+      hintText: 'Free-form notes — rendered by the legacy Classic field',
+    );
+
+    billing = AddressForm(
+      fieldId: 'billing',
+      authGroup: billingGroup,
+    );
+
+    shipping = AddressForm(
+      fieldId: 'shipping',
+      authGroup: shippingGroup,
+    );
+  }
 }
 
 final _tierSource = StaticSelectableSource<String>([
