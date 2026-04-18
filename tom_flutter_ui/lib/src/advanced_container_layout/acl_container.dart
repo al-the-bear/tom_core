@@ -2214,11 +2214,34 @@ class _AclContainerState extends State<AclContainer> {
               )
               .toList();
 
+          // Derive the Row's cross-axis alignment from the components'
+          // rowCrossAlignment. When every non-expandY component agrees on
+          // a single alignment, honour it; otherwise fall back to `.start`
+          // (top) — the form-friendly default where a growing field (e.g.
+          // one showing an error below) doesn't drag its neighbours off
+          // baseline. Previously this was hard-coded to
+          // CrossAxisAlignment.center, so per-component `rowCrossAlignment`
+          // had no effect on the actual Row layout.
+          CrossAxisAlignment rowCrossAxis;
+          if (hasExpandY && canExpandVertically) {
+            rowCrossAxis = CrossAxisAlignment.stretch;
+          } else {
+            final alignments = row.components
+                .where((c) => !(c.expandY && canExpandVertically))
+                .map((c) => c.rowCrossAlignment)
+                .toSet();
+            rowCrossAxis = alignments.length == 1
+                ? switch (alignments.first) {
+                    AclRowCrossAlignment.top => CrossAxisAlignment.start,
+                    AclRowCrossAlignment.center => CrossAxisAlignment.center,
+                    AclRowCrossAlignment.bottom => CrossAxisAlignment.end,
+                  }
+                : CrossAxisAlignment.start;
+          }
+
           final rowContent = Row(
             mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: hasExpandY && canExpandVertically
-                ? CrossAxisAlignment.stretch
-                : CrossAxisAlignment.center,
+            crossAxisAlignment: rowCrossAxis,
             mainAxisSize: MainAxisSize.min,
             children: boundedChildren,
           );

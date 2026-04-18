@@ -125,12 +125,9 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
     // strong reference, so we don't need to hand-baby-sit observers.
     form.addListener(this);
     form.addListener(_inspector);
-    // Bind every form in the nested tree separately so each level's initial
-    // snapshot matches its current values — otherwise nested fields would
-    // appear dirty on first render.
+    // TomForm.bind now recurses into every nested TomForm, so a single
+    // call seeds billing + shipping lifecycle state too.
     form.bind(phase1CustomerState);
-    form.billing.bind(phase1CustomerState.billing);
-    form.shipping.bind(phase1CustomerState.shipping);
 
     _form = form;
     _snapshotAuthAndRebuild();

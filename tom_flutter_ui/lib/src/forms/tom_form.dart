@@ -109,22 +109,51 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   // --- Binding (§5) ---
 
+  /// Nested forms discovered via TomClass reflection. Populated on first
+  /// access so bind / isDirty / isValid / save / discard / validate can
+  /// fan out without every caller having to enumerate children by hand.
+  Iterable<TomForm> get nestedForms =>
+      getMembers().values.whereType<TomForm>();
+
   /// Bind to a TomClass instance.
-  /// Resets all fields to pristine. If a field has `autoValidate = true`,
-  /// it triggers immediate validation after binding.
+  ///
+  /// `target.getValues()` carries the whole state subtree (including
+  /// every nested TomClass), and TomClass.setValues recurses through
+  /// that subtree writing values into matching member observables. On
+  /// top of that this method walks every nested [TomForm] (via
+  /// [nestedForms]) and runs the binding lifecycle — initial snapshot,
+  /// per-field `_initialValue` reset, pristine validation state, and
+  /// `FieldBoundEvent` / `FormBoundEvent` dispatch — all the way down.
   void bind(T target) {
     _binding = target;
-    final values = target.getValues();
-    _initialSnapshot = Map<String, dynamic>.unmodifiable(values);
-    setValues(values);
+    setValues(target.getValues());
+    _applyBindLifecycle(target);
+  }
+
+  /// Core of [bind]: per-form lifecycle reset + recursion into nested
+  /// forms. Assumes values have already been written (via [setValues] on
+  /// the root form), so the recursion itself never sets values — it only
+  /// commits each level's "current values are the new initial".
+  void _applyBindLifecycle(TomClass target) {
+    _initialSnapshot = Map<String, dynamic>.unmodifiable(target.getValues());
     for (final field in fields.values) {
       field._initialValue = field.get();
       field._debounceTimer?.cancel();
       field._validationNotifier.value = const ValidationPristine();
       _fireEvent(FieldBoundEvent(source: field.tomId));
-      // Auto-validate fields that request immediate validation
       if (field.autoValidate) {
         field.validate();
+      }
+    }
+    final targetMembers = target.getMembers();
+    for (final entry in getMembers().entries) {
+      final nested = entry.value;
+      if (nested is TomForm) {
+        final nestedTarget = targetMembers[entry.key];
+        if (nestedTarget is TomClass) {
+          nested._binding = nestedTarget;
+          nested._applyBindLifecycle(nestedTarget);
+        }
       }
     }
     onBound();
@@ -132,26 +161,40 @@ abstract class TomForm<T extends TomClass> extends TomClass
   }
 
   /// Save form values back to bound state.
-  /// Runs full validation first — returns `false` if any errors.
+  ///
+  /// Runs full validation (including nested forms' validations) first —
+  /// returns `false` if any errors. On success, commits every field in
+  /// the form tree and fires `FormSavedEvent` at each level.
   Future<bool> save() async {
     final errors = await validate();
     if (errors.isNotEmpty) return false;
+    _applySave();
+    return true;
+  }
+
+  void _applySave() {
     onSaving();
     _binding?.setValues(getValues());
     for (final field in fields.values) {
       field.commit();
     }
     _initialSnapshot = Map<String, dynamic>.unmodifiable(getValues());
+    for (final nested in nestedForms) {
+      nested._applySave();
+    }
     onSaved();
     _fireEvent(FormSavedEvent(source: formId));
-    return true;
   }
 
-  /// Discard edits, reset all fields.
+  /// Discard edits — resets every field in this form and every nested
+  /// form back to its last bound / committed value.
   void discard() {
     onDiscarding();
     for (final field in fields.values) {
       field.reset();
+    }
+    for (final nested in nestedForms) {
+      nested.discard();
     }
     onDiscarded();
     _fireEvent(FormDiscardedEvent(source: formId));
@@ -159,13 +202,17 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// Detach from the bound state object.
   ///
-  /// Resets all fields to pristine, clears the binding reference
-  /// and the initial snapshot. Call this when the form is no longer
-  /// editing a data object.
+  /// Resets all fields (including nested form fields) to pristine,
+  /// clears the binding reference and the initial snapshot at every
+  /// level. Call this when the form tree is no longer editing a data
+  /// object.
   void unbind() {
     onUnbinding();
     for (final field in fields.values) {
       field.reset();
+    }
+    for (final nested in nestedForms) {
+      nested.unbind();
     }
     _binding = null;
     _initialSnapshot = null;
@@ -173,26 +220,30 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   // --- State queries ---
 
-  /// Whether any field's value differs from its initial value.
-  bool get isDirty => fields.values.any((f) => f.isDirty);
+  /// Whether any field — in this form OR any nested form — has a value
+  /// that differs from its initial (bound / last-committed) value.
+  bool get isDirty =>
+      fields.values.any((f) => f.isDirty) ||
+      nestedForms.any((f) => f.isDirty);
 
-  /// Whether all fields currently have a successful validation state.
-  /// Pristine fields are NOT considered valid (pristine ≠ valid).
-  bool get isValid => fields.values.every(
-    (f) => f.validationState is ValidationSuccess,
-  );
+  /// Whether every field in the form tree currently has a successful
+  /// validation state. Pristine fields count as NOT valid.
+  bool get isValid =>
+      fields.values.every((f) => f.validationState is ValidationSuccess) &&
+      nestedForms.every((f) => f.isValid);
 
   // --- Validation (async — §20) ---
 
-  /// Validate all fields in parallel, then run cross-field validation.
+  /// Validate every field in this form AND every nested form, then run
+  /// this form's cross-field validation. Returns the combined error
+  /// list.
   Future<List<FormValidationError>> validate() async {
-    // 1. Validate all fields in parallel
+    final errors = <FormValidationError>[];
+
+    // 1. Validate this form's own fields in parallel.
     final fieldResults = await Future.wait(
       fields.values.map((f) => f.validate()),
     );
-
-    // 2. Collect field-level errors
-    final errors = <FormValidationError>[];
     for (var i = 0; i < fields.values.length; i++) {
       final result = fieldResults.elementAt(i);
       if (result is ValidationError) {
@@ -205,7 +256,12 @@ abstract class TomForm<T extends TomClass> extends TomClass
       }
     }
 
-    // 3. Run cross-field validation only if all fields passed
+    // 2. Recurse into nested forms (they fire their own FormValidatedEvent).
+    for (final nested in nestedForms) {
+      errors.addAll(await nested.validate());
+    }
+
+    // 3. Cross-field validation — only when every field below has passed.
     if (errors.isEmpty) {
       errors.addAll(await validateForm());
     }

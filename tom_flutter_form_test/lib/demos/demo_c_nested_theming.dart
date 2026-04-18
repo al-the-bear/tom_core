@@ -65,7 +65,9 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
   void initState() {
     super.initState();
     _form = TomScope.withScope('demoC', () => CustomerForm());
-    _bindAll();
+    // `bind` recurses automatically into every nested TomForm discovered
+    // via getMembers(), so a single call seeds billing + shipping too.
+    _form.bind(phase1CustomerState);
   }
 
   @override
@@ -76,25 +78,13 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
 
   // --- Nested-tree lifecycle helpers ----------------------------------------
 
-  void _bindAll() {
-    _form.bind(phase1CustomerState);
-    _form.billing.bind(phase1CustomerState.billing);
-    _form.shipping.bind(phase1CustomerState.shipping);
-  }
-
   void _discardAll() {
-    _form.discard();
-    _form.billing.discard();
-    _form.shipping.discard();
+    _form.discard(); // recurses into billing + shipping
     setState(() {});
   }
 
   Future<void> _saveAll() async {
-    final ok = await Future.wait([
-      _form.save(),
-      _form.billing.save(),
-      _form.shipping.save(),
-    ]).then((r) => r.every((e) => e));
+    final ok = await _form.save(); // recurses through the nested tree
     if (!mounted) return;
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -102,12 +92,6 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       content: Text(ok ? 'Saved nested tree.' : 'Save failed (validation).'),
     ));
   }
-
-  bool get _aggregateDirty =>
-      _form.isDirty || _form.billing.isDirty || _form.shipping.isDirty;
-
-  bool get _aggregateValid =>
-      _form.isValid && _form.billing.isValid && _form.shipping.isValid;
 
   // --- Style resolution -----------------------------------------------------
 
@@ -563,8 +547,10 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           spacing: 8,
           runSpacing: 4,
           children: [
-            _stateChip(context, 'isDirty', _aggregateDirty),
-            _stateChip(context, 'isValid', _aggregateValid),
+            // TomForm.isDirty / isValid walk the nested-form tree
+            // automatically — no per-demo aggregation required.
+            _stateChip(context, 'isDirty', _form.isDirty),
+            _stateChip(context, 'isValid', _form.isValid),
           ],
         ),
         const SizedBox(height: 6),
