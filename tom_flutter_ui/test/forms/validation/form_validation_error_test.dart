@@ -5,7 +5,7 @@ import 'package:tom_flutter_ui/src/forms/validation/form_validation_error.dart';
 
 // Minimal TomField subclass for testing
 class _TestField<T> extends TomField<T> {
-  _TestField(super.fieldId, super.initialValue);
+  _TestField(super.tomId, super.initialValue);
 
   @override
   Widget get widget => const SizedBox.shrink();
@@ -23,7 +23,7 @@ void main() {
 
       expect(error.errorKey, 'error.dateRange');
       expect(error.fields, [startDate, endDate]);
-      expect(error.fieldIds, ['startDate', 'endDate']);
+      expect(error.tomIds, ['startDate', 'endDate']);
       expect(error.params, isNull);
       expect(error.fieldErrorKeys, isNull);
     });
@@ -67,7 +67,7 @@ void main() {
       expect(error.toString(), contains('field1'));
     });
 
-    test('fieldIds returns field IDs from field references', () {
+    test('tomIds returns field IDs from field references', () {
       final name = _TestField<String>('name', '');
       final email = _TestField<String>('email', '');
       final error = FormValidationError(
@@ -75,7 +75,7 @@ void main() {
         fields: [name, email],
       );
 
-      expect(error.fieldIds, ['name', 'email']);
+      expect(error.tomIds, ['name', 'email']);
     });
   });
 }

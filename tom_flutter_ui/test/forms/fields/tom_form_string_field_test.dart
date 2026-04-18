@@ -582,7 +582,7 @@ void main() {
       // ignore: deprecated_member_use
       final field = TomFormStringInputClassic('name', '');
       expect(field, isNotNull);
-      expect(field.fieldId, 'name');
+      expect(field.tomId, 'name');
     });
 
     test('TomFormPasswordStringInputClassic exists and works', () {

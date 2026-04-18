@@ -13,7 +13,7 @@ import 'package:tom_flutter_ui/src/forms/widgets/tom_form_error_banner.dart';
 // Minimal TomField subclass for test FormValidationError construction
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
-  _TestField(super.fieldId, super.initialValue);
+  _TestField(super.tomId, super.initialValue);
 
   @override
   Widget get widget => const SizedBox.shrink();

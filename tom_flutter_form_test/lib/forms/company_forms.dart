@@ -181,10 +181,10 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
 @tomReflector
 class AddressForm extends TomForm<Address> {
   AddressForm({
-    required String fieldId,
+    required String tomId,
     TomForm<TomClass>? parent,
     TomAuthorizationGroup? authGroup,
-  }) : super(formId: fieldId, parentForm: parent) {
+  }) : super(formId: tomId, parentForm: parent) {
     authorizationGroup = authGroup;
   }
 
@@ -235,10 +235,10 @@ class AddressForm extends TomForm<Address> {
 @tomReflector
 class PersonForm extends TomForm<Person> {
   PersonForm({
-    required String fieldId,
+    required String tomId,
     TomForm<TomClass>? parent,
     TomAuthorizationGroup? authGroup,
-  }) : super(formId: fieldId, parentForm: parent) {
+  }) : super(formId: tomId, parentForm: parent) {
     authorizationGroup = authGroup;
   }
 
@@ -349,7 +349,7 @@ class CompanyProfileForm extends TomForm<CompanyProfile> {
 
   // Nested forms
   late final basicInfo = CompanyBasicInfoForm();
-  late final headquarters = AddressForm(fieldId: 'headquarters');
-  late final ceo = PersonForm(fieldId: 'ceo');
+  late final headquarters = AddressForm(tomId: 'headquarters');
+  late final ceo = PersonForm(tomId: 'ceo');
   late final settings = CompanySettingsForm();
 }

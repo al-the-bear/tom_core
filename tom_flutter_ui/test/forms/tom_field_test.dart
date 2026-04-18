@@ -10,7 +10,7 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
   _TestField(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.validators,
@@ -114,7 +114,7 @@ void main() {
   });
 
   group('TomField — scope and basePath', () {
-    test('basePath is fieldId when no scope', () {
+    test('basePath is tomId when no scope', () {
       // Outside any zone → default scope → empty scope path
       final field = _TestField<String>('email', '');
       expect(field.basePath, 'email');
@@ -307,12 +307,12 @@ void main() {
   });
 
   group('TomField — TomAuthorizable interface', () {
-    test('tomId returns the short fieldId, not the full basePath', () {
+    test('tomId returns the short tomId, not the full basePath', () {
       final field = _TestField<String>('email', '');
-      // With no TomScope wrapper basePath collapses to fieldId anyway, so
+      // With no TomScope wrapper basePath collapses to tomId anyway, so
       // also verify they stay consistent with/without scope prefix.
       expect(field.tomId, 'email');
-      expect(field.fieldId, 'email');
+      expect(field.tomId, 'email');
       expect(field.basePath, 'email');
     });
 
@@ -364,7 +364,7 @@ void main() {
   });
 
   group('TomField — toString', () {
-    test('includes runtimeType, fieldId, value, dirty status', () {
+    test('includes runtimeType, tomId, value, dirty status', () {
       final field = _TestField<String>('name', 'Alice');
       final str = field.toString();
       expect(str, contains('name'));

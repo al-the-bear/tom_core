@@ -509,14 +509,14 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
 
     final diff = _diff(initial, values);
     final dirtyFieldIds = <String>[
-      ..._form.dirtyFields.map((f) => f.fieldId),
-      ..._form.billing.dirtyFields.map((f) => 'billing.${f.fieldId}'),
-      ..._form.shipping.dirtyFields.map((f) => 'shipping.${f.fieldId}'),
+      ..._form.dirtyFields.map((f) => f.tomId),
+      ..._form.billing.dirtyFields.map((f) => 'billing.${f.tomId}'),
+      ..._form.shipping.dirtyFields.map((f) => 'shipping.${f.tomId}'),
     ];
     final errorFieldIds = <String>[
-      ..._form.fieldsWithErrors.map((f) => f.fieldId),
-      ..._form.billing.fieldsWithErrors.map((f) => 'billing.${f.fieldId}'),
-      ..._form.shipping.fieldsWithErrors.map((f) => 'shipping.${f.fieldId}'),
+      ..._form.fieldsWithErrors.map((f) => f.tomId),
+      ..._form.billing.fieldsWithErrors.map((f) => 'billing.${f.tomId}'),
+      ..._form.shipping.fieldsWithErrors.map((f) => 'shipping.${f.tomId}'),
     ];
 
     final mono = const TextStyle(

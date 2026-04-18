@@ -20,7 +20,7 @@ class _DecoratedTestField extends TomField<String>
   final String? descriptionText;
 
   _DecoratedTestField(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     this.labelText,
     this.descriptionText,

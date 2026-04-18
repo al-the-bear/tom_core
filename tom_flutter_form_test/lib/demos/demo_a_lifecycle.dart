@@ -255,12 +255,12 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
                 Text('Dirty: ${_form.isDirty}   Valid: ${_form.isValid}'),
                 Text(
                   'Dirty fields: '
-                  '${_form.dirtyFields.map((f) => f.fieldId).join(', ')}',
+                  '${_form.dirtyFields.map((f) => f.tomId).join(', ')}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 Text(
                   'Fields with errors: '
-                  '${_form.fieldsWithErrors.map((f) => f.fieldId).join(', ')}',
+                  '${_form.fieldsWithErrors.map((f) => f.tomId).join(', ')}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],

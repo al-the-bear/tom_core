@@ -149,7 +149,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
         final previous = _lastAuthSeen[path];
         if (previous != null && previous != newState) {
           _inspector.onFieldAuthChanged(FieldAuthChangedEvent(
-            source: field.fieldId,
+            source: field.tomId,
             oldState: previous,
             newState: newState,
           ));

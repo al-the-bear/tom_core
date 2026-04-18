@@ -8,7 +8,7 @@ import 'validation_result.dart';
 /// be after start date").
 ///
 /// Carries both field references ([fields]) for programmatic access
-/// and field IDs ([fieldIds]) for display in error messages.
+/// and field IDs ([tomIds]) for display in error messages.
 class FormValidationError {
   /// The primary error key (for the form-level error message).
   final String errorKey;
@@ -31,9 +31,9 @@ class FormValidationError {
   });
 
   /// Field IDs involved in this error (convenience getter).
-  List<String> get fieldIds => fields.map((f) => f.fieldId).toList();
+  List<String> get tomIds => fields.map((f) => f.tomId).toList();
 
   @override
   String toString() =>
-      'FormValidationError($errorKey, fields: $fieldIds${fieldErrorKeys != null ? ', fieldErrorKeys: $fieldErrorKeys' : ''})';
+      'FormValidationError($errorKey, fields: $tomIds${fieldErrorKeys != null ? ', fieldErrorKeys: $fieldErrorKeys' : ''})';
 }

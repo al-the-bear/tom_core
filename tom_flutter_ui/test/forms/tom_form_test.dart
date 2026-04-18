@@ -19,7 +19,7 @@ import 'package:tom_flutter_ui/src/forms/validation/validators.dart';
 // ---------------------------------------------------------------------------
 class _TestField<T> extends TomField<T> {
   _TestField(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.validators,

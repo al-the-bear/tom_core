@@ -101,7 +101,7 @@ class FieldStateTable extends StatelessWidget {
     return TableRow(
       decoration: BoxDecoration(color: color),
       children: [
-        _cell(field.fieldId, textStyle),
+        _cell(field.tomId, textStyle),
         _cell(displayValue, textStyle),
         _cell(_authLabel(auth), textStyle),
         _cell(_validationLabel(validation), textStyle),

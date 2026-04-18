@@ -14,9 +14,9 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 @tomReflector
 class AddressForm extends TomForm<TomClass> {
   AddressForm({
-    required String fieldId,
+    required String tomId,
     TomAuthorizationGroup? authGroup,
-  }) : super(formId: fieldId) {
+  }) : super(formId: tomId) {
     authorizationGroup = authGroup;
   }
 

@@ -121,7 +121,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
       field._initialValue = field.get();
       field._debounceTimer?.cancel();
       field._validationNotifier.value = const ValidationPristine();
-      _fireEvent(FieldBoundEvent(source: field.fieldId));
+      _fireEvent(FieldBoundEvent(source: field.tomId));
       // Auto-validate fields that request immediate validation
       if (field.autoValidate) {
         field.validate();
@@ -220,7 +220,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   // --- Inspection ---
 
   /// Get a field by its ID.
-  TomField? getField(String fieldId) => fields[fieldId];
+  TomField? getField(String tomId) => fields[tomId];
 
   /// Get the initial snapshot (values at bind time / last save).
   Map<String, dynamic>? get initialSnapshot => _initialSnapshot;
@@ -301,7 +301,7 @@ class _FormChangeNotifier extends ChangeNotifier {
 
 abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   TomField(
-    this.fieldId,
+    this.tomId,
     this._initialValue, {
     this.form,
     this.obscureText = false,
@@ -321,13 +321,19 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     scope = form != null
         ? form!.basePath
         : TomScope.current.getScopePath();
-    basePath = scope.isNotEmpty ? '$scope.$fieldId' : fieldId;
+    basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
     tomGroup?.register(this);
   }
 
   late String scope;
   late final String basePath;
-  String fieldId;
+
+  /// The short identifier this field was constructed with. Matches the
+  /// `<suffix>` consumed by resource lookups of the form
+  /// `"$basePath.<suffix>"`. For the full path use [basePath].
+  @override
+  String tomId;
+
   TomForm? form;
   bool obscureText;
 
@@ -351,7 +357,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     if (newValue == oldValue) return;
     set(newValue);
     form?._fireEvent(FieldValueChangedEvent(
-      source: fieldId,
+      source: tomId,
       oldValue: oldValue,
       newValue: newValue,
     ));
@@ -377,7 +383,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         _slowDebounceTimer?.cancel();
         _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldId,
+          source: tomId,
           result: result,
         ));
         return;
@@ -389,7 +395,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
       if (!hasSlowValidators) {
         _validationNotifier.value = const ValidationSuccess();
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldId,
+          source: tomId,
           result: _validationNotifier.value,
         ));
       }
@@ -406,7 +412,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         _slowValidationPending = false;
         _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldId,
+          source: tomId,
           result: result,
         ));
         return;
@@ -423,7 +429,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         _slowValidationPending = false;
         _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldId,
+          source: tomId,
           result: result,
         ));
         return;
@@ -432,7 +438,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     _slowValidationPending = false;
     _validationNotifier.value = const ValidationSuccess();
     form?._fireEvent(FieldValidatedEvent(
-      source: fieldId,
+      source: tomId,
       result: _validationNotifier.value,
     ));
   }
@@ -445,7 +451,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     _slowDebounceTimer?.cancel();
     _slowValidationPending = false;
     _validationNotifier.value = const ValidationPristine();
-    form?._fireEvent(FieldCommittedEvent(source: fieldId));
+    form?._fireEvent(FieldCommittedEvent(source: tomId));
   }
 
   /// Reset to initial value and reset validation to pristine.
@@ -467,12 +473,6 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Build-time UI state controller (optional).
   TomUIStateController? uiStateController;
-
-  /// The short identifier this field was constructed with. Matches the
-  /// `<suffix>` consumed by resource lookups of the form
-  /// `"$basePath.<suffix>"`. For the full path use [basePath].
-  @override
-  String? get tomId => fieldId;
 
   /// Resolved effective authorization state (see §19 for resolution order).
   @override
@@ -588,7 +588,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
         _slowValidationPending = false;
         _validationNotifier.value = result;
         form?._fireEvent(FieldValidatedEvent(
-          source: fieldId,
+          source: tomId,
           result: result,
         ));
         return result;
@@ -606,7 +606,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
           _slowValidationPending = false;
           _validationNotifier.value = result;
           form?._fireEvent(FieldValidatedEvent(
-            source: fieldId,
+            source: tomId,
             result: result,
           ));
           return result;
@@ -618,7 +618,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     const success = ValidationSuccess();
     _validationNotifier.value = success;
     form?._fireEvent(FieldValidatedEvent(
-      source: fieldId,
+      source: tomId,
       result: success,
     ));
     return success;
@@ -639,7 +639,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   }
 
   @override
-  String toString() => '$runtimeType($fieldId: ${get()}, dirty: $isDirty)';
+  String toString() => '$runtimeType($tomId: ${get()}, dirty: $isDirty)';
 }
 
 /// Base class for text-based form fields with TextEditingController support.
@@ -647,7 +647,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 /// Individual [InputDecoration] parameters (e.g. [labelText], [helperText],
 /// [prefixIcon]) follow the resource lookup pattern:
 ///   1. Explicit parameter value (highest priority)
-///   2. Resource lookup via scope path (`$scope.$fieldId.$suffix`)
+///   2. Resource lookup via scope path (`$scope.$tomId.$suffix`)
 ///   3. `null` / absent (lowest priority)
 ///
 /// This allows resources to provide default values while code can override
@@ -679,7 +679,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   final bool? enabled;
 
   TomTextFormFieldBase(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -707,13 +707,13 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     }
 
     // Check for pattern validator in resources
-    final pattern = tOrNull('$fieldId.pattern');
+    final pattern = tOrNull('$tomId.pattern');
     if (pattern != null) {
       _inputValidators.add((String value) {
         if (RegExp(pattern).hasMatch(value)) {
           return null;
         } else {
-          return t("$fieldId.errors.pattern");
+          return t("$tomId.errors.pattern");
         }
       });
     }
@@ -773,7 +773,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 
   /// Resolves an icon from resources, returning an [Icon] widget or `null`.
   Widget? _resolveIconOrNull(String key) {
-    final bp = scope.isEmpty ? fieldId : '$scope.$fieldId';
+    final bp = scope.isEmpty ? tomId : '$scope.$tomId';
     final iconData = TomCtr.icon(bp, key);
     if (iconData != null) return Icon(iconData);
     return null;
@@ -782,9 +782,9 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   @override
   Widget get widget {
     // Parameter → resource → null
-    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$fieldId.label') ?? fieldId;
-    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$fieldId.helperText');
-    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$fieldId.hintText');
+    final resolvedLabel = labelText ?? TomCtr.textOrNull(scope, '$tomId.label') ?? tomId;
+    final resolvedHelper = helperText ?? TomCtr.textOrNull(scope, '$tomId.helperText');
+    final resolvedHint = hintText ?? TomCtr.textOrNull(scope, '$tomId.hintText');
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 
@@ -840,7 +840,7 @@ class TomTextFormFieldBase<T> extends TomField<T> {
 @Deprecated('Use TomFormStringInput instead')
 class TomFormStringInputClassic extends TomTextFormFieldBase<String> {
   TomFormStringInputClassic(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -861,7 +861,7 @@ class TomFormStringInputClassic extends TomTextFormFieldBase<String> {
 @Deprecated('Use TomFormStringInput with obscureText: true instead')
 class TomFormPasswordStringInputClassic extends TomTextFormFieldBase<String> {
   TomFormPasswordStringInputClassic(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.labelText,
@@ -881,7 +881,7 @@ class TomFormPasswordStringInputClassic extends TomTextFormFieldBase<String> {
 @Deprecated('Use TomFormStringInput with email validators instead')
 class TomFormEmailStringInputClassic extends TomTextFormFieldBase<String> {
   TomFormEmailStringInputClassic(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     super.obscureText,
@@ -895,10 +895,10 @@ class TomFormEmailStringInputClassic extends TomTextFormFieldBase<String> {
   }) {
     _valueValidators.add((value) {
       if (value.isEmpty) {
-        return "$fieldId.errors.required";
+        return "$tomId.errors.required";
       }
       if (!isValidEmail(value)) {
-        return "$fieldId.errors.validEmail";
+        return "$tomId.errors.validEmail";
       }
       return null;
     });
@@ -918,7 +918,7 @@ class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
   final int? max;
 
   TomFormIntInputClassic(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     this.min,
@@ -939,7 +939,7 @@ class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
       if (int.tryParse(value) == null) {
-        return "$fieldId.errors.invalidNumber";
+        return "$tomId.errors.invalidNumber";
       }
       return null;
     });
@@ -950,10 +950,10 @@ class TomFormIntInputClassic extends TomTextFormFieldBase<int> {
         final intVal = int.tryParse(value);
         if (intVal == null) return null; // handled by input validator
         if (min != null && intVal < min!) {
-          return "$fieldId.errors.min";
+          return "$tomId.errors.min";
         }
         if (max != null && intVal > max!) {
-          return "$fieldId.errors.max";
+          return "$tomId.errors.max";
         }
         return null;
       });
@@ -968,7 +968,7 @@ class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
   final double? max;
 
   TomFormDoubleInputClassic(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.form,
     this.min,
@@ -989,7 +989,7 @@ class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
     _inputValidators.add((value) {
       if (value.isEmpty) return null;
       if (double.tryParse(value) == null) {
-        return "$fieldId.errors.invalidNumber";
+        return "$tomId.errors.invalidNumber";
       }
       return null;
     });
@@ -1000,10 +1000,10 @@ class TomFormDoubleInputClassic extends TomTextFormFieldBase<double> {
         final doubleVal = double.tryParse(value);
         if (doubleVal == null) return null; // handled by input validator
         if (min != null && doubleVal < min!) {
-          return "$fieldId.errors.min";
+          return "$tomId.errors.min";
         }
         if (max != null && doubleVal > max!) {
-          return "$fieldId.errors.max";
+          return "$tomId.errors.max";
         }
         return null;
       });

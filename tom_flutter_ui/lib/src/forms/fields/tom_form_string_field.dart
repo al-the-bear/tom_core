@@ -37,7 +37,7 @@ abstract class TomFormStringField extends TomField<String> {
   final int? maxLength;
 
   TomFormStringField(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     this.labelTextOverride,
     this.hintTextOverride,
@@ -54,7 +54,7 @@ abstract class TomFormStringField extends TomField<String> {
 
   // --- Resource resolution (§17) ---
 
-  /// Resolved label: explicit → resource → fieldId.
+  /// Resolved label: explicit → resource → tomId.
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
 
@@ -95,7 +95,7 @@ class TomFormStringInput extends TomFormStringField
   final int? maxLines;
 
   TomFormStringInput(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     super.labelTextOverride,
     super.hintTextOverride,
@@ -259,7 +259,7 @@ class TomFormStringDropdown extends TomFormStringField
   final TomSelectableSource<String> source;
 
   TomFormStringDropdown(
-    super.fieldId,
+    super.tomId,
     super.initialValue, {
     required this.source,
     super.labelTextOverride,

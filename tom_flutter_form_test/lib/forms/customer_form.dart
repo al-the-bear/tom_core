@@ -80,11 +80,11 @@ class CustomerForm extends TomForm<TomClass> {
   @override
   void createFormElements() {
     billing = AddressForm(
-      fieldId: 'billing',
+      tomId: 'billing',
       authGroup: billingGroup,
     );
     shipping = AddressForm(
-      fieldId: 'shipping',
+      tomId: 'shipping',
       authGroup: shippingGroup,
     );
   }

@@ -46,8 +46,8 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
   @override
   void initState() {
     super.initState();
-    _addressForm = TomScope.withScope('address', () => AddressForm(fieldId: 'headquarters'));
-    _ceoForm = TomScope.withScope('person', () => PersonForm(fieldId: 'ceo'));
+    _addressForm = TomScope.withScope('address', () => AddressForm(tomId: 'headquarters'));
+    _ceoForm = TomScope.withScope('person', () => PersonForm(tomId: 'ceo'));
     _addressForm.bind(demoState.companyProfile.headquarters);
     _ceoForm.bind(demoState.companyProfile.ceo);
   }
