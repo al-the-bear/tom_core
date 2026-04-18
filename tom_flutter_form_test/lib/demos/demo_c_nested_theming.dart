@@ -129,11 +129,17 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
         labelFieldGap: _labelFieldGap,
         errorFieldGap: _errorFieldGap,
         borderRadius: _borderRadius,
+        // TomFieldStyle.copyWith uses `*Set` sentinel flags for the hint
+        // properties so callers can explicitly clear them to null. That
+        // means passing `hintFontWeight:` / `hintOpacity:` alone is a
+        // silent no-op — we have to pair each with its Set flag.
         hintFontWeight: FontWeight.values.firstWhere(
           (w) => w.value == _hintWeight,
           orElse: () => FontWeight.w400,
         ),
+        hintFontWeightSet: true,
         hintOpacity: _hintOpacity,
+        hintOpacitySet: true,
       ),
     );
     return _withTheme ? withOverrides.withTheme(Theme.of(context)) : withOverrides;
