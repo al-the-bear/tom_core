@@ -187,7 +187,7 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
       id: 'demo10Layout',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
         .newRow()

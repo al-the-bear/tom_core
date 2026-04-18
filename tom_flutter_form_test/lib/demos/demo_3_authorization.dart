@@ -129,7 +129,7 @@ class _Demo3AuthorizationState extends State<Demo3Authorization> {
       id: 'authDemo',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
         .newRow()

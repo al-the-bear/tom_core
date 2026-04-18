@@ -75,7 +75,7 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
       id: 'basicForm',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
         .newRow()

@@ -176,7 +176,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       id: 'demoCTop',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.fullName.widget)
         .newRow()
@@ -192,7 +192,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       id: 'demoCBilling',
       elementProvider: _form.billing,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
         .newRow()
@@ -207,7 +207,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
       id: 'demoCShipping',
       elementProvider: _form.shipping,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
         .newRow()

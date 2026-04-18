@@ -55,7 +55,7 @@ class _Demo5SettingsFormState extends State<Demo5SettingsForm> {
       id: 'settingsForm',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.timezone.widget)
         .append((p) => p.locale.widget, dist: 16)

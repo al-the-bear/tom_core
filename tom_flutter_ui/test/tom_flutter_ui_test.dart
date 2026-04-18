@@ -50,7 +50,7 @@ void main() {
     test('sets row alignment', () {
       final container = AclBuilder()
           .append(const Text('Centered'))
-          .setRowAlignment(RowAlignment.center)
+          .setRowHorizontalAlignment(RowAlignment.center)
           .build();
       expect(container.rows[0].alignment, RowAlignment.center);
     });
@@ -605,7 +605,7 @@ void main() {
         final acl = AclBuilder()
             .append(SizedBox(key: centerKey, width: 100, height: 32))
             .setPSize(100, 32)
-            .setRowAlignment(RowAlignment.center)
+            .setRowHorizontalAlignment(RowAlignment.center)
             .build();
 
         await tester.pumpWidget(

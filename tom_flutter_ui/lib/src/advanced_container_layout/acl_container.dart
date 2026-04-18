@@ -270,11 +270,11 @@ class AclRow {
   final List<(double, double)> defaultAppendGapBpOverrides;
 
   /// Vertical cross-axis alignment applied to the Row widget itself.
-  /// Snapshotted from the builder's [setAclDefaultRowAlignment] at row
-  /// construction so the row-level default drives the Row's own
-  /// crossAxisAlignment. Individual components can still request a
-  /// different placement within their own cell via `alignTopInRow` /
-  /// `alignMiddleInRow` / `alignBottomInRow` (handled per-cell in
+  /// Snapshotted at row construction via the resolution chain per-row
+  /// override (setRowVerticalAlignment) → builder-wide default
+  /// (setAclDefaultRowVerticalAlignment). Individual components can
+  /// still request a different placement within their own cell via
+  /// [AclBuilder.setVerticalAlignment] (handled per-cell by
   /// `_wrapWithRowCrossAlignment`).
   final AclRowCrossAlignment defaultRowCrossAlignment;
 
@@ -2224,14 +2224,13 @@ class _AclContainerState extends State<AclContainer> {
               )
               .toList();
 
-          // The Row widget honours this row's default cross-axis
-          // alignment (set on the builder via setAclDefaultRowAlignment).
-          // Per-component overrides — alignTopInRow / alignMiddleInRow /
-          // alignBottomInRow — are applied inside each cell by
+          // The Row widget honours this row's vertical cross-axis
+          // alignment, resolved as: per-row override
+          // (setRowVerticalAlignment) → builder-wide default
+          // (setAclDefaultRowVerticalAlignment). Per-component overrides
+          // via setVerticalAlignment are applied inside each cell by
           // `_wrapWithRowCrossAlignment`, so they still work regardless
-          // of the Row's own alignment. Previously this was hard-coded
-          // to CrossAxisAlignment.center, which silently defeated the
-          // builder-level default.
+          // of the Row's own alignment.
           final CrossAxisAlignment rowCrossAxis;
           if (hasExpandY && canExpandVertically) {
             rowCrossAxis = CrossAxisAlignment.stretch;

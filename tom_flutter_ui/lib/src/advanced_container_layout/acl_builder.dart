@@ -90,7 +90,7 @@ class _RowData {
   List<(double, double?)> heightBpOverrides = const [];
 
   /// Per-row cross-axis alignment override. `null` means "use the
-  /// builder's default" (set via `setAclDefaultRowAlignment`).
+  /// builder's default" (set via `setAclDefaultRowVerticalAlignment`).
   AclRowCrossAlignment? rowCrossAlignment;
 
   AclRow toRow({
@@ -138,7 +138,8 @@ class AclBuilder {
   double _defaultRowGap = 8;
   Size? _defaultUnknownMinimumSize;
   Size? _defaultUnknownPreferredSize;
-  AclRowCrossAlignment _defaultRowCrossAlignment = AclRowCrossAlignment.top;
+  AclRowCrossAlignment _defaultRowVerticalAlignment = AclRowCrossAlignment.top;
+  RowAlignment _defaultRowHorizontalAlignment = RowAlignment.left;
   AclBorderStyle _borderStyle = const AclBorderStyle.none();
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
@@ -202,6 +203,7 @@ class AclBuilder {
         _titlePosition = titlePosition,
         _titleBorderAlign = titleBorderAlign,
         _titleVerticalOffset = titleVerticalOffset {
+    _currentRow.alignment = _defaultRowHorizontalAlignment;
     _rows.add(_currentRow);
   }
 
@@ -267,10 +269,13 @@ class AclBuilder {
       gapBeforeIsDefault: usesDefaultGap,
       componentKey: componentKey,
     );
-    // Apply the ACL-wide default row cross alignment. Per-component
-    // overrides (alignTopInRow / alignMiddleInRow / alignBottomInRow) still
-    // win by setting `rowCrossAlignmentSet = true`.
-    _currentComponent!.rowCrossAlignment = _defaultRowCrossAlignment;
+    // Components inherit the row's vertical alignment (if the row set
+    // one via setRowVerticalAlignment / setRowAlignTop / Middle /
+    // Bottom), otherwise fall back to the builder-wide default.
+    // Per-component overrides via [setVerticalAlignment] still win by
+    // setting `rowCrossAlignmentSet = true`.
+    _currentComponent!.rowCrossAlignment =
+        _currentRow.rowCrossAlignment ?? _defaultRowVerticalAlignment;
     // Inherit active group from startGroup()/endGroup() range.
     if (_activeGroupName != null) {
       _currentComponent!.group = _activeGroupName;
@@ -320,7 +325,9 @@ class AclBuilder {
     // Apply default row gap if no explicit dist was specified.
     final effectiveDist =
         (dist == 0 && _defaultRowGap > 0) ? _defaultRowGap : dist;
-    _currentRow = _RowData()..gapBefore = effectiveDist;
+    _currentRow = _RowData()
+      ..gapBefore = effectiveDist
+      ..alignment = _defaultRowHorizontalAlignment;
     final heightIsExplicit = height != null || heightBpOverrides.isNotEmpty;
     if (heightIsExplicit) {
       _currentRow
@@ -351,7 +358,7 @@ class AclBuilder {
       ..gapRowMinSize = minSize;
     _rows.add(gapRowData);
     // Implicitly start a fresh content row after the gap row
-    _currentRow = _RowData();
+    _currentRow = _RowData()..alignment = _defaultRowHorizontalAlignment;
     _rows.add(_currentRow);
     _currentComponent = null;
     return this;
@@ -476,45 +483,23 @@ class AclBuilder {
 
   AclBuilder sameSize(Object reference) => setComp(reference, AclFlags.otherDim);
 
-  // ── Per-component row cross-alignment ─────────────────────────────────────
+  // ── Per-component vertical alignment ──────────────────────────────────────
 
-  AclBuilder alignTopInRow() {
+  /// Overrides the vertical (cross-axis) alignment for the **current
+  /// component only**, taking precedence over the row's and builder's
+  /// default. Components only have one axis of alignment inside a row —
+  /// horizontal placement is a whole-row concern — so a single method
+  /// with an [AclRowCrossAlignment] argument covers every case.
+  AclBuilder setVerticalAlignment(AclRowCrossAlignment align) {
     if (_currentComponent != null) {
       if (_currentComponent!.alignYToKey != null) {
         throw UnsupportedError(
-          'AclBuilder: alignTopInRow() cannot be combined with an alignY* method on '
-          'the same component — alignY* overrides the row cross-alignment.',
+          'AclBuilder.setVerticalAlignment() cannot be combined with an '
+          'alignY* method on the same component — alignY* overrides the '
+          'row cross-alignment.',
         );
       }
-      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.top;
-      _currentComponent!.rowCrossAlignmentSet = true;
-    }
-    return this;
-  }
-
-  AclBuilder alignMiddleInRow() {
-    if (_currentComponent != null) {
-      if (_currentComponent!.alignYToKey != null) {
-        throw UnsupportedError(
-          'AclBuilder: alignMiddleInRow() cannot be combined with an alignY* method on '
-          'the same component — alignY* overrides the row cross-alignment.',
-        );
-      }
-      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.center;
-      _currentComponent!.rowCrossAlignmentSet = true;
-    }
-    return this;
-  }
-
-  AclBuilder alignBottomInRow() {
-    if (_currentComponent != null) {
-      if (_currentComponent!.alignYToKey != null) {
-        throw UnsupportedError(
-          'AclBuilder: alignBottomInRow() cannot be combined with an alignY* method on '
-          'the same component — alignY* overrides the row cross-alignment.',
-        );
-      }
-      _currentComponent!.rowCrossAlignment = AclRowCrossAlignment.bottom;
+      _currentComponent!.rowCrossAlignment = align;
       _currentComponent!.rowCrossAlignmentSet = true;
     }
     return this;
@@ -668,21 +653,45 @@ class AclBuilder {
         gap: gap,
       );
 
-  // ── Row-level ──────────────────────────────────────────────────────────────
+  // ── Row-level alignment ───────────────────────────────────────────────────
+  //
+  // Two orthogonal axes:
+  //   * Horizontal — where components sit along the row's main axis
+  //     (RowAlignment.left / center / right). Set via
+  //     [setRowHorizontalAlignment] or the [setRowAlignLeft] / Center /
+  //     Right shortcuts.
+  //   * Vertical — where components sit along the row's cross axis
+  //     (AclRowCrossAlignment.top / center / bottom). Set via
+  //     [setRowVerticalAlignment] or the [setRowAlignTop] / Middle /
+  //     Bottom shortcuts.
+  //
+  // Components inherit the row's vertical alignment unless they opt out
+  // via [setVerticalAlignment]. The row itself falls back to the
+  // builder-wide default (see [setAclDefaultRowVerticalAlignment] and
+  // [setAclDefaultRowHorizontalAlignment]).
 
-  AclBuilder setRowAlignment(RowAlignment align) {
+  /// Horizontal main-axis placement for the **current row only**.
+  AclBuilder setRowHorizontalAlignment(RowAlignment align) {
     _currentRow.alignment = align;
     return this;
   }
 
-  /// Overrides the vertical cross-axis alignment for the **current row
-  /// only**. Individual components can still deviate via
-  /// `alignTopInRow` / `alignMiddleInRow` / `alignBottomInRow`.
+  /// Vertical cross-axis placement for the **current row only**.
   ///
-  /// Without this call the row inherits whatever the builder-level
-  /// default is (see [setAclDefaultRowAlignment]).
-  AclBuilder setRowCrossAlignment(AclRowCrossAlignment align) {
+  /// Components appended to this row — before OR after this call —
+  /// inherit the row's alignment unless they explicitly override via
+  /// [setVerticalAlignment]. Without this call the row inherits the
+  /// builder-wide default (see [setAclDefaultRowVerticalAlignment]).
+  AclBuilder setRowVerticalAlignment(AclRowCrossAlignment align) {
     _currentRow.rowCrossAlignment = align;
+    // Retroactively propagate to components in the current row that
+    // haven't set their own alignment. New components appended after
+    // this call inherit via [_onComponentAppended] (see append()).
+    for (final comp in _currentRow.components) {
+      if (!comp.rowCrossAlignmentSet) {
+        comp.rowCrossAlignment = align;
+      }
+    }
     return this;
   }
 
@@ -794,29 +803,37 @@ class AclBuilder {
     return this;
   }
 
-  /// Sets the default vertical cross-axis alignment applied to every
-  /// component of every row of this ACL instance.
+  /// Builder-wide default for the **vertical** cross-axis placement of
+  /// every row. Individual rows override via [setRowVerticalAlignment];
+  /// individual components override via [setVerticalAlignment].
   ///
-  /// The global builder default is [AclRowCrossAlignment.top] — chosen
-  /// so that fields whose height grows (e.g. when an error message
-  /// appears below the input) do not drag their neighbours off the
-  /// baseline. Set to [AclRowCrossAlignment.center] or
-  /// [AclRowCrossAlignment.bottom] for non-form layouts where the
-  /// centre/bottom line is the visual anchor.
-  ///
-  /// Per-component overrides via `alignTopInRow() / alignMiddleInRow() /
-  /// alignBottomInRow()` still win for that component.
-  AclBuilder setAclDefaultRowAlignment(AclRowCrossAlignment alignment) {
-    _defaultRowCrossAlignment = alignment;
-    // Retroactively apply to any already-appended components that did not
-    // have an explicit override — keeps call order flexible.
+  /// The factory default is [AclRowCrossAlignment.top] — chosen so that
+  /// fields whose height grows (e.g. when an error message appears
+  /// below the input) do not drag their neighbours off the baseline.
+  AclBuilder setAclDefaultRowVerticalAlignment(AclRowCrossAlignment alignment) {
+    _defaultRowVerticalAlignment = alignment;
+    // Retroactively apply to rows and components that haven't set their
+    // own alignment — keeps call order flexible.
     for (final row in _rows) {
-      for (final comp in row.components) {
-        if (!comp.rowCrossAlignmentSet) {
-          comp.rowCrossAlignment = alignment;
+      if (row.rowCrossAlignment == null) {
+        for (final comp in row.components) {
+          if (!comp.rowCrossAlignmentSet) {
+            comp.rowCrossAlignment = alignment;
+          }
         }
       }
     }
+    return this;
+  }
+
+  /// Builder-wide default for the **horizontal** main-axis placement of
+  /// every row. Individual rows override via [setRowHorizontalAlignment]
+  /// or the Left/Center/Right shortcuts.
+  AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
+    _defaultRowHorizontalAlignment = alignment;
+    // Retroactively apply to every row whose alignment still matches the
+    // previous default (i.e. no explicit override has been made).
+    // Rows that called setRowHorizontalAlignment keep their own value.
     return this;
   }
 
@@ -1048,7 +1065,7 @@ class AclBuilder {
                 fallbackHeightBpOverrides:
                     variantBuilder._defaultRowHeightBpOverrides,
                 defaultRowCrossAlignment:
-                    variantBuilder._defaultRowCrossAlignment,
+                    variantBuilder._defaultRowVerticalAlignment,
               ))
           .toList(),
     ));
@@ -1146,7 +1163,7 @@ class AclBuilder {
                 defaultAppendGapBpOverrides: _defaultAppendGapBpOverrides,
                 fallbackHeight: _defaultRowHeight,
                 fallbackHeightBpOverrides: _defaultRowHeightBpOverrides,
-                defaultRowCrossAlignment: _defaultRowCrossAlignment,
+                defaultRowCrossAlignment: _defaultRowVerticalAlignment,
               ))
           .toList(),
       borderStyle: _borderStyle,
@@ -1213,8 +1230,8 @@ class AclBuilder {
     if (_currentComponent != null) {
       if (_currentComponent!.rowCrossAlignmentSet) {
         throw UnsupportedError(
-          'AclBuilder: alignY* cannot be combined with alignTopInRow()/alignMiddleInRow()'
-          '/alignBottomInRow() on the same component — remove the alignInRow() call.',
+          'AclBuilder: alignY* cannot be combined with setVerticalAlignment() '
+          'on the same component — remove the setVerticalAlignment() call.',
         );
       }
       final refRow = _rowByObject[reference];
@@ -1252,7 +1269,18 @@ extension AclBuilderExtensions on AclBuilder {
   AclBuilder expandY() => setAttr(AclFlags.expandY);
   AclBuilder expand() => setAttr(AclFlags.expand);
 
-  AclBuilder setRowAlignLeft() => setRowAlignment(RowAlignment.left);
-  AclBuilder setRowAlignCenter() => setRowAlignment(RowAlignment.center);
-  AclBuilder setRowAlignRight() => setRowAlignment(RowAlignment.right);
+  // ── Row-level horizontal alignment shortcuts ──
+  AclBuilder setRowAlignLeft() => setRowHorizontalAlignment(RowAlignment.left);
+  AclBuilder setRowAlignCenter() =>
+      setRowHorizontalAlignment(RowAlignment.center);
+  AclBuilder setRowAlignRight() =>
+      setRowHorizontalAlignment(RowAlignment.right);
+
+  // ── Row-level vertical alignment shortcuts ──
+  AclBuilder setRowAlignTop() =>
+      setRowVerticalAlignment(AclRowCrossAlignment.top);
+  AclBuilder setRowAlignMiddle() =>
+      setRowVerticalAlignment(AclRowCrossAlignment.center);
+  AclBuilder setRowAlignBottom() =>
+      setRowVerticalAlignment(AclRowCrossAlignment.bottom);
 }

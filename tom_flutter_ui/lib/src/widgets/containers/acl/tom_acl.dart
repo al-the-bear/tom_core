@@ -175,9 +175,16 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  /// Sets the row alignment for the current row.
-  TomAclBuilder<T> setRowAlignment(RowAlignment alignment) {
-    _builder.setRowAlignment(alignment);
+  /// Horizontal main-axis alignment for the **current row only**.
+  TomAclBuilder<T> setRowHorizontalAlignment(RowAlignment alignment) {
+    _builder.setRowHorizontalAlignment(alignment);
+    return this;
+  }
+
+  /// Vertical cross-axis alignment for the **current row only** —
+  /// inherited by components that don't call [setVerticalAlignment].
+  TomAclBuilder<T> setRowVerticalAlignment(AclRowCrossAlignment alignment) {
+    _builder.setRowVerticalAlignment(alignment);
     return this;
   }
 
@@ -257,23 +264,12 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  // ── Per-component row cross-alignment ─────────────────────────────────────
+  // ── Per-component vertical alignment ──────────────────────────────────────
 
-  /// Aligns the current component to the top of the row.
-  TomAclBuilder<T> alignTopInRow() {
-    _builder.alignTopInRow();
-    return this;
-  }
-
-  /// Aligns the current component to the middle of the row.
-  TomAclBuilder<T> alignMiddleInRow() {
-    _builder.alignMiddleInRow();
-    return this;
-  }
-
-  /// Aligns the current component to the bottom of the row.
-  TomAclBuilder<T> alignBottomInRow() {
-    _builder.alignBottomInRow();
+  /// Overrides the vertical alignment for the **current component
+  /// only** — takes precedence over the row and builder defaults.
+  TomAclBuilder<T> setVerticalAlignment(AclRowCrossAlignment alignment) {
+    _builder.setVerticalAlignment(alignment);
     return this;
   }
 
@@ -592,10 +588,18 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
-  /// Sets the default vertical cross-axis alignment for every component
-  /// of every row in this ACL instance. See [AclBuilder.setAclDefaultRowAlignment].
-  TomAclBuilder<T> setAclDefaultRowAlignment(AclRowCrossAlignment alignment) {
-    _builder.setAclDefaultRowAlignment(alignment);
+  /// Builder-wide default for the **vertical** cross-axis placement of
+  /// every row.
+  TomAclBuilder<T> setAclDefaultRowVerticalAlignment(
+      AclRowCrossAlignment alignment) {
+    _builder.setAclDefaultRowVerticalAlignment(alignment);
+    return this;
+  }
+
+  /// Builder-wide default for the **horizontal** main-axis placement of
+  /// every row.
+  TomAclBuilder<T> setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
+    _builder.setAclDefaultRowHorizontalAlignment(alignment);
     return this;
   }
 

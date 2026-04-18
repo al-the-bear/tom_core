@@ -319,7 +319,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
       id: 'demoBLayout',
       elementProvider: form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.fullName.widget)
         .newRow()
@@ -335,7 +335,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
       id: 'demoBBilling',
       elementProvider: form.billing,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
         .newRow()
@@ -350,7 +350,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
       id: 'demoBShipping',
       elementProvider: form.shipping,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
         .newRow()

@@ -91,7 +91,7 @@ class _Demo4ValidationState extends State<Demo4Validation> {
       id: 'validationDemo',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         // Company Name - required + minLength
         .append((p) => Column(

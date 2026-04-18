@@ -134,7 +134,7 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
       id: 'demoALayout',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.username.widget)
         .newRow()

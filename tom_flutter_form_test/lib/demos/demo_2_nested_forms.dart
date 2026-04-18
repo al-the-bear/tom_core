@@ -65,7 +65,7 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
       id: 'addressSection',
       elementProvider: _addressForm,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.street.widget)
         .newRow()
@@ -82,7 +82,7 @@ class _Demo2NestedFormsState extends State<Demo2NestedForms> {
       id: 'ceoSection',
       elementProvider: _ceoForm,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.firstName.widget)
         .append((p) => p.lastName.widget, dist: 16)

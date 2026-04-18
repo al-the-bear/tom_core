@@ -175,7 +175,7 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
       id: 'basicForm',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .append((p) => p.name.widget)
         .newRow()

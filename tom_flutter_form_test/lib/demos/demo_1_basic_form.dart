@@ -56,7 +56,7 @@ class _Demo1BasicFormState extends State<Demo1BasicForm> {
       id: 'basicForm',
       elementProvider: _form,
     )
-        .setAclDefaultRowAlignment(AclRowCrossAlignment.top)
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
         .setAclDefaultAppendGap(0)
         .append((p) => p.name.widget)
