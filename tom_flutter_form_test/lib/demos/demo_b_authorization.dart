@@ -68,6 +68,11 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
   // manually since `resolveEffectiveAuth` is pull-based.
   final Map<String, TomAuthState> _lastAuthSeen = {};
 
+  // Hold strong references to the observers we install on form fields.
+  // TomObservable stores its observers via WeakReference, so anything we
+  // don't retain here will be garbage-collected and silently stop firing.
+  final List<Object> _fieldObservers = [];
+
   @override
   void initState() {
     super.initState();
@@ -111,11 +116,13 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
     form.billing.bind(phase1CustomerState.billing);
     form.shipping.bind(phase1CustomerState.shipping);
 
-    // Observe value changes on the `notes` field so the UI state controller
-    // reacts to data-dependent narrowing, and on customerTier so the
-    // authorizer re-evaluates.
-    form.notes >> (_) => _snapshotAuthAndRebuild();
-    form.customerTier >> (_) => _snapshotAuthAndRebuild();
+    // Observe `phone` for the UI state controller and `customerTier` for
+    // the authorizer — when either changes, re-snapshot auth + rebuild.
+    // Hold strong references; TomObservable uses weak refs internally.
+    _fieldObservers
+      ..clear()
+      ..add(form.phone >> (_) => _snapshotAuthAndRebuild())
+      ..add(form.customerTier >> (_) => _snapshotAuthAndRebuild());
 
     _form = form;
     _snapshotAuthAndRebuild();
@@ -183,11 +190,17 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
 
   void _applyUIStateController(CustomerForm form) {
     if (_uiStateControllerEnabled) {
-      // "Disable email while notes is empty" — contrived but demonstrates
-      // build-time, data-dependent narrowing.
+      // "Disable email while phone is empty" — contrived, but exercises
+      // the build-time, data-dependent narrowing. The dependency on
+      // `phone` (a spec-aligned TomFormStringInput) instead of the Classic
+      // `notes` field keeps the observer chain clean: spec fields route
+      // user input through setValue, which reliably fires
+      // FieldValueChangedEvent + notifyObservers, whereas Classic fields
+      // update their TomObject through a controller listener that has
+      // timing quirks inside a nested form tree.
       form.email.uiStateController = TomUIStateController(
         resolve: (currentAuth, _) {
-          if (form.notes.get().toString().trim().isEmpty) {
+          if (form.phone.get().trim().isEmpty) {
             return TomAuthState.disabled;
           }
           return currentAuth;
@@ -384,7 +397,7 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization> {
             const _Bullet('TomAuthorizer: when on, customer tier "platinum" '
                 'narrows both address sections to read.'),
             const _Bullet('TomUIStateController: when on, email is disabled '
-                'until the notes field is non-empty.'),
+                'until the phone field is non-empty.'),
             const _Bullet('Every transition shows up in the event log — '
                 'value changes, validations, and synthetic '
                 'FieldAuthChangedEvent entries emitted on auth swaps.'),

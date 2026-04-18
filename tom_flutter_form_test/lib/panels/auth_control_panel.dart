@@ -88,7 +88,7 @@ class AuthControlPanel extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           title: const Text('TomUIStateController (data-dependent)'),
           subtitle: const Text(
-            'When on, disables the email field while "notes" is empty.',
+            'When on, disables the email field while "phone" is empty.',
             style: TextStyle(fontSize: 11),
           ),
           value: uiStateControllerEnabled,
