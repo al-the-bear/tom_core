@@ -311,7 +311,16 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.authorizer,
     this.uiStateController,
   }) : super(_initialValue) {
-    scope = TomScope.current.getScopePath();
+    // When the field knows its form, derive scope from the form's
+    // basePath — so a field can be instantiated at its declaration site
+    // (e.g. `late final x = TomFormStringInput('x', '', form: this)`)
+    // and still end up with a basePath that includes the form's formId,
+    // regardless of whatever TomScope.current happens to carry when the
+    // late initializer fires (typically during reflection-driven member
+    // enumeration, where only the outer scope is pushed).
+    scope = form != null
+        ? form!.basePath
+        : TomScope.current.getScopePath();
     basePath = scope.isNotEmpty ? '$scope.$fieldId' : fieldId;
     tomGroup?.register(this);
   }

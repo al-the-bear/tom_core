@@ -10,12 +10,19 @@ import 'address_form.dart';
 
 /// Customer record with nested billing and shipping addresses.
 ///
-/// Fields are created inside [createFormElements] so their scope includes
-/// this form's formId. Without that step, a `late final` field would be
-/// lazily initialised outside the form's own scope (under the outer
-/// `TomScope.withScope(...)` call only) and its basePath would be
-/// `<outerScope>.<fieldId>` — causing the two nested AddressForms
-/// (billing + shipping) to collide on identical basePaths.
+/// Fields are declared at the class level and pass `form: this`, so the
+/// field's basePath anchors on this form's own basePath — e.g.
+/// `demoC.customer.fullName`.
+///
+/// Nested `AddressForm` children are built inside [createFormElements]
+/// (rather than at their declaration site) for a separate reason:
+/// passing `parent: this` would expose the parent-form reference through
+/// TomClass reflection, creating a `member <-> parent` cycle that blows
+/// the stack on the first `TomClass.mute()` walk. Instantiating them
+/// inside the form's own scope (pushed by
+/// `TomForm.prepareForSelfObservation`) gives each address section the
+/// right `demoC.customer.billing` / `demoC.customer.shipping` basePath
+/// without ever handing it a parent-form reference.
 @tomReflector
 class CustomerForm extends TomForm<TomClass> {
   final TomAuthorizationGroup? billingGroup;
@@ -24,61 +31,58 @@ class CustomerForm extends TomForm<TomClass> {
   CustomerForm({this.billingGroup, this.shippingGroup})
       : super(formId: 'customer');
 
-  late final TomFormStringInput fullName;
-  late final TomFormStringInput email;
-  late final TomFormStringInput phone;
-  late final TomFormStringDropdown customerTier;
+  late final fullName = TomFormStringInput(
+    'fullName',
+    '',
+    form: this,
+    validators: [Validators.required(), Validators.minLength(2)],
+  );
+
+  late final email = TomFormStringInput(
+    'email',
+    '',
+    form: this,
+    validators: [Validators.required(), Validators.email()],
+    keyboardType: TextInputType.emailAddress,
+  );
+
+  late final phone = TomFormStringInput(
+    'phone',
+    '',
+    form: this,
+    keyboardType: TextInputType.phone,
+  );
+
+  late final customerTier = TomFormStringDropdown(
+    'customerTier',
+    'standard',
+    form: this,
+    source: _tierSource,
+    validators: [Validators.required()],
+  );
 
   /// Classic field mixed alongside new spec-conforming fields. Demo C
   /// exposes this to demonstrate Classic ↔ new field coexistence inside
   /// the same form.
   // ignore: deprecated_member_use
-  late final TomFormStringInputClassic notes;
+  late final notes = TomFormStringInputClassic(
+    'notes',
+    '',
+    form: this,
+    labelText: 'Customer notes (Classic)',
+    hintText: 'Free-form notes — rendered by the legacy Classic field',
+  );
 
-  late final AddressForm billing;
-  late final AddressForm shipping;
+  // Nested forms — created in createFormElements, see class doc for why.
+  late AddressForm billing;
+  late AddressForm shipping;
 
   @override
   void createFormElements() {
-    fullName = TomFormStringInput(
-      'fullName',
-      '',
-      validators: [Validators.required(), Validators.minLength(2)],
-    );
-
-    email = TomFormStringInput(
-      'email',
-      '',
-      validators: [Validators.required(), Validators.email()],
-      keyboardType: TextInputType.emailAddress,
-    );
-
-    phone = TomFormStringInput(
-      'phone',
-      '',
-      keyboardType: TextInputType.phone,
-    );
-
-    customerTier = TomFormStringDropdown(
-      'customerTier',
-      'standard',
-      source: _tierSource,
-      validators: [Validators.required()],
-    );
-
-    // ignore: deprecated_member_use
-    notes = TomFormStringInputClassic(
-      'notes',
-      '',
-      labelText: 'Customer notes (Classic)',
-      hintText: 'Free-form notes — rendered by the legacy Classic field',
-    );
-
     billing = AddressForm(
       fieldId: 'billing',
       authGroup: billingGroup,
     );
-
     shipping = AddressForm(
       fieldId: 'shipping',
       authGroup: shippingGroup,
