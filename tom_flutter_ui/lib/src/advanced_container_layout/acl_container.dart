@@ -202,7 +202,7 @@ class AclComponent {
     this.alignYFrom,
     this.alignYTo,
     this.alignYGap = 0,
-    this.rowCrossAlignment = AclRowCrossAlignment.center,
+    this.rowCrossAlignment = AclRowCrossAlignment.top,
     this.componentKey,
     this.id,
     this.group,

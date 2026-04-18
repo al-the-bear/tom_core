@@ -206,6 +206,15 @@ class _TomFormStringInputWidgetState
       }
     }
 
+    // Reshape borders to honour style.borderRadius — the presets carry
+    // preconstructed borders whose built-in radius wouldn't otherwise
+    // respond to the style's borderRadius setting.
+    final fieldBorder = applyBorderRadius(style.fieldBorder, style.borderRadius);
+    final focusedBorder =
+        applyBorderRadius(style.focusedBorder, style.borderRadius);
+    final errorBorder =
+        applyBorderRadius(style.errorBorder, style.borderRadius);
+
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
       // floatingLabelStyle must be set explicitly so the floating-state
@@ -218,10 +227,10 @@ class _TomFormStringInputWidgetState
       prefixIcon: field.prefixIcon,
       suffixIcon: field.suffixIcon,
       contentPadding: style.fieldContentPadding,
-      border: style.fieldBorder,
-      focusedBorder: style.focusedBorder,
-      errorBorder: style.errorBorder,
-      enabledBorder: style.fieldBorder,
+      border: fieldBorder,
+      focusedBorder: focusedBorder,
+      errorBorder: errorBorder,
+      enabledBorder: fieldBorder,
       hintStyle: effectiveHintStyle,
       // No errorText or helperText — handled by the anatomy column.
     );
@@ -386,16 +395,22 @@ class _TomFormStringDropdownWidgetState
       }
     }
 
+    final fieldBorder = applyBorderRadius(style.fieldBorder, style.borderRadius);
+    final focusedBorder =
+        applyBorderRadius(style.focusedBorder, style.borderRadius);
+    final errorBorder =
+        applyBorderRadius(style.errorBorder, style.borderRadius);
+
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
       labelStyle: style.labelStyle,
       floatingLabelStyle: style.labelStyle,
       hintText: effectiveHint,
       contentPadding: style.fieldContentPadding,
-      border: style.fieldBorder,
-      focusedBorder: style.focusedBorder,
-      errorBorder: style.errorBorder,
-      enabledBorder: style.fieldBorder,
+      border: fieldBorder,
+      focusedBorder: focusedBorder,
+      errorBorder: errorBorder,
+      enabledBorder: fieldBorder,
       hintStyle: composeHintStyle(style, Theme.of(context)),
     );
 

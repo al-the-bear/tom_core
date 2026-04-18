@@ -322,16 +322,41 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
             const _Bullet('Form inspection card on the right prints the '
                 'live value map, the initial snapshot diff, and the dirty '
                 'field list.'),
+            const _Bullet('Hint styling (hintFontWeight / hintOpacity) is '
+                'only visible while a field is empty — press Clear to '
+                'observe the sliders.'),
           ],
         ),
       ),
     );
   }
 
+  /// Empties every spec-aligned field via `setValue('')`. Hints only render
+  /// when the field is empty, so this is how the "hintFontWeight" /
+  /// "hintOpacity" theming sliders become visually observable.
+  void _clearAll() {
+    for (final field in _form.fields.values) {
+      if (field is TomField<String>) field.setValue('');
+    }
+    for (final field in _form.billing.fields.values) {
+      if (field is TomField<String>) field.setValue('');
+    }
+    for (final field in _form.shipping.fields.values) {
+      if (field is TomField<String>) field.setValue('');
+    }
+    setState(() {});
+  }
+
   Widget _buildActionRow(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        TextButton.icon(
+          onPressed: _clearAll,
+          icon: const Icon(Icons.clear_all),
+          label: const Text('Clear'),
+        ),
+        const SizedBox(width: 8),
         TextButton.icon(
           onPressed: _discardAll,
           icon: const Icon(Icons.undo),

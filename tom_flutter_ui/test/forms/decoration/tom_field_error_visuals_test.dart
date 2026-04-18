@@ -11,6 +11,18 @@ void main() {
     borderSide: BorderSide(color: Color(0xFF000000)),
   );
 
+  /// applyErrorVisuals now rewrites the error-state borders to match
+  /// `style.borderRadius` so they visually line up with the field's normal
+  /// corners. The canonical default is 8 — assertions compare against the
+  /// same reshaping to keep them future-proof if the default moves.
+  OutlineInputBorder errorOutlineAt(double radius) =>
+      OutlineInputBorder(
+        borderSide: const BorderSide(color: Color(0xFFD32F2F), width: 2),
+        borderRadius: BorderRadius.circular(radius),
+      );
+  const defaultBorderRadius = 8.0;
+  final errorOutlineRadiused = errorOutlineAt(defaultBorderRadius);
+
   group('applyErrorVisuals — no error', () {
     test('returns decoration unchanged when hasError is false', () {
       const decoration = InputDecoration(
@@ -58,10 +70,10 @@ void main() {
         hasError: true,
       );
 
-      expect(result.enabledBorder, errorOutline);
-      expect(result.focusedBorder, errorOutline);
-      expect(result.disabledBorder, errorOutline);
-      expect(result.border, errorOutline);
+      expect(result.enabledBorder, errorOutlineRadiused);
+      expect(result.focusedBorder, errorOutlineRadiused);
+      expect(result.disabledBorder, errorOutlineRadiused);
+      expect(result.border, errorOutlineRadiused);
       expect(result.suffixIcon, isNull);
     });
 
@@ -88,6 +100,26 @@ void main() {
       expect(result.enabledBorder, fieldOutline);
       expect(result.focusedBorder, fieldOutline);
       expect(result.border, fieldOutline);
+    });
+
+    test('error border is reshaped to style.borderRadius', () {
+      const decoration = InputDecoration(border: fieldOutline);
+      const style = TomFieldStyle(
+        fieldBorder: fieldOutline,
+        errorBorder: errorOutline,
+        errorBorderEnabled: true,
+        errorIconEnabled: false,
+        borderRadius: 24.0,
+      );
+
+      final result = applyErrorVisuals(
+        decoration: decoration,
+        style: style,
+        hasError: true,
+      );
+
+      expect(result.border, errorOutlineAt(24));
+      expect(result.enabledBorder, errorOutlineAt(24));
     });
 
     test('leaves border alone when style.errorBorder is null', () {
@@ -201,9 +233,9 @@ void main() {
         hasError: true,
       );
 
-      expect(result.enabledBorder, errorOutline);
-      expect(result.focusedBorder, errorOutline);
-      expect(result.border, errorOutline);
+      expect(result.enabledBorder, errorOutlineRadiused);
+      expect(result.focusedBorder, errorOutlineRadiused);
+      expect(result.border, errorOutlineRadiused);
 
       await tester.pumpWidget(
         MaterialApp(

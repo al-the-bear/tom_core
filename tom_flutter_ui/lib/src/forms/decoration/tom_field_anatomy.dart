@@ -33,6 +33,25 @@ TextStyle? composeHintStyle(TomFieldStyle style, ThemeData theme) {
   return effective;
 }
 
+/// Returns [border] with its [BorderRadius] replaced by [radius], when the
+/// border is one of Flutter's built-in rounded input-border types. For any
+/// other border (or null) the input is returned unchanged.
+///
+/// Used by every spec-aligned field widget to make [TomFieldStyle.borderRadius]
+/// actually take effect: presets carry their own preconstructed borders (so
+/// setting `borderRadius` in isolation wouldn't otherwise do anything), and
+/// this helper reshapes them without rebuilding the whole preset.
+InputBorder? applyBorderRadius(InputBorder? border, double radius) {
+  final rect = BorderRadius.circular(radius);
+  if (border is OutlineInputBorder) {
+    return border.copyWith(borderRadius: rect);
+  }
+  if (border is UnderlineInputBorder) {
+    return border.copyWith(borderRadius: rect);
+  }
+  return border;
+}
+
 /// True when [validators] contains the canonical Required validator.
 bool fieldHasRequiredValidator(List<Object> validators) {
   for (final v in validators) {
@@ -101,11 +120,15 @@ InputDecoration applyErrorVisuals({
   InputDecoration updated = decoration;
 
   if (style.errorBorderEnabled && style.errorBorder != null) {
+    // Reshape to style.borderRadius so the error-state border matches the
+    // rest of the field's rounded corners.
+    final errorBorder =
+        applyBorderRadius(style.errorBorder, style.borderRadius);
     updated = updated.copyWith(
-      enabledBorder: style.errorBorder,
-      focusedBorder: style.errorBorder,
-      border: style.errorBorder,
-      disabledBorder: style.errorBorder,
+      enabledBorder: errorBorder,
+      focusedBorder: errorBorder,
+      border: errorBorder,
+      disabledBorder: errorBorder,
     );
   }
 

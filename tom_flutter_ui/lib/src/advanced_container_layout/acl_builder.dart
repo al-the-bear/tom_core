@@ -25,7 +25,7 @@ class _ComponentData {
   AclAxisPointY? alignYFrom;
   AclAxisPointY? alignYTo;
   double alignYGap = 0;
-  AclRowCrossAlignment rowCrossAlignment = AclRowCrossAlignment.center;
+  AclRowCrossAlignment rowCrossAlignment = AclRowCrossAlignment.top;
   bool rowCrossAlignmentSet = false;
   Key? componentKey;
   String? id;
@@ -130,7 +130,7 @@ class AclBuilder {
   double _defaultRowGap = 8;
   Size? _defaultUnknownMinimumSize;
   Size? _defaultUnknownPreferredSize;
-  AclRowCrossAlignment _defaultRowCrossAlignment = AclRowCrossAlignment.center;
+  AclRowCrossAlignment _defaultRowCrossAlignment = AclRowCrossAlignment.top;
   AclBorderStyle _borderStyle = const AclBorderStyle.none();
   AclBorderStyle? _focusedBorderStyle;
   EdgeInsetsGeometry _padding = EdgeInsets.zero;
@@ -778,10 +778,12 @@ class AclBuilder {
   /// Sets the default vertical cross-axis alignment applied to every
   /// component of every row of this ACL instance.
   ///
-  /// The global builder default is [AclRowCrossAlignment.center]. Form
-  /// layouts typically prefer [AclRowCrossAlignment.top] so that fields
-  /// whose height grows (e.g. when an error message appears below the
-  /// input) do not drag their neighbours off the baseline.
+  /// The global builder default is [AclRowCrossAlignment.top] — chosen
+  /// so that fields whose height grows (e.g. when an error message
+  /// appears below the input) do not drag their neighbours off the
+  /// baseline. Set to [AclRowCrossAlignment.center] or
+  /// [AclRowCrossAlignment.bottom] for non-form layouts where the
+  /// centre/bottom line is the visual anchor.
   ///
   /// Per-component overrides via `alignTopInRow() / alignMiddleInRow() /
   /// alignBottomInRow()` still win for that component.
