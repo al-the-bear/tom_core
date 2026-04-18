@@ -269,6 +269,15 @@ class AclRow {
   /// `(minWidth, gap)` pairs overriding [defaultAppendGap] above certain widths.
   final List<(double, double)> defaultAppendGapBpOverrides;
 
+  /// Vertical cross-axis alignment applied to the Row widget itself.
+  /// Snapshotted from the builder's [setAclDefaultRowAlignment] at row
+  /// construction so the row-level default drives the Row's own
+  /// crossAxisAlignment. Individual components can still request a
+  /// different placement within their own cell via `alignTopInRow` /
+  /// `alignMiddleInRow` / `alignBottomInRow` (handled per-cell in
+  /// `_wrapWithRowCrossAlignment`).
+  final AclRowCrossAlignment defaultRowCrossAlignment;
+
   const AclRow({
     required this.components,
     this.alignment = RowAlignment.left,
@@ -285,6 +294,7 @@ class AclRow {
     this.heightBpOverrides = const [],
     this.defaultAppendGap = 8.0,
     this.defaultAppendGapBpOverrides = const [],
+    this.defaultRowCrossAlignment = AclRowCrossAlignment.top,
   });
 }
 
@@ -2214,29 +2224,23 @@ class _AclContainerState extends State<AclContainer> {
               )
               .toList();
 
-          // Derive the Row's cross-axis alignment from the components'
-          // rowCrossAlignment. When every non-expandY component agrees on
-          // a single alignment, honour it; otherwise fall back to `.start`
-          // (top) — the form-friendly default where a growing field (e.g.
-          // one showing an error below) doesn't drag its neighbours off
-          // baseline. Previously this was hard-coded to
-          // CrossAxisAlignment.center, so per-component `rowCrossAlignment`
-          // had no effect on the actual Row layout.
-          CrossAxisAlignment rowCrossAxis;
+          // The Row widget honours this row's default cross-axis
+          // alignment (set on the builder via setAclDefaultRowAlignment).
+          // Per-component overrides — alignTopInRow / alignMiddleInRow /
+          // alignBottomInRow — are applied inside each cell by
+          // `_wrapWithRowCrossAlignment`, so they still work regardless
+          // of the Row's own alignment. Previously this was hard-coded
+          // to CrossAxisAlignment.center, which silently defeated the
+          // builder-level default.
+          final CrossAxisAlignment rowCrossAxis;
           if (hasExpandY && canExpandVertically) {
             rowCrossAxis = CrossAxisAlignment.stretch;
           } else {
-            final alignments = row.components
-                .where((c) => !(c.expandY && canExpandVertically))
-                .map((c) => c.rowCrossAlignment)
-                .toSet();
-            rowCrossAxis = alignments.length == 1
-                ? switch (alignments.first) {
-                    AclRowCrossAlignment.top => CrossAxisAlignment.start,
-                    AclRowCrossAlignment.center => CrossAxisAlignment.center,
-                    AclRowCrossAlignment.bottom => CrossAxisAlignment.end,
-                  }
-                : CrossAxisAlignment.start;
+            rowCrossAxis = switch (row.defaultRowCrossAlignment) {
+              AclRowCrossAlignment.top => CrossAxisAlignment.start,
+              AclRowCrossAlignment.center => CrossAxisAlignment.center,
+              AclRowCrossAlignment.bottom => CrossAxisAlignment.end,
+            };
           }
 
           final rowContent = Row(

@@ -94,6 +94,7 @@ class _RowData {
     required List<(double, double)> defaultAppendGapBpOverrides,
     required double? fallbackHeight,
     required List<(double, double?)> fallbackHeightBpOverrides,
+    required AclRowCrossAlignment defaultRowCrossAlignment,
   }) {
     return AclRow(
       components: components.map((c) => c.toComponent()).toList(),
@@ -112,6 +113,7 @@ class _RowData {
           heightIsExplicit ? heightBpOverrides : fallbackHeightBpOverrides,
       defaultAppendGap: defaultAppendGap,
       defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
+      defaultRowCrossAlignment: defaultRowCrossAlignment,
     );
   }
 }
@@ -1028,6 +1030,8 @@ class AclBuilder {
                 fallbackHeight: variantBuilder._defaultRowHeight,
                 fallbackHeightBpOverrides:
                     variantBuilder._defaultRowHeightBpOverrides,
+                defaultRowCrossAlignment:
+                    variantBuilder._defaultRowCrossAlignment,
               ))
           .toList(),
     ));
@@ -1125,6 +1129,7 @@ class AclBuilder {
                 defaultAppendGapBpOverrides: _defaultAppendGapBpOverrides,
                 fallbackHeight: _defaultRowHeight,
                 fallbackHeightBpOverrides: _defaultRowHeightBpOverrides,
+                defaultRowCrossAlignment: _defaultRowCrossAlignment,
               ))
           .toList(),
       borderStyle: _borderStyle,
