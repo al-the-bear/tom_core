@@ -333,10 +333,10 @@ void main() {
 
       await tester.pumpWidget(_wrap(field.widget));
 
-      // Wrapped in Opacity for disabled
+      // Wrapped in Opacity for disabled — 0.6 is the current default.
       expect(find.byType(Opacity), findsOneWidget);
       final opacity = tester.widget<Opacity>(find.byType(Opacity));
-      expect(opacity.opacity, 0.5);
+      expect(opacity.opacity, 0.6);
     });
 
     testWidgets('read-only background when auth is read', (tester) async {

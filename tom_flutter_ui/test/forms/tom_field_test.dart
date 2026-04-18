@@ -307,9 +307,27 @@ void main() {
   });
 
   group('TomField — TomAuthorizable interface', () {
-    test('tomId returns basePath', () {
+    test('tomId returns the short fieldId, not the full basePath', () {
       final field = _TestField<String>('email', '');
+      // With no TomScope wrapper basePath collapses to fieldId anyway, so
+      // also verify they stay consistent with/without scope prefix.
       expect(field.tomId, 'email');
+      expect(field.fieldId, 'email');
+      expect(field.basePath, 'email');
+    });
+
+    test('tomId stays short when the field lives inside a scope', () {
+      final field = TomScope.withScope(
+        'checkout',
+        () => TomScope.withScope(
+          'customer',
+          () => _TestField<String>('email', ''),
+        ),
+      );
+      expect(field.tomId, 'email',
+          reason: 'tomId is the short id that was passed to the constructor.');
+      expect(field.basePath, 'checkout.customer.email',
+          reason: 'basePath is the full scope-prefixed path.');
     });
 
     test('tomGroup is null by default', () {

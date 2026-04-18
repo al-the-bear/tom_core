@@ -468,8 +468,11 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Build-time UI state controller (optional).
   TomUIStateController? uiStateController;
 
+  /// The short identifier this field was constructed with. Matches the
+  /// `<suffix>` consumed by resource lookups of the form
+  /// `"$basePath.<suffix>"`. For the full path use [basePath].
   @override
-  String? get tomId => basePath;
+  String? get tomId => fieldId;
 
   /// Resolved effective authorization state (see §19 for resolution order).
   @override
