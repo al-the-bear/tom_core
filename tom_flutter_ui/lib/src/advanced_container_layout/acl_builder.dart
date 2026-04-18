@@ -89,6 +89,10 @@ class _RowData {
   bool heightIsExplicit = false;
   List<(double, double?)> heightBpOverrides = const [];
 
+  /// Per-row cross-axis alignment override. `null` means "use the
+  /// builder's default" (set via `setAclDefaultRowAlignment`).
+  AclRowCrossAlignment? rowCrossAlignment;
+
   AclRow toRow({
     required double defaultAppendGap,
     required List<(double, double)> defaultAppendGapBpOverrides,
@@ -113,7 +117,9 @@ class _RowData {
           heightIsExplicit ? heightBpOverrides : fallbackHeightBpOverrides,
       defaultAppendGap: defaultAppendGap,
       defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
-      defaultRowCrossAlignment: defaultRowCrossAlignment,
+      // Per-row override beats the builder-wide default.
+      defaultRowCrossAlignment:
+          rowCrossAlignment ?? defaultRowCrossAlignment,
     );
   }
 }
@@ -666,6 +672,17 @@ class AclBuilder {
 
   AclBuilder setRowAlignment(RowAlignment align) {
     _currentRow.alignment = align;
+    return this;
+  }
+
+  /// Overrides the vertical cross-axis alignment for the **current row
+  /// only**. Individual components can still deviate via
+  /// `alignTopInRow` / `alignMiddleInRow` / `alignBottomInRow`.
+  ///
+  /// Without this call the row inherits whatever the builder-level
+  /// default is (see [setAclDefaultRowAlignment]).
+  AclBuilder setRowCrossAlignment(AclRowCrossAlignment align) {
+    _currentRow.rowCrossAlignment = align;
     return this;
   }
 
