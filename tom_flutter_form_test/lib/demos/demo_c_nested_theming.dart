@@ -46,7 +46,12 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
   late final CustomerForm _form;
 
   // --- Theming state ---------------------------------------------------------
-  _Preset _preset = _Preset.material3;
+  //
+  // Default to `bordered` so borderRadius moves are immediately visible —
+  // the `material3` preset carries no fieldBorder at all, which means
+  // dragging the radius slider would change `style.borderRadius` correctly
+  // but leave the UI unchanged (no outline to reshape).
+  _Preset _preset = _Preset.bordered;
   bool _withTheme = false;
 
   LabelPlacement _labelPlacement = LabelPlacement.above;
