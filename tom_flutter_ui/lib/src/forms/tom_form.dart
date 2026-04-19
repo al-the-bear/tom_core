@@ -11,6 +11,7 @@ import '../widget_base/tom_screen_elements_provider.dart';
 import 'events/tom_form_event.dart';
 import 'events/tom_form_event_listener.dart';
 import 'events/tom_form_event_source.dart';
+import 'fields/tom_field_widget_adapter.dart';
 import 'validation/form_validation_error.dart';
 import 'validation/validation_result.dart';
 
@@ -844,24 +845,30 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 
-    return ValueListenableBuilder(
-      builder: (context, value, widget) {
-        return TextField(
-          decoration: InputDecoration(
-            labelText: resolvedLabel,
-            helperText: resolvedHelper,
-            hintText: resolvedHint,
-            errorText: _errorText.value,
-            prefixIcon: resolvedPrefixIcon,
-            suffixIcon: resolvedSuffixIcon,
+    // Classic fields render a ValueListenableBuilder; wrap it in a
+    // TomFieldWidgetAdapter so AclContainer's TomAuthorizable-aware
+    // hide-unauthorized pass can still reach this field's auth state.
+    return TomFieldWidgetAdapter(
+      field: this,
+      child: ValueListenableBuilder(
+        builder: (context, value, widget) {
+          return TextField(
+            decoration: InputDecoration(
+              labelText: resolvedLabel,
+              helperText: resolvedHelper,
+              hintText: resolvedHint,
+              errorText: _errorText.value,
+              prefixIcon: resolvedPrefixIcon,
+              suffixIcon: resolvedSuffixIcon,
+              enabled: enabled ?? true,
+            ),
+            controller: _textEditingController,
+            obscureText: obscureText,
             enabled: enabled ?? true,
-          ),
-          controller: _textEditingController,
-          obscureText: obscureText,
-          enabled: enabled ?? true,
-        );
-      },
-      valueListenable: _errorText,
+          );
+        },
+        valueListenable: _errorText,
+      ),
     );
   }
 

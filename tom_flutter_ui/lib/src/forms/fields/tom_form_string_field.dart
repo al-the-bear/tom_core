@@ -12,6 +12,7 @@ import '../decoration/tom_string_input_decoration_mixin.dart';
 import '../selection/tom_selectable_source.dart';
 import '../style/form_style_enums.dart';
 import '../tom_form.dart';
+import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
 // TomFormStringField — Abstract String Field (§6)
@@ -125,7 +126,10 @@ class TomFormStringInput extends TomFormStringField
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
-  Widget get widget => _TomFormStringInputWidget(field: this);
+  Widget get widget => TomFieldWidgetAdapter(
+        field: this,
+        child: _TomFormStringInputWidget(field: this),
+      );
 }
 
 class _TomFormStringInputWidget extends StatefulWidget {
@@ -305,7 +309,10 @@ class TomFormStringDropdown extends TomFormStringField
   List<SelectableItem<String>>? _cachedItems;
 
   @override
-  Widget get widget => _TomFormStringDropdownWidget(field: this);
+  Widget get widget => TomFieldWidgetAdapter(
+        field: this,
+        child: _TomFormStringDropdownWidget(field: this),
+      );
 }
 
 class _TomFormStringDropdownWidget extends StatefulWidget {

@@ -184,6 +184,15 @@ class AclComponent {
   /// Null for the default variant (shown when no other detector matches).
   final AclVariantDetector? variantDetector;
 
+  /// Per-component override for the container's default hide-when-
+  /// unauthorized behaviour. `null` → inherit the container's
+  /// `defaultHideUnauthorized` flag. `true` → if this component's child is
+  /// a [TomAuthorizable] resolving to [TomAuthState.none], remove it from
+  /// the row entirely; the **following** component's `gapBefore` is
+  /// dropped too so the next visible component slides into the slot.
+  /// `false` → never auto-remove.
+  final bool? hideUnauthorized;
+
   const AclComponent({
     required this.child,
     this.flags = 0,
@@ -208,7 +217,38 @@ class AclComponent {
     this.group,
     this.inlineVariant = false,
     this.variantDetector,
+    this.hideUnauthorized,
   });
+
+  /// Returns a copy with [gapBefore] replaced.
+  AclComponent copyWithGapBefore(double newGap) {
+    return AclComponent(
+      child: child,
+      flags: flags,
+      gapBefore: newGap,
+      gapBeforeIsDefault: false,
+      gapWeight: gapWeight,
+      preferredSize: preferredSize,
+      minimumSize: minimumSize,
+      maximumSize: maximumSize,
+      referenceKey: referenceKey,
+      alignXToKey: alignXToKey,
+      alignXFrom: alignXFrom,
+      alignXTo: alignXTo,
+      alignXGap: alignXGap,
+      alignYToKey: alignYToKey,
+      alignYFrom: alignYFrom,
+      alignYTo: alignYTo,
+      alignYGap: alignYGap,
+      rowCrossAlignment: rowCrossAlignment,
+      componentKey: componentKey,
+      id: id,
+      group: group,
+      inlineVariant: inlineVariant,
+      variantDetector: variantDetector,
+      hideUnauthorized: hideUnauthorized,
+    );
+  }
 
   bool get expandX => (flags & AclFlags.expandX) != 0;
   bool get expandY => (flags & AclFlags.expandY) != 0;
@@ -296,6 +336,34 @@ class AclRow {
     this.defaultAppendGapBpOverrides = const [],
     this.defaultRowCrossAlignment = AclRowCrossAlignment.top,
   });
+
+  /// Returns a copy with [components] and [gapBefore] replaced. Used by the
+  /// hide-unauthorized pass when it rewrites a row that has had some of
+  /// its components dropped or when the row itself inherits a reduced
+  /// gap because the previous row was elided.
+  AclRow copyWith({
+    List<AclComponent>? components,
+    double? gapBefore,
+  }) {
+    return AclRow(
+      components: components ?? this.components,
+      alignment: alignment,
+      gapBefore: gapBefore ?? this.gapBefore,
+      isGapRow: isGapRow,
+      gapRowWeight: gapRowWeight,
+      separator: separator,
+      gapRowMinSize: gapRowMinSize,
+      id: id,
+      group: group,
+      idScope: idScope,
+      breakpoints: breakpoints,
+      height: height,
+      heightBpOverrides: heightBpOverrides,
+      defaultAppendGap: defaultAppendGap,
+      defaultAppendGapBpOverrides: defaultAppendGapBpOverrides,
+      defaultRowCrossAlignment: defaultRowCrossAlignment,
+    );
+  }
 }
 
 /// Returns the effective gapBefore for [comp] inside [row] at the given
@@ -437,6 +505,18 @@ class AclContainer extends StatefulWidget {
   /// If null, falls back to the nearest [AclDirectionScope], then [AclDirection.ltr].
   final AclDirection? direction;
 
+  /// Default for per-component `hideUnauthorized`. When `true`, any
+  /// component whose child implements [TomAuthorizable] and currently
+  /// resolves to [TomAuthState.none] is **removed from its row before
+  /// layout**, together with the `gapBefore` of the component that
+  /// follows it in the same row. If a row ends up with no components it
+  /// is dropped in turn, along with the `gapBefore` of the next row.
+  ///
+  /// Components can opt in or out individually via
+  /// [AclComponent.hideUnauthorized] (typically set through the builder's
+  /// `setHideUnauthorized(bool)` fluent call).
+  final bool defaultHideUnauthorized;
+
   const AclContainer({
     super.key,
     required this.rows,
@@ -456,6 +536,7 @@ class AclContainer extends StatefulWidget {
     this.groupVisibilityControllers = const {},
     this.variants = const [],
     this.direction,
+    this.defaultHideUnauthorized = false,
   });
 
   @override
@@ -1168,6 +1249,111 @@ class _AclContainerState extends State<AclContainer> {
     );
   }
 
+  // ── Auth-driven row / component elision ────────────────────────────────────
+
+  /// Removes components whose children are `TomAuthorizable` resolving to
+  /// [TomAuthState.none] — provided either the container default
+  /// ([AclContainer.defaultHideUnauthorized]) or the per-component
+  /// [AclComponent.hideUnauthorized] override says so.
+  ///
+  /// Elision rules (matching §26 of the ACL spec):
+  ///
+  ///   * A hidden component's own `gapBefore` (the gap between it and the
+  ///     previous visible component) is **preserved** and handed to the
+  ///     next visible component so the next visible component lands in
+  ///     the hidden component's slot. The next visible component's own
+  ///     `gapBefore` (the gap between the hidden component and itself —
+  ///     "the gap after the hidden component") is **dropped**.
+  ///   * Chain of hidden components: only the first hidden component's
+  ///     gapBefore is carried forward; intermediate hidden components'
+  ///     gapBefores are "gaps after a previous hidden component" and
+  ///     get dropped.
+  ///   * When every content component in a row is dropped, the whole
+  ///     row is dropped as if it didn't exist — its own `gapBefore` is
+  ///     carried to the next content row, which in turn has its own
+  ///     `gapBefore` dropped (it was the "gap after the elided row").
+  ///   * Gap rows and components without a `TomAuthorizable` child are
+  ///     always preserved.
+  List<AclRow> _applyAuthHiding(List<AclRow> rows) {
+    final containerDefault = widget.defaultHideUnauthorized;
+    // Fast-path: nothing can ever be hidden.
+    if (!containerDefault &&
+        !rows.any((r) => r.components.any((c) => c.hideUnauthorized == true))) {
+      return rows;
+    }
+
+    final out = <AclRow>[];
+    bool inheritNextRowGap = false;
+    double pendingRowGap = 0;
+
+    for (final row in rows) {
+      if (row.isGapRow) {
+        // Gap rows are left untouched (they don't carry a gapBefore that
+        // matters for this rule, and they're never auth-hidden).
+        out.add(row);
+        continue;
+      }
+
+      final keepers = <AclComponent>[];
+      bool inheritNextGap = false;
+      double pendingGap = 0;
+      for (final comp in row.components) {
+        final hide = _shouldHide(comp, containerDefault);
+        if (hide) {
+          if (!inheritNextGap) {
+            // First hidden in a chain — preserve its gapBefore for the
+            // next visible component.
+            pendingGap = comp.gapBefore;
+          }
+          // Either way: the next visible component's own gapBefore is
+          // "the gap after this hidden component" → drop it.
+          inheritNextGap = true;
+          continue;
+        }
+        if (inheritNextGap) {
+          keepers.add(comp.copyWithGapBefore(pendingGap));
+          inheritNextGap = false;
+          pendingGap = 0;
+        } else {
+          keepers.add(comp);
+        }
+      }
+
+      if (keepers.isEmpty) {
+        // Row has no surviving components — elide it completely. Its
+        // own gapBefore carries forward the same way a hidden
+        // component's gapBefore carries to the next visible component.
+        if (!inheritNextRowGap) {
+          pendingRowGap = row.gapBefore;
+        }
+        inheritNextRowGap = true;
+        continue;
+      }
+
+      final rowGap =
+          inheritNextRowGap ? pendingRowGap : row.gapBefore;
+      inheritNextRowGap = false;
+      pendingRowGap = 0;
+      out.add(row.copyWith(components: keepers, gapBefore: rowGap));
+    }
+    return out;
+  }
+
+  /// Whether [comp]'s child should be elided by the hide-unauthorized
+  /// pass: the child must be [TomAuthorizable], the effective flag has
+  /// to be `true` (per-component override or container default), and the
+  /// resolved auth state must be [TomAuthState.none].
+  bool _shouldHide(AclComponent comp, bool containerDefault) {
+    final effective = comp.hideUnauthorized ?? containerDefault;
+    if (!effective) return false;
+    final child = comp.child;
+    if (child is TomAuthorizable) {
+      return (child as TomAuthorizable).effectiveAuthState ==
+          TomAuthState.none;
+    }
+    return false;
+  }
+
   // ── Content building ───────────────────────────────────────────────────────
 
   Widget _buildContent(BuildContext context) {
@@ -1212,10 +1398,11 @@ class _AclContainerState extends State<AclContainer> {
           parentAcl,
           context,
         );
-        final effectiveRows = _applyRowBreakpoints(
+        final breakpointedRows = _applyRowBreakpoints(
           inlineFilteredRows,
           canExpandHorizontally ? effectiveMaxW : null,
         );
+        final effectiveRows = _applyAuthHiding(breakpointedRows);
 
         final hasExpandY = effectiveRows.any(
           (row) => !row.isGapRow && row.components.any((c) => c.expandY),
@@ -2395,6 +2582,7 @@ class AclLayout extends StatelessWidget {
   final Map<String, AclGroupVisibilityController> groupVisibilityControllers;
   final List<AclVariant> variants;
   final AclDirection? direction;
+  final bool defaultHideUnauthorized;
 
   const AclLayout({
     super.key,
@@ -2415,6 +2603,7 @@ class AclLayout extends StatelessWidget {
     this.groupVisibilityControllers = const {},
     this.variants = const [],
     this.direction,
+    this.defaultHideUnauthorized = false,
   });
 
   @override
@@ -2437,6 +2626,7 @@ class AclLayout extends StatelessWidget {
       groupVisibilityControllers: groupVisibilityControllers,
       variants: variants,
       direction: direction,
+      defaultHideUnauthorized: defaultHideUnauthorized,
     );
   }
 }
@@ -2468,6 +2658,7 @@ class Acl extends AclLayout {
     super.groupVisibilityControllers = const {},
     super.variants = const [],
     super.direction,
+    super.defaultHideUnauthorized = false,
     this.title,
     this.titleWidget,
     this.titleStyle,
@@ -2599,6 +2790,7 @@ class Acl extends AclLayout {
             groupVisibilityControllers: groupVisibilityControllers,
             variants: variants,
             direction: direction,
+            defaultHideUnauthorized: defaultHideUnauthorized,
           ),
         ),
         Positioned(

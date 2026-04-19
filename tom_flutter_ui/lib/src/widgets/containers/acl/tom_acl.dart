@@ -603,6 +603,20 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     return this;
   }
 
+  /// Container-wide default for hide-when-unauthorized. See
+  /// [AclBuilder.setAclDefaultHideUnauthorized].
+  TomAclBuilder<T> setAclDefaultHideUnauthorized(bool value) {
+    _builder.setAclDefaultHideUnauthorized(value);
+    return this;
+  }
+
+  /// Per-component override for hide-when-unauthorized on the most
+  /// recently appended component. See [AclBuilder.setHideUnauthorized].
+  TomAclBuilder<T> setHideUnauthorized(bool? value) {
+    _builder.setHideUnauthorized(value);
+    return this;
+  }
+
   /// Sets a default minimum size for components without explicit minimum.
   TomAclBuilder<T> setAclDefaultUnknownMinimumSize(double width,
       [double height = 0]) {

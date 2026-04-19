@@ -32,6 +32,7 @@ class _ComponentData {
   String? group;
   bool inlineVariant = false;
   AclVariantDetector? variantDetector;
+  bool? hideUnauthorized;
 
   _ComponentData({
     required this.child,
@@ -67,6 +68,7 @@ class _ComponentData {
       group: group,
       inlineVariant: inlineVariant,
       variantDetector: variantDetector,
+      hideUnauthorized: hideUnauthorized,
     );
   }
 }
@@ -174,6 +176,11 @@ class AclBuilder {
 
   // §27 Variants
   final List<AclVariant> _variants = [];
+
+  /// Default hide-when-unauthorized behaviour applied to every component
+  /// whose own [AclComponent.hideUnauthorized] is `null`. See
+  /// [setAclDefaultHideUnauthorized].
+  bool _defaultHideUnauthorized = false;
 
   // §29 Inline Component Variants
   bool _inVariantBlock = false;
@@ -803,6 +810,39 @@ class AclBuilder {
     return this;
   }
 
+  /// Sets the builder-wide default for the hide-when-unauthorized
+  /// behaviour. When `true`, every appended component whose child
+  /// implements [TomAuthorizable] and currently evaluates to
+  /// [TomAuthState.none] is **dropped from the row** at build time;
+  /// the `gapBefore` of the component that follows it is also dropped
+  /// so the next visible component takes the hidden component's slot.
+  /// When a row is left with no components it is dropped in turn, along
+  /// with the next row's `gapBefore`.
+  ///
+  /// The default is `false` — components still render as whatever their
+  /// own self-shrink-on-`none` path produces (typically a `SizedBox.shrink()`
+  /// placeholder inside a preserved gap).
+  ///
+  /// Override per-component with [setHideUnauthorized].
+  AclBuilder setAclDefaultHideUnauthorized(bool value) {
+    _defaultHideUnauthorized = value;
+    return this;
+  }
+
+  /// Overrides the container's hide-when-unauthorized default for the
+  /// most recently appended component. Pass `null` to clear the override
+  /// and fall back to the container default.
+  ///
+  /// See [setAclDefaultHideUnauthorized] for the full semantics.
+  AclBuilder setHideUnauthorized(bool? value) {
+    if (_currentComponent == null) {
+      throw StateError(
+          'setHideUnauthorized must be called immediately after append().');
+    }
+    _currentComponent!.hideUnauthorized = value;
+    return this;
+  }
+
   /// Builder-wide default for the **vertical** cross-axis placement of
   /// every row. Individual rows override via [setRowVerticalAlignment];
   /// individual components override via [setVerticalAlignment].
@@ -1188,6 +1228,7 @@ class AclBuilder {
       groupVisibilityControllers: Map.unmodifiable(_groupVisibilityControllers),
       variants: sortedVariants,
       direction: _direction,
+      defaultHideUnauthorized: _defaultHideUnauthorized,
     );
   }
 
