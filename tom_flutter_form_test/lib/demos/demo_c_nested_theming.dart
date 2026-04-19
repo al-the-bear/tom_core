@@ -57,7 +57,10 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
 
   double _labelFieldGap = 4;
   double _errorFieldGap = 4;
+  double _descriptionFieldGap = 4;
   double _borderRadius = 8;
+  double _borderWidth = 1;
+  double _focusedBorderWidth = 2;
   int _hintWeight = 400;
   double _hintOpacity = 0.7;
 
@@ -112,7 +115,12 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
         requiredIndicatorOnDescription: _requiredDescription,
         labelFieldGap: _labelFieldGap,
         errorFieldGap: _errorFieldGap,
+        descriptionFieldGap: _descriptionFieldGap,
         borderRadius: _borderRadius,
+        borderWidth: _borderWidth,
+        borderWidthSet: true,
+        focusedBorderWidth: _focusedBorderWidth,
+        focusedBorderWidthSet: true,
         // TomFieldStyle.copyWith uses `*Set` sentinel flags for the hint
         // properties so callers can explicitly clear them to null. That
         // means passing `hintFontWeight:` / `hintOpacity:` alone is a
@@ -424,8 +432,14 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
             (v) => setState(() => _labelFieldGap = v)),
         _sliderRow('errorFieldGap', _errorFieldGap, 0, 16,
             (v) => setState(() => _errorFieldGap = v)),
+        _sliderRow('descriptionFieldGap', _descriptionFieldGap, 0, 16,
+            (v) => setState(() => _descriptionFieldGap = v)),
         _sliderRow('borderRadius', _borderRadius, 0, 24,
             (v) => setState(() => _borderRadius = v)),
+        _sliderRow('borderWidth', _borderWidth, 0, 6,
+            (v) => setState(() => _borderWidth = v), divisions: 12),
+        _sliderRow('focusedBorderWidth', _focusedBorderWidth, 0, 6,
+            (v) => setState(() => _focusedBorderWidth = v), divisions: 12),
         const InfoPanelHeading('Hint tuning'),
         _sliderRow('hintFontWeight', _hintWeight.toDouble(), 100, 900,
             (v) => setState(() => _hintWeight = (v / 100).round() * 100),
@@ -456,6 +470,14 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
     );
   }
 
+  /// Formatting precision for slider value labels — opacity wants 2 dp,
+  /// stroke widths look better with 1 dp, gap/radius sliders stay integer.
+  int _decimalsFor(String label) {
+    if (label == 'hintOpacity') return 2;
+    if (label == 'borderWidth' || label == 'focusedBorderWidth') return 1;
+    return 0;
+  }
+
   Widget _sliderRow(
     String label,
     double value,
@@ -484,9 +506,7 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           SizedBox(
             width: 40,
             child: Text(
-              value.toStringAsFixed(
-                label == 'hintOpacity' ? 2 : 0,
-              ),
+              value.toStringAsFixed(_decimalsFor(label)),
               style: Theme.of(context).textTheme.labelSmall,
               textAlign: TextAlign.right,
             ),

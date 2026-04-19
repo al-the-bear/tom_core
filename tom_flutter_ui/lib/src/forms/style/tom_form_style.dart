@@ -37,6 +37,14 @@ class TomFieldStyle {
   final double errorFieldGap;
   final List<(double, double)> errorFieldGapBpOverrides;
 
+  /// Gap between the description text and whatever sits above it — the
+  /// input box when error placement is `above`/`none`, or the error
+  /// message when placement is `below`/`both`. Independent of
+  /// [errorFieldGap] so descriptions can breathe more (or less) than
+  /// error text without changing one by adjusting the other.
+  final double descriptionFieldGap;
+  final List<(double, double)> descriptionFieldGapBpOverrides;
+
   // --- Field-box shape -----------------------------------------------------
 
   final EdgeInsets fieldContentPadding;
@@ -44,6 +52,17 @@ class TomFieldStyle {
   final InputBorder? fieldBorder;
   final InputBorder? focusedBorder;
   final InputBorder? errorBorder;
+
+  /// When non-null, overrides the border-stroke width of the enabled /
+  /// default state border. Applied post-facto onto whatever
+  /// [fieldBorder] a preset provided, via [applyBorderWidth] — so
+  /// `borderWidth: 2` with the `bordered` preset yields a 2-pixel
+  /// outline without having to rebuild the entire InputBorder. Leave
+  /// null to inherit the width baked into the preset's border.
+  final double? borderWidth;
+
+  /// Like [borderWidth] but for the focused-state border.
+  final double? focusedBorderWidth;
 
   // --- Typography ----------------------------------------------------------
 
@@ -110,9 +129,13 @@ class TomFieldStyle {
     this.labelFieldGapBpOverrides = const [],
     this.errorFieldGap = 4.0,
     this.errorFieldGapBpOverrides = const [],
+    this.descriptionFieldGap = 4.0,
+    this.descriptionFieldGapBpOverrides = const [],
     this.fieldContentPadding =
         const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
     this.borderRadius = 8.0,
+    this.borderWidth,
+    this.focusedBorderWidth,
     this.fieldBorder,
     this.focusedBorder,
     this.errorBorder,
@@ -191,8 +214,14 @@ class TomFieldStyle {
     List<(double, double)>? labelFieldGapBpOverrides,
     double? errorFieldGap,
     List<(double, double)>? errorFieldGapBpOverrides,
+    double? descriptionFieldGap,
+    List<(double, double)>? descriptionFieldGapBpOverrides,
     EdgeInsets? fieldContentPadding,
     double? borderRadius,
+    double? borderWidth,
+    bool borderWidthSet = false,
+    double? focusedBorderWidth,
+    bool focusedBorderWidthSet = false,
     InputBorder? fieldBorder,
     InputBorder? focusedBorder,
     InputBorder? errorBorder,
@@ -235,8 +264,14 @@ class TomFieldStyle {
       errorFieldGap: errorFieldGap ?? this.errorFieldGap,
       errorFieldGapBpOverrides:
           errorFieldGapBpOverrides ?? this.errorFieldGapBpOverrides,
+      descriptionFieldGap: descriptionFieldGap ?? this.descriptionFieldGap,
+      descriptionFieldGapBpOverrides: descriptionFieldGapBpOverrides ??
+          this.descriptionFieldGapBpOverrides,
       fieldContentPadding: fieldContentPadding ?? this.fieldContentPadding,
       borderRadius: borderRadius ?? this.borderRadius,
+      borderWidth: borderWidthSet ? borderWidth : this.borderWidth,
+      focusedBorderWidth:
+          focusedBorderWidthSet ? focusedBorderWidth : this.focusedBorderWidth,
       fieldBorder: fieldBorder ?? this.fieldBorder,
       focusedBorder: focusedBorder ?? this.focusedBorder,
       errorBorder: errorBorder ?? this.errorBorder,
@@ -300,8 +335,12 @@ class TomStringInputStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -343,8 +382,12 @@ class TomDropdownStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -390,8 +433,12 @@ class TomSliderStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -435,8 +482,12 @@ class TomCheckboxStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -480,8 +531,12 @@ class TomSwitchStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -525,8 +580,12 @@ class TomSegmentedStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -568,8 +627,12 @@ class TomRadioGroupStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -608,8 +671,12 @@ class TomDatePickerStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -648,8 +715,12 @@ class TomTimePickerStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -688,8 +759,12 @@ class TomFilePickerStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -733,8 +808,12 @@ class TomChipsStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -778,8 +857,12 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
     super.labelFieldGapBpOverrides,
     super.errorFieldGap,
     super.errorFieldGapBpOverrides,
+    super.descriptionFieldGap,
+    super.descriptionFieldGapBpOverrides,
     super.fieldContentPadding,
     super.borderRadius,
+    super.borderWidth,
+    super.focusedBorderWidth,
     super.fieldBorder,
     super.focusedBorder,
     super.errorBorder,
@@ -828,8 +911,13 @@ class TomFieldPartialStyle {
   final double? errorFieldGap;
   final List<(double, double)> errorFieldGapBpOverrides;
 
+  final double? descriptionFieldGap;
+  final List<(double, double)> descriptionFieldGapBpOverrides;
+
   final EdgeInsets? fieldContentPadding;
   final double? borderRadius;
+  final double? borderWidth;
+  final double? focusedBorderWidth;
   final InputBorder? fieldBorder;
   final InputBorder? focusedBorder;
   final InputBorder? errorBorder;
@@ -877,8 +965,12 @@ class TomFieldPartialStyle {
     this.labelFieldGapBpOverrides = const [],
     this.errorFieldGap,
     this.errorFieldGapBpOverrides = const [],
+    this.descriptionFieldGap,
+    this.descriptionFieldGapBpOverrides = const [],
     this.fieldContentPadding,
     this.borderRadius,
+    this.borderWidth,
+    this.focusedBorderWidth,
     this.fieldBorder,
     this.focusedBorder,
     this.errorBorder,
@@ -1029,9 +1121,22 @@ class TomFormStyle {
       errorFieldGapBpOverrides: over.errorFieldGap != null
           ? over.errorFieldGapBpOverrides
           : base.errorFieldGapBpOverrides,
+      descriptionFieldGap: base.pickPair<double>(
+        width,
+        over.descriptionFieldGap,
+        over.descriptionFieldGapBpOverrides,
+        base.descriptionFieldGap,
+        base.descriptionFieldGapBpOverrides,
+      ),
+      descriptionFieldGapBpOverrides: over.descriptionFieldGap != null
+          ? over.descriptionFieldGapBpOverrides
+          : base.descriptionFieldGapBpOverrides,
       fieldContentPadding:
           over.fieldContentPadding ?? base.fieldContentPadding,
       borderRadius: over.borderRadius ?? base.borderRadius,
+      borderWidth: over.borderWidth ?? base.borderWidth,
+      focusedBorderWidth:
+          over.focusedBorderWidth ?? base.focusedBorderWidth,
       fieldBorder: over.fieldBorder ?? base.fieldBorder,
       focusedBorder: over.focusedBorder ?? base.focusedBorder,
       errorBorder: over.errorBorder ?? base.errorBorder,

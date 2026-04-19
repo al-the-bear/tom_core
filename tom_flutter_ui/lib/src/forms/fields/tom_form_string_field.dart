@@ -206,14 +206,22 @@ class _TomFormStringInputWidgetState
       }
     }
 
-    // Reshape borders to honour style.borderRadius — the presets carry
-    // preconstructed borders whose built-in radius wouldn't otherwise
-    // respond to the style's borderRadius setting.
-    final fieldBorder = applyBorderRadius(style.fieldBorder, style.borderRadius);
-    final focusedBorder =
-        applyBorderRadius(style.focusedBorder, style.borderRadius);
-    final errorBorder =
-        applyBorderRadius(style.errorBorder, style.borderRadius);
+    // Reshape borders to honour style.borderRadius / borderWidth /
+    // focusedBorderWidth — presets carry preconstructed borders whose
+    // built-in radius + stroke width wouldn't otherwise respond to these
+    // style knobs.
+    final fieldBorder = applyBorderWidth(
+      applyBorderRadius(style.fieldBorder, style.borderRadius),
+      style.borderWidth,
+    );
+    final focusedBorder = applyBorderWidth(
+      applyBorderRadius(style.focusedBorder, style.borderRadius),
+      style.focusedBorderWidth ?? style.borderWidth,
+    );
+    final errorBorder = applyBorderWidth(
+      applyBorderRadius(style.errorBorder, style.borderRadius),
+      style.borderWidth,
+    );
 
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
@@ -395,11 +403,18 @@ class _TomFormStringDropdownWidgetState
       }
     }
 
-    final fieldBorder = applyBorderRadius(style.fieldBorder, style.borderRadius);
-    final focusedBorder =
-        applyBorderRadius(style.focusedBorder, style.borderRadius);
-    final errorBorder =
-        applyBorderRadius(style.errorBorder, style.borderRadius);
+    final fieldBorder = applyBorderWidth(
+      applyBorderRadius(style.fieldBorder, style.borderRadius),
+      style.borderWidth,
+    );
+    final focusedBorder = applyBorderWidth(
+      applyBorderRadius(style.focusedBorder, style.borderRadius),
+      style.focusedBorderWidth ?? style.borderWidth,
+    );
+    final errorBorder = applyBorderWidth(
+      applyBorderRadius(style.errorBorder, style.borderRadius),
+      style.borderWidth,
+    );
 
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,

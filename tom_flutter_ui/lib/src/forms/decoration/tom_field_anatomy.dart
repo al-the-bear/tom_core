@@ -52,6 +52,25 @@ InputBorder? applyBorderRadius(InputBorder? border, double radius) {
   return border;
 }
 
+/// Returns [border] with its stroke width replaced by [width]. Null [width]
+/// is a pass-through so callers can cheaply forward
+/// [TomFieldStyle.borderWidth] / [TomFieldStyle.focusedBorderWidth] without
+/// branching. Unrecognised or null borders are returned unchanged.
+InputBorder? applyBorderWidth(InputBorder? border, double? width) {
+  if (border == null || width == null) return border;
+  if (border is OutlineInputBorder) {
+    return border.copyWith(
+      borderSide: border.borderSide.copyWith(width: width),
+    );
+  }
+  if (border is UnderlineInputBorder) {
+    return border.copyWith(
+      borderSide: border.borderSide.copyWith(width: width),
+    );
+  }
+  return border;
+}
+
 /// True when [validators] contains the canonical Required validator.
 bool fieldHasRequiredValidator(List<Object> validators) {
   for (final v in validators) {
@@ -120,10 +139,12 @@ InputDecoration applyErrorVisuals({
   InputDecoration updated = decoration;
 
   if (style.errorBorderEnabled && style.errorBorder != null) {
-    // Reshape to style.borderRadius so the error-state border matches the
-    // rest of the field's rounded corners.
-    final errorBorder =
-        applyBorderRadius(style.errorBorder, style.borderRadius);
+    // Reshape to style.borderRadius / style.borderWidth so the error-state
+    // border matches the rest of the field's rounded corners and stroke.
+    final errorBorder = applyBorderWidth(
+      applyBorderRadius(style.errorBorder, style.borderRadius),
+      style.borderWidth,
+    );
     updated = updated.copyWith(
       enabledBorder: errorBorder,
       focusedBorder: errorBorder,
@@ -322,7 +343,10 @@ Widget _anatomyColumn({
     children.add(errorBelow);
   }
   if (descBelow != null) {
-    children.add(SizedBox(height: style.errorFieldGap));
+    // Distinct from errorFieldGap — callers want the description to
+    // breathe independently from error copy, especially when an error
+    // sits between the input and the description (errorPlacement.below).
+    children.add(SizedBox(height: style.descriptionFieldGap));
     children.add(descBelow);
   }
 
