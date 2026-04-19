@@ -2224,27 +2224,13 @@ class _AclContainerState extends State<AclContainer> {
               )
               .toList();
 
-          // The Row widget honours this row's vertical cross-axis
-          // alignment, resolved as: per-row override
-          // (setRowVerticalAlignment) → builder-wide default
-          // (setAclDefaultRowVerticalAlignment). Per-component overrides
-          // via setVerticalAlignment are applied inside each cell by
-          // `_wrapWithRowCrossAlignment`, so they still work regardless
-          // of the Row's own alignment.
-          final CrossAxisAlignment rowCrossAxis;
-          if (hasExpandY && canExpandVertically) {
-            rowCrossAxis = CrossAxisAlignment.stretch;
-          } else {
-            rowCrossAxis = switch (row.defaultRowCrossAlignment) {
-              AclRowCrossAlignment.top => CrossAxisAlignment.start,
-              AclRowCrossAlignment.center => CrossAxisAlignment.center,
-              AclRowCrossAlignment.bottom => CrossAxisAlignment.end,
-            };
-          }
-
           final rowContent = Row(
             mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: rowCrossAxis,
+            crossAxisAlignment: _resolveRowCrossAxis(
+              row.defaultRowCrossAlignment,
+              hasExpandY: hasExpandY,
+              canExpandVertically: canExpandVertically,
+            ),
             mainAxisSize: MainAxisSize.min,
             children: boundedChildren,
           );
@@ -2272,9 +2258,11 @@ class _AclContainerState extends State<AclContainer> {
         mainAxisAlignment: hasGapSlots
             ? MainAxisAlignment.start
             : mainAxisAlignment,
-        crossAxisAlignment: hasExpandY && canExpandVertically
-            ? CrossAxisAlignment.stretch
-            : CrossAxisAlignment.center,
+        crossAxisAlignment: _resolveRowCrossAxis(
+          row.defaultRowCrossAlignment,
+          hasExpandY: hasExpandY,
+          canExpandVertically: canExpandVertically,
+        ),
         mainAxisSize: rowFillsWidth && canExpandHorizontally
             ? MainAxisSize.max
             : MainAxisSize.min,
@@ -2345,6 +2333,26 @@ class _AclContainerState extends State<AclContainer> {
       heightFactor: 1,
       child: child,
     );
+  }
+
+  /// Maps a row's default [AclRowCrossAlignment] onto the matching
+  /// Flutter [CrossAxisAlignment] for the Row widget. When the row has
+  /// any expandY component whose vertical grow is active, we stretch so
+  /// those components can fill the row's height; otherwise honour the
+  /// row's configured alignment (top / center / bottom).
+  CrossAxisAlignment _resolveRowCrossAxis(
+    AclRowCrossAlignment rowDefault, {
+    required bool hasExpandY,
+    required bool canExpandVertically,
+  }) {
+    if (hasExpandY && canExpandVertically) {
+      return CrossAxisAlignment.stretch;
+    }
+    return switch (rowDefault) {
+      AclRowCrossAlignment.top => CrossAxisAlignment.start,
+      AclRowCrossAlignment.center => CrossAxisAlignment.center,
+      AclRowCrossAlignment.bottom => CrossAxisAlignment.end,
+    };
   }
 
   double _horizontalPoint(Rect rect, AclAxisPointX point) => switch (point) {
