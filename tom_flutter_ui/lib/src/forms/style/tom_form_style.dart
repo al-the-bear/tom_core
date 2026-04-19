@@ -96,7 +96,7 @@ class TomFieldStyle {
   // --- State visuals -------------------------------------------------------
 
   /// Opacity applied to the whole field when the effective auth state is
-  /// [TomAuthState.disabled]. Default `0.6` — clearly dimmed so the field
+  /// [TomAuthState.disabled]. Default `0.5` — clearly dimmed so the field
   /// reads as "not available". Lower than [readOnlyOpacity] to keep the two
   /// states visually distinct on fields that both route through
   /// `enabled: false` (text inputs, dropdowns).
@@ -148,7 +148,7 @@ class TomFieldStyle {
     this.hintOpacity = 0.7,
     this.errorStyle,
     this.descriptionStyle,
-    this.disabledOpacity = 0.6,
+    this.disabledOpacity = 0.5,
     this.readOnlyOpacity = 0.8,
     this.readOnlyBackground,
     this.focusedBackground,

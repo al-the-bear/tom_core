@@ -387,7 +387,7 @@ void main() {
       await tester.pumpWidget(_wrap(field.widget));
 
       final opacity = tester.widget<Opacity>(find.byType(Opacity));
-      expect(opacity.opacity, 0.6);
+      expect(opacity.opacity, 0.5);
     });
 
     testWidgets('applies custom disabled opacity', (tester) async {
