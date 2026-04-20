@@ -93,7 +93,7 @@ class FormLayoutDemo extends StatelessWidget {
                 OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
                 dist: 10,
               )
-              .setRowAlignment(RowAlignment.center)
+              .setRowHorizontalAlignment(RowAlignment.center)
               .build(),
         ),
         const SizedBox(height: 8),

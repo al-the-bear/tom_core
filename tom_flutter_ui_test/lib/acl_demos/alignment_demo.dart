@@ -18,15 +18,15 @@ class AlignmentDemo extends StatelessWidget {
           child: AclBuilder()
               .append(const DemoBox('Left', Colors.red))
               .append(const DemoBox('Aligned', Colors.green))
-              .setRowAlignment(RowAlignment.left)
+              .setRowHorizontalAlignment(RowAlignment.left)
               .newRow(dist: 8)
               .append(const DemoBox('Center', Colors.blue))
               .append(const DemoBox('Aligned', Colors.orange))
-              .setRowAlignment(RowAlignment.center)
+              .setRowHorizontalAlignment(RowAlignment.center)
               .newRow(dist: 8)
               .append(const DemoBox('Right', Colors.purple))
               .append(const DemoBox('Aligned', Colors.teal))
-              .setRowAlignment(RowAlignment.right)
+              .setRowHorizontalAlignment(RowAlignment.right)
               .build(),
         ),
         const SizedBox(height: 24),
@@ -34,13 +34,13 @@ class AlignmentDemo extends StatelessWidget {
         const CodeBlock('''
 AclBuilder()
     .append(Widget_A).append(Widget_B)
-    .setRowAlignment(RowAlignment.left)
+    .setRowHorizontalAlignment(RowAlignment.left)
     .newRow()
     .append(Widget_C).append(Widget_D)
-    .setRowAlignment(RowAlignment.center)
+    .setRowHorizontalAlignment(RowAlignment.center)
     .newRow()
     .append(Widget_E).append(Widget_F)
-    .setRowAlignment(RowAlignment.right)
+    .setRowHorizontalAlignment(RowAlignment.right)
     .build()
 '''),
       ],

@@ -118,7 +118,7 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     if (_formValid) {
       setState(() {
         _savedValues = {
-          for (final field in _fields) field.fieldId: field.get(),
+          for (final field in _fields) field.tomId: field.get(),
         };
         // Commit all fields (marks current value as initial)
         for (final field in _fields) {

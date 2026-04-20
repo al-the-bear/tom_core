@@ -11,10 +11,12 @@ void main() {
     // Verify the app bar title is displayed
     expect(find.text('Tom Flutter UI'), findsOneWidget);
 
-    // Verify tabs are shown
+    // Verify tabs are shown — current tabs in main.dart are
+    // ACL Demos / Widget Demos / Forms-Actions / Authorization-Resources.
     expect(find.text('ACL Demos'), findsOneWidget);
     expect(find.text('Widget Demos'), findsOneWidget);
-    expect(find.text('Roadmap'), findsOneWidget);
+    expect(find.text('Forms/Actions'), findsOneWidget);
+    expect(find.text('Authorization/Resources'), findsOneWidget);
   });
 
   testWidgets('ACL Demos tab shows demo list', (WidgetTester tester) async {
