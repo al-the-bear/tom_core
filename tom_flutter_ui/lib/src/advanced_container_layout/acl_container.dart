@@ -1888,11 +1888,42 @@ class _AclContainerState extends State<AclContainer> {
     // ── Vertical alignment deltas (same-row) ─────────────────────────────
     // Requires virtual rects to be built first; update them with Y offsets.
     //
-    // Virtual rects all have top=0. But _buildRow places each component at
-    // baseTopInRow = (rowH - compH) / 2 by default (centred in the row).
-    // We must adjust the rect Y by this default offset so the delta reflects
-    // a shift FROM that default position, not from an artificial top=0.
+    // Virtual rects all have top=0. _buildRow places each non-expandY
+    // component at a baseTopInRow that depends on the Row's actual
+    // crossAxisAlignment — which in turn comes from
+    // row.defaultRowCrossAlignment (top / center / bottom). Adjust the
+    // virtual rect Y by that default offset so the delta reflects a
+    // shift from the component's rendered baseline position, not from
+    // an artificial top=0 or a hardcoded centering assumption.
     final hasRowExpandY = row.components.any((c) => !c.isGap && c.expandY);
+    // Per-component rowCrossAlignment lookup: only meaningful when the
+    // row is stretched (hasRowExpandY), otherwise every child ends up
+    // aligned by the Row's single crossAxisAlignment regardless of the
+    // component's own setting — see _wrapWithRowCrossAlignment.
+    final keyToComp = <Key, AclComponent>{};
+    for (final c in row.components) {
+      if (c.componentKey != null) keyToComp[c.componentKey!] = c;
+    }
+    double defaultTopFor(Rect r, AclComponent? c) {
+      if (hasRowExpandY) {
+        // Stretch row: the Align wrapper fills row height and the
+        // component sits at its own rowCrossAlignment inside that.
+        final align = c?.rowCrossAlignment ?? AclRowCrossAlignment.top;
+        return switch (align) {
+          AclRowCrossAlignment.top => 0.0,
+          AclRowCrossAlignment.center => (rowEstimatedHeight - r.height) / 2,
+          AclRowCrossAlignment.bottom => rowEstimatedHeight - r.height,
+        };
+      }
+      // Fixed-crossAxis row: Row.crossAxisAlignment dictates placement,
+      // not the component's own alignment.
+      return switch (row.defaultRowCrossAlignment) {
+        AclRowCrossAlignment.top => 0.0,
+        AclRowCrossAlignment.center => (rowEstimatedHeight - r.height) / 2,
+        AclRowCrossAlignment.bottom => rowEstimatedHeight - r.height,
+      };
+    }
+
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (comp.alignYToKey == null ||
@@ -1908,13 +1939,10 @@ class _AclContainerState extends State<AclContainer> {
           virtualRects[comp.alignYToKey];
       if (selfRect == null || refRect == null) continue;
 
-      // When the row has expandY components, baseTopInRow = 0; otherwise
-      // each component defaults to (rowH - compH) / 2 (centred).
-      double defaultTop(Rect r) =>
-          hasRowExpandY ? 0.0 : (rowEstimatedHeight - r.height) / 2;
+      final refComp = keyToComp[comp.alignYToKey];
 
-      final adjSelfRect = selfRect.translate(0, defaultTop(selfRect));
-      final adjRefRect = refRect.translate(0, defaultTop(refRect));
+      final adjSelfRect = selfRect.translate(0, defaultTopFor(selfRect, comp));
+      final adjRefRect = refRect.translate(0, defaultTopFor(refRect, refComp));
 
       final selfPoint = _verticalPoint(adjSelfRect, comp.alignYFrom!);
       final refPoint = _verticalPoint(adjRefRect, comp.alignYTo!);
