@@ -41,6 +41,9 @@ class TomCard extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.color,
     this.shadowColor,
     this.surfaceTintColor,
@@ -136,6 +139,9 @@ class TomExpansionTile extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.title,
     this.titleText,
     this.subtitle,
@@ -259,6 +265,9 @@ class TomScaffold extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.appBar,
     this.body,
     this.floatingActionButton,
@@ -366,6 +375,15 @@ class TomAppBar extends StatelessWidget
   @override
   final TomScope? scope;
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   TomAppBar({
@@ -373,6 +391,9 @@ class TomAppBar extends StatelessWidget
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.title,
@@ -545,6 +566,9 @@ class TomBottomAppBar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
     this.color,
     this.elevation,
@@ -604,6 +628,9 @@ class TomDivider extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.height,
     this.thickness,
     this.indent,
@@ -666,6 +693,9 @@ class TomContainer extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
     this.alignment,
     this.padding,
@@ -742,6 +772,9 @@ class TomColumn extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.max,
     this.crossAxisAlignment = CrossAxisAlignment.center,
@@ -783,6 +816,9 @@ class TomRow extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.mainAxisAlignment = MainAxisAlignment.start,
     this.mainAxisSize = MainAxisSize.max,
     this.crossAxisAlignment = CrossAxisAlignment.center,
@@ -831,6 +867,9 @@ class TomWrap extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.direction = Axis.horizontal,
     this.alignment = WrapAlignment.start,
     this.spacing,
@@ -879,6 +918,9 @@ class TomStack extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.alignment = AlignmentDirectional.topStart,
     this.textDirection,
     this.fit = StackFit.loose,
@@ -922,6 +964,9 @@ class TomIndexedStack extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.index = 0,
     this.alignment = AlignmentDirectional.topStart,
     this.textDirection,
@@ -964,6 +1009,9 @@ class TomSizedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.width,
     this.height,
     this.child,
@@ -992,6 +1040,9 @@ class TomConstrainedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.constraints,
     this.child,
   });
@@ -1018,6 +1069,9 @@ class TomPadding extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.padding,
     this.child,
   }) {
@@ -1048,6 +1102,9 @@ class TomCenter extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.widthFactor,
     this.heightFactor,
     this.child,
@@ -1082,6 +1139,9 @@ class TomAlign extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.alignment = Alignment.center,
     this.widthFactor,
     this.heightFactor,
@@ -1112,6 +1172,9 @@ class TomAspectRatio extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.aspectRatio,
     this.child,
   });
@@ -1137,6 +1200,9 @@ class TomFittedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.fit = BoxFit.contain,
     this.alignment = Alignment.center,
     this.clipBehavior = Clip.none,
@@ -1170,6 +1236,9 @@ class TomFractionallySizedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.alignment = Alignment.center,
     this.widthFactor,
     this.heightFactor,
@@ -1199,6 +1268,9 @@ class TomIntrinsicHeight extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
   });
 
@@ -1223,6 +1295,9 @@ class TomIntrinsicWidth extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.stepWidth,
     this.stepHeight,
     this.child,
@@ -1270,6 +1345,9 @@ class TomMaterial extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.type = MaterialType.canvas,
     this.elevation,
     this.color,
@@ -1337,6 +1415,9 @@ class TomDecoratedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.decoration,
     this.position = DecorationPosition.background,
     this.child,
@@ -1364,6 +1445,9 @@ class TomClipRRect extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.borderRadius = BorderRadius.zero,
     this.clipper,
     this.clipBehavior = Clip.antiAlias,
@@ -1392,6 +1476,9 @@ class TomClipOval extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.clipper,
     this.clipBehavior = Clip.antiAlias,
     this.child,
@@ -1418,6 +1505,9 @@ class TomClipRect extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.clipper,
     this.clipBehavior = Clip.hardEdge,
     this.child,
@@ -1497,6 +1587,9 @@ class TomSliverAppBar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.title,
@@ -1616,6 +1709,9 @@ class TomSliverToBoxAdapter extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
   });
 
@@ -1634,6 +1730,9 @@ class TomSliverList extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.delegate,
   });
 
@@ -1653,6 +1752,9 @@ class TomSliverGrid extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.delegate,
     required this.gridDelegate,
   });
@@ -1677,6 +1779,9 @@ class TomSliverFillRemaining extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
     this.hasScrollBody = true,
     this.fillOverscroll = false,
@@ -1719,6 +1824,9 @@ class TomCustomScrollView extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
     this.controller,
@@ -1857,6 +1965,9 @@ class TomExpansionPanelList extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.children = const [],
     this.expansionCallback,
     this.animationDuration = kThemeAnimationDuration,
@@ -1907,6 +2018,9 @@ class TomInk extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.padding,
     this.color,
     this.decoration,
@@ -1977,6 +2091,15 @@ class TomExpanded extends Expanded with TomWidgetMixin {
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   /// Creates a Tom Expanded widget with optional resource resolution.
@@ -1984,6 +2107,9 @@ class TomExpanded extends Expanded with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.flex,
     Widget? child,
@@ -2020,6 +2146,15 @@ class TomFlexible extends Flexible with TomWidgetMixin {
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   /// Creates a Tom Flexible widget with optional resource resolution.
@@ -2027,6 +2162,9 @@ class TomFlexible extends Flexible with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.flex,
     super.fit,
@@ -2060,6 +2198,15 @@ class TomSpacer extends Spacer with TomWidgetMixin {
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   /// Creates a Tom Spacer widget.
@@ -2067,6 +2214,9 @@ class TomSpacer extends Spacer with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.flex,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
@@ -2110,6 +2260,9 @@ class TomPositioned extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.left,
     this.top,
     this.right,
@@ -2127,6 +2280,9 @@ class TomPositioned extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.left = 0.0,
     this.top = 0.0,
     this.right = 0.0,
@@ -2186,6 +2342,9 @@ class TomPositionedDirectional extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.start,
     this.top,
     this.end,
@@ -2233,6 +2392,15 @@ class TomTableCell extends TableCell with TomWidgetMixin {
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   /// Creates a Tom TableCell widget with optional resource resolution.
@@ -2240,6 +2408,9 @@ class TomTableCell extends TableCell with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.verticalAlignment,
     Widget? child,
@@ -2270,6 +2441,9 @@ class TomSafeArea extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.left = true,
     this.top = true,
     this.right = true,
@@ -2318,6 +2492,9 @@ class TomSingleChildScrollView extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
     this.padding,
@@ -2386,6 +2563,9 @@ class TomCarouselView extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.padding,
     this.backgroundColor,
@@ -2448,6 +2628,9 @@ class TomVisibility extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.child,
     this.replacement = const SizedBox.shrink(),
     this.visible = true,
@@ -2488,6 +2671,9 @@ class TomOffstage extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.offstage = true,
     this.child,
   }) {
@@ -2520,6 +2706,9 @@ class TomCupertinoPageScaffold extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.navigationBar,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
@@ -2558,6 +2747,9 @@ class TomCupertinoTabScaffold extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.tabBar,
     required IndexedWidgetBuilder tabBuilder,
     this.controller,
@@ -2599,6 +2791,9 @@ class TomCupertinoFormRow extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.child,
     this.prefix,
     this.padding,
@@ -2642,6 +2837,9 @@ class TomCupertinoFormSection extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.header,
     this.footer,
@@ -2707,6 +2905,9 @@ class TomNestedScrollView extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.controller,
     this.scrollDirection = Axis.vertical,
     this.reverse = false,
@@ -2772,6 +2973,9 @@ class TomScrollbar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.child,
     this.controller,
     this.thumbVisibility,
@@ -2827,6 +3031,9 @@ class TomCupertinoScrollbar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.child,
     this.controller,
     this.thumbVisibility,
@@ -2884,6 +3091,9 @@ class TomDraggableScrollableSheet extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.initialChildSize,
     this.minChildSize,
     this.maxChildSize,
@@ -2956,6 +3166,9 @@ class TomInteractiveViewer extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.clipBehavior = Clip.hardEdge,
     this.panAxis = PanAxis.free,
     this.boundaryMargin,
@@ -3030,6 +3243,9 @@ class TomClipPath extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.clipper,
     this.clipBehavior = Clip.antiAlias,
     this.child,
@@ -3060,6 +3276,9 @@ class TomColoredBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.color,
     this.child,
   }) {
@@ -3091,6 +3310,9 @@ class TomOpacity extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.opacity,
     this.alwaysIncludeSemantics = false,
     this.child,
@@ -3128,6 +3350,9 @@ class TomTransform extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.transform,
     this.origin,
     this.alignment,
@@ -3172,6 +3397,9 @@ class TomRotatedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.quarterTurns,
     this.child,
   }) {
@@ -3208,6 +3436,9 @@ class TomOverflowBar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.spacing,
     this.alignment,
     this.overflowSpacing,
@@ -3258,6 +3489,9 @@ class TomOverflowBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.alignment = Alignment.center,
     this.minWidth,
     this.maxWidth,
@@ -3305,6 +3539,9 @@ class TomSizedOverflowBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.size,
     this.alignment = Alignment.center,
     this.child,
@@ -3335,6 +3572,9 @@ class TomUnconstrainedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.textDirection,
     this.alignment = Alignment.center,
     this.constrainedAxis,
@@ -3370,6 +3610,9 @@ class TomConstraintsTransformBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.textDirection,
     this.alignment = Alignment.center,
     required this.constraintsTransform,
@@ -3408,6 +3651,9 @@ class TomLimitedBox extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.maxWidth,
     this.maxHeight,
     this.child,
@@ -3442,6 +3688,9 @@ class TomBaseline extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.baseline,
     required this.baselineType,
     this.child,
@@ -3475,6 +3724,9 @@ class TomListBody extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.mainAxis = Axis.vertical,
     this.reverse,
     this.children = const <Widget>[],
@@ -3505,6 +3757,9 @@ class TomFlow extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.delegate,
     this.clipBehavior,
     this.children = const <Widget>[],
@@ -3534,6 +3789,9 @@ class TomCustomMultiChildLayout extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.delegate,
     this.children = const <Widget>[],
   });
@@ -3559,6 +3817,9 @@ class TomCustomSingleChildLayout extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.delegate,
     this.child,
   });
@@ -3592,6 +3853,9 @@ class TomCustomPaint extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.painter,
     this.foregroundPainter,
     this.size,
@@ -3641,6 +3905,9 @@ class TomPhysicalModel extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.shape = BoxShape.rectangle,
     this.clipBehavior = Clip.none,
     this.borderRadius,
@@ -3695,6 +3962,9 @@ class TomPhysicalShape extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.clipper,
     this.clipBehavior = Clip.none,
     this.elevation,
@@ -3736,6 +4006,9 @@ class TomFractionalTranslation extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.translation,
     this.transformHitTests,
     this.child,
@@ -3766,6 +4039,9 @@ class TomGridTile extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.header,
     this.footer,
     required this.child,
@@ -3799,6 +4075,9 @@ class TomGridTileBar extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.backgroundColor,
     this.leading,
     this.title,
@@ -3842,6 +4121,9 @@ class TomCupertinoExpansionTile extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.title,
     this.titleText,
     required this.child,
@@ -3875,6 +4157,9 @@ class TomClipRSuperellipse extends TomContainerBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.borderRadius = BorderRadius.zero,
     this.clipBehavior = Clip.antiAlias,
     this.child,
@@ -3904,6 +4189,15 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   TomCupertinoTabView({
@@ -3911,6 +4205,9 @@ class TomCupertinoTabView extends CupertinoTabView with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.builder,
     super.navigatorKey,
     super.defaultTitle,

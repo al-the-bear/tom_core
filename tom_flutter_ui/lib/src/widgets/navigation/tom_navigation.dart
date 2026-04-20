@@ -54,6 +54,9 @@ class TomNavigationRail extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.selectedIndex,
     ValueChanged<int>? onDestinationSelected,
     required this.destinations,
@@ -167,6 +170,9 @@ class TomNavigationBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.selectedIndex = 0,
     ValueChanged<int>? onDestinationSelected,
     required this.destinations,
@@ -271,6 +277,9 @@ class TomTabBar extends TomNavigationBase implements PreferredSizeWidget {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.tabs,
     this.controller,
     this.isScrollable = false,
@@ -396,6 +405,9 @@ class TomNavigationDrawer extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.selectedIndex,
     ValueChanged<int>? onDestinationSelected,
@@ -467,6 +479,9 @@ class TomDrawer extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.child,
     this.backgroundColor,
     this.shadowColor,
@@ -550,6 +565,9 @@ class TomBottomNavigationBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.items,
     this.currentIndex = 0,
     ValueChanged<int>? onTap,
@@ -650,6 +668,9 @@ class TomStepper extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.steps,
     this.currentStep = 0,
     this.type = StepperType.vertical,
@@ -714,6 +735,9 @@ class TomTabBarView extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.controller,
     this.physics,
@@ -760,6 +784,9 @@ class TomPageView extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.controller,
     this.scrollDirection = Axis.horizontal,
@@ -821,6 +848,9 @@ class TomCupertinoTabBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.items,
     ValueChanged<int>? onTap,
     this.currentIndex = 0,
@@ -880,6 +910,9 @@ class TomCupertinoNavigationBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.leading,
     this.automaticallyImplyLeading = true,
     this.automaticallyImplyMiddle = true,
@@ -955,6 +988,9 @@ class TomBreadcrumb extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.items,
     this.separator = const Text(' / '),
     this.mainAxisAlignment = MainAxisAlignment.start,
@@ -1016,6 +1052,9 @@ class TomTab extends Tab with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.text,
     super.icon,
@@ -1034,6 +1073,15 @@ class TomTab extends Tab with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -1080,6 +1128,9 @@ class TomNavigationDestination extends NavigationDestination
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     required super.icon,
     super.selectedIcon,
@@ -1098,6 +1149,15 @@ class TomNavigationDestination extends NavigationDestination
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -1145,6 +1205,9 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     required super.icon,
     super.selectedIcon,
@@ -1163,6 +1226,15 @@ class TomNavigationDrawerDestination extends NavigationDrawerDestination
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -1222,6 +1294,9 @@ class TomCupertinoSliverNavigationBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.largeTitle,
     this.leading,
     this.automaticallyImplyLeading = true,
@@ -1283,6 +1358,9 @@ class TomFlexibleSpaceBar extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.title,
     this.background,
     this.centerTitle = true,
@@ -1326,6 +1404,9 @@ class TomDrawerHeader extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.decoration,
     this.padding,
     this.margin,
@@ -1373,6 +1454,9 @@ class TomUserAccountsDrawerHeader extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.decoration,
     this.margin = const EdgeInsets.only(bottom: 8.0),
     this.currentAccountPicture,
@@ -1421,6 +1505,9 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.color,
     this.previousPageTitle,
     VoidCallback? onPressed,
@@ -1459,6 +1546,9 @@ class TomTabPageSelector extends TomNavigationBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.controller,
     this.indicatorSize,
     this.color,

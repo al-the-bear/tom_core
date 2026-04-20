@@ -36,6 +36,9 @@ class TomCircularProgressIndicator extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.value,
     this.backgroundColor,
     this.color,
@@ -98,6 +101,9 @@ class TomLinearProgressIndicator extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.value,
     this.backgroundColor,
     this.color,
@@ -166,6 +172,9 @@ class TomRefreshIndicator extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.child,
     required Future<void> Function() onRefresh,
     this.displacement = 40.0,
@@ -223,6 +232,9 @@ class TomCupertinoActivityIndicator extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.animating = true,
     this.radius = 10.0,
     this.color,
@@ -266,6 +278,9 @@ class TomCupertinoLinearActivityIndicator extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.value,
     this.color,
     this.trackHeight,
@@ -314,6 +329,9 @@ class TomCupertinoSliverRefreshControl extends TomProgressBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.refreshTriggerPullDistance,
     this.refreshIndicatorExtent,
     RefreshControlIndicatorBuilder? builder = CupertinoSliverRefreshControl.buildRefreshIndicator,
@@ -357,6 +375,15 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
   final TomScope? scope;
 
   @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
+
+  @override
   final String? basePath;
 
   TomRefreshProgressIndicator({
@@ -364,6 +391,9 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     double? value,
     Color? backgroundColor,
     Color? color,

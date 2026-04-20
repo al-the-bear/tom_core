@@ -61,6 +61,9 @@ class TomDropdownButton<T> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.value,
     this.items,
     ValueChanged<T?>? onChanged,
@@ -197,6 +200,9 @@ class TomPopupMenuButton<T> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required PopupMenuItemBuilder<T> itemBuilder,
     this.initialValue,
     PopupMenuItemSelected<T>? onSelected,
@@ -326,6 +332,9 @@ class TomDropdownMenu<T> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.initialSelection,
     ValueChanged<T?>? onSelected,
     required this.dropdownMenuEntries,
@@ -436,6 +445,9 @@ class TomMenuAnchor extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.menuChildren,
     this.controller,
     this.child,
@@ -544,6 +556,9 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.items,
     this.value,
     ValueChanged<T?>? onChanged,
@@ -676,6 +691,9 @@ class TomCupertinoSlidingSegmentedControl<T extends Object>
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     required this.groupValue,
     required ValueChanged<T?> onValueChanged,
@@ -736,6 +754,9 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.value,
     super.onTap,
@@ -758,6 +779,15 @@ class TomPopupMenuItem<T> extends PopupMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -800,6 +830,9 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.height,
   }) : basePath = TomCtr.resolvePath(tomId, scope) {
@@ -814,6 +847,15 @@ class TomPopupMenuDivider extends PopupMenuDivider with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -862,6 +904,9 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.value,
     super.checked,
@@ -883,6 +928,15 @@ class TomCheckedPopupMenuItem<T> extends CheckedPopupMenuItem<T>
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
@@ -948,6 +1002,9 @@ class TomCupertinoPicker extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     this.diameterRatio,
     this.backgroundColor,
     this.offAxisFraction,
@@ -1011,6 +1068,9 @@ class TomCupertinoSegmentedControl<T extends Object> extends TomSelectBase {
     super.tomId,
     super.tomGroup,
     super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.children,
     this.groupValue,
     required ValueChanged<T> onValueChanged,
@@ -1062,6 +1122,9 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
     this.tomId,
     this.tomGroup,
     this.scope,
+    this.authorizer,
+    this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
+    this.uiStateController,
     super.key,
     super.onTap,
     super.value,
@@ -1080,6 +1143,15 @@ class TomDropdownMenuItem<T> extends DropdownMenuItem<T> with TomWidgetMixin {
 
   @override
   final TomScope? scope;
+
+  @override
+  final TomAuthorizer? authorizer;
+
+  @override
+  final TomAuthorizerStrategy authorizerStrategy;
+
+  @override
+  final TomUIStateController? uiStateController;
 
   @override
   final String? basePath;
