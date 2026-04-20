@@ -39,8 +39,8 @@ class DemoHComplexAuthorization extends StatefulWidget {
       _DemoHComplexAuthorizationState();
 }
 
-class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
-    with TomFormEventListener {
+class _DemoHComplexAuthorizationState
+    extends State<DemoHComplexAuthorization> {
   late final _DemoHAdapter _adapter;
   late final ProjectBriefForm _form;
   double _widthFraction = 0.9;
@@ -66,7 +66,6 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
     _adapter = _DemoHAdapter();
     TomAuthorization.adapter = _adapter;
     _form = TomScope.withScope('demoH', () => ProjectBriefForm());
-    _form.addListener(this);
     _form.bind(phase2ProjectBriefState);
     _form.lead.bind(phase2ProjectBriefState.lead);
     _form.reviewer.bind(phase2ProjectBriefState.reviewer);
@@ -74,16 +73,16 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
 
   @override
   void dispose() {
-    _form.removeListener(this);
     _form.dispose();
     super.dispose();
   }
 
-  // Rebuild on any form event so the field-state table tracks auth changes.
-  @override
-  void onFieldValueChanged(FieldValueChangedEvent event) {
-    if (mounted) setState(() {});
-  }
+  // No form listener: FieldStateTable already rebuilds off form.changes, and
+  // auth dropdowns carry their own setState via [_setAuth]. An outer
+  // setState on every FieldValueChangedEvent would rebuild the full demo
+  // subtree per keystroke, and the resulting InheritedWidget churn wipes
+  // the TextField FocusNode after the first character (same root cause
+  // that was fixed for Demo G).
 
   void _setAuth(String path, TomAuthState state) {
     setState(() {

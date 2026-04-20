@@ -284,16 +284,24 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
 /// Material preset with a heavier bottom border (5 px enabled → 7 px on
 /// focus) to make the middle band visually distinct from the bordered and
 /// compact neighbours without straying away from the material style.
+///
+/// `borderRadius: BorderRadius.zero` is explicit here: Flutter's default
+/// `UnderlineInputBorder` rounds its top-left / top-right corners at 4 px,
+/// which is invisible at 1–2 px widths but renders as upward-bending
+/// "cut-off" ends at 5–7 px. A zero radius keeps the thick baseline flat.
 final _materialHeavy = TomFormStyle.material3.copyWith(
   defaults: TomFormStyle.material3.defaults.copyWith(
     fieldBorder: const UnderlineInputBorder(
       borderSide: BorderSide(width: 5),
+      borderRadius: BorderRadius.zero,
     ),
     focusedBorder: const UnderlineInputBorder(
       borderSide: BorderSide(width: 7),
+      borderRadius: BorderRadius.zero,
     ),
     errorBorder: UnderlineInputBorder(
       borderSide: BorderSide(width: 5, color: Colors.red.shade700),
+      borderRadius: BorderRadius.zero,
     ),
   ),
 );
