@@ -512,5 +512,253 @@
         }
       }
     }
+  },
+
+  "demoG": {
+    "projectBrief": {
+      "code": {
+        "label": "Project code",
+        "hint": "e.g. PROJ-0142",
+        "description": "Short unique identifier used in URLs and cross-references."
+      },
+      "title": {
+        "label": "Title",
+        "hint": "One-line project summary",
+        "description": "Shown on the project card and at the top of every detail page."
+      },
+      "summary": {
+        "label": "Summary",
+        "hint": "2–3 sentences of intent",
+        "description": "Read by stakeholders before they open the full brief."
+      },
+      "category": {
+        "label": "Category",
+        "hint": "Pick the owning team",
+        "description": "Drives routing of reviews and on-call escalation."
+      },
+      "priority": {
+        "label": "Priority",
+        "hint": "How fast does this need to move?",
+        "description": "Affects SLA and dashboard ordering."
+      },
+      "status": {
+        "label": "Status",
+        "hint": "Current lifecycle state",
+        "description": "Switches the card colour in the portfolio view."
+      },
+      "phase": {
+        "label": "Phase",
+        "hint": "Where in the SDLC the work sits",
+        "description": "Linked to the phase-gate checklist."
+      },
+      "budget": {
+        "label": "Budget (USD)",
+        "hint": "Total approved spend",
+        "description": "Net of overhead; used by finance for burn-down."
+      },
+      "hoursEstimate": {
+        "label": "Hours estimate",
+        "hint": "Engineer-hours across the whole effort",
+        "description": "Rolled up into capacity planning."
+      },
+      "deadline": {
+        "label": "Deadline",
+        "hint": "YYYY-MM-DD",
+        "description": "Last date the project can ship without replanning."
+      },
+      "location": {
+        "label": "Location",
+        "hint": "Region / timezone cluster",
+        "description": "Used when scheduling on-call and stand-ups."
+      },
+      "description": {
+        "label": "Description",
+        "hint": "Full problem + solution narrative",
+        "description": "Markdown supported once the editor rolls out."
+      },
+      "riskNotes": {
+        "label": "Risk notes",
+        "hint": "Known unknowns, dependencies, blockers",
+        "description": "Reviewed in the weekly project forum."
+      },
+      "lead": {
+        "firstName": {
+          "label": "First name",
+          "hint": "Given name",
+          "description": "Shown on the project card."
+        },
+        "lastName": {
+          "label": "Last name",
+          "hint": "Family name",
+          "description": "Used for directory lookup."
+        },
+        "email": {
+          "label": "Email",
+          "hint": "name@example.com",
+          "description": "Primary contact for escalations."
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "+1 555 0100",
+          "description": "Used only during incident response."
+        },
+        "title": {
+          "label": "Job title",
+          "hint": "e.g. Lead Engineer",
+          "description": "Displayed next to the name on the card."
+        }
+      },
+      "reviewer": {
+        "firstName": {
+          "label": "First name",
+          "hint": "Given name",
+          "description": "Shown on approval emails."
+        },
+        "lastName": {
+          "label": "Last name",
+          "hint": "Family name",
+          "description": "Used for directory lookup."
+        },
+        "email": {
+          "label": "Email",
+          "hint": "name@example.com",
+          "description": "Receives review-ready notifications."
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "+1 555 0100",
+          "description": "Optional; rarely contacted."
+        },
+        "title": {
+          "label": "Job title",
+          "hint": "e.g. Principal Reviewer",
+          "description": "Shown on the sign-off record."
+        }
+      }
+    }
+  },
+
+  "demoH": {
+    "projectBrief": {
+      "code": {
+        "label": "Project code",
+        "hint": "e.g. PROJ-0142",
+        "description": "Short unique identifier used in URLs and cross-references."
+      },
+      "title": {
+        "label": "Title",
+        "hint": "One-line project summary",
+        "description": "Shown on the project card and at the top of every detail page."
+      },
+      "summary": {
+        "label": "Summary",
+        "hint": "2–3 sentences of intent",
+        "description": "Read by stakeholders before they open the full brief."
+      },
+      "category": {
+        "label": "Category",
+        "hint": "Pick the owning team",
+        "description": "Drives routing of reviews and on-call escalation."
+      },
+      "priority": {
+        "label": "Priority",
+        "hint": "How fast does this need to move?",
+        "description": "Affects SLA and dashboard ordering."
+      },
+      "status": {
+        "label": "Status",
+        "hint": "Current lifecycle state",
+        "description": "Switches the card colour in the portfolio view."
+      },
+      "phase": {
+        "label": "Phase",
+        "hint": "Where in the SDLC the work sits",
+        "description": "Linked to the phase-gate checklist."
+      },
+      "budget": {
+        "label": "Budget (USD)",
+        "hint": "Total approved spend",
+        "description": "Net of overhead; used by finance for burn-down."
+      },
+      "hoursEstimate": {
+        "label": "Hours estimate",
+        "hint": "Engineer-hours across the whole effort",
+        "description": "Rolled up into capacity planning."
+      },
+      "deadline": {
+        "label": "Deadline",
+        "hint": "YYYY-MM-DD",
+        "description": "Last date the project can ship without replanning."
+      },
+      "location": {
+        "label": "Location",
+        "hint": "Region / timezone cluster",
+        "description": "Used when scheduling on-call and stand-ups."
+      },
+      "description": {
+        "label": "Description",
+        "hint": "Full problem + solution narrative",
+        "description": "Markdown supported once the editor rolls out."
+      },
+      "riskNotes": {
+        "label": "Risk notes",
+        "hint": "Known unknowns, dependencies, blockers",
+        "description": "Reviewed in the weekly project forum."
+      },
+      "lead": {
+        "firstName": {
+          "label": "First name",
+          "hint": "Given name",
+          "description": "Shown on the project card."
+        },
+        "lastName": {
+          "label": "Last name",
+          "hint": "Family name",
+          "description": "Used for directory lookup."
+        },
+        "email": {
+          "label": "Email",
+          "hint": "name@example.com",
+          "description": "Primary contact for escalations."
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "+1 555 0100",
+          "description": "Used only during incident response."
+        },
+        "title": {
+          "label": "Job title",
+          "hint": "e.g. Lead Engineer",
+          "description": "Displayed next to the name on the card."
+        }
+      },
+      "reviewer": {
+        "firstName": {
+          "label": "First name",
+          "hint": "Given name",
+          "description": "Shown on approval emails."
+        },
+        "lastName": {
+          "label": "Last name",
+          "hint": "Family name",
+          "description": "Used for directory lookup."
+        },
+        "email": {
+          "label": "Email",
+          "hint": "name@example.com",
+          "description": "Receives review-ready notifications."
+        },
+        "phone": {
+          "label": "Phone",
+          "hint": "+1 555 0100",
+          "description": "Optional; rarely contacted."
+        },
+        "title": {
+          "label": "Job title",
+          "hint": "e.g. Principal Reviewer",
+          "description": "Shown on the sign-off record."
+        }
+      }
+    }
   }
 }

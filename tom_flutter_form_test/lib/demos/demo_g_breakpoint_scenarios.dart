@@ -279,67 +279,31 @@ Widget buildComplexFormPane({
 }) {
   // --- Style presets ------------------------------------------------------
   //
-  // The five bands are intentionally spread across orthogonal visual axes
-  // so the transition is unmistakable: label placement (floating vs above),
-  // border kind (outline vs underline), border thickness (1 / 2 / 3 px),
-  // and font size.
+  // Only the three shipped TomFormStyle presets — bordered / material3 /
+  // compact — are used here, exactly as requested by the user:
   //
-  //  ≥ 1600 → bordered  — floating labels + outlined + error-icon shown
-  //  ≥ 1200 → normal3px — labels above + chunky 3 px outline + bigger labels
-  //  ≥  800 → smaller   — labels above + default (underline) + smaller fonts
-  //  ≥  400 → compact1  — compact preset + thin 1 px outline
-  //  <  400 → compact0  — compact preset, no explicit border (underline fallback)
+  //   ≥ 1600 → bordered      (default at widest)
+  //   ≥  800 → material3     (two theme-varying bands sit on this preset)
+  //   <  800 → compact
+  //
+  // The 1200 band deliberately shares material3 with the 800 band — the
+  // *theme* swaps between them so font family, font size, and palette
+  // change without the form-style preset changing.
 
-  const outline1 = OutlineInputBorder(borderSide: BorderSide(width: 1));
-  const outline1Focus = OutlineInputBorder(
-    borderSide: BorderSide(width: 1.5),
-  );
-  const outline3 = OutlineInputBorder(borderSide: BorderSide(width: 3));
-  final errorOutline1 = OutlineInputBorder(
-    borderSide: BorderSide(width: 1, color: Colors.red.shade700),
-  );
-  final errorOutline3 = OutlineInputBorder(
-    borderSide: BorderSide(width: 3, color: Colors.red.shade700),
-  );
-
-  final compact0 = TomFormStyle.compact;
-  final compact1 = TomFormStyle.compact.copyWith(
-    defaults: TomFormStyle.compact.defaults.copyWith(
-      fieldBorder: outline1,
-      focusedBorder: outline1Focus,
-      errorBorder: errorOutline1,
-      borderRadius: 4,
-    ),
-  );
-  final smaller = TomFormStyle.material3.copyWith(
-    defaults: TomFormStyle.material3.defaults.copyWith(
-      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
-      inputStyle: const TextStyle(fontSize: 12),
-      hintStyle: const TextStyle(fontSize: 11),
-      descriptionStyle: const TextStyle(fontSize: 10),
-      // No explicit border → Flutter TextField default = underline.
-    ),
-  );
-  final normal3 = TomFormStyle.material3.copyWith(
-    defaults: TomFormStyle.material3.defaults.copyWith(
-      fieldBorder: outline3,
-      focusedBorder: outline3,
-      errorBorder: errorOutline3,
-      labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-      inputStyle: const TextStyle(fontSize: 15),
-      borderRadius: 6,
-    ),
-  );
   final bordered = TomFormStyle.bordered;
+  final material = TomFormStyle.material3;
+  final compact = TomFormStyle.compact;
 
   // --- Theme presets ------------------------------------------------------
   //
-  // Colour palette, font family, and a baseline font-size shift all change
-  // per band so the theme swap is visible on text, card, and border alike.
-  // We re-scale a handful of TextTheme entries explicitly rather than going
-  // through `.apply(fontSizeFactor: ...)` because the latter asserts when
-  // any entry in the TextTheme has `fontSize == null` (which Material 3's
-  // Typography does for several display styles).
+  // Each theme sets:
+  //   * ColorScheme.fromSeed(...) — seed colour dictates primary / surface /
+  //     onSurface / outline.
+  //   * fontFamily for the whole textTheme (visible on every text widget).
+  //   * An explicit `color: cs.primary` on body* / label* / title* so the
+  //     theme's palette shift reaches field *text* (input, label), not
+  //     just Cards. Real apps should use onSurface for body text — here
+  //     we pick primary so the colour swap is unmistakable per band.
   ThemeData mk({
     required Color seed,
     String? fontFamily,
@@ -350,19 +314,23 @@ Widget buildComplexFormPane({
       useMaterial3: true,
       fontFamily: fontFamily,
     );
-    TextStyle scale(TextStyle? s, double size) =>
-        (s ?? const TextStyle()).copyWith(fontSize: size);
+    final cs = base.colorScheme;
+    TextStyle ink(TextStyle? s, double size) =>
+        (s ?? const TextStyle()).copyWith(
+          fontSize: size,
+          color: cs.primary,
+        );
     return base.copyWith(
       textTheme: base.textTheme.copyWith(
-        bodySmall: scale(base.textTheme.bodySmall, bodySize - 2),
-        bodyMedium: scale(base.textTheme.bodyMedium, bodySize),
-        bodyLarge: scale(base.textTheme.bodyLarge, bodySize + 2),
-        labelSmall: scale(base.textTheme.labelSmall, bodySize - 3),
-        labelMedium: scale(base.textTheme.labelMedium, bodySize - 2),
-        labelLarge: scale(base.textTheme.labelLarge, bodySize - 1),
-        titleSmall: scale(base.textTheme.titleSmall, bodySize + 1),
-        titleMedium: scale(base.textTheme.titleMedium, bodySize + 3),
-        titleLarge: scale(base.textTheme.titleLarge, bodySize + 6),
+        bodySmall: ink(base.textTheme.bodySmall, bodySize - 2),
+        bodyMedium: ink(base.textTheme.bodyMedium, bodySize),
+        bodyLarge: ink(base.textTheme.bodyLarge, bodySize + 2),
+        labelSmall: ink(base.textTheme.labelSmall, bodySize - 3),
+        labelMedium: ink(base.textTheme.labelMedium, bodySize - 2),
+        labelLarge: ink(base.textTheme.labelLarge, bodySize - 1),
+        titleSmall: ink(base.textTheme.titleSmall, bodySize + 1),
+        titleMedium: ink(base.textTheme.titleMedium, bodySize + 3),
+        titleLarge: ink(base.textTheme.titleLarge, bodySize + 6),
       ),
     );
   }
@@ -378,11 +346,9 @@ Widget buildComplexFormPane({
       mk(seed: Colors.blue, fontFamily: 'serif', bodySize: 18);
 
   return TomFormStyleScope(
-    style: compact0,
+    style: compact,
     styleBpOverrides: [
-      (400, compact1),
-      (800, smaller),
-      (1200, normal3),
+      (800, material),
       (1600, bordered),
     ],
     theme: orangeMonoXs,
@@ -408,6 +374,24 @@ class _ComplexFormBody extends StatefulWidget {
 class _ComplexFormBodyState extends State<_ComplexFormBody> {
   @override
   Widget build(BuildContext context) {
+    // Wrap the whole pane in a theme-surface Card so the form's background
+    // clearly reflects the active theme (per user: "field background colors
+    // don't change"). surfaceContainerLow tracks the theme palette.
+    final theme = Theme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.4),
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     return LayoutBuilder(
       builder: (context, c) {
         final width = c.maxWidth;
@@ -441,10 +425,10 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             )
             .append((p) => p.category.widget)
             .append((p) => p.status.widget)
-            .addRowBreakpoint(atWidth: 800)
+            .addRowBreakpoint(atWidth: 1400)
             .append((_) => _priorityWidget(prioritySegmented))
             .append((p) => p.phase.widget)
-            .addRowBreakpoint(atWidth: 400);
+            .addRowBreakpoint(atWidth: 700);
 
         // ---- Scope row (hours, deadline, location) ------------------
         final scope = TomAclBuilder(

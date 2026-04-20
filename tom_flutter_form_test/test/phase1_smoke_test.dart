@@ -26,8 +26,11 @@ void main() {
 
   Future<void> openDemo(WidgetTester tester, String tile) async {
     // A wide logical viewport keeps the two-column layout active and
-    // removes the need to scroll nested panels.
-    tester.view.physicalSize = const Size(1600, 1200);
+    // removes the need to scroll nested panels. Demos G and H spread a
+    // multi-column ProjectBriefForm across the form pane, so the viewport
+    // needs to leave enough width for each dropdown to render without
+    // overflowing — 2400 comfortably fits the full-bordered band too.
+    tester.view.physicalSize = const Size(2400, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
 
