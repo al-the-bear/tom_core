@@ -21,54 +21,49 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // ── Three expandX panels (proportional to pref - min) ────────────
+        // ── Three panels grow proportionally to (P / M − 1), no expandX ──
         const Text(
-          'Horizontal: three expandX panels grow proportionally to (P − M)',
+          'Horizontal: three components grow by (P/M − 1) without expandX',
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         ResizableBox(
           initialHeight: null,
           child: AclBuilder()
-              // pref − min = 120 → largest share of extra space
-              .append(const DemoBox('Alpha\nM:80 P:200 (Δ120)', Colors.teal))
+              // P/M − 1 = 200/80 − 1 = 1.5 → largest share of extra space
+              .append(const DemoBox('Alpha\nM:80 P:200', Colors.teal))
               .setMSize(80, 40).setPSize(200, 40)
-              .setAttr(AclFlags.expandX)
-              // pref − min = 100 → middle share
-              .append(const DemoBox('Beta\nM:60 P:160 (Δ100)', Colors.indigo), dist: 6)
+              // P/M − 1 = 160/60 − 1 ≈ 1.67 → middle (actually larger ratio)
+              .append(const DemoBox('Beta\nM:60 P:160', Colors.indigo), dist: 6)
               .setMSize(60, 40).setPSize(160, 40)
-              .setAttr(AclFlags.expandX)
-              // pref − min = 70 → smallest share
-              .append(const DemoBox('Gamma\nM:50 P:120 (Δ70)', Colors.orange), dist: 6)
+              // P/M − 1 = 120/50 − 1 = 1.4 → smallest share
+              .append(const DemoBox('Gamma\nM:50 P:120', Colors.orange), dist: 6)
               .setMSize(50, 40).setPSize(120, 40)
-              .setAttr(AclFlags.expandX)
               .build(),
         ),
         const SizedBox(height: 4),
         const Text(
-          'All three fill the row. Extra space above the sum of M values is shared in '
-          'the ratio 120 : 100 : 70 (= the P − M differences).',
+          'Extra space above the sum of M values is distributed by the '
+          '(P/M − 1) growth factor; none of these use expandX.',
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
         const SizedBox(height: 16),
 
-        // ── Two expandX + one fixed (last = Fixed) ──────────────────────
+        // ── Same thing but last component is fixed ──────────────────────
         const Text(
-          'Horizontal: two expandX panels grow proportionally, last one is fixed',
+          'Horizontal: two growing components + one fixed (no expandX)',
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         ResizableBox(
           initialHeight: null,
           child: AclBuilder()
-              // pref − min = 240 → larger share
-              .append(const DemoBox('Wide\nM:120 P:360 (Δ240)', Colors.purple))
+              // P/M − 1 = 360/120 − 1 = 2
+              .append(const DemoBox('Wide\nM:120 P:360', Colors.purple))
               .setMSize(120, 40).setPSize(360, 40)
-              .setAttr(AclFlags.expandX)
-              // pref − min = 120 → smaller share
-              .append(const DemoBox('Medium\nM:80 P:200 (Δ120)', Colors.blueGrey), dist: 6)
+              // P/M − 1 = 200/80 − 1 = 1.5
+              .append(const DemoBox('Medium\nM:80 P:200', Colors.blueGrey), dist: 6)
               .setMSize(80, 40).setPSize(200, 40)
-              .setAttr(AclFlags.expandX)
               // M = P = X = 80 → never grows nor shrinks
               .append(const DemoBox('Fixed\nM=P=X=80', Colors.red), dist: 6)
               .setMSize(80, 40).setPSize(80, 40).setXSize(80, 40)

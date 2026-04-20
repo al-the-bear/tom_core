@@ -1080,9 +1080,18 @@ class _AclContainerState extends State<AclContainer> {
 
     if (naturalWidth <= availableWidth) {
       // ── Grow phase ─────────────────────────────────────────────────────
-      // Non-expandX components WITH maxSize can grow up to their max.
-      // Non-expandX components WITHOUT maxSize stay at pref (no grow).
-      // expandX components are handled separately via Flexible.
+      // When there is an expandX (or gap) in the row, non-expandX components
+      // stay pinned at their preferred size — surplus flows to the expandX
+      // components via `expandXWidths` in _computeRowLayout. When there is
+      // no expandX/gap, non-expandX components themselves absorb the surplus
+      // so the row always fills the available width.
+      //
+      // Surplus distribution weight per component is (P/M − 1): components
+      // with a larger ratio between preferred and minimum size take a larger
+      // share. A component with M=0 (no explicit minimum) falls back to
+      // weight 1 so it still participates. Each component is clamped at its
+      // maximumSize (if set); any unused growth from clamped components is
+      // redistributed by the same rule until no component can absorb more.
       final hasRowFiller = row.components.any(
         (c) => (c.expandX && !c.isGap) || c.isGap,
       );
@@ -1105,39 +1114,66 @@ class _AclContainerState extends State<AclContainer> {
                   : 0.0);
         }
 
-        final effectiveSurplus = math.max(
+        double surplus = math.max(
           0.0,
           availableWidth - naturalWidth - naturalExcludedWidth,
         );
-        if (effectiveSurplus >= 1) {
-          // Only grow components that have a finite maxSize constraint.
-          // Components without maxSize stay at prefSize (no expansion).
-          double totalGrowable = 0;
-          for (int i = 0; i < row.components.length; i++) {
-            final comp = row.components[i];
-            if (skip(comp)) continue;
-            if (comp.useOtherDimX) continue;
-            final max = comp.maximumSize?.width;
-            if (max == null || !max.isFinite) continue; // Skip non-growable
-            final pref = prefWidths[i] ?? 0.0;
-            totalGrowable += math.max(0.0, max - pref);
-          }
-          if (totalGrowable >= 1) {
-            final grown = <int, double>{};
-            final shareRatio = math.min(1.0, effectiveSurplus / totalGrowable);
-            for (int i = 0; i < row.components.length; i++) {
-              final comp = row.components[i];
-              if (skip(comp)) continue;
-              if (comp.useOtherDimX) continue;
-              final max = comp.maximumSize?.width;
-              if (max == null || !max.isFinite) continue;
-              final pref = prefWidths[i] ?? 0.0;
-              final growRoom = max - pref;
-              grown[i] = pref + (growRoom * shareRatio);
-            }
-            if (grown.isNotEmpty) return grown;
-          }
+        if (surplus < 1) return null;
+
+        // Collect growable components and their (P/M − 1) weights. A
+        // component participates in horizontal growth only when BOTH a
+        // minimum and a preferred width are set with min < pref — that
+        // is what defines the growth direction and magnitude in the
+        // caller's model. Components without an explicit minimum
+        // (setMSize not called) stay pinned at their preferred width;
+        // components with min == pref (no growth room) also stay put.
+        final growable = <int>[];
+        final weights = <int, double>{};
+        final currentWidths = <int, double>{};
+        for (int i = 0; i < row.components.length; i++) {
+          final comp = row.components[i];
+          if (skip(comp)) continue;
+          if (comp.useOtherDimX) continue;
+          final minW = comp.minimumSize?.width;
+          final prefW = comp.preferredSize?.width;
+          if (minW == null || prefW == null) continue;
+          if (!minW.isFinite || minW <= 0) continue;
+          if (prefW <= minW) continue;
+          final weight = prefW / minW - 1.0;
+          if (!weight.isFinite || weight <= 0) continue;
+          growable.add(i);
+          weights[i] = weight;
+          currentWidths[i] = prefWidths[i] ?? prefW;
         }
+        if (growable.isEmpty) return null;
+
+        // Iteratively grow. A component that hits its maximumSize drops out
+        // of the weighted pool; the remainder keeps sharing the leftover.
+        final unclamped = {...growable};
+        while (surplus >= 1 && unclamped.isNotEmpty) {
+          final weightSum = unclamped.fold<double>(0.0,
+              (s, i) => s + weights[i]!);
+          if (weightSum <= 0) break;
+          var distributedThisRound = 0.0;
+          // Snapshot to avoid mutating during iteration.
+          for (final i in unclamped.toList()) {
+            final share = surplus * (weights[i]! / weightSum);
+            final max = row.components[i].maximumSize?.width;
+            final current = currentWidths[i]!;
+            double grown = current + share;
+            double actualGrowth = share;
+            if (max != null && max.isFinite && grown > max) {
+              actualGrowth = math.max(0.0, max - current);
+              grown = max;
+              unclamped.remove(i);
+            }
+            currentWidths[i] = grown;
+            distributedThisRound += actualGrowth;
+          }
+          surplus -= distributedThisRound;
+          if (distributedThisRound < 0.5) break; // avoid infinite churn
+        }
+        return currentWidths;
       }
       return null;
     }
