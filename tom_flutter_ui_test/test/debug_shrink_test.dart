@@ -35,8 +35,8 @@ void main() {
         .append(const KeyedSubtree(
             key: expandKey,
             child: DemoBox('ExpandX', Colors.lightGreen)), dist: 6)
-        .setMSize(80, 40)
-        .setPSize(200, 40)
+        .setMSize(120, 40)
+        .setPSize(240, 40)
         .setAttr(AclFlags.expandX)
         .build();
   }

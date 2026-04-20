@@ -21,6 +21,7 @@ class GroupsDemo extends StatelessWidget {
                 color: Colors.blueGrey,
               ),
             )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const SizedBox(width: 80, child: Text('Name:')))
             .append(
               const TextField(
@@ -54,6 +55,7 @@ class GroupsDemo extends StatelessWidget {
               ),
               titlePosition: AclTitlePosition.topCenter,
             )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const Text('Enable notifications'))
             .append(Switch(value: true, onChanged: (_) {}), dist: 10)
             .newRow(dist: 8)
@@ -71,6 +73,7 @@ class GroupsDemo extends StatelessWidget {
               ),
               titlePosition: AclTitlePosition.topRight,
             )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(ElevatedButton(onPressed: () {}, child: const Text('Save')))
             .append(
               OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
@@ -88,6 +91,7 @@ AclBuilder(
   ),
   titlePosition: AclTitlePosition.topLeft,
 )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
     .append(Label)
     .append(TextField)
     .expandX()
@@ -120,6 +124,7 @@ AclBuilder(
           ),
           titleBorderAlign: AclTitleBorderAlign.bottom,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const DemoBox('Item A', Colors.indigo))
             .append(const DemoBox('Item B', Colors.indigoAccent), dist: 8)
             .build(),
@@ -140,6 +145,7 @@ AclBuilder(
           ),
           titleBorderAlign: AclTitleBorderAlign.middle,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const DemoBox('Item A', Colors.teal))
             .append(const DemoBox('Item B', Colors.tealAccent), dist: 8)
             .build(),
@@ -160,6 +166,7 @@ AclBuilder(
           ),
           titleBorderAlign: AclTitleBorderAlign.top,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const DemoBox('Item A', Colors.deepOrange))
             .append(const DemoBox('Item B', Colors.orange), dist: 8)
             .build(),
@@ -184,7 +191,8 @@ AclBuilder(
                   borderRadius: 8,
                 ),
                 titleBorderAlign: AclTitleBorderAlign.bottom,
-              ).append(const DemoBox('Content', Colors.indigo)).build(),
+              )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center).append(const DemoBox('Content', Colors.indigo)).build(),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -197,7 +205,8 @@ AclBuilder(
                   borderRadius: 8,
                 ),
                 titleBorderAlign: AclTitleBorderAlign.middle,
-              ).append(const DemoBox('Content', Colors.teal)).build(),
+              )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center).append(const DemoBox('Content', Colors.teal)).build(),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -210,7 +219,8 @@ AclBuilder(
                   borderRadius: 8,
                 ),
                 titleBorderAlign: AclTitleBorderAlign.top,
-              ).append(const DemoBox('Content', Colors.deepOrange)).build(),
+              )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center).append(const DemoBox('Content', Colors.deepOrange)).build(),
             ),
           ],
         ),
@@ -244,6 +254,7 @@ AclBuilder(
           ),
           titleBorderAlign: AclTitleBorderAlign.bottom,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const DemoBox('Widget Title', Colors.blue))
             .append(const DemoBox('Content', Colors.lightBlue), dist: 8)
             .build(),
@@ -264,6 +275,7 @@ AclBuilder(
           titleBorderAlign: AclTitleBorderAlign.middle,
           titlePosition: AclTitlePosition.topCenter,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const DemoBox('Chip as Title', Colors.green))
             .build(),
         ],

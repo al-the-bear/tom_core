@@ -83,6 +83,7 @@ class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
               borderRadius: 8,
             ),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               .setGroupVisibilityController('address', _addressCtrl)
               .setGroupVisibilityController('notes', _notesCtrl)
@@ -158,6 +159,7 @@ class _GroupVisibilityDemoState extends State<GroupVisibilityDemo> {
               borderRadius: 8,
             ),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               .setGroupVisibilityController('details', _inputCtrl)
               .append(const Text('Summary is always shown'))
@@ -185,6 +187,7 @@ final ctrl = AclBinaryVisibilityController();
 // Toggle: ctrl.mode = AclGroupVisibilityMode.hidden;
 
 AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
     .setGroupVisibilityController('address', ctrl)
     .append(alwaysVisibleWidget)
     .newRow(dist: 8)

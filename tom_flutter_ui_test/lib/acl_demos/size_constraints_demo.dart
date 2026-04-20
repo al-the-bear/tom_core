@@ -120,18 +120,22 @@ class SizeConstraintsDemo extends StatelessWidget {
               .setMSize(60, 40).setPSize(140, 40)
               .append(const DemoBox('Uncapped B\nM:50 P:120', Colors.orange), dist: 6)
               .setMSize(50, 40).setPSize(120, 40)
-              // expandX component: absorbs all remaining surplus.
-              .append(const DemoBox('ExpandX\nM:80 P:200', Colors.lightGreen), dist: 6)
-              .setMSize(80, 40).setPSize(200, 40)
+              // expandX component: absorbs all remaining surplus when the
+              // row grows and participates in proportional shrinking when
+              // it narrows — but respects its own minimumSize floor.
+              .append(const DemoBox('ExpandX\nM:120 P:240', Colors.lightGreen), dist: 6)
+              .setMSize(120, 40).setPSize(240, 40)
               .setAttr(AclFlags.expandX)
               .build(),
         ),
         const SizedBox(height: 4),
         const Text(
-          'With an expandX in the row, the three non-expandX components sit '
-          'at their preferred widths (160 / 140 / 120) and ExpandX eats the '
-          'rest — max-capped components are irrelevant here because none of '
-          'them would have grown past preferred anyway.',
+          'Grow: the three non-expandX components sit at their preferred '
+          'widths (160 / 140 / 120) and ExpandX eats the rest. '
+          'Shrink: once the row narrows past the sum of preferred widths, '
+          'all four components (including ExpandX) shrink proportionally '
+          'by (pref − min) — ExpandX stops at its minimum of 120 px and '
+          'never collapses past it.',
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
         const SizedBox(height: 16),

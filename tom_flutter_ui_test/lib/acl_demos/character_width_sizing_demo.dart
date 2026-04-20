@@ -26,6 +26,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 180,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(const SizedBox(width: 90, child: Text('12 chars:')))
               .setPSize(90, 40)
               .append(
@@ -81,6 +82,7 @@ class CharacterWidthSizingDemo extends StatelessWidget {
     final charWidth = measureWidthInChars(context, 1, style: monospaceStyle);
 
 AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
     .append(TextField(style: monospaceStyle))
       .setPWidthInChars(24, charWidth: charWidth, height: 40)  // preferred
       .setMWidthInChars(12, charWidth: charWidth)              // min = 12 chars

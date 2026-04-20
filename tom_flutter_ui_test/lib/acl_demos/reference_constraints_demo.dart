@@ -54,6 +54,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ResizableBox(
           initialHeight: 280,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(anchorLabel)
               .append(anchorField, dist: 12)
               .newRow(dist: 10)
@@ -122,6 +123,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ResizableBox(
           initialHeight: 100,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(centerAnchor)
               .setPSize(320, 48)
               .setMSize(50, 48)
@@ -146,6 +148,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ResizableBox(
           initialHeight: 80,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(verticalAnchor)
               .setPSize(220, 70)
               .append(const SizedBox(width: 24))
@@ -173,6 +176,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ResizableBox(
           initialHeight: null,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(topBottomAnchor)
               .setPSize(220, 64)
               .append(const SizedBox(width: 24))
@@ -200,6 +204,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ResizableBox(
           initialHeight: null,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .append(bottomTopAnchor)
               .setPSize(220, 64)
               .append(const SizedBox(width: 24))
@@ -239,6 +244,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           return ResizableBox(
             initialHeight: null,
             child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
                 .append(tbAnchor)
                 .setPSize(160, 56)
                 .append(const SizedBox(width: 12))
@@ -273,6 +279,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
           return ResizableBox(
             initialHeight: null,
             child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
                 .append(btAnchor)
                 .setPSize(160, 56)
                 .append(const SizedBox(width: 12))

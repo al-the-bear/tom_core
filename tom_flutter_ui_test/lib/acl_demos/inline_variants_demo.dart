@@ -29,6 +29,7 @@ class InlineVariantsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Items:')))
               .setPSize(70, 0)
@@ -80,6 +81,7 @@ class InlineVariantsDemo extends StatelessWidget {
               borderRadius: 8,
             ),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               // Row 1: Name — inline variants
               .append(const SizedBox(width: 80, child: Text('Name:')))
@@ -142,6 +144,7 @@ class InlineVariantsDemo extends StatelessWidget {
         const Text('Code:', style: TextStyle(fontWeight: FontWeight.bold)),
         const CodeBlock('''
 AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
     .append(Text('Name:'))
     // Wide: two fields
     .startVariant()
@@ -179,6 +182,7 @@ AclBuilder()
               borderRadius: 8,
             ),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               .append(const SizedBox(width: 70, child: Text('Device:')))
               .setPSize(70, 0)

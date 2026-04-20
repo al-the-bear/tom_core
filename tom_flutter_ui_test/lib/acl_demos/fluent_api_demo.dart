@@ -16,6 +16,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 8),
         ResizableBox(
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .setAclScrollableY()
               .append(const DemoBox('expandX()', Colors.red))
               .expandX()
@@ -25,6 +26,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 16),
         ResizableBox(
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .setAclScrollableY()
               .append(const DemoBox('alignCenter()', Colors.green))
               .setRowAlignCenter()
@@ -38,6 +40,7 @@ class FluentApiDemo extends StatelessWidget {
         const SizedBox(height: 8),
         ResizableBox(
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .setAclScrollableY()
               .append(const DemoBox('A', Colors.red))
               .append(const DemoBox('B', Colors.green), dist: 10)
@@ -53,6 +56,7 @@ class FluentApiDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 100,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclScrollableY()
               .append(const Text('Label:'))
               .append(
@@ -76,6 +80,7 @@ class FluentApiDemo extends StatelessWidget {
         const CodeBlock('''
 // Extension methods
 AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
     .append(widget)
     .expandX()    // same as .setAttr(AclFlags.expandX)
     .expandY()    // same as .setAttr(AclFlags.expandY)

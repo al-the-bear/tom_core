@@ -20,6 +20,7 @@ class FormLayoutDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 320,
           child: AclBuilder()
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
               .setAclPadding(const EdgeInsets.all(16))
               // Date row
               .append(const SizedBox(width: _lw, child: Text('Date:')))

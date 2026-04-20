@@ -2475,8 +2475,17 @@ class _AclContainerState extends State<AclContainer> {
       }
 
       // ── Width wrapping (OUTSIDE height) ─────────────────────────────────
+      // When fittedWidth is set for an expandX component, the shrink
+      // phase has decided that component's width — we must respect it
+      // (in particular the minimumSize floor) instead of handing the
+      // rest of this method's expandX-only path over to Flexible, which
+      // would pull the component below its minimum whenever the row is
+      // tighter than the sum of shrunken widths.
+      final expandXShrinking = component.expandX &&
+          canExpandHorizontally &&
+          fittedWidth != null;
       if (!isFlexNativeChild &&
-          (!component.expandX || !canExpandHorizontally)) {
+          (!component.expandX || !canExpandHorizontally || expandXShrinking)) {
         final effectiveWidth =
             fittedWidth ?? linkedWidth ?? component.preferredSize?.width;
         if (effectiveWidth != null) {
@@ -2489,6 +2498,7 @@ class _AclContainerState extends State<AclContainer> {
       if (!isFlexNativeChild &&
           component.expandX &&
           canExpandHorizontally &&
+          !expandXShrinking &&
           !hasFiniteMaxWidth) {
         child = SizedBox(width: double.infinity, child: child);
       }
@@ -2574,7 +2584,7 @@ class _AclContainerState extends State<AclContainer> {
         }
       }
 
-      if (component.expandX && canExpandHorizontally) {
+      if (component.expandX && canExpandHorizontally && !expandXShrinking) {
         // Use isFlexNativeChild (checked on component.child) since `child`
         // may have been wrapped with AclScope and other widgets by now.
         if (!isFlexNativeChild) {

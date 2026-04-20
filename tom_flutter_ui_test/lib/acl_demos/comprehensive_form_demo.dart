@@ -53,6 +53,7 @@ class ComprehensiveFormDemo extends StatelessWidget {
             ),
             padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
           )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
         // ── Section heading ────────────────────────────────────────────────
         .append(const Text(
           'Project Details',

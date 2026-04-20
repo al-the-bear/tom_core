@@ -28,6 +28,7 @@ class BorderedGroupsDemo extends StatelessWidget {
           ),
           titlePosition: AclTitlePosition.topLeft,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const SizedBox(width: 80, child: Text('Name:')))
             .append(
               const TextField(
@@ -67,6 +68,7 @@ class BorderedGroupsDemo extends StatelessWidget {
           ),
           titlePosition: AclTitlePosition.topCenter,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(const Text('Dark mode'))
             .append(Switch(value: false, onChanged: (_) {}), dist: 8)
             .newRow(dist: 6)
@@ -90,6 +92,7 @@ class BorderedGroupsDemo extends StatelessWidget {
           ),
           titlePosition: AclTitlePosition.topRight,
         )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
             .append(ElevatedButton(onPressed: () {}, child: const Text('Save')))
             .append(
               OutlinedButton(onPressed: () {}, child: const Text('Cancel')),
@@ -110,6 +113,7 @@ AclBuilder(
   ),
   titlePosition: AclTitlePosition.topLeft,  // or topCenter / topRight
 )
+              .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
   .append(label)
   .append(textField).expandX()
   .build()
