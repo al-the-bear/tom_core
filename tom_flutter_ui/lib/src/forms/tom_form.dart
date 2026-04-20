@@ -367,6 +367,9 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     this.tomGroup,
     this.authorizer,
     this.uiStateController,
+    this.actionIcon,
+    this.actionIconTooltip,
+    this.onActionIconPressed,
   }) : super(_initialValue) {
     // When the field knows its form, derive scope from the form's
     // basePath — so a field can be instantiated at its declaration site
@@ -393,6 +396,28 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   TomForm? form;
   bool obscureText;
+
+  /// Optional icon rendered in the field's action slot (trailing by
+  /// default, configurable per-style via `actionIconPlacement`). When
+  /// set, the anatomy paints this icon as a tap target — wire the tap
+  /// via [onActionIconPressed]. The slot is shared with the slow-
+  /// validation spinner: while async validation is in flight the
+  /// spinner takes precedence so the user always sees progress before
+  /// seeing the (still valid) action trigger.
+  ///
+  /// Pass an [IconData]-backed widget (e.g. `const Icon(Icons.search)`)
+  /// or a full [IconButton] if the action needs ripple / tooltip
+  /// semantics that the icon alone wouldn't render.
+  final Widget? actionIcon;
+
+  /// Optional tooltip used when [actionIcon] is a plain icon and the
+  /// anatomy needs to wrap it with an [IconButton] / [Tooltip].
+  final String? actionIconTooltip;
+
+  /// Callback invoked when the action icon is tapped. The anatomy
+  /// renders a tap target only when this is non-null — so fields that
+  /// supply a decorative icon without an onPressed stay un-tappable.
+  final VoidCallback? onActionIconPressed;
 
   // --- Value tracking ---
 

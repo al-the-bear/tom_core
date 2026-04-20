@@ -70,7 +70,11 @@ mixin TomStringInputDecorationMixin<T> on TomField<T> {
     );
   }
 
-  /// Wraps [innerWidget] with the standard field anatomy.
+  /// Wraps [innerWidget] with the standard field anatomy. Also threads
+  /// the field's optional `actionIcon` + tap handler through — the
+  /// anatomy renders them in the `actionIconPlacement` slot and takes
+  /// care of the IconButton/Tooltip wrapping when the caller only
+  /// supplied a plain [Icon].
   Widget decorateField(BuildContext context, Widget innerWidget) {
     final style = resolveStyle(context);
     return buildFieldAnatomy(
@@ -84,6 +88,23 @@ mixin TomStringInputDecorationMixin<T> on TomField<T> {
       hasRequired: hasRequiredValidator,
       isEditable: isEditable,
       isSlowPending: isSlowValidationPending,
+      actionIcon: _buildActionIcon(),
+    );
+  }
+
+  Widget? _buildActionIcon() {
+    if (actionIcon == null) return null;
+    if (onActionIconPressed == null && actionIconTooltip == null) {
+      return actionIcon;
+    }
+    return IconButton(
+      onPressed: isEditable ? onActionIconPressed : null,
+      tooltip: actionIconTooltip,
+      icon: actionIcon!,
+      iconSize: 18,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(),
     );
   }
 }

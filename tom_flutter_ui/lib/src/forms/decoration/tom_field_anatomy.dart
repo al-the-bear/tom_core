@@ -194,6 +194,7 @@ Widget buildFieldAnatomy({
   required bool hasRequired,
   required bool isEditable,
   required bool isSlowPending,
+  Widget? actionIcon,
 }) {
   if (effectiveAuth == TomAuthState.none) {
     return const SizedBox.shrink();
@@ -210,6 +211,7 @@ Widget buildFieldAnatomy({
     hasRequired: hasRequired,
     isEditable: isEditable,
     isSlowPending: isSlowPending,
+    actionIcon: actionIcon,
   );
   if (effectiveAuth == TomAuthState.disabled) {
     content = Opacity(opacity: style.disabledOpacity, child: content);
@@ -234,6 +236,7 @@ Widget _anatomyColumn({
   required bool hasRequired,
   required bool isEditable,
   required bool isSlowPending,
+  required Widget? actionIcon,
 }) {
   final children = <Widget>[];
 
@@ -309,7 +312,7 @@ Widget _anatomyColumn({
             label,
             SizedBox(width: style.labelFieldGap * 2),
           ],
-          Expanded(child: _inputRow(style, innerWidget, isSlowPending)),
+          Expanded(child: _inputRow(style, innerWidget, isSlowPending, actionIcon)),
         ],
       ),
     );
@@ -331,7 +334,7 @@ Widget _anatomyColumn({
       children.add(errorAbove);
       children.add(SizedBox(height: style.errorFieldGap));
     }
-    children.add(_inputRow(style, innerWidget, isSlowPending));
+    children.add(_inputRow(style, innerWidget, isSlowPending, actionIcon));
     if (isLabelBelow) {
       children.add(SizedBox(height: style.labelFieldGap));
       children.add(label);
@@ -429,19 +432,31 @@ Widget _inputRow(
   TomFieldStyle style,
   Widget innerWidget,
   bool isSlowPending,
+  Widget? actionIcon,
 ) {
   // Keep the Row structure stable across pending-state transitions so the
   // inner field's Element (and its FocusNode attachment) is preserved.
+  // The pending-indicator (slow validation) and the caller-supplied
+  // action icon share the trailing / leading slot — pending visibly
+  // replaces the action icon while async validation is in flight, so the
+  // user sees progress instead of a redundant trigger.
+  const Widget pendingIndicator = Padding(
+    padding: EdgeInsets.only(left: 8.0),
+    child: SizedBox(
+      width: 16,
+      height: 16,
+      child: CircularProgressIndicator(strokeWidth: 2),
+    ),
+  );
+
   final Widget trailing = isSlowPending
-      ? const Padding(
-          padding: EdgeInsets.only(left: 8.0),
-          child: SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        )
-      : const SizedBox.shrink();
+      ? pendingIndicator
+      : (actionIcon != null
+          ? Padding(
+              padding: const EdgeInsets.only(left: 8.0),
+              child: actionIcon,
+            )
+          : const SizedBox.shrink());
 
   if (style.actionIconPlacement == ActionIconPlacement.leading) {
     return Row(children: [trailing, Expanded(child: innerWidget)]);

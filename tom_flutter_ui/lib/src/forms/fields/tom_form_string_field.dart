@@ -51,6 +51,9 @@ abstract class TomFormStringField extends TomField<String> {
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
   });
 
   // --- Resource resolution (§17) ---
@@ -113,6 +116,9 @@ class TomFormStringInput extends TomFormStringField
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
   });
 
   // The mixin declares null-returning defaults for labelText/descriptionText.
@@ -291,6 +297,9 @@ class TomFormStringDropdown extends TomFormStringField
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
   });
 
   @override

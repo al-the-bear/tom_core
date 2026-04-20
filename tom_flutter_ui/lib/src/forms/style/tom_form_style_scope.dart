@@ -141,7 +141,10 @@ class _StyleOverlay {
   final RequiredIndicator? requiredIndicatorOnDescription;
   final double? labelFieldGap;
   final double? errorFieldGap;
+  final double? descriptionFieldGap;
   final double? borderRadius;
+  final double? borderWidth;
+  final double? focusedBorderWidth;
   final EdgeInsets? fieldContentPadding;
   final bool? errorBorderEnabled;
   final bool? errorIconEnabled;
@@ -171,7 +174,10 @@ class _StyleOverlay {
     this.requiredIndicatorOnDescription,
     this.labelFieldGap,
     this.errorFieldGap,
+    this.descriptionFieldGap,
     this.borderRadius,
+    this.borderWidth,
+    this.focusedBorderWidth,
     this.fieldContentPadding,
     this.errorBorderEnabled,
     this.errorIconEnabled,
@@ -199,7 +205,10 @@ class _StyleOverlay {
       requiredIndicatorOnDescription == null &&
       labelFieldGap == null &&
       errorFieldGap == null &&
+      descriptionFieldGap == null &&
       borderRadius == null &&
+      borderWidth == null &&
+      focusedBorderWidth == null &&
       fieldContentPadding == null &&
       errorBorderEnabled == null &&
       errorIconEnabled == null &&
@@ -234,7 +243,12 @@ class _StyleOverlay {
             base.defaults.requiredIndicatorOnDescription,
         labelFieldGap: labelFieldGap ?? base.defaults.labelFieldGap,
         errorFieldGap: errorFieldGap ?? base.defaults.errorFieldGap,
+        descriptionFieldGap:
+            descriptionFieldGap ?? base.defaults.descriptionFieldGap,
         borderRadius: borderRadius ?? base.defaults.borderRadius,
+        borderWidth: borderWidth ?? base.defaults.borderWidth,
+        focusedBorderWidth:
+            focusedBorderWidth ?? base.defaults.focusedBorderWidth,
         fieldContentPadding:
             fieldContentPadding ?? base.defaults.fieldContentPadding,
         errorBorderEnabled:
@@ -296,7 +310,10 @@ class _StyleOverlay {
       ),
       labelFieldGap: TomCtr.doubleVal(block, 'labelFieldGap'),
       errorFieldGap: TomCtr.doubleVal(block, 'errorFieldGap'),
+      descriptionFieldGap: TomCtr.doubleVal(block, 'descriptionFieldGap'),
       borderRadius: TomCtr.doubleVal(block, 'borderRadius'),
+      borderWidth: TomCtr.doubleVal(block, 'borderWidth'),
+      focusedBorderWidth: TomCtr.doubleVal(block, 'focusedBorderWidth'),
       fieldContentPadding: TomCtr.edgeInsets(block, 'fieldContentPadding'),
       errorBorderEnabled: TomCtr.boolVal(block, 'errorBorderEnabled'),
       errorIconEnabled: TomCtr.boolVal(block, 'errorIconEnabled'),
@@ -451,8 +468,15 @@ class TomFormStyleScope extends StatelessWidget {
   /// Optional explicit [TomScope] to override the ambient one.
   final TomScope? scope;
 
-  /// Programmatic base style.
-  final TomFormStyle style;
+  /// Programmatic base style. When `null`, the scope still wraps the
+  /// subtree so that theme / themeSpec / breakpoint overrides reach
+  /// descendants — form-style defaults fall through to the nearest
+  /// outer scope (or to [TomFormStyle.material3] when none exists).
+  ///
+  /// Passing `null` is the intended way to use this widget purely as a
+  /// breakpoint-aware theme/themeData injector without re-declaring a
+  /// form style.
+  final TomFormStyle? style;
 
   /// Scope-level breakpoint variants of the programmatic style.
   final List<(double, TomFormStyle)> styleBpOverrides;
@@ -483,7 +507,7 @@ class TomFormStyleScope extends StatelessWidget {
     super.key,
     this.tomId,
     this.scope,
-    required this.style,
+    this.style,
     this.styleBpOverrides = const [],
     this.theme,
     this.themeBpOverrides = const [],
@@ -543,7 +567,7 @@ class TomFormStyleScope extends StatelessWidget {
             themeData?.colorScheme ?? Theme.of(context).colorScheme;
 
         // --- Style ---
-        var resolved = _pickProgrammaticStyle(width);
+        var resolved = _pickProgrammaticStyle(context, width);
         if (pack != null) {
             resolved = pack.base.apply(resolved, cs);
           if (matchingBp != null) {
@@ -584,9 +608,15 @@ class TomFormStyleScope extends StatelessWidget {
 
   // --- Style resolution helpers --------------------------------------------
 
-  TomFormStyle _pickProgrammaticStyle(double width) {
-    if (styleBpOverrides.isEmpty) return style;
-    TomFormStyle current = style;
+  TomFormStyle _pickProgrammaticStyle(BuildContext context, double width) {
+    // When no programmatic base style is configured, fall back to the
+    // enclosing scope's style — that way this widget can be used as a
+    // pure theme / themeSpec / breakpoint injector without re-declaring
+    // the form-style layer. TomFormStyleScope.of() returns the
+    // material3 defaults when there is no enclosing scope.
+    final TomFormStyle baseStyle = style ?? TomFormStyleScope.of(context);
+    if (styleBpOverrides.isEmpty) return baseStyle;
+    TomFormStyle current = baseStyle;
     double best = double.negativeInfinity;
     for (final entry in styleBpOverrides) {
       final minW = entry.$1;

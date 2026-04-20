@@ -65,7 +65,9 @@ mixin TomDropdownDecorationMixin<T> on TomField<T> {
     );
   }
 
-  /// Wraps [innerWidget] with the standard field anatomy.
+  /// Wraps [innerWidget] with the standard field anatomy. Mirrors
+  /// [TomStringInputDecorationMixin] so dropdowns also honour the
+  /// `actionIcon` + `onActionIconPressed` fields from `TomField`.
   Widget decorateField(BuildContext context, Widget innerWidget) {
     final style = resolveStyle(context);
     return buildFieldAnatomy(
@@ -79,6 +81,23 @@ mixin TomDropdownDecorationMixin<T> on TomField<T> {
       hasRequired: hasRequiredValidator,
       isEditable: isEditable,
       isSlowPending: isSlowValidationPending,
+      actionIcon: _buildActionIcon(),
+    );
+  }
+
+  Widget? _buildActionIcon() {
+    if (actionIcon == null) return null;
+    if (onActionIconPressed == null && actionIconTooltip == null) {
+      return actionIcon;
+    }
+    return IconButton(
+      onPressed: isEditable ? onActionIconPressed : null,
+      tooltip: actionIconTooltip,
+      icon: actionIcon!,
+      iconSize: 18,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(),
     );
   }
 }
