@@ -1791,14 +1791,28 @@ class _AclContainerState extends State<AclContainer> {
           continue;
         }
         if (comp.expandX && !comp.isGap) {
+          // expandX components share the surplus left over after every
+          // non-expandX component has taken its preferred width. Their
+          // flex weight mirrors the non-expandX grow phase: (P/M − 1)
+          // when both M and P are explicitly set with min < pref, or a
+          // small positive fallback so callers who just mark expandX
+          // without also configuring M/P still participate in the row.
           final minW =
               (comp.minimumSize?.width ?? linkedWidths[i] ?? 0)
                   .clamp(0.0, double.maxFinite);
           final prefW =
               (fittedWidths[i] ?? comp.preferredSize?.width ?? minW)
                   .clamp(minW, double.maxFinite);
-          final diff = prefW - minW;
-          final flex = (diff.isFinite ? diff : 1000.0).clamp(1.0, 10000.0);
+          double flex;
+          if (minW > 0 && prefW > minW) {
+            flex = prefW / minW - 1.0;
+          } else {
+            // Symmetric fallback: when M is unset or M >= P the caller
+            // hasn't asked for proportional growth, so every expandX
+            // component takes an equal share of whatever surplus exists.
+            flex = 1.0;
+          }
+          flex = (flex.isFinite ? flex : 1.0).clamp(1e-3, 10000.0);
           expandXFlexes[i] = flex;
           expandXCompIndices.add(i);
           totalExpandXFlex += flex;

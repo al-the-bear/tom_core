@@ -77,6 +77,65 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
+        // ── Mixed: one component has a max, others don't ─────────────────
+        const Text(
+          'Horizontal: mixed — one component has a max, the other two don\'t',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        ResizableBox(
+          initialHeight: null,
+          child: AclBuilder()
+              // max > pref > min: grows up to 260 px, then drops out.
+              .append(const DemoBox('Capped\nM:80 P:160 X:260', Colors.cyan))
+              .setMSize(80, 40).setPSize(160, 40).setXSize(260, 40)
+              // no max: keeps absorbing surplus after Capped saturates.
+              .append(const DemoBox('Uncapped A\nM:60 P:140', Colors.indigo), dist: 6)
+              .setMSize(60, 40).setPSize(140, 40)
+              // no max: same, different (P/M − 1) ratio.
+              .append(const DemoBox('Uncapped B\nM:50 P:120', Colors.orange), dist: 6)
+              .setMSize(50, 40).setPSize(120, 40)
+              .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Capped grows up to its max (260) and then stops; Uncapped A/B '
+          'continue absorbing the rest by (P/M − 1). No expandX anywhere.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Mixed + expandX ──────────────────────────────────────────────
+        const Text(
+          'Horizontal: same three + one expandX — non-expandX stop at preferred',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 6),
+        ResizableBox(
+          initialHeight: null,
+          child: AclBuilder()
+              .append(const DemoBox('Capped\nM:80 P:160 X:260', Colors.cyan))
+              .setMSize(80, 40).setPSize(160, 40).setXSize(260, 40)
+              .append(const DemoBox('Uncapped A\nM:60 P:140', Colors.indigo), dist: 6)
+              .setMSize(60, 40).setPSize(140, 40)
+              .append(const DemoBox('Uncapped B\nM:50 P:120', Colors.orange), dist: 6)
+              .setMSize(50, 40).setPSize(120, 40)
+              // expandX component: absorbs all remaining surplus.
+              .append(const DemoBox('ExpandX\nM:80 P:200', Colors.lightGreen), dist: 6)
+              .setMSize(80, 40).setPSize(200, 40)
+              .setAttr(AclFlags.expandX)
+              .build(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'With an expandX in the row, the three non-expandX components sit '
+          'at their preferred widths (160 / 140 / 120) and ExpandX eats the '
+          'rest — max-capped components are irrelevant here because none of '
+          'them would have grown past preferred anyway.',
+          style: TextStyle(fontSize: 11, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+
         // ── expandX: one component fills all remaining space ──────────────
         const Text(
           'Horizontal + expandX: center component grows to fill remaining width',
