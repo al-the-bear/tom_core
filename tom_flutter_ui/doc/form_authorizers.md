@@ -242,6 +242,154 @@ one rebuild per frame.
 
 ---
 
+## Authorizer vs `TomUIStateController` — two lanes, two timings
+
+Everything above treats the authorizer as if it were the only hook. It
+isn't. The auth pipeline in
+[tom_policy_node_base.dart:39](../lib/src/widget_base/tom_policy_node_base.dart#L39)
+runs **both** an authorizer *and* a `TomUIStateController` — in that order
+— before group overrides kick in:
+
+```text
+resourceAuth  →  authorizer.effectiveAuth()  →  uiStateController.apply()  →  group.applyMode()
+```
+
+They look similar but have different jobs:
+
+| Aspect         | `TomAuthorizer`                                | `TomUIStateController`                               |
+| -------------- | ---------------------------------------------- | ---------------------------------------------------- |
+| Lifetime       | Construction-time — `final` reference          | Build-time — closure runs every resolve              |
+| Typical source | Role / resource / action authorization         | UI business rules (dirty? empty? row-owned?)         |
+| Can widen?     | Yes with `authorizerDecides` strategy          | No — always narrows via `currentAuth.narrow(result)` |
+| Mutable owner  | Fields: `form.email.authorizer = ...`          | Fields: `form.email.uiStateController = ...`         |
+| Receives       | `(TomAuthState resourceAuth)`                  | `(TomAuthState currentAuth, Object? data)`           |
+
+**Rule of thumb**: if the rule is about *whether this user is allowed to
+do this thing at all*, it's an authorizer. If the rule is about
+*whether the current UI state allows this action right now*, it's a
+`TomUIStateController`. "Disable save while the form is clean" is a
+textbook `TomUIStateController` — nothing about it is authorization.
+
+### Minimal controller recap
+
+[tom_core_kernel/.../tom_authorization.dart:441](../../tom_core_kernel/lib/src/tombase/security/tom_authorization.dart#L441):
+
+```dart
+class TomUIStateController {
+  final TomAuthState Function(TomAuthState currentAuth, Object? data) resolve;
+  const TomUIStateController({required this.resolve});
+
+  TomAuthState apply(TomAuthState currentAuth, {Object? data}) {
+    final result = resolve(currentAuth, data);
+    return currentAuth.narrow(result);   // ← never widens
+  }
+}
+```
+
+---
+
+## The dual-use button: action authorizer + dirty-gate
+
+The intended shape of a Save button with both lanes wired up:
+
+```dart
+TomElevatedButton(
+  tomId: 'saveBtn',
+  // Lane 1 — authorization: "is this user allowed to save at all?"
+  authorizer: form.saveAction.authorizer,   // == TomAuthorizer.fromAction(
+                                            //       actionAuth: () => action.authState)
+
+  // Lane 2 — UI state: "is the form in a state where save makes sense?"
+  uiStateController: TomUIStateController(
+    resolve: (currentAuth, _) {
+      if (currentAuth == TomAuthState.none) return currentAuth; // stay hidden
+      if (!form.isDirty)  return TomAuthState.disabled;         // nothing to save
+      if (!form.isValid)  return TomAuthState.disabled;         // can't save yet
+      return currentAuth;                                       // pass through
+    },
+  ),
+
+  onPressed: form.saveAction.trigger,
+  label: form.saveAction.label,
+)
+```
+
+Read top-to-bottom: resource says `full` → action authorizer confirms
+the user has save permission (still `full`) → controller checks the
+form and narrows to `disabled` because nothing has changed yet →
+button paints greyed. Flip a field, fix any errors, the same path
+returns `full` and the button lights up.
+
+Because `uiStateController` only narrows, the authorizer stays
+authoritative for the "hide the button entirely" direction — even if
+the controller wanted to widen `disabled` back up to `full`, the
+`narrow()` in `apply()` would prevent it. This is what lets you compose
+them safely without worrying about the controller quietly granting
+access it shouldn't.
+
+### Rebuilding on form state
+
+`isDirty` and `isValid` don't push a notification on their own — they
+flip as a side effect of field edits and validation passes, surfaced
+through `form.changes` (a plain `Listenable`). Same rebuild story as
+for cross-field authorizers, just at form granularity:
+
+```dart
+ListenableBuilder(
+  listenable: form.changes,
+  builder: (_, __) => _buildAclContainingTheSaveButton(),
+)
+```
+
+If the button also depends on a specific field value, combine with
+`TomMultiObservableBuilder` as shown earlier. The host widget rebuilds
+→ the button rebuilds → its `uiStateController.resolve` re-reads
+`form.isDirty` → state flips.
+
+### Implementation note — button constructors
+
+The pattern above is the documented API (see the docstring on
+[TomActionTrigger](../lib/src/actions/tom_action_trigger.dart#L18)
+and on `TomAuthorizer` itself). At time of writing, the concrete button
+subclasses in [tom_buttons.dart](../lib/src/widgets/buttons/tom_buttons.dart)
+do not yet expose `authorizer` / `authorizerStrategy` / `uiStateController`
+through their own `super:` forwarding — `TomButtonBase` declares them,
+but `TomElevatedButton(...)`, `TomTextButton(...)`, etc. list only
+`tomId`, `tomGroup`, `scope` for forwarding. Until that one-line change
+is added per subclass, prefer the form-field route below for the
+reactive lane; the `authorizer` lane on a button is fine to wire once
+the forwarding is in place.
+
+---
+
+## Form-field dual-use (works today)
+
+The form-field side of the pipeline *already* supports both lanes —
+fields are long-lived `TomObservable` objects, so both `authorizer` and
+`uiStateController` can be set (and reassigned) directly on the field:
+
+```dart
+// demo_b_authorization.dart — real code in the repo
+form.email.uiStateController = TomUIStateController(
+  resolve: (currentAuth, _) {
+    if (form.phone.get().trim().isEmpty) return TomAuthState.disabled;
+    return currentAuth;
+  },
+);
+```
+
+See [demo_b_authorization.dart:196](../../tom_flutter_form_test/lib/demos/demo_b_authorization.dart#L196).
+Combine it with an authorizer on the same field — for example a role-
+based `authorizerNarrowsOnly` narrowing to `read` for non-admins — and
+you get the same two-lane composition the Save button above describes.
+
+Wrap the ACL (or whichever widget hosts the email field) in
+`TomMultiObservableBuilder(observables: [form.phone])` so the rebuild
+fires when phone changes. That's the missing third of the story: a
+`uiStateController` is only as reactive as whatever rebuilds its host.
+
+---
+
 ## What to avoid
 
 - **Don't** reach for `Flutter`'s `ValueListenableBuilder` here. `TomField`
