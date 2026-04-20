@@ -358,25 +358,6 @@ Widget projectBriefActionBar({
 // churn and typing would unfocus after each character.
 // ---------------------------------------------------------------------------
 
-/// Bordered preset with extra vertical content padding and a pinned
-/// floating-label size. `withTheme()` fills [TomFieldStyle.labelStyle]
-/// from the theme's `bodyMedium`, which in the ≥1600 band is 18 px
-/// serif. A floating label that big overflows the field-top contentPadding
-/// and the top half is clipped by the container — the border line then
-/// visually bisects the characters. Pinning `labelStyle` to ~13 px keeps
-/// the floating label compact enough to fit entirely above the border,
-/// and bumping vertical contentPadding to 14 px gives the label comfortable
-/// breathing room over the 1 px outline. `withColorOrInherit` in
-/// [TomFormStyle.withTheme] still preserves the `current` (our pinned
-/// style) because it's not identical to the null origin.
-final _borderedRoomy = TomFormStyle.bordered.copyWith(
-  defaults: TomFormStyle.bordered.defaults.copyWith(
-    fieldContentPadding:
-        const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    labelStyle: const TextStyle(fontSize: 13, inherit: true),
-  ),
-);
-
 /// Material preset with a heavier bottom border (5 px enabled → 7 px on
 /// focus) to make the middle band visually distinct from the bordered and
 /// compact neighbours without straying away from the material style.
@@ -442,7 +423,7 @@ final _blueSerifXl =
 
 final _styleBpOverrides = <(double, TomFormStyle)>[
   (800, _materialHeavy),
-  (1600, _borderedRoomy),
+  (1600, TomFormStyle.bordered),
 ];
 
 final _themeBpOverrides = <(double, ThemeData)>[
