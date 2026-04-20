@@ -272,92 +272,101 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
 // exercises the exact same breakpoint scaffolding.
 // ===========================================================================
 
+// ---------------------------------------------------------------------------
+// Style + theme presets — file-scope so the SAME instances are handed to
+// TomFormStyleScope on every rebuild. If these were recreated per call,
+// every Demo G rebuild would hand fresh ThemeData / style objects into
+// the scope, and Flutter's InheritedWidget machinery would treat each
+// one as a change — descendant TextFields and their FocusNodes would
+// churn and typing would unfocus after each character.
+// ---------------------------------------------------------------------------
+
+/// Material preset with a heavier bottom border (5 px enabled → 7 px on
+/// focus) to make the middle band visually distinct from the bordered and
+/// compact neighbours without straying away from the material style.
+final _materialHeavy = TomFormStyle.material3.copyWith(
+  defaults: TomFormStyle.material3.defaults.copyWith(
+    fieldBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(width: 5),
+    ),
+    focusedBorder: const UnderlineInputBorder(
+      borderSide: BorderSide(width: 7),
+    ),
+    errorBorder: UnderlineInputBorder(
+      borderSide: BorderSide(width: 5, color: Colors.red.shade700),
+    ),
+  ),
+);
+
+ThemeData _mkTheme({
+  required Color seed,
+  String? fontFamily,
+  double bodySize = 14,
+}) {
+  final base = ThemeData(
+    colorScheme: ColorScheme.fromSeed(seedColor: seed),
+    useMaterial3: true,
+    fontFamily: fontFamily,
+  );
+  final cs = base.colorScheme;
+  TextStyle ink(TextStyle? s, double size) =>
+      (s ?? const TextStyle()).copyWith(fontSize: size, color: cs.primary);
+  return base.copyWith(
+    textTheme: base.textTheme.copyWith(
+      bodySmall: ink(base.textTheme.bodySmall, bodySize - 2),
+      bodyMedium: ink(base.textTheme.bodyMedium, bodySize),
+      bodyLarge: ink(base.textTheme.bodyLarge, bodySize + 2),
+      labelSmall: ink(base.textTheme.labelSmall, bodySize - 3),
+      labelMedium: ink(base.textTheme.labelMedium, bodySize - 2),
+      labelLarge: ink(base.textTheme.labelLarge, bodySize - 1),
+      titleSmall: ink(base.textTheme.titleSmall, bodySize + 1),
+      titleMedium: ink(base.textTheme.titleMedium, bodySize + 3),
+      titleLarge: ink(base.textTheme.titleLarge, bodySize + 6),
+    ),
+  );
+}
+
+final _orangeMonoXs =
+    _mkTheme(seed: Colors.deepOrange, fontFamily: 'monospace', bodySize: 11);
+final _indigoMonoS =
+    _mkTheme(seed: Colors.indigo, fontFamily: 'monospace', bodySize: 12);
+final _purpleSans = _mkTheme(seed: Colors.purple, bodySize: 14);
+final _tealSerifL =
+    _mkTheme(seed: Colors.teal, fontFamily: 'serif', bodySize: 16);
+final _blueSerifXl =
+    _mkTheme(seed: Colors.blue, fontFamily: 'serif', bodySize: 18);
+
+final _styleBpOverrides = <(double, TomFormStyle)>[
+  (800, _materialHeavy),
+  (1600, TomFormStyle.bordered),
+];
+
+final _themeBpOverrides = <(double, ThemeData)>[
+  (400, _indigoMonoS),
+  (800, _purpleSans),
+  (1200, _tealSerifL),
+  (1600, _blueSerifXl),
+];
+
 Widget buildComplexFormPane({
   required BuildContext context,
   required ProjectBriefForm form,
   required ProjectBrief state,
 }) {
-  // --- Style presets ------------------------------------------------------
+  // Only the three shipped TomFormStyle presets — bordered / material /
+  // compact — are used:
   //
-  // Only the three shipped TomFormStyle presets — bordered / material3 /
-  // compact — are used here, exactly as requested by the user:
-  //
-  //   ≥ 1600 → bordered      (default at widest)
-  //   ≥  800 → material3     (two theme-varying bands sit on this preset)
+  //   ≥ 1600 → bordered               (default at widest)
+  //   ≥  800 → material3 heavy (5/7)  (two theme-varying bands share this)
   //   <  800 → compact
   //
-  // The 1200 band deliberately shares material3 with the 800 band — the
-  // *theme* swaps between them so font family, font size, and palette
-  // change without the form-style preset changing.
-
-  final bordered = TomFormStyle.bordered;
-  final material = TomFormStyle.material3;
-  final compact = TomFormStyle.compact;
-
-  // --- Theme presets ------------------------------------------------------
-  //
-  // Each theme sets:
-  //   * ColorScheme.fromSeed(...) — seed colour dictates primary / surface /
-  //     onSurface / outline.
-  //   * fontFamily for the whole textTheme (visible on every text widget).
-  //   * An explicit `color: cs.primary` on body* / label* / title* so the
-  //     theme's palette shift reaches field *text* (input, label), not
-  //     just Cards. Real apps should use onSurface for body text — here
-  //     we pick primary so the colour swap is unmistakable per band.
-  ThemeData mk({
-    required Color seed,
-    String? fontFamily,
-    double bodySize = 14,
-  }) {
-    final base = ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: seed),
-      useMaterial3: true,
-      fontFamily: fontFamily,
-    );
-    final cs = base.colorScheme;
-    TextStyle ink(TextStyle? s, double size) =>
-        (s ?? const TextStyle()).copyWith(
-          fontSize: size,
-          color: cs.primary,
-        );
-    return base.copyWith(
-      textTheme: base.textTheme.copyWith(
-        bodySmall: ink(base.textTheme.bodySmall, bodySize - 2),
-        bodyMedium: ink(base.textTheme.bodyMedium, bodySize),
-        bodyLarge: ink(base.textTheme.bodyLarge, bodySize + 2),
-        labelSmall: ink(base.textTheme.labelSmall, bodySize - 3),
-        labelMedium: ink(base.textTheme.labelMedium, bodySize - 2),
-        labelLarge: ink(base.textTheme.labelLarge, bodySize - 1),
-        titleSmall: ink(base.textTheme.titleSmall, bodySize + 1),
-        titleMedium: ink(base.textTheme.titleMedium, bodySize + 3),
-        titleLarge: ink(base.textTheme.titleLarge, bodySize + 6),
-      ),
-    );
-  }
-
-  final orangeMonoXs =
-      mk(seed: Colors.deepOrange, fontFamily: 'monospace', bodySize: 11);
-  final indigoMonoS =
-      mk(seed: Colors.indigo, fontFamily: 'monospace', bodySize: 12);
-  final purpleSans = mk(seed: Colors.purple, bodySize: 14);
-  final tealSerifL =
-      mk(seed: Colors.teal, fontFamily: 'serif', bodySize: 16);
-  final blueSerifXl =
-      mk(seed: Colors.blue, fontFamily: 'serif', bodySize: 18);
-
+  // The material band spans 800..1599 so the *theme* swaps between 1200
+  // and 800 without changing the style preset.
   return TomFormStyleScope(
-    style: compact,
-    styleBpOverrides: [
-      (800, material),
-      (1600, bordered),
-    ],
-    theme: orangeMonoXs,
-    themeBpOverrides: [
-      (400, indigoMonoS),
-      (800, purpleSans),
-      (1200, tealSerifL),
-      (1600, blueSerifXl),
-    ],
+    style: TomFormStyle.compact,
+    styleBpOverrides: _styleBpOverrides,
+    theme: _orangeMonoXs,
+    themeBpOverrides: _themeBpOverrides,
     child: _ComplexFormBody(form: form, state: state),
   );
 }
@@ -374,24 +383,6 @@ class _ComplexFormBody extends StatefulWidget {
 class _ComplexFormBodyState extends State<_ComplexFormBody> {
   @override
   Widget build(BuildContext context) {
-    // Wrap the whole pane in a theme-surface Card so the form's background
-    // clearly reflects the active theme (per user: "field background colors
-    // don't change"). surfaceContainerLow tracks the theme palette.
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.4),
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: _buildBody(context),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
     return LayoutBuilder(
       builder: (context, c) {
         final width = c.maxWidth;
@@ -410,8 +401,9 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             )
             .append((p) => p.code.widget)
             .append((p) => p.title.widget, dist: 16)
-            .addRowBreakpoint(atWidth: 800)
-            .append((p) => p.budget.widget, dist: 16);
+            .addRowBreakpoint(atWidth: 900)
+            .append((p) => p.budget.widget, dist: 16)
+            .addRowBreakpoint(atWidth: 500);
 
         // ---- Classification row with width-dependent splits ---------
         final classification = TomAclBuilder(
@@ -428,7 +420,8 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             .addRowBreakpoint(atWidth: 1400)
             .append((_) => _priorityWidget(prioritySegmented))
             .append((p) => p.phase.widget)
-            .addRowBreakpoint(atWidth: 700);
+            .addRowBreakpoint(atWidth: 700)
+            .addRowBreakpoint(atWidth: 500);
 
         // ---- Scope row (hours, deadline, location) ------------------
         final scope = TomAclBuilder(
@@ -446,8 +439,9 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             )
             .append((p) => p.hoursEstimate.widget)
             .append((p) => p.deadline.widget)
-            .addRowBreakpoint(atWidth: 800)
-            .append((p) => p.location.widget);
+            .addRowBreakpoint(atWidth: 900)
+            .append((p) => p.location.widget)
+            .addRowBreakpoint(atWidth: 500);
 
         // ---- Classic field row (still Phase-1 API) -------------------
         final classic = TomAclBuilder(
@@ -458,7 +452,7 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
             .setAclDefaultAppendGap(12)
             .append((p) => p.internalRef.widget)
             .append((p) => p.contactEmail.widget, dist: 16)
-            .addRowBreakpoint(atWidth: 800);
+            .addRowBreakpoint(atWidth: 900);
 
         // ---- Summary / description / risk (full-width multi-line) ---
         final summary = TomAclBuilder(
@@ -506,26 +500,41 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _sectionTitle(context, 'Identity'),
-            identity.build(context),
+            _sectionCard(identity.build(context)),
             _sectionTitle(context, 'Classification'),
-            classification.build(context),
+            _sectionCard(classification.build(context)),
             _sectionTitle(context, 'Scope'),
-            scope.build(context),
+            _sectionCard(scope.build(context)),
             _sectionTitle(context, 'Classic-field pair'),
-            classic.build(context),
+            _sectionCard(classic.build(context)),
             _sectionTitle(context, 'Summary'),
-            summary.build(context),
+            _sectionCard(summary.build(context)),
             _sectionTitle(context, 'People'),
             people,
             _sectionTitle(context, 'Description'),
-            description.build(context),
+            _sectionCard(description.build(context)),
             _sectionTitle(context, 'Risk notes'),
-            riskNotes.build(context),
+            _sectionCard(riskNotes.build(context)),
             const SizedBox(height: 12),
-            _inlineExtras(context),
+            _sectionCard(_inlineExtras(context)),
           ],
         );
       },
+    );
+  }
+
+  /// Per-section Card. Cards resolve their background through `CardTheme`
+  /// (theme.cardTheme), so the palette swap lands on the field containers
+  /// without the outer form pane having to read Theme.of on every build
+  /// — which was causing a full rebuild cascade on every typed character
+  /// and killing field focus.
+  Widget _sectionCard(Widget child) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: child,
+      ),
     );
   }
 
