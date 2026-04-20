@@ -67,6 +67,25 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
     super.dispose();
   }
 
+  Future<void> _save() async {
+    final ok = await _form.save();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? 'Saved — phase2ProjectBriefState updated.'
+          : 'Validation failed — check field errors.'),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  /// Empties every string field in the form and its nested subforms.
+  /// Dropdowns with required validators show their validation error after
+  /// a clear — that's intended, it makes the `Save` button a live demo of
+  /// validation gating the roundtrip.
+  void _clear() {
+    clearProjectBriefForm(_form);
+  }
+
   @override
   Widget build(BuildContext context) {
     return DemoScaffold(
@@ -122,6 +141,12 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
         _splitterCard(context, maxPaneWidth, paneWidth),
         const SizedBox(height: 12),
         _activeBandBadge(context, paneWidth),
+        const SizedBox(height: 12),
+        projectBriefActionBar(
+          context: context,
+          onClear: _clear,
+          onSave: _save,
+        ),
         const SizedBox(height: 12),
         Align(
           alignment: AlignmentDirectional.centerStart,
@@ -268,6 +293,58 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
 }
 
 // ===========================================================================
+// Shared helpers — reused verbatim by Demo H.
+// ===========================================================================
+
+/// Empties every string field in a [ProjectBriefForm] and its two
+/// [PersonSubform] children via `setValue('')`. Dropdowns accept the
+/// empty string (they're `TomField<String>`); required-validator fields
+/// will show an error state until the user re-enters a value — that's
+/// the intended "cleared state" for this demo.
+void clearProjectBriefForm(ProjectBriefForm form) {
+  void clearForm(TomForm f) {
+    for (final field in f.fields.values) {
+      if (field is TomField<String>) field.setValue('');
+    }
+  }
+
+  clearForm(form);
+  clearForm(form.lead);
+  clearForm(form.reviewer);
+}
+
+/// Action bar hosting `Clear` + `Save` used by Demo G and Demo H. Laid out
+/// as a trailing row inside a [Card] so it sits above the form pane with
+/// the same visual weight as the other meta-panels.
+Widget projectBriefActionBar({
+  required BuildContext context,
+  required VoidCallback onClear,
+  required VoidCallback onSave,
+}) {
+  return Card(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          OutlinedButton.icon(
+            onPressed: onClear,
+            icon: const Icon(Icons.clear_all),
+            label: const Text('Clear'),
+          ),
+          const SizedBox(width: 8),
+          FilledButton.icon(
+            onPressed: onSave,
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ===========================================================================
 // Shared complex form pane — reused verbatim by Demo H so the auth overlay
 // exercises the exact same breakpoint scaffolding.
 // ===========================================================================
@@ -280,6 +357,25 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
 // one as a change — descendant TextFields and their FocusNodes would
 // churn and typing would unfocus after each character.
 // ---------------------------------------------------------------------------
+
+/// Bordered preset with extra vertical content padding and a pinned
+/// floating-label size. `withTheme()` fills [TomFieldStyle.labelStyle]
+/// from the theme's `bodyMedium`, which in the ≥1600 band is 18 px
+/// serif. A floating label that big overflows the field-top contentPadding
+/// and the top half is clipped by the container — the border line then
+/// visually bisects the characters. Pinning `labelStyle` to ~13 px keeps
+/// the floating label compact enough to fit entirely above the border,
+/// and bumping vertical contentPadding to 14 px gives the label comfortable
+/// breathing room over the 1 px outline. `withColorOrInherit` in
+/// [TomFormStyle.withTheme] still preserves the `current` (our pinned
+/// style) because it's not identical to the null origin.
+final _borderedRoomy = TomFormStyle.bordered.copyWith(
+  defaults: TomFormStyle.bordered.defaults.copyWith(
+    fieldContentPadding:
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    labelStyle: const TextStyle(fontSize: 13, inherit: true),
+  ),
+);
 
 /// Material preset with a heavier bottom border (5 px enabled → 7 px on
 /// focus) to make the middle band visually distinct from the bordered and
@@ -346,7 +442,7 @@ final _blueSerifXl =
 
 final _styleBpOverrides = <(double, TomFormStyle)>[
   (800, _materialHeavy),
-  (1600, TomFormStyle.bordered),
+  (1600, _borderedRoomy),
 ];
 
 final _themeBpOverrides = <(double, ThemeData)>[

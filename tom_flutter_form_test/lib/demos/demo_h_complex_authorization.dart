@@ -2,14 +2,14 @@
 
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
 import '../forms/project_brief_form.dart';
 import '../panels/field_state_table.dart';
 import '../panels/info_panel.dart';
 import '../state/project_brief_state.dart';
-import 'demo_g_breakpoint_scenarios.dart' show buildComplexFormPane;
+import 'demo_g_breakpoint_scenarios.dart'
+    show buildComplexFormPane, clearProjectBriefForm, projectBriefActionBar;
 
 // ---------------------------------------------------------------------------
 // Demo H — Complex Authorization + Responsive Layout Overlay (Phase 2)
@@ -84,6 +84,21 @@ class _DemoHComplexAuthorizationState
   // the TextField FocusNode after the first character (same root cause
   // that was fixed for Demo G).
 
+  Future<void> _save() async {
+    final ok = await _form.save();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? 'Saved — phase2ProjectBriefState updated.'
+          : 'Validation failed or blocked by auth — check field state.'),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  void _clear() {
+    clearProjectBriefForm(_form);
+  }
+
   void _setAuth(String path, TomAuthState state) {
     setState(() {
       _rules[path] = state;
@@ -147,6 +162,12 @@ class _DemoHComplexAuthorizationState
         _buildIntroCard(context),
         const SizedBox(height: 12),
         _splitterCard(context, maxPaneWidth, paneWidth),
+        const SizedBox(height: 12),
+        projectBriefActionBar(
+          context: context,
+          onClear: _clear,
+          onSave: _save,
+        ),
         const SizedBox(height: 12),
         Align(
           alignment: AlignmentDirectional.centerStart,
