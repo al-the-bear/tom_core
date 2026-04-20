@@ -242,6 +242,233 @@ void main() {
             'Default-gap carry must preserve the row\'s default append gap.');
   });
 
+  testWidgets(
+      'non-default component gaps: hidden comp preserves its own explicit '
+      'gap, next comp\'s explicit gap is dropped',
+      (tester) async {
+    // [a, b(hidden), c] with explicit non-default dists of 24 and 12.
+    // Rule: b's own dist (24) is the "gap between a and b" — preserved.
+    // c's own dist (12) is the "gap between b and c" (= gap after b) —
+    // dropped. Net: c sits at a.right + 24.
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'a',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'b',
+            effectiveAuthState: TomAuthState.none,
+          ),
+          dist: 24,
+        )
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'c',
+            effectiveAuthState: TomAuthState.full,
+          ),
+          dist: 12,
+        )
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    expect(_hasBox(tester, 'b'), isFalse);
+    final aLeft = _topLeftOf(tester, 'a');
+    final cLeft = _topLeftOf(tester, 'c');
+    expect(cLeft.dx, closeTo(aLeft.dx + 40 + 24, 0.5),
+        reason: 'Non-default explicit gap on the hidden comp must carry '
+            'forward verbatim; the next comp\'s explicit gap is dropped.');
+  });
+
+  testWidgets(
+      'chain of hidden comps: only the first hidden comp\'s gap carries',
+      (tester) async {
+    // [a, h1(hidden, dist 30), h2(hidden, dist 50), c(dist 10)]
+    // Expected: c at a.right + 30. h1's gap is "gap between a and h1" — kept.
+    // h2's own gap (50) is "gap after h1" — dropped. c's own gap (10) is
+    // "gap after h2" — dropped.
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'a',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'h1',
+            effectiveAuthState: TomAuthState.none,
+          ),
+          dist: 30,
+        )
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'h2',
+            effectiveAuthState: TomAuthState.none,
+          ),
+          dist: 50,
+        )
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'c',
+            effectiveAuthState: TomAuthState.full,
+          ),
+          dist: 10,
+        )
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    final aLeft = _topLeftOf(tester, 'a');
+    final cLeft = _topLeftOf(tester, 'c');
+    expect(cLeft.dx, closeTo(aLeft.dx + 40 + 30, 0.5),
+        reason: 'Only the first hidden component\'s gapBefore should carry; '
+            'intermediates and the trailing visible comp\'s gap are gaps '
+            '"after a hidden comp" and drop.');
+  });
+
+  testWidgets(
+      'non-default row gaps: hidden row carries its own dist onto the '
+      'next row; next row\'s dist drops',
+      (tester) async {
+    // r0 (no dist), r1 (dist 55, all hidden), r2 (dist 17, visible).
+    // Rule: r1's own dist (55) is the "gap between r0 and r1" — preserved
+    // as r2's row gap. r2's own dist (17) is "gap after r1" — dropped.
+    // Net: r2.dy == r0.bottom + 55.
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'r0',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .newRow(dist: 55)
+        .append(const _AuthBox(
+          tomId: 'r1-only',
+          effectiveAuthState: TomAuthState.none,
+        ))
+        .setPSize(40, 40)
+        .newRow(dist: 17)
+        .append(const _AuthBox(
+          tomId: 'r2',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    expect(_hasBox(tester, 'r1-only'), isFalse);
+    final r0 = _topLeftOf(tester, 'r0');
+    final r2 = _topLeftOf(tester, 'r2');
+    expect(r2.dy, closeTo(r0.dy + 40 + 55, 0.5),
+        reason: 'Elided row\'s own gap must carry onto the next row; next '
+            'row\'s own gap drops.');
+  });
+
+  testWidgets(
+      'chain of elided rows: only the first elided row\'s gap carries',
+      (tester) async {
+    // r0 (40), r1 elided (dist 30), r2 elided (dist 80), r3 visible (dist 12).
+    // Expected: r3 at r0.bottom + 30 — r1's own dist kept; r2's and r3's
+    // are gaps "after an elided row" and drop.
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'r0',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .newRow(dist: 30)
+        .append(const _AuthBox(
+          tomId: 'r1-only',
+          effectiveAuthState: TomAuthState.none,
+        ))
+        .setPSize(40, 40)
+        .newRow(dist: 80)
+        .append(const _AuthBox(
+          tomId: 'r2-only',
+          effectiveAuthState: TomAuthState.none,
+        ))
+        .setPSize(40, 40)
+        .newRow(dist: 12)
+        .append(const _AuthBox(
+          tomId: 'r3',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    final r0 = _topLeftOf(tester, 'r0');
+    final r3 = _topLeftOf(tester, 'r3');
+    expect(r3.dy, closeTo(r0.dy + 40 + 30, 0.5),
+        reason: 'Only the first elided row\'s dist carries; subsequent '
+            'elided-row / next-row dists are all dropped.');
+  });
+
+  testWidgets(
+      'mixed: non-default row gap + non-default component gap both '
+      'behave correctly through one hide per side',
+      (tester) async {
+    // Row 0: [x0, y0(hidden, dist 22), z0(dist 14)]  → horizontal hide
+    // Row 1: [w1]                                    — kept
+    // r1 gapBefore = 40 (explicit)
+    //
+    // Expected:
+    //   z0.dx = x0.dx + 40 + 22   (y0's gap carried; z0's dropped)
+    //   w1.dy = x0.dy + 40 + 40    (row 1 kept; its own explicit gap 40)
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'x0',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'y0',
+            effectiveAuthState: TomAuthState.none,
+          ),
+          dist: 22,
+        )
+        .setPSize(40, 40)
+        .append(
+          const _AuthBox(
+            tomId: 'z0',
+            effectiveAuthState: TomAuthState.full,
+          ),
+          dist: 14,
+        )
+        .setPSize(40, 40)
+        .newRow(dist: 40)
+        .append(const _AuthBox(
+          tomId: 'w1',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    final x0 = _topLeftOf(tester, 'x0');
+    final z0 = _topLeftOf(tester, 'z0');
+    final w1 = _topLeftOf(tester, 'w1');
+    expect(z0.dx, closeTo(x0.dx + 40 + 22, 0.5),
+        reason: 'y0\'s explicit gap must carry onto z0.');
+    expect(w1.dy, closeTo(x0.dy + 40 + 40, 0.5),
+        reason: 'Row 1 kept → its own explicit dist (40) applies verbatim.');
+  });
+
   testWidgets('flag off (default): component still renders in place',
       (tester) async {
     final acl = AclBuilder()
