@@ -1,5 +1,6 @@
-/// Smoke tests for the Phase 1 demos (A, B, C) — opens each demo through
-/// normal navigation and verifies it renders without throwing.
+/// Smoke tests for the Phase 1 / Phase 2 spec-aligned demos (A through H) —
+/// opens each demo through normal navigation and verifies it renders
+/// without throwing.
 library;
 
 import 'dart:convert';
@@ -74,5 +75,39 @@ void main() {
         findsOneWidget);
     expect(find.text('Form field auth'), findsOneWidget);
     expect(find.text('Widget gallery auth'), findsOneWidget);
+  });
+
+  testWidgets('Demo E opens with the selection-variants scaffold',
+      (tester) async {
+    await openDemo(tester, 'Demo E: Selection Variants');
+    expect(find.text('Demo E — Selection Variants'), findsOneWidget);
+    // Placeholder tiles for each variant call the spec-aligned class name.
+    expect(find.text('TomFormStringFilterChips'), findsOneWidget);
+    expect(find.text('TomFormStringChoiceChips'), findsOneWidget);
+  });
+
+  testWidgets('Demo F opens with the boolean-variants scaffold',
+      (tester) async {
+    await openDemo(tester, 'Demo F: Boolean Variants');
+    expect(find.text('Demo F — Boolean Variants'), findsOneWidget);
+    expect(find.text('Independent (one TomBool per variant)'), findsOneWidget);
+    expect(find.text('Shared TomBool — flip any, flip all'), findsOneWidget);
+  });
+
+  testWidgets('Demo G opens with the breakpoint splitter', (tester) async {
+    await openDemo(tester, 'Demo G: Complex Breakpoint Scenarios');
+    expect(
+        find.text('Demo G — Complex Breakpoint Scenarios'), findsOneWidget);
+    expect(find.text('Outer scope — style swaps by width'), findsOneWidget);
+    expect(find.text('Nested scope — always compact (style override)'),
+        findsOneWidget);
+  });
+
+  testWidgets('Demo H opens with the complex-auth controls', (tester) async {
+    await openDemo(tester, 'Demo H: Complex Authorization Scenarios');
+    expect(find.text('Demo H — Complex Authorization Scenarios'),
+        findsOneWidget);
+    expect(find.text('Billing — group mode: controlsAll'), findsOneWidget);
+    expect(find.text('Shipping — group mode: controlsWidest'), findsOneWidget);
   });
 }

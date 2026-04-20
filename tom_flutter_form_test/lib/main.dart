@@ -20,6 +20,10 @@ import 'demos/demo_a_lifecycle.dart';
 import 'demos/demo_b_authorization.dart';
 import 'demos/demo_c_nested_theming.dart';
 import 'demos/demo_d_hide_unauthorized.dart';
+import 'demos/demo_e_selection_variants.dart';
+import 'demos/demo_f_boolean_variants.dart';
+import 'demos/demo_g_breakpoint_scenarios.dart';
+import 'demos/demo_h_complex_authorization.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -117,6 +121,55 @@ class DemoListScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (_) => const DemoDHideUnauthorized()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(label: 'Phase 2 \u2014 Extended field flavours'),
+          _DemoTile(
+            icon: Icons.check_box_outlined,
+            title: 'Demo E: Selection Variants',
+            description: 'Five single- and multi-select flavours '
+                '(FilterChips / MultiCheckbox / Segmented / RadioGroup / '
+                'ChoiceChips) against one shared source. Scaffolded today; '
+                'widgets land in Phase 2.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoESelectionVariants()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.toggle_on_outlined,
+            title: 'Demo F: Boolean Variants',
+            description: 'Three boolean renderings (Checkbox / Switch / '
+                'Toggle) side-by-side, independent and shared-state rows.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoFBooleanVariants()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.aspect_ratio,
+            title: 'Demo G: Complex Breakpoint Scenarios',
+            description: 'Outer TomFormStyleScope with three-band '
+                'styleBpOverrides plus nested scopes. Drag the splitter '
+                'to cross tablet/desktop thresholds.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoGBreakpointScenarios()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.lock_outlined,
+            title: 'Demo H: Complex Authorization Scenarios',
+            description: 'Three group modes active at once, a '
+                'UIStateController stack, and form-level auth ceiling '
+                '\u2014 all visible in the field-state table.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoHComplexAuthorization()),
             ),
           ),
           const SizedBox(height: 12),
