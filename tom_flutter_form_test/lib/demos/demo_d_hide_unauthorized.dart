@@ -92,7 +92,13 @@ const _galleryScope = 'demoD.widgets';
 
 class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
   late final _DemoDAuthAdapter _adapter;
-  late final ValidationForm _form;
+  // Two separate form instances so we can render the same field set twice
+  // (Flutter forbids reusing a widget in two places, and `.widget` is
+  // cached per-field). Both forms live in the same `demoD` scope so their
+  // field resource paths collapse to a single set of auth keys — one
+  // dropdown in the right panel drives the matching field in BOTH forms.
+  late final ValidationForm _formDefault;
+  late final ValidationForm _formNonDefault;
 
   // Set by user via right-panel dropdowns.
   TomAuthState _formFieldAuth(String id) => _rulesFor('$_formScope.$id');
@@ -105,13 +111,24 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     super.initState();
     _adapter = _DemoDAuthAdapter();
     TomAuthorization.adapter = _adapter;
-    _form = TomScope.withScope('demoD', () => ValidationForm());
-    _form.bind(phase1ValidationState);
+    _formDefault = TomScope.withScope('demoD', () => ValidationForm());
+    _formDefault.bind(_seedValidationProfile());
+    _formNonDefault = TomScope.withScope('demoD', () => ValidationForm());
+    _formNonDefault.bind(_seedValidationProfile());
+  }
+
+  ValidationProfile _seedValidationProfile() {
+    final s = ValidationProfile();
+    s.username | 'janedoe';
+    s.email | 'jane.doe@example.com';
+    s.website | 'https://example.com';
+    return s;
   }
 
   @override
   void dispose() {
-    _form.dispose();
+    _formDefault.dispose();
+    _formNonDefault.dispose();
     super.dispose();
   }
 
@@ -171,7 +188,9 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
       children: [
         _buildIntroCard(context),
         const SizedBox(height: 12),
-        _buildFormSection(context),
+        _buildDefaultFormSection(context),
+        const SizedBox(height: 12),
+        _buildNonDefaultFormSection(context),
         const SizedBox(height: 12),
         _buildGallerySection(context),
       ],
@@ -203,19 +222,60 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
             const _Bullet('Form-field widgets participate via '
                 'TomFieldWidgetAdapter; regular Tom widgets via '
                 'TomNodeBase / TomWidgetMixin. Same ACL filter for both.'),
-            const _Bullet('Every row and every in-row append in this demo '
-                'uses an explicit non-default `dist:` so the carry-forward '
-                'rule is observable on literal values (32 / 48 / 20 / 40 '
-                'px, etc.) rather than on the default append gap.'),
+            const _Bullet('Two form sections show the rule with default '
+                'gaps (no explicit `dist:` anywhere) and with non-default '
+                'gaps (explicit 32 / 48 px per append, 24 / 40 px between '
+                'rows). Toggling a field\'s auth on the right drives both '
+                'forms at once so you can compare side-by-side.'),
           ],
         ),
       ),
     );
   }
 
-  // ── Form section (hide-unauthorized on a real form) ──────────────────────
+  // ── Form section (default gaps) ──────────────────────────────────────────
 
-  Widget _buildFormSection(BuildContext context) {
+  Widget _buildDefaultFormSection(BuildContext context) {
+    // Same field set, NO explicit `dist:` anywhere — every gap comes from
+    // the ACL's built-in default. This is the baseline view of the
+    // carry-forward rule: hiding a component drops the following default
+    // gap and (for row elision) the following default row gap.
+    final layout = TomAclBuilder(
+      id: 'demoDFormAclDefault',
+      elementProvider: _formDefault,
+    )
+        .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
+        .setAclExpandXDefault(true)
+        .setAclDefaultHideUnauthorized(true)
+        .append((p) => p.username.widget)
+        .append((p) => p.email.widget)
+        .newRow()
+        .append((p) => p.password.widget)
+        .append((p) => p.confirmPassword.widget)
+        .newRow()
+        .append((p) => p.website.widget)
+        .build(context);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Form A — hide on auth, default gaps',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TomFormStyleScope(style: TomFormStyle.material3, child: layout),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Form section (non-default gaps) ──────────────────────────────────────
+
+  Widget _buildNonDefaultFormSection(BuildContext context) {
     // Row layout with deliberately-mixed gaps so the hide-unauthorized
     // carry-forward rule is observable on explicit (non-default) values:
     //   row 0:  username  ←32→  email                (in-row gap 32)
@@ -237,8 +297,8 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
     //     dist (40) is dropped, so `website` sits at
     //     `row0.bottom + 24` — exactly the old slot of row 1.
     final layout = TomAclBuilder(
-      id: 'demoDFormAcl',
-      elementProvider: _form,
+      id: 'demoDFormAclNonDefault',
+      elementProvider: _formNonDefault,
     )
         .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.top)
         .setAclExpandXDefault(true)
@@ -259,7 +319,8 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Form — hide on auth (+ read / disabled)',
+            Text('Form B — hide on auth, non-default gaps '
+                '(32 / 48 / 24 / 40 px)',
                 style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 8),
             TomFormStyleScope(style: TomFormStyle.material3, child: layout),

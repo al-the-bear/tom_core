@@ -65,7 +65,10 @@ void main() {
   testWidgets('Demo D opens with the form + widget gallery', (tester) async {
     await openDemo(tester, 'Demo D: Hide on Authorization');
     expect(find.text('Demo D — Hide on Authorization'), findsOneWidget);
-    expect(find.text('Form — hide on auth (+ read / disabled)'),
+    expect(find.text('Form A — hide on auth, default gaps'), findsOneWidget);
+    expect(
+        find.text(
+            'Form B — hide on auth, non-default gaps (32 / 48 / 24 / 40 px)'),
         findsOneWidget);
     expect(find.text('Non-form Tom widgets — same hide-unauthorized rule'),
         findsOneWidget);
