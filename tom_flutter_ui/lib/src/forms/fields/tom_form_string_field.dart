@@ -233,14 +233,25 @@ class _TomFormStringInputWidgetState
       style.borderWidth,
     );
 
+    // floatingLabelStyle is derived from labelStyle so color/family are
+    // preserved (the whole reason labelStyle is passed through explicitly
+    // here — `style.labelStyle` carries the cs.primary ink from withTheme),
+    // but fontSize is scaled to Material's canonical floating-label ratio
+    // (0.75× rest size). Without the scale, a large rest labelStyle (e.g.
+    // 18 px serif from a themed bodyMedium) stays 18 px when floating,
+    // overflows the top of the decorator bounds, and is clipped by the
+    // parent — the floating label then visually sits as a half-height
+    // strip bisected by the outlined border.
+    const floatScale = 0.75;
+    final labelFontSize = style.labelStyle?.fontSize;
+    final floatingLabelStyle = style.labelStyle?.copyWith(
+      fontSize: labelFontSize != null ? labelFontSize * floatScale : null,
+    );
+
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
-      // floatingLabelStyle must be set explicitly so the floating-state
-      // label uses the TomFormStyle colour (cs.primary from the JSON) and
-      // is not overridden by the ambient InputDecorationTheme derived from
-      // whatever MaterialApp theme sits above the TomFormStyleScope.
       labelStyle: style.labelStyle,
-      floatingLabelStyle: style.labelStyle,
+      floatingLabelStyle: floatingLabelStyle,
       hintText: effectiveHint,
       prefixIcon: field.prefixIcon,
       suffixIcon: field.suffixIcon,
