@@ -31,6 +31,7 @@ void main() {
       'Demo A: Lifecycle & Validation',
       'Demo B: Authorization & Events',
       'Demo C: Nested Forms & Theming',
+      'Demo D: Hide on Authorization',
       'Demo 1: Basic Form',
       'Demo 2: Nested Forms',
       'Demo 3: Authorization',

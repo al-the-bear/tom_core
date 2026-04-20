@@ -61,4 +61,15 @@ void main() {
     expect(find.text('Primary contact for order updates.'), findsOneWidget,
         reason: 'demoC.customer.email.description must resolve to text.');
   });
+
+  testWidgets('Demo D opens with the form + widget gallery', (tester) async {
+    await openDemo(tester, 'Demo D: Hide on Authorization');
+    expect(find.text('Demo D — Hide on Authorization'), findsOneWidget);
+    expect(find.text('Form — hide on auth (+ read / disabled)'),
+        findsOneWidget);
+    expect(find.text('Non-form Tom widgets — same hide-unauthorized rule'),
+        findsOneWidget);
+    expect(find.text('Form field auth'), findsOneWidget);
+    expect(find.text('Widget gallery auth'), findsOneWidget);
+  });
 }

@@ -19,6 +19,7 @@ import 'demos/demo_10_central_json_style.dart';
 import 'demos/demo_a_lifecycle.dart';
 import 'demos/demo_b_authorization.dart';
 import 'demos/demo_c_nested_theming.dart';
+import 'demos/demo_d_hide_unauthorized.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,6 +105,18 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoCNestedTheming()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.visibility_off_outlined,
+            title: 'Demo D: Hide on Authorization',
+            description: 'setAclDefaultHideUnauthorized + read / disabled '
+                'states on a form (row elision) and a gallery of ten '
+                'non-form Tom widgets.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoDHideUnauthorized()),
             ),
           ),
           const SizedBox(height: 12),
