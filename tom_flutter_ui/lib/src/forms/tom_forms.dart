@@ -20,9 +20,15 @@ export 'style/tom_theme_spec.dart';
 export 'decoration/tom_field_anatomy.dart';
 export 'decoration/tom_string_input_decoration_mixin.dart';
 export 'decoration/tom_dropdown_decoration_mixin.dart';
+export 'decoration/tom_generic_field_decoration_mixin.dart';
 export 'decoration/tom_stub_decoration_mixins.dart';
 export 'widgets/tom_form_error_banner.dart';
 export 'widgets/tom_multi_observable_builder.dart';
 
 // Phase 1 — concrete string fields
 export 'fields/tom_form_string_field.dart';
+
+// Phase 2 — selection variants, list fields, boolean fields
+export 'fields/tom_form_string_selection.dart';
+export 'fields/tom_form_string_list_field.dart';
+export 'fields/tom_form_bool_field.dart';
