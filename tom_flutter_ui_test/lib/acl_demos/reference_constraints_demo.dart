@@ -220,6 +220,86 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 20),
         const Text(
+          'alignTopToBottom / alignBottomToTop with gap parameter:',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Positive gap pushes the follower further away from the anchor edge; '
+          'negative gap pulls it into the anchor (overlap). Not offered on '
+          'center-to-center alignments.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Builder(builder: (_) {
+          final tbAnchor = const SizedBox(
+            width: 160,
+            child: DemoBox('Anchor T→B', Colors.deepOrange),
+          );
+          return ResizableBox(
+            initialHeight: 150,
+            child: AclBuilder()
+                .append(tbAnchor)
+                .setPSize(160, 56)
+                .append(const SizedBox(width: 12))
+                .append(const SizedBox(
+                  width: 160,
+                  child: DemoBox('gap: 12 (push)', Colors.green),
+                ))
+                .setPSize(160, 32)
+                .alignTopToBottom(tbAnchor, gap: 12)
+                .append(const SizedBox(width: 12))
+                .append(const SizedBox(
+                  width: 160,
+                  child: DemoBox('gap: -12 (overlap)', Colors.teal),
+                ))
+                .setPSize(160, 32)
+                .alignTopToBottom(tbAnchor, gap: -12)
+                .build(),
+          );
+        }),
+        const SizedBox(height: 4),
+        const Text(
+          'Left green block sits 12 px below anchor bottom; right teal block '
+          'overlaps the bottom 12 px of anchor.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 16),
+        Builder(builder: (_) {
+          final btAnchor = const SizedBox(
+            width: 160,
+            child: DemoBox('Anchor B→T', Colors.blueGrey),
+          );
+          return ResizableBox(
+            initialHeight: 150,
+            child: AclBuilder()
+                .append(btAnchor)
+                .setPSize(160, 56)
+                .append(const SizedBox(width: 12))
+                .append(const SizedBox(
+                  width: 160,
+                  child: DemoBox('gap: 12 (push)', Colors.purple),
+                ))
+                .setPSize(160, 32)
+                .alignBottomToTop(btAnchor, gap: 12)
+                .append(const SizedBox(width: 12))
+                .append(const SizedBox(
+                  width: 160,
+                  child: DemoBox('gap: -12 (overlap)', Colors.brown),
+                ))
+                .setPSize(160, 32)
+                .alignBottomToTop(btAnchor, gap: -12)
+                .build(),
+          );
+        }),
+        const SizedBox(height: 4),
+        const Text(
+          'Left purple block sits 12 px above anchor top; right brown block '
+          'overlaps the top 12 px of anchor.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+        const SizedBox(height: 20),
+        const Text(
           'Row constraint rules for alignX* and alignY*:',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
