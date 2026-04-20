@@ -2771,16 +2771,25 @@ class _DemoResources {
     'demo21.styledText2.content.label': 'Italic Purple with Spacing',
     'demo21.styledText3.content.label': 'Medium Green Underlined',
 
-    // --- Icon Color Section ---
+    // --- Icon Resources Section (icon + color from resources) ---
     'demo21.iconColorDemo.icon.icon': 'mPalette',
-    'demo21.iconColorDemo.title.label': 'TomIcon Colors',
-    'demo21.iconColorDemo.subtitle.label': 'color resolved from resources',
+    'demo21.iconColorDemo.title.label': 'TomIcon — icon & color from resources',
+    'demo21.iconColorDemo.subtitle.label':
+        'both the glyph and its color are resolved',
     'demo21.iconColorDemo.info.label':
-        'Resources: demo21.coloredIcon1.color → #E91E63, etc.',
+        'Every TomIcon below is constructed with just a tomId — the '
+            '.icon resource selects which glyph is drawn AND the '
+            '.color resource paints it. '
+            'e.g. demo21.coloredIcon1.icon → mFavorite · '
+            'demo21.coloredIcon1.color → #E91E63.',
     'demo21.coloredIcon1.icon': 'mFavorite',
+    'demo21.coloredIcon1.caption.label': 'mFavorite\n#E91E63',
     'demo21.coloredIcon2.icon': 'mStar',
+    'demo21.coloredIcon2.caption.label': 'mStar\n#FF9800',
     'demo21.coloredIcon3.icon': 'mThumbUp',
+    'demo21.coloredIcon3.caption.label': 'mThumbUp\n#4CAF50',
     'demo21.coloredIcon4.icon': 'mLightbulb',
+    'demo21.coloredIcon4.caption.label': 'mLightbulb\n#2196F3',
 
     // --- Container Color Section ---
     'demo21.containerColorDemo.icon.icon': 'mViewModule',

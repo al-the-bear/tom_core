@@ -246,7 +246,9 @@ class _ResourceResolutionDemoContentState
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Icon colors
+        // Icon + color both resolved from resources. Every TomIcon is
+        // built with just tomId: the .icon resource selects which glyph
+        // gets drawn, and the .color resource paints it.
         _DemoCard(
           tomId: 'iconColorDemo',
           child: TomColumn(
@@ -255,14 +257,15 @@ class _ResourceResolutionDemoContentState
               TomText(tomId: 'iconColorDemo.info'),
               TomSizedBox(height: 12),
               TomRow(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TomIcon(tomId: 'coloredIcon1', size: 32),
-                  TomSizedBox(width: 16),
-                  TomIcon(tomId: 'coloredIcon2', size: 32),
-                  TomSizedBox(width: 16),
-                  TomIcon(tomId: 'coloredIcon3', size: 32),
-                  TomSizedBox(width: 16),
-                  TomIcon(tomId: 'coloredIcon4', size: 32),
+                  _iconWithCaption('coloredIcon1'),
+                  TomSizedBox(width: 24),
+                  _iconWithCaption('coloredIcon2'),
+                  TomSizedBox(width: 24),
+                  _iconWithCaption('coloredIcon3'),
+                  TomSizedBox(width: 24),
+                  _iconWithCaption('coloredIcon4'),
                 ],
               ),
             ],
@@ -359,6 +362,30 @@ class _ResourceResolutionDemoContentState
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  /// Renders a resource-driven TomIcon plus a caption that names the
+  /// icon and the color — the caption's text itself comes from the
+  /// resource `<tomId>.caption.label`, so the entire row's data model
+  /// (glyph, color, label text) is resolved from resources.
+  Widget _iconWithCaption(String tomId) {
+    return TomColumn(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        TomIcon(tomId: tomId, size: 32),
+        TomSizedBox(height: 6),
+        TomText(
+          tomId: '$tomId.caption',
+          style: const TextStyle(
+            fontSize: 11,
+            fontFamily: 'monospace',
+            height: 1.3,
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
