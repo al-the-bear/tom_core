@@ -16,6 +16,7 @@ import 'acl_demos/acl_demos.dart';
 import 'common/demo_scaffold.dart';
 import 'demo_resources.dart';
 import 'forms_demos/forms_demos.dart';
+import 'forms_demos/phase2_demos.dart';
 import 'locale_settings.dart';
 import 'widget_demos/demo_01_buttons.dart';
 import 'widget_demos/demo_02_inputs.dart';
@@ -521,6 +522,34 @@ class FormsActionsTab extends StatelessWidget {
           description:
               'TomForm field types: email, password, text, int, double — with validation',
           screen: FormsOverviewDemo(),
+        ),
+        DemoTile(
+          title: 'Demo E — Selection Variants',
+          description:
+              'Segmented / RadioGroup / ChoiceChips / FilterChips / MultiCheckbox '
+              'against a shared TomSelectableSource<String>',
+          screen: SelectionVariantsDemo(),
+        ),
+        DemoTile(
+          title: 'Demo F — Boolean Variants',
+          description:
+              'Checkbox / Switch / Toggle independently, in lock-step, and in a '
+              'mixed settings layout',
+          screen: BooleanVariantsDemo(),
+        ),
+        DemoTile(
+          title: 'Demo G — Complex Breakpoints',
+          description:
+              'TomFormStyleScope with styleBpOverrides, nested theme-only scope, '
+              'two-column → one-column collapse',
+          screen: ComplexBreakpointsDemo(),
+        ),
+        DemoTile(
+          title: 'Demo H — Complex Authorization',
+          description:
+              'Action-icon auth gating, UIStateController cross-field deps, '
+              'group modes, subform auth ceiling',
+          screen: ComplexAuthDemo(),
         ),
       ],
     );
