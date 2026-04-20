@@ -28,7 +28,7 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ResizableBox(
-          initialHeight: 52,
+          initialHeight: null,
           child: AclBuilder()
               // pref − min = 120 → largest share of extra space
               .append(const DemoBox('Alpha\nM:80 P:200 (Δ120)', Colors.teal))
@@ -59,7 +59,7 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ResizableBox(
-          initialHeight: 52,
+          initialHeight: null,
           child: AclBuilder()
               // pref − min = 240 → larger share
               .append(const DemoBox('Wide\nM:120 P:360 (Δ240)', Colors.purple))
@@ -89,7 +89,7 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         ResizableBox(
-          initialHeight: 52,
+          initialHeight: null,
           child: AclBuilder()
               .append(const DemoBox('Fixed\nM:80 P:120 X:120', Colors.blueGrey))
               .setMSize(80, 40).setPSize(120, 40).setXSize(120, 40)

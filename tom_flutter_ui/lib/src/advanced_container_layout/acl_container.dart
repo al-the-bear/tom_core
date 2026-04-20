@@ -2388,9 +2388,26 @@ class _AclContainerState extends State<AclContainer> {
         );
       }
 
-      final baseTopInRow = hasExpandY && canExpandVertically
-          ? 0.0
-          : (rowEstimatedHeight - estimatedHeight) / 2;
+      // baseTopInRow must match where the Row widget actually places the
+      // component cross-axis. With CrossAxisAlignment.stretch (hasExpandY
+      // path), every child starts at y=0 and fills the row height. Without
+      // expandY, the Row's crossAxisAlignment is driven by the row's
+      // configured defaultRowCrossAlignment (top/center/bottom) — NOT a
+      // hardcoded centering — otherwise the min/maxVerticalExtent that
+      // drive Padding(top/bottom) over-/under-estimate the space needed
+      // around translated components.
+      final double baseTopInRow;
+      if (hasExpandY && canExpandVertically) {
+        baseTopInRow = 0.0;
+      } else {
+        baseTopInRow = switch (row.defaultRowCrossAlignment) {
+          AclRowCrossAlignment.top => 0.0,
+          AclRowCrossAlignment.center =>
+              (rowEstimatedHeight - estimatedHeight) / 2,
+          AclRowCrossAlignment.bottom =>
+              rowEstimatedHeight - estimatedHeight,
+        };
+      }
       final shiftedTopInRow = baseTopInRow + verticalAlignmentOffset;
       final shiftedBottomInRow = shiftedTopInRow + estimatedHeight;
 
