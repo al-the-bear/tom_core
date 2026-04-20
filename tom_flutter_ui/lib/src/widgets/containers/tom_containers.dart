@@ -724,11 +724,35 @@ class TomContainer extends TomContainerBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // Flutter's Container rejects `color` alongside any `decoration`.
+    // When the caller passes a BoxDecoration that only sets structural
+    // bits (borderRadius / border / shape / gradient) and leaves color
+    // unset, fold the resource-resolved color into it so resource-
+    // driven colors still reach the container. Same for ShapeDecoration.
+    var effectiveDecoration = _resolvedDecoration;
+    if (_resolvedColor != null) {
+      if (effectiveDecoration is BoxDecoration &&
+          effectiveDecoration.color == null &&
+          effectiveDecoration.gradient == null) {
+        effectiveDecoration =
+            effectiveDecoration.copyWith(color: _resolvedColor);
+      } else if (effectiveDecoration is ShapeDecoration &&
+          effectiveDecoration.color == null &&
+          effectiveDecoration.gradient == null) {
+        effectiveDecoration = ShapeDecoration(
+          color: _resolvedColor,
+          image: effectiveDecoration.image,
+          gradient: effectiveDecoration.gradient,
+          shadows: effectiveDecoration.shadows,
+          shape: effectiveDecoration.shape,
+        );
+      }
+    }
     return Container(
       alignment: _resolvedAlignment,
       padding: _resolvedPadding,
-      color: _resolvedDecoration != null ? null : _resolvedColor,
-      decoration: _resolvedDecoration,
+      color: effectiveDecoration != null ? null : _resolvedColor,
+      decoration: effectiveDecoration,
       foregroundDecoration: _resolvedForegroundDecoration,
       constraints: _resolvedConstraints,
       margin: _resolvedMargin,
