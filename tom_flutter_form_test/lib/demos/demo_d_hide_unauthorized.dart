@@ -203,6 +203,10 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
             const _Bullet('Form-field widgets participate via '
                 'TomFieldWidgetAdapter; regular Tom widgets via '
                 'TomNodeBase / TomWidgetMixin. Same ACL filter for both.'),
+            const _Bullet('Every row and every in-row append in this demo '
+                'uses an explicit non-default `dist:` so the carry-forward '
+                'rule is observable on literal values (32 / 48 / 20 / 40 '
+                'px, etc.) rather than on the default append gap.'),
           ],
         ),
       ),
@@ -212,9 +216,26 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
   // ── Form section (hide-unauthorized on a real form) ──────────────────────
 
   Widget _buildFormSection(BuildContext context) {
-    // Row layout: (username, email) (password, confirmPassword) (website).
-    // Setting both password + confirmPassword to `none` elides the whole
-    // second row.
+    // Row layout with deliberately-mixed gaps so the hide-unauthorized
+    // carry-forward rule is observable on explicit (non-default) values:
+    //   row 0:  username  ←32→  email                (in-row gap 32)
+    //   row 1:  password  ←48→  confirmPassword      (in-row gap 48)
+    //   row 2:  website                              (newRow gap 40)
+    // Between rows:
+    //   r0 → r1 : 24   (explicit newRow dist)
+    //   r1 → r2 : 40   (explicit newRow dist)
+    //
+    // Expected behaviour:
+    //   * Hide `email` → `email`'s own 32 px gap is carried to the next
+    //     visible component in the row; there is no next component here
+    //     so the row simply narrows (nothing to push).
+    //   * Hide `password` (keep confirmPassword) → confirmPassword
+    //     slides into password's slot, inheriting the 48 px gap that
+    //     sat between password and confirmPassword.
+    //   * Hide BOTH password + confirmPassword → whole row 1 is elided;
+    //     row 1's own dist (24) is carried onto row 2 and row 2's own
+    //     dist (40) is dropped, so `website` sits at
+    //     `row0.bottom + 24` — exactly the old slot of row 1.
     final layout = TomAclBuilder(
       id: 'demoDFormAcl',
       elementProvider: _form,
@@ -223,11 +244,11 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         .setAclExpandXDefault(true)
         .setAclDefaultHideUnauthorized(true)
         .append((p) => p.username.widget)
-        .append((p) => p.email.widget, dist: 16)
-        .newRow()
+        .append((p) => p.email.widget, dist: 32)
+        .newRow(dist: 24)
         .append((p) => p.password.widget)
-        .append((p) => p.confirmPassword.widget, dist: 16)
-        .newRow()
+        .append((p) => p.confirmPassword.widget, dist: 48)
+        .newRow(dist: 40)
         .append((p) => p.website.widget)
         .build(context);
 
@@ -360,20 +381,52 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
 
   Widget _buildGallerySection(BuildContext context) {
     final entries = _galleryEntries;
-    // Three rows × up to four widgets each — arranged so that hiding every
-    // widget on a row still gives an observable elision. Each row's dist
-    // (24) makes the collapse visually obvious.
-    Widget layout;
-    layout = TomScope.withScope(_galleryScope, () {
+    // Deliberately non-default per-component AND per-row gaps so the
+    // carry-forward rule is observable on explicit values rather than
+    // the ACL's built-in default. Layout:
+    //
+    //   row 0 (gap 0):
+    //     saveBtn  ←20→ cancelBtn  ←40→ detailsBtn  ←12→ submitBtn
+    //   row 1 (dist 32):
+    //     refreshBtn  ←28→ featuredChip  ←20→ statusIcon
+    //   row 2 (dist 56):
+    //     hairline  ←16→ badge  ←24→ infoCard
+    //
+    // Things to observe while flipping rows on the right panel:
+    //   * Hide `cancelBtn`  → cancelBtn's 20 px gap is kept (saveBtn →
+    //     detailsBtn now sit 20 px apart); detailsBtn's 40 px gap drops.
+    //   * Hide every widget in row 1 → row 1 is elided; row 1's own
+    //     dist (32) carries onto row 2 and row 2's dist (56) drops, so
+    //     row 2 lands at `row0.bottom + 32`.
+    //   * Hide every widget in row 2 → row 2 elided; with row 1 kept
+    //     the change is purely vertical (no trailing row, so the
+    //     carried dist has nothing to apply to).
+    const inRowGaps = <List<double>>[
+      [0, 20, 40, 12],   // row 0: explicit gaps after row-start and
+                         //         between each pair. First element's
+                         //         gap is ignored (no predecessor).
+      [0, 28, 20],       // row 1
+      [0, 16, 24],       // row 2
+    ];
+    const rowDists = <double>[0, 32, 56];
+    final rowRanges = <(int, int)>[(0, 4), (4, 7), (7, 10)];
+
+    final layout = TomScope.withScope(_galleryScope, () {
       final instances = entries.map((e) => e.build()).toList();
       final b = AclBuilder()
           .setAclDefaultRowVerticalAlignment(AclRowCrossAlignment.center)
-          .setAclDefaultHideUnauthorized(true)
-          .setAclDefaultAppendGap(16)
-          .setAclDefaultRowGap(24);
-      for (int i = 0; i < instances.length; i++) {
-        if (i == 4 || i == 7) b.newRow();
-        b.append(instances[i]);
+          .setAclDefaultHideUnauthorized(true);
+      for (int rowIndex = 0; rowIndex < rowRanges.length; rowIndex++) {
+        if (rowIndex > 0) b.newRow(dist: rowDists[rowIndex]);
+        final (start, end) = rowRanges[rowIndex];
+        for (int i = start; i < end; i++) {
+          final gap = inRowGaps[rowIndex][i - start];
+          if (i == start) {
+            b.append(instances[i]);
+          } else {
+            b.append(instances[i], dist: gap);
+          }
+        }
       }
       return b.build();
     });
