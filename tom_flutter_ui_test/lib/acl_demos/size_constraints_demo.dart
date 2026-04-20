@@ -5,7 +5,8 @@ class SizeConstraintsDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
@@ -20,50 +21,63 @@ class SizeConstraintsDemo extends StatelessWidget {
         ),
         const SizedBox(height: 16),
 
-        // ── Three proportional panels (no expandX) ────────────────────────
+        // ── Three expandX panels (proportional to pref - min) ────────────
         const Text(
-          'Horizontal: three panels shrink proportionally (no expandX)',
+          'Horizontal: three expandX panels grow proportionally to (P − M)',
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         ResizableBox(
           initialHeight: 52,
           child: AclBuilder()
-              .append(const DemoBox('Alpha\nM:80 P:200 X:280', Colors.teal))
-              .setMSize(80, 40).setPSize(200, 40).setXSize(280, 40)
-              .append(const DemoBox('Beta\nM:60 P:160 X:220', Colors.indigo), dist: 6)
-              .setMSize(60, 40).setPSize(160, 40).setXSize(220, 40)
-              .append(const DemoBox('Gamma\nM:50 P:120 X:160', Colors.orange), dist: 6)
-              .setMSize(50, 40).setPSize(120, 40).setXSize(160, 40)
+              // pref − min = 120 → largest share of extra space
+              .append(const DemoBox('Alpha\nM:80 P:200 (Δ120)', Colors.teal))
+              .setMSize(80, 40).setPSize(200, 40)
+              .setAttr(AclFlags.expandX)
+              // pref − min = 100 → middle share
+              .append(const DemoBox('Beta\nM:60 P:160 (Δ100)', Colors.indigo), dist: 6)
+              .setMSize(60, 40).setPSize(160, 40)
+              .setAttr(AclFlags.expandX)
+              // pref − min = 70 → smallest share
+              .append(const DemoBox('Gamma\nM:50 P:120 (Δ70)', Colors.orange), dist: 6)
+              .setMSize(50, 40).setPSize(120, 40)
+              .setAttr(AclFlags.expandX)
               .build(),
         ),
         const SizedBox(height: 4),
         const Text(
-          'All three shrink proportionally toward M:. Once any hits M: only the others continue shrinking.',
+          'All three fill the row. Extra space above the sum of M values is shared in '
+          'the ratio 120 : 100 : 70 (= the P − M differences).',
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
         const SizedBox(height: 16),
 
-        // ── Wide + narrow + fixed (asymmetric ranges) ─────────────────────
+        // ── Two expandX + one fixed (last = Fixed) ──────────────────────
         const Text(
-          'Horizontal: asymmetric panels — one fixed, others proportional',
+          'Horizontal: two expandX panels grow proportionally, last one is fixed',
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 6),
         ResizableBox(
           initialHeight: 52,
           child: AclBuilder()
-              .append(const DemoBox('Wide\nM:120 P:360 X:460', Colors.purple))
-              .setMSize(120, 40).setPSize(360, 40).setXSize(460, 40)
-              .append(const DemoBox('Medium\nM:80 P:200 X:240', Colors.blueGrey), dist: 6)
-              .setMSize(80, 40).setPSize(200, 40).setXSize(240, 40)
-              .append(const DemoBox('Fixed\nM:80 P:80 X:80', Colors.red), dist: 6)
+              // pref − min = 240 → larger share
+              .append(const DemoBox('Wide\nM:120 P:360 (Δ240)', Colors.purple))
+              .setMSize(120, 40).setPSize(360, 40)
+              .setAttr(AclFlags.expandX)
+              // pref − min = 120 → smaller share
+              .append(const DemoBox('Medium\nM:80 P:200 (Δ120)', Colors.blueGrey), dist: 6)
+              .setMSize(80, 40).setPSize(200, 40)
+              .setAttr(AclFlags.expandX)
+              // M = P = X = 80 → never grows nor shrinks
+              .append(const DemoBox('Fixed\nM=P=X=80', Colors.red), dist: 6)
               .setMSize(80, 40).setPSize(80, 40).setXSize(80, 40)
               .build(),
         ),
         const SizedBox(height: 4),
         const Text(
-          'Fixed (M=P=X=80) never shrinks. Wide and Medium share remaining shrink proportionally.',
+          'Fixed column keeps 80 px regardless of window width. Wide and Medium '
+          'share the remaining extra width in the 240 : 120 = 2 : 1 ratio.',
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
         const SizedBox(height: 16),
@@ -116,6 +130,7 @@ class SizeConstraintsDemo extends StatelessWidget {
           style: TextStyle(fontSize: 11, color: Colors.black54),
         ),
       ],
+      ),
     );
   }
 }

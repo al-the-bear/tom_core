@@ -171,7 +171,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         ResizableBox(
-          initialHeight: 110,
+          initialHeight: null,
           child: AclBuilder()
               .append(topBottomAnchor)
               .setPSize(220, 64)
@@ -198,7 +198,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
         ),
         const SizedBox(height: 8),
         ResizableBox(
-          initialHeight: 110,
+          initialHeight: null,
           child: AclBuilder()
               .append(bottomTopAnchor)
               .setPSize(220, 64)
@@ -237,7 +237,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
             child: DemoBox('Anchor T→B', Colors.deepOrange),
           );
           return ResizableBox(
-            initialHeight: 150,
+            initialHeight: null,
             child: AclBuilder()
                 .append(tbAnchor)
                 .setPSize(160, 56)
@@ -271,7 +271,7 @@ class _ReferenceConstraintsDemoState extends State<ReferenceConstraintsDemo> {
             child: DemoBox('Anchor B→T', Colors.blueGrey),
           );
           return ResizableBox(
-            initialHeight: 150,
+            initialHeight: null,
             child: AclBuilder()
                 .append(btAnchor)
                 .setPSize(160, 56)
