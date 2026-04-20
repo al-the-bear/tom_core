@@ -151,9 +151,9 @@ class DemoListScreen extends StatelessWidget {
           _DemoTile(
             icon: Icons.aspect_ratio,
             title: 'Demo G: Complex Breakpoint Scenarios',
-            description: 'Outer TomFormStyleScope with three-band '
-                'styleBpOverrides plus nested scopes. Drag the splitter '
-                'to cross tablet/desktop thresholds.',
+            description: 'ProjectBriefForm across four style + theme '
+                'presets at 400 / 800 / 1200 / 1600 px, with every ACL '
+                'breakpoint API active + priority widget-type swap.',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -163,9 +163,9 @@ class DemoListScreen extends StatelessWidget {
           _DemoTile(
             icon: Icons.lock_outlined,
             title: 'Demo H: Complex Authorization Scenarios',
-            description: 'Three group modes active at once, a '
-                'UIStateController stack, and form-level auth ceiling '
-                '\u2014 all visible in the field-state table.',
+            description: 'Same ProjectBriefForm as Demo G, overlaid with '
+                'per-field / per-section / form-level auth switches so '
+                'the re-layout is verifiable under live auth changes.',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(

@@ -103,18 +103,20 @@ void main() {
 
   testWidgets('Demo G opens with the breakpoint splitter', (tester) async {
     await openDemo(tester, 'Demo G: Complex Breakpoint Scenarios');
-    expect(
-        find.text('Demo G — Complex Breakpoint Scenarios'), findsOneWidget);
-    expect(find.text('Outer scope — style swaps by width'), findsOneWidget);
-    expect(find.text('Nested scope — always compact (style override)'),
+    expect(find.text('Demo G — Complex Breakpoint & Theming Scenarios'),
         findsOneWidget);
+    // ProjectBrief sections visible in the complex form pane.
+    expect(find.text('Identity'), findsWidgets);
+    expect(find.text('Classification'), findsWidgets);
+    expect(find.text('People'), findsWidgets);
   });
 
   testWidgets('Demo H opens with the complex-auth controls', (tester) async {
     await openDemo(tester, 'Demo H: Complex Authorization Scenarios');
-    expect(find.text('Demo H — Complex Authorization Scenarios'),
+    expect(find.text('Demo H — Complex Authorization + Responsive Layout'),
         findsOneWidget);
-    expect(find.text('Billing — group mode: controlsAll'), findsOneWidget);
-    expect(find.text('Shipping — group mode: controlsWidest'), findsOneWidget);
+    expect(find.text('Authorization controls'), findsOneWidget);
+    expect(find.text('Form-level ceiling'), findsOneWidget);
+    expect(find.text('Field state (live)'), findsOneWidget);
   });
 }

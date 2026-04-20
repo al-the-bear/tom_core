@@ -77,6 +77,11 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
   final _radioGroup = TomString('');
   final _choiceChips = TomString('');
 
+  // Boolean flavours — write into a TomBool.
+  final _boolCheckbox = TomBool(false);
+  final _boolSwitch = TomBool(false);
+  final _boolToggle = TomBool(false);
+
   // --- Source & items ------------------------------------------------------
 
   bool _useFiltered = false;
@@ -103,6 +108,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
       _segmented >> (o) => _record('segmented', (o as TomString).get()),
       _radioGroup >> (o) => _record('radioGroup', (o as TomString).get()),
       _choiceChips >> (o) => _record('choiceChips', (o as TomString).get()),
+      _boolCheckbox >> (o) => _record('boolCheckbox', '${(o as TomBool).get()}'),
+      _boolSwitch >> (o) => _record('boolSwitch', '${(o as TomBool).get()}'),
+      _boolToggle >> (o) => _record('boolToggle', '${(o as TomBool).get()}'),
     ]);
   }
 
@@ -243,9 +251,70 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           subtitle: 'Writes TomString (choiceChips)',
           child: _buildChoiceChips(),
         ),
+        const SizedBox(height: 12),
+        _variantCard(
+          context,
+          title: 'TomFormBoolCheckbox — boolean',
+          subtitle: 'Writes TomBool (boolCheckbox)',
+          child: _buildBoolCheckbox(),
+        ),
+        const SizedBox(height: 12),
+        _variantCard(
+          context,
+          title: 'TomFormBoolSwitch — boolean',
+          subtitle: 'Writes TomBool (boolSwitch)',
+          child: _buildBoolSwitch(),
+        ),
+        const SizedBox(height: 12),
+        _variantCard(
+          context,
+          title: 'TomFormBoolToggle — boolean',
+          subtitle: 'Writes TomBool (boolToggle)',
+          child: _buildBoolToggle(),
+        ),
       ],
     );
   }
+
+  Widget _buildBoolCheckbox() => TomMultiObservableBuilder(
+        observables: [_boolCheckbox],
+        builder: (context) => CheckboxListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Agree to terms'),
+          value: _boolCheckbox.get(),
+          onChanged: (v) => _boolCheckbox | (v ?? false),
+        ),
+      );
+
+  Widget _buildBoolSwitch() => TomMultiObservableBuilder(
+        observables: [_boolSwitch],
+        builder: (context) => SwitchListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Enable notifications'),
+          value: _boolSwitch.get(),
+          onChanged: (v) => _boolSwitch | v,
+        ),
+      );
+
+  Widget _buildBoolToggle() => TomMultiObservableBuilder(
+        observables: [_boolToggle],
+        builder: (context) => Row(
+          children: [
+            const Expanded(child: Text('Public visibility')),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('off')),
+                ButtonSegment(value: true, label: Text('on')),
+              ],
+              selected: {_boolToggle.get()},
+              onSelectionChanged: (s) => _boolToggle | s.first,
+              showSelectedIcon: false,
+            ),
+          ],
+        ),
+      );
 
   Widget _buildIntroCard(BuildContext context) {
     final theme = Theme.of(context);
@@ -473,6 +542,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
         _segmented,
         _radioGroup,
         _choiceChips,
+        _boolCheckbox,
+        _boolSwitch,
+        _boolToggle,
       ],
       builder: (context) {
         final theme = Theme.of(context);
@@ -482,6 +554,9 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           ('segmented', _segmented.get()),
           ('radioGroup', _radioGroup.get()),
           ('choiceChips', _choiceChips.get()),
+          ('boolCheckbox', '${_boolCheckbox.get()}'),
+          ('boolSwitch', '${_boolSwitch.get()}'),
+          ('boolToggle', '${_boolToggle.get()}'),
         ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

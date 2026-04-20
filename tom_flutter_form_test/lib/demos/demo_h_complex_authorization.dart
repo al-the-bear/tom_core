@@ -1,41 +1,36 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
-import '../forms/customer_form.dart';
-import '../panels/event_log_panel.dart';
+import '../forms/project_brief_form.dart';
 import '../panels/field_state_table.dart';
 import '../panels/info_panel.dart';
-import '../state/phase1_state.dart';
+import '../state/project_brief_state.dart';
+import 'demo_g_breakpoint_scenarios.dart' show buildComplexFormPane;
 
 // ---------------------------------------------------------------------------
-// Demo H — Complex Authorization Scenarios (Phase 2)
+// Demo H — Complex Authorization + Responsive Layout Overlay (Phase 2)
 // ---------------------------------------------------------------------------
 
-/// Two-column layout exercising the Phase 2 complex-authorization
-/// scenarios described in the spec. Focuses on auth features that Demo B
-/// only introduced individually — here they're combined so cross-feature
-/// interactions are visible.
+/// Reuses the **exact same** complex form pane Demo G ships — all four style
+/// presets, all four theme presets, and every ACL breakpoint API — and
+/// overlays per-field / per-section / form-level authorization on top so
+/// the re-layout and the auth pipeline are exercised together.
 ///
-///   * **Group modes (all three)** — billing / shipping / payments each
-///     attached to a group with a distinct mode (controlsAll, controlsWidest,
-///     controlsNarrowest). A dropdown on the right sets each group's state;
-///     the field-state table on the right makes the mode's effect on each
-///     member visible.
-///   * **UIStateController closures** — email narrows to disabled when
-///     phone is empty; phone narrows to read when `lockPhone` is on.
-///     Demonstrates build-time, data-dependent auth narrowing from two
-///     different sources stacked on the same field.
-///   * **Subform auth as ceiling** — a parent-form auth override (set via
-///     the panel) narrows every field inside billing and shipping, even
-///     when the per-field resource auth is still `full`.
-///   * **Event log** — every value / auth transition lights up the log so
-///     the interactions are traceable.
+/// The right-hand panel carries:
 ///
-/// Phase 2 will extend this demo with the ActionAuth hide-unauthorized
-/// re-use and bool / multi-select-aware groups. The scaffold already has
-/// room for both in the controls column.
+///   * **Form-level auth** — narrows every field under `demoH.projectBrief`.
+///   * **Section auth** — per-section dropdowns for classification,
+///     scope, classic, people (lead), people (reviewer), longform.
+///   * **Spot-field auth** — focused dropdowns for a handful of fields
+///     (priority, budget, deadline) so widget-type swaps can be seen
+///     going read-only / disabled / hidden at each width band.
+///   * **Field-state table** — live effectiveAuthState per field for
+///     every nested form, so you can verify the auth + breakpoint
+///     interactions by reading values, not by squinting at pixels.
 class DemoHComplexAuthorization extends StatefulWidget {
   const DemoHComplexAuthorization({super.key});
 
@@ -47,135 +42,68 @@ class DemoHComplexAuthorization extends StatefulWidget {
 class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
     with TomFormEventListener {
   late final _DemoHAdapter _adapter;
+  late final ProjectBriefForm _form;
+  double _widthFraction = 0.9;
 
-  CustomerForm? _form;
-  final _inspector = TomFormInspector();
-
-  // Group-state dropdown controls — one per group.
-  TomAuthState _billingAuth = TomAuthState.full;
-  TomAuthState _shippingAuth = TomAuthState.full;
-  TomAuthState _formAuth = TomAuthState.full;
-
-  bool _lockPhone = false;
-  bool _uiStateControllerOn = false;
+  // Mirrors the adapter's state so the dropdowns re-render with the right
+  // selection even after the adapter accepts an explicit full-state.
+  final Map<String, TomAuthState> _rules = {
+    'demoH.projectBrief': TomAuthState.full,
+    'demoH.projectBrief.classification': TomAuthState.full,
+    'demoH.projectBrief.scope': TomAuthState.full,
+    'demoH.projectBrief.classic': TomAuthState.full,
+    'demoH.projectBrief.longform': TomAuthState.full,
+    'demoH.projectBrief.lead': TomAuthState.full,
+    'demoH.projectBrief.reviewer': TomAuthState.full,
+    'demoH.projectBrief.priority': TomAuthState.full,
+    'demoH.projectBrief.budget': TomAuthState.full,
+    'demoH.projectBrief.deadline': TomAuthState.full,
+  };
 
   @override
   void initState() {
     super.initState();
     _adapter = _DemoHAdapter();
     TomAuthorization.adapter = _adapter;
-    _rebuildForm();
+    _form = TomScope.withScope('demoH', () => ProjectBriefForm());
+    _form.addListener(this);
+    _form.bind(phase2ProjectBriefState);
+    _form.lead.bind(phase2ProjectBriefState.lead);
+    _form.reviewer.bind(phase2ProjectBriefState.reviewer);
   }
 
   @override
   void dispose() {
-    _form?.removeListener(this);
-    _form?.removeListener(_inspector);
-    _form?.dispose();
+    _form.removeListener(this);
+    _form.dispose();
     super.dispose();
   }
 
+  // Rebuild on any form event so the field-state table tracks auth changes.
   @override
   void onFieldValueChanged(FieldValueChangedEvent event) {
     if (mounted) setState(() {});
   }
 
-  void _rebuildForm() {
-    _form?.removeListener(this);
-    _form?.removeListener(_inspector);
-    _form?.dispose();
-
-    // Billing — controlsAll: group state replaces every member.
-    // Shipping — controlsWidest (default): group state is the ceiling.
-    final billingGroup =
-        TomAuthorizationGroup('billing', mode: AuthGroupMode.controlsAll);
-    final shippingGroup = TomAuthorizationGroup('shipping',
-        mode: AuthGroupMode.controlsWidest);
-
-    final form = TomScope.withScope(
-      'demoH',
-      () => CustomerForm(
-        billingGroup: billingGroup,
-        shippingGroup: shippingGroup,
-      ),
-    );
-    _applyUIStateControllers(form);
-    form.addListener(this);
-    form.addListener(_inspector);
-    form.bind(phase1CustomerState);
-    form.billing.bind(phase1CustomerState.billing);
-    form.shipping.bind(phase1CustomerState.shipping);
-
-    _form = form;
-    setState(() {});
-  }
-
-  void _applyUIStateControllers(CustomerForm form) {
-    if (_uiStateControllerOn) {
-      // email narrows to disabled while phone is empty.
-      form.email.uiStateController = TomUIStateController(
-        resolve: (currentAuth, _) =>
-            form.phone.get().trim().isEmpty
-                ? TomAuthState.disabled
-                : currentAuth,
-      );
-      // phone narrows to read while the _lockPhone toggle is on.
-      form.phone.uiStateController = TomUIStateController(
-        resolve: (currentAuth, _) =>
-            _lockPhone ? TomAuthState.read : currentAuth,
-      );
-    } else {
-      form.email.uiStateController = null;
-      form.phone.uiStateController = null;
-    }
-  }
-
-  // --- Panel callbacks ------------------------------------------------------
-
   void _setAuth(String path, TomAuthState state) {
-    if (state == TomAuthState.full) {
-      _adapter.removeRule(path);
-    } else {
-      _adapter.setRule(path, state);
-    }
-    setState(() {});
-  }
-
-  void _onBillingAuthChanged(TomAuthState s) {
-    setState(() => _billingAuth = s);
-    _setAuth('demoH.customer.billing', s);
-  }
-
-  void _onShippingAuthChanged(TomAuthState s) {
-    setState(() => _shippingAuth = s);
-    _setAuth('demoH.customer.shipping', s);
-  }
-
-  void _onFormAuthChanged(TomAuthState s) {
-    setState(() => _formAuth = s);
-    _setAuth('demoH.customer', s);
-  }
-
-  void _onLockPhoneToggled(bool v) {
-    setState(() => _lockPhone = v);
-    final form = _form;
-    if (form != null) _applyUIStateControllers(form);
-  }
-
-  void _onUIStateToggled(bool v) {
-    setState(() => _uiStateControllerOn = v);
-    final form = _form;
-    if (form != null) _applyUIStateControllers(form);
+    setState(() {
+      _rules[path] = state;
+      if (state == TomAuthState.full) {
+        _adapter.removeRule(path);
+      } else {
+        _adapter.setRule(path, state);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return DemoScaffold(
-      title: 'Demo H — Complex Authorization Scenarios',
+      title: 'Demo H — Complex Authorization + Responsive Layout',
       child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth >= 1000;
-          final form = _buildFormColumn(context);
+        builder: (context, outer) {
+          final isWide = outer.maxWidth >= 900;
+          final form = _buildFormColumn(context, outer);
           final info = _buildInfoColumn(context);
           if (isWide) {
             return Padding(
@@ -208,38 +136,28 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
     );
   }
 
-  Widget _buildFormColumn(BuildContext context) {
-    final form = _form;
-    if (form == null) return const SizedBox.shrink();
+  Widget _buildFormColumn(BuildContext context, BoxConstraints outer) {
+    final isWide = outer.maxWidth >= 900;
+    final maxPaneWidth = isWide ? outer.maxWidth * 0.6 : outer.maxWidth;
+    final paneWidth =
+        (maxPaneWidth * _widthFraction).clamp(300.0, maxPaneWidth);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildIntroCard(context),
         const SizedBox(height: 12),
-        TomFormStyleScope(
-          style: TomFormStyle.material3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _section(
-                context,
-                'Customer (top-level fields)',
-                _buildTopFields(context, form),
-              ),
-              const SizedBox(height: 12),
-              _section(
-                context,
-                'Billing — group mode: controlsAll',
-                _buildBillingFields(context, form),
-              ),
-              const SizedBox(height: 12),
-              _section(
-                context,
-                'Shipping — group mode: controlsWidest',
-                _buildShippingFields(context, form),
-              ),
-            ],
+        _splitterCard(context, maxPaneWidth, paneWidth),
+        const SizedBox(height: 12),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: SizedBox(
+            width: paneWidth,
+            child: buildComplexFormPane(
+              context: context,
+              form: _form,
+              state: phase2ProjectBriefState,
+            ),
           ),
         ),
       ],
@@ -257,133 +175,119 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('Three group modes active side-by-side — billing '
-                'controlsAll, shipping controlsWidest. Each group has its '
-                'own dropdown in the controls column on the right.'),
-            const _Bullet('UIStateController stack: email disables while '
-                'phone is empty; phone narrows to read while "lockPhone" '
-                'is on. Both controllers wired through the same form.'),
-            const _Bullet('Subform auth as ceiling — the "form-level auth" '
-                'dropdown narrows every field beneath "demoH.customer", '
-                'even though per-resource auth stays full.'),
-            const _Bullet('Field-state table on the right surfaces the '
-                'computed effectiveAuthState per field in real time.'),
+            const Text('Every feature from Demo G — the four-band style '
+                'preset swap, the four-band theme swap, the full set of '
+                'ACL breakpoints, and the responsive widget-type swap '
+                'on priority — plus a per-field / per-section / form-level '
+                'authorization overlay.'),
+            SizedBox(height: 6),
+            Text('Drive any auth dropdown on the right and watch the form '
+                'respond live: fields go read-only, disabled, or disappear. '
+                'Drag the splitter to verify the auth state survives the '
+                're-layout that fires as the pane crosses 400 / 800 / 1200 '
+                '/ 1600 px.'),
           ],
         ),
       ),
     );
   }
 
-  Widget _section(BuildContext context, String title, Widget child) {
+  Widget _splitterCard(
+      BuildContext context, double maxPaneWidth, double paneWidth) {
     return Card(
-      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            child,
+            Row(
+              children: [
+                Text('Form pane width',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const Spacer(),
+                Text('${paneWidth.toStringAsFixed(0)} px',
+                    style: Theme.of(context).textTheme.labelLarge),
+              ],
+            ),
+            Slider(
+              value: _widthFraction,
+              min: 300.0 / maxPaneWidth.clamp(301.0, double.infinity),
+              max: 1.0,
+              onChanged: (v) => setState(() => _widthFraction = v),
+            ),
+            const Text(
+              'Breakpoints at 400 / 800 / 1200 / 1600 px.',
+              style: TextStyle(fontSize: 12),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTopFields(BuildContext context, CustomerForm form) {
-    return TomAclBuilder(id: 'demoHTop', elementProvider: form)
-        .setAclExpandXDefault(true)
-        .append((p) => p.fullName.widget)
-        .newRow()
-        .append((p) => p.email.widget)
-        .append((p) => p.phone.widget, dist: 16)
-        .build(context);
-  }
-
-  Widget _buildBillingFields(BuildContext context, CustomerForm form) {
-    return TomAclBuilder(id: 'demoHBilling', elementProvider: form.billing)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.zipCode.widget, dist: 16)
-        .build(context);
-  }
-
-  Widget _buildShippingFields(BuildContext context, CustomerForm form) {
-    return TomAclBuilder(id: 'demoHShipping', elementProvider: form.shipping)
-        .setAclExpandXDefault(true)
-        .append((p) => p.street.widget)
-        .newRow()
-        .append((p) => p.city.widget)
-        .append((p) => p.zipCode.widget, dist: 16)
-        .build(context);
-  }
-
   Widget _buildInfoColumn(BuildContext context) {
-    final form = _form;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InfoPanel(
-          title: 'Group / form controls',
+          title: 'Authorization controls',
           children: [
-            const InfoPanelHeading('Form-level auth (ceiling)'),
-            _authDropdown(_formAuth, _onFormAuthChanged),
-            const InfoPanelHeading('Billing group (controlsAll)'),
-            _authDropdown(_billingAuth, _onBillingAuthChanged),
-            const InfoPanelHeading('Shipping group (controlsWidest)'),
-            _authDropdown(_shippingAuth, _onShippingAuthChanged),
-            const InfoPanelHeading('UIStateController stack'),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Controllers on'),
-              subtitle: const Text(
-                'email disables while phone empty; phone narrows to read '
-                'while lockPhone is on',
-                style: TextStyle(fontSize: 11),
-              ),
-              value: _uiStateControllerOn,
-              onChanged: _onUIStateToggled,
-            ),
-            SwitchListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('lockPhone'),
-              value: _lockPhone,
-              onChanged: _uiStateControllerOn ? _onLockPhoneToggled : null,
-            ),
+            const InfoPanelHeading('Form-level ceiling'),
+            _authDropdown('demoH.projectBrief'),
+            const InfoPanelHeading('Sections'),
+            _sectionRow(context, 'Classification',
+                'demoH.projectBrief.classification'),
+            _sectionRow(context, 'Scope', 'demoH.projectBrief.scope'),
+            _sectionRow(
+                context, 'Classic pair', 'demoH.projectBrief.classic'),
+            _sectionRow(context, 'Longform',
+                'demoH.projectBrief.longform'),
+            _sectionRow(context, 'Lead subform', 'demoH.projectBrief.lead'),
+            _sectionRow(
+                context, 'Reviewer subform', 'demoH.projectBrief.reviewer'),
+            const InfoPanelHeading('Spot fields'),
+            _sectionRow(context, 'Priority', 'demoH.projectBrief.priority'),
+            _sectionRow(context, 'Budget', 'demoH.projectBrief.budget'),
+            _sectionRow(context, 'Deadline', 'demoH.projectBrief.deadline'),
           ],
         ),
         const SizedBox(height: 12),
-        if (form != null)
-          InfoPanel(
-            title: 'Field state',
-            children: [
-              FieldStateTable(forms: [form, form.billing, form.shipping]),
-            ],
-          ),
-        const SizedBox(height: 12),
-        if (form != null)
-          InfoPanel(
-            title: 'Event log',
-            children: [
-              EventLogPanel(
-                inspector: _inspector,
-                rebuildOn: Listenable.merge(
-                  [form.changes, form.billing.changes, form.shipping.changes],
-                ),
-              ),
-            ],
-          ),
+        InfoPanel(
+          title: 'Field state (live)',
+          children: [
+            FieldStateTable(forms: [_form, _form.lead, _form.reviewer]),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _authDropdown(
-      TomAuthState current, ValueChanged<TomAuthState> onChanged) {
+  Widget _sectionRow(BuildContext context, String label, String path) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          SelectableText(
+            path,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontFamily: 'monospace',
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          _authDropdown(path),
+        ],
+      ),
+    );
+  }
+
+  Widget _authDropdown(String path) {
+    final current = _rules[path] ?? TomAuthState.full;
     return DropdownButton<TomAuthState>(
       isExpanded: true,
       value: current,
@@ -392,15 +296,15 @@ class _DemoHComplexAuthorizationState extends State<DemoHComplexAuthorization>
           DropdownMenuItem(value: s, child: Text(s.name)),
       ],
       onChanged: (v) {
-        if (v != null) onChanged(v);
+        if (v != null) _setAuth(path, v);
       },
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Local adapter — parent-path matching so setting `demoH.customer` narrows
-// every field beneath it (form-level auth ceiling).
+// Adapter — path-prefix match so any section / form-level entry narrows
+// everything beneath it.
 // ---------------------------------------------------------------------------
 
 class _DemoHAdapter extends TomAuthorizationAdapter {
@@ -419,17 +323,4 @@ class _DemoHAdapter extends TomAuthorizationAdapter {
 
   void setRule(String path, TomAuthState s) => _rules[path] = s;
   void removeRule(String path) => _rules.remove(path);
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
-  }
 }
