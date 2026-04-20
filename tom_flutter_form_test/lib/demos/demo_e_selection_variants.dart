@@ -6,25 +6,29 @@ import '../common/demo_scaffold.dart';
 import '../panels/info_panel.dart';
 
 // ---------------------------------------------------------------------------
-// Demo E — Selection Variants (Phase 2 scaffold)
+// Demo E — Selection Variants (Phase 2)
 // ---------------------------------------------------------------------------
 
-/// Two-column scaffold for the Phase 2 selection-variant demo described in
-/// §Phase 2 of the spec:
+/// Two-column demo covering the spec's Phase 2 selection-variants scope:
 ///
-///   * Five single-select / multi-select concrete implementations
-///     (FilterChips / MultiCheckbox / Segmented / RadioGroup / ChoiceChips)
-///     rendered side-by-side against the same [TomSelectableSource].
-///   * A "bound values" inspector panel showing the observable writes each
-///     variant produces, proving single-select flavours write back through
-///     `TomString` and multi-select flavours through `TomList<TomString>`.
-///   * A toggle that swaps the source between a full [StaticSelectableSource]
-///     and a filtered subset so source observability is visible.
+///   * Five single-select / multi-select flavours — FilterChips,
+///     MultiCheckbox, Segmented, RadioGroup, ChoiceChips — rendered
+///     side-by-side against one shared [TomSelectableSource].
+///   * Each variant is wired to its spec-aligned binding shape: multi-select
+///     flavours write a `TomList<TomString>`, single-select flavours write
+///     a `TomString`. The right-hand panel prints the live bindings + a
+///     change log so the shape difference is visible.
+///   * A "filtered source" switch flips the shared source at runtime
+///     between the full static catalogue and a 2-item subset so the
+///     dependency on an observable source (rather than hard-coded
+///     options) is demonstrable.
 ///
-/// The concrete field widgets don't land until Phase 2 ships. Until then the
-/// left column shows placeholder tiles so the navigation, layout, and
-/// right-hand inspector scaffolding are exercisable today; each tile calls
-/// out which spec-aligned widget is due to replace it.
+/// The variants use plain Material widgets (FilterChip, CheckboxListTile,
+/// SegmentedButton, RadioListTile, ChoiceChip) as stand-ins. When the
+/// Phase 2 concrete widgets (`TomFormStringFilterChips`,
+/// `TomFormStringMultiCheckbox`, `TomFormStringSegmented`,
+/// `TomFormStringRadioGroup`, `TomFormStringChoiceChips`) land they drop
+/// in as one-line swaps — the bindings and the source are already correct.
 class DemoESelectionVariants extends StatefulWidget {
   const DemoESelectionVariants({super.key});
 
@@ -32,29 +36,130 @@ class DemoESelectionVariants extends StatefulWidget {
   State<DemoESelectionVariants> createState() => _DemoESelectionVariantsState();
 }
 
+// ---------------------------------------------------------------------------
+// Two pre-built sources so the toggle is a simple field swap.
+// ---------------------------------------------------------------------------
+
+final _fullSource = StaticSelectableSource<String>([
+  const SelectableItem(value: 'tech', label: 'Technology'),
+  const SelectableItem(value: 'finance', label: 'Finance'),
+  const SelectableItem(value: 'healthcare', label: 'Healthcare'),
+  const SelectableItem(value: 'manufacturing', label: 'Manufacturing'),
+  const SelectableItem(value: 'retail', label: 'Retail'),
+  const SelectableItem(value: 'other', label: 'Other'),
+]);
+
+final _filteredSource = StaticSelectableSource<String>([
+  const SelectableItem(value: 'tech', label: 'Technology'),
+  const SelectableItem(value: 'healthcare', label: 'Healthcare'),
+]);
+
+// ---------------------------------------------------------------------------
+// Log entry for the inspector panel — one line per observable write.
+// ---------------------------------------------------------------------------
+
+class _LogEntry {
+  final DateTime timestamp;
+  final String variant;
+  final String value;
+  _LogEntry(this.variant, this.value) : timestamp = DateTime.now();
+}
+
 class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
-  // Pre-created observables so the inspector panel on the right already
-  // reflects the shape the widgets will write back into once Phase 2 fields
-  // land: one `TomString` per single-select flavour, one
-  // `TomList<TomString>` per multi-select flavour.
-  final _filterChips = TomList<TomString>();
-  final _multiCheckbox = TomList<TomString>();
+  // --- Observables — match the Phase 2 widgets' binding shape. -----------
+
+  // Multi-select flavours write into a TomList<TomString>.
+  final _filterChipsSelection = TomList<TomString>();
+  final _multiCheckboxSelection = TomList<TomString>();
+
+  // Single-select flavours write into a TomString.
   final _segmented = TomString('');
   final _radioGroup = TomString('');
   final _choiceChips = TomString('');
 
-  bool _filteredSource = false;
+  // --- Source & items ------------------------------------------------------
 
-  List<String> get _options => _filteredSource
-      ? const ['tech', 'healthcare']
-      : const [
-          'tech',
-          'finance',
-          'healthcare',
-          'manufacturing',
-          'retail',
-          'other',
-        ];
+  bool _useFiltered = false;
+  TomSelectableSource<String> get _activeSource =>
+      _useFiltered ? _filteredSource : _fullSource;
+  List<SelectableItem<String>> _items = const [];
+
+  // --- Inspector state -----------------------------------------------------
+
+  final List<_LogEntry> _log = [];
+
+  // Hold strong refs — TomObservable stores observers via WeakReference.
+  final List<Object> _observers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+    _observers.addAll([
+      _filterChipsSelection >>
+          (_) => _record('filterChips', _listLabel(_filterChipsSelection)),
+      _multiCheckboxSelection >>
+          (_) => _record('multiCheckbox', _listLabel(_multiCheckboxSelection)),
+      _segmented >> (o) => _record('segmented', (o as TomString).get()),
+      _radioGroup >> (o) => _record('radioGroup', (o as TomString).get()),
+      _choiceChips >> (o) => _record('choiceChips', (o as TomString).get()),
+    ]);
+  }
+
+  Future<void> _loadItems() async {
+    final items = await _activeSource.getItems();
+    if (!mounted) return;
+    setState(() => _items = items);
+    _pruneInvalid();
+  }
+
+  void _record(String variant, String value) {
+    setState(() {
+      _log.insert(0, _LogEntry(variant, value));
+      if (_log.length > 30) _log.removeLast();
+    });
+  }
+
+  void _toggleSource(bool useFiltered) {
+    setState(() => _useFiltered = useFiltered);
+    // _loadItems awaits the source and then prunes selections that the new
+    // source no longer exposes — same convention TomFormStringDropdown
+    // uses via its C13 "reset if value missing" rule.
+    _loadItems();
+  }
+
+  void _pruneInvalid() {
+    final valid = _items.map((e) => e.value).toSet();
+    _filterChipsSelection.removeWhere((o) => !valid.contains(o.get()));
+    _multiCheckboxSelection.removeWhere((o) => !valid.contains(o.get()));
+    if (_segmented.get().isNotEmpty && !valid.contains(_segmented.get())) {
+      _segmented | '';
+    }
+    if (_radioGroup.get().isNotEmpty && !valid.contains(_radioGroup.get())) {
+      _radioGroup | '';
+    }
+    if (_choiceChips.get().isNotEmpty && !valid.contains(_choiceChips.get())) {
+      _choiceChips | '';
+    }
+  }
+
+  // --- Multi-select helpers ----------------------------------------------
+
+  static Set<String> _selected(TomList<TomString> list) =>
+      list.toList().map((e) => e.get()).toSet();
+
+  void _toggleMulti(TomList<TomString> list, String value, bool selected) {
+    if (selected) {
+      if (!_selected(list).contains(value)) list.add(TomString(value));
+    } else {
+      list.removeWhere((o) => o.get() == value);
+    }
+  }
+
+  static String _listLabel(TomList<TomString> list) =>
+      '[${list.toList().map((e) => e.get()).join(", ")}]';
+
+  // --- Build ---------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -102,36 +207,41 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
       children: [
         _buildIntroCard(context),
         const SizedBox(height: 12),
-        _sourceToggleCard(context),
+        _buildSourceToggleCard(context),
         const SizedBox(height: 12),
-        _pendingVariant(
+        _variantCard(
           context,
-          'TomFormStringFilterChips',
-          'Multi-select chips. Will write to TomList<TomString> (filterChips).',
+          title: 'TomFormStringFilterChips — multi-select',
+          subtitle: 'Writes TomList<TomString> (filterChipsSelection)',
+          child: _buildFilterChips(),
         ),
         const SizedBox(height: 12),
-        _pendingVariant(
+        _variantCard(
           context,
-          'TomFormStringMultiCheckbox',
-          'Vertical multi-select. Will write to TomList<TomString> (multiCheckbox).',
+          title: 'TomFormStringMultiCheckbox — multi-select',
+          subtitle: 'Writes TomList<TomString> (multiCheckboxSelection)',
+          child: _buildMultiCheckbox(),
         ),
         const SizedBox(height: 12),
-        _pendingVariant(
+        _variantCard(
           context,
-          'TomFormStringSegmented',
-          'Single-select segmented button. Will write to TomString (segmented).',
+          title: 'TomFormStringSegmented — single-select',
+          subtitle: 'Writes TomString (segmented)',
+          child: _buildSegmented(),
         ),
         const SizedBox(height: 12),
-        _pendingVariant(
+        _variantCard(
           context,
-          'TomFormStringRadioGroup',
-          'Single-select radio list. Will write to TomString (radioGroup).',
+          title: 'TomFormStringRadioGroup — single-select',
+          subtitle: 'Writes TomString (radioGroup)',
+          child: _buildRadioGroup(),
         ),
         const SizedBox(height: 12),
-        _pendingVariant(
+        _variantCard(
           context,
-          'TomFormStringChoiceChips',
-          'Single-select choice chips. Will write to TomString (choiceChips).',
+          title: 'TomFormStringChoiceChips — single-select',
+          subtitle: 'Writes TomString (choiceChips)',
+          child: _buildChoiceChips(),
         ),
       ],
     );
@@ -148,146 +258,321 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('Side-by-side presentation of every single- and '
-                'multi-select flavour against one shared source.'),
-            const _Bullet('Right-hand inspector shows the bound observable '
-                'for each variant — confirms single-select writes through '
-                'TomString and multi-select through TomList<TomString>.'),
-            const _Bullet('Toggle the source between the full list and a '
-                'filtered view to verify source observability.'),
-            const _Bullet('Placeholder tiles until Phase 2 lands the '
-                'concrete widgets — the scaffold already holds the right '
-                'observables so swapping in the real widgets is a one-line '
-                'edit per tile.'),
+            const _Bullet(
+                'Every single- and multi-select flavour renders against '
+                'one shared TomSelectableSource<String>.'),
+            const _Bullet(
+                'Each variant is wired to the Phase 2 binding shape: '
+                'multi-select → TomList<TomString>, single-select → '
+                'TomString. The right-hand inspector shows every write '
+                'live and keeps a change log so the shape is obvious.'),
+            const _Bullet(
+                'Switch "Filtered source" to swap the shared source '
+                'between the full catalogue and a 2-item subset at '
+                'runtime — demonstrates source observability and verifies '
+                'invalid selections are dropped on shrink.'),
+            const _Bullet(
+                'Material widgets act as stand-ins; Phase 2 drops in '
+                'TomFormString{FilterChips,MultiCheckbox,Segmented,'
+                'RadioGroup,ChoiceChips} one line per block.'),
           ],
         ),
       ),
     );
   }
 
-  Widget _sourceToggleCard(BuildContext context) {
+  Widget _buildSourceToggleCard(BuildContext context) {
     return Card(
       child: SwitchListTile(
         dense: true,
         title: const Text('Filtered source'),
-        subtitle: Text(
-          _filteredSource
-              ? 'Showing: tech, healthcare'
-              : 'Showing: tech, finance, healthcare, manufacturing, retail, other',
-        ),
-        value: _filteredSource,
-        onChanged: (v) => setState(() => _filteredSource = v),
+        subtitle: Text(_useFiltered
+            ? 'Active: 2-item subset (tech, healthcare)'
+            : 'Active: full 6-item catalogue'),
+        value: _useFiltered,
+        onChanged: _toggleSource,
       ),
     );
   }
 
-  Widget _pendingVariant(
-      BuildContext context, String className, String note) {
+  Widget _variantCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
     final theme = Theme.of(context);
     return Card(
-      color: theme.colorScheme.surface,
+      margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                const Icon(Icons.pending_outlined, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    className,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                Chip(
-                  label: const Text('Phase 2', style: TextStyle(fontSize: 11)),
-                  visualDensity: VisualDensity.compact,
-                  backgroundColor: theme.colorScheme.secondaryContainer,
-                ),
-              ],
+            Text(
+              title,
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontFamily: 'monospace'),
             ),
-            const SizedBox(height: 4),
-            Text(note, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final opt in _options)
-                  Chip(
-                    label: Text(opt, style: const TextStyle(fontSize: 11)),
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall,
             ),
+            const SizedBox(height: 8),
+            child,
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoColumn(BuildContext context) {
-    return InfoPanel(
-      title: 'Bound values',
-      children: [
-        TomMultiObservableBuilder(
-          observables: [
-            _filterChips,
-            _multiCheckbox,
-            _segmented,
-            _radioGroup,
-            _choiceChips,
+  // --- Variant builders ----------------------------------------------------
+
+  Widget _buildFilterChips() {
+    return TomMultiObservableBuilder(
+      observables: [_filterChipsSelection],
+      builder: (context) {
+        final sel = _selected(_filterChipsSelection);
+        return Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final item in _items)
+              FilterChip(
+                label: Text(item.label),
+                selected: sel.contains(item.value),
+                onSelected: (on) =>
+                    _toggleMulti(_filterChipsSelection, item.value, on),
+              ),
           ],
-          builder: (context) {
-            final rows = [
-              ('filterChips', _list(_filterChips)),
-              ('multiCheckbox', _list(_multiCheckbox)),
-              ('segmented', _segmented.get()),
-              ('radioGroup', _radioGroup.get()),
-              ('choiceChips', _choiceChips.get()),
-            ];
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final (name, value) in rows)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 110,
-                          child: Text(
-                            name,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ),
-                        Expanded(
-                          child: Text(
-                            value.isEmpty ? '—' : value,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(fontFamily: 'monospace'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            );
-          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMultiCheckbox() {
+    return TomMultiObservableBuilder(
+      observables: [_multiCheckboxSelection],
+      builder: (context) {
+        final sel = _selected(_multiCheckboxSelection);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final item in _items)
+              CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(item.label),
+                value: sel.contains(item.value),
+                onChanged: (v) => _toggleMulti(
+                    _multiCheckboxSelection, item.value, v ?? false),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSegmented() {
+    return TomMultiObservableBuilder(
+      observables: [_segmented],
+      builder: (context) {
+        if (_items.isEmpty) return const SizedBox.shrink();
+        final value = _segmented.get();
+        final selected =
+            _items.any((i) => i.value == value) ? {value} : <String>{};
+        return SegmentedButton<String>(
+          segments: [
+            for (final item in _items)
+              ButtonSegment<String>(
+                value: item.value,
+                label: Text(item.label, style: const TextStyle(fontSize: 12)),
+              ),
+          ],
+          selected: selected,
+          emptySelectionAllowed: true,
+          showSelectedIcon: false,
+          onSelectionChanged: (s) => _segmented | (s.isEmpty ? '' : s.first),
+        );
+      },
+    );
+  }
+
+  Widget _buildRadioGroup() {
+    return TomMultiObservableBuilder(
+      observables: [_radioGroup],
+      builder: (context) {
+        final value = _radioGroup.get();
+        return RadioGroup<String>(
+          groupValue: value.isEmpty ? null : value,
+          onChanged: (v) => _radioGroup | (v ?? ''),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final item in _items)
+                RadioListTile<String>(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(item.label),
+                  value: item.value,
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildChoiceChips() {
+    return TomMultiObservableBuilder(
+      observables: [_choiceChips],
+      builder: (context) {
+        final value = _choiceChips.get();
+        return Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            for (final item in _items)
+              ChoiceChip(
+                label: Text(item.label),
+                selected: value == item.value,
+                onSelected: (on) => _choiceChips | (on ? item.value : ''),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- Info column ---------------------------------------------------------
+
+  Widget _buildInfoColumn(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InfoPanel(
+          title: 'Live bindings',
+          children: [_buildBindingsTable(context)],
+        ),
+        const SizedBox(height: 12),
+        InfoPanel(
+          title: 'Change log',
+          children: [_buildLog(context)],
         ),
       ],
     );
   }
 
-  static String _list(TomList<TomString> list) =>
-      '[${list.toList().map((e) => e.get()).join(", ")}]';
+  Widget _buildBindingsTable(BuildContext context) {
+    return TomMultiObservableBuilder(
+      observables: [
+        _filterChipsSelection,
+        _multiCheckboxSelection,
+        _segmented,
+        _radioGroup,
+        _choiceChips,
+      ],
+      builder: (context) {
+        final theme = Theme.of(context);
+        final rows = [
+          ('filterChips', _listLabel(_filterChipsSelection)),
+          ('multiCheckbox', _listLabel(_multiCheckboxSelection)),
+          ('segmented', _segmented.get()),
+          ('radioGroup', _radioGroup.get()),
+          ('choiceChips', _choiceChips.get()),
+        ];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (name, value) in rows)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 110,
+                      child: Text(
+                        name,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        value.isEmpty ? '—' : value,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(fontFamily: 'monospace'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLog(BuildContext context) {
+    final theme = Theme.of(context);
+    if (_log.isEmpty) {
+      return Text(
+        'No writes yet — tap any variant to log a binding update.',
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 260),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: _log.length,
+        itemBuilder: (context, i) {
+          final e = _log[i];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _stamp(e.timestamp),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                SizedBox(
+                  width: 92,
+                  child: Text(
+                    e.variant,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    e.value.isEmpty ? '—' : e.value,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  static String _stamp(DateTime t) {
+    String p(int n, [int w = 2]) => n.toString().padLeft(w, '0');
+    return '${p(t.hour)}:${p(t.minute)}:${p(t.second)}.${p(t.millisecond, 3)}';
+  }
 }
 
 class _Bullet extends StatelessWidget {

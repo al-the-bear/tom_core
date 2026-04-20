@@ -81,9 +81,16 @@ void main() {
       (tester) async {
     await openDemo(tester, 'Demo E: Selection Variants');
     expect(find.text('Demo E — Selection Variants'), findsOneWidget);
-    // Placeholder tiles for each variant call the spec-aligned class name.
-    expect(find.text('TomFormStringFilterChips'), findsOneWidget);
-    expect(find.text('TomFormStringChoiceChips'), findsOneWidget);
+    // Each variant card has a spec-class title with a subtitle that names
+    // its binding shape. Verify both the multi-select and single-select
+    // flavours render + the live bindings panel is active.
+    expect(
+        find.text('TomFormStringFilterChips — multi-select'), findsOneWidget);
+    expect(
+        find.text('TomFormStringChoiceChips — single-select'), findsOneWidget);
+    expect(find.text('Live bindings'), findsOneWidget);
+    // The shared source supplies six labels to every variant section.
+    expect(find.text('Technology'), findsWidgets);
   });
 
   testWidgets('Demo F opens with the boolean-variants scaffold',
