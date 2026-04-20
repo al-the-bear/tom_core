@@ -205,6 +205,43 @@ void main() {
             'r2 inherits r1\'s gapBefore; r2\'s own gapBefore is dropped.');
   });
 
+  testWidgets(
+      'hidden component using default append gap carries the default forward',
+      (tester) async {
+    // Default append gap = 8 (ACL's built-in default). `a` and `b` both
+    // use the default. Hiding `b` must NOT collapse the gap between `a`
+    // and the next visible component (`c`) — the default gap travels.
+    final acl = AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(const _AuthBox(
+          tomId: 'a',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .append(const _AuthBox(
+          tomId: 'b',
+          effectiveAuthState: TomAuthState.none,
+        ))
+        .setPSize(40, 40)
+        .append(const _AuthBox(
+          tomId: 'c',
+          effectiveAuthState: TomAuthState.full,
+        ))
+        .setPSize(40, 40)
+        .build();
+
+    await pumpAcl(tester, acl);
+
+    expect(_hasBox(tester, 'b'), isFalse);
+    final aLeft = _topLeftOf(tester, 'a');
+    final cLeft = _topLeftOf(tester, 'c');
+    // a ends at aLeft.dx + 40. b's (default=8) gapBefore is carried to c;
+    // c's own default gap is dropped. c sits at a.right + 8.
+    expect(cLeft.dx, closeTo(aLeft.dx + 40 + 8, 0.5),
+        reason:
+            'Default-gap carry must preserve the row\'s default append gap.');
+  });
+
   testWidgets('flag off (default): component still renders in place',
       (tester) async {
     final acl = AclBuilder()

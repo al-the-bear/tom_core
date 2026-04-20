@@ -220,13 +220,20 @@ class AclComponent {
     this.hideUnauthorized,
   });
 
-  /// Returns a copy with [gapBefore] replaced.
-  AclComponent copyWithGapBefore(double newGap) {
+  /// Returns a copy with `gapBefore` / `gapBeforeIsDefault` replaced. Used
+  /// by the hide-unauthorized pass when it carries a hidden component's
+  /// effective gap onto the next visible component — the default-flag
+  /// needs to travel with the literal value so the row's breakpoint-
+  /// resolved default still applies at render time.
+  AclComponent copyWithGapBefore(
+    double newGap, {
+    bool gapBeforeIsDefault = false,
+  }) {
     return AclComponent(
       child: child,
       flags: flags,
       gapBefore: newGap,
-      gapBeforeIsDefault: false,
+      gapBeforeIsDefault: gapBeforeIsDefault,
       gapWeight: gapWeight,
       preferredSize: preferredSize,
       minimumSize: minimumSize,
@@ -1297,13 +1304,18 @@ class _AclContainerState extends State<AclContainer> {
       final keepers = <AclComponent>[];
       bool inheritNextGap = false;
       double pendingGap = 0;
+      bool pendingGapIsDefault = false;
       for (final comp in row.components) {
         final hide = _shouldHide(comp, containerDefault);
         if (hide) {
           if (!inheritNextGap) {
             // First hidden in a chain — preserve its gapBefore for the
-            // next visible component.
+            // next visible component. Keep the default-flag so a
+            // component that was using the row's breakpoint-resolved
+            // default gap continues to use it instead of collapsing to
+            // a literal 0.
             pendingGap = comp.gapBefore;
+            pendingGapIsDefault = comp.gapBeforeIsDefault;
           }
           // Either way: the next visible component's own gapBefore is
           // "the gap after this hidden component" → drop it.
@@ -1311,9 +1323,13 @@ class _AclContainerState extends State<AclContainer> {
           continue;
         }
         if (inheritNextGap) {
-          keepers.add(comp.copyWithGapBefore(pendingGap));
+          keepers.add(comp.copyWithGapBefore(
+            pendingGap,
+            gapBeforeIsDefault: pendingGapIsDefault,
+          ));
           inheritNextGap = false;
           pendingGap = 0;
+          pendingGapIsDefault = false;
         } else {
           keepers.add(comp);
         }
