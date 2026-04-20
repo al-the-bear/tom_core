@@ -277,68 +277,120 @@ Widget buildComplexFormPane({
   required ProjectBriefForm form,
   required ProjectBrief state,
 }) {
-  // --- Style presets -------------------------------------------------------
-  const border1 = OutlineInputBorder(borderSide: BorderSide(width: 1));
-  const border3 = OutlineInputBorder(borderSide: BorderSide(width: 3));
-  final errorBorder1 = OutlineInputBorder(
+  // --- Style presets ------------------------------------------------------
+  //
+  // The five bands are intentionally spread across orthogonal visual axes
+  // so the transition is unmistakable: label placement (floating vs above),
+  // border kind (outline vs underline), border thickness (1 / 2 / 3 px),
+  // and font size.
+  //
+  //  ≥ 1600 → bordered  — floating labels + outlined + error-icon shown
+  //  ≥ 1200 → normal3px — labels above + chunky 3 px outline + bigger labels
+  //  ≥  800 → smaller   — labels above + default (underline) + smaller fonts
+  //  ≥  400 → compact1  — compact preset + thin 1 px outline
+  //  <  400 → compact0  — compact preset, no explicit border (underline fallback)
+
+  const outline1 = OutlineInputBorder(borderSide: BorderSide(width: 1));
+  const outline1Focus = OutlineInputBorder(
+    borderSide: BorderSide(width: 1.5),
+  );
+  const outline3 = OutlineInputBorder(borderSide: BorderSide(width: 3));
+  final errorOutline1 = OutlineInputBorder(
     borderSide: BorderSide(width: 1, color: Colors.red.shade700),
   );
-  final errorBorder3 = OutlineInputBorder(
+  final errorOutline3 = OutlineInputBorder(
     borderSide: BorderSide(width: 3, color: Colors.red.shade700),
   );
 
-  final compact1px = TomFormStyle.compact.copyWith(
+  final compact0 = TomFormStyle.compact;
+  final compact1 = TomFormStyle.compact.copyWith(
     defaults: TomFormStyle.compact.defaults.copyWith(
-      fieldBorder: border1,
-      focusedBorder: border1,
-      errorBorder: errorBorder1,
+      fieldBorder: outline1,
+      focusedBorder: outline1Focus,
+      errorBorder: errorOutline1,
+      borderRadius: 4,
     ),
   );
-  final smallerFonts = TomFormStyle.material3.copyWith(
+  final smaller = TomFormStyle.material3.copyWith(
     defaults: TomFormStyle.material3.defaults.copyWith(
-      labelStyle: const TextStyle(fontSize: 11),
+      labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
       inputStyle: const TextStyle(fontSize: 12),
       hintStyle: const TextStyle(fontSize: 11),
       descriptionStyle: const TextStyle(fontSize: 10),
-      fieldBorder: border1,
-      focusedBorder: border1,
+      // No explicit border → Flutter TextField default = underline.
     ),
   );
-  final normal3px = TomFormStyle.material3.copyWith(
+  final normal3 = TomFormStyle.material3.copyWith(
     defaults: TomFormStyle.material3.defaults.copyWith(
-      fieldBorder: border3,
-      focusedBorder: border3,
-      errorBorder: errorBorder3,
+      fieldBorder: outline3,
+      focusedBorder: outline3,
+      errorBorder: errorOutline3,
+      labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      inputStyle: const TextStyle(fontSize: 15),
+      borderRadius: 6,
     ),
   );
   final bordered = TomFormStyle.bordered;
 
-  // --- Theme presets -------------------------------------------------------
-  ThemeData mk(Color seed, {String? fontFamily}) => ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: seed),
-        useMaterial3: true,
-        fontFamily: fontFamily,
-      );
-  final orangeMono = mk(Colors.deepOrange, fontFamily: 'monospace');
-  final indigoMono = mk(Colors.indigo, fontFamily: 'monospace');
-  final purpleRoboto = mk(Colors.purple);
-  final tealSerif = mk(Colors.teal, fontFamily: 'Georgia');
-  final blueSerif = mk(Colors.blue, fontFamily: 'Georgia');
+  // --- Theme presets ------------------------------------------------------
+  //
+  // Colour palette, font family, and a baseline font-size shift all change
+  // per band so the theme swap is visible on text, card, and border alike.
+  // We re-scale a handful of TextTheme entries explicitly rather than going
+  // through `.apply(fontSizeFactor: ...)` because the latter asserts when
+  // any entry in the TextTheme has `fontSize == null` (which Material 3's
+  // Typography does for several display styles).
+  ThemeData mk({
+    required Color seed,
+    String? fontFamily,
+    double bodySize = 14,
+  }) {
+    final base = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: seed),
+      useMaterial3: true,
+      fontFamily: fontFamily,
+    );
+    TextStyle scale(TextStyle? s, double size) =>
+        (s ?? const TextStyle()).copyWith(fontSize: size);
+    return base.copyWith(
+      textTheme: base.textTheme.copyWith(
+        bodySmall: scale(base.textTheme.bodySmall, bodySize - 2),
+        bodyMedium: scale(base.textTheme.bodyMedium, bodySize),
+        bodyLarge: scale(base.textTheme.bodyLarge, bodySize + 2),
+        labelSmall: scale(base.textTheme.labelSmall, bodySize - 3),
+        labelMedium: scale(base.textTheme.labelMedium, bodySize - 2),
+        labelLarge: scale(base.textTheme.labelLarge, bodySize - 1),
+        titleSmall: scale(base.textTheme.titleSmall, bodySize + 1),
+        titleMedium: scale(base.textTheme.titleMedium, bodySize + 3),
+        titleLarge: scale(base.textTheme.titleLarge, bodySize + 6),
+      ),
+    );
+  }
+
+  final orangeMonoXs =
+      mk(seed: Colors.deepOrange, fontFamily: 'monospace', bodySize: 11);
+  final indigoMonoS =
+      mk(seed: Colors.indigo, fontFamily: 'monospace', bodySize: 12);
+  final purpleSans = mk(seed: Colors.purple, bodySize: 14);
+  final tealSerifL =
+      mk(seed: Colors.teal, fontFamily: 'serif', bodySize: 16);
+  final blueSerifXl =
+      mk(seed: Colors.blue, fontFamily: 'serif', bodySize: 18);
 
   return TomFormStyleScope(
-    style: compact1px,
+    style: compact0,
     styleBpOverrides: [
-      (400, compact1px),
-      (800, smallerFonts),
-      (1200, normal3px),
+      (400, compact1),
+      (800, smaller),
+      (1200, normal3),
       (1600, bordered),
     ],
-    theme: orangeMono,
+    theme: orangeMonoXs,
     themeBpOverrides: [
-      (400, indigoMono),
-      (800, purpleRoboto),
-      (1200, tealSerif),
-      (1600, blueSerif),
+      (400, indigoMonoS),
+      (800, purpleSans),
+      (1200, tealSerifL),
+      (1600, blueSerifXl),
     ],
     child: _ComplexFormBody(form: form, state: state),
   );
@@ -493,15 +545,29 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String text) => Padding(
-        padding: const EdgeInsets.only(top: 12, bottom: 6),
+  Widget _sectionTitle(BuildContext context, String text) {
+    final theme = Theme.of(context);
+    // Colour-filled title block so the theme palette + font family +
+    // textTheme scale are all unmistakable in the non-Card sections too.
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Text(
           text,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.onPrimaryContainer,
+            fontWeight: FontWeight.w700,
+            fontFamily: theme.textTheme.titleSmall?.fontFamily,
+          ),
         ),
-      );
+      ),
+    );
+  }
 
   Widget _priorityWidget(bool segmented) {
     // When wide → render priority as an inline SegmentedButton driving the
