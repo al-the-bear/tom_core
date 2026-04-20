@@ -1946,7 +1946,16 @@ class _AclContainerState extends State<AclContainer> {
 
       final selfPoint = _verticalPoint(adjSelfRect, comp.alignYFrom!);
       final refPoint = _verticalPoint(adjRefRect, comp.alignYTo!);
-      final delta = (refPoint - comp.alignYGap) - selfPoint;
+      // Gap convention: positive gap always pushes self further AWAY from
+      // the reference edge; negative gap pulls it in (overlap). The sign
+      // therefore depends on which side of the reference self lands on.
+      //   self.top  → ref.bottom : self is below → +gap pushes down
+      //   self.bottom → ref.top : self is above → +gap pushes up
+      //   same-ordinal alignments (e.g. TopToTop) preserve the historical
+      //   -gap convention so existing call-sites keep behaving the same.
+      final signedGap =
+          _gapSignY(comp.alignYFrom!, comp.alignYTo!) * comp.alignYGap;
+      final delta = (refPoint + signedGap) - selfPoint;
       verticalDeltas[i] = delta;
     }
 
@@ -2036,7 +2045,12 @@ class _AclContainerState extends State<AclContainer> {
     final selfPoint =
         plannedX + _horizontalOffset(comp.alignXFrom!, widthEstimate);
     final targetPoint = _horizontalPoint(refRect, comp.alignXTo!);
-    return (targetPoint - comp.alignXGap) - selfPoint;
+    // See _gapSignY for the convention — mirrored on the X axis:
+    //   self.left → ref.right : self is right of ref → +gap pushes right
+    //   self.right → ref.left : self is left of ref → +gap pushes left
+    //   same-ordinal alignments keep the historical -gap convention.
+    final signedGap = _gapSignX(comp.alignXFrom!, comp.alignXTo!) * comp.alignXGap;
+    return (targetPoint + signedGap) - selfPoint;
   }
 
   Widget _buildSeparatorWidget(AclSeparator separator) {
@@ -2597,6 +2611,40 @@ class _AclContainerState extends State<AclContainer> {
     AclAxisPointY.center => rect.center.dy,
     AclAxisPointY.bottom => rect.bottom,
   };
+
+  int _ordinalY(AclAxisPointY p) => switch (p) {
+    AclAxisPointY.top => 0,
+    AclAxisPointY.center => 1,
+    AclAxisPointY.bottom => 2,
+  };
+
+  int _ordinalX(AclAxisPointX p) => switch (p) {
+    AclAxisPointX.left => 0,
+    AclAxisPointX.center => 1,
+    AclAxisPointX.right => 2,
+  };
+
+  /// Direction multiplier for `gap` on Y-axis alignments.
+  /// +1 when self lands below ref (e.g. TopToBottom) — positive gap pushes down.
+  /// -1 when self lands above ref (e.g. BottomToTop) — positive gap pushes up.
+  /// -1 (preserving legacy behaviour) for same-ordinal alignments where no
+  ///   obvious "away" direction exists (TopToTop, CenterToCenter, BottomToBottom).
+  double _gapSignY(AclAxisPointY self, AclAxisPointY ref) {
+    final s = _ordinalY(self);
+    final r = _ordinalY(ref);
+    if (s < r) return 1.0;
+    if (s > r) return -1.0;
+    return -1.0;
+  }
+
+  /// Direction multiplier for `gap` on X-axis alignments — mirror of _gapSignY.
+  double _gapSignX(AclAxisPointX self, AclAxisPointX ref) {
+    final s = _ordinalX(self);
+    final r = _ordinalX(ref);
+    if (s < r) return 1.0;
+    if (s > r) return -1.0;
+    return -1.0;
+  }
 
   double _horizontalOffset(AclAxisPointX point, double width) =>
       switch (point) {

@@ -727,6 +727,190 @@ void main() {
       expect(find.text('Right'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('alignTopToBottom places follower edge-flush with no gap',
+        (tester) async {
+      const anchorKey = ValueKey('acl-tb-anchor');
+      const followerKey = ValueKey('acl-tb-follower');
+      final anchor = Container(
+        key: anchorKey,
+        color: const Color(0xFFE64A19),
+        width: 160,
+        height: 64,
+      );
+      final follower = Container(
+        key: followerKey,
+        color: const Color(0xFF004D40),
+        width: 160,
+        height: 36,
+      );
+      final acl = AclBuilder()
+          .append(anchor)
+          .setPSize(160, 64)
+          .append(const SizedBox(width: 24))
+          .append(follower)
+          .setPSize(160, 36)
+          .alignTopToBottom(anchor)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 500, height: 200, child: acl),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final followerRect = tester.getRect(find.byKey(followerKey));
+
+      expect(followerRect.top, closeTo(anchorRect.bottom, 0.5),
+          reason: 'follower.top should equal anchor.bottom (edge-flush)');
+      expect(tester.takeException(), isNull,
+          reason: 'no overflow expected');
+    });
+
+    testWidgets('alignBottomToTop places follower edge-flush with no gap',
+        (tester) async {
+      const anchorKey = ValueKey('acl-bt-anchor');
+      const followerKey = ValueKey('acl-bt-follower');
+      final anchor = Container(
+        key: anchorKey,
+        color: const Color(0xFF607D8B),
+        width: 160,
+        height: 64,
+      );
+      final follower = Container(
+        key: followerKey,
+        color: const Color(0xFF6A1B9A),
+        width: 160,
+        height: 36,
+      );
+      final acl = AclBuilder()
+          .append(anchor)
+          .setPSize(160, 64)
+          .append(const SizedBox(width: 24))
+          .append(follower)
+          .setPSize(160, 36)
+          .alignBottomToTop(anchor)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 500, height: 200, child: acl),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final followerRect = tester.getRect(find.byKey(followerKey));
+
+      expect(followerRect.bottom, closeTo(anchorRect.top, 0.5),
+          reason: 'follower.bottom should equal anchor.top (edge-flush)');
+      expect(tester.takeException(), isNull,
+          reason: 'no overflow expected');
+    });
+
+    testWidgets(
+        'alignTopToBottom gap>0 pushes follower further down; gap<0 overlaps',
+        (tester) async {
+      const anchorKey = ValueKey('acl-tb-anchor-gap');
+      const pushKey = ValueKey('acl-tb-push');
+      const overlapKey = ValueKey('acl-tb-overlap');
+      final anchor = Container(
+        key: anchorKey, color: const Color(0xFFE64A19),
+        width: 160, height: 56,
+      );
+      final pushFollower = Container(
+        key: pushKey, color: const Color(0xFF2E7D32),
+        width: 160, height: 32,
+      );
+      final overlapFollower = Container(
+        key: overlapKey, color: const Color(0xFF00796B),
+        width: 160, height: 32,
+      );
+      final acl = AclBuilder()
+          .append(anchor).setPSize(160, 56)
+          .append(const SizedBox(width: 12))
+          .append(pushFollower).setPSize(160, 32)
+          .alignTopToBottom(anchor, gap: 12)
+          .append(const SizedBox(width: 12))
+          .append(overlapFollower).setPSize(160, 32)
+          .alignTopToBottom(anchor, gap: -12)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 700, height: 200, child: acl),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final pushRect = tester.getRect(find.byKey(pushKey));
+      final overlapRect = tester.getRect(find.byKey(overlapKey));
+
+      expect(pushRect.top, closeTo(anchorRect.bottom + 12, 0.5),
+          reason: 'gap: 12 should sit 12 px BELOW anchor bottom');
+      expect(overlapRect.top, closeTo(anchorRect.bottom - 12, 0.5),
+          reason: 'gap: -12 should overlap anchor bottom by 12 px');
+    });
+
+    testWidgets(
+        'alignBottomToTop gap>0 pushes follower further up; gap<0 overlaps',
+        (tester) async {
+      const anchorKey = ValueKey('acl-bt-anchor-gap');
+      const pushKey = ValueKey('acl-bt-push');
+      const overlapKey = ValueKey('acl-bt-overlap');
+      final anchor = Container(
+        key: anchorKey, color: const Color(0xFF607D8B),
+        width: 160, height: 56,
+      );
+      final pushFollower = Container(
+        key: pushKey, color: const Color(0xFF6A1B9A),
+        width: 160, height: 32,
+      );
+      final overlapFollower = Container(
+        key: overlapKey, color: const Color(0xFF4E342E),
+        width: 160, height: 32,
+      );
+      final acl = AclBuilder()
+          .append(anchor).setPSize(160, 56)
+          .append(const SizedBox(width: 12))
+          .append(pushFollower).setPSize(160, 32)
+          .alignBottomToTop(anchor, gap: 12)
+          .append(const SizedBox(width: 12))
+          .append(overlapFollower).setPSize(160, 32)
+          .alignBottomToTop(anchor, gap: -12)
+          .build();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(width: 700, height: 200, child: acl),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      final anchorRect = tester.getRect(find.byKey(anchorKey));
+      final pushRect = tester.getRect(find.byKey(pushKey));
+      final overlapRect = tester.getRect(find.byKey(overlapKey));
+
+      expect(pushRect.bottom, closeTo(anchorRect.top - 12, 0.5),
+          reason: 'gap: 12 should sit 12 px ABOVE anchor top');
+      expect(overlapRect.bottom, closeTo(anchorRect.top + 12, 0.5),
+          reason: 'gap: -12 should overlap anchor top by 12 px');
+    });
   });
 
   group('AclBuilder row height (Phase 5)', () {
