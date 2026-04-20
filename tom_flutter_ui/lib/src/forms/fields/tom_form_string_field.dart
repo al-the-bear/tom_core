@@ -443,10 +443,18 @@ class _TomFormStringDropdownWidgetState
       style.borderWidth,
     );
 
+    // Same floatingLabelStyle scaling policy as TomFormStringInput — see the
+    // comment on its InputDecoration for the full reasoning.
+    const floatScale = 0.75;
+    final labelFontSize = style.labelStyle?.fontSize;
+    final floatingLabelStyle = style.labelStyle?.copyWith(
+      fontSize: labelFontSize != null ? labelFontSize * floatScale : null,
+    );
+
     final baseDecoration = InputDecoration(
       labelText: floatingLabel,
       labelStyle: style.labelStyle,
-      floatingLabelStyle: style.labelStyle,
+      floatingLabelStyle: floatingLabelStyle,
       hintText: effectiveHint,
       contentPadding: style.fieldContentPadding,
       border: fieldBorder,
