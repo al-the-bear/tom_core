@@ -17,7 +17,11 @@ class ComplexLayoutDemo extends StatelessWidget {
         ResizableBox(
           initialHeight: 400,
           child: AclBuilder()
-              .setAclScrollableY()
+              // setAclScrollableY is intentionally NOT used here — it would
+              // make the ACL's Column scrollable, which in turn disables
+              // expandY (scrollable rows can't grow into unbounded vertical
+              // space). The List Area + Details Panel below rely on expandY
+              // to fill the 400 px viewport.
               .setAclPadding(const EdgeInsets.all(8))
               .append(
                 const Text(

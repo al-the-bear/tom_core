@@ -1025,6 +1025,19 @@ class _AclContainerState extends State<AclContainer> {
         c.expandX ||
         c.alignXToKey != null;
 
+    // For the SHRINK phase we include expandX components so they shrink
+    // alongside everyone else toward their minimum. In the grow phase
+    // they stay out (expandXWidths handles surplus) but once the row is
+    // tighter than natural width, treating expandX the same as any other
+    // component avoids it collapsing to 0 before the non-expandX
+    // neighbours start shrinking.
+    bool skipForShrink(AclComponent c) =>
+        c.isGap ||
+        c.child is Flexible ||
+        c.child is Expanded ||
+        c.child is Spacer ||
+        c.alignXToKey != null;
+
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
       if (skip(comp)) continue;
@@ -1078,7 +1091,32 @@ class _AclContainerState extends State<AclContainer> {
     final extraLeft = minHX < 0 ? -minHX : 0.0;
     final naturalWidth = maxHX + extraLeft;
 
-    if (naturalWidth <= availableWidth) {
+    // Extend natural width to include expandX components' preferred widths
+    // (+ the gap before each). The top loop skips expandX so the row is
+    // considered to "fit" even when the expandX preferred widths wouldn't.
+    // Including them here makes the grow/shrink split respect the
+    // caller's preferred widths for every component, not just the
+    // non-expandX subset — so shrinking kicks in at the right threshold
+    // and expandX joins the shrink distribution from the first pixel of
+    // deficit.
+    double naturalWithExpandX = naturalWidth;
+    final expandXPrefs = <int, double>{};
+    for (int i = 0; i < row.components.length; i++) {
+      final comp = row.components[i];
+      if (!comp.expandX || comp.isGap) continue;
+      if (comp.child is Flexible ||
+          comp.child is Expanded ||
+          comp.child is Spacer) continue;
+      final pref = comp.preferredSize?.width ??
+          comp.minimumSize?.width ??
+          _naturalWidth(comp) ??
+          0.0;
+      expandXPrefs[i] = pref;
+      naturalWithExpandX +=
+          pref + aclEffectiveGapBefore(comp, row, availableWidth);
+    }
+
+    if (naturalWithExpandX <= availableWidth) {
       // ── Grow phase ─────────────────────────────────────────────────────
       // When there is an expandX (or gap) in the row, non-expandX components
       // stay pinned at their preferred size — surplus flows to the expandX
@@ -1114,9 +1152,36 @@ class _AclContainerState extends State<AclContainer> {
                   : 0.0);
         }
 
+        // alignX*-positioned components were excluded from `naturalWidth`
+        // (they're placed by cross-row alignment, not sequentially) but
+        // they still occupy horizontal space in the row. Count their
+        // preferred widths + the gap that precedes them, otherwise the
+        // non-aligned growable components would over-grow and push the
+        // row past `availableWidth`, producing a visible RenderFlex
+        // overflow on layouts like reference_constraints /
+        // comprehensive_form.
+        double alignedOccupiedWidth = 0;
+        for (int i = 0; i < row.components.length; i++) {
+          final comp = row.components[i];
+          if (comp.alignXToKey == null) continue;
+          if (comp.isGap) continue;
+          if (comp.child is Flexible ||
+              comp.child is Expanded ||
+              comp.child is Spacer) continue;
+          final pref = comp.preferredSize?.width ??
+              comp.minimumSize?.width ??
+              _naturalWidth(comp) ??
+              0.0;
+          alignedOccupiedWidth +=
+              pref + aclEffectiveGapBefore(comp, row, availableWidth);
+        }
+
         double surplus = math.max(
           0.0,
-          availableWidth - naturalWidth - naturalExcludedWidth,
+          availableWidth -
+              naturalWidth -
+              naturalExcludedWidth -
+              alignedOccupiedWidth,
         );
         if (surplus < 1) return null;
 
@@ -1182,15 +1247,24 @@ class _AclContainerState extends State<AclContainer> {
     // Components shrink from preferred towards minimum. When no explicit
     // minimumSize is set the floor is 0 — NOT preferredSize — so that
     // auto-defaulted components (150×0) can still participate in shrinking.
-    final deficit = naturalWidth - availableWidth;
+    //
+    // expandX components participate in the shrink phase too: once the
+    // row is tighter than natural width they shrink alongside everyone
+    // else, proportionally to (pref − min). Otherwise expandX would
+    // collapse to 0 (via _computeRowLayout's expandPool clamp) long
+    // before the non-expandX neighbours start giving up space.
+    final deficit = naturalWithExpandX - availableWidth;
+    if (deficit < 1) return null;
+
     double shrinkCap = 0;
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
-      if (skip(comp)) continue;
+      if (skipForShrink(comp)) continue;
       if (comp.useOtherDimX) continue;
+      final pref = expandXPrefs[i] ?? prefWidths[i] ?? 0.0;
       shrinkCap += math.max(
         0.0,
-        (prefWidths[i] ?? 0) - (comp.minimumSize?.width ?? 0),
+        pref - (comp.minimumSize?.width ?? 0),
       );
     }
     if (shrinkCap < 1) return null;
@@ -1199,10 +1273,10 @@ class _AclContainerState extends State<AclContainer> {
     final fitted = <int, double>{};
     for (int i = 0; i < row.components.length; i++) {
       final comp = row.components[i];
-      if (skip(comp)) continue;
+      if (skipForShrink(comp)) continue;
       if (comp.useOtherDimX) continue;
       if (comp.preferredSize == null && comp.minimumSize == null) continue;
-      final pref = prefWidths[i] ?? 0.0;
+      final pref = expandXPrefs[i] ?? prefWidths[i] ?? 0.0;
       final min = comp.minimumSize?.width ?? 0.0;
       fitted[i] = pref - math.max(0.0, pref - min) * ratio;
     }
@@ -1778,8 +1852,19 @@ class _AclContainerState extends State<AclContainer> {
     // offsets.  Without this, cross-row alignRightToRight references to
     // components on the right of an expandX field would see the preferred
     // width instead of the actual expanded width, producing wrong deltas.
+    //
+    // Skip the expandX surplus-distribution entirely when the shrink phase
+    // has already produced fitted widths for expandX components (row is
+    // narrower than natural) — they're shrinking proportionally toward
+    // their minimum via `fittedWidths`, not growing.
+    final rowIsShrinking = row.components.any(
+      (c) => c.expandX && !c.isGap && fittedWidths.containsKey(
+            row.components.indexOf(c),
+          ),
+    );
     final expandXWidths = <int, double>{};
-    if (availableWidth != null && availableWidth.isFinite) {
+    if (!rowIsShrinking &&
+        availableWidth != null && availableWidth.isFinite) {
       double fixedWidth = 0;
       double totalExpandXFlex = 0;
       final expandXCompIndices = <int>[];
