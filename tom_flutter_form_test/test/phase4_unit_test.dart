@@ -330,6 +330,114 @@ void main() {
     });
   });
 
+  group('Phase 4 — File field validation pipeline (auto-prepended validators)',
+      () {
+    TomFormFileUpload makeFile({
+      List<String>? allowedExtensions,
+      int? maxSizeBytes,
+    }) =>
+        TomFormFileUpload(
+          'doc',
+          null,
+          picker: (_) async => null,
+          allowedExtensions: allowedExtensions,
+          maxSizeBytes: maxSizeBytes,
+        );
+
+    test('no constraints → no auto-prepended validators', () {
+      final f = makeFile();
+      expect(f.validators, isEmpty);
+    });
+
+    test('allowedExtensions auto-prepends one validator', () {
+      final f = makeFile(allowedExtensions: const ['pdf']);
+      expect(f.validators.length, 1);
+    });
+
+    test('maxSizeBytes auto-prepends one validator', () {
+      final f = makeFile(maxSizeBytes: 1024);
+      expect(f.validators.length, 1);
+    });
+
+    test('both constraints auto-prepend two validators', () {
+      final f = makeFile(allowedExtensions: const ['pdf'], maxSizeBytes: 1024);
+      expect(f.validators.length, 2);
+    });
+
+    test('user-supplied validators are appended after built-ins', () {
+      ValidationResult always(FileRef? _) => const ValidationSuccess();
+      final f = TomFormFileUpload(
+        'doc',
+        null,
+        picker: (_) async => null,
+        allowedExtensions: const ['pdf'],
+        maxSizeBytes: 1024,
+        validators: [always],
+      );
+      expect(f.validators.length, 3);
+      expect(f.validators.last, same(always));
+    });
+
+    test('null value is pristine-pass (no error from auto-prepended validators)',
+        () async {
+      final f = makeFile(allowedExtensions: const ['pdf'], maxSizeBytes: 1024);
+      final r = await f.validate();
+      expect(r, isA<ValidationSuccess>());
+    });
+
+    test('setValue(invalid extension) → validate() yields fileExtension error',
+        () async {
+      final f = makeFile(allowedExtensions: const ['pdf']);
+      f.setValue(const FileRef(name: 'bad.txt', sizeBytes: 1));
+      final r = await f.validate();
+      expect(r, isA<ValidationError>());
+      expect((r as ValidationError).errorKey, 'error.fileExtension');
+    });
+
+    test('setValue(oversize) → validate() yields fileTooLarge error',
+        () async {
+      final f = makeFile(maxSizeBytes: 1024);
+      f.setValue(const FileRef(name: 'huge.bin', sizeBytes: 2048));
+      final r = await f.validate();
+      expect(r, isA<ValidationError>());
+      expect((r as ValidationError).errorKey, 'error.fileTooLarge');
+    });
+
+    test('setValue(valid file) → validate() yields ValidationSuccess',
+        () async {
+      final f = makeFile(allowedExtensions: const ['pdf'], maxSizeBytes: 1024);
+      f.setValue(const FileRef(name: 'ok.pdf', sizeBytes: 512));
+      final r = await f.validate();
+      expect(r, isA<ValidationSuccess>());
+    });
+
+    test('extension validator runs before size validator (order preserved)',
+        () async {
+      // Both invalid → extension error wins because it's prepended first.
+      final f = makeFile(allowedExtensions: const ['pdf'], maxSizeBytes: 1024);
+      f.setValue(const FileRef(name: 'big.txt', sizeBytes: 9999));
+      final r = await f.validate();
+      expect(r, isA<ValidationError>());
+      expect((r as ValidationError).errorKey, 'error.fileExtension');
+    });
+
+    test('TomFormFileDropzone propagates auto-prepend through super-call',
+        () async {
+      final f = TomFormFileDropzone(
+        'doc',
+        null,
+        picker: (_) async => null,
+        allowedExtensions: const ['pdf'],
+        maxSizeBytes: 1024,
+      );
+      expect(f.validators.length, 2);
+      f.setValue(const FileRef(name: 'big.pdf', sizeBytes: 99999));
+      final r = await f.validate();
+      expect(r, isA<ValidationError>());
+      expect((r as ValidationError).errorKey, 'error.fileTooLarge');
+    });
+  });
+
   group('Phase 4 — FileRef value type', () {
     test('equatable + hashable on (name, size, mime)', () {
       const a = FileRef(

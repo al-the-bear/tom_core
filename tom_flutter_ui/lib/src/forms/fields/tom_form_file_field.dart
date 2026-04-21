@@ -22,6 +22,7 @@ import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import '../validation/validation_result.dart';
 import 'tom_field_widget_adapter.dart';
 
 /// Lightweight, framework-agnostic file reference. Apps may extend or
@@ -65,6 +66,32 @@ class FileRef {
 typedef FilePicker = Future<FileRef?> Function(BuildContext context);
 
 // ===========================================================================
+// Built-in file validators
+// ===========================================================================
+
+/// Returns a [Validator] that checks the file's extension against [allowed].
+/// Pristine `null` values pass. Files without an extension fail when an
+/// allow-list is configured.
+Validator<FileRef?> _fileExtensionValidator(List<String> allowed) =>
+    (FileRef? value) {
+      if (value == null) return const ValidationSuccess();
+      final dot = value.name.lastIndexOf('.');
+      final ext = dot < 0 ? '' : value.name.substring(dot + 1).toLowerCase();
+      return allowed.contains(ext)
+          ? const ValidationSuccess()
+          : const ValidationError('error.fileExtension');
+    };
+
+/// Returns a [Validator] that checks the file's size against [maxBytes].
+/// Pristine `null` values pass.
+Validator<FileRef?> _fileSizeValidator(int maxBytes) => (FileRef? value) {
+      if (value == null) return const ValidationSuccess();
+      return value.sizeBytes <= maxBytes
+          ? const ValidationSuccess()
+          : const ValidationError('error.fileTooLarge');
+    };
+
+// ===========================================================================
 // Abstract type
 // ===========================================================================
 
@@ -73,11 +100,13 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   final String? descriptionTextOverride;
 
   /// Optional list of allowed file extensions (without dot, lowercase).
-  /// Surfaced to the picker callback and used for client-side validation
-  /// after a file is returned.
+  /// Surfaced to the picker callback and used to auto-prepend a built-in
+  /// `Validator<FileRef?>` so that programmatic `setValue` paths flow
+  /// through the same validation pipeline as picker-driven selections.
   final List<String>? allowedExtensions;
 
-  /// Optional inclusive maximum file size in bytes.
+  /// Optional inclusive maximum file size in bytes. Auto-prepends a
+  /// built-in size validator (see [allowedExtensions]).
   final int? maxSizeBytes;
 
   /// Required picker callback. Called when the user activates the
@@ -85,23 +114,34 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   final FilePicker picker;
 
   TomFormFileField(
-    super.tomId,
-    super.initialValue, {
+    String tomId,
+    FileRef? initialValue, {
     required this.picker,
     this.labelTextOverride,
     this.descriptionTextOverride,
     this.allowedExtensions,
     this.maxSizeBytes,
-    super.form,
-    super.validators,
-    super.autoValidate,
+    TomForm? form,
+    List<Object> validators = const [],
+    bool autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  }) : super(
+          tomId,
+          initialValue,
+          form: form,
+          autoValidate: autoValidate,
+          validators: [
+            if (allowedExtensions != null)
+              _fileExtensionValidator(allowedExtensions),
+            if (maxSizeBytes != null) _fileSizeValidator(maxSizeBytes),
+            ...validators,
+          ],
+        );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -110,6 +150,11 @@ abstract class TomFormFileField extends TomField<FileRef?> {
 
   /// Validate the picked file against `allowedExtensions` / `maxSizeBytes`.
   /// Returns an error key string on failure, null on success.
+  ///
+  /// Used by the picker shim to show an immediate snackbar and reject the
+  /// file before it ever reaches `setValue`. The same constraints are also
+  /// auto-prepended as `Validator<FileRef?>`s, so any programmatic
+  /// `setValue(invalidFile)` will be caught by the framework pipeline.
   String? checkFile(FileRef ref) {
     if (allowedExtensions != null) {
       final dot = ref.name.lastIndexOf('.');
