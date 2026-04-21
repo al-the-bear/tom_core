@@ -59,3 +59,7 @@ export 'style/tom_cupertino_form_style.dart';
 export 'fields/cupertino/tom_cupertino_form_string_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_bool_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_string_list_field.dart';
+
+// Phase 5b — Cupertino numeric + date/time concretes
+export 'fields/cupertino/tom_cupertino_form_numeric_fields.dart';
+export 'fields/cupertino/tom_cupertino_form_date_time_fields.dart';
