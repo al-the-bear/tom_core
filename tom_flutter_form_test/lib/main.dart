@@ -35,6 +35,8 @@ import 'demos/demo_m_cupertino_basics.dart';
 import 'demos/demo_n_cupertino_numeric_datetime.dart';
 import 'demos/demo_o_cupertino_search_lookup_file.dart';
 import 'demos/demo_p_family_swap_breakpoint.dart';
+import 'demos/demo_q_auth_empty_overlay.dart';
+import 'demos/demo_r_tree_radio_infinite.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -330,6 +332,34 @@ class DemoListScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (_) => const DemoPFamilySwapBreakpoint()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 6 \u2014 Non-form custom widgets (\u00a723)'),
+          _DemoTile(
+            icon: Icons.shield_outlined,
+            title: 'Demo Q: Auth / Empty / Overlay (Phase 6)',
+            description: 'TomAuthGuard wraps a profile panel; TomEmptyState '
+                'fills an empty items pane; TomLoadingOverlay scrims the '
+                'pane during a 600 ms simulated save.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoQAuthEmptyOverlay()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.account_tree_outlined,
+            title: 'Demo R: Tree / Radio / Infinite scroll (Phase 6)',
+            description: 'TomAuthTreeView with per-node auth + inheritance; '
+                'TomRadioGroup with group-level auth; TomInfiniteScroll over '
+                'a 10 000-row source with TomSkeletonLoader + '
+                'TomErrorBoundary, including a synthetic page-fetch failure.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoRTreeRadioInfinite()),
             ),
           ),
           const SizedBox(height: 12),

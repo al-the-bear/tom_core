@@ -1,0 +1,148 @@
+/// Phase 6 backing state — Demos Q + R.
+///
+/// Demo Q (`TomAuthGuard` + `TomEmptyState` + `TomLoadingOverlay`) and
+/// Demo R (`TomAuthTreeView` + `TomRadioGroup` + `TomInfiniteScroll`)
+/// each carry small UI-state holders so the demos can stay
+/// `StatelessWidget`-friendly where convenient. The real per-tab state
+/// lives in the [DemoQController] / [DemoRController] classes below.
+library;
+
+import 'package:flutter/foundation.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+// ---------------------------------------------------------------------------
+// Demo Q — auth-guarded panel + empty list + loading overlay.
+// ---------------------------------------------------------------------------
+
+/// Per-demo auth adapter: a flat path → state map driven by the right-
+/// hand controls. Re-used by Demo R.
+class DemoPhase6AuthAdapter extends TomAuthorizationAdapter {
+  final Map<String, TomAuthState> rules = {};
+
+  @override
+  TomAuthState resolveAuth(String resourceKeyPath) =>
+      rules[resourceKeyPath] ?? TomAuthState.full;
+
+  void set(String path, TomAuthState state) {
+    if (state == TomAuthState.full) {
+      rules.remove(path);
+    } else {
+      rules[path] = state;
+    }
+  }
+}
+
+/// Light-weight controller for Demo Q. Owns:
+///
+///   * `items`: list of synthetic strings shown in the panel — start
+///     non-empty; user can clear/refill to flip the empty-state slot.
+///   * `isLoading`: drives [TomLoadingOverlay] during the fake "save".
+///   * `auth`: state of the guarded `demoQ.profile` resource.
+class DemoQController extends ChangeNotifier {
+  final List<String> _items = ['Alpha', 'Beta', 'Gamma'];
+  bool _isLoading = false;
+  TomAuthState _auth = TomAuthState.full;
+
+  List<String> get items => List.unmodifiable(_items);
+  bool get isEmpty => _items.isEmpty;
+  bool get isLoading => _isLoading;
+  TomAuthState get auth => _auth;
+
+  void clear() {
+    if (_items.isEmpty) return;
+    _items.clear();
+    notifyListeners();
+  }
+
+  void seed() {
+    _items
+      ..clear()
+      ..addAll(['Alpha', 'Beta', 'Gamma']);
+    notifyListeners();
+  }
+
+  void addOne() {
+    _items.add('Item ${_items.length + 1}');
+    notifyListeners();
+  }
+
+  void setAuth(TomAuthState state, DemoPhase6AuthAdapter adapter) {
+    _auth = state;
+    adapter.set('demoQ.profile', state);
+    notifyListeners();
+  }
+
+  /// Fake long-running save: flips [isLoading] for ~600 ms.
+  Future<void> simulateSave() async {
+    _isLoading = true;
+    notifyListeners();
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Demo R — auth tree + radio group + infinite scroll.
+// ---------------------------------------------------------------------------
+
+/// Selection / fetch controller for Demo R. Holds:
+///
+///   * `radioValue`: current `TomRadioGroup<String>` selection.
+///   * `failNext`: when true, the next page fetch throws — exercises
+///     the error-state slot on `TomInfiniteScroll` + `TomErrorBoundary`.
+///   * `auth`: state of the `demoR.densityRadio` resource (drives the
+///     group-level auth on the radio).
+class DemoRController extends ChangeNotifier {
+  String _radioValue = 'comfortable';
+  bool _failNext = false;
+  TomAuthState _radioAuth = TomAuthState.full;
+
+  String get radioValue => _radioValue;
+  bool get failNext => _failNext;
+  TomAuthState get radioAuth => _radioAuth;
+
+  void selectRadio(String value) {
+    if (_radioValue == value) return;
+    _radioValue = value;
+    notifyListeners();
+  }
+
+  void toggleFailNext() {
+    _failNext = !_failNext;
+    notifyListeners();
+  }
+
+  void clearFailNext() {
+    if (!_failNext) return;
+    _failNext = false;
+    notifyListeners();
+  }
+
+  void setRadioAuth(TomAuthState state, DemoPhase6AuthAdapter adapter) {
+    _radioAuth = state;
+    adapter.set('demoR.densityRadio', state);
+    notifyListeners();
+  }
+}
+
+/// Synthetic 10 000-row data source for Demo R's `TomInfiniteScroll`.
+/// Returns a slice of pre-formatted strings with a tiny delay so the
+/// initial-load skeleton + bottom-of-list "loading more" indicator both
+/// have a chance to render.
+class DemoRPageSource {
+  static const int totalRows = 10000;
+
+  Future<List<String>> fetchPage(int page, int pageSize,
+      {bool failNext = false}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (failNext) {
+      throw StateError('Synthetic page-fetch failure (page=$page).');
+    }
+    final start = page * pageSize;
+    if (start >= totalRows) return const [];
+    final end =
+        (start + pageSize > totalRows) ? totalRows : (start + pageSize);
+    return [for (var i = start; i < end; i++) 'Row #${i.toString().padLeft(5, '0')}'];
+  }
+}
