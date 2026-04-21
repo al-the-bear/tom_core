@@ -60,6 +60,7 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
   late final TomFormObjectFilterChips<Country> _countriesChips;
   late final TomFormSearchInput<City> _citySearch;
   late final TomFormLookupDialog<Country> _countryLookup;
+  late final TomFormIntFilterChips _pointSizes;
 
   // --- Inspector state ---------------------------------------------------
 
@@ -136,6 +137,14 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
             'Read-only field; tap to open a filterable dialog',
         labelOf: (c) => c.toString(),
       );
+      _pointSizes = TomFormIntFilterChips(
+        'pointSizes',
+        const [10, 14],
+        source: phase4PointSizeSource,
+        labelTextOverride: 'Point sizes (multi)',
+        descriptionTextOverride:
+            'Multi-select int values via FilterChips → List<int>',
+      );
     });
 
     // Wire every field to the change log.
@@ -157,6 +166,10 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
       _citySearch >> (_) => _record('city', _citySearch.get().toString()),
       _countryLookup >>
           (_) => _record('lookupCountry', _countryLookup.get().toString()),
+      _pointSizes >>
+          (_) => _record(
+              'pointSizes',
+              '[${_pointSizes.get().join(", ")}]'),
     ]);
   }
 
@@ -177,6 +190,7 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
     _countriesChips.dispose();
     _citySearch.dispose();
     _countryLookup.dispose();
+    _pointSizes.dispose();
     super.dispose();
   }
 
@@ -272,6 +286,12 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
           title: 'Lookup dialog (Country) — modal browse',
           child: _countryLookup.widget,
         ),
+        const SizedBox(height: 12),
+        _section(
+          context,
+          title: 'Int list (point sizes) — multi-select chips',
+          child: _pointSizes.widget,
+        ),
       ],
     );
   }
@@ -351,6 +371,7 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
         _countriesChips,
         _citySearch,
         _countryLookup,
+        _pointSizes,
       ],
       builder: (context) {
         final theme = Theme.of(context);
@@ -365,6 +386,7 @@ class _DemoKEnumObjectState extends State<DemoKEnumObject> {
               '[${_countriesChips.get().map((c) => c.code).join(", ")}]'),
           ('city', _citySearch.get().toString()),
           ('lookupCountry', _countryLookup.get().toString()),
+          ('pointSizes', '[${_pointSizes.get().join(", ")}]'),
         ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

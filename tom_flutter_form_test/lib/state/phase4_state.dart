@@ -151,6 +151,20 @@ class _BigCitySource extends TomSelectableSource<City> {
   Future<List<SelectableItem<City>>> getItems() async => _cache;
 }
 
+/// Closed integer set — point-size options shown by the
+/// `TomFormIntFilterChips` row in Demo K. Kept tiny on purpose; the
+/// abstract type's behaviour (allocate-fresh on toggle, pruning when
+/// the source loses an item) is exercised in the phase 4 unit test.
+class _PointSizeSource extends TomSelectableSource<int> {
+  static const _sizes = <int>[8, 10, 12, 14, 16, 18, 24];
+
+  @override
+  Future<List<SelectableItem<int>>> getItems() async => [
+        for (final s in _sizes)
+          SelectableItem<int>(value: s, label: '$s pt'),
+      ];
+}
+
 /// Smaller country list reused by the lookup-dialog row.
 class _LookupCountrySource extends TomSelectableSource<Country> {
   static const _items = <Country>[
@@ -189,6 +203,7 @@ final TomSelectableSource<Country> phase4CountrySource = _CountrySource();
 final TomSelectableSource<City> phase4CitySource = _BigCitySource();
 final TomSelectableSource<Country> phase4LookupCountrySource =
     _LookupCountrySource();
+final TomSelectableSource<int> phase4PointSizeSource = _PointSizeSource();
 
 // ---------------------------------------------------------------------------
 // Backing TomClasses
