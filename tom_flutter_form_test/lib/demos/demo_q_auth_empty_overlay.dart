@@ -1,15 +1,17 @@
 /// Demo Q — Phase 6 custom widgets (auth / empty / overlay).
 ///
 /// Showcases three of the Phase 6 non-form custom widgets bound to a
-/// shared [DemoQController]:
+/// real [OrderForm] + [ValidationForm] pair:
 ///
 ///   * `TomAuthGuard` — wraps a "profile" panel; the right-hand
 ///     control swaps the `demoQ.profile` resource auth state between
 ///     full / read / disabled / none and the panel reacts live.
-///   * `TomEmptyState` — rendered in the items pane when the items
-///     list is empty (drives via the controller's clear / seed actions).
-///   * `TomLoadingOverlay` — overlays the items pane during a fake
-///     async "save" (600 ms `Future.delayed`).
+///   * `TomEmptyState` — rendered in the items pane when the bound
+///     `OrderItemsListForm` is empty. Clear / Seed / +1 row map to
+///     `items.removeAt` / `items.add` on the list form.
+///   * `TomLoadingOverlay` — overlays the items pane while the
+///     [ValidationForm.save] awaits its async `SlowValidator` (800 ms
+///     synthetic latency on the `username` field).
 library;
 
 import 'package:flutter/material.dart';
@@ -17,7 +19,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
+import '../forms/order_form.dart';
+import '../forms/validation_form.dart';
 import '../panels/info_panel.dart';
+import '../state/phase2a_state.dart';
 import '../state/phase6_state.dart';
 
 class DemoQAuthEmptyOverlay extends StatefulWidget {
@@ -31,23 +36,121 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
   final _adapter = DemoPhase6AuthAdapter();
   final _controller = DemoQController();
 
+  /// Header form + line-items list bound to a fresh [Order]. The items
+  /// pane iterates `_orderForm.items` and shows the Phase 6
+  /// `TomEmptyState` slot whenever the list is empty.
+  late final OrderForm _orderForm;
+  late final Order _order;
+
+  /// Side form that carries an async `SlowValidator` on `username`.
+  /// Driving `TomLoadingOverlay` off the real `form.save()` future is
+  /// how Phase 6 says an overlay should be paired with async
+  /// validation (spec §23.3).
+  late final ValidationForm _validationForm;
+
   @override
   void initState() {
     super.initState();
     TomAuthorization.adapter = _adapter;
-    _controller.addListener(_onChanged);
+
+    _order = _seedOrder();
+    _orderForm = TomScope.withScope('demoQ', () => OrderForm());
+    _orderForm.bind(_order);
+    _orderForm.changes.addListener(_onFormChanged);
+
+    _validationForm =
+        TomScope.withScope('demoQ', () => ValidationForm());
+    _validationForm.bind(TomClass());
+    // Prime non-visible fields so the SlowValidator path (which we care
+    // about) runs without unrelated required-field errors surfacing.
+    _validationForm.username.setValue('guest');
+    _validationForm.email.setValue('guest@example.com');
+    _validationForm.password.setValue('strongpass1');
+    _validationForm.confirmPassword.setValue('strongpass1');
+    _validationForm.website.setValue('https://example.com');
+
+    _controller.addListener(_onControllerChanged);
   }
 
-  void _onChanged() {
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onControllerChanged() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _controller.removeListener(_onChanged);
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
+    _orderForm.changes.removeListener(_onFormChanged);
+    _orderForm.dispose();
+    _validationForm.dispose();
     super.dispose();
   }
+
+  // -------------------------------------------------------------------
+  // Order seeding / mutation helpers.
+  // -------------------------------------------------------------------
+
+  Order _seedOrder() {
+    final o = Order();
+    o.orderNumber | 'ORD-Q';
+    o.customer | 'Phase 6 demo';
+    o.items.add(_newItem('Alpha'));
+    o.items.add(_newItem('Beta'));
+    o.items.add(_newItem('Gamma'));
+    return o;
+  }
+
+  OrderItem _newItem(String productName) {
+    final i = OrderItem();
+    i.productName | productName;
+    i.quantity | '1';
+    i.unitPrice | '0.00';
+    return i;
+  }
+
+  void _clearItems() {
+    final items = _orderForm.items;
+    while (items.length > 0) {
+      items.removeAt(items.length - 1);
+    }
+    setState(() {});
+  }
+
+  void _seedItems() {
+    final items = _orderForm.items;
+    while (items.length > 0) {
+      items.removeAt(items.length - 1);
+    }
+    // Re-bind the underlying Order so the list picks up the fresh rows.
+    _order.items.clear();
+    _order.items.add(_newItem('Alpha'));
+    _order.items.add(_newItem('Beta'));
+    _order.items.add(_newItem('Gamma'));
+    _orderForm.items.bind(_order.items);
+    setState(() {});
+  }
+
+  void _addOne() {
+    _orderForm.items.add();
+    setState(() {});
+  }
+
+  Future<void> _runSlowSave() async {
+    _controller.beginSave();
+    try {
+      await _validationForm.save();
+    } finally {
+      _controller.endSave();
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // Layout.
+  // -------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +169,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
                     children: [
                       Expanded(child: stagePane),
                       const SizedBox(width: 16),
-                      SizedBox(width: 320, child: controlPane),
+                      SizedBox(width: 340, child: controlPane),
                     ],
                   )
                 : Column(
@@ -163,7 +266,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
 
   Widget _itemsCard(BuildContext context) {
     final theme = Theme.of(context);
-    final items = _controller.items;
+    final items = _orderForm.items;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -181,14 +284,14 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
               ],
             ),
             const SizedBox(height: 8),
-            // The overlay wraps the items list, not the whole card, so
-            // the title row stays visible while a save is in flight.
+            // Overlay wraps only the list area so the title row stays
+            // readable while the SlowValidator-backed save runs.
             TomLoadingOverlay(
-              isLoading: _controller.isLoading,
-              message: 'Saving items…',
+              isLoading: _controller.isSaving,
+              message: 'Saving — SlowValidator pending…',
               child: SizedBox(
-                height: 220,
-                child: items.isEmpty
+                height: 260,
+                child: items.length == 0
                     ? const TomEmptyState(
                         title: 'No items',
                         description:
@@ -198,11 +301,36 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
                     : ListView.separated(
                         itemCount: items.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (_, i) => ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.label_outline),
-                          title: Text(items[i]),
-                        ),
+                        itemBuilder: (_, i) {
+                          final row = items[i];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.label_outline, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  flex: 3,
+                                  child: row.productName.widget,
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                    width: 72, child: row.quantity.widget),
+                                IconButton(
+                                  tooltip: 'Remove',
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 18),
+                                  onPressed: () {
+                                    _orderForm.items.removeAt(i);
+                                    setState(() {});
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
               ),
             ),
@@ -217,6 +345,7 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
   // -------------------------------------------------------------------
 
   Widget _controlPane(BuildContext context) {
+    final theme = Theme.of(context);
     return InfoPanel(
       title: 'Phase 6 controls',
       children: [
@@ -244,26 +373,35 @@ class _DemoQAuthEmptyOverlayState extends State<DemoQAuthEmptyOverlay> {
           runSpacing: 8,
           children: [
             FilledButton(
-              onPressed: _controller.clear,
+              onPressed: _clearItems,
               child: const Text('Clear'),
             ),
             OutlinedButton(
-              onPressed: _controller.seed,
+              onPressed: _seedItems,
               child: const Text('Seed'),
             ),
             OutlinedButton(
-              onPressed: _controller.addOne,
+              onPressed: _addOne,
               child: const Text('+1 row'),
             ),
           ],
         ),
         const InfoPanelHeading('Loading overlay (TomLoadingOverlay)'),
+        Text(
+          'Press Save to run ValidationForm.save(). The username field '
+          'carries an 800 ms SlowValidator — the items pane is overlaid '
+          'until that Future resolves.',
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 8),
+        _validationForm.username.widget,
+        const SizedBox(height: 8),
         FilledButton.icon(
-          onPressed:
-              _controller.isLoading ? null : _controller.simulateSave,
+          onPressed: _controller.isSaving ? null : _runSlowSave,
           icon: const Icon(Icons.save_outlined),
-          label: Text(
-              _controller.isLoading ? 'Saving…' : 'Simulate 600 ms save'),
+          label: Text(_controller.isSaving
+              ? 'Saving…'
+              : 'Save (awaits SlowValidator)'),
         ),
       ],
     );

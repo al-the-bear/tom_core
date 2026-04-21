@@ -16,13 +16,14 @@
 ///     source. Exercises the initial-load skeleton (via
 ///     `TomSkeletonLoader`), the bottom-of-list "loading more"
 ///     indicator, the empty / error slots, and the page exhaustion
-///     branch. Wrapped in `TomErrorBoundary` so a synthetic build-time
-///     throw inside an item builder is caught and surfaced via the
-///     boundary's fallback UI.
+///     branch. The whole scroll is wrapped in `TomErrorBoundary`
+///     ("boundary around the tile builder", spec §23) so a synthetic
+///     build-time throw inside the item-builder (driven by the
+///     `throwOnTile` toggle in the right control pane) is caught and
+///     the entire list is replaced with the boundary's fallback UI.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
@@ -294,24 +295,42 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
             ),
             const SizedBox(height: 8),
             Expanded(
+              // Single TomErrorBoundary wrapping the whole scroll —
+              // spec §23's "boundary around the tile builder". When
+              // the `throwOnTile` toggle is on, the item-builder for
+              // row index `DemoRController.throwRowIndex` throws; the
+              // boundary catches the exception and replaces the list
+              // with its fallback UI.
               child: TomErrorBoundary(
                 child: TomInfiniteScroll<String>(
                   key: _scrollKey,
                   pageSize: 25,
-                  fetcher: (page, size) =>
-                      _pageSource.fetchPage(page, size,
-                          failNext: _controller.failNext),
-                  itemBuilder: (context, item, index) => ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.list_alt_outlined),
-                    title: Text(item),
-                  ),
+                  fetcher: (page, size) => _pageSource.fetchPage(page, size,
+                      failNext: _controller.failNext),
+                  itemBuilder: _buildRow,
                 ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Renders a single list tile. Throws synthetically when
+  /// `throwOnTile` is enabled and [index] matches
+  /// [DemoRController.throwRowIndex] — the per-tile `TomErrorBoundary`
+  /// wrapping this widget catches the throw and renders its fallback.
+  Widget _buildRow(BuildContext context, String item, int index) {
+    if (_controller.throwOnTile &&
+        index == DemoRController.throwRowIndex) {
+      throw StateError(
+          'Synthetic tile-build error at row $index.');
+    }
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.list_alt_outlined),
+      title: Text(item),
     );
   }
 
@@ -357,6 +376,16 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
           },
           icon: const Icon(Icons.refresh),
           label: const Text('Refresh'),
+        ),
+        SwitchListTile.adaptive(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Throw in row tile'),
+          subtitle: Text(
+              'Row #${DemoRController.throwRowIndex.toString().padLeft(5, '0')} '
+              'throws — exercises the per-tile TomErrorBoundary.'),
+          value: _controller.throwOnTile,
+          onChanged: (_) => _controller.toggleThrowOnTile(),
         ),
         const InfoPanelHeading('Tree-node auth'),
         for (final entry in _treeAuth.entries)

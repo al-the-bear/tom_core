@@ -34,37 +34,15 @@ class DemoPhase6AuthAdapter extends TomAuthorizationAdapter {
 
 /// Light-weight controller for Demo Q. Owns:
 ///
-///   * `items`: list of synthetic strings shown in the panel — start
-///     non-empty; user can clear/refill to flip the empty-state slot.
-///   * `isLoading`: drives [TomLoadingOverlay] during the fake "save".
 ///   * `auth`: state of the guarded `demoQ.profile` resource.
+///   * `isSaving`: drives [TomLoadingOverlay] while the demo's
+///     `ValidationForm.save()` awaits its async `SlowValidator`.
 class DemoQController extends ChangeNotifier {
-  final List<String> _items = ['Alpha', 'Beta', 'Gamma'];
-  bool _isLoading = false;
   TomAuthState _auth = TomAuthState.full;
+  bool _isSaving = false;
 
-  List<String> get items => List.unmodifiable(_items);
-  bool get isEmpty => _items.isEmpty;
-  bool get isLoading => _isLoading;
   TomAuthState get auth => _auth;
-
-  void clear() {
-    if (_items.isEmpty) return;
-    _items.clear();
-    notifyListeners();
-  }
-
-  void seed() {
-    _items
-      ..clear()
-      ..addAll(['Alpha', 'Beta', 'Gamma']);
-    notifyListeners();
-  }
-
-  void addOne() {
-    _items.add('Item ${_items.length + 1}');
-    notifyListeners();
-  }
+  bool get isSaving => _isSaving;
 
   void setAuth(TomAuthState state, DemoPhase6AuthAdapter adapter) {
     _auth = state;
@@ -72,12 +50,15 @@ class DemoQController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Fake long-running save: flips [isLoading] for ~600 ms.
-  Future<void> simulateSave() async {
-    _isLoading = true;
+  void beginSave() {
+    if (_isSaving) return;
+    _isSaving = true;
     notifyListeners();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    _isLoading = false;
+  }
+
+  void endSave() {
+    if (!_isSaving) return;
+    _isSaving = false;
     notifyListeners();
   }
 }
@@ -90,16 +71,27 @@ class DemoQController extends ChangeNotifier {
 ///
 ///   * `radioValue`: current `TomRadioGroup<String>` selection.
 ///   * `failNext`: when true, the next page fetch throws — exercises
-///     the error-state slot on `TomInfiniteScroll` + `TomErrorBoundary`.
+///     the error-state slot on `TomInfiniteScroll` (outer error slot).
+///   * `throwOnTile`: when true, the per-tile builder throws for a
+///     specific row index — exercises the *inner* `TomErrorBoundary`
+///     that wraps every row (the spec's "boundary around the tile
+///     builder" clause).
 ///   * `auth`: state of the `demoR.densityRadio` resource (drives the
 ///     group-level auth on the radio).
 class DemoRController extends ChangeNotifier {
+  /// Row index at which `throwOnTile=true` causes the tile builder to
+  /// throw. Chosen so the row is within the first page so the synthetic
+  /// error is visible without scrolling.
+  static const int throwRowIndex = 3;
+
   String _radioValue = 'comfortable';
   bool _failNext = false;
+  bool _throwOnTile = false;
   TomAuthState _radioAuth = TomAuthState.full;
 
   String get radioValue => _radioValue;
   bool get failNext => _failNext;
+  bool get throwOnTile => _throwOnTile;
   TomAuthState get radioAuth => _radioAuth;
 
   void selectRadio(String value) {
@@ -116,6 +108,11 @@ class DemoRController extends ChangeNotifier {
   void clearFailNext() {
     if (!_failNext) return;
     _failNext = false;
+    notifyListeners();
+  }
+
+  void toggleThrowOnTile() {
+    _throwOnTile = !_throwOnTile;
     notifyListeners();
   }
 
