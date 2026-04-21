@@ -4,6 +4,7 @@ import '../events/tom_form_event.dart';
 import '../events/tom_form_event_listener.dart';
 import '../events/tom_form_event_source.dart';
 import '../tom_form.dart';
+import '../tom_form_child_container.dart';
 import '../validation/form_validation_error.dart';
 
 // ---------------------------------------------------------------------------
@@ -223,6 +224,12 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Validate every sub-form plus this list's own [validateList] hook.
   /// Returns the combined error list.
+  ///
+  /// After computing errors a [FormValidatedEvent] is fired through the
+  /// event bus (bubbling to the parent form when [parentForm] is set).
+  /// This lets [TomErrorView] widgets subscribed to the parent form's bus
+  /// pick up list-level errors — e.g. "at least one item required" —
+  /// without needing a separate imperative update call.
   Future<List<FormValidationError>> validate() async {
     final errors = <FormValidationError>[];
     for (final form in _forms) {
@@ -235,6 +242,10 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
         fields: const [],
       ));
     }
+    _fireEvent(FormValidatedEvent(
+      source: listId,
+      errors: errors,
+    ));
     return errors;
   }
 

@@ -100,6 +100,31 @@ class TomUnsavedChangesGuard extends StatefulWidget {
 
 class _TomUnsavedChangesGuardState extends State<TomUnsavedChangesGuard> {
   @override
+  void initState() {
+    super.initState();
+    widget.form.changes.addListener(_onFormChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant TomUnsavedChangesGuard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.form != widget.form) {
+      oldWidget.form.changes.removeListener(_onFormChanged);
+      widget.form.changes.addListener(_onFormChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.form.changes.removeListener(_onFormChanged);
+    super.dispose();
+  }
+
+  void _onFormChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: !widget.form.isDirty,

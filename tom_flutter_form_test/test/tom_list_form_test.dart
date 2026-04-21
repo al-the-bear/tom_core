@@ -167,6 +167,36 @@ void main() {
       form.removeListener(inspector);
       form.dispose();
     });
+
+    test('validate fires FormValidatedEvent through the parent bus', () async {
+      final form = makeBoundForm();
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      await form.items.validate();
+      final validated = inspector.events.whereType<FormValidatedEvent>();
+      // One FormValidatedEvent per sub-form + one from TomListForm itself.
+      expect(validated, isNotEmpty);
+      // The list-level event is the last one fired (after all sub-forms).
+      expect(validated.last.source, 'items');
+      form.removeListener(inspector);
+      form.dispose();
+    });
+
+    test('validate fires FormValidatedEvent with list error when empty',
+        () async {
+      final form = makeBoundForm();
+      form.items.removeAt(0);
+      form.items.removeAt(0);
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      await form.items.validate();
+      final listEvent = inspector.events
+          .whereType<FormValidatedEvent>()
+          .lastWhere((e) => e.source == 'items');
+      expect(listEvent.errors, hasLength(1));
+      form.removeListener(inspector);
+      form.dispose();
+    });
   });
 
   group('TomListForm — validation & save lifecycle', () {
