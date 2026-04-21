@@ -31,6 +31,7 @@ import 'demos/demo_i_numeric_forms.dart';
 import 'demos/demo_j_date_time_forms.dart';
 import 'demos/demo_k_enum_object.dart';
 import 'demos/demo_l_file_nullable.dart';
+import 'demos/demo_m_cupertino_basics.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -264,6 +265,22 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoLFileNullable()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 5a — Cupertino string + bool + selection'),
+          _DemoTile(
+            icon: Icons.phone_iphone,
+            title: 'Demo M: Material vs Cupertino (Phase 5a)',
+            description: 'Side-by-side panels — Material concretes on the '
+                'left, Cupertino concretes on the right — bound to one '
+                'shared state. A radio toggle swaps the page-root '
+                'TomFormStyleScope.style between material3 and Cupertino '
+                'so the entire anatomy reflows live.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoMCupertinoBasics()),
             ),
           ),
           const SizedBox(height: 12),

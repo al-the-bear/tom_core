@@ -7,10 +7,16 @@
 import 'state/company_state.dart';
 // ignore: unused_import
 import 'state/application_state.dart';
+// ignore: unused_import
+import 'state/phase5_state.dart';
+// ignore: unused_import
+import 'forms/phase5_demo_forms.dart';
 
 // Re-export state classes so they're discoverable
 export 'state/company_state.dart';
 export 'state/application_state.dart';
+export 'state/phase5_state.dart';
+export 'forms/phase5_demo_forms.dart';
 
 // Re-export generated reflection
 export 'main.reflection.dart';
