@@ -13,10 +13,12 @@ import '../state/phase3_state.dart';
 // DateRangePicker and DurationInput. The duration row sits next to a
 // DoubleSlider-like minute count for direct comparison.
 //
-// At narrow widths (< 600 px) the picker rows stack in single-column
-// layout and the inline calendar drops below the dialog picker; at wide
-// widths they split into two columns, fulfilling the spec's "Breakpoint
-// swap" bullet.
+// At narrow widths (< 700 px) the dialog-based picker collapses to the
+// inline calendar — matching the spec's "at narrow widths the pickers
+// collapse to inline calendars; at wide widths they open as dialogs"
+// bullet. The TimePicker, DateTimePicker and DateRangePicker stay in
+// the dialog flow at all widths because there's no inline calendar
+// equivalent in Material for them.
 class DemoJDateTimeForms extends StatefulWidget {
   const DemoJDateTimeForms({super.key});
 
@@ -92,12 +94,14 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
             const SizedBox(height: 6),
             const Text(
                 'Date-only / time-only / date-time pickers wired to the '
-                'same DateTimeDemoState. The inline calendar mirrors the '
-                'value of the dialog-based DatePicker — pick on either '
-                'side and they stay in sync. The duration card pairs the '
+                'same DateTimeDemoState. The duration card pairs the '
                 'segmented h/m DurationInput with an equivalent IntSlider '
-                'in minutes (sync is two-way). At ≥ 700 px the picker '
-                'rows split into two columns; under that they stack.'),
+                'in minutes (sync is two-way). Breakpoint swap: at ≥ 700 px '
+                'the date column shows the dialog DatePicker alongside the '
+                'inline calendar; under 700 px it collapses to the inline '
+                'calendar only — the dialog picker is hidden because the '
+                'calendar provides the same affordance without taking a '
+                'modal screen.'),
           ],
         ),
       ),
@@ -108,7 +112,7 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _pickerColumn(context)),
+        Expanded(child: _pickerColumn(context, includeDateDialog: true)),
         const SizedBox(width: 12),
         Expanded(child: _calendarColumn(context)),
       ],
@@ -119,14 +123,17 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _pickerColumn(context),
-        const SizedBox(height: 12),
         _calendarColumn(context),
+        const SizedBox(height: 12),
+        // At narrow widths the date dialog picker collapses into the
+        // inline calendar above; the time / date-time / range pickers
+        // stay because they have no inline equivalent.
+        _pickerColumn(context, includeDateDialog: false),
       ],
     );
   }
 
-  Widget _pickerColumn(BuildContext context) {
+  Widget _pickerColumn(BuildContext context, {required bool includeDateDialog}) {
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -136,8 +143,10 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
           children: [
             Text('Dialog pickers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
-            _form.eventDate.widget,
-            const SizedBox(height: 8),
+            if (includeDateDialog) ...[
+              _form.eventDate.widget,
+              const SizedBox(height: 8),
+            ],
             _form.startTime.widget,
             const SizedBox(height: 8),
             _form.eventDateTime.widget,

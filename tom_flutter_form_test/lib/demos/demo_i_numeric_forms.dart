@@ -27,18 +27,53 @@ class DemoINumericForms extends StatefulWidget {
 class _DemoINumericFormsState extends State<DemoINumericForms> {
   late final NumericDemoForm _form;
   String _currency = 'USD';
+  TomFormCurrencyDoubleInput? _currencyField;
 
   @override
   void initState() {
     super.initState();
     _form = TomScope.withScope('demoI', () => NumericDemoForm());
     _form.bind(phase3NumericState);
+    _currencyField = _buildCurrencyField(_currency);
   }
 
   @override
   void dispose() {
+    _currencyField?.dispose();
     _form.dispose();
     super.dispose();
+  }
+
+  TomFormCurrencyDoubleInput _buildCurrencyField(String code) {
+    return TomScope.withScope(
+      'demoI',
+      () => TomFormCurrencyDoubleInput(
+        'priceUSD',
+        _form.priceUSD.get(),
+        form: _form,
+        currencyCode: code,
+        labelTextOverride: 'Price ($code)',
+        descriptionTextOverride:
+            'Locale-aware currency formatter — switch the code via the chips',
+      ),
+    );
+  }
+
+  void _setCurrency(String code) {
+    if (code == _currency) return;
+    // Push the current field value into the bound TomDouble so the
+    // rebuilt field shows the same number formatted by the new locale.
+    _form.priceUSD.set(_currencyField!.get());
+    final old = _currencyField;
+    setState(() {
+      _currency = code;
+      _currencyField = _buildCurrencyField(code);
+    });
+    // Dispose the previous instance after the swap so its observer /
+    // validation listenable resources are released — fixes the leak
+    // where every chip tap created a fresh field whose state never went
+    // away.
+    old?.dispose();
   }
 
   @override
@@ -137,16 +172,6 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
 
   Widget _currencyCard(BuildContext context) {
     final theme = Theme.of(context);
-    final currentCurrency = _currency;
-    final currencyField = TomFormCurrencyDoubleInput(
-      'priceUSD',
-      _form.priceUSD.get(),
-      form: _form,
-      currencyCode: currentCurrency,
-      labelTextOverride: 'Price ($currentCurrency)',
-      descriptionTextOverride:
-          'Locale-aware currency formatter — switch the code via the chips',
-    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -162,19 +187,13 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
                         label: Text(code),
                         selected: _currency == code,
                         onSelected: (sel) {
-                          if (sel) {
-                            // Push current value into the bound TomDouble
-                            // so the rebuilt field shows the same number
-                            // formatted by the new locale.
-                            _form.priceUSD.set(currencyField.get());
-                            setState(() => _currency = code);
-                          }
+                          if (sel) _setCurrency(code);
                         },
                       ))
                   .toList(),
             ),
             const SizedBox(height: 8),
-            currencyField.widget,
+            _currencyField!.widget,
             const SizedBox(height: 8),
             _form.priceGeneric.widget,
           ],
