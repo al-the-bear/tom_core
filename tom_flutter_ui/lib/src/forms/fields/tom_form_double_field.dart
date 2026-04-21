@@ -439,7 +439,12 @@ class _TomFormPercentDoubleInputWidgetState
   void _onChanged(String text) {
     final n = double.tryParse(text);
     if (n == null) return;
-    final fraction = (n / 100.0).clamp(0.0, 1.0);
+    // Don't silently clamp — the abstract field's auto-prepended
+    // Validators.min(0)/Validators.max(1) (forwarded via super(...,
+    // minValue: 0.0, maxValue: 1.0)) surface out-of-range as a normal
+    // ValidationError. Storing 1.5 for "150%" lets the user see + fix
+    // their typo instead of having the field silently revert to "100".
+    final fraction = n / 100.0;
     _updatingFromField = true;
     field.setValue(fraction);
     _updatingFromField = false;
@@ -607,7 +612,12 @@ class CurrencyFormatProfile {
   });
 
   static CurrencyFormatProfile resolve({String? locale, String? code}) {
-    switch (code) {
+    // If no explicit code, derive from locale (lang_REGION). This makes
+    // the previously-dead `locale` constructor parameter functional —
+    // pass `locale: 'de_DE'` and you get EUR formatting without having
+    // to also pass the redundant `currencyCode: 'EUR'`.
+    final effectiveCode = code ?? _codeFromLocale(locale);
+    switch (effectiveCode) {
       case 'EUR':
         return const CurrencyFormatProfile(
           symbol: '€',
@@ -642,6 +652,52 @@ class CurrencyFormatProfile {
           decimals: 2,
         );
     }
+  }
+
+  /// Tiny lookup table from BCP-47-ish `lang_REGION` (or just `lang`)
+  /// to ISO 4217 currency code. Covers the four currencies the demo
+  /// switcher exposes; everything else falls back to USD via the
+  /// default branch above.
+  static String? _codeFromLocale(String? locale) {
+    if (locale == null) return null;
+    // Region segment after the underscore takes precedence.
+    final parts = locale.replaceAll('-', '_').split('_');
+    final region = parts.length > 1 ? parts[1].toUpperCase() : null;
+    switch (region) {
+      case 'US':
+        return 'USD';
+      case 'GB':
+      case 'UK':
+        return 'GBP';
+      case 'JP':
+        return 'JPY';
+      case 'DE':
+      case 'FR':
+      case 'IT':
+      case 'ES':
+      case 'NL':
+      case 'AT':
+      case 'BE':
+      case 'IE':
+      case 'PT':
+      case 'FI':
+      case 'GR':
+        return 'EUR';
+    }
+    // Fall back to the language-only mapping.
+    switch (parts.first.toLowerCase()) {
+      case 'en':
+        return 'USD';
+      case 'de':
+      case 'fr':
+      case 'it':
+      case 'es':
+      case 'nl':
+        return 'EUR';
+      case 'ja':
+        return 'JPY';
+    }
+    return null;
   }
 
   String format(double value) {

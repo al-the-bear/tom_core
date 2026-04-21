@@ -36,7 +36,13 @@ abstract class TomFormDateField extends TomField<DateTime> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  })  : assert(!firstDate.isAfter(lastDate),
+            'TomFormDateField: firstDate must be on or before lastDate'),
+        assert(
+            !initialValue.isBefore(firstDate) &&
+                !initialValue.isAfter(lastDate),
+            'TomFormDateField: initialValue must be within '
+            '[firstDate, lastDate]; otherwise the picker throws on open');
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -388,7 +394,13 @@ abstract class TomFormDateTimeField extends TomField<DateTime> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  })  : assert(!firstDate.isAfter(lastDate),
+            'TomFormDateTimeField: firstDate must be on or before lastDate'),
+        assert(
+            !initialValue.isBefore(firstDate) &&
+                !initialValue.isAfter(lastDate),
+            'TomFormDateTimeField: initialValue must be within '
+            '[firstDate, lastDate]');
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -535,7 +547,13 @@ abstract class TomFormDateRangeField extends TomField<DateTimeRange> {
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  })  : assert(!firstDate.isAfter(lastDate),
+            'TomFormDateRangeField: firstDate must be on or before lastDate'),
+        assert(
+            !initialValue.start.isBefore(firstDate) &&
+                !initialValue.end.isAfter(lastDate),
+            'TomFormDateRangeField: initialValue range must fit within '
+            '[firstDate, lastDate]');
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
