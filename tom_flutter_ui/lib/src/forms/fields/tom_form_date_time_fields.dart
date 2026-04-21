@@ -80,6 +80,18 @@ class TomFormDatePicker extends TomFormDateField
     super.onActionIconPressed,
   });
 
+  // The mixin's `labelText` / `descriptionText` getters return null by
+  // default; the concrete class has to delegate to the abstract field's
+  // resolution chain so the field anatomy renders the label above the
+  // picker tile. (Mirrors the same workaround on the Cupertino side.)
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
     final form = TomFormStyleScope.of(context);
@@ -179,6 +191,16 @@ class TomFormDateCalendar extends TomFormDateField
     super.actionIconTooltip,
     super.onActionIconPressed,
   });
+
+  // Mixin's labelText returns null and shadows the parent — restore the
+  // standard delegation chain so anatomy renders the label.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -298,6 +320,16 @@ class TomFormTimePicker extends TomFormTimeField
     super.actionIconTooltip,
     super.onActionIconPressed,
   });
+
+  // Restore label/description delegation that the mixin's `=> null`
+  // shadows.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -435,6 +467,16 @@ class TomFormDateTimePicker extends TomFormDateTimeField
     super.actionIconTooltip,
     super.onActionIconPressed,
   });
+
+  // Restore label/description delegation that the mixin's `=> null`
+  // shadows.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -589,6 +631,16 @@ class TomFormDateRangePicker extends TomFormDateRangeField
     super.actionIconTooltip,
     super.onActionIconPressed,
   });
+
+  // Restore label/description delegation that the mixin's `=> null`
+  // shadows.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
