@@ -28,6 +28,8 @@ class DemoJDateTimeForms extends StatefulWidget {
 
 class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
   late final DateTimeDemoForm _form;
+  late final TomFunctionObserver<TomObservable> _durationObserver;
+  late final TomFunctionObserver<TomObservable> _minutesObserver;
 
   @override
   void initState() {
@@ -37,19 +39,22 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
     // Keep the duration input + minute slider in lockstep — edits to
     // either fire FieldValueChangedEvent on both, demonstrating that
     // Duration and int can share state cleanly even though they're two
-    // different field types.
-    _form.taskDuration.addObserver(_TomFnObserver((_) {
+    // different field types. Uses the codebase-standard `>>` operator
+    // (returns a TomFunctionObserver registered on the LHS observable).
+    _durationObserver = _form.taskDuration >> (_) {
       final mins = _form.taskDuration.get().inMinutes;
       if (_form.taskMinutes.get() != mins) _form.taskMinutes.set(mins);
-    }));
-    _form.taskMinutes.addObserver(_TomFnObserver((_) {
+    };
+    _minutesObserver = _form.taskMinutes >> (_) {
       final d = Duration(minutes: _form.taskMinutes.get());
       if (_form.taskDuration.get() != d) _form.taskDuration.set(d);
-    }));
+    };
   }
 
   @override
   void dispose() {
+    _form.taskDuration.removeObserver(_durationObserver);
+    _form.taskMinutes.removeObserver(_minutesObserver);
     _form.dispose();
     super.dispose();
   }
@@ -205,9 +210,3 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
   }
 }
 
-class _TomFnObserver implements TomObserver {
-  final void Function(TomObservable o) _fn;
-  _TomFnObserver(this._fn);
-  @override
-  void onNotify(TomObservable observable) => _fn(observable);
-}
