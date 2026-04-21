@@ -205,13 +205,46 @@ void main() {
     await unmountDemo(tester);
   });
 
-  // Note: end-to-end of the synthetic tile-throw toggle (enabling
-  // `DemoRController.throwOnTile` → TomErrorBoundary fallback → retry)
-  // is exercised interactively rather than in this smoke test.
-  // `TomErrorBoundary` installs a global `ErrorWidget.builder` override
-  // while mounted, and setState-in-build from `_captureError` cycles in
-  // a way that the flutter_test harness surfaces as unexpected
-  // framework exceptions. Verifying the toggle's label + the wired
-  // controller path (see the "Demo R opens..." test above) is the best
-  // safely-testable surface here.
+  testWidgets(
+      'Demo R synthetic tile throw surfaces TomErrorBoundary fallback '
+      'and Retry restores the list',
+      (tester) async {
+    await openDemo(
+        tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    // Baseline: first row is visible, no fallback card.
+    expect(find.text('Row #00000'), findsOneWidget);
+    expect(find.text('Something went wrong'), findsNothing);
+
+    // Flip the per-tile throw toggle. The tile builder at row
+    // `DemoRController.throwRowIndex` (= 3) throws; `ErrorWidget.builder`
+    // routes the failure into `TomErrorBoundary`, which schedules a
+    // post-frame setState to paint its fallback.
+    await tester.tap(find.text('Throw in row tile'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    // Synthetic build-time throws arrive through `FlutterError.onError`
+    // as "unexpected" framework exceptions in the test harness even
+    // though `TomErrorBoundary` handles them visually. Drain those so
+    // the harness does not fail the test on their account.
+    tester.takeException();
+
+    // Fallback card is visible in place of the list.
+    expect(find.text('Something went wrong'), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+
+    // Turn the throw off, then tap Retry — the boundary clears and the
+    // list re-renders.
+    await tester.tap(find.text('Throw in row tile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Retry').last);
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.text('Something went wrong'), findsNothing);
+    expect(find.text('Row #00000'), findsOneWidget);
+    await unmountDemo(tester);
+  });
 }

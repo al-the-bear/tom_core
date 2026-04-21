@@ -68,7 +68,17 @@ class _TomErrorBoundaryState extends State<TomErrorBoundary> {
   void _captureError(FlutterErrorDetails details) {
     widget.onError?.call(details);
     if (!mounted) return;
-    setState(() => _captured = details);
+    // The error arrives via `ErrorWidget.builder`, which fires *during*
+    // the build phase of the failing subtree. Calling `setState`
+    // synchronously from there trips the "setState() called during
+    // build" assertion in debug and surfaces as an unexpected framework
+    // exception in `flutter_test`. Defer the repaint to the next frame
+    // so the current build completes cleanly before we swap in the
+    // fallback UI.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _captured = details);
+    });
   }
 
   @override
