@@ -10,10 +10,12 @@
 /// the Cupertino concretes carry identical semantics.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show DateTimeRange, TimeOfDay;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../state/phase4_state.dart';
 import '../state/phase5_state.dart';
 
 @tomReflector
@@ -240,6 +242,168 @@ class CupertinoPhase5Form extends TomForm<Phase5DemoState> {
     labelTextOverride: 'Dark mode (toggle)',
     onLabelOverride: 'Dark',
     offLabelOverride: 'Light',
+  );
+
+  @override
+  void createFormElements() {}
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5c — Cupertino search/lookup/file + nullable form (Demo O)
+// ---------------------------------------------------------------------------
+
+/// In-memory deterministic file picker reused by Demo O. Mirrors the
+/// `demoFilePicker` in [file_nullable_demo_form.dart] so the Cupertino
+/// upload field behaves the same way under tests.
+Future<FileRef?> phase5cFilePicker(_) async {
+  final bytes = Uint8List.fromList(
+    'Hello from the Phase 5c Cupertino demo picker.\n'.codeUnits,
+  );
+  return FileRef(
+    name: 'cupertino_demo_file.txt',
+    sizeBytes: bytes.length,
+    mimeType: 'text/plain',
+    bytes: bytes,
+  );
+}
+
+@tomReflector
+class CupertinoPhase5cForm extends TomForm<Phase5cDemoState> {
+  CupertinoPhase5cForm() : super(formId: 'cupertinoPhase5c');
+
+  // ---- Search / lookup over Phase 4 City + Country sources -----------
+  // City / Country aren't TomObject types — these fields stay form-local.
+
+  late final citySearch = TomCupertinoFormSearchInput<City>(
+    'citySearch',
+    const City(0, 'Berlin', 'DE'),
+    form: this,
+    source: phase4CitySource,
+    labelTextOverride: 'City (search)',
+    hintTextOverride: 'Type to search…',
+  );
+
+  late final countryLookup = TomCupertinoFormLookupSheet<Country>(
+    'countryLookup',
+    const Country('US', 'United States'),
+    form: this,
+    source: phase4LookupCountrySource,
+    sheetTitle: 'Pick a country',
+    labelTextOverride: 'Country (lookup sheet)',
+  );
+
+  // ---- File upload — value type FileRef? has no TomObject wrapper ----
+
+  late final upload = TomCupertinoFormFileUpload(
+    'upload',
+    null,
+    form: this,
+    picker: phase5cFilePicker,
+    labelTextOverride: 'Choose file (Cupertino)',
+    descriptionTextOverride:
+        'CupertinoButton.filled trigger, error → CupertinoAlertDialog',
+    allowedExtensions: const ['txt', 'md', 'json', 'csv'],
+    maxSizeBytes: 5 * 1024 * 1024,
+  );
+
+  // ---- Nullable variants — bind into Phase5cDemoState ----------------
+
+  late final notes = TomCupertinoFormNStringInput(
+    'notes',
+    null,
+    form: this,
+    labelTextOverride: 'Notes (nullable)',
+    descriptionTextOverride: 'Empty text → null',
+    maxLength: 80,
+  );
+
+  late final age = TomCupertinoFormNIntInput(
+    'age',
+    null,
+    form: this,
+    labelTextOverride: 'Age (nullable int)',
+  );
+
+  late final score = TomCupertinoFormNDoubleInput(
+    'score',
+    null,
+    form: this,
+    decimals: 2,
+    labelTextOverride: 'Score (nullable double)',
+  );
+
+  late final birthday = TomCupertinoFormNDateInput(
+    'birthday',
+    null,
+    form: this,
+    firstDate: DateTime(1900),
+    lastDate: DateTime(2100),
+    labelTextOverride: 'Birthday (nullable date)',
+  );
+
+  @override
+  void createFormElements() {}
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5c — Family-swappable form (Demo P)
+//
+// One `TomForm` declaration that resolves Material vs Cupertino concretes
+// at construction time via [FormFieldFamily]. The demo rebuilds the form
+// when the breakpoint flips; the backing state survives so all values
+// round-trip across the swap.
+// ---------------------------------------------------------------------------
+
+@tomReflector
+class Phase5cFamilyForm extends TomForm<Phase5cFamilyState> {
+  Phase5cFamilyForm({required this.family})
+      : super(formId: 'phase5cFamily-${family.kind.name}');
+
+  /// Which family this form was instantiated against (Material vs
+  /// Cupertino). Stored for inspection in the demo — the actual concrete
+  /// classes are picked once at construction.
+  final FormFieldFamily family;
+
+  late final fullName = family.stringInput(
+    'fullName',
+    '',
+    form: this,
+    labelTextOverride: 'Full name',
+    hintTextOverride: 'First and last name',
+    maxLength: 60,
+  );
+
+  late final quantity = family.intInput(
+    'quantity',
+    0,
+    form: this,
+    labelTextOverride: 'Quantity',
+  );
+
+  late final ratio = family.doubleInput(
+    'ratio',
+    0.0,
+    form: this,
+    decimals: 2,
+    labelTextOverride: 'Ratio',
+  );
+
+  late final notifyMe = family.boolSwitch(
+    'notifyMe',
+    false,
+    form: this,
+    labelTextOverride: 'Notify me',
+    descriptionTextOverride:
+        'Switch surface picks Material Switch vs CupertinoSwitch.',
+  );
+
+  late final eventDate = family.datePicker(
+    'eventDate',
+    DateTime(2026, 1, 1),
+    firstDate: DateTime(2020),
+    lastDate: DateTime(2030),
+    form: this,
+    labelTextOverride: 'Event date',
   );
 
   @override

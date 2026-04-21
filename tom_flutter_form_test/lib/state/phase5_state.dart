@@ -111,3 +111,54 @@ class Phase5bDemoState extends TomClass {
 }
 
 Phase5bDemoState phase5bDemoState = Phase5bDemoState();
+
+// ---------------------------------------------------------------------------
+// Phase 5c — Cupertino search / lookup / file + nullable backing state.
+// ---------------------------------------------------------------------------
+
+/// Backing TomClass for Demo O (Cupertino search/lookup/file + nullable).
+///
+/// `search` and `lookup` carry the *value* of the selected item directly
+/// (not a label) — the form-side label resolver picks a display string
+/// from the source snapshot. Search/lookup over `City` / `Country` types
+/// can't bind into the kernel because there's no `TomObject<City>` /
+/// `TomObject<Country>`, so the demo lets those fields stay form-local
+/// (mirrors the Phase 4 Demo K pattern).
+///
+/// The four nullable fields *can* bind: `TomNString`, `TomNInt`,
+/// `TomNDouble`, `TomNDateTime` exist in the kernel.
+@tomReflector
+class Phase5cDemoState extends TomClass {
+  /// Free-form caption — drives the nullable string input.
+  late final notes = TomNString(null);
+
+  /// Optional age — drives the nullable int input.
+  late final age = TomNInt(null);
+
+  /// Optional score — drives the nullable double input.
+  late final score = TomNDouble(null);
+
+  /// Optional birthday — drives the nullable date input.
+  late final birthday = TomNDateTime(null);
+}
+
+Phase5cDemoState phase5cDemoState = Phase5cDemoState();
+
+// ---------------------------------------------------------------------------
+// Phase 5c — Demo P backing state (family-swap by breakpoint).
+//
+// Demo P shows how a single form declaration can resolve to either
+// Material or Cupertino concretes via [FormFieldFamily]. The state
+// mirrors the cross-section of fields the family supports.
+// ---------------------------------------------------------------------------
+
+@tomReflector
+class Phase5cFamilyState extends TomClass {
+  late final fullName = TomString('Ada Lovelace');
+  late final quantity = TomInt(3);
+  late final ratio = TomDouble(0.75);
+  late final notifyMe = TomBool(true);
+  late final eventDate = TomDateTime(DateTime(2026, 6, 15));
+}
+
+Phase5cFamilyState phase5cFamilyState = Phase5cFamilyState();

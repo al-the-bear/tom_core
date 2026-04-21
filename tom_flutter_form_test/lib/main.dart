@@ -33,6 +33,8 @@ import 'demos/demo_k_enum_object.dart';
 import 'demos/demo_l_file_nullable.dart';
 import 'demos/demo_m_cupertino_basics.dart';
 import 'demos/demo_n_cupertino_numeric_datetime.dart';
+import 'demos/demo_o_cupertino_search_lookup_file.dart';
+import 'demos/demo_p_family_swap_breakpoint.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -299,6 +301,35 @@ class DemoListScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (_) => const DemoNCupertinoNumericDateTime()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 5c — Cupertino search/lookup/file + family swap'),
+          _DemoTile(
+            icon: Icons.search,
+            title: 'Demo O: Cupertino search / lookup / file (Phase 5c)',
+            description: 'Six remaining Phase 5c Cupertino concretes — '
+                'SearchInput<City>, LookupSheet<Country>, FileUpload, plus '
+                'the four nullable variants (NString / NInt / NDouble / '
+                'NDate) — pinned to TomCupertinoFormStyle.cupertino.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoOCupertinoSearchLookupFile()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.compare_arrows,
+            title: 'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+            description: 'One Phase5cFamilyForm declaration resolves '
+                'Material vs Cupertino concretes via FormFieldFamily; '
+                'LayoutBuilder + styleBpOverrides flip both family and '
+                'style at 700 px while shared state survives the swap.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoPFamilySwapBreakpoint()),
             ),
           ),
           const SizedBox(height: 12),
