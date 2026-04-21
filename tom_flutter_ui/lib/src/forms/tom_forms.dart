@@ -63,3 +63,9 @@ export 'fields/cupertino/tom_cupertino_form_string_list_field.dart';
 // Phase 5b — Cupertino numeric + date/time concretes
 export 'fields/cupertino/tom_cupertino_form_numeric_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_date_time_fields.dart';
+
+// Phase 5c — Cupertino enum/object, search/lookup, file, nullable concretes
+export 'fields/cupertino/tom_cupertino_form_enum_object_fields.dart';
+export 'fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
+export 'fields/cupertino/tom_cupertino_form_file_field.dart';
+export 'fields/cupertino/tom_cupertino_form_nullable_inputs.dart';
