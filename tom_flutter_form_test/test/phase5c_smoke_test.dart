@@ -98,12 +98,10 @@ void main() {
     expect(find.text('Quantity'), findsAtLeastNWidgets(1));
     expect(find.text('Ratio'), findsAtLeastNWidgets(1));
     expect(find.text('Notify me'), findsAtLeastNWidgets(1));
-    // Material TomFormDatePicker doesn't surface its own labelText (the
-    // generic decoration mixin's `String? get labelText => null` shadows
-    // the parent field's override — pre-existing Phase 3 limitation).
-    // We assert the formatted date instead, which proves the date row
-    // rendered.
-    expect(find.text('2026-06-15'), findsAtLeastNWidgets(1));
+    // The Event date row also surfaces its label (the Phase 5 review
+    // pass restored the labelText override on the 5 Material date/time
+    // concretes that the mixin's `=> null` had shadowed).
+    expect(find.text('Event date'), findsAtLeastNWidgets(1));
     // Shared-state panel header
     expect(
       find.text('Shared state (Phase5cFamilyState)'),
