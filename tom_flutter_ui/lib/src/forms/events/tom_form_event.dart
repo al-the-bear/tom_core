@@ -108,3 +108,59 @@ class FormValidatedEvent extends TomFormEvent {
               : 'Form validated: ${errors.length} error(s)',
         );
 }
+
+// ---------------------------------------------------------------------------
+// List form events (Phase 2a — §13)
+// ---------------------------------------------------------------------------
+
+/// Fired when a sub-form is appended or inserted into a [TomListForm].
+class ListItemAddedEvent extends TomFormEvent {
+  /// Index at which the new sub-form sits after insertion.
+  final int index;
+
+  /// Stable id of the newly added sub-form (its `formId`).
+  final String itemFormId;
+
+  ListItemAddedEvent({
+    required super.source,
+    required this.index,
+    required this.itemFormId,
+  }) : super(description: 'List item added at $index ($itemFormId)');
+}
+
+/// Fired when a sub-form is removed from a [TomListForm].
+class ListItemRemovedEvent extends TomFormEvent {
+  /// Index the sub-form occupied before removal.
+  final int index;
+
+  /// Stable id of the removed sub-form.
+  final String itemFormId;
+
+  ListItemRemovedEvent({
+    required super.source,
+    required this.index,
+    required this.itemFormId,
+  }) : super(description: 'List item removed at $index ($itemFormId)');
+}
+
+/// Fired when an existing sub-form is moved within a [TomListForm].
+class ListItemReorderedEvent extends TomFormEvent {
+  /// Original index of the sub-form before the move.
+  final int fromIndex;
+
+  /// Final index of the sub-form after the move.
+  final int toIndex;
+
+  /// Stable id of the moved sub-form.
+  final String itemFormId;
+
+  ListItemReorderedEvent({
+    required super.source,
+    required this.fromIndex,
+    required this.toIndex,
+    required this.itemFormId,
+  }) : super(
+          description:
+              'List item moved $fromIndex → $toIndex ($itemFormId)',
+        );
+}

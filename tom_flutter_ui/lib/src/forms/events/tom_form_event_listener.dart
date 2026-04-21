@@ -22,6 +22,11 @@ mixin TomFormEventListener {
   void onFormDiscarded(FormDiscardedEvent event) {}
   void onFormValidated(FormValidatedEvent event) {}
 
+  // List form events (Phase 2a — §13)
+  void onListItemAdded(ListItemAddedEvent event) {}
+  void onListItemRemoved(ListItemRemovedEvent event) {}
+  void onListItemReordered(ListItemReorderedEvent event) {}
+
   /// Dispatches an event to the appropriate typed handler.
   void handleEvent(TomFormEvent event) {
     switch (event) {
@@ -43,6 +48,12 @@ mixin TomFormEventListener {
         onFormDiscarded(e);
       case FormValidatedEvent e:
         onFormValidated(e);
+      case ListItemAddedEvent e:
+        onListItemAdded(e);
+      case ListItemRemovedEvent e:
+        onListItemRemoved(e);
+      case ListItemReorderedEvent e:
+        onListItemReordered(e);
       default:
         break;
     }

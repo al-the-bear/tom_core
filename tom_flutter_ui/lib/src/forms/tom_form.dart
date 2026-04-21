@@ -42,6 +42,10 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// The bound data object (back-reference for save push-back).
   T? _binding;
 
+  /// The currently bound data object, or `null` when [unbind] has been
+  /// called or [bind] never ran. Read-only — mutate via [bind] / [unbind].
+  T? get currentBinding => _binding;
+
   /// The bound data object's initial snapshot (values at bind/save time).
   Map<String, dynamic>? _initialSnapshot;
 

@@ -60,4 +60,16 @@ class TomFormInspector with TomFormEventListener {
 
   @override
   void onFormDiscarded(FormDiscardedEvent event) => _events.add(event);
+
+  @override
+  void onFormValidated(FormValidatedEvent event) => _events.add(event);
+
+  @override
+  void onListItemAdded(ListItemAddedEvent event) => _events.add(event);
+
+  @override
+  void onListItemRemoved(ListItemRemovedEvent event) => _events.add(event);
+
+  @override
+  void onListItemReordered(ListItemReorderedEvent event) => _events.add(event);
 }
