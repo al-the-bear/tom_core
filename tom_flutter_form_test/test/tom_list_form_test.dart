@@ -110,6 +110,16 @@ void main() {
       form.dispose();
     });
 
+    test('reorder alias matches move semantics', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      final firstItem = order.items[0];
+      form.items.reorder(0, 1);
+      expect(order.items[1], same(firstItem));
+      expect(form.items.forms[1].currentBinding, same(firstItem));
+      form.dispose();
+    });
+
     test('unbind disposes sub-forms and resets state', () {
       final form = makeBoundForm();
       form.items.unbind();

@@ -163,6 +163,9 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Move the sub-form from index [from] to index [to]. The bound list
   /// is reordered to match.
+  ///
+  /// See [reorder] for the spec-canonical name; both forward to the same
+  /// implementation and fire a [ListItemReorderedEvent].
   void move(int from, int to) {
     if (from == to) return;
     final form = _forms.removeAt(from);
@@ -181,6 +184,11 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       itemFormId: form.formId,
     ));
   }
+
+  /// Spec-canonical alias of [move] (§16: "reorder via drag handles
+  /// drives `.reorder`"). Forwards to [move] so existing callers and
+  /// events keep working unchanged.
+  void reorder(int from, int to) => move(from, to);
 
   /// Bind this list to a [TomList] of [TItem]. Tears down any sub-forms
   /// from a prior binding and re-instantiates one form per element.

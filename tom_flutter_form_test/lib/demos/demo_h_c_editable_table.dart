@@ -36,6 +36,11 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   late final OrderForm _form;
   late final TomFormInspector _inspector;
 
+  /// Which renderer is shown in the items card. The DataTable variant is
+  /// the default; the ACL variant exercises the spec's `TomAclBuilder`
+  /// row-per-item pattern (§16, "DataTable / TomAclBuilder side-by-side").
+  _ItemsRenderer _renderer = _ItemsRenderer.dataTable;
+
   @override
   void initState() {
     super.initState();
@@ -209,6 +214,27 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                 ),
               ]),
             ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
+              child: SegmentedButton<_ItemsRenderer>(
+                segments: const [
+                  ButtonSegment(
+                    value: _ItemsRenderer.dataTable,
+                    label: Text('DataTable'),
+                    icon: Icon(Icons.table_rows_outlined, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: _ItemsRenderer.acl,
+                    label: Text('TomAclBuilder'),
+                    icon: Icon(Icons.view_agenda_outlined, size: 16),
+                  ),
+                ],
+                selected: {_renderer},
+                showSelectedIcon: false,
+                onSelectionChanged: (sel) =>
+                    setState(() => _renderer = sel.first),
+              ),
+            ),
             const Divider(height: 8),
             if (items.length == 0)
               const Padding(
@@ -220,7 +246,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                   ),
                 ),
               )
-            else
+            else if (_renderer == _ItemsRenderer.dataTable)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
@@ -240,7 +266,9 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                       _buildRow(context, i, items[i]),
                   ],
                 ),
-              ),
+              )
+            else
+              _aclList(context),
             const Divider(height: 16),
             Padding(
               padding: const EdgeInsets.all(8),
@@ -409,8 +437,82 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
     );
   }
 
+  /// Renders the list with the spec's `TomAclBuilder` row-per-item
+  /// pattern. Each row is its own ACL composed against the
+  /// `OrderItemForm` (which implements `TomScreenElementsProvider` via
+  /// `TomForm`), so the same field widgets feed two completely different
+  /// layout engines from the same bound list.
+  Widget _aclList(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = _form.items;
+    return ReorderableListView.builder(
+      shrinkWrap: true,
+      buildDefaultDragHandles: false,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      onReorder: (from, to) {
+        // ReorderableListView reports `to` as the index *after* removal
+        // when moving downward — normalise to TomListForm.reorder semantics.
+        final adjusted = to > from ? to - 1 : to;
+        setState(() => _form.items.reorder(from, adjusted));
+      },
+      itemBuilder: (context, index) {
+        final form = items[index];
+        return Padding(
+          key: ValueKey('acl-row-$index'),
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ReorderableDragStartListener(
+                index: index,
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.drag_indicator, size: 18),
+                ),
+              ),
+              Expanded(
+                child: TomAclBuilder<OrderItemForm>(
+                  id: 'orderItemRow',
+                  elementProvider: form,
+                )
+                    .append((f) => SizedBox(width: 220, child: f.productName.widget))
+                    .append((f) => SizedBox(width: 70, child: f.quantity.widget))
+                    .append((f) => SizedBox(width: 100, child: f.unitPrice.widget))
+                    .append(
+                      (f) => SizedBox(
+                        width: 80,
+                        child: ListenableBuilder(
+                          listenable: f.changes,
+                          builder: (context, _) => Text(
+                            '\$${f.computedTotal.toStringAsFixed(2)}',
+                            style: theme.textTheme.bodyMedium,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
+                      ),
+                    )
+                    .build(context),
+              ),
+              IconButton(
+                tooltip: 'Remove row',
+                icon: const Icon(Icons.delete_outline, size: 18),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => items.removeAt(index)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   double _orderTotal() {
     return _form.items.forms
         .fold<double>(0, (sum, f) => sum + f.computedTotal);
   }
 }
+
+/// Renderer choice for the H-C items card — DataTable (default) or the
+/// `TomAclBuilder` side-by-side variant called out in the spec for §H-C.
+enum _ItemsRenderer { dataTable, acl }
