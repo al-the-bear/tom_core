@@ -11,6 +11,7 @@ import '../style/form_style_enums.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import '../validation/validators.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
@@ -27,30 +28,41 @@ abstract class TomFormIntField extends TomField<int> {
   final String? descriptionTextOverride;
 
   /// Optional inclusive minimum. Slider / stepper variants honour it
-  /// for clamping; input variants surface it via a built-in validator.
+  /// for clamping; input variants surface it via a built-in validator
+  /// auto-prepended to [validators] when this is non-null.
   final int? minValue;
 
   /// Optional inclusive maximum.
   final int? maxValue;
 
   TomFormIntField(
-    super.tomId,
-    super.initialValue, {
+    String tomId,
+    int initialValue, {
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
     this.minValue,
     this.maxValue,
-    super.form,
-    super.validators,
-    super.autoValidate,
+    TomForm? form,
+    List<Object> validators = const [],
+    bool autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  }) : super(
+          tomId,
+          initialValue,
+          form: form,
+          autoValidate: autoValidate,
+          validators: [
+            if (minValue != null) Validators.min(minValue),
+            if (maxValue != null) Validators.max(maxValue),
+            ...validators,
+          ],
+        );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -150,9 +162,13 @@ class _TomFormIntInputWidgetState extends State<_TomFormIntInputWidget> {
   void _onChanged(String text) {
     final n = int.tryParse(text);
     if (n == null) return;
-    final clamped = _clampInRange(n, field.minValue, field.maxValue);
+    // Don't silently clamp here — the abstract field auto-prepends
+    // Validators.min/max so out-of-range values surface as a normal
+    // validation error in the field anatomy. Slider and stepper variants
+    // still clamp because the widget itself can't produce out-of-range
+    // values in the first place.
     _updatingFromField = true;
-    field.setValue(clamped);
+    field.setValue(n);
     _updatingFromField = false;
   }
 
@@ -418,13 +434,6 @@ class _TomFormIntStepperWidgetState extends State<_TomFormIntStepperWidget> {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-int _clampInRange(int value, int? min, int? max) {
-  var v = value;
-  if (min != null && v < min) v = min;
-  if (max != null && v > max) v = max;
-  return v;
-}
 
 String? _floatingLabelOrNull(TomFieldStyle style, TomFormIntField field) {
   if (style.labelPlacement != LabelPlacement.floating) return null;

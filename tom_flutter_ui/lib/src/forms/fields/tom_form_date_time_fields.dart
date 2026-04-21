@@ -643,3 +643,113 @@ class _TomFormDateRangePickerWidgetState
     return field.decorateField(context, inner);
   }
 }
+
+// ---------------------------------------------------------------------------
+// TimeRange value type + TomFormTimeRangeField (abstract)
+// ---------------------------------------------------------------------------
+
+/// A `(start, end)` pair of [TimeOfDay] values, used as the value type for
+/// time-range fields. Equatable so observers see a real change only when
+/// at least one endpoint moves.
+///
+/// No concrete widget ships in Phase 3 (the spec table treats Phase 3
+/// concretes as a "target — not every row is required"). Apps that need
+/// a time-range picker today can subclass [TomFormTimeRangeField] with
+/// two stacked [TomFormTimePicker]-style buttons.
+class TimeRange {
+  final TimeOfDay start;
+  final TimeOfDay end;
+
+  const TimeRange(this.start, this.end);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TimeRange && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+
+  @override
+  String toString() => '($start, $end)';
+}
+
+abstract class TomFormTimeRangeField extends TomField<TimeRange> {
+  final String? labelTextOverride;
+  final String? descriptionTextOverride;
+
+  TomFormTimeRangeField(
+    super.tomId,
+    super.initialValue, {
+    this.labelTextOverride,
+    this.descriptionTextOverride,
+    super.form,
+    super.validators,
+    super.autoValidate,
+    super.tomGroup,
+    super.authorizer,
+    super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
+  });
+
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  String formatTime(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:'
+      '${t.minute.toString().padLeft(2, '0')}';
+
+  String formatRange(TimeRange r) =>
+      '${formatTime(r.start)}  →  ${formatTime(r.end)}';
+}
+
+// ---------------------------------------------------------------------------
+// TomFormDateTimeRangeField (abstract)
+// ---------------------------------------------------------------------------
+
+/// Abstract field for a `(start, end)` pair of full [DateTime] values.
+/// Reuses Flutter's [DateTimeRange] as the value type. As with
+/// [TomFormTimeRangeField], no concrete widget ships in Phase 3 — apps
+/// that need one can compose [TomFormDateTimePicker] twice.
+abstract class TomFormDateTimeRangeField extends TomField<DateTimeRange> {
+  final String? labelTextOverride;
+  final String? descriptionTextOverride;
+  final DateTime firstDate;
+  final DateTime lastDate;
+
+  TomFormDateTimeRangeField(
+    super.tomId,
+    super.initialValue, {
+    required this.firstDate,
+    required this.lastDate,
+    this.labelTextOverride,
+    this.descriptionTextOverride,
+    super.form,
+    super.validators,
+    super.autoValidate,
+    super.tomGroup,
+    super.authorizer,
+    super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
+  });
+
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  String formatDateTime(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')} '
+      '${d.hour.toString().padLeft(2, '0')}:'
+      '${d.minute.toString().padLeft(2, '0')}';
+
+  String formatRange(DateTimeRange r) =>
+      '${formatDateTime(r.start)}  →  ${formatDateTime(r.end)}';
+}

@@ -11,6 +11,7 @@ import '../style/form_style_enums.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import '../validation/validators.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
@@ -21,27 +22,43 @@ abstract class TomFormDoubleField extends TomField<double> {
   final String? labelTextOverride;
   final String? hintTextOverride;
   final String? descriptionTextOverride;
+
+  /// Optional inclusive minimum. Slider variants honour it for clamping;
+  /// input variants surface it via a built-in validator auto-prepended
+  /// to [validators] when this is non-null.
   final double? minValue;
+
+  /// Optional inclusive maximum.
   final double? maxValue;
 
   TomFormDoubleField(
-    super.tomId,
-    super.initialValue, {
+    String tomId,
+    double initialValue, {
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
     this.minValue,
     this.maxValue,
-    super.form,
-    super.validators,
-    super.autoValidate,
+    TomForm? form,
+    List<Object> validators = const [],
+    bool autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
     super.actionIcon,
     super.actionIconTooltip,
     super.onActionIconPressed,
-  });
+  }) : super(
+          tomId,
+          initialValue,
+          form: form,
+          autoValidate: autoValidate,
+          validators: [
+            if (minValue != null) Validators.min(minValue),
+            if (maxValue != null) Validators.max(maxValue),
+            ...validators,
+          ],
+        );
 
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
@@ -151,9 +168,11 @@ class _TomFormDoubleInputWidgetState extends State<_TomFormDoubleInputWidget> {
   void _onChanged(String text) {
     final n = double.tryParse(text);
     if (n == null) return;
-    final clamped = _clampDouble(n, field.minValue, field.maxValue);
+    // Out-of-range values surface as validation errors via the built-in
+    // min/max validators auto-prepended in TomFormDoubleField — no
+    // silent clamping here.
     _updatingFromField = true;
-    field.setValue(clamped);
+    field.setValue(n);
     _updatingFromField = false;
   }
 
@@ -295,9 +314,9 @@ class _TomFormCurrencyDoubleInputWidgetState
   void _onChanged(String text) {
     final n = field.formatProfile.parse(text);
     if (n == null) return;
-    final clamped = _clampDouble(n, field.minValue, field.maxValue);
+    // No silent clamping — out-of-range surfaces via min/max validators.
     _updatingFromField = true;
-    field.setValue(clamped);
+    field.setValue(n);
     _updatingFromField = false;
   }
 
@@ -556,13 +575,6 @@ class _TomFormDoubleSliderWidgetState
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-double _clampDouble(double value, double? min, double? max) {
-  var v = value;
-  if (min != null && v < min) v = min;
-  if (max != null && v > max) v = max;
-  return v;
-}
 
 String? _floatingLabelOrNull(TomFieldStyle style, TomFormDoubleField field) {
   if (style.labelPlacement != LabelPlacement.floating) return null;
