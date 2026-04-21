@@ -24,6 +24,9 @@ import 'demos/demo_e_selection_variants.dart';
 import 'demos/demo_f_boolean_variants.dart';
 import 'demos/demo_g_breakpoint_scenarios.dart';
 import 'demos/demo_h_complex_authorization.dart';
+import 'demos/demo_h_a_master_detail.dart';
+import 'demos/demo_h_b_expandable_rows.dart';
+import 'demos/demo_h_c_editable_table.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -170,6 +173,42 @@ class DemoListScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                   builder: (_) => const DemoHComplexAuthorization()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 2a \u2014 Collections & master-detail'),
+          _DemoTile(
+            icon: Icons.view_sidebar_outlined,
+            title: 'Demo H-A: Master-Detail Customer Editor',
+            description: 'TomMasterDetailScaffold with TomListForm + a '
+                're-bound CustomerDetailForm; selection guarded by '
+                'TomUnsavedChangesGuard; interleaved list+detail event log.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoHAMasterDetail()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.unfold_more,
+            title: 'Demo H-B: Expandable Rows (Order Items)',
+            description: 'TomListForm rendered as ExpansionTile per row; '
+                'parent OrderForm.isDirty / .isValid aggregate over '
+                'expanded + collapsed children alike.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoHBExpandableRows()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.table_rows_outlined,
+            title: 'Demo H-C: Editable Order-Items Table',
+            description: 'DataTable with editable field widgets in cells, '
+                'computed-total column + form-level total, drag-handle '
+                'reorder, TomErrorView for cross-field "min items" rule.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoHCEditableTable()),
             ),
           ),
           const SizedBox(height: 12),

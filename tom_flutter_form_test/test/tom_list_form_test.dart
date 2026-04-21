@@ -1,0 +1,222 @@
+/// Unit tests for `TomListForm` (Phase 2a / §13).
+///
+/// Lives in `tom_flutter_form_test` because constructing `TomForm`
+/// subclasses requires reflectable to be initialised — easiest done
+/// through this project's generated `main.reflection.dart`.
+///
+/// Covered:
+/// - add / insert / removeAt / move propagate to the bound `TomList`
+/// - List events bubble through the parent form's bus
+/// - bind rebuilds the sub-form set; unbind tears it down
+/// - validate aggregates per-row + validateList errors
+/// - save updates the snapshot so isDirty / hasStructuralChanges reset
+/// - discard restores the original list order + content
+library;
+
+import 'dart:convert';
+
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+import 'package:tom_flutter_form_test/forms/order_form.dart';
+import 'package:tom_flutter_form_test/forms/order_item_form.dart';
+import 'package:tom_flutter_form_test/main.reflection.dart';
+import 'package:tom_flutter_form_test/state/phase2a_state.dart';
+
+void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    initializeReflection();
+    // Resources are needed because TomFormStringInput resolves labels
+    // via TomCtr at construction-time-ish. Loading the demo resources
+    // keeps that path quiet; the tests never check labels themselves.
+    final jsonStr =
+        await rootBundle.loadString('assets/demo_resources.json');
+    final resources = json.decode(jsonStr) as Map<String, dynamic>;
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(resources),
+    );
+  });
+
+  Order makeOrder() {
+    final o = Order();
+    o.orderNumber | 'TEST-1';
+    o.customer | 'Test Customer';
+    final i1 = OrderItem();
+    i1.productName | 'Widget A';
+    i1.quantity | '2';
+    i1.unitPrice | '5.00';
+    final i2 = OrderItem();
+    i2.productName | 'Widget B';
+    i2.quantity | '3';
+    i2.unitPrice | '4.50';
+    o.items.add(i1);
+    o.items.add(i2);
+    return o;
+  }
+
+  OrderForm makeBoundForm() {
+    final form = TomScope.withScope('listFormTest', () => OrderForm());
+    form.bind(makeOrder());
+    return form;
+  }
+
+  group('TomListForm — bind / structure', () {
+    test('bind instantiates one sub-form per element', () {
+      final form = makeBoundForm();
+      expect(form.items.length, 2);
+      expect(form.items.forms.length, 2);
+      expect(form.items[0], isA<OrderItemForm>());
+      form.dispose();
+    });
+
+    test('add appends a sub-form and grows the bound list', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      final created = form.items.add();
+      expect(form.items.length, 3);
+      expect(order.items.length, 3);
+      expect(form.items[2], same(created));
+      form.dispose();
+    });
+
+    test('insert at index reorders both sides', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      form.items.insert(1);
+      expect(form.items.length, 3);
+      expect(order.items.length, 3);
+      form.dispose();
+    });
+
+    test('removeAt drops the sub-form and the bound element', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      form.items.removeAt(0);
+      expect(form.items.length, 1);
+      expect(order.items.length, 1);
+      form.dispose();
+    });
+
+    test('move reorders both sides identically', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      final firstItem = order.items[0];
+      form.items.move(0, 1);
+      expect(order.items[1], same(firstItem));
+      expect(form.items.forms[1].currentBinding, same(firstItem));
+      form.dispose();
+    });
+
+    test('unbind disposes sub-forms and resets state', () {
+      final form = makeBoundForm();
+      form.items.unbind();
+      expect(form.items.length, 0);
+      expect(form.items.isDirty, isFalse);
+      form.dispose();
+    });
+  });
+
+  group('TomListForm — events', () {
+    test('add fires ListItemAddedEvent through the parent bus', () {
+      final form = makeBoundForm();
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      form.items.add();
+      final added = inspector.events.whereType<ListItemAddedEvent>();
+      expect(added, hasLength(1));
+      expect(added.first.itemFormId, 'items');
+      form.removeListener(inspector);
+      form.dispose();
+    });
+
+    test('removeAt fires ListItemRemovedEvent', () {
+      final form = makeBoundForm();
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      form.items.removeAt(0);
+      final removed = inspector.events.whereType<ListItemRemovedEvent>();
+      expect(removed, hasLength(1));
+      expect(removed.first.index, 0);
+      form.removeListener(inspector);
+      form.dispose();
+    });
+
+    test('move fires ListItemReorderedEvent with from/to', () {
+      final form = makeBoundForm();
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      form.items.move(0, 1);
+      final reordered =
+          inspector.events.whereType<ListItemReorderedEvent>();
+      expect(reordered, hasLength(1));
+      expect(reordered.first.fromIndex, 0);
+      expect(reordered.first.toIndex, 1);
+      form.removeListener(inspector);
+      form.dispose();
+    });
+  });
+
+  group('TomListForm — validation & save lifecycle', () {
+    test('validateList rule trips when list is empty', () async {
+      final form = makeBoundForm();
+      form.items.removeAt(0);
+      form.items.removeAt(0);
+      final errors = await form.items.validate();
+      expect(errors, hasLength(1));
+      expect(errors.first.errorKey, 'error.items.minRequired');
+      form.dispose();
+    });
+
+    test('save returns true when all rows are valid', () async {
+      final form = makeBoundForm();
+      final ok = await form.items.save();
+      expect(ok, isTrue);
+      form.dispose();
+    });
+
+    test('save returns false when a row fails validation', () async {
+      final form = makeBoundForm();
+      // Force an invalid quantity on row 0 (positive integer rule).
+      form.items[0].quantity.set('not-a-number');
+      final ok = await form.items.save();
+      expect(ok, isFalse);
+      form.dispose();
+    });
+
+    test('hasStructuralChanges flips after add and resets after save',
+        () async {
+      final form = makeBoundForm();
+      expect(form.items.hasStructuralChanges, isFalse);
+      form.items.add();
+      expect(form.items.hasStructuralChanges, isTrue);
+      // The freshly-added sub-form has empty productName which fails the
+      // required-validator, so save will reject. Fill it before saving.
+      form.items[2].productName.set('Widget C');
+      form.items[2].quantity.set('1');
+      form.items[2].unitPrice.set('1.00');
+      final ok = await form.items.save();
+      expect(ok, isTrue);
+      expect(form.items.hasStructuralChanges, isFalse);
+      form.dispose();
+    });
+  });
+
+  group('TomListForm — discard', () {
+    test('discard restores the original membership after add/remove',
+        () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      final originalLength = order.items.length;
+      form.items.add();
+      form.items.removeAt(0);
+      expect(form.items.hasStructuralChanges, isTrue);
+      form.items.discard();
+      expect(order.items.length, originalLength);
+      expect(form.items.hasStructuralChanges, isFalse);
+      form.dispose();
+    });
+  });
+}
