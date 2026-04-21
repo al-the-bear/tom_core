@@ -69,3 +69,6 @@ export 'fields/cupertino/tom_cupertino_form_enum_object_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_search_lookup_fields.dart';
 export 'fields/cupertino/tom_cupertino_form_file_field.dart';
 export 'fields/cupertino/tom_cupertino_form_nullable_inputs.dart';
+
+// Phase 5c — FormFieldFamily factory (Material vs Cupertino concrete picker)
+export 'form_field_family.dart';
