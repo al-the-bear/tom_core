@@ -29,6 +29,8 @@ import 'demos/demo_h_b_expandable_rows.dart';
 import 'demos/demo_h_c_editable_table.dart';
 import 'demos/demo_i_numeric_forms.dart';
 import 'demos/demo_j_date_time_forms.dart';
+import 'demos/demo_k_enum_object.dart';
+import 'demos/demo_l_file_nullable.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -236,6 +238,32 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoJDateTimeForms()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 4 \u2014 Enum, object, file & nullable fields'),
+          _DemoTile(
+            icon: Icons.format_list_bulleted_outlined,
+            title: 'Demo K: Enum, Object & Lookup',
+            description: 'Enum dropdown / segmented / radio / chips, '
+                'object dropdown + chips (Country), search field over a '
+                '~5 000-item source, and a modal lookup dialog.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoKEnumObject()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.upload_file_outlined,
+            title: 'Demo L: Files & Nullable Variants',
+            description: 'FileUpload + FileDropzone side-by-side with a '
+                'shared in-memory picker, plus a nullable subform '
+                '(string / int / double / date) distinguishing pristine '
+                'vs. set vs. explicitly-null states.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoLFileNullable()),
             ),
           ),
           const SizedBox(height: 12),
