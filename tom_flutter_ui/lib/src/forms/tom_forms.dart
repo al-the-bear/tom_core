@@ -46,3 +46,10 @@ export 'fields/tom_form_double_field.dart';
 export 'fields/tom_form_range_fields.dart';
 export 'fields/tom_form_date_time_fields.dart';
 export 'fields/tom_form_duration_field.dart';
+
+// Phase 4 — enum, object, search, lookup, file, nullable inputs
+export 'fields/tom_form_int_list_field.dart';
+export 'fields/tom_form_enum_object_fields.dart';
+export 'fields/tom_form_search_lookup_fields.dart';
+export 'fields/tom_form_file_field.dart';
+export 'fields/tom_form_nullable_inputs.dart';
