@@ -39,3 +39,10 @@ export 'list/tom_list_form.dart';
 export 'widgets/tom_unsaved_changes_guard.dart';
 export 'widgets/tom_error_view.dart';
 export 'widgets/tom_master_detail_scaffold.dart';
+
+// Phase 3 — numeric, date/time, duration field types
+export 'fields/tom_form_int_field.dart';
+export 'fields/tom_form_double_field.dart';
+export 'fields/tom_form_range_fields.dart';
+export 'fields/tom_form_date_time_fields.dart';
+export 'fields/tom_form_duration_field.dart';

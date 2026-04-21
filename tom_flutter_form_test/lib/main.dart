@@ -27,6 +27,8 @@ import 'demos/demo_h_complex_authorization.dart';
 import 'demos/demo_h_a_master_detail.dart';
 import 'demos/demo_h_b_expandable_rows.dart';
 import 'demos/demo_h_c_editable_table.dart';
+import 'demos/demo_i_numeric_forms.dart';
+import 'demos/demo_j_date_time_forms.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -209,6 +211,31 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoHCEditableTable()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 3 — Numeric, date/time & duration fields'),
+          _DemoTile(
+            icon: Icons.calculate_outlined,
+            title: 'Demo I: Numeric Forms',
+            description: 'IntInput / IntSlider / IntStepper, '
+                'CurrencyDoubleInput with locale switcher, percent input, '
+                'double slider, and Int/Double range sliders.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoINumericForms()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.event_note_outlined,
+            title: 'Demo J: Date/Time/Duration Forms',
+            description: 'DatePicker, inline DateCalendar, TimePicker, '
+                'DateTimePicker, DateRangePicker, and DurationInput vs. '
+                'an equivalent IntSlider in minutes (two-way sync).',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoJDateTimeForms()),
             ),
           ),
           const SizedBox(height: 12),

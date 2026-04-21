@@ -844,12 +844,17 @@ class TomClass extends TomObject<Map<String, TomObject>>
           } else if (member is TomMap) {
             _setMapMember(member, value, key, !merge);
           } else {
-            if (member is TomDateTime && value is String) {
-              if (value.startsWith(TomDateTime.serializationPrefix)) {
-                member.set(DateTime.parse(value.substring(3)));
-              } else {
-                member.set(DateTime.parse(value));
-              }
+            if ((member is TomDateTime ||
+                    member is TomObject<DateTime> ||
+                    member is TomObject<DateTime?>) &&
+                value is String) {
+              // The wire format is `<prefix><iso8601>` (see getValues()).
+              // Accept both the prefixed and bare forms — the prefix is
+              // a 3-char marker so substring(3) trims it cleanly.
+              final raw = value.startsWith(TomDateTime.serializationPrefix)
+                  ? value.substring(3)
+                  : value;
+              member.set(DateTime.parse(raw));
             } else if (member is TomOTimezoned && value is String) {
               member.setByString(value);
             } else {
@@ -965,9 +970,14 @@ class TomClass extends TomObject<Map<String, TomObject>>
           var valueValue = value.get();
           // TODO: add serialization/deserialization for other DateTime-derived classes
           if (value is TomDateTime || value is TomNDateTime) {
-            result[key] =
-                valueValue !=
-                "${TomDateTime.serializationPrefix}${valueValue == null ? '' : valueValue.toString()}";
+            // Emit `<prefix><iso8601>` for round-trip via setValues(),
+            // which strips the prefix and DateTime.parse()s the rest
+            // (see setOrMergeValues above). Nullable variants emit `null`
+            // when the underlying value is unset.
+            result[key] = valueValue == null
+                ? null
+                : "${TomDateTime.serializationPrefix}"
+                    "${(valueValue as DateTime).toIso8601String()}";
           } else if (value is TomOTimezoned) {
             result[key] = valueValue != null
                 ? valueValue.toString()
