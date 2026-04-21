@@ -259,4 +259,67 @@ void main() {
       form.dispose();
     });
   });
+
+  group('TomForm — child-container fan-out', () {
+    test('parent isDirty includes structural changes in TomListForm', () {
+      final form = makeBoundForm();
+      expect(form.isDirty, isFalse);
+      form.items.add();
+      // Newly added row is a structural change → parent should be dirty
+      // even though no header field was touched.
+      expect(form.isDirty, isTrue);
+      form.dispose();
+    });
+
+    test('parent validate aggregates list-level errors into one event',
+        () async {
+      final form = makeBoundForm();
+      form.items.removeAt(0);
+      form.items.removeAt(0);
+      final inspector = TomFormInspector();
+      form.addListener(inspector);
+      final errors = await form.validate();
+      expect(errors.any((e) => e.errorKey == 'error.items.minRequired'),
+          isTrue);
+      // The parent's FormValidatedEvent (last with source == formId)
+      // must carry the list error too — that's what TomErrorView
+      // subscribed to the parent will see.
+      final parentEvent = inspector.events
+          .whereType<FormValidatedEvent>()
+          .lastWhere((e) => e.source == 'order');
+      expect(
+          parentEvent.errors
+              .whereType<FormValidationError>()
+              .any((e) => e.errorKey == 'error.items.minRequired'),
+          isTrue);
+      form.removeListener(inspector);
+      form.dispose();
+    });
+
+    test('parent discard rolls back list structural changes', () {
+      final form = makeBoundForm();
+      final order = form.currentBinding!;
+      final originalLen = order.items.length;
+      form.items.add();
+      form.items.removeAt(0);
+      expect(form.items.hasStructuralChanges, isTrue);
+      form.discard();
+      expect(form.items.hasStructuralChanges, isFalse);
+      expect(order.items.length, originalLen);
+      form.dispose();
+    });
+
+    test('parent save fans out into TomListForm save', () async {
+      final form = makeBoundForm();
+      form.items.add();
+      form.items[2].productName.set('Widget C');
+      form.items[2].quantity.set('1');
+      form.items[2].unitPrice.set('1.00');
+      final ok = await form.save();
+      expect(ok, isTrue);
+      expect(form.items.hasStructuralChanges, isFalse);
+      expect(form.isDirty, isFalse);
+      form.dispose();
+    });
+  });
 }

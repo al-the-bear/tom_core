@@ -47,13 +47,21 @@ import '../validation/form_validation_error.dart';
 /// }
 /// ```
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
-    extends TomObservable implements TomFormEventSource {
+    extends TomObservable
+    implements TomFormEventSource, TomFormChildContainer {
   TomListForm({
     required this.listId,
     required TForm Function(int index) formFactory,
     TomForm? parentForm,
   })  : _formFactory = formFactory,
-        _parentForm = parentForm;
+        _parentForm = parentForm {
+    // Auto-register so the parent's validate / save / discard / isDirty
+    // / isValid / unbind fan out into this list. `TomListForm` extends
+    // `TomObservable` (not `TomObject`), so the parent's reflectable
+    // `getMembers()` can't discover it — explicit registration closes
+    // that gap.
+    parentForm?.registerChildContainer(this);
+  }
 
   /// Stable resource / event id for the list. Used as the `source` field
   /// on every list event and as the basePath segment for resources.
@@ -209,6 +217,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   }
 
   /// Detach from the bound list. Sub-forms are unbound and disposed.
+  @override
   void unbind() {
     for (final f in _forms) {
       f.unbind();
@@ -230,6 +239,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// This lets [TomErrorView] widgets subscribed to the parent form's bus
   /// pick up list-level errors — e.g. "at least one item required" —
   /// without needing a separate imperative update call.
+  @override
   Future<List<FormValidationError>> validate() async {
     final errors = <FormValidationError>[];
     for (final form in _forms) {
@@ -258,6 +268,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Save every sub-form. Returns `true` only when *every* sub-form
   /// saved successfully and [validateList] returned no errors.
+  @override
   Future<bool> save() async {
     final errors = await validate();
     if (errors.isNotEmpty) return false;
@@ -273,6 +284,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Discard edits in every sub-form AND restore the original list order
   /// / membership captured at bind / save time.
+  @override
   void discard() {
     for (final form in _forms) {
       form.discard();
@@ -315,6 +327,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// `true` when any sub-form is dirty OR the list membership / order has
   /// changed since the last [bind] / [save].
+  @override
   bool get isDirty =>
       hasStructuralChanges || _forms.any((f) => f.isDirty);
 
@@ -332,6 +345,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// `true` when every sub-form currently passes its own validation.
   /// Pristine sub-forms count as NOT valid (matching [TomForm.isValid]).
+  @override
   bool get isValid => _forms.every((f) => f.isValid);
 
   // --- Subclass extension points ---

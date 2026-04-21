@@ -401,10 +401,8 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               icon: const Icon(Icons.save, size: 16),
               label: const Text('Save order'),
               onPressed: () async {
-                final headerOk = await _form.save();
-                final listOk = await _form.items.save();
+                final ok = await _form.save();
                 if (!context.mounted) return;
-                final ok = headerOk && listOk;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(ok
                       ? 'Saved order + items.'
@@ -417,7 +415,6 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               label: const Text('Validate'),
               onPressed: () async {
                 await _form.validate();
-                await _form.items.validate();
                 if (!context.mounted) return;
                 setState(() {});
               },
@@ -427,7 +424,6 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               label: const Text('Discard all'),
               onPressed: () {
                 _form.discard();
-                _form.items.discard();
                 setState(() {});
               },
             ),

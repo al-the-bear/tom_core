@@ -270,20 +270,12 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               label: const Text('Save order'),
               onPressed: () async {
                 final ok = await _form.save();
-                if (ok) {
-                  final listOk = await _form.items.save();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(listOk
-                        ? 'Saved order + items.'
-                        : 'Header saved, items invalid.'),
-                  ));
-                } else {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Header validation failed.'),
-                  ));
-                }
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content: Text(ok
+                      ? 'Saved order + items.'
+                      : 'Validation failed.'),
+                ));
               },
             ),
             OutlinedButton.icon(
@@ -291,7 +283,6 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               label: const Text('Discard all'),
               onPressed: () {
                 _form.discard();
-                _form.items.discard();
                 setState(() {});
               },
             ),

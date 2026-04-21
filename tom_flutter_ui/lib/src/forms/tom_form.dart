@@ -12,6 +12,7 @@ import 'events/tom_form_event.dart';
 import 'events/tom_form_event_listener.dart';
 import 'events/tom_form_event_source.dart';
 import 'fields/tom_field_widget_adapter.dart';
+import 'tom_form_child_container.dart';
 import 'validation/form_validation_error.dart';
 import 'validation/validation_result.dart';
 
@@ -120,6 +121,31 @@ abstract class TomForm<T extends TomClass> extends TomClass
   Iterable<TomForm> get nestedForms =>
       getMembers().values.whereType<TomForm>();
 
+  /// Non-`TomForm` lifecycle children (today: `TomListForm`). Unlike
+  /// [nestedForms] these can't be discovered through `getMembers()` —
+  /// `TomListForm` extends `TomObservable`, not `TomObject`, so it's
+  /// invisible to the reflectable-driven member registry. They register
+  /// themselves via [registerChildContainer] (called automatically by
+  /// the `TomListForm` constructor when `parentForm` is set).
+  ///
+  /// List-form binding remains the user's responsibility via `onBound`,
+  /// since `TomListForm.bind(TomList<T>)` needs a typed list, not a
+  /// `TomClass`.
+  Iterable<TomFormChildContainer> get childContainers => _childContainers;
+
+  final List<TomFormChildContainer> _childContainers = [];
+
+  /// Register a non-`TomForm` lifecycle child (today: `TomListForm`) so
+  /// the parent form's [validate] / [save] / [discard] / [unbind] /
+  /// [isDirty] / [isValid] include it. Called automatically by
+  /// `TomListForm` when constructed with a `parentForm` — most users
+  /// never need to invoke this themselves.
+  void registerChildContainer(TomFormChildContainer container) {
+    if (!_childContainers.contains(container)) {
+      _childContainers.add(container);
+    }
+  }
+
   /// Bind to a TomClass instance.
   ///
   /// `target.getValues()` carries the whole state subtree (including
@@ -167,13 +193,18 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// Save form values back to bound state.
   ///
-  /// Runs full validation (including nested forms' validations) first —
-  /// returns `false` if any errors. On success, commits every field in
-  /// the form tree and fires `FormSavedEvent` at each level.
+  /// Runs full validation (including nested forms' AND child containers'
+  /// validations) first — returns `false` if any errors. On success,
+  /// commits every field in the form tree, snapshots each child
+  /// container, and fires `FormSavedEvent` at each level.
   Future<bool> save() async {
     final errors = await validate();
     if (errors.isNotEmpty) return false;
     _applySave();
+    for (final child in childContainers) {
+      final ok = await child.save();
+      if (!ok) return false;
+    }
     return true;
   }
 
@@ -191,8 +222,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
     _fireEvent(FormSavedEvent(source: formId));
   }
 
-  /// Discard edits — resets every field in this form and every nested
-  /// form back to its last bound / committed value.
+  /// Discard edits — resets every field in this form, every nested form,
+  /// and every child container (e.g. `TomListForm`) back to its last
+  /// bound / committed value.
   void discard() {
     onDiscarding();
     for (final field in fields.values) {
@@ -201,6 +233,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final nested in nestedForms) {
       nested.discard();
     }
+    for (final child in childContainers) {
+      child.discard();
+    }
     onDiscarded();
     _fireEvent(FormDiscardedEvent(source: formId));
   }
@@ -208,9 +243,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// Detach from the bound state object.
   ///
   /// Resets all fields (including nested form fields) to pristine,
-  /// clears the binding reference and the initial snapshot at every
-  /// level. Call this when the form tree is no longer editing a data
-  /// object.
+  /// unbinds every nested form and child container, then clears the
+  /// binding reference and the initial snapshot at every level. Call
+  /// this when the form tree is no longer editing a data object.
   void unbind() {
     onUnbinding();
     for (final field in fields.values) {
@@ -219,29 +254,39 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final nested in nestedForms) {
       nested.unbind();
     }
+    for (final child in childContainers) {
+      child.unbind();
+    }
     _binding = null;
     _initialSnapshot = null;
   }
 
   // --- State queries ---
 
-  /// Whether any field — in this form OR any nested form — has a value
-  /// that differs from its initial (bound / last-committed) value.
+  /// Whether any field — in this form, any nested form, or any child
+  /// container (e.g. `TomListForm`) — has a value that differs from its
+  /// initial (bound / last-committed) value.
   bool get isDirty =>
       fields.values.any((f) => f.isDirty) ||
-      nestedForms.any((f) => f.isDirty);
+      nestedForms.any((f) => f.isDirty) ||
+      childContainers.any((c) => c.isDirty);
 
-  /// Whether every field in the form tree currently has a successful
-  /// validation state. Pristine fields count as NOT valid.
+  /// Whether every field in the form tree (including child containers)
+  /// currently has a successful validation state. Pristine fields count
+  /// as NOT valid.
   bool get isValid =>
       fields.values.every((f) => f.validationState is ValidationSuccess) &&
-      nestedForms.every((f) => f.isValid);
+      nestedForms.every((f) => f.isValid) &&
+      childContainers.every((c) => c.isValid);
 
   // --- Validation (async — §20) ---
 
-  /// Validate every field in this form AND every nested form, then run
-  /// this form's cross-field validation. Returns the combined error
-  /// list.
+  /// Validate every field in this form, every nested form, and every
+  /// child container (e.g. `TomListForm`); then run this form's
+  /// cross-field validation. Returns the combined error list and fires
+  /// a single `FormValidatedEvent` carrying all of it — child containers
+  /// also fire their own events through the bus, but downstream
+  /// `TomErrorView`s subscribed to the parent see one merged snapshot.
   Future<List<FormValidationError>> validate() async {
     final errors = <FormValidationError>[];
 
@@ -264,6 +309,14 @@ abstract class TomForm<T extends TomClass> extends TomClass
     // 2. Recurse into nested forms (they fire their own FormValidatedEvent).
     for (final nested in nestedForms) {
       errors.addAll(await nested.validate());
+    }
+
+    // 2b. Recurse into child containers (TomListForm and friends) — same
+    //     contract: they fire their own event, but we merge their
+    //     errors into ours so the parent's FormValidatedEvent carries a
+    //     complete snapshot.
+    for (final child in childContainers) {
+      errors.addAll(await child.validate());
     }
 
     // 3. Cross-field validation — only when every field below has passed.
