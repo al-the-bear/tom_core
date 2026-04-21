@@ -32,6 +32,7 @@ import 'demos/demo_j_date_time_forms.dart';
 import 'demos/demo_k_enum_object.dart';
 import 'demos/demo_l_file_nullable.dart';
 import 'demos/demo_m_cupertino_basics.dart';
+import 'demos/demo_n_cupertino_numeric_datetime.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -281,6 +282,23 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoMCupertinoBasics()),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _DemoSectionHeader(
+              label: 'Phase 5b — Cupertino numeric + date/time'),
+          _DemoTile(
+            icon: Icons.calendar_view_day,
+            title: 'Demo N: Cupertino numeric + date/time (Phase 5b)',
+            description: 'Nine Phase 5b Cupertino concretes (int/double + '
+                'date/time/duration/range pickers) inside a nested '
+                'TomFormStyleScope where the inner scope keeps style: null '
+                'and only swaps the themeSpec by breakpoint — exercises the '
+                'optional-style scope feature.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const DemoNCupertinoNumericDateTime()),
             ),
           ),
           const SizedBox(height: 12),

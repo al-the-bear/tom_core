@@ -76,3 +76,38 @@ class _TagSource extends TomSelectableSource<String> {
 final TomSelectableSource<String> phase5ColorSource = _ColorSource();
 final TomSelectableSource<String> phase5SizeSource = _SizeSource();
 final TomSelectableSource<String> phase5TagSource = _TagSource();
+
+// ---------------------------------------------------------------------------
+// Phase 5b — Cupertino numeric + date/time backing state.
+// ---------------------------------------------------------------------------
+
+/// One shared `TomClass` for Demo N — every field a different numeric /
+/// date / time / duration / range type so all 9 Phase 5b Cupertino
+/// concretes have a real `TomObject` to bind to.
+@tomReflector
+class Phase5bDemoState extends TomClass {
+  /// Quantity — drives [TomCupertinoFormIntInput].
+  late final quantity = TomInt(8);
+
+  /// Brightness 0..100 — drives [TomCupertinoFormIntPicker].
+  late final brightness = TomInt(50);
+
+  /// Generic decimal — drives [TomCupertinoFormDoubleInput].
+  late final ratio = TomDouble(1.5);
+
+  /// Currency value — drives [TomCupertinoFormCurrencyDoubleInput].
+  late final price = TomDouble(199.99);
+
+  /// Date — drives [TomCupertinoFormDatePicker].
+  late final eventDate = TomDateTime(DateTime(2026, 5, 12));
+
+  /// Date+time — drives [TomCupertinoFormDateTimePicker].
+  late final eventDateTime = TomDateTime(DateTime(2026, 5, 12, 9, 30));
+
+  /// Note: time / duration / date-range fields stay form-local on Demo N —
+  /// `TimeOfDay`, `Duration`, and `DateTimeRange` aren't first-class
+  /// TomObject types here, so the form carries those values via the
+  /// `TomField` itself rather than binding to a TomClass property.
+}
+
+Phase5bDemoState phase5bDemoState = Phase5bDemoState();
