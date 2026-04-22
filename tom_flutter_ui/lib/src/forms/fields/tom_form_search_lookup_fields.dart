@@ -149,7 +149,7 @@ class _SearchInputWidget<T> extends StatefulWidget {
 
 class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
   StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  List<SelectableItem<T>> _items = <SelectableItem<T>>[];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormSearchInput<T> get field => widget.field;
@@ -298,7 +298,7 @@ class _LookupDialogWidget<T> extends StatefulWidget {
 
 class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
   StreamSubscription<List<SelectableItem<T>>>? _subscription;
-  List<SelectableItem<T>> _items = const [];
+  List<SelectableItem<T>> _items = <SelectableItem<T>>[];
   late final TomFunctionObserver<TomObservable> _observer;
 
   TomFormLookupDialog<T> get field => widget.field;
