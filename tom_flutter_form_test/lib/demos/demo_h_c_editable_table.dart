@@ -277,8 +277,10 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
       key: ValueKey('vA-row-$index'),
       cells: [
         // Product cell is a touch wider than the previous demo so the
-        // long catalog labels don't overflow.
-        DataCell(_topCell(220, form.productName.widget)),
+        // long catalog labels don't overflow. Round-5 (e): bumped from
+        // 220 → 330 (~50% wider) so 28-char names like "Drafting paper
+        // (A1, 50 sht)" no longer ellipsise inside the input.
+        DataCell(_topCell(330, form.productName.widget)),
         DataCell(_topCell(70, form.quantity.widget)),
         DataCell(_topCell(110, form.unitPrice.widget)),
         DataCell(_topCell(
@@ -338,7 +340,9 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                   // if we used ConstrainedBox(minWidth:..) the Row would
                   // still see an infinite max width via the horizontal
                   // scroll viewport, blowing up Spacer/Expanded layouts.
-                  width: 760,
+                  // Bumped 760 → 870 in round-5 (e) to absorb the
+                  // wider product cell.
+                  width: 870,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -362,7 +366,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       child: Row(
         children: [
-          SizedBox(width: 220, child: Text('Product', style: style)),
+          SizedBox(width: 330, child: Text('Product', style: style)),
           const SizedBox(width: 12),
           SizedBox(
               width: 70,
@@ -399,7 +403,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _quietCell(220, form.productName.widget),
+                  _quietCell(330, form.productName.widget),
                   const SizedBox(width: 12),
                   _quietCell(70, form.quantity.widget),
                   const SizedBox(width: 12),
@@ -669,10 +673,12 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                   id: 'orderItemRow',
                   elementProvider: form,
                 )
-                    // (h) Product is the widest cell; previous 220 truncated
-                    // long catalog names. Bumping to 320 (~45% wider) leaves
+                    // Round-5 (e): Product is the widest cell; the
+                    // previous 320 still truncated long catalog names
+                    // because the input adds icon + padding. Bumping to
+                    // 360 (~64% wider than the original 220) leaves
                     // headroom for the longest entries.
-                    .append((f) => SizedBox(width: 320, child: f.productName.widget))
+                    .append((f) => SizedBox(width: 360, child: f.productName.widget))
                     .append((f) => SizedBox(width: 70, child: f.quantity.widget))
                     .append((f) => SizedBox(width: 110, child: f.unitPrice.widget))
                     .append(
