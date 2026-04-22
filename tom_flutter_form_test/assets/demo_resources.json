@@ -8,7 +8,10 @@
     "invalidInteger": "Enter a whole number.",
     "mustBePositive": "Must be greater than 0.",
     "invalidDecimal": "Enter a decimal number.",
-    "mustBeNonNegative": "Cannot be negative."
+    "mustBeNonNegative": "Cannot be negative.",
+    "items": {
+      "minRequired": "Add at least one item to the order."
+    }
   },
 
   "demoHB": {

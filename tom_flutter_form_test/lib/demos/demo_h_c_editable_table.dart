@@ -673,14 +673,18 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                   id: 'orderItemRow',
                   elementProvider: form,
                 )
-                    // Round-5 (e): Product is the widest cell; the
-                    // previous 320 still truncated long catalog names
-                    // because the input adds icon + padding. Bumping to
-                    // 360 (~64% wider than the original 220) leaves
-                    // headroom for the longest entries.
-                    .append((f) => SizedBox(width: 360, child: f.productName.widget))
-                    .append((f) => SizedBox(width: 70, child: f.quantity.widget))
-                    .append((f) => SizedBox(width: 110, child: f.unitPrice.widget))
+                    // Round-6 (e): the previous round wrapped each cell
+                    // in `SizedBox(width: …)` but the ACL layout engine
+                    // ignores the inner widget's intrinsic width — every
+                    // cell rendered at an equal share of the row, so the
+                    // product field stayed cramped no matter what
+                    // SizedBox value we passed. The fix is to size the
+                    // ACL component itself via `setPSize`. Product is
+                    // doubled relative to the previous demo width so
+                    // long catalog names finally have breathing room.
+                    .append((f) => f.productName.widget).setPSize(720)
+                    .append((f) => f.quantity.widget).setPSize(70)
+                    .append((f) => f.unitPrice.widget).setPSize(110)
                     .append(
                       (f) => SizedBox(
                         width: 80,
