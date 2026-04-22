@@ -1,9 +1,28 @@
 {
   "error": {
+    "required": "This field is required.",
+    "email": "Please enter a valid email address.",
+    "minLength": "Must be at least {min} characters.",
+    "maxLength": "Must be at most {max} characters.",
+    "invalidUrl": "Please enter a valid URL.",
     "invalidInteger": "Enter a whole number.",
     "mustBePositive": "Must be greater than 0.",
     "invalidDecimal": "Enter a decimal number.",
     "mustBeNonNegative": "Cannot be negative."
+  },
+
+  "demoHB": {
+    "errors": {
+      "title": "Form errors",
+      "rowSingular": "Row has 1 validation error:",
+      "rowPlural": "Row has {count} validation errors:"
+    },
+    "items": {
+      "productName": { "label": "Product" },
+      "quantity":    { "label": "Qty" },
+      "unitPrice":   { "label": "Unit price" },
+      "notes":       { "label": "Notes" }
+    }
   },
 
   "demoL": {

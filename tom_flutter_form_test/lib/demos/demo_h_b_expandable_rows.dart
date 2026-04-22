@@ -49,6 +49,11 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   /// fight for the user's attention.
   int? _expandedRow;
 
+  /// Round-6 (c): demo control for the row error strip's text alignment
+  /// (start = left, center = centered). Lives in the demo because real
+  /// apps will pick one and stick with it; the demo just shows both.
+  CrossAxisAlignment _rowErrorAlignment = CrossAxisAlignment.start;
+
   @override
   void initState() {
     super.initState();
@@ -303,19 +308,33 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               ),
             ],
           ),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          // Round-6 (c): childrenPadding intentionally zero so the row
+          // error strip below can stretch flush with the items card's
+          // edges. Each non-strip child applies its own horizontal pad.
+          childrenPadding: EdgeInsets.zero,
           children: [
-            form.productName.widget,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: form.productName.widget,
+            ),
             const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: form.quantity.widget),
-              const SizedBox(width: 12),
-              Expanded(child: form.unitPrice.widget),
-            ]),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(children: [
+                Expanded(child: form.quantity.widget),
+                const SizedBox(width: 12),
+                Expanded(child: form.unitPrice.widget),
+              ]),
+            ),
             const SizedBox(height: 8),
-            form.notes.widget,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: form.notes.widget,
+            ),
             const SizedBox(height: 8),
+            // Strip itself fills the full row width — no horizontal pad.
             _rowErrorStrip(context, form),
+            const SizedBox(height: 12),
           ],
         );
       },
@@ -325,30 +344,53 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   /// Inline strip of validation errors for the row's fields. Reads
   /// directly from `OrderItemForm.fieldsWithErrors` and rebuilds with
   /// the row's `form.changes` listenable.
+  ///
+  /// Round-6 (c) fixes:
+  ///   - resolves the error key through `TomCtr.textOrNull` so users see
+  ///     human-readable text (e.g. "This field is required.") instead of
+  ///     the raw `error.required` key;
+  ///   - stretches across the full items-card width by negating the
+  ///     parent ExpansionTile's `childrenPadding` with a `Transform.translate`
+  ///     + `width: double.infinity`, so the strip aligns visually with
+  ///     the items "table" header above instead of being inset 16 px;
+  ///   - reads horizontal alignment from `_rowErrorAlignment` so the
+  ///     demo can show both layouts via a toggle in the action bar.
   Widget _rowErrorStrip(BuildContext context, OrderItemForm form) {
     final errors = form.fieldsWithErrors;
     if (errors.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
+    final isCenter = _rowErrorAlignment == CrossAxisAlignment.center;
+
+    // childrenPadding on the ExpansionTile is zero, so this strip fills
+    // the full row width on its own. We mark the strip with a sentinel
+    // Key so widget tests can locate it without relying on private
+    // decoration / margin internals.
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      key: const ValueKey('h-b-row-error-strip'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+        border: Border(
+          top: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+          bottom:
+              BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+        ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: _rowErrorAlignment,
         children: [
           Text(
-            'Row has ${errors.length} validation '
-            '${errors.length == 1 ? "error" : "errors"}:',
+            _rowErrorTitle(errors.length),
+            textAlign: isCenter ? TextAlign.center : TextAlign.start,
             style: theme.textTheme.bodySmall
                 ?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
           for (final f in errors)
             Text(
-              '• ${f.tomId}: ${(f.validationState as ValidationError).errorKey}',
+              '• ${_fieldLabel(f)}: ${_resolveErrorMessage(f)}',
+              textAlign: isCenter ? TextAlign.center : TextAlign.start,
               style: theme.textTheme.bodySmall,
             ),
         ],
@@ -356,17 +398,77 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
     );
   }
 
+  /// (c) row title pulled from resources with a tiny pluralisation
+  /// (singular vs plural keys).
+  String _rowErrorTitle(int count) {
+    final key = count == 1
+        ? 'demoHB.errors.rowSingular'
+        : 'demoHB.errors.rowPlural';
+    final resolved = TomCtr.textOrNull('', key);
+    if (resolved == null) {
+      return count == 1
+          ? 'Row has 1 validation error:'
+          : 'Row has $count validation errors:';
+    }
+    return resolved.replaceAll('{count}', '$count');
+  }
+
+  /// Field label: explicit override first (TomFormStringField exposes
+  /// `labelText`), then resource lookup, then the bare tomId as a
+  /// last-resort visible fallback.
+  String _fieldLabel(TomField f) {
+    if (f is TomFormStringField) {
+      final explicit = f.labelText;
+      if (explicit != null && explicit.isNotEmpty) return explicit;
+    }
+    return TomCtr.textOrNull(f.basePath, 'label') ?? f.tomId;
+  }
+
+  /// Resolve a `ValidationError`'s key to user-facing text. Uses the
+  /// field-scoped `<basePath>.<key>` first, then the global `<key>`
+  /// (validators already produce keys with the `error.` prefix, e.g.
+  /// `error.required`), then the raw key.
+  ///
+  /// Note: `TomCtr.textOrNull` builds the lookup as `<basePath>.<suffix>`
+  /// — passing an empty `basePath` would yield a leading dot and break
+  /// `getObjectFromTree`. So for the global lookup we use the key as
+  /// the basePath directly, with no suffix.
+  String _resolveErrorMessage(TomField f) {
+    final state = f.validationState;
+    if (state is! ValidationError) return '';
+    final key = state.errorKey;
+    final scoped = TomCtr.textOrNull(f.basePath, key);
+    if (scoped != null) return _applyParams(scoped, state.params);
+    final global = TomCtr.textOrNull(key);
+    if (global != null) return _applyParams(global, state.params);
+    return key;
+  }
+
+  String _applyParams(String template, Map<String, Object?>? params) {
+    if (params == null || params.isEmpty) return template;
+    var out = template;
+    params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
+    return out;
+  }
+
   /// Form-level error card that surfaces every problem in the order —
   /// answers the "form invalid but no error visible" feedback.
+  ///
+  /// Round-6 (c): the panel headline falls back to the
+  /// `demoHB.errors.title` resource when no constructor-supplied title
+  /// exists, so installations can re-skin the headline without editing
+  /// demo code.
   Widget _formErrorsCard(BuildContext context) {
     final theme = Theme.of(context);
+    final headline =
+        TomCtr.textOrNull('', 'demoHB.errors.title') ?? 'Form errors';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Form errors', style: theme.textTheme.titleSmall),
+            Text(headline, style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             TomErrorView(
               form: _form,
@@ -425,6 +527,26 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                 _form.discard();
                 setState(() => _expandedRow = null);
               },
+            ),
+            // Round-6 (c): segmented toggle so the demo can flip the row
+            // error strip's alignment between left and centred.
+            const SizedBox(width: 12),
+            SegmentedButton<CrossAxisAlignment>(
+              segments: const [
+                ButtonSegment(
+                  value: CrossAxisAlignment.start,
+                  label: Text('Errors left'),
+                  icon: Icon(Icons.format_align_left, size: 16),
+                ),
+                ButtonSegment(
+                  value: CrossAxisAlignment.center,
+                  label: Text('Errors centered'),
+                  icon: Icon(Icons.format_align_center, size: 16),
+                ),
+              ],
+              selected: {_rowErrorAlignment},
+              onSelectionChanged: (sel) =>
+                  setState(() => _rowErrorAlignment = sel.first),
             ),
           ],
         ),
