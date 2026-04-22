@@ -13,18 +13,24 @@ import '../state/phase2a_state.dart';
 // Demo H-C — Editable Order-Items Table  [Phase 2a §16]
 // ---------------------------------------------------------------------------
 //
-// Renders an OrderForm.items list as a Material DataTable with each row
-// containing the actual editable field widgets (productName / quantity /
-// unitPrice). A computed-total column observes per-row values; a form-
-// level total observes the whole list.
+// Renders an OrderForm.items list as TWO Material DataTables, both bound
+// to the SAME `_form.items` so editing in one variant immediately updates
+// the other:
 //
-// Add / remove / reorder map to TomListForm.add / .removeAt / .move. Drag
-// handles act as the reorder affordance — tapping ▲/▼ on the trailing
-// column moves the row.
+// * Variant A — "in-cell errors": the standard renderer, error text and
+//   error border appear directly under / around each invalid cell. Also
+//   exposes the `TomAclBuilder` row-per-item pattern via a segmented
+//   switch (§16, "DataTable / TomAclBuilder side-by-side").
+// * Variant B — "error strip below row": the cells are wrapped in a
+//   `TomFormStyleScope` that promotes the error message into a tooltip
+//   and disables the error border, so the cell never grows or shifts;
+//   below each row a per-row error strip lists every field error.
 //
-// A TomErrorView is mounted to the right of the table; if the list is
-// empty, the parent OrderItemsListForm.validateList returns
-// `error.items.minRequired` and the panel surfaces it.
+// Cells are top-aligned so the row heights stay anchored to the same
+// baseline whether or not an error is on screen — answers feedback (g).
+//
+// The product field is a `TomFormSearchInput<String>` over the catalog;
+// selecting an entry auto-fills the unit price.
 class DemoHCEditableTable extends StatefulWidget {
   const DemoHCEditableTable({super.key});
 
@@ -36,10 +42,9 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
   late final OrderForm _form;
   late final TomFormInspector _inspector;
 
-  /// Which renderer is shown in the items card. The DataTable variant is
-  /// the default; the ACL variant exercises the spec's `TomAclBuilder`
-  /// row-per-item pattern (§16, "DataTable / TomAclBuilder side-by-side").
-  _ItemsRenderer _renderer = _ItemsRenderer.dataTable;
+  /// Variant-A row layout — DataTable (default) or `TomAclBuilder`.
+  /// Variant B is always rendered as a DataTable.
+  _ItemsRenderer _variantA = _ItemsRenderer.dataTable;
 
   @override
   void initState() {
@@ -77,7 +82,12 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               const SizedBox(height: 12),
               ListenableBuilder(
                 listenable: _form.changes,
-                builder: (context, _) => _tableAndErrorRow(context),
+                builder: (context, _) => _variantACard(context),
+              ),
+              const SizedBox(height: 12),
+              ListenableBuilder(
+                listenable: _form.changes,
+                builder: (context, _) => _variantBCard(context),
               ),
               const SizedBox(height: 12),
               _actionBar(context),
@@ -111,14 +121,17 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                 style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Each line item is a row in a DataTable; cells host the '
-                'live TomFormStringInput widgets directly so edits flow '
-                'straight back into the bound Order. The "Total" column '
-                'and the order-level total observe the list — adding, '
-                'removing, or editing a row updates both.\n\n'
-                'Remove all rows to see "items.minRequired" appear in the '
-                'TomErrorView on the right (cross-field validation '
-                'surfaced through the parent OrderForm).'),
+                'Two side-by-side renderers over the SAME OrderForm.items '
+                'list. Variant A shows the standard in-cell error visuals; '
+                'Variant B promotes the error text into a tooltip and shows '
+                'a per-row error strip beneath the row instead, so the '
+                'fields never shift their alignment when an error appears. '
+                'Both tables are kept in sync via the shared list — typing '
+                'in either one updates the other.\n\n'
+                'The product cell is a type-ahead search over the catalog; '
+                'selecting an entry auto-fills the unit price. Quantity = 0 '
+                'and a non-numeric price both trip inline validation '
+                '(autoValidate is on for those two fields).'),
           ],
         ),
       ),
@@ -164,36 +177,11 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
     );
   }
 
-  Widget _tableAndErrorRow(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Side-by-side on wide layouts; stacked when narrow.
-        final wide = constraints.maxWidth >= 900;
-        final table = _itemsCard(context);
-        final errors = _errorPanel(context);
-        if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: table),
-              const SizedBox(width: 12),
-              SizedBox(width: 280, child: errors),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            table,
-            const SizedBox(height: 12),
-            errors,
-          ],
-        );
-      },
-    );
-  }
+  // ------------------------------------------------------------------
+  // Variant A — in-cell error visuals + DataTable / ACL switch.
+  // ------------------------------------------------------------------
 
-  Widget _itemsCard(BuildContext context) {
+  Widget _variantACard(BuildContext context) {
     final theme = Theme.of(context);
     final items = _form.items;
     return Card(
@@ -205,7 +193,8 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
               child: Row(children: [
-                Text('Items (${items.length})',
+                Text('Variant A — in-cell errors  '
+                    '(Items: ${items.length})',
                     style: theme.textTheme.titleSmall),
                 const Spacer(),
                 Text(
@@ -229,162 +218,367 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                     icon: Icon(Icons.view_agenda_outlined, size: 16),
                   ),
                 ],
-                selected: {_renderer},
+                selected: {_variantA},
                 showSelectedIcon: false,
                 onSelectionChanged: (sel) =>
-                    setState(() => _renderer = sel.first),
+                    setState(() => _variantA = sel.first),
               ),
             ),
             const Divider(height: 8),
             if (items.length == 0)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: Text(
-                    'No items — add one below.',
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
-                ),
-              )
-            else if (_renderer == _ItemsRenderer.dataTable)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 12,
-                  headingRowHeight: 36,
-                  dataRowMinHeight: 80,
-                  dataRowMaxHeight: 120,
-                  columns: const [
-                    DataColumn(label: Text('Product')),
-                    DataColumn(label: Text('Qty'), numeric: true),
-                    DataColumn(label: Text('Unit price'), numeric: true),
-                    DataColumn(label: Text('Total'), numeric: true),
-                    DataColumn(label: Text('')),
-                  ],
-                  rows: [
-                    for (var i = 0; i < items.length; i++)
-                      _buildRow(context, i, items[i]),
-                  ],
-                ),
-              )
+              _emptyState(context)
+            else if (_variantA == _ItemsRenderer.dataTable)
+              _variantADataTable(context)
             else
               _aclList(context),
             const Divider(height: 16),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add row'),
-                    onPressed: () => setState(() => items.add()),
-                  ),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 16),
-                    label: const Text('Remove all'),
-                    onPressed: items.length == 0
-                        ? null
-                        : () {
-                            setState(() {
-                              while (items.length > 0) {
-                                items.removeAt(items.length - 1);
-                              }
-                            });
-                          },
-                  ),
-                ],
-              ),
-            ),
+            _addRemoveBar(context),
+            const SizedBox(height: 8),
+            // Cross-field validation surfaces here (e.g. minRequired).
+            _crossFieldErrorView(context),
           ],
         ),
       ),
     );
   }
 
-  DataRow _buildRow(BuildContext context, int index, OrderItemForm form) {
+  Widget _variantADataTable(BuildContext context) {
     final theme = Theme.of(context);
+    final items = _form.items;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 12,
+        headingRowHeight: 36,
+        // Cells must grow when an error message appears below the input.
+        // Bumping the max-height lets that growth happen without the row
+        // clipping; pairing with top-aligned cell wrappers (see
+        // _topCell) keeps every input anchored to the same baseline.
+        dataRowMinHeight: 64,
+        dataRowMaxHeight: 140,
+        columns: const [
+          DataColumn(label: Text('Product')),
+          DataColumn(label: Text('Qty'), numeric: true),
+          DataColumn(label: Text('Unit price'), numeric: true),
+          DataColumn(label: Text('Total'), numeric: true),
+          DataColumn(label: Text('')),
+        ],
+        rows: [
+          for (var i = 0; i < items.length; i++)
+            _buildVariantARow(context, i, items[i], theme),
+        ],
+      ),
+    );
+  }
+
+  DataRow _buildVariantARow(
+      BuildContext context, int index, OrderItemForm form, ThemeData theme) {
     return DataRow(
-      key: ValueKey('row-$index'),
+      key: ValueKey('vA-row-$index'),
       cells: [
-        DataCell(SizedBox(width: 220, child: form.productName.widget)),
-        DataCell(SizedBox(width: 70, child: form.quantity.widget)),
-        DataCell(SizedBox(width: 100, child: form.unitPrice.widget)),
-        DataCell(
-          SizedBox(
-            width: 80,
-            child: ListenableBuilder(
-              listenable: form.changes,
-              builder: (context, _) => Text(
+        // Product cell is a touch wider than the previous demo so the
+        // long catalog labels don't overflow.
+        DataCell(_topCell(220, form.productName.widget)),
+        DataCell(_topCell(70, form.quantity.widget)),
+        DataCell(_topCell(110, form.unitPrice.widget)),
+        DataCell(_topCell(
+          80,
+          ListenableBuilder(
+            listenable: form.changes,
+            builder: (context, _) => Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: Text(
                 '\$${form.computedTotal.toStringAsFixed(2)}',
                 style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.right,
               ),
             ),
           ),
+        )),
+        DataCell(_rowActions(index)),
+      ],
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Variant B — DataTable with errors suppressed in the cells; per-row
+  // error strip rendered beneath each row.
+  // ------------------------------------------------------------------
+
+  Widget _variantBCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final items = _form.items;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              child: Row(children: [
+                Text('Variant B — error strip below row  '
+                    '(Items: ${items.length})',
+                    style: theme.textTheme.titleSmall),
+                const Spacer(),
+                Text(
+                  'Same data — edits propagate to Variant A above.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ]),
+            ),
+            const Divider(height: 8),
+            if (items.length == 0)
+              _emptyState(context)
+            else
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  // Fixed width keeps the inner Row's children bounded —
+                  // if we used ConstrainedBox(minWidth:..) the Row would
+                  // still see an infinite max width via the horizontal
+                  // scroll viewport, blowing up Spacer/Expanded layouts.
+                  width: 760,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _variantBHeaderRow(theme),
+                      for (var i = 0; i < items.length; i++)
+                        _variantBRow(context, i, items[i], theme),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
-        DataCell(
-          Row(
-            mainAxisSize: MainAxisSize.min,
+      ),
+    );
+  }
+
+  Widget _variantBHeaderRow(ThemeData theme) {
+    final style = theme.textTheme.labelMedium
+        ?.copyWith(fontWeight: FontWeight.w600);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          SizedBox(width: 220, child: Text('Product', style: style)),
+          const SizedBox(width: 12),
+          SizedBox(
+              width: 70,
+              child: Text('Qty', style: style, textAlign: TextAlign.right)),
+          const SizedBox(width: 12),
+          SizedBox(
+              width: 110,
+              child: Text('Unit price',
+                  style: style, textAlign: TextAlign.right)),
+          const SizedBox(width: 12),
+          SizedBox(
+              width: 80,
+              child: Text('Total',
+                  style: style, textAlign: TextAlign.right)),
+          const SizedBox(width: 12),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _variantBRow(
+      BuildContext context, int index, OrderItemForm form, ThemeData theme) {
+    return ListenableBuilder(
+      key: ValueKey('vB-row-$index'),
+      listenable: form.changes,
+      builder: (context, _) {
+        final errors = form.fieldsWithErrors;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                tooltip: 'Move up',
-                icon: const Icon(Icons.arrow_upward, size: 16),
-                visualDensity: VisualDensity.compact,
-                onPressed: index == 0
-                    ? null
-                    : () => setState(() => _form.items.move(index, index - 1)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _quietCell(220, form.productName.widget),
+                  const SizedBox(width: 12),
+                  _quietCell(70, form.quantity.widget),
+                  const SizedBox(width: 12),
+                  _quietCell(110, form.unitPrice.widget),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 80,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        '\$${form.computedTotal.toStringAsFixed(2)}',
+                        style: theme.textTheme.bodyMedium,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _rowActions(index),
+                ],
               ),
-              IconButton(
-                tooltip: 'Move down',
-                icon: const Icon(Icons.arrow_downward, size: 16),
-                visualDensity: VisualDensity.compact,
-                onPressed: index == _form.items.length - 1
-                    ? null
-                    : () => setState(() => _form.items.move(index, index + 1)),
-              ),
-              IconButton(
-                tooltip: 'Remove row',
-                icon: const Icon(Icons.delete_outline, size: 18),
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() => _form.items.removeAt(index)),
-              ),
+              if (errors.isNotEmpty) _rowErrorStrip(theme, errors),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _rowErrorStrip(ThemeData theme, List<TomField> errors) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+            color: theme.colorScheme.error.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline,
+              size: 16, color: theme.colorScheme.error),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              [
+                for (final f in errors)
+                  '${f.tomId}: '
+                      '${(f.validationState as ValidationError).errorKey}'
+              ].join('  •  '),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Field cell wrapped in a style scope that suppresses inline error
+  /// visuals (no error text, no error border) so the cell stays the
+  /// same height whether the field is in error or not. The error info
+  /// shows up in the per-row strip directly below.
+  Widget _quietCell(double width, Widget fieldWidget) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SizedBox(
+        width: width,
+        child: TomFormStyleScope(
+          style: const TomFormStyle(
+            defaults: TomFieldStyle(
+              errorPlacement: ErrorPlacement.tooltip,
+              errorBorderEnabled: false,
+            ),
+          ),
+          child: fieldWidget,
+        ),
+      ),
+    );
+  }
+
+  /// Anchors a cell's content at the top so error growth in OTHER cells
+  /// doesn't visually nudge this one's input down. Without this DataTable
+  /// vertically centers cell contents in the row, and the moment one
+  /// cell expands every other input on the row jumps. Answers (g).
+  Widget _topCell(double width, Widget child) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SizedBox(width: width, child: child),
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Shared bits
+  // ------------------------------------------------------------------
+
+  Widget _rowActions(int index) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Move up',
+          icon: const Icon(Icons.arrow_upward, size: 16),
+          visualDensity: VisualDensity.compact,
+          onPressed: index == 0
+              ? null
+              : () => setState(() => _form.items.move(index, index - 1)),
+        ),
+        IconButton(
+          tooltip: 'Move down',
+          icon: const Icon(Icons.arrow_downward, size: 16),
+          visualDensity: VisualDensity.compact,
+          onPressed: index == _form.items.length - 1
+              ? null
+              : () => setState(() => _form.items.move(index, index + 1)),
+        ),
+        IconButton(
+          tooltip: 'Remove row',
+          icon: const Icon(Icons.delete_outline, size: 18),
+          visualDensity: VisualDensity.compact,
+          onPressed: () => setState(() => _form.items.removeAt(index)),
         ),
       ],
     );
   }
 
-  Widget _errorPanel(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Cross-field validation',
-                style: theme.textTheme.titleSmall),
-            const SizedBox(height: 8),
-            const Text(
-              'Press "Validate" or remove every row to see the list-level '
-              'rule trip and surface here.',
-              style: TextStyle(fontSize: 12),
-            ),
-            const SizedBox(height: 8),
-            TomErrorView(
-              form: _form,
-              title: 'Order errors',
-              emptyState: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'No errors — order is well-formed.',
-                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
-          ],
+  Widget _addRemoveBar(BuildContext context) {
+    final items = _form.items;
+    return Padding(
+      padding: const EdgeInsets.all(8),
+      child: Wrap(
+        spacing: 8,
+        children: [
+          FilledButton.tonalIcon(
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Add row'),
+            onPressed: () => setState(() => items.add()),
+          ),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+            label: const Text('Remove all'),
+            onPressed: items.length == 0
+                ? null
+                : () {
+                    setState(() {
+                      while (items.length > 0) {
+                        items.removeAt(items.length - 1);
+                      }
+                    });
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _emptyState(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(24),
+      child: Center(
+        child: Text(
+          'No items — add one below.',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
+      ),
+    );
+  }
+
+  Widget _crossFieldErrorView(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: TomErrorView(
+        form: _form,
+        title: 'Form errors',
+        emptyState: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            'No errors — order is well-formed.',
+            style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+          ),
         ),
       ),
     );
@@ -406,7 +600,7 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(ok
                       ? 'Saved order + items.'
-                      : 'Validation failed — see error panel.'),
+                      : 'Validation failed — see error panels.'),
                 ));
               },
             ),
@@ -458,12 +652,12 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
           key: ValueKey('acl-row-$index'),
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ReorderableDragStartListener(
                 index: index,
                 child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  padding: EdgeInsets.fromLTRB(4, 14, 4, 0),
                   child: Icon(Icons.drag_indicator, size: 18),
                 ),
               ),
@@ -472,18 +666,24 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                   id: 'orderItemRow',
                   elementProvider: form,
                 )
-                    .append((f) => SizedBox(width: 220, child: f.productName.widget))
+                    // (h) Product is the widest cell; previous 220 truncated
+                    // long catalog names. Bumping to 320 (~45% wider) leaves
+                    // headroom for the longest entries.
+                    .append((f) => SizedBox(width: 320, child: f.productName.widget))
                     .append((f) => SizedBox(width: 70, child: f.quantity.widget))
-                    .append((f) => SizedBox(width: 100, child: f.unitPrice.widget))
+                    .append((f) => SizedBox(width: 110, child: f.unitPrice.widget))
                     .append(
                       (f) => SizedBox(
                         width: 80,
-                        child: ListenableBuilder(
-                          listenable: f.changes,
-                          builder: (context, _) => Text(
-                            '\$${f.computedTotal.toStringAsFixed(2)}',
-                            style: theme.textTheme.bodyMedium,
-                            textAlign: TextAlign.right,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: ListenableBuilder(
+                            listenable: f.changes,
+                            builder: (context, _) => Text(
+                              '\$${f.computedTotal.toStringAsFixed(2)}',
+                              style: theme.textTheme.bodyMedium,
+                              textAlign: TextAlign.right,
+                            ),
                           ),
                         ),
                       ),

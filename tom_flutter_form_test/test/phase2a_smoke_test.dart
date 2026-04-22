@@ -74,8 +74,18 @@ void main() {
       find.text('Demo H-C — Editable Order-Items Table'),
       findsOneWidget,
     );
-    expect(find.text('Items (3)'), findsOneWidget);
-    // DataTable header column "Total" is present.
-    expect(find.text('Total'), findsOneWidget);
+    // H-C now renders TWO variants (in-cell errors + error strip below).
+    // Each card shows the live item count in its header — both should
+    // read 3 because both bind the same `_form.items` list.
+    expect(
+      find.text('Variant A — in-cell errors  (Items: 3)'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Variant B — error strip below row  (Items: 3)'),
+      findsOneWidget,
+    );
+    // DataTable header column "Total" is present (one per variant).
+    expect(find.text('Total'), findsAtLeastNWidgets(1));
   });
 }

@@ -1,4 +1,5 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
 // Phase 2a state — Customer master-detail + Order with line items
@@ -119,4 +120,105 @@ OrderItem _item(String product, String qty, String price, String notes) {
   i.unitPrice | price;
   i.notes | notes;
   return i;
+}
+
+// ---------------------------------------------------------------------------
+// Product catalog — used by Demo H-B / H-C OrderItemForm so the product
+// name field becomes a searchable picker that auto-fills the unit price
+// when an entry is chosen. ~50 entries to make the search experience
+// realistic.
+// ---------------------------------------------------------------------------
+
+class Phase2aProduct {
+  final String name;
+  final double price;
+  const Phase2aProduct(this.name, this.price);
+}
+
+const List<Phase2aProduct> phase2aProductCatalog = [
+  // Existing fixture data (kept stable so bound demos still parse cleanly).
+  Phase2aProduct('Difference Engine pinion', 34.50),
+  Phase2aProduct('Punched-card deck (1000 pk)', 49.00),
+  Phase2aProduct('Lubricating oil (1L)', 6.75),
+  Phase2aProduct('Patch review token', 12.00),
+  Phase2aProduct('Maintainer T-shirt', 24.50),
+  Phase2aProduct('Conference badge', 0.00),
+  // Hardware
+  Phase2aProduct('Brass gear (small)', 4.20),
+  Phase2aProduct('Brass gear (medium)', 7.80),
+  Phase2aProduct('Brass gear (large)', 13.40),
+  Phase2aProduct('Crank handle', 22.00),
+  Phase2aProduct('Mainspring assembly', 58.50),
+  Phase2aProduct('Drive belt 12"', 9.95),
+  Phase2aProduct('Drive belt 24"', 16.45),
+  Phase2aProduct('Mounting bracket', 11.10),
+  Phase2aProduct('Stainless screw set', 3.25),
+  Phase2aProduct('Bearing block', 18.75),
+  // Consumables
+  Phase2aProduct('Ink ribbon (black)', 4.50),
+  Phase2aProduct('Ink ribbon (red)', 4.80),
+  Phase2aProduct('Wax seal sticks (10pk)', 7.20),
+  Phase2aProduct('Punch tape roll (50m)', 14.00),
+  Phase2aProduct('Carbon paper (100 sht)', 6.40),
+  Phase2aProduct('Cleaning brush set', 5.10),
+  Phase2aProduct('Polishing compound (250g)', 8.30),
+  // Tools
+  Phase2aProduct('Calipers (vernier)', 27.50),
+  Phase2aProduct('Micrometer', 41.00),
+  Phase2aProduct('Soldering iron 25W', 19.80),
+  Phase2aProduct('Solder spool (lead-free)', 11.40),
+  Phase2aProduct('Wire stripper', 8.90),
+  Phase2aProduct('Precision screwdriver kit', 15.60),
+  // Office
+  Phase2aProduct('Logbook (leather)', 22.00),
+  Phase2aProduct('Logbook (cloth)', 12.00),
+  Phase2aProduct('Quill pen set', 9.40),
+  Phase2aProduct('Drafting paper (A1, 50 sht)', 18.20),
+  Phase2aProduct('Slide rule (10")', 31.00),
+  Phase2aProduct('Reference manual', 14.95),
+  // Software / services
+  Phase2aProduct('Patch review token', 12.00),
+  Phase2aProduct('Bug bounty voucher', 25.00),
+  Phase2aProduct('Annual support contract', 480.00),
+  Phase2aProduct('On-site training day', 1450.00),
+  Phase2aProduct('Code audit (per kLOC)', 320.00),
+  // Apparel & swag
+  Phase2aProduct('Maintainer T-shirt', 24.50),
+  Phase2aProduct('Project hoodie', 48.00),
+  Phase2aProduct('Sticker pack', 4.00),
+  Phase2aProduct('Enamel pin set', 9.50),
+  Phase2aProduct('Coffee mug (project logo)', 11.00),
+  // Misc
+  Phase2aProduct('Conference badge', 0.00),
+  Phase2aProduct('Sponsor pass upgrade', 75.00),
+  Phase2aProduct('Demo unit (loaner)', 0.00),
+  Phase2aProduct('Shipping (standard)', 12.00),
+  Phase2aProduct('Shipping (expedited)', 38.00),
+  Phase2aProduct('Restocking fee', -25.00),
+];
+
+/// Look up a catalog price by exact name. Returns `null` if the name
+/// isn't in the catalog (e.g. a free-form entry the user typed).
+double? phase2aLookupProductPrice(String name) {
+  for (final p in phase2aProductCatalog) {
+    if (p.name == name) return p.price;
+  }
+  return null;
+}
+
+/// Build a `TomSelectableSource<String>` over the catalog. The label
+/// embeds the price so users see both columns in the search dropdown.
+TomSelectableSource<String> phase2aProductSource() {
+  // Deduplicate names so the search list stays clean even if the
+  // catalog has overlapping entries.
+  final seen = <String>{};
+  final items = <SelectableItem<String>>[];
+  for (final p in phase2aProductCatalog) {
+    if (!seen.add(p.name)) continue;
+    items.add(SelectableItem<String>(
+      value: p.name,
+      label: '${p.name}  —  \$${p.price.toStringAsFixed(2)}',
+    ));
+  }
+  return StaticSelectableSource<String>(items);
 }

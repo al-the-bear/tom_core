@@ -15,10 +15,23 @@ import '../state/phase2a_state.dart';
 //
 // Renders a TomListForm<OrderItem, OrderItemForm> as one ExpansionTile per
 // row. Collapsed state shows the read-only summary (product name / qty /
-// total); expanded state reveals the editable sub-form.
+// total); expanded state reveals the editable sub-form, including the
+// type-ahead Product picker that auto-fills the unit price.
 //
-// The parent OrderForm's isDirty / isValid aggregate correctly across all
-// expanded and collapsed children — see the status badges at the top.
+// Behaviours wired in for spec §16:
+//
+// * Single-row exclusive expansion: opening one row collapses the
+//   currently-open row.
+// * Row-switch guard: switching while the open row has validation
+//   errors (e.g. `quantity = 0`) is refused — the open row stays
+//   expanded and a snackbar surfaces the reason.
+// * Save → validate → collapse on success: if the order saves
+//   cleanly, the open row collapses to its read-only summary.
+// * Validate-on-bind: the form runs `validate()` once after binding
+//   so the "Form valid / invalid" badge reflects the actual state of
+//   the loaded data (instead of the pristine `false`).
+// * Per-row + parent error panels surface every reason the form is
+//   invalid, so the badge is never the only signal.
 class DemoHBExpandableRows extends StatefulWidget {
   const DemoHBExpandableRows({super.key});
 
@@ -29,7 +42,12 @@ class DemoHBExpandableRows extends StatefulWidget {
 class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   late final OrderForm _form;
   late final TomFormInspector _inspector;
-  final Set<int> _expandedRows = {};
+
+  /// Index of the single currently-expanded row, or `null` when every
+  /// row is collapsed. Single-row exclusive expansion is the spec
+  /// default for §16 — it avoids the foot-gun where two dirty rows
+  /// fight for the user's attention.
+  int? _expandedRow;
 
   @override
   void initState() {
@@ -38,6 +56,15 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
     _form.bind(phase2aExpandableOrder);
     _inspector = TomFormInspector();
     _form.addListener(_inspector);
+    // Validate after first frame so the "Form valid / invalid" chip
+    // reflects the loaded data instead of the pristine `false`. We
+    // defer to post-frame so the field widgets have had a chance to
+    // attach their validation listeners and rebuild on the result.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _form.validate();
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -68,6 +95,11 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               ListenableBuilder(
                 listenable: _form.changes,
                 builder: (context, _) => _itemsCard(context),
+              ),
+              const SizedBox(height: 12),
+              ListenableBuilder(
+                listenable: _form.changes,
+                builder: (context, _) => _formErrorsCard(context),
               ),
               const SizedBox(height: 12),
               _actionBar(context),
@@ -101,12 +133,14 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                 style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Tap a row to expand the OrderItemForm inline. Edits in '
-                'expanded rows roll up into the parent OrderForm — the '
-                '"Form dirty" / "Form valid" badges at the top reflect '
-                'isDirty / isValid across every row, regardless of '
-                'whether each row is expanded or collapsed. Add / remove '
-                'rows with the buttons at the bottom of the items card.'),
+                'Tap a row to expand the OrderItemForm inline — only ONE '
+                'row is open at a time. The product field is a type-ahead '
+                'search over the catalog; selecting an entry auto-fills '
+                'the unit price. Quantity = 0 is an error.\n\n'
+                'Switching to another row while the open row has '
+                'validation errors is refused — the open row stays '
+                'expanded and a snackbar tells you why. Saving the order '
+                'collapses the open row on success.'),
           ],
         ),
       ),
@@ -183,9 +217,14 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                   FilledButton.tonalIcon(
                     icon: const Icon(Icons.add, size: 16),
                     label: const Text('Add item'),
-                    onPressed: () {
+                    onPressed: () async {
+                      // Adding a row also "switches" to it — apply the
+                      // same row-switch guard so we don't lose edits in
+                      // an open invalid row.
+                      final ok = await _guardSwitchAwayFromExpanded();
+                      if (!ok) return;
                       items.add();
-                      setState(() => _expandedRows.add(items.length - 1));
+                      setState(() => _expandedRow = items.length - 1);
                     },
                   ),
                 ],
@@ -205,17 +244,24 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         final qty = int.tryParse(form.quantity.get()) ?? 0;
         final price = double.tryParse(form.unitPrice.get()) ?? 0.0;
         final total = qty * price;
+        final isOpen = _expandedRow == index;
         return ExpansionTile(
           key: ValueKey('row-$index'),
-          initiallyExpanded: _expandedRows.contains(index),
-          onExpansionChanged: (open) {
-            setState(() {
-              if (open) {
-                _expandedRows.add(index);
-              } else {
-                _expandedRows.remove(index);
-              }
-            });
+          // We drive open/closed state ourselves so the row-switch
+          // guard can VETO an open request when the current row has
+          // validation errors. `initiallyExpanded` doesn't help here —
+          // ExpansionTile still owns the toggle internally — so we
+          // use the controlled `key + onExpansionChanged` round-trip
+          // and let `setState` re-render with the new ValueKey when we
+          // need to reset its visual state.
+          initiallyExpanded: isOpen,
+          maintainState: true,
+          onExpansionChanged: (open) async {
+            if (open) {
+              await _requestOpenRow(index);
+            } else {
+              setState(() => _expandedRow = null);
+            }
           },
           title: Text(
             form.productName.get().isEmpty
@@ -235,7 +281,9 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                 icon: const Icon(Icons.delete_outline, size: 18),
                 tooltip: 'Remove row',
                 onPressed: () {
-                  setState(() => _expandedRows.remove(index));
+                  setState(() {
+                    if (_expandedRow == index) _expandedRow = null;
+                  });
                   _form.items.removeAt(index);
                 },
               ),
@@ -252,9 +300,74 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
             ]),
             const SizedBox(height: 8),
             form.notes.widget,
+            const SizedBox(height: 8),
+            _rowErrorStrip(context, form),
           ],
         );
       },
+    );
+  }
+
+  /// Inline strip of validation errors for the row's fields. Reads
+  /// directly from `OrderItemForm.fieldsWithErrors` and rebuilds with
+  /// the row's `form.changes` listenable.
+  Widget _rowErrorStrip(BuildContext context, OrderItemForm form) {
+    final errors = form.fieldsWithErrors;
+    if (errors.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.errorContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Row has ${errors.length} validation '
+            '${errors.length == 1 ? "error" : "errors"}:',
+            style: theme.textTheme.bodySmall
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          for (final f in errors)
+            Text(
+              '• ${f.tomId}: ${(f.validationState as ValidationError).errorKey}',
+              style: theme.textTheme.bodySmall,
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Form-level error card that surfaces every problem in the order —
+  /// answers the "form invalid but no error visible" feedback.
+  Widget _formErrorsCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Form errors', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            TomErrorView(
+              form: _form,
+              title: 'Order errors',
+              emptyState: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  'No errors — order is well-formed.',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -271,11 +384,24 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               onPressed: () async {
                 final ok = await _form.save();
                 if (!context.mounted) return;
+                if (ok) {
+                  // (c) collapse the open row on a clean save.
+                  setState(() => _expandedRow = null);
+                }
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(ok
                       ? 'Saved order + items.'
-                      : 'Validation failed.'),
+                      : 'Validation failed — see errors below the rows.'),
                 ));
+              },
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.fact_check_outlined, size: 16),
+              label: const Text('Validate'),
+              onPressed: () async {
+                await _form.validate();
+                if (!context.mounted) return;
+                setState(() {});
               },
             ),
             OutlinedButton.icon(
@@ -283,13 +409,51 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               label: const Text('Discard all'),
               onPressed: () {
                 _form.discard();
-                setState(() {});
+                setState(() => _expandedRow = null);
               },
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// (d) Row-switch guard. Validates the currently-expanded row; if it
+  /// has errors, refuses the switch and shows a snackbar. Returns
+  /// `true` when the caller may proceed to open another row.
+  Future<bool> _guardSwitchAwayFromExpanded() async {
+    final cur = _expandedRow;
+    if (cur == null) return true;
+    if (cur < 0 || cur >= _form.items.length) return true;
+    final form = _form.items[cur];
+    final errors = await form.validate();
+    if (errors.isEmpty) return true;
+    if (!mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        'Row ${cur + 1} has ${errors.length} '
+        '${errors.length == 1 ? "error" : "errors"} — fix them or '
+        'discard before switching.',
+      ),
+      duration: const Duration(seconds: 3),
+    ));
+    setState(() {});
+    return false;
+  }
+
+  /// Apply the row-switch guard and, on success, expand `index`.
+  Future<void> _requestOpenRow(int index) async {
+    if (_expandedRow == index) return;
+    final ok = await _guardSwitchAwayFromExpanded();
+    if (!ok) {
+      // ExpansionTile will already have toggled itself open optimistically
+      // — force a rebuild that reverts to the prior state by bumping the
+      // key set. Setting state with the same _expandedRow is enough since
+      // we read `initiallyExpanded` from it on rebuild.
+      setState(() {});
+      return;
+    }
+    setState(() => _expandedRow = index);
   }
 
   double _orderTotal() {
