@@ -218,6 +218,20 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
         return _items.where((i) => i.enabled && _match(q, i)).take(50);
       },
       onSelected: (it) => f.setValue(it.value),
+      // Round-5 (f): the default `optionsViewBuilder` constrains the
+      // popup to the field width, which clips long catalog labels in
+      // narrow cells (e.g. Demo H-C item rows). Render the popup
+      // ourselves so it sizes to the widest option (capped to a
+      // reasonable max so off-screen labels don't blow it up) while
+      // still pinning to the field via Autocomplete's internal
+      // CompositedTransformFollower.
+      optionsViewBuilder: (context, onSelected, options) {
+        return _SearchOptionsPopup<T>(
+          options: options,
+          onSelected: onSelected,
+          textStyle: style.inputStyle,
+        );
+      },
       fieldViewBuilder: (context, controller, focusNode, onSubmit) {
         return TextField(
           controller: controller,
@@ -243,6 +257,70 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
     );
 
     return f.decorateField(context, autocomplete);
+  }
+}
+
+/// Material-styled popup for [Autocomplete] that sizes to the widest
+/// option label rather than to the underlying text field. Capped to
+/// `maxWidth` so a single very long label can't push the overlay
+/// off-screen.
+///
+/// Wrapped in [Align(alignment: Alignment.topLeft)] because Flutter
+/// stretches a popup to the available follow-target width by default;
+/// the alignment lets the inner [Material] shrink-wrap.
+class _SearchOptionsPopup<T> extends StatelessWidget {
+  final Iterable<SelectableItem<T>> options;
+  final void Function(SelectableItem<T>) onSelected;
+  final TextStyle? textStyle;
+
+  const _SearchOptionsPopup({
+    required this.options,
+    required this.onSelected,
+    required this.textStyle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final list = options.toList(growable: false);
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Material(
+        elevation: 4,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: const BorderRadius.all(Radius.circular(4)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 240,
+            maxWidth: 480,
+          ),
+          child: IntrinsicWidth(
+            child: ListView.builder(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: list.length,
+              itemBuilder: (context, i) {
+                final it = list[i];
+                return InkWell(
+                  onTap: () => onSelected(it),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: Text(
+                      it.label,
+                      style: textStyle,
+                      softWrap: false,
+                      overflow: TextOverflow.fade,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
