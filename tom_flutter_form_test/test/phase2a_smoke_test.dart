@@ -43,9 +43,17 @@ void main() {
       find.text('Demo H-A — Master-Detail Customer Editor'),
       findsOneWidget,
     );
+    // Demo H-A renders TWO master-detail scaffolds sharing the same list
+    // (scaffold A with no preselection, scaffold B preselecting row 0).
     // Pre-populated customers come from phase2aCustomers.
-    expect(find.text('Ada Lovelace'), findsOneWidget);
-    expect(find.text('Grace Hopper'), findsOneWidget);
+    // Each name therefore appears at least twice (one per master pane);
+    // the preselected row 0 (Ada) also appears in scaffold B's detail
+    // editor as an EditableText, so it shows up three times.
+    expect(find.text('Ada Lovelace'), findsAtLeastNWidgets(2));
+    expect(find.text('Grace Hopper'), findsAtLeastNWidgets(2));
+    // Both scaffold frame labels render.
+    expect(find.text('Scaffold A — no preselection'), findsOneWidget);
+    expect(find.text('Scaffold B — preselects row 0'), findsOneWidget);
   });
 
   testWidgets('Demo H-B opens with expandable order-items rows',

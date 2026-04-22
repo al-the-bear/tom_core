@@ -30,28 +30,40 @@ class DemoHAMasterDetail extends StatefulWidget {
 }
 
 class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
+  // The two scaffolds share the same list form so mutations on either side
+  // (add / remove / reorder / value edits) flow through to the other pane
+  // immediately — both scaffolds observe the same TomListForm.
   late final CustomerListForm _listForm;
-  late final CustomerDetailForm _detailForm;
+  // Each scaffold needs its own detail form because the scaffold rebinds
+  // it on selection changes, and the two scaffolds maintain independent
+  // selection state.
+  late final CustomerDetailForm _detailFormA;
+  late final CustomerDetailForm _detailFormB;
   late final TomFormInspector _inspector;
 
   @override
   void initState() {
     super.initState();
     _listForm = TomScope.withScope('demoHA', () => CustomerListForm());
-    _detailForm =
+    _detailFormA =
+        TomScope.withScope('demoHA', () => CustomerDetailForm());
+    _detailFormB =
         TomScope.withScope('demoHA', () => CustomerDetailForm());
     _listForm.bind(phase2aCustomers.customers);
     _inspector = TomFormInspector();
     _listForm.addListener(_inspector);
-    _detailForm.addListener(_inspector);
+    _detailFormA.addListener(_inspector);
+    _detailFormB.addListener(_inspector);
   }
 
   @override
   void dispose() {
     _listForm.removeListener(_inspector);
-    _detailForm.removeListener(_inspector);
+    _detailFormA.removeListener(_inspector);
+    _detailFormB.removeListener(_inspector);
     _listForm.dispose();
-    _detailForm.dispose();
+    _detailFormA.dispose();
+    _detailFormB.dispose();
     super.dispose();
   }
 
@@ -59,8 +71,13 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: 'Demo H-A — Master-Detail Customer Editor',
+      // The outer guard covers detail form A; detail form B's own
+      // selection-change guard inside its scaffold still protects against
+      // losing edits when switching rows. (Top-level navigation away from
+      // the demo is rare in this gallery, so a single outer guard is
+      // enough for the worst case.)
       child: TomUnsavedChangesGuard(
-        form: _detailForm,
+        form: _detailFormA,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -69,28 +86,62 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
               _intro(context),
               const SizedBox(height: 12),
               SizedBox(
-                height: 460,
-                child: TomMasterDetailScaffold<Customer, CustomerDetailForm>(
-                  listForm: _listForm,
-                  detailForm: _detailForm,
-                  masterPaneWidth: 280,
-                  masterBuilder: (context, listForm, selected, selectIndex) =>
-                      _MasterPane(
-                    listForm: listForm,
-                    selectedIndex: selected,
-                    selectIndex: selectIndex,
-                  ),
-                  detailBuilder: (context, form) =>
-                      _DetailPane(form: form),
+                height: 520,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _ScaffoldFrame(
+                        label: 'Scaffold A — no preselection',
+                        child:
+                            TomMasterDetailScaffold<Customer, CustomerDetailForm>(
+                          listForm: _listForm,
+                          detailForm: _detailFormA,
+                          masterPaneWidth: 240,
+                          masterBuilder:
+                              (context, listForm, selected, selectIndex) =>
+                                  _MasterPane(
+                            listForm: listForm,
+                            selectedIndex: selected,
+                            selectIndex: selectIndex,
+                          ),
+                          detailBuilder: (context, form) =>
+                              _DetailPane(form: form),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _ScaffoldFrame(
+                        label: 'Scaffold B — preselects row 0',
+                        child:
+                            TomMasterDetailScaffold<Customer, CustomerDetailForm>(
+                          listForm: _listForm,
+                          detailForm: _detailFormB,
+                          masterPaneWidth: 240,
+                          initialSelectedIndex: 0,
+                          masterBuilder:
+                              (context, listForm, selected, selectIndex) =>
+                                  _MasterPane(
+                            listForm: listForm,
+                            selectedIndex: selected,
+                            selectIndex: selectIndex,
+                          ),
+                          detailBuilder: (context, form) =>
+                              _DetailPane(form: form),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
               InfoPanel(
-                title: 'Event log (list + detail)',
+                title: 'Event log (shared list + both detail forms)',
                 children: [
                   EventLogPanel(
                     inspector: _inspector,
-                    rebuildOn: _detailForm.changes,
+                    rebuildOn: _detailFormA.changes,
                   ),
                 ],
               ),
@@ -114,13 +165,53 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
                 style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Click a customer in the master list to edit them on the '
-                'right. Make a change and click another row — the master-'
-                'detail scaffold runs the unsaved-changes guard and pops '
-                'Save / Discard / Cancel before re-binding the detail '
-                'form. Add / Remove / Move Up / Move Down emit list '
-                'events into the bus that the detail form already shares — '
-                'see them interleaved in the event log below.'),
+                'Two master-detail scaffolds, both bound to the SAME '
+                'TomListForm. Scaffold B preselects row 0 via its '
+                'initialSelectedIndex parameter, while Scaffold A starts '
+                'with no selection. Click a customer in either list to '
+                'edit them on the right. Make a change and click another '
+                'row — the scaffold runs the unsaved-changes guard and '
+                'pops Save / Discard / Cancel before re-binding the '
+                'detail form. Add / Remove / Move Up / Move Down on '
+                'either side emit list events into the shared bus, so '
+                'both lists refresh together — see the events '
+                'interleaved in the log below.'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Thin labeled frame around each scaffold so the demo clearly shows two
+// independent master-detail instances sharing the same list.
+// ---------------------------------------------------------------------------
+class _ScaffoldFrame extends StatelessWidget {
+  const _ScaffoldFrame({required this.label, required this.child});
+
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 2, 4, 6),
+              child: Text(label,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                  )),
+            ),
+            Expanded(child: child),
           ],
         ),
       ),
@@ -318,59 +409,67 @@ class _DetailPane extends StatelessWidget {
         child: ListenableBuilder(
           listenable: form.changes,
           builder: (context, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(children: [
-                  Text('Detail (formId: ${form.formId})',
-                      style: Theme.of(context).textTheme.titleSmall),
-                  const Spacer(),
-                  if (form.isDirty)
-                    const Chip(
-                      label: Text('Dirty'),
-                      visualDensity: VisualDensity.compact,
+            // The detail content (5 form fields + error view + button row)
+            // can exceed the available height — especially when the demo
+            // packs two scaffolds side-by-side. Wrap in a scroll view so
+            // it adapts gracefully to smaller heights.
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text('Detail (formId: ${form.formId})',
+                          style: Theme.of(context).textTheme.titleSmall,
+                          overflow: TextOverflow.ellipsis),
                     ),
-                ]),
-                const SizedBox(height: 8),
-                form.fullName.widget,
-                const SizedBox(height: 8),
-                form.email.widget,
-                const SizedBox(height: 8),
-                form.phone.widget,
-                const SizedBox(height: 8),
-                form.company.widget,
-                const SizedBox(height: 8),
-                form.tier.widget,
-                const SizedBox(height: 12),
-                TomErrorView(form: form, title: 'Detail form errors'),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      icon: const Icon(Icons.save, size: 16),
-                      label: const Text('Save'),
-                      onPressed: () async {
-                        final ok = await form.save();
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(ok
-                                ? 'Saved customer.'
-                                : 'Validation failed — check errors.'),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.undo, size: 16),
-                      label: const Text('Discard'),
-                      onPressed: () => form.discard(),
-                    ),
-                  ],
-                ),
-              ],
+                    if (form.isDirty)
+                      const Chip(
+                        label: Text('Dirty'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ]),
+                  const SizedBox(height: 8),
+                  form.fullName.widget,
+                  const SizedBox(height: 8),
+                  form.email.widget,
+                  const SizedBox(height: 8),
+                  form.phone.widget,
+                  const SizedBox(height: 8),
+                  form.company.widget,
+                  const SizedBox(height: 8),
+                  form.tier.widget,
+                  const SizedBox(height: 12),
+                  TomErrorView(form: form, title: 'Detail form errors'),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        icon: const Icon(Icons.save, size: 16),
+                        label: const Text('Save'),
+                        onPressed: () async {
+                          final ok = await form.save();
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? 'Saved customer.'
+                                  : 'Validation failed — check errors.'),
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.undo, size: 16),
+                        label: const Text('Discard'),
+                        onPressed: () => form.discard(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             );
           },
         ),
