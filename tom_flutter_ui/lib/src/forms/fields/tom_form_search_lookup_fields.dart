@@ -545,11 +545,14 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     // theme defaults (typically a larger subtitle1) leak in and shift
     // both the font size and the visible baseline.
     //
-    // Don't fall back to bodyMedium when style.inputStyle is null —
-    // every other field passes the resolved style through verbatim;
-    // matching that keeps the row in sync with neighbouring fields
-    // when the form theme leaves the input style un-overridden.
-    final inputStyle = style.inputStyle;
+    // Keep the bodyMedium fallback for `style.inputStyle` so the
+    // display text and the dialog filter input always share the same
+    // explicit, non-null TextStyle (matched with the dialog at the
+    // top of `_openDialog`); leaving it null would let the field
+    // render via Flutter's default subtitle1 while the dialog still
+    // uses bodyMedium, re-introducing the size mismatch (p).
+    final inputStyle =
+        style.inputStyle ?? Theme.of(context).textTheme.bodyMedium;
     final hintStyle = composeHintStyle(style, Theme.of(context));
 
     // Floating label, scaled to Material's 0.75× ratio so a custom
