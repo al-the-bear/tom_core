@@ -47,6 +47,19 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// called or [bind] never ran. Read-only — mutate via [bind] / [unbind].
   T? get currentBinding => _binding;
 
+  /// Observer registered on [_binding] so externally-driven mutations of
+  /// the bound TomClass (e.g. a sibling form bound to the same target
+  /// committing an edit) re-snapshot this form's fields. Held as a
+  /// nullable handle so [bind] / [unbind] can detach the previous
+  /// registration before installing a new one.
+  TomFunctionObserver<TomObservable>? _bindingObserver;
+
+  /// Re-entrancy guard: while we're writing back to the binding inside
+  /// `_applySave`, the binding fires its observers and the resulting
+  /// [_onBindingExternallyChanged] callback would try to overwrite the
+  /// fields we just committed. Skip it.
+  bool _writingBackToBinding = false;
+
   /// The bound data object's initial snapshot (values at bind/save time).
   Map<String, dynamic>? _initialSnapshot;
 
@@ -156,9 +169,48 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// per-field `_initialValue` reset, pristine validation state, and
   /// `FieldBoundEvent` / `FormBoundEvent` dispatch — all the way down.
   void bind(T target) {
+    _detachBindingObserver();
     _binding = target;
     setValues(target.getValues());
     _applyBindLifecycle(target);
+    _attachBindingObserver(target);
+  }
+
+  /// Round-6 (a): subscribe to the bound TomClass so external mutations
+  /// (e.g. a sibling [TomForm] bound to the same target committing an
+  /// edit) re-snapshot this form's fields. Without this, two scaffolds
+  /// targeting the same data object only stay in sync for the side that
+  /// initiated the edit.
+  void _attachBindingObserver(TomClass target) {
+    _bindingObserver = target >> (_) => _onBindingExternallyChanged();
+  }
+
+  void _detachBindingObserver() {
+    final obs = _bindingObserver;
+    final binding = _binding;
+    if (obs != null && binding != null) {
+      binding.removeObserver(obs);
+    }
+    _bindingObserver = null;
+  }
+
+  /// Fires when the bound [TomClass] mutates from outside this form.
+  /// Re-snapshot the field values from the binding ONLY when:
+  ///   - we are not in the middle of pushing this form's own values
+  ///     back to the binding (re-entrancy guard during `_applySave`),
+  ///   - the form has no pending local edits (don't clobber in-flight
+  ///     user input — the local change is the source of truth until
+  ///     the user explicitly saves or discards).
+  void _onBindingExternallyChanged() {
+    if (_writingBackToBinding) return;
+    final binding = _binding;
+    if (binding == null) return;
+    if (isDirty) return;
+    setValues(binding.getValues());
+    // Re-snapshot the initial values + reset validation so the form
+    // continues to report "pristine" against the new binding contents.
+    _applyBindLifecycle(binding);
+    _changes.fire();
   }
 
   /// Core of [bind]: per-form lifecycle reset + recursion into nested
@@ -210,7 +262,16 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   void _applySave() {
     onSaving();
-    _binding?.setValues(getValues());
+    // Round-6 (a): suppress our own binding observer while writing back —
+    // setValues fires the binding's observers synchronously, and we
+    // don't want that to recursively re-snapshot the values we just
+    // committed.
+    _writingBackToBinding = true;
+    try {
+      _binding?.setValues(getValues());
+    } finally {
+      _writingBackToBinding = false;
+    }
     for (final field in fields.values) {
       field.commit();
     }
@@ -248,6 +309,7 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// this when the form tree is no longer editing a data object.
   void unbind() {
     onUnbinding();
+    _detachBindingObserver();
     for (final field in fields.values) {
       field.reset();
     }
