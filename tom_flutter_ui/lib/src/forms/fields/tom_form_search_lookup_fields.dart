@@ -18,8 +18,10 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
 import '../decoration/tom_dropdown_decoration_mixin.dart';
+import '../decoration/tom_field_anatomy.dart';
 import '../decoration/tom_string_input_decoration_mixin.dart';
 import '../selection/tom_selectable_source.dart';
+import '../style/form_style_enums.dart';
 import '../tom_form.dart';
 import 'tom_field_widget_adapter.dart';
 
@@ -535,31 +537,68 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     final f = widget.field;
     final style = f.resolveStyle(context);
 
-    // Use a read-only TextField so the lookup row shares the exact
-    // baseline + content-padding + inputStyle pipeline as every other
-    // text input. The trailing search icon doubles as the affordance
-    // hint; the `onTap` opens the lookup dialog. Wrapping in
-    // AbsorbPointer lets the InkWell receive the tap regardless of the
-    // TextField's own gesture handling.
-    // Same fallback the dialog uses — guarantees a non-null explicit
-    // style so the lookup row reads visually like the rest of the form.
-    final inputStyle =
-        style.inputStyle ?? Theme.of(context).textTheme.bodyMedium;
+    // Mirror the same composition `TomFormStringField` uses so the
+    // lookup row's text baseline, font size, label placement and hint
+    // styling are pixel-identical to a regular text input — round-5
+    // (h)/(i): previously the row used a bare InputDecoration without
+    // labelStyle/floatingLabelStyle/hintStyle, which let Flutter's
+    // theme defaults (typically a larger subtitle1) leak in and shift
+    // both the font size and the visible baseline.
+    //
+    // Don't fall back to bodyMedium when style.inputStyle is null —
+    // every other field passes the resolved style through verbatim;
+    // matching that keeps the row in sync with neighbouring fields
+    // when the form theme leaves the input style un-overridden.
+    final inputStyle = style.inputStyle;
+    final hintStyle = composeHintStyle(style, Theme.of(context));
+
+    // Floating label, scaled to Material's 0.75× ratio so a custom
+    // labelStyle font size doesn't overflow the floating slot. Same
+    // logic as TomFormStringField.
+    String? floatingLabel;
+    if (style.labelPlacement == LabelPlacement.floating) {
+      final resolved = f.labelText;
+      if (resolved != null && resolved.isNotEmpty) floatingLabel = resolved;
+    }
+    const floatScale = 0.75;
+    final labelFontSize = style.labelStyle?.fontSize;
+    final floatingLabelStyle = style.labelStyle?.copyWith(
+      fontSize: labelFontSize != null ? labelFontSize * floatScale : null,
+    );
+
     final input = TextField(
       controller: _displayController,
       readOnly: true,
       enabled: f.isEditable,
       style: inputStyle,
+      // Round-5 (h): align the read-only display text to the centre of
+      // the input box; without this the text rides the top edge of the
+      // content area, looking visibly higher than neighbouring fields.
+      textAlignVertical: TextAlignVertical.center,
       mouseCursor: f.isEditable ? SystemMouseCursors.click : null,
       onTap: f.isEditable ? _openDialog : null,
       decoration: f.applyErrorVisualsTo(
         context,
         InputDecoration(
+          labelText: floatingLabel,
+          labelStyle: style.labelStyle,
+          floatingLabelStyle: floatingLabelStyle,
           hintText: '—',
-          suffixIcon: IconButton(
-            tooltip: 'Browse…',
-            icon: const Icon(Icons.search, size: 20),
-            onPressed: f.isEditable ? _openDialog : null,
+          hintStyle: hintStyle,
+          // Round-5 (j): plain Icon (size 22 to match the dialog's
+          // prefix icon) instead of an IconButton — the IconButton's
+          // 48×48 minimum touch target was inflating the suffix slot
+          // and pushing the input text up. The whole row is tappable
+          // via the TextField's onTap, so the icon doesn't need its
+          // own ripple — the wrapping Padding keeps the trailing
+          // gutter visually balanced.
+          suffixIcon: const Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: Icon(Icons.search, size: 22),
+          ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 28,
+            minHeight: 28,
           ),
           contentPadding: style.fieldContentPadding,
           border: style.fieldBorder,
