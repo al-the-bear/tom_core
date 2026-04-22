@@ -85,8 +85,12 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
             children: [
               _intro(context),
               const SizedBox(height: 12),
+              // Round-6 (a2): bump container height so the full detail form
+              // — header, 5 fields, error view, Save / Discard row — fits
+              // without the inner SingleChildScrollView clipping the Save
+              // button at common viewport sizes.
               SizedBox(
-                height: 520,
+                height: 660,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

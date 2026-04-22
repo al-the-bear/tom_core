@@ -135,4 +135,39 @@ void main() {
             'Both scaffolds A and B should display the edited name after save '
             '(binding observer propagation).');
   });
+
+  testWidgets(
+      '(a2) Demo H-A detail pane shows the full form including the Save button',
+      (tester) async {
+    tester.view.physicalSize = const Size(2400, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(const FormDemoApp());
+    await tester.scrollUntilVisible(
+        find.text('Demo H-A: Master-Detail Customer Editor'), 200);
+    await tester.tap(find.text('Demo H-A: Master-Detail Customer Editor'));
+    await tester.pumpAndSettle();
+
+    // Both scaffold detail panes are bound to row 0 (Ada); both Save
+    // buttons should be present AND fully painted within the viewport
+    // (no need to scroll the detail pane to reveal them).
+    final saveButtons = find.widgetWithText(FilledButton, 'Save');
+    expect(saveButtons, findsAtLeastNWidgets(1),
+        reason: 'Detail pane Save button should be in the tree');
+
+    final viewportSize = tester.view.physicalSize / tester.view.devicePixelRatio;
+    for (final el in saveButtons.evaluate()) {
+      final box = el.renderObject as RenderBox?;
+      expect(box, isNotNull);
+      expect(box!.hasSize, isTrue);
+      final topLeft = box.localToGlobal(Offset.zero);
+      final bottomRight = topLeft + Offset(box.size.width, box.size.height);
+      expect(bottomRight.dy, lessThanOrEqualTo(viewportSize.height),
+          reason:
+              'Save button bottom (${bottomRight.dy}) must fit inside the '
+              'viewport (${viewportSize.height}); container should be tall '
+              'enough to render the full detail form.');
+    }
+  });
 }
