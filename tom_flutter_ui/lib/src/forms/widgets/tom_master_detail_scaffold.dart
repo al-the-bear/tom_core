@@ -30,7 +30,16 @@ class TomMasterDetailScaffold<TItem extends TomClass,
     this.masterPaneWidth = 280,
     this.gap = 16,
     this.guardUnsavedSelectionChange = true,
+    this.initialSelectedIndex,
   });
+
+  /// Optional initial selection. When non-null, the scaffold runs
+  /// `selectIndex(initialSelectedIndex)` once on the first frame so the
+  /// detail pane comes up already bound to that row.
+  ///
+  /// The value is only consulted on the very first build; subsequent
+  /// changes are ignored (selection becomes user-driven from then on).
+  final int? initialSelectedIndex;
 
   /// The list of items shown in the master pane.
   final TomListForm<TItem, TForm> listForm;
@@ -78,6 +87,13 @@ class _TomMasterDetailScaffoldState<TItem extends TomClass,
     super.initState();
     widget.listForm.addObserver(this);
     _selectedIndex.addObserver(this);
+    final initial = widget.initialSelectedIndex;
+    if (initial != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _selectIndex(initial);
+      });
+    }
   }
 
   @override
