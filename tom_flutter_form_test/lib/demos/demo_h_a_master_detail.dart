@@ -78,10 +78,11 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
       // enough for the worst case.)
       child: TomUnsavedChangesGuard(
         form: _detailFormA,
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
             children: [
               _intro(context),
               const SizedBox(height: 12),
