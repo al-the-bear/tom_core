@@ -29,16 +29,37 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
   String _currency = 'USD';
   TomFormCurrencyDoubleInput? _currencyField;
 
+  // Cross-observers that keep the two `quantity` fields (input + slider)
+  // in lockstep. NumericDemoForm exposes them as separate TomField
+  // instances (each is its own TomObject), so the spec promise of
+  // "IntInput + IntSlider sharing a TomInt" is implemented at the demo
+  // level by two-way mirroring: dragging the slider pushes the rounded
+  // int into the input's TomInt and vice versa. Mirrors the same
+  // `taskDuration` ↔ `taskMinutes` pattern used in Demo J.
+  late final TomFunctionObserver<TomObservable> _quantityInputObserver;
+  late final TomFunctionObserver<TomObservable> _quantitySliderObserver;
+
   @override
   void initState() {
     super.initState();
     _form = TomScope.withScope('demoI', () => NumericDemoForm());
     _form.bind(phase3NumericState);
     _currencyField = _buildCurrencyField(_currency);
+
+    _quantityInputObserver = _form.quantityInput >> (_) {
+      final v = _form.quantityInput.get();
+      if (_form.quantitySlider.get() != v) _form.quantitySlider.setValue(v);
+    };
+    _quantitySliderObserver = _form.quantitySlider >> (_) {
+      final v = _form.quantitySlider.get();
+      if (_form.quantityInput.get() != v) _form.quantityInput.setValue(v);
+    };
   }
 
   @override
   void dispose() {
+    _form.quantityInput.removeObserver(_quantityInputObserver);
+    _form.quantitySlider.removeObserver(_quantitySliderObserver);
     _currencyField?.dispose();
     _form.dispose();
     super.dispose();
@@ -193,7 +214,27 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
                   .toList(),
             ),
             const SizedBox(height: 8),
-            _currencyField!.widget,
+            // Wrap the field widget in a ValueKey so swapping the
+            // currency code forces Flutter to discard the old State
+            // (including its TextEditingController initialised to the
+            // previous symbol/separators). Without this, the field's
+            // State persists across rebuilds and keeps showing the old
+            // formatted text — the locale switch becomes a no-op
+            // visually even though the underlying CurrencyFormatProfile
+            // has changed.
+            KeyedSubtree(
+              key: ValueKey('currencyField_$_currency'),
+              child: _currencyField!.widget,
+            ),
+            const SizedBox(height: 4),
+            // Live readout that proves the format profile changed —
+            // re-renders on every form change AND every chip tap, since
+            // _currency is part of the demo's State.
+            Text(
+              'Formatted: ${_currencyField!.formatProfile.format(_form.priceUSD.get())}'
+                  '   (code: $_currency)',
+              style: theme.textTheme.bodySmall,
+            ),
             const SizedBox(height: 8),
             _form.priceGeneric.widget,
           ],
@@ -213,8 +254,34 @@ class _DemoINumericFormsState extends State<DemoINumericForms> {
             Text('Percent + tax slider', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             _form.discount.widget,
+            // The percent input renders '%' as an InputDecoration
+            // suffix inside the TextField, but at narrow widths or with
+            // certain themes it can be hidden by content padding. This
+            // explicit readout makes the formatted percent + the
+            // underlying 0..1 fraction unambiguously visible so the
+            // demo proves the conversion is working.
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => Text(
+                'Discount: ${(_form.discount.get() * 100).toStringAsFixed(1)}%'
+                    '   (stored as fraction: '
+                    '${_form.discount.get().toStringAsFixed(3)})',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
             const SizedBox(height: 8),
             _form.taxRate.widget,
+            // Tax slider had no companion readout — without one a user
+            // dragging it had no proof that the bound TomDouble was
+            // updating, and the slider thumb's brief tooltip is easy
+            // to miss. This Text rebuilds on every form change.
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => Text(
+                'Tax rate: ${_form.taxRate.get().toStringAsFixed(1)} %',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
           ],
         ),
       ),

@@ -174,11 +174,31 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
             Text('Inline calendar', style: theme.textTheme.titleSmall),
             const SizedBox(height: 8),
             _form.eventDateInline.widget,
+            const SizedBox(height: 8),
+            // Visible readout proves the inline calendar's tap callback
+            // really does push the picked date into the bound
+            // eventDateInline TomDateTime — without this readout the
+            // calendar's own selection visual is the only feedback,
+            // which is easy to dismiss as "the calendar isn't wired up".
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => Text(
+                'Selected (inline): '
+                    '${_isoDate(_form.eventDateInline.get())}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+
+  /// ISO date string `YYYY-MM-DD` for the inline calendar readout.
+  String _isoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
 
   Widget _durationCard(BuildContext context) {
     final theme = Theme.of(context);
