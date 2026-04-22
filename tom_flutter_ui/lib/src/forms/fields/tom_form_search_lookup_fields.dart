@@ -265,11 +265,23 @@ class _SearchInputWidgetState<T> extends State<_SearchInputWidget<T>> {
 /// Material-styled popup for [Autocomplete] that sizes to the widest
 /// option label rather than to the underlying text field. Capped to
 /// `maxWidth` so a single very long label can't push the overlay
-/// off-screen.
+/// off-screen, and to `maxHeight` so a long candidate list scrolls
+/// instead of overflowing the viewport.
 ///
-/// Wrapped in [Align(alignment: Alignment.topLeft)] because Flutter
-/// stretches a popup to the available follow-target width by default;
-/// the alignment lets the inner [Material] shrink-wrap.
+/// The popup is built as `IntrinsicWidth(Column(options))` rather than
+/// `IntrinsicWidth(ListView)`, because Flutter's
+/// `RenderShrinkWrappingViewport` (used by `ListView(shrinkWrap: true)`)
+/// throws on `computeMaxIntrinsicWidth` — the intrinsic width algorithm
+/// would have to instantiate every child, defeating the viewport's
+/// laziness. A `Column` happily reports its widest child's intrinsic
+/// width, which is what we want here. The whole thing is wrapped in a
+/// vertical `SingleChildScrollView` so long lists still scroll, capped
+/// to `take(50)` upstream so the column never gets pathologically tall.
+///
+/// Wrapped in [Align(alignment: Alignment.topLeft)] because the
+/// `Autocomplete` overlay stretches the popup to the follow-target
+/// width by default; the alignment lets the inner [Material]
+/// shrink-wrap to the intrinsic width instead.
 class _SearchOptionsPopup<T> extends StatelessWidget {
   final Iterable<SelectableItem<T>> options;
   final void Function(SelectableItem<T>) onSelected;
@@ -295,29 +307,30 @@ class _SearchOptionsPopup<T> extends StatelessWidget {
             maxHeight: 240,
             maxWidth: 480,
           ),
-          child: IntrinsicWidth(
-            child: ListView.builder(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: list.length,
-              itemBuilder: (context, i) {
-                final it = list[i];
-                return InkWell(
-                  onTap: () => onSelected(it),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+          child: SingleChildScrollView(
+            child: IntrinsicWidth(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final it in list)
+                    InkWell(
+                      onTap: () => onSelected(it),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          it.label,
+                          style: textStyle,
+                          softWrap: false,
+                          overflow: TextOverflow.fade,
+                        ),
+                      ),
                     ),
-                    child: Text(
-                      it.label,
-                      style: textStyle,
-                      softWrap: false,
-                      overflow: TextOverflow.fade,
-                    ),
-                  ),
-                );
-              },
+                ],
+              ),
             ),
           ),
         ),
