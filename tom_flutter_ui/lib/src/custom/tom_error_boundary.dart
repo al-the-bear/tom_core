@@ -89,50 +89,115 @@ class _TomErrorBoundaryState extends State<TomErrorBoundary> {
       if (builder != null) return builder(context, captured, _retry);
       return _DefaultErrorFallback(details: captured, onRetry: _retry);
     }
-    return _ErrorBoundaryHost(
-      onError: _captureError,
-      child: widget.child,
-    );
+    return _ErrorBoundaryHost(child: widget.child);
   }
 }
 
-/// Wraps the guarded subtree with an [ErrorWidget.builder] that sends
-/// caught errors back to the boundary state. The previous builder is
-/// restored on dispose so other boundaries / global error handlers keep
-/// working.
+/// Wraps the guarded subtree with an [ErrorWidget.builder] that
+/// returns a [_ErrorReporter] in place of the failing widget. The
+/// reporter then walks up the element tree to find the *nearest*
+/// enclosing [_TomErrorBoundaryState] and forwards the error to it.
+///
+/// This element-tree routing — rather than the more obvious "current
+/// host's `widget.onError` is called by the global hook" approach —
+/// is what makes nested boundaries correct. The global
+/// [ErrorWidget.builder] is, well, global: when boundary A and B are
+/// both mounted, whichever called `initState` *last* owns the hook.
+/// If A throws while B is the active hook, B's `onError` would fire
+/// — routing A's error to B. Per-row containment in a list (where
+/// dozens of boundaries are mounted simultaneously) becomes
+/// impossible. By having the hook return a placeholder widget that
+/// looks up the boundary via `findAncestorStateOfType`, the error
+/// always reaches the *enclosing* boundary, regardless of mount
+/// order.
+///
+/// Boundary ref-counting:
+/// `_ErrorBoundaryHostState` increments [_activeBoundaries] in
+/// `initState` and decrements in `dispose`. The global hook is
+/// installed when the count goes 0→1 and restored when it goes
+/// 1→0 — so the original builder is preserved across the entire
+/// lifetime of the outermost boundary, not stomped each time a new
+/// boundary mounts.
 class _ErrorBoundaryHost extends StatefulWidget {
   final Widget child;
-  final void Function(FlutterErrorDetails details) onError;
 
-  const _ErrorBoundaryHost({required this.child, required this.onError});
+  const _ErrorBoundaryHost({required this.child});
 
   @override
   State<_ErrorBoundaryHost> createState() => _ErrorBoundaryHostState();
 }
 
-class _ErrorBoundaryHostState extends State<_ErrorBoundaryHost> {
-  late final ErrorWidgetBuilder _previousBuilder;
+/// Number of currently mounted [_ErrorBoundaryHost]s. Used to
+/// install the global hook exactly once across all boundaries.
+int _activeBoundaries = 0;
 
+/// The [ErrorWidget.builder] that was active before the first
+/// boundary installed its hook. Restored when the last boundary
+/// unmounts.
+ErrorWidgetBuilder? _previousGlobalBuilder;
+
+class _ErrorBoundaryHostState extends State<_ErrorBoundaryHost> {
   @override
   void initState() {
     super.initState();
-    _previousBuilder = ErrorWidget.builder;
-    ErrorWidget.builder = (FlutterErrorDetails details) {
-      widget.onError(details);
-      // Render an empty placeholder while the boundary repaints with
-      // the fallback UI.
-      return const SizedBox.shrink();
-    };
+    if (_activeBoundaries == 0) {
+      _previousGlobalBuilder = ErrorWidget.builder;
+      ErrorWidget.builder = (FlutterErrorDetails details) =>
+          _ErrorReporter(details: details);
+    }
+    _activeBoundaries++;
   }
 
   @override
   void dispose() {
-    ErrorWidget.builder = _previousBuilder;
+    _activeBoundaries--;
+    if (_activeBoundaries == 0) {
+      ErrorWidget.builder = _previousGlobalBuilder ?? ErrorWidget.builder;
+      _previousGlobalBuilder = null;
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
+}
+
+/// Replaces the throwing widget at the failing slot. On mount it
+/// finds the nearest [_TomErrorBoundaryState] ancestor and forwards
+/// the captured [FlutterErrorDetails] — the boundary then schedules
+/// a post-frame setState to swap in its fallback UI.
+///
+/// Stays as a zero-size placeholder until the boundary rebuilds and
+/// replaces the entire boundary subtree with the fallback widget;
+/// the placeholder never appears in the tree once that happens.
+class _ErrorReporter extends StatefulWidget {
+  final FlutterErrorDetails details;
+  const _ErrorReporter({required this.details});
+
+  @override
+  State<_ErrorReporter> createState() => _ErrorReporterState();
+}
+
+class _ErrorReporterState extends State<_ErrorReporter> {
+  @override
+  void initState() {
+    super.initState();
+    // Defer the lookup to the next frame: during the failing build,
+    // the framework still considers the boundary state "in build" and
+    // calling setState on it (which is what the boundary does in
+    // response) would trip the lifecycle assertion.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final boundary = context.findAncestorStateOfType<_TomErrorBoundaryState>();
+      // Routing the error to the nearest enclosing boundary is the
+      // whole point of this widget — see the class doc on
+      // [_ErrorBoundaryHost] for why.
+      boundary?._captureError(widget.details);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _DefaultErrorFallback extends StatelessWidget {
