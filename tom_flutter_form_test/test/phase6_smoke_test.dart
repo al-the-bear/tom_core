@@ -206,21 +206,36 @@ void main() {
   });
 
   testWidgets(
-      'Demo R synthetic tile throw surfaces TomErrorBoundary fallback '
-      'and Retry restores the list',
+      'Demo R synthetic tile throw is contained to the failing row '
+      'and Retry restores it',
       (tester) async {
+    // Regression for round-4 feedback `t`: the row-level error
+    // boundary used to collapse the *entire* list to the default
+    // 'Something went wrong' card because the synthetic throw lived
+    // in the itemBuilder closure (outside the per-row subtree) and
+    // only a single outer boundary existed. After the fix each row
+    // has its own boundary with a compact fallback, and sibling rows
+    // must keep rendering while row 3 shows a `Row #3 failed to
+    // render` tile.
     await openDemo(
         tester, 'Demo R: Tree / Radio / Infinite scroll (Phase 6)');
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
-    // Baseline: first row is visible, no fallback card.
+    // Baseline: first rows are visible, no fallback tile.
     expect(find.text('Row #00000'), findsOneWidget);
+    expect(find.text('Row #00001'), findsOneWidget);
+    expect(find.text('Row #00002'), findsOneWidget);
+    expect(find.text('Row #00003'), findsOneWidget);
+    expect(find.textContaining('failed to render'), findsNothing);
+    // Default boundary fallback ('Something went wrong') must NOT
+    // appear — the per-row boundary overrides it with the compact
+    // `_DemoRRowErrorTile`.
     expect(find.text('Something went wrong'), findsNothing);
 
     // Flip the per-tile throw toggle. The tile builder at row
     // `DemoRController.throwRowIndex` (= 3) throws; `ErrorWidget.builder`
-    // routes the failure into `TomErrorBoundary`, which schedules a
-    // post-frame setState to paint its fallback.
+    // routes the failure into the per-row `TomErrorBoundary`, which
+    // schedules a post-frame setState to paint its fallback.
     await tester.tap(find.text('Throw in row tile'));
     await tester.pump();
     await tester.pump();
@@ -232,19 +247,26 @@ void main() {
     // the harness does not fail the test on their account.
     tester.takeException();
 
-    // Fallback card is visible in place of the list.
-    expect(find.text('Something went wrong'), findsOneWidget);
-    expect(find.text('Retry'), findsOneWidget);
+    // Row 3's fallback tile is visible.
+    expect(find.text('Row #3 failed to render'), findsOneWidget);
+    // Sibling rows still render — this is the core regression.
+    expect(find.text('Row #00000'), findsOneWidget);
+    expect(find.text('Row #00001'), findsOneWidget);
+    expect(find.text('Row #00002'), findsOneWidget);
+    expect(find.text('Row #00004'), findsOneWidget);
+    // The default full-list fallback must NOT appear — containment is
+    // per-row.
+    expect(find.text('Something went wrong'), findsNothing);
 
-    // Turn the throw off, then tap Retry — the boundary clears and the
-    // list re-renders.
+    // Turn the throw off, then tap the row's Retry — the per-row
+    // boundary clears and the original tile re-renders.
     await tester.tap(find.text('Throw in row tile'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Retry').last);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
-    expect(find.text('Something went wrong'), findsNothing);
-    expect(find.text('Row #00000'), findsOneWidget);
+    expect(find.textContaining('failed to render'), findsNothing);
+    expect(find.text('Row #00003'), findsOneWidget);
     await unmountDemo(tester);
   });
 }

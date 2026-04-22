@@ -16,11 +16,23 @@
 ///     source. Exercises the initial-load skeleton (via
 ///     `TomSkeletonLoader`), the bottom-of-list "loading more"
 ///     indicator, the empty / error slots, and the page exhaustion
-///     branch. The whole scroll is wrapped in `TomErrorBoundary`
-///     ("boundary around the tile builder", spec §23) so a synthetic
-///     build-time throw inside the item-builder (driven by the
-///     `throwOnTile` toggle in the right control pane) is caught and
-///     the entire list is replaced with the boundary's fallback UI.
+///     branch. Each *row* is wrapped in its own `TomErrorBoundary`
+///     ("boundary around the tile builder", spec §23) — so a
+///     synthetic build-time throw inside one row (driven by the
+///     `throwOnTile` toggle in the right control pane) is caught at
+///     row scope: only the failing row collapses to a compact inline
+///     fallback while sibling rows keep rendering normally. An outer
+///     `TomErrorBoundary` around the whole scroll remains as a
+///     defense-in-depth backstop.
+///
+/// Implementation note (round-4 feedback `t`): an earlier version
+/// only had the outer boundary and the throwing logic lived inside
+/// the `itemBuilder` closure itself, so the throw escaped the
+/// closure before the inner boundary's subtree existed and the whole
+/// list was replaced. The fix is two-part: (a) move the row body
+/// into a dedicated `_DemoRRow` widget so the throw happens inside
+/// `build()` (i.e. inside the per-row boundary's subtree); (b) wrap
+/// every row in its own `TomErrorBoundary` with a compact fallback.
 library;
 
 import 'package:flutter/material.dart';
@@ -295,12 +307,14 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
             ),
             const SizedBox(height: 8),
             Expanded(
-              // Single TomErrorBoundary wrapping the whole scroll —
-              // spec §23's "boundary around the tile builder". When
-              // the `throwOnTile` toggle is on, the item-builder for
-              // row index `DemoRController.throwRowIndex` throws; the
-              // boundary catches the exception and replaces the list
-              // with its fallback UI.
+              // Outer boundary kept as defense-in-depth. The
+              // *meaningful* containment in this demo is per-row:
+              // see `_buildRow` below, which wraps every tile in its
+              // own `TomErrorBoundary`. Without the per-row layer
+              // the synthetic throw would escape past the
+              // ListView.builder and trip *this* outer boundary,
+              // collapsing the whole list (the original feedback-`t`
+              // bug).
               child: TomErrorBoundary(
                 child: TomInfiniteScroll<String>(
                   key: _scrollKey,
@@ -317,20 +331,27 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
     );
   }
 
-  /// Renders a single list tile. Throws synthetically when
-  /// `throwOnTile` is enabled and [index] matches
-  /// [DemoRController.throwRowIndex] — the per-tile `TomErrorBoundary`
-  /// wrapping this widget catches the throw and renders its fallback.
+  /// Renders a single list row, wrapped in its own per-row
+  /// `TomErrorBoundary`. The throwing logic lives inside `_DemoRRow`
+  /// (a real widget) rather than in this closure — that's what makes
+  /// the boundary effective: the throw fires from inside the
+  /// boundary's subtree's `build()`, not from the closure that
+  /// returns the subtree, so `ErrorWidget.builder` routes it to the
+  /// inner boundary instead of escaping to whichever boundary
+  /// happens to be active when the closure runs.
   Widget _buildRow(BuildContext context, String item, int index) {
-    if (_controller.throwOnTile &&
-        index == DemoRController.throwRowIndex) {
-      throw StateError(
-          'Synthetic tile-build error at row $index.');
-    }
-    return ListTile(
-      dense: true,
-      leading: const Icon(Icons.list_alt_outlined),
-      title: Text(item),
+    return TomErrorBoundary(
+      // ValueKey by index: a fresh boundary per row position so
+      // capture state doesn't bleed across rows when the toggle
+      // flips and the list rebuilds.
+      key: ValueKey<int>(index),
+      fallbackBuilder: (context, details, retry) =>
+          _DemoRRowErrorTile(index: index, details: details, onRetry: retry),
+      child: _DemoRRow(
+        item: item,
+        index: index,
+        throwOnTile: _controller.throwOnTile,
+      ),
     );
   }
 
@@ -421,6 +442,79 @@ class _DemoRTreeRadioInfiniteState extends State<DemoRTreeRadioInfinite> {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------
+// Per-row helpers — extracted so the throw happens inside the per-row
+// TomErrorBoundary's subtree (see `_buildRow` above).
+// ---------------------------------------------------------------------
+
+/// One list row. Throws synthetically from inside `build()` when
+/// [throwOnTile] is set and [index] matches
+/// [DemoRController.throwRowIndex]. Being a real widget is the key
+/// detail: placing the throw inside `build()` (rather than inside the
+/// itemBuilder closure) means the error fires from *inside* the
+/// surrounding `TomErrorBoundary`, so the boundary's
+/// `ErrorWidget.builder` hook routes the failure to that row only.
+class _DemoRRow extends StatelessWidget {
+  final String item;
+  final int index;
+  final bool throwOnTile;
+
+  const _DemoRRow({
+    required this.item,
+    required this.index,
+    required this.throwOnTile,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (throwOnTile && index == DemoRController.throwRowIndex) {
+      throw StateError('Synthetic tile-build error at row $index.');
+    }
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.list_alt_outlined),
+      title: Text(item),
+    );
+  }
+}
+
+/// Compact fallback tile for a single failed row. Deliberately row-
+/// shaped (icon + one-line message + retry) so the list structure
+/// stays visually intact and neighbouring rows keep rendering.
+class _DemoRRowErrorTile extends StatelessWidget {
+  final int index;
+  final FlutterErrorDetails details;
+  final VoidCallback onRetry;
+
+  const _DemoRRowErrorTile({
+    required this.index,
+    required this.details,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListTile(
+      dense: true,
+      leading: Icon(Icons.error_outline,
+          color: theme.colorScheme.error, size: 20),
+      title: Text(
+        'Row #$index failed to render',
+        style: theme.textTheme.bodyMedium
+            ?.copyWith(color: theme.colorScheme.error),
+      ),
+      subtitle: Text(
+        details.exceptionAsString(),
+        style: theme.textTheme.bodySmall,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: TextButton(onPressed: onRetry, child: const Text('Retry')),
     );
   }
 }
