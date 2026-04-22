@@ -156,5 +156,35 @@ void main() {
     expect(find.text('— please select —'), findsOneWidget,
         reason:
             'Nullable enum dropdown must show its overridden null label');
+    // Mode 4 (round-6 k.b): resource-backed null display — birthday's
+    // null label comes from `demoL.fileNullableDemo.birthday.nullDisplay`
+    // in `assets/demo_resources.json` (resolves to "Not set"). Asserts
+    // the `_NullableFieldLabels.resolveNullDisplay` resource fallback
+    // is wired through the date input's button label.
+    expect(find.text('Not set'), findsOneWidget,
+        reason:
+            'Date field must resolve null display from the scoped '
+            'resource (demoL.fileNullableDemo.birthday.nullDisplay)');
+    // Round-6 (k.a): "empty when null" mode must keep the field area
+    // visually empty. Asserted indirectly by checking that the score
+    // field's TextField uses FloatingLabelBehavior.always (so the
+    // labelText doesn't drop into the field as a stand-in placeholder
+    // when both value and hintText are empty).
+    // Locate the score field by its labelText on the InputDecoration —
+    // the labelText sits as a Text widget inside the InputDecorator
+    // overlay, not as a child of TextField, so we scan all TextFields.
+    final scoreFields = find
+        .byType(TextField)
+        .evaluate()
+        .map((e) => e.widget as TextField)
+        .where((tf) => tf.decoration?.labelText == 'Score (empty when null)')
+        .toList();
+    expect(scoreFields, isNotEmpty,
+        reason: 'Score field must be in the widget tree');
+    expect(scoreFields.first.decoration?.floatingLabelBehavior,
+        FloatingLabelBehavior.always,
+        reason:
+            'Empty-when-null mode must keep the label floating so the '
+            'field area renders truly empty');
   });
 }

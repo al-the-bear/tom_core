@@ -368,13 +368,23 @@ class _NullableTextInputWidgetState<T>
     final style = d.resolveStyle(context);
 
     final hasValue = field.get() != null;
+    final resolvedNullDisplay = widget.nullDisplay();
 
     final decoration = InputDecoration(
       labelText: d.labelText,
       // Resolved by the concrete via the `_NullableFieldLabels` mixin —
       // honours `nullDisplayOverride` (incl. empty for "render nothing"),
       // then `hintTextOverride`, then the `'— null —'` default.
-      hintText: widget.nullDisplay(),
+      hintText: resolvedNullDisplay,
+      // Round-6 (k.a) — when the resolved null display is truly empty
+      // (`nullDisplayOverride: ''` mode), force the label to stay
+      // floating. Otherwise Material's InputDecorator drops the
+      // labelText into the field area as a stand-in placeholder when
+      // both value and hintText are empty, defeating the documented
+      // "render nothing when the value is null" mode.
+      floatingLabelBehavior: resolvedNullDisplay.isEmpty
+          ? FloatingLabelBehavior.always
+          : null,
       prefixIcon: widget.prefixIcon,
       suffixIcon: hasValue && f.isEditable
           ? IconButton(

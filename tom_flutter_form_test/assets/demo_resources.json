@@ -6,9 +6,11 @@
     "mustBeNonNegative": "Cannot be negative."
   },
 
-  "fileNullableDemo": {
-    "birthday": {
-      "nullDisplay": "Not set"
+  "demoL": {
+    "fileNullableDemo": {
+      "birthday": {
+        "nullDisplay": "Not set"
+      }
     }
   },
 
