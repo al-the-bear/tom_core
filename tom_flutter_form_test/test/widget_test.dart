@@ -26,7 +26,14 @@ void main() {
 
     // All tiles are present — scroll each into view before asserting so
     // the test works regardless of default viewport height. Phase 1 demos
-    // (A/B/C) sit above the legacy numbered ones.
+    // (A/B/C) sit above the legacy numbered ones, with Phase 3–6 demos
+    // (I–R) wedged between Phase 1 and the legacy numbered demos.
+    //
+    // We use a small `delta` (80 px) and a longer `duration` (500 ms) so
+    // each drag has time to settle before the next iteration. With the
+    // default `delta: 200` + `duration: 50ms`, fling momentum carries the
+    // viewport past short tiles between iterations and `scrollUntilVisible`
+    // can skip a tile entirely (e.g. Demo 2 between Demo 1 and Demo 3).
     for (final label in const [
       'Demo A: Lifecycle & Validation',
       'Demo B: Authorization & Events',
@@ -36,6 +43,16 @@ void main() {
       'Demo F: Boolean Variants',
       'Demo G: Complex Breakpoint Scenarios',
       'Demo H: Complex Authorization Scenarios',
+      'Demo I: Numeric Forms',
+      'Demo J: Date/Time/Duration Forms',
+      'Demo K: Enum, Object & Lookup',
+      'Demo L: Files & Nullable Variants',
+      'Demo M: Material vs Cupertino (Phase 5a)',
+      'Demo N: Cupertino numeric + date/time (Phase 5b)',
+      'Demo O: Cupertino search / lookup / file (Phase 5c)',
+      'Demo P: FormFieldFamily swap by breakpoint (Phase 5c)',
+      'Demo Q: Auth / Empty / Overlay (Phase 6)',
+      'Demo R: Tree / Radio / Infinite scroll (Phase 6)',
       'Demo 1: Basic Form',
       'Demo 2: Nested Forms',
       'Demo 3: Authorization',
@@ -47,7 +64,11 @@ void main() {
       'Demo 9: Preset Showcase',
       'Demo 10: Central JSON-Driven Style',
     ]) {
-      await tester.scrollUntilVisible(find.text(label), 200);
+      await tester.scrollUntilVisible(
+        find.text(label),
+        80,
+        duration: const Duration(milliseconds: 500),
+      );
       expect(find.text(label), findsOneWidget);
     }
   });
