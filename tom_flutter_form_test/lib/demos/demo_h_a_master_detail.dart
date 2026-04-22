@@ -309,28 +309,25 @@ class _MasterPaneState extends State<_MasterPane>
                   final form = widget.listForm[index];
                   final customer = form.currentBinding;
                   final isSelected = index == widget.selectedIndex;
-                  return ListTile(
-                    selected: isSelected,
-                    dense: true,
-                    leading: CircleAvatar(
-                      radius: 14,
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    ),
-                    title: Text(
-                      customer?.fullName.get() ?? '(unbound)',
-                      style: TextStyle(
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      customer?.company.get() ?? '',
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  // Subscribe each row to the bound customer's
+                  // displayed fields. Without this the row only
+                  // rebuilds on list-structural changes (add /
+                  // remove / reorder) and stale values linger until
+                  // the next structural mutation.
+                  //
+                  // Round-5 feedback (a): the master list (and the
+                  // sibling list in scaffold B) used to show stale
+                  // names / companies after a detail-form save —
+                  // because `_MasterPaneState.onNotify` only fires
+                  // on `TomListForm` notifications, not on per-item
+                  // field changes. Observing the fields here makes
+                  // the row reactive to *any* mutation of those
+                  // values, regardless of which scaffold's detail
+                  // form (or external code path) caused it.
+                  return _CustomerListTile(
+                    customer: customer,
+                    index: index,
+                    isSelected: isSelected,
                     onTap: () => widget.selectIndex(index),
                   );
                 },
@@ -474,6 +471,67 @@ class _DetailPane extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// One row in the master pane. Subscribed to the bound customer's
+// `fullName` and `company` TomString observables via
+// `TomMultiObservableBuilder`, so any mutation (detail-form save in
+// either scaffold, programmatic update, anything) reflects immediately
+// in both lists. See round-5 feedback (a).
+// ---------------------------------------------------------------------------
+class _CustomerListTile extends StatelessWidget {
+  const _CustomerListTile({
+    required this.customer,
+    required this.index,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final Customer? customer;
+  final int index;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = customer;
+    if (c == null) {
+      return _tile(context, title: '(unbound)', subtitle: '');
+    }
+    return TomMultiObservableBuilder(
+      observables: [c.fullName, c.company],
+      builder: (context) => _tile(
+        context,
+        title: c.fullName.get(),
+        subtitle: c.company.get(),
+      ),
+    );
+  }
+
+  Widget _tile(BuildContext context,
+      {required String title, required String subtitle}) {
+    return ListTile(
+      selected: isSelected,
+      dense: true,
+      leading: CircleAvatar(
+        radius: 14,
+        child: Text(
+          '${index + 1}',
+          style: const TextStyle(fontSize: 11),
+        ),
+      ),
+      title: Text(
+        title.isEmpty ? '(unnamed)' : title,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(subtitle, overflow: TextOverflow.ellipsis),
+      onTap: onTap,
     );
   }
 }
