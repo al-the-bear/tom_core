@@ -95,9 +95,14 @@ class FileNullableDemoForm extends TomForm<FileNullableDemoState> {
     form: this,
     firstDate: DateTime(1900),
     lastDate: DateTime(2100),
-    labelTextOverride: 'Birthday (default sentinel)',
+    labelTextOverride: 'Birthday (resource-backed null text)',
+    // Round-5 (k.b) — leaving `nullDisplayOverride` unset on purpose so
+    // the resolver picks up the `birthday.nullDisplay` entry from
+    // demo_resources.json (resolves to "Not set"). Demonstrates the
+    // resource-backing path documented on
+    // `_NullableFieldLabels.resolveNullDisplay`.
     descriptionTextOverride:
-        'No override — falls through to the default "— null —" sentinel',
+        'Null display sourced from resources via "<basePath>.nullDisplay"',
   );
 
   // The nullable dropdown isn't bound through a TomObject (the kernel

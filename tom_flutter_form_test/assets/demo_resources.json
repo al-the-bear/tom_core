@@ -6,6 +6,12 @@
     "mustBeNonNegative": "Cannot be negative."
   },
 
+  "fileNullableDemo": {
+    "birthday": {
+      "nullDisplay": "Not set"
+    }
+  },
+
   "basicForm": {
     "title": "Company Information",
     "padding": 16,

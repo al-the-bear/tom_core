@@ -43,9 +43,11 @@ mixin _NullableFieldLabels<T> on TomField<T> {
   /// concrete:
   ///   1. `nullDisplayOverride` (if non-null) — explicit "show this
   ///      exact text" mode. Pass `''` to render truly empty.
-  ///   2. `hintTextOverride` / `hint` resource — hint-based mode that
+  ///   2. Field-scoped resource `basePath.nullDisplay` — lets demo /
+  ///      app authors localise the placeholder without recompiling.
+  ///   3. `hintTextOverride` / `hint` resource — hint-based mode that
   ///      mirrors how regular text inputs surface their hint when empty.
-  ///   3. Default sentinel `'— null —'` so untouched fields stay
+  ///   4. Default sentinel `'— null —'` so untouched fields stay
   ///      visually distinguishable from a "set" empty string.
   String? get nullDisplayOverride;
 
@@ -61,6 +63,12 @@ mixin _NullableFieldLabels<T> on TomField<T> {
   /// their widget builders.
   String resolveNullDisplay() {
     if (nullDisplayOverride != null) return nullDisplayOverride!;
+    // Round-5 (k.b): consult the resource chain for a `nullDisplay`
+    // override before falling through to the hint / sentinel. Lets
+    // forms ship a localised "Not set" / "Bitte wählen" placeholder
+    // without touching the field declaration.
+    final resourced = TomCtr.textOrNull(basePath, 'nullDisplay');
+    if (resourced != null) return resourced;
     final hint = hintText;
     if (hint != null) return hint;
     return '— null —';
@@ -666,9 +674,23 @@ class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
         // Render in italics to mark it as "no value" rather than a real
         // option from the source. Keeps the input style otherwise so
         // typography stays consistent with the rest of the form.
-        child: Text(
-          nullLabel.isEmpty ? ' ' : nullLabel,
-          style: inputStyle?.copyWith(fontStyle: FontStyle.italic),
+        //
+        // Round-5 (k.a): pass the resolved label through verbatim. We
+        // used to substitute `' '` for an empty label so the menu item
+        // kept clickable height; that broke the documented "empty
+        // when null" mode by drawing a visible single-space line in
+        // both the menu and the closed dropdown's selected slot. The
+        // SizedBox(height: kMinInteractiveDimension) preserves a
+        // tappable target even when the rendered text is zero-width.
+        child: SizedBox(
+          height: kMinInteractiveDimension,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              nullLabel,
+              style: inputStyle?.copyWith(fontStyle: FontStyle.italic),
+            ),
+          ),
         ),
       ),
       for (final it in _items)
