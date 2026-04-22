@@ -1,4 +1,11 @@
 {
+  "error": {
+    "invalidInteger": "Enter a whole number.",
+    "mustBePositive": "Must be greater than 0.",
+    "invalidDecimal": "Enter a decimal number.",
+    "mustBeNonNegative": "Cannot be negative."
+  },
+
   "basicForm": {
     "title": "Company Information",
     "padding": 16,

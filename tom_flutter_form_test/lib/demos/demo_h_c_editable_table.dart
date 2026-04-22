@@ -447,8 +447,11 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
             child: Text(
               [
                 for (final f in errors)
-                  '${f.tomId}: '
-                      '${(f.validationState as ValidationError).errorKey}'
+                  '${f.tomId}: ${resolveFieldValidationMessage(
+                        validationState: f.validationState,
+                        basePath: f.basePath,
+                        scope: f.scope,
+                      ) ?? (f.validationState as ValidationError).errorKey}'
               ].join('  •  '),
               style: theme.textTheme.bodySmall,
             ),
