@@ -246,20 +246,34 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         final total = qty * price;
         final isOpen = _expandedRow == index;
         return ExpansionTile(
-          key: ValueKey('row-$index'),
-          // We drive open/closed state ourselves so the row-switch
-          // guard can VETO an open request when the current row has
-          // validation errors. `initiallyExpanded` doesn't help here —
-          // ExpansionTile still owns the toggle internally — so we
-          // use the controlled `key + onExpansionChanged` round-trip
-          // and let `setState` re-render with the new ValueKey when we
-          // need to reset its visual state.
+          // The key embeds `isOpen` so the ExpansionTile is *re-created*
+          // (fresh State) whenever we externally change `_expandedRow`.
+          // `initiallyExpanded` is only consulted on first build of a
+          // given State instance — without rotating the key, programmatic
+          // collapses (save-success, row-switch veto, "Discard all")
+          // wouldn't visually take effect because the existing State
+          // would keep its own `_isExpanded=true` regardless of the
+          // updated `initiallyExpanded` prop. See round-5 (b).
+          key: ValueKey('row-$index-${isOpen ? 'open' : 'closed'}'),
           initiallyExpanded: isOpen,
           maintainState: true,
           onExpansionChanged: (open) async {
             if (open) {
               await _requestOpenRow(index);
             } else {
+              // Round-5 (c): closing the row by tapping its header
+              // must also go through the validate-before-switch
+              // guard. Otherwise users could "escape" a row with
+              // pending errors (e.g. quantity=0) by collapsing it,
+              // sidestepping the same gate that protects switching
+              // to a sibling row.
+              final ok = await _guardSwitchAwayFromExpanded();
+              if (!ok) {
+                // Re-rotate the key back to the open variant on the
+                // next frame so the visual state matches the model.
+                if (mounted) setState(() {});
+                return;
+              }
               setState(() => _expandedRow = null);
             }
           },
