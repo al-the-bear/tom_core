@@ -40,6 +40,10 @@ class DemoLFileNullable extends StatefulWidget {
 
 class _DemoLFileNullableState extends State<DemoLFileNullable> {
   late final FileNullableDemoForm _form;
+  // Standalone nullable dropdown — the bound state has no
+  // `TomObject<Priority?>` for the form to register against, so the
+  // demo owns and disposes it directly. See `makeDemoLPriorityField`.
+  late final TomFormNEnumDropdown<Priority> _priority;
   final TomFormInspector _inspector = TomFormInspector();
 
   @override
@@ -51,11 +55,16 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
     );
     _form.bind(phase4FileNullableState);
     _form.addListener(_inspector);
+    // Build the standalone priority field inside the same scope so its
+    // resource lookups resolve consistently with the form's other
+    // fields (label/description fall through to the demoL scope).
+    _priority = TomScope.withScope('demoL', makeDemoLPriorityField);
   }
 
   @override
   void dispose() {
     _form.removeListener(_inspector);
+    _priority.dispose();
     _form.dispose();
     super.dispose();
   }
@@ -198,6 +207,12 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
             _form.score.widget,
             const SizedBox(height: 8),
             _form.birthday.widget,
+            const SizedBox(height: 8),
+            // Standalone nullable enum dropdown — overrides the null
+            // entry's label via `nullDisplayOverride` to demonstrate
+            // that the same resolution chain used by the text/date
+            // nullable inputs also drives the dropdown's null item.
+            _priority.widget,
             const SizedBox(height: 12),
             _stateActionsRow(context),
           ],
@@ -214,10 +229,12 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
         OutlinedButton(
           onPressed: () {
             // Pristine: discard back to bound state's initial nulls + clear
-            // the file fields too.
+            // the file fields too. The standalone priority field isn't
+            // bound, so reset it explicitly.
             _form.discard();
             _form.upload.setValue(null);
             _form.dropzone.setValue(null);
+            _priority.setValue(null);
             setState(() => _inspector.clear());
           },
           child: const Text('Reset (pristine)'),
@@ -229,16 +246,20 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
             _form.age.setValue(42);
             _form.score.setValue(7.50);
             _form.birthday.setValue(DateTime(1990, 1, 1));
+            _priority.setValue(Priority.high);
           },
           child: const Text('Set all (non-null)'),
         ),
         OutlinedButton(
           onPressed: () {
-            // Explicitly null: drive every nullable to null.
+            // Explicitly null: drive every nullable to null. The priority
+            // dropdown also needs to be cleared so its null label is
+            // visible in the placeholder slot.
             _form.notes.setValue(null);
             _form.age.setValue(null);
             _form.score.setValue(null);
             _form.birthday.setValue(null);
+            _priority.setValue(null);
           },
           child: const Text('Set all → null'),
         ),
@@ -314,6 +335,7 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
         _form.age,
         _form.score,
         _form.birthday,
+        _priority,
       ],
       builder: (context) {
         final theme = Theme.of(context);
@@ -322,6 +344,7 @@ class _DemoLFileNullableState extends State<DemoLFileNullable> {
           ('age', _form.age.get()),
           ('score', _form.score.get()),
           ('birthday', _form.birthday.get()),
+          ('priority', _priority.get()),
         ];
         return ListenableBuilder(
           listenable: _form.changes,
