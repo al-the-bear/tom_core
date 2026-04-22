@@ -13,13 +13,17 @@
 ///   * [TomFormNDateInput]   — `TomField<DateTime?>` date picker button.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../../widget_base/tom_construction_helpers.dart';
+import '../decoration/tom_dropdown_decoration_mixin.dart';
 import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../decoration/tom_string_input_decoration_mixin.dart';
+import '../selection/tom_selectable_source.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
@@ -34,12 +38,33 @@ mixin _NullableFieldLabels<T> on TomField<T> {
   String? get hintTextOverride;
   String? get descriptionTextOverride;
 
+  /// Optional explicit text rendered in place of the value when the
+  /// bound field is `null`. Resolution order, applied by every nullable
+  /// concrete:
+  ///   1. `nullDisplayOverride` (if non-null) — explicit "show this
+  ///      exact text" mode. Pass `''` to render truly empty.
+  ///   2. `hintTextOverride` / `hint` resource — hint-based mode that
+  ///      mirrors how regular text inputs surface their hint when empty.
+  ///   3. Default sentinel `'— null —'` so untouched fields stay
+  ///      visually distinguishable from a "set" empty string.
+  String? get nullDisplayOverride;
+
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
   String? get hintText =>
       hintTextOverride ?? TomCtr.textOrNull(basePath, 'hint');
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  /// Text shown in place of the value when null, applying the resolution
+  /// order documented on [nullDisplayOverride]. Concretes call this from
+  /// their widget builders.
+  String resolveNullDisplay() {
+    if (nullDisplayOverride != null) return nullDisplayOverride!;
+    final hint = hintText;
+    if (hint != null) return hint;
+    return '— null —';
+  }
 }
 
 // ===========================================================================
@@ -57,6 +82,8 @@ class TomFormNStringInput extends TomField<String?>
   final String? hintTextOverride;
   @override
   final String? descriptionTextOverride;
+  @override
+  final String? nullDisplayOverride;
 
   final int? maxLength;
   final Widget? prefixIcon;
@@ -67,6 +94,7 @@ class TomFormNStringInput extends TomField<String?>
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
+    this.nullDisplayOverride,
     this.maxLength,
     this.prefixIcon,
     super.form,
@@ -84,6 +112,7 @@ class TomFormNStringInput extends TomField<String?>
         child: _NullableTextInputWidget<String?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay,
           format: (v) => v ?? '',
           parse: (text) => text.isEmpty ? null : text,
           keyboardType: TextInputType.text,
@@ -109,6 +138,8 @@ class TomFormNIntInput extends TomField<int?>
   final String? hintTextOverride;
   @override
   final String? descriptionTextOverride;
+  @override
+  final String? nullDisplayOverride;
 
   final Widget? prefixIcon;
 
@@ -118,6 +149,7 @@ class TomFormNIntInput extends TomField<int?>
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
+    this.nullDisplayOverride,
     this.prefixIcon,
     super.form,
     super.validators,
@@ -133,6 +165,7 @@ class TomFormNIntInput extends TomField<int?>
         child: _NullableTextInputWidget<int?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay,
           format: (v) => v?.toString() ?? '',
           parse: (text) => text.isEmpty ? null : int.tryParse(text),
           keyboardType:
@@ -163,6 +196,8 @@ class TomFormNDoubleInput extends TomField<double?>
   final String? hintTextOverride;
   @override
   final String? descriptionTextOverride;
+  @override
+  final String? nullDisplayOverride;
 
   final int? decimals;
 
@@ -172,6 +207,7 @@ class TomFormNDoubleInput extends TomField<double?>
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
+    this.nullDisplayOverride,
     this.decimals,
     super.form,
     super.validators,
@@ -193,6 +229,7 @@ class TomFormNDoubleInput extends TomField<double?>
         child: _NullableTextInputWidget<double?>(
           field: this,
           decorationField: this,
+          nullDisplay: resolveNullDisplay,
           format: _format,
           parse: (text) => text.isEmpty ? null : double.tryParse(text),
           keyboardType: const TextInputType.numberWithOptions(
@@ -212,8 +249,8 @@ class TomFormNDoubleInput extends TomField<double?>
 /// Type alias for whatever-the-concrete-field is (one of the three textual
 /// nullable variants). Holds the methods needed to lay out the input —
 /// `applyErrorVisualsTo`, `decorateField`, `resolveStyle` come from the
-/// `TomStringInputDecorationMixin`; `labelText`/`hintText` from the
-/// `_NullableFieldLabels` mixin.
+/// `TomStringInputDecorationMixin`; `labelText`/`hintText`/
+/// `resolveNullDisplay()` from the `_NullableFieldLabels` mixin.
 typedef _NullableInputDecorator = TomStringInputDecorationMixin;
 
 class _NullableTextInputWidget<T> extends StatefulWidget {
@@ -224,6 +261,12 @@ class _NullableTextInputWidget<T> extends StatefulWidget {
   /// and the `_NullableFieldLabels` getters without an `is` check that
   /// the analyzer can't promote across the generic boundary.
   final _NullableInputDecorator decorationField;
+
+  /// Resolves the placeholder shown in place of the value when the bound
+  /// field is null. Closure so each concrete can wire it through its own
+  /// `_NullableFieldLabels` mixin instance (the static analyzer can't
+  /// see the mixin across the generic boundary).
+  final String Function() nullDisplay;
 
   final String Function(T value) format;
   final T Function(String text) parse;
@@ -244,6 +287,7 @@ class _NullableTextInputWidget<T> extends StatefulWidget {
   const _NullableTextInputWidget({
     required this.field,
     required this.decorationField,
+    required this.nullDisplay,
     required this.format,
     required this.parse,
     required this.keyboardType,
@@ -319,7 +363,10 @@ class _NullableTextInputWidgetState<T>
 
     final decoration = InputDecoration(
       labelText: d.labelText,
-      hintText: '— null —',
+      // Resolved by the concrete via the `_NullableFieldLabels` mixin —
+      // honours `nullDisplayOverride` (incl. empty for "render nothing"),
+      // then `hintTextOverride`, then the `'— null —'` default.
+      hintText: widget.nullDisplay(),
       prefixIcon: widget.prefixIcon,
       suffixIcon: hasValue && f.isEditable
           ? IconButton(
@@ -365,6 +412,8 @@ class TomFormNDateInput extends TomField<DateTime?>
   final String? hintTextOverride;
   @override
   final String? descriptionTextOverride;
+  @override
+  final String? nullDisplayOverride;
 
   final DateTime firstDate;
   final DateTime lastDate;
@@ -377,6 +426,7 @@ class TomFormNDateInput extends TomField<DateTime?>
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
+    this.nullDisplayOverride,
     super.form,
     super.validators,
     super.autoValidate,
@@ -469,7 +519,7 @@ class _NDateInputWidgetState extends State<_NDateInputWidget> {
           onPressed: f.isEditable ? _open : null,
           icon: const Icon(Icons.calendar_today, size: 16),
           label: Text(
-            v == null ? '— null —' : f._format(v),
+            v == null ? f.resolveNullDisplay() : f._format(v),
             style: theme.textTheme.bodyMedium,
           ),
         ),
@@ -483,5 +533,174 @@ class _NDateInputWidgetState extends State<_NDateInputWidget> {
     );
 
     return f.decorateField(context, row);
+  }
+}
+
+// ===========================================================================
+// TomFormNEnumDropdown<T> — TomField<T?> backed by a TomSelectableSource<T>
+// ===========================================================================
+//
+// Mirrors `TomFormEnumDropdown<T>` but binds a nullable value so the user
+// can pick "no selection". The null entry is rendered as the leading
+// dropdown item; its label is fully customizable through
+// `nullDisplayOverride` / `hintTextOverride` (resolution order documented
+// on `_NullableFieldLabels.resolveNullDisplay`). Rest of the surface
+// (label, description, source) matches the non-nullable dropdown.
+
+@tomReflector
+class TomFormNEnumDropdown<T> extends TomField<T?>
+    with
+        TomDropdownDecorationMixin<T?>,
+        _NullableFieldLabels<T?> {
+  final TomSelectableSource<T> source;
+
+  @override
+  final String? labelTextOverride;
+  @override
+  final String? hintTextOverride;
+  @override
+  final String? descriptionTextOverride;
+  @override
+  final String? nullDisplayOverride;
+
+  TomFormNEnumDropdown(
+    super.tomId,
+    super.initialValue, {
+    required this.source,
+    this.labelTextOverride,
+    this.hintTextOverride,
+    this.descriptionTextOverride,
+    this.nullDisplayOverride,
+    super.form,
+    super.validators,
+    super.autoValidate,
+    super.tomGroup,
+    super.authorizer,
+    super.uiStateController,
+    super.actionIcon,
+    super.actionIconTooltip,
+    super.onActionIconPressed,
+  });
+
+  // Mixin defaults to `null` for both — restore the standard label
+  // resolution chain so the field anatomy renders the label above.
+  @override
+  String? get labelText =>
+      labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
+
+  @override
+  String? get descriptionText =>
+      descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  @override
+  Widget get widget => TomFieldWidgetAdapter(
+        field: this,
+        child: _NEnumDropdownWidget<T>(field: this),
+      );
+}
+
+class _NEnumDropdownWidget<T> extends StatefulWidget {
+  final TomFormNEnumDropdown<T> field;
+  const _NEnumDropdownWidget({required this.field});
+
+  @override
+  State<_NEnumDropdownWidget<T>> createState() =>
+      _NEnumDropdownWidgetState<T>();
+}
+
+class _NEnumDropdownWidgetState<T> extends State<_NEnumDropdownWidget<T>> {
+  StreamSubscription<List<SelectableItem<T>>>? _subscription;
+  List<SelectableItem<T>> _items = const [];
+  late final TomFunctionObserver<TomObservable> _observer;
+
+  TomFormNEnumDropdown<T> get field => widget.field;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+    _observer = field >> (_) {
+      if (mounted) setState(() {});
+    };
+    field.validationListenable.addListener(_onValidationChanged);
+  }
+
+  void _onValidationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadItems() async {
+    final initial = await field.source.getItems();
+    if (mounted) setState(() => _items = initial);
+    final stream = field.source.itemsStream;
+    if (stream != null) {
+      _subscription = stream.listen((next) {
+        if (mounted) setState(() => _items = next);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _subscription?.cancel();
+    field.validationListenable.removeListener(_onValidationChanged);
+    field.removeObserver(_observer);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final f = field;
+    final style = f.resolveStyle(context);
+    final inputStyle =
+        style.inputStyle ?? Theme.of(context).textTheme.bodyMedium;
+    final current = f.get();
+
+    // Leading null item — its label is the resolved null display, so
+    // the user can choose any of the three modes (truly empty, custom
+    // text, hint-based).
+    final nullLabel = f.resolveNullDisplay();
+    final menuItems = <DropdownMenuItem<T?>>[
+      DropdownMenuItem<T?>(
+        value: null,
+        // Render in italics to mark it as "no value" rather than a real
+        // option from the source. Keeps the input style otherwise so
+        // typography stays consistent with the rest of the form.
+        child: Text(
+          nullLabel.isEmpty ? ' ' : nullLabel,
+          style: inputStyle?.copyWith(fontStyle: FontStyle.italic),
+        ),
+      ),
+      for (final it in _items)
+        DropdownMenuItem<T?>(
+          value: it.value,
+          enabled: it.enabled,
+          child: Text(it.label, style: inputStyle),
+        ),
+    ];
+
+    final dropdown = DropdownButtonFormField<T?>(
+      // The leading null item is always present; if `current` isn't in
+      // the source we still pass it through (rendered as null fallback).
+      initialValue: current == null ||
+              _items.any((i) => i.value == current)
+          ? current
+          : null,
+      style: inputStyle,
+      items: menuItems,
+      onChanged: f.isEditable ? f.setValue : null,
+      decoration: f.applyErrorVisualsTo(
+        context,
+        InputDecoration(
+          labelText: f.labelText,
+          contentPadding: style.fieldContentPadding,
+          border: style.fieldBorder,
+          focusedBorder: style.focusedBorder,
+          errorBorder: style.errorBorder,
+          enabledBorder: style.fieldBorder,
+        ),
+      ),
+    );
+    return f.decorateField(context, dropdown);
   }
 }
