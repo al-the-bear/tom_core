@@ -113,13 +113,35 @@ class _TomErrorViewState extends State<TomErrorView>
     });
   }
 
+  /// Resolve a [FormValidationError] to user-facing text.
+  ///
+  /// Round-6 (d) bug fix:
+  ///   - Previously prefixed `'error.'` to `error.errorKey` when looking
+  ///     up the field-scoped variant, but `errorKey` already includes the
+  ///     `error.` prefix produced by stock validators (e.g.
+  ///     `error.required`). The double-prefix lookup never matched.
+  ///   - Previously the global lookup used `TomCtr.textOrNull('', key)`,
+  ///     which builds the resource path as `'.<key>'` (leading dot) and
+  ///     breaks `getObjectFromTree`. We now pass the key as `basePath`
+  ///     directly with an empty suffix, matching the same pattern used by
+  ///     `resolveFieldValidationMessage`.
   String _resolveMessage(FormValidationError error) {
+    final key = error.errorKey;
     if (error.fields.length == 1) {
       final field = error.fields.first;
-      final scoped = TomCtr.textOrNull(field.basePath, 'error.${error.errorKey}');
-      if (scoped != null) return scoped;
+      final scoped = TomCtr.textOrNull(field.basePath, key);
+      if (scoped != null) return _applyParams(scoped, error.params);
     }
-    return TomCtr.textOrNull('', error.errorKey) ?? error.errorKey;
+    final global = TomCtr.textOrNull(key);
+    if (global != null) return _applyParams(global, error.params);
+    return key;
+  }
+
+  String _applyParams(String template, Map<String, dynamic>? params) {
+    if (params == null || params.isEmpty) return template;
+    var out = template;
+    params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
+    return out;
   }
 
   @override
