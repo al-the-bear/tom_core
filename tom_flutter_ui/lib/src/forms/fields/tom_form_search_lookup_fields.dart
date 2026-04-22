@@ -466,11 +466,14 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
   Future<void> _openDialog() async {
     // Capture the form's input style so the dialog's filter input + list
     // tile labels render with the same font as the rest of the form
-    // (round-4 item p). Fall back to the ambient `bodyMedium` so the
-    // dialog still has a non-null explicit style even when the resolved
-    // form style doesn't override it.
+    // (round-4 item p). Fall back to the ambient `bodyLarge` because
+    // that's the same fallback Material's `TextField` uses when no
+    // explicit `style:` is supplied — round-6 (i): the previous
+    // `bodyMedium` (14 px) made the lookup row visibly smaller than a
+    // sibling `TomFormStringInput` whose unspecified style resolved to
+    // bodyLarge (16 px) via Flutter defaults.
     final inputStyle = field.resolveStyle(context).inputStyle ??
-        Theme.of(context).textTheme.bodyMedium;
+        Theme.of(context).textTheme.bodyLarge;
     final picked = await showDialog<T>(
       context: context,
       builder: (ctx) {
@@ -558,14 +561,14 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     // theme defaults (typically a larger subtitle1) leak in and shift
     // both the font size and the visible baseline.
     //
-    // Keep the bodyMedium fallback for `style.inputStyle` so the
-    // display text and the dialog filter input always share the same
-    // explicit, non-null TextStyle (matched with the dialog at the
-    // top of `_openDialog`); leaving it null would let the field
-    // render via Flutter's default subtitle1 while the dialog still
-    // uses bodyMedium, re-introducing the size mismatch (p).
+    // Use the same bodyLarge fallback as `_openDialog` (round-6 (i)) —
+    // mirrors what Material's TextField does internally when no style
+    // is supplied, so the lookup row matches a sibling
+    // `TomFormStringInput` for which `style.inputStyle` is null. Test
+    // (p) still passes because `style` and `style.fontSize` remain
+    // non-null and identical between the field and the dialog.
     final inputStyle =
-        style.inputStyle ?? Theme.of(context).textTheme.bodyMedium;
+        style.inputStyle ?? Theme.of(context).textTheme.bodyLarge;
     final hintStyle = composeHintStyle(style, Theme.of(context));
 
     // Floating label, scaled to Material's 0.75× ratio so a custom
