@@ -11,7 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
   tom_core_kernel:
-    path: ../tom_core_kernel  
+    path: ../tom_core_kernel
+  # Cupertino icon font — declared here so any consumer of
+  # `tom_flutter_ui`'s Cupertino field widgets pulls the font in
+  # transitively (the CupertinoIcons.ttf is what every CupertinoIcons.*
+  # IconData binds to). Without it, icons render as placeholder
+  # rectangles.
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
