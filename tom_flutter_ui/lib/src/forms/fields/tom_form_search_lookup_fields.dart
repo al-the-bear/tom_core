@@ -301,14 +301,25 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
   List<SelectableItem<T>> _items = <SelectableItem<T>>[];
   late final TomFunctionObserver<TomObservable> _observer;
 
+  /// Read-only controller mirrored from the bound field so the lookup
+  /// row uses the same TextField anatomy (and therefore baseline,
+  /// content-padding, and inputStyle) as every other text input. Was
+  /// previously rendered through `InputDecorator` + `Text`, which left
+  /// the display string visibly higher than other rows (round-4 item n).
+  late final TextEditingController _displayController;
+
   TomFormLookupDialog<T> get field => widget.field;
 
   @override
   void initState() {
     super.initState();
+    _displayController = TextEditingController();
     _loadItems();
     _observer = field >> (_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        _syncDisplay();
+        setState(() {});
+      }
     };
     field.validationListenable.addListener(_onValidationChanged);
   }
@@ -319,13 +330,24 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
 
   Future<void> _loadItems() async {
     final initial = await field.source.getItems();
-    if (mounted) setState(() => _items = initial);
+    if (mounted) {
+      setState(() => _items = initial);
+      _syncDisplay();
+    }
     final stream = field.source.itemsStream;
     if (stream != null) {
       _subscription = stream.listen((next) {
-        if (mounted) setState(() => _items = next);
+        if (mounted) {
+          setState(() => _items = next);
+          _syncDisplay();
+        }
       });
     }
+  }
+
+  void _syncDisplay() {
+    final next = _label(field.get());
+    if (_displayController.text != next) _displayController.text = next;
   }
 
   @override
@@ -333,6 +355,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
     _subscription?.cancel();
     field.validationListenable.removeListener(_onValidationChanged);
     field.removeObserver(_observer);
+    _displayController.dispose();
     super.dispose();
   }
 
@@ -348,6 +371,13 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
   }
 
   Future<void> _openDialog() async {
+    // Capture the form's input style so the dialog's filter input + list
+    // tile labels render with the same font as the rest of the form
+    // (round-4 item p). Fall back to the ambient `bodyMedium` so the
+    // dialog still has a non-null explicit style even when the resolved
+    // form style doesn't override it.
+    final inputStyle = field.resolveStyle(context).inputStyle ??
+        Theme.of(context).textTheme.bodyMedium;
     final picked = await showDialog<T>(
       context: context,
       builder: (ctx) {
@@ -368,10 +398,22 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
                 child: Column(
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
+                      // Outlined border so the icon sits visibly inside
+                      // the input box (round-4 item o — was previously a
+                      // dense underline that drew the icon on the
+                      // separator between input and result list).
+                      autofocus: true,
+                      style: inputStyle,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search, size: 22),
+                        prefixIconConstraints: const BoxConstraints(
+                          minWidth: 40,
+                          minHeight: 40,
+                        ),
                         hintText: 'Filter…',
-                        isDense: true,
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(),
+                        enabledBorder: const OutlineInputBorder(),
                       ),
                       onChanged: (v) => setLocal(() => filter = v),
                     ),
@@ -383,7 +425,7 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
                           final it = visible[i];
                           return ListTile(
                             dense: true,
-                            title: Text(it.label),
+                            title: Text(it.label, style: inputStyle),
                             subtitle: it.description != null
                                 ? Text(it.description!)
                                 : null,
@@ -414,30 +456,42 @@ class _LookupDialogWidgetState<T> extends State<_LookupDialogWidget<T>> {
   Widget build(BuildContext context) {
     final f = widget.field;
     final style = f.resolveStyle(context);
-    final v = f.get();
-    final display = _label(v);
 
-    final row = InkWell(
+    // Use a read-only TextField so the lookup row shares the exact
+    // baseline + content-padding + inputStyle pipeline as every other
+    // text input. The trailing search icon doubles as the affordance
+    // hint; the `onTap` opens the lookup dialog. Wrapping in
+    // AbsorbPointer lets the InkWell receive the tap regardless of the
+    // TextField's own gesture handling.
+    // Same fallback the dialog uses — guarantees a non-null explicit
+    // style so the lookup row reads visually like the rest of the form.
+    final inputStyle =
+        style.inputStyle ?? Theme.of(context).textTheme.bodyMedium;
+    final input = TextField(
+      controller: _displayController,
+      readOnly: true,
+      enabled: f.isEditable,
+      style: inputStyle,
+      mouseCursor: f.isEditable ? SystemMouseCursors.click : null,
       onTap: f.isEditable ? _openDialog : null,
-      child: InputDecorator(
-        decoration: f.applyErrorVisualsTo(
-          context,
-          InputDecoration(
-            contentPadding: style.fieldContentPadding,
-            border: style.fieldBorder,
-            focusedBorder: style.focusedBorder,
-            errorBorder: style.errorBorder,
-            enabledBorder: style.fieldBorder,
-            suffixIcon: const Icon(Icons.search),
+      decoration: f.applyErrorVisualsTo(
+        context,
+        InputDecoration(
+          hintText: '—',
+          suffixIcon: IconButton(
+            tooltip: 'Browse…',
+            icon: const Icon(Icons.search, size: 20),
+            onPressed: f.isEditable ? _openDialog : null,
           ),
-        ),
-        child: Text(
-          display.isEmpty ? '—' : display,
-          style: style.inputStyle,
+          contentPadding: style.fieldContentPadding,
+          border: style.fieldBorder,
+          focusedBorder: style.focusedBorder,
+          errorBorder: style.errorBorder,
+          enabledBorder: style.fieldBorder,
         ),
       ),
     );
 
-    return f.decorateField(context, row);
+    return f.decorateField(context, input);
   }
 }
