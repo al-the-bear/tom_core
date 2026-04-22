@@ -37,6 +37,13 @@ dependencies:
   tom_basics: any
   tom_reflection: any
   timezone: any
+  # Cupertino icon font — required by every Cupertino widget the
+  # Phase 5 demos exercise (Demo M / N / O). Without this dep the
+  # CupertinoIcons.ttf font isn't bundled and every icon renders as
+  # a small placeholder rectangle (or, for codepoints that collide
+  # with another loaded font, a stray glyph — e.g. event-time
+  # rendered as an open lock).
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
