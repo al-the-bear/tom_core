@@ -78,6 +78,31 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
     labelTextOverride: 'Task minutes (slider)',
   );
 
+  TomFunctionObserver<TomObservable>? _inlineToPicker;
+  TomFunctionObserver<TomObservable>? _pickerToInline;
+
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    // Round-5 (g): the inline calendar and the dialog picker should be
+    // two views of the same logical "event date". Mirror in both
+    // directions so picking a day in either widget updates the readout
+    // and the other widget without a manual reload.
+    _inlineToPicker = eventDateInline >> (_) {
+      final v = eventDateInline.get();
+      if (eventDate.get() != v) eventDate.setValue(v);
+    };
+    _pickerToInline = eventDate >> (_) {
+      final v = eventDate.get();
+      if (eventDateInline.get() != v) eventDateInline.setValue(v);
+    };
+  }
+
+  @override
+  void dispose() {
+    final a = _inlineToPicker;
+    if (a != null) eventDateInline.removeObserver(a);
+    final b = _pickerToInline;
+    if (b != null) eventDate.removeObserver(b);
+    super.dispose();
+  }
 }

@@ -253,10 +253,18 @@ class _TomFormDateCalendarWidgetState
 
   @override
   Widget build(BuildContext context) {
+    final value = field.get();
     final calendar = SizedBox(
       height: 320,
       child: CalendarDatePicker(
-        initialDate: field.get(),
+        // CalendarDatePicker captures `initialDate` in its own State on
+        // first mount and never reconsults it. When `field.setValue`
+        // fires from outside (e.g. another widget mirroring this one),
+        // a plain rebuild leaves the selected highlight stuck on the
+        // original date. Keying the widget by the current value forces
+        // a fresh State so the visual selection follows the model.
+        key: ValueKey(value),
+        initialDate: value,
         firstDate: field.firstDate,
         lastDate: field.lastDate,
         onDateChanged: field.isEditable
