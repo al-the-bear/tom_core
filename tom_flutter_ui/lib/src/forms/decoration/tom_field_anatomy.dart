@@ -9,6 +9,50 @@ import '../style/tom_form_style.dart';
 import '../validation/validation_result.dart';
 import '../validation/validators.dart';
 
+/// Composes [CupertinoTextField.prefix] with [TomFieldStyle.leadingWidget].
+///
+/// Cupertino inputs don't go through [InputDecoration]; they take a `prefix`
+/// / `suffix` Widget pair directly. To keep the same "field-supplied prefix
+/// inside, style leading widget outside" ordering as the Material side, this
+/// helper is used at every Cupertino input build site instead of the
+/// applyErrorVisuals path.
+///
+/// Returns:
+///   * `null` when both [fieldPrefix] and `style.leadingWidget` are null.
+///   * Just one of them when only one is set.
+///   * A `Row(min)` of `[styleLeading][gap][fieldPrefix]` when both exist.
+Widget? composeCupertinoLeading(Widget? fieldPrefix, TomFieldStyle style) {
+  final styleLeading = style.leadingWidget;
+  if (styleLeading == null) return fieldPrefix;
+  if (fieldPrefix == null) return styleLeading;
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      styleLeading,
+      SizedBox(width: style.leadingGap),
+      fieldPrefix,
+    ],
+  );
+}
+
+/// Mirror of [composeCupertinoLeading] for the trailing slot.
+///
+/// Order is `[fieldSuffix][gap][styleTrailing]` — the field-supplied suffix
+/// is the *innermost* trailing widget, matching the Material composition.
+Widget? composeCupertinoTrailing(Widget? fieldSuffix, TomFieldStyle style) {
+  final styleTrailing = style.trailingWidget;
+  if (styleTrailing == null) return fieldSuffix;
+  if (fieldSuffix == null) return styleTrailing;
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      fieldSuffix,
+      SizedBox(width: style.trailingGap),
+      styleTrailing,
+    ],
+  );
+}
+
 /// Composes the effective hint [TextStyle] by layering
 /// [TomFieldStyle.hintFontWeight] and [TomFieldStyle.hintOpacity] on top of
 /// [TomFieldStyle.hintStyle]. Returns `null` when the style has no hint
@@ -115,12 +159,21 @@ String requiredIndicatorSuffixFor(
   };
 }
 
-/// Applies error visuals (error border switch + trailing error icon) to an
-/// [InputDecoration] based on the resolved [style].
+/// Applies style-driven decoration add-ons to an [InputDecoration] — the
+/// fixed leading / trailing slots and (if the field is in error) the error
+/// border switch + trailing error icon.
 ///
 /// Called from per-widget build methods before the decoration is attached to
-/// the underlying Flutter widget. The two toggles are independent of
-/// [ErrorPlacement]:
+/// the underlying Flutter widget. Behaviour:
+///   * [TomFieldStyle.leadingWidget] — always applied (independent of error
+///     state). Wrapped with right-padding [TomFieldStyle.leadingGap] and
+///     composed into [InputDecoration.prefixIcon]. Any field-supplied
+///     `prefixIcon` survives — the leading widget sits to its left so the
+///     style addition acts as an outermost decoration.
+///   * [TomFieldStyle.trailingWidget] — always applied. Wrapped with
+///     left-padding [TomFieldStyle.trailingGap] and composed into
+///     [InputDecoration.suffixIcon] *before* the error icon, so the error
+///     icon stays rightmost.
 ///   * [TomFieldStyle.errorBorderEnabled] — when in error and enabled,
 ///     replaces the enabled border with [TomFieldStyle.errorBorder] (fallback
 ///     to the default `errorBorder` behaviour of Material).
@@ -128,15 +181,53 @@ String requiredIndicatorSuffixFor(
 ///     a red circle-exclamation icon to the trailing slot; if a suffix icon
 ///     already exists, the error icon appears immediately to its right.
 ///
-/// When the field is not in error, the decoration is returned unchanged.
+/// The function name retains "ErrorVisuals" for call-site stability — the
+/// extra leading/trailing branch is a strict superset of the previous
+/// behaviour so existing call sites pick it up automatically.
 InputDecoration applyErrorVisuals({
   required InputDecoration decoration,
   required TomFieldStyle style,
   required bool hasError,
 }) {
-  if (!hasError) return decoration;
-
   InputDecoration updated = decoration;
+
+  // 1) Style-driven leading widget — composes with any field-supplied
+  // prefixIcon. Order: [leadingWidget][gap][existing prefixIcon][editable].
+  if (style.leadingWidget != null) {
+    final leading = Padding(
+      padding: EdgeInsets.only(right: style.leadingGap),
+      child: style.leadingWidget,
+    );
+    final existing = updated.prefixIcon;
+    final composed = existing == null
+        ? leading
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [leading, existing],
+          );
+    updated = updated.copyWith(prefixIcon: composed);
+  }
+
+  // 2) Style-driven trailing widget — composes with any field-supplied
+  // suffixIcon. Order: [editable][existing suffixIcon][gap][trailingWidget].
+  // The error icon (added in step 4 below) lands to the right of this so
+  // ordering ends up [editable][suffixIcon][trailingWidget][errorIcon].
+  if (style.trailingWidget != null) {
+    final trailing = Padding(
+      padding: EdgeInsets.only(left: style.trailingGap),
+      child: style.trailingWidget,
+    );
+    final existing = updated.suffixIcon;
+    final composed = existing == null
+        ? trailing
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [existing, trailing],
+          );
+    updated = updated.copyWith(suffixIcon: composed);
+  }
+
+  if (!hasError) return updated;
 
   if (style.errorBorderEnabled && style.errorBorder != null) {
     // Reshape to style.borderRadius / style.borderWidth so the error-state

@@ -160,8 +160,8 @@ class _CupertinoStringInputWidgetState
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       padding: style.fieldContentPadding,
-      prefix: field.prefix,
-      suffix: field.suffix,
+      prefix: composeCupertinoLeading(field.prefix, style),
+      suffix: composeCupertinoTrailing(field.suffix, style),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,

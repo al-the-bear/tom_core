@@ -259,6 +259,13 @@ class TomFormCurrencyDoubleInput extends TomFormDoubleField
   CurrencyFormatProfile get formatProfile =>
       CurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
 
+  /// Returns true when the currency symbol sits *before* the amount (USD,
+  /// GBP, JPY) — used by the widget to decide whether the symbol becomes
+  /// the field's prefixIcon (leading) or suffixIcon (trailing). When false
+  /// (e.g. EUR with the locale's "amount €" convention), the widget renders
+  /// the symbol as a trailing widget instead.
+  bool get symbolIsLeading => formatProfile.symbolBeforeAmount;
+
   @override
   Widget get widget => TomFieldWidgetAdapter(
         field: this,
@@ -286,10 +293,15 @@ class _TomFormCurrencyDoubleInputWidgetState
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: _formatted(field.get()));
+    // The currency symbol is rendered as a fixed prefix/suffix WIDGET
+    // (InputDecoration.prefixIcon / suffixIcon) — outside the controller
+    // text so the user cannot delete it with Backspace. The controller
+    // therefore holds only the *amount* portion (grouped + decimals,
+    // no symbol). See [_amount] / [_parseAmount] for the round-trip.
+    _controller = TextEditingController(text: _amount(field.get()));
     _observer = field >> (observable) {
       if (!_updatingFromField) {
-        final next = _formatted((observable as TomObject<double>).get());
+        final next = _amount((observable as TomObject<double>).get());
         if (_controller.text != next) _controller.text = next;
       }
       if (mounted) setState(() {});
@@ -297,7 +309,32 @@ class _TomFormCurrencyDoubleInputWidgetState
     field.validationListenable.addListener(_onValidationChanged);
   }
 
-  String _formatted(double v) => field.formatProfile.format(v);
+  /// Format the value's amount portion only (no symbol, no surrounding
+  /// space). Mirrors [CurrencyFormatProfile.format] minus the symbol
+  /// concat at the end so the rendered symbol Widget can sit outside.
+  String _amount(double v) {
+    final p = field.formatProfile;
+    final isNegative = v < 0;
+    final fixed = v.abs().toStringAsFixed(p.decimals);
+    final parts = fixed.split('.');
+    final integerPart = parts[0];
+    final fractionalPart = parts.length > 1 ? parts[1] : '';
+    final grouped = StringBuffer();
+    for (var i = 0; i < integerPart.length; i++) {
+      if (i > 0 && (integerPart.length - i) % 3 == 0) {
+        grouped.write(p.groupSeparator);
+      }
+      grouped.write(integerPart[i]);
+    }
+    final amount = p.decimals > 0
+        ? '$grouped${p.decimalSeparator}$fractionalPart'
+        : grouped.toString();
+    return isNegative ? '-$amount' : amount;
+  }
+
+  /// Parse an amount-only string back to a double. Tolerates the symbol
+  /// being typed in, so existing user habits / paste flows still work.
+  double? _parseAmount(String text) => field.formatProfile.parse(text);
 
   void _onValidationChanged() {
     if (mounted) setState(() {});
@@ -312,7 +349,7 @@ class _TomFormCurrencyDoubleInputWidgetState
   }
 
   void _onChanged(String text) {
-    final n = field.formatProfile.parse(text);
+    final n = _parseAmount(text);
     if (n == null) return;
     // No silent clamping — out-of-range surfaces via min/max validators.
     _updatingFromField = true;
@@ -323,6 +360,21 @@ class _TomFormCurrencyDoubleInputWidgetState
   @override
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
+    final symbol = Padding(
+      // Match the padding that style.leadingGap / trailingGap would apply
+      // when a style-level leading/trailing widget is present, so the
+      // intra-field-supplied symbol sits with consistent breathing room
+      // regardless of which side it's on.
+      padding: field.symbolIsLeading
+          ? EdgeInsets.only(right: style.leadingGap)
+          : EdgeInsets.only(left: style.trailingGap),
+      child: Text(field.formatProfile.symbol, style: style.inputStyle),
+    );
+    // prefixIcon / suffixIcon is the right slot here: it stays visible
+    // even when the field is empty / unfocused (unlike `prefix` / `suffix`
+    // which only appear when there's text or focus). The InputDecorator's
+    // border still wraps the entire row so the underline extends across
+    // both the symbol and the editable area.
     final decoration = InputDecoration(
       labelText: _floatingLabelOrNull(style, field),
       hintText: field.hintText,
@@ -331,6 +383,8 @@ class _TomFormCurrencyDoubleInputWidgetState
       focusedBorder: style.focusedBorder,
       errorBorder: style.errorBorder,
       enabledBorder: style.fieldBorder,
+      prefixIcon: field.symbolIsLeading ? symbol : null,
+      suffixIcon: field.symbolIsLeading ? null : symbol,
     );
 
     final textField = TextField(

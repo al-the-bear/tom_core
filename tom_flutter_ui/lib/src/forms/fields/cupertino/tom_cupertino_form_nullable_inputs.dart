@@ -313,19 +313,22 @@ class _CupertinoNullableTextWidgetState<T>
       onChanged: f.isEditable ? _onChanged : null,
       enabled: f.isEditable,
       padding: style.fieldContentPadding,
-      prefix: widget.prefix,
-      suffix: hasValue && f.isEditable
-          ? CupertinoButton(
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(28, 28),
-              onPressed: _clear,
-              child: const Icon(
-                CupertinoIcons.clear_circled_solid,
-                size: 18,
-                color: CupertinoColors.systemGrey,
-              ),
-            )
-          : null,
+      prefix: composeCupertinoLeading(widget.prefix, style),
+      suffix: composeCupertinoTrailing(
+        hasValue && f.isEditable
+            ? CupertinoButton(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(28, 28),
+                onPressed: _clear,
+                child: const Icon(
+                  CupertinoIcons.clear_circled_solid,
+                  size: 18,
+                  color: CupertinoColors.systemGrey,
+                ),
+              )
+            : null,
+        style,
+      ),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,

@@ -116,6 +116,37 @@ class TomFieldStyle {
   final bool errorIconEnabled;
   final List<(double, bool)> errorIconEnabledBpOverrides;
 
+  // --- Fixed leading / trailing slots --------------------------------------
+  //
+  // Optional widgets rendered *inside* the field's input area, before/after
+  // the editable region but inside the same border so the underline still
+  // spans their full width. Typical use: a fixed currency symbol, a unit
+  // suffix ("kg", "%"), a status icon. The widget is decorative — it's not
+  // part of the editable text and cannot be deleted by the user.
+  //
+  // Material wires these into [InputDecoration.prefixIcon] /
+  // [InputDecoration.suffixIcon]; Cupertino wires them into
+  // [CupertinoTextField.prefix] / [CupertinoTextField.suffix]. Fields that
+  // already supply their own prefix/suffix (e.g. constructor `prefixIcon:`)
+  // compose with the style's leading/trailing — the field-supplied widget
+  // sits closer to the editable area, the style widget sits outside it.
+
+  /// Optional widget rendered inside the field, before the editable area.
+  /// Decorative only — does not become part of the editable text.
+  final Widget? leadingWidget;
+
+  /// Horizontal gap between [leadingWidget] and the editable area.
+  /// Default `4.0`. Ignored when [leadingWidget] is null.
+  final double leadingGap;
+
+  /// Optional widget rendered inside the field, after the editable area.
+  /// Decorative only — does not become part of the editable text.
+  final Widget? trailingWidget;
+
+  /// Horizontal gap between the editable area and [trailingWidget].
+  /// Default `4.0`. Ignored when [trailingWidget] is null.
+  final double trailingGap;
+
   const TomFieldStyle({
     this.labelPlacement = LabelPlacement.above,
     this.labelPlacementBpOverrides = const [],
@@ -156,6 +187,10 @@ class TomFieldStyle {
     this.errorBorderEnabledBpOverrides = const [],
     this.errorIconEnabled = false,
     this.errorIconEnabledBpOverrides = const [],
+    this.leadingWidget,
+    this.leadingGap = 4.0,
+    this.trailingWidget,
+    this.trailingGap = 4.0,
   });
 
   // --- Breakpoint resolution ----------------------------------------------
@@ -244,6 +279,12 @@ class TomFieldStyle {
     List<(double, bool)>? errorBorderEnabledBpOverrides,
     bool? errorIconEnabled,
     List<(double, bool)>? errorIconEnabledBpOverrides,
+    Widget? leadingWidget,
+    bool leadingWidgetSet = false,
+    double? leadingGap,
+    Widget? trailingWidget,
+    bool trailingWidgetSet = false,
+    double? trailingGap,
   }) {
     return TomFieldStyle(
       labelPlacement: labelPlacement ?? this.labelPlacement,
@@ -299,6 +340,13 @@ class TomFieldStyle {
       errorIconEnabled: errorIconEnabled ?? this.errorIconEnabled,
       errorIconEnabledBpOverrides:
           errorIconEnabledBpOverrides ?? this.errorIconEnabledBpOverrides,
+      // Explicit-null semantics: pass `leadingWidgetSet: true` to clear a
+      // previously set leading widget (e.g. for the override pass that wants
+      // to *remove* a default symbol). Otherwise a plain null inherits.
+      leadingWidget: leadingWidgetSet ? leadingWidget : this.leadingWidget,
+      leadingGap: leadingGap ?? this.leadingGap,
+      trailingWidget: trailingWidgetSet ? trailingWidget : this.trailingWidget,
+      trailingGap: trailingGap ?? this.trailingGap,
     );
   }
 }
@@ -361,6 +409,10 @@ class TomStringInputStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -408,6 +460,10 @@ class TomDropdownStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -459,6 +515,10 @@ class TomSliderStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -508,6 +568,10 @@ class TomCheckboxStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -557,6 +621,10 @@ class TomSwitchStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -606,6 +674,10 @@ class TomSegmentedStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -653,6 +725,10 @@ class TomRadioGroupStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -697,6 +773,10 @@ class TomDatePickerStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -741,6 +821,10 @@ class TomTimePickerStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -785,6 +869,10 @@ class TomFilePickerStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -834,6 +922,10 @@ class TomChipsStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -883,6 +975,10 @@ class TomMultilineInputStyle extends TomFieldPartialStyle {
     super.errorBorderEnabledBpOverrides,
     super.errorIconEnabled,
     super.errorIconEnabledBpOverrides,
+    super.leadingWidget,
+    super.leadingGap,
+    super.trailingWidget,
+    super.trailingGap,
   });
 }
 
@@ -952,6 +1048,20 @@ class TomFieldPartialStyle {
   final bool? errorIconEnabled;
   final List<(double, bool)> errorIconEnabledBpOverrides;
 
+  /// Per-widget override for [TomFieldStyle.leadingWidget]. Null means
+  /// "inherit the umbrella default" — to actively clear the umbrella
+  /// default at the per-widget level, set the umbrella default to null.
+  final Widget? leadingWidget;
+
+  /// Per-widget override for [TomFieldStyle.leadingGap].
+  final double? leadingGap;
+
+  /// Per-widget override for [TomFieldStyle.trailingWidget].
+  final Widget? trailingWidget;
+
+  /// Per-widget override for [TomFieldStyle.trailingGap].
+  final double? trailingGap;
+
   const TomFieldPartialStyle({
     this.labelPlacement,
     this.labelPlacementBpOverrides = const [],
@@ -991,6 +1101,10 @@ class TomFieldPartialStyle {
     this.errorBorderEnabledBpOverrides = const [],
     this.errorIconEnabled,
     this.errorIconEnabledBpOverrides = const [],
+    this.leadingWidget,
+    this.leadingGap,
+    this.trailingWidget,
+    this.trailingGap,
   });
 }
 
@@ -1200,6 +1314,14 @@ class TomFormStyle {
       errorIconEnabledBpOverrides: over.errorIconEnabled != null
           ? over.errorIconEnabledBpOverrides
           : base.errorIconEnabledBpOverrides,
+      // Leading / trailing slots: per-widget override wins, otherwise the
+      // umbrella default. Gap defaults to 4.0 on both base and override, so
+      // the `??` fallback is safe (the partial null literally means "I have
+      // no opinion, inherit").
+      leadingWidget: over.leadingWidget ?? base.leadingWidget,
+      leadingGap: over.leadingGap ?? base.leadingGap,
+      trailingWidget: over.trailingWidget ?? base.trailingWidget,
+      trailingGap: over.trailingGap ?? base.trailingGap,
     );
   }
 

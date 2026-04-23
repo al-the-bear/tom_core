@@ -159,8 +159,8 @@ class _CupertinoIntInputWidgetState extends State<_CupertinoIntInputWidget> {
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       padding: style.fieldContentPadding,
-      prefix: field.prefix,
-      suffix: field.suffix,
+      prefix: composeCupertinoLeading(field.prefix, style),
+      suffix: composeCupertinoTrailing(field.suffix, style),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,
@@ -519,8 +519,8 @@ class _CupertinoDoubleInputWidgetState
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       padding: style.fieldContentPadding,
-      prefix: field.prefix,
-      suffix: field.suffix,
+      prefix: composeCupertinoLeading(field.prefix, style),
+      suffix: composeCupertinoTrailing(field.suffix, style),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,
@@ -580,6 +580,9 @@ class TomCupertinoFormCurrencyDoubleInput extends TomFormDoubleField
   CurrencyFormatProfile get formatProfile =>
       CurrencyFormatProfile.resolve(locale: locale, code: currencyCode);
 
+  /// See [TomFormCurrencyDoubleInput.symbolIsLeading] — same convention.
+  bool get symbolIsLeading => formatProfile.symbolBeforeAmount;
+
   @override
   Widget get widget => TomFieldWidgetAdapter(
         field: this,
@@ -608,11 +611,18 @@ class _CupertinoCurrencyDoubleInputWidgetState
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: _formatted(field.get()));
+    // The currency symbol is rendered as a fixed Widget in the
+    // CupertinoTextField's prefix/suffix slot — outside the controller text
+    // so the user cannot delete it with Backspace. The controller therefore
+    // holds only the *amount* portion (no symbol). See the Material
+    // counterpart in `tom_form_double_field.dart` for the matching
+    // rationale; the formatting helper here is the same minus the symbol
+    // concat at the end.
+    _controller = TextEditingController(text: _amount(field.get()));
     _focusNode = FocusNode()..addListener(_onFocus);
     _observer = field >> (observable) {
       if (!_updatingFromField) {
-        final next = _formatted((observable as TomObject<double>).get());
+        final next = _amount((observable as TomObject<double>).get());
         if (_controller.text != next) _controller.text = next;
       }
       if (mounted) setState(() {});
@@ -620,7 +630,25 @@ class _CupertinoCurrencyDoubleInputWidgetState
     field.validationListenable.addListener(_onValidationChanged);
   }
 
-  String _formatted(double v) => field.formatProfile.format(v);
+  String _amount(double v) {
+    final p = field.formatProfile;
+    final isNegative = v < 0;
+    final fixed = v.abs().toStringAsFixed(p.decimals);
+    final parts = fixed.split('.');
+    final integerPart = parts[0];
+    final fractionalPart = parts.length > 1 ? parts[1] : '';
+    final grouped = StringBuffer();
+    for (var i = 0; i < integerPart.length; i++) {
+      if (i > 0 && (integerPart.length - i) % 3 == 0) {
+        grouped.write(p.groupSeparator);
+      }
+      grouped.write(integerPart[i]);
+    }
+    final amount = p.decimals > 0
+        ? '$grouped${p.decimalSeparator}$fractionalPart'
+        : grouped.toString();
+    return isNegative ? '-$amount' : amount;
+  }
 
   void _onValidationChanged() {
     if (mounted) setState(() {});
@@ -653,6 +681,12 @@ class _CupertinoCurrencyDoubleInputWidgetState
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
     final hint = field.hintText;
+    final symbolWidget = Text(field.formatProfile.symbol, style: style.inputStyle);
+    // Compose the fixed currency symbol with any style-level leading /
+    // trailing widget so the symbol acts as the *innermost* fixed widget
+    // (closest to the editable area) and the style addition sits outside.
+    final fieldPrefix = field.symbolIsLeading ? symbolWidget : null;
+    final fieldSuffix = field.symbolIsLeading ? null : symbolWidget;
 
     final input = CupertinoTextField(
       controller: _controller,
@@ -668,6 +702,8 @@ class _CupertinoCurrencyDoubleInputWidgetState
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
       padding: style.fieldContentPadding,
+      prefix: composeCupertinoLeading(fieldPrefix, style),
+      suffix: composeCupertinoTrailing(fieldSuffix, style),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,
