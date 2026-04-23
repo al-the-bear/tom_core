@@ -100,9 +100,10 @@ void main() {
   // Material side
   // -------------------------------------------------------------------------
 
-  group('Material TomFormCurrencyDoubleInput — fixed-symbol prefix/suffix',
+  group(
+      'Material TomFormCurrencyDoubleInput — fixed-symbol prefixText/suffixText',
       () {
-    testWidgets('USD: symbol is in prefixIcon, not in controller text',
+    testWidgets('USD: symbol is in InputDecoration.prefixText',
         (tester) async {
       late TomFormCurrencyDoubleInput field;
       TomScope.withScope('curUSD', () {
@@ -125,15 +126,18 @@ void main() {
       expect(tf.controller!.text, equals('199.99'),
           reason: 'controller holds the formatted amount only');
 
-      // Symbol is rendered as a fixed prefix widget.
-      expect(tf.decoration?.prefixIcon, isNotNull,
-          reason: 'USD symbol must land in prefixIcon (leading)');
-      expect(tf.decoration?.suffixIcon, isNull);
-      expect(_subtreeContainsText(tf.decoration!.prefixIcon, r'$'), isTrue,
-          reason: r'prefixIcon subtree must render the $ character');
+      // Symbol is the InputDecoration.prefixText (Material's own slot for
+      // baseline-aligned, non-editable inline prefix text).
+      expect(tf.decoration?.prefixText, equals(r'$'),
+          reason: 'USD symbol must land in prefixText (leading)');
+      expect(tf.decoration?.suffixText, isNull);
+      // Sanity: we are NOT using the prefixIcon path any more.
+      expect(tf.decoration?.prefixIcon, isNull,
+          reason:
+              'switched away from prefixIcon — must not regress to that slot');
     });
 
-    testWidgets('EUR: symbol is in suffixIcon (locale convention)',
+    testWidgets('EUR: symbol is in InputDecoration.suffixText',
         (tester) async {
       late TomFormCurrencyDoubleInput field;
       TomScope.withScope('curEUR', () {
@@ -156,10 +160,11 @@ void main() {
       expect(tf.controller!.text, equals('199,99'),
           reason: 'EUR amount uses comma decimal separator');
 
-      expect(tf.decoration?.suffixIcon, isNotNull,
-          reason: 'EUR symbol must land in suffixIcon (trailing)');
-      expect(tf.decoration?.prefixIcon, isNull);
-      expect(_subtreeContainsText(tf.decoration!.suffixIcon, '€'), isTrue);
+      expect(tf.decoration?.suffixText, equals('€'),
+          reason: 'EUR symbol must land in suffixText (trailing)');
+      expect(tf.decoration?.prefixText, isNull);
+      expect(tf.decoration?.suffixIcon, isNull,
+          reason: 'must not regress to suffixIcon path');
     });
 
     testWidgets('symbol survives clearing the editable text',
@@ -167,7 +172,8 @@ void main() {
       // Pin the bug: with the OLD code path, calling controller.clear()
       // (or Backspace at position 0) would wipe the symbol along with the
       // amount because the symbol was part of controller.text. With the
-      // fix the symbol lives in prefixIcon and is invariant.
+      // fix the symbol lives in prefixText (InputDecoration metadata),
+      // which is independent of the controller.
       late TomFormCurrencyDoubleInput field;
       TomScope.withScope('curClear', () {
         field = TomFormCurrencyDoubleInput(
@@ -181,19 +187,16 @@ void main() {
       await tester.pumpWidget(_materialHarness(field.widget));
       await tester.pumpAndSettle();
 
-      final beforeTf =
-          tester.widget<TextField>(find.byType(TextField));
+      final beforeTf = tester.widget<TextField>(find.byType(TextField));
       beforeTf.controller!.clear();
       await tester.pump();
 
       final afterTf = tester.widget<TextField>(find.byType(TextField));
       expect(afterTf.controller!.text, isEmpty,
           reason: 'sanity: clear() emptied the controller');
-      expect(afterTf.decoration?.prefixIcon, isNotNull,
-          reason: 'symbol widget must persist independent of editable text');
-      expect(_subtreeContainsText(afterTf.decoration!.prefixIcon, r'$'),
-          isTrue,
-          reason: 'symbol Text must still render after a wipe');
+      expect(afterTf.decoration?.prefixText, equals(r'$'),
+          reason: 'prefixText (the symbol) must persist after a wipe — '
+              'it lives outside the controller');
     });
   });
 
