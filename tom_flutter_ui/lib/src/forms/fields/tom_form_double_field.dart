@@ -388,6 +388,19 @@ class _TomFormCurrencyDoubleInputWidgetState
       suffixText: field.symbolIsLeading ? null : symbolText,
       prefixStyle: style.inputStyle,
       suffixStyle: style.inputStyle,
+      // Both `prefixText` and `suffixText` are wrapped by Flutter's
+      // `_AffixText` which animates opacity to 0 unless
+      // `labelShouldWithdraw` is true (i.e. controller non-empty OR
+      // focused+enabled OR `floatingLabelBehavior == always`).
+      // Currency fields seed the controller with the formatted amount,
+      // so `isEmpty` is normally false and the symbol stays visible —
+      // but during transitional rebuilds (chip swap → fresh State,
+      // bound-value re-formatting) there can be a frame where the
+      // controller is briefly empty and the affix flickers to opacity
+      // 0. Setting `always` decouples the symbol's visibility from the
+      // floating-label state machine: the symbol is part of the
+      // field's identity, not its label.
+      floatingLabelBehavior: FloatingLabelBehavior.always,
     );
 
     final textField = TextField(
