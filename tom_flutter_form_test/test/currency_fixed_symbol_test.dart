@@ -167,6 +167,37 @@ void main() {
           reason: 'must not regress to suffixIcon path');
     });
 
+    testWidgets(
+        'visual: USD prefix text and EUR suffix text actually render in the '
+        'widget tree (not just InputDecoration metadata)', (tester) async {
+      // Regression: pinning a bug where the InputDecoration carried the
+      // correct prefixText/suffixText but the EUR suffix never appeared
+      // on screen — verified directly via find.text on the rendered tree.
+      late TomFormCurrencyDoubleInput usd;
+      late TomFormCurrencyDoubleInput eur;
+      TomScope.withScope('curUsdVisual', () {
+        usd = TomFormCurrencyDoubleInput('priceUSDvis', 199.99,
+            currencyCode: 'USD');
+      });
+      TomScope.withScope('curEurVisual', () {
+        eur = TomFormCurrencyDoubleInput('priceEURvis', 199.99,
+            currencyCode: 'EUR');
+      });
+      addTearDown(usd.dispose);
+      addTearDown(eur.dispose);
+
+      await tester.pumpWidget(_materialHarness(Column(children: [
+        usd.widget,
+        eur.widget,
+      ])));
+      await tester.pumpAndSettle();
+
+      expect(find.text(r'$'), findsOneWidget,
+          reason: 'USD symbol must be rendered visibly');
+      expect(find.text('€'), findsOneWidget,
+          reason: 'EUR symbol must be rendered visibly');
+    });
+
     testWidgets('symbol survives clearing the editable text',
         (tester) async {
       // Pin the bug: with the OLD code path, calling controller.clear()

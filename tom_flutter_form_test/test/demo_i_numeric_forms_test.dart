@@ -203,6 +203,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('(code: EUR)'), findsOneWidget,
         reason: 'tapping EUR must swap the live readout');
+    // Pin: the EUR `€` symbol must actually be rendered in the field
+    // after the swap. Pre-fix, the InputDecoration carried suffixText='€'
+    // but the symbol was invisible in Demo I (regression captured by
+    // the user manually checking the running app). The previous test
+    // only confirmed the live-readout text "(code: EUR)" — that text
+    // contains the substring from the readout label, NOT the field's
+    // own symbol. Searching for '€' as a standalone Text widget proves
+    // the field is actually displaying it.
+    expect(find.text('€'), findsAtLeastNWidgets(1),
+        reason: 'after swapping to EUR, the field must visibly render €');
   });
 
   testWidgets('typing in plain double input updates the bound TomDouble',
