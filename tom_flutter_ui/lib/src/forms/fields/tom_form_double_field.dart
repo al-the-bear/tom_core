@@ -360,21 +360,22 @@ class _TomFormCurrencyDoubleInputWidgetState
   @override
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
-    final symbol = Padding(
-      // Match the padding that style.leadingGap / trailingGap would apply
-      // when a style-level leading/trailing widget is present, so the
-      // intra-field-supplied symbol sits with consistent breathing room
-      // regardless of which side it's on.
-      padding: field.symbolIsLeading
-          ? EdgeInsets.only(right: style.leadingGap)
-          : EdgeInsets.only(left: style.trailingGap),
-      child: Text(field.formatProfile.symbol, style: style.inputStyle),
-    );
-    // prefixIcon / suffixIcon is the right slot here: it stays visible
-    // even when the field is empty / unfocused (unlike `prefix` / `suffix`
-    // which only appear when there's text or focus). The InputDecorator's
-    // border still wraps the entire row so the underline extends across
-    // both the symbol and the editable area.
+    // Use `prefixText` / `suffixText` (NOT `prefixIcon` / `suffixIcon`):
+    //   * `prefixText` is rendered with [InputDecoration.prefixStyle] and
+    //     baseline-aligned with the editable text by the InputDecorator
+    //     itself — no manual vertical alignment needed.
+    //   * The horizontal gap between the prefix text and the editable
+    //     region is the standard Material spacing (~4 px), instead of the
+    //     full 12 px content-padding inset that `prefixIcon` would add.
+    //   * `prefixText` participates in the same focus-driven visibility
+    //     as `prefix` / `prefixIcon`, BUT the controller is never empty
+    //     for currency fields (we initialize it with the formatted amount
+    //     and observers keep it in sync), so the symbol stays visible.
+    //
+    // This replaces the earlier prefixIcon-with-Padding approach, which
+    // (a) misaligned the symbol vertically and (b) inserted the field's
+    // full content-padding *between* the symbol and the editable area.
+    final symbolText = field.formatProfile.symbol;
     final decoration = InputDecoration(
       labelText: _floatingLabelOrNull(style, field),
       hintText: field.hintText,
@@ -383,8 +384,10 @@ class _TomFormCurrencyDoubleInputWidgetState
       focusedBorder: style.focusedBorder,
       errorBorder: style.errorBorder,
       enabledBorder: style.fieldBorder,
-      prefixIcon: field.symbolIsLeading ? symbol : null,
-      suffixIcon: field.symbolIsLeading ? null : symbol,
+      prefixText: field.symbolIsLeading ? symbolText : null,
+      suffixText: field.symbolIsLeading ? null : symbolText,
+      prefixStyle: style.inputStyle,
+      suffixStyle: style.inputStyle,
     );
 
     final textField = TextField(

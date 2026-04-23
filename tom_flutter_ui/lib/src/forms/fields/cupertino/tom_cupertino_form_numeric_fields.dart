@@ -681,12 +681,41 @@ class _CupertinoCurrencyDoubleInputWidgetState
   Widget build(BuildContext context) {
     final style = field.resolveStyle(context);
     final hint = field.hintText;
-    final symbolWidget = Text(field.formatProfile.symbol, style: style.inputStyle);
-    // Compose the fixed currency symbol with any style-level leading /
-    // trailing widget so the symbol acts as the *innermost* fixed widget
-    // (closest to the editable area) and the style addition sits outside.
-    final fieldPrefix = field.symbolIsLeading ? symbolWidget : null;
-    final fieldSuffix = field.symbolIsLeading ? null : symbolWidget;
+
+    // CupertinoTextField's `prefix` / `suffix` slots sit FLUSH with the
+    // outer rounded border — `padding` only insets the editable region,
+    // not the prefix. Without explicit padding, the symbol would be
+    // glued to the border. Move the field's natural left/right inset in
+    // FRONT of the symbol by wrapping it in a Padding, then shrink the
+    // editable's padding on the symbol side to just `style.leadingGap` /
+    // `trailingGap` so the visual layout becomes:
+    //   edge → contentPadding.left → [symbol] → leadingGap → editable
+    // This mirrors the Material `prefixText` behaviour where the symbol
+    // is part of the in-field decoration row, not glued to the border.
+    final basePad = style.fieldContentPadding;
+    final symbolText =
+        Text(field.formatProfile.symbol, style: style.inputStyle);
+    final symbolPrefix = field.symbolIsLeading
+        ? Padding(
+            padding: EdgeInsets.only(left: basePad.left),
+            child: symbolText,
+          )
+        : null;
+    final symbolSuffix = !field.symbolIsLeading
+        ? Padding(
+            padding: EdgeInsets.only(right: basePad.right),
+            child: symbolText,
+          )
+        : null;
+    // Override the editable region's padding to use just the small gap
+    // on the symbol side. The opposite side keeps the field's normal
+    // inset because no widget consumes it there.
+    final editablePadding = EdgeInsets.only(
+      left: field.symbolIsLeading ? style.leadingGap : basePad.left,
+      right: field.symbolIsLeading ? basePad.right : style.trailingGap,
+      top: basePad.top,
+      bottom: basePad.bottom,
+    );
 
     final input = CupertinoTextField(
       controller: _controller,
@@ -701,9 +730,9 @@ class _CupertinoCurrencyDoubleInputWidgetState
       style: style.inputStyle,
       onChanged: field.isEditable ? _onChanged : null,
       enabled: field.isEditable,
-      padding: style.fieldContentPadding,
-      prefix: composeCupertinoLeading(fieldPrefix, style),
-      suffix: composeCupertinoTrailing(fieldSuffix, style),
+      padding: editablePadding,
+      prefix: composeCupertinoLeading(symbolPrefix, style),
+      suffix: composeCupertinoTrailing(symbolSuffix, style),
       decoration: cupertinoFieldDecoration(
         context: context,
         borderRadius: style.borderRadius,
