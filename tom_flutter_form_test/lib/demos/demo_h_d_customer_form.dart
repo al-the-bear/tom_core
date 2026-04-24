@@ -46,8 +46,10 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
     _form = TomScope.withScope('demoHD', () => CustomerHDForm());
     _shippingDetail =
         TomScope.withScope('demoHD', () => ShippingAddressHDForm());
+    // createOrderDetailForm() pre-wires the shipping address picker so the
+    // "Ship to" field lists the customer's current addresses.
     _orderDetail =
-        TomScope.withScope('demoHD', () => OrderHDForm());
+        TomScope.withScope('demoHD', () => _form.createOrderDetailForm());
     _form.bind(phaseHdCustomer);
   }
 

@@ -202,6 +202,7 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
 
   Widget _ordersCard(BuildContext context) {
     final theme = Theme.of(context);
+    final labelSource = _form.shippingAddressLabelSource;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -224,6 +225,7 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
                       builder: (_) => _OrderEditDialog(
                         order: item,
                         title: 'New order',
+                        shippingLabelSource: labelSource,
                       ),
                     );
                   }
@@ -231,7 +233,10 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
               ),
             ]),
             const SizedBox(height: 8),
-            _OrderROList(listForm: _form.orders),
+            _OrderROList(
+              listForm: _form.orders,
+              shippingLabelSource: labelSource,
+            ),
           ],
         ),
       ),
@@ -397,9 +402,13 @@ class _ShippingROListState extends State<_ShippingROList>
 // ---------------------------------------------------------------------------
 
 class _OrderROList extends StatefulWidget {
-  const _OrderROList({required this.listForm});
+  const _OrderROList({
+    required this.listForm,
+    this.shippingLabelSource,
+  });
 
   final TomListForm<OrderHD, OrderHDForm> listForm;
+  final TomSelectableSource<String>? shippingLabelSource;
 
   @override
   State<_OrderROList> createState() => _OrderROListState();
@@ -491,6 +500,8 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
                               builder: (_) => _OrderEditDialog(
                                 order: order,
                                 title: 'Edit order',
+                                shippingLabelSource:
+                                    widget.shippingLabelSource,
                               ),
                             ),
                   ),
@@ -617,10 +628,12 @@ class _OrderEditDialog extends StatefulWidget {
   const _OrderEditDialog({
     required this.order,
     required this.title,
+    this.shippingLabelSource,
   });
 
   final OrderHD order;
   final String title;
+  final TomSelectableSource<String>? shippingLabelSource;
 
   @override
   State<_OrderEditDialog> createState() => _OrderEditDialogState();
@@ -633,7 +646,10 @@ class _OrderEditDialogState extends State<_OrderEditDialog>
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('demoHE', () => OrderHDForm());
+    _form = TomScope.withScope(
+      'demoHE',
+      () => OrderHDForm(shippingLabelSource: widget.shippingLabelSource),
+    );
     _form.bind(widget.order);
     _form.items.addObserver(this);
   }

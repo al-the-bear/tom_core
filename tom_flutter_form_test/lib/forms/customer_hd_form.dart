@@ -101,7 +101,15 @@ class OrderItemHDListForm
 
 @tomReflector
 class OrderHDForm extends TomForm<OrderHD> {
-  OrderHDForm() : super(formId: 'orderHD');
+  /// [shippingLabelSource] — when provided, the "Ship to" field renders as a
+  /// search picker over the customer's current shipping address labels.
+  /// Falls back to a plain text input when null (e.g. in stand-alone tests).
+  OrderHDForm({TomSelectableSource<String>? shippingLabelSource})
+      : _shippingLabelSource =
+            shippingLabelSource ?? StaticSelectableSource<String>([]),
+        super(formId: 'orderHD');
+
+  final TomSelectableSource<String> _shippingLabelSource;
 
   late final orderId = TomFormStringInput(
     'orderId',
@@ -119,11 +127,15 @@ class OrderHDForm extends TomForm<OrderHD> {
     validators: [Validators.required()],
   );
 
-  late final shippingLabel = TomFormStringInput(
+  /// Search picker over the customer's shipping address labels.
+  /// Stores the selected label string in the underlying TomString.
+  late final shippingLabel = TomFormSearchInput<String>(
     'shippingLabel',
     '',
     form: this,
+    source: _shippingLabelSource,
     labelTextOverride: 'Ship to (address label)',
+    hintTextOverride: 'Select or type an address label…',
   );
 
   late final OrderItemHDListForm items =
@@ -156,10 +168,15 @@ class OrderHDForm extends TomForm<OrderHD> {
 // ---------------------------------------------------------------------------
 
 class OrderHDListForm extends TomListForm<OrderHD, OrderHDForm> {
-  OrderHDListForm({required super.parentForm})
-      : super(
+  /// [shippingLabelSource] is threaded into each child [OrderHDForm] so that
+  /// the "Ship to" picker always shows the customer's current addresses.
+  OrderHDListForm({
+    required super.parentForm,
+    TomSelectableSource<String>? shippingLabelSource,
+  }) : super(
           listId: 'orderHD',
-          formFactory: (_) => OrderHDForm(),
+          formFactory: (_) =>
+              OrderHDForm(shippingLabelSource: shippingLabelSource),
         );
 
   @override
@@ -350,7 +367,27 @@ class CustomerHDForm extends TomForm<CustomerHD> {
   late final ShippingAddressHDListForm shippingAddresses =
       ShippingAddressHDListForm(parentForm: this);
 
-  late final OrderHDListForm orders = OrderHDListForm(parentForm: this);
+  // The orders list form receives a live source that reads the customer's
+  // current shipping address labels each time the picker is opened.
+  late final OrderHDListForm orders = OrderHDListForm(
+    parentForm: this,
+    shippingLabelSource: _ShippingLabelSource(() => shippingAddresses),
+  );
+
+  /// A live [TomSelectableSource<String>] that reads this customer's current
+  /// shipping address labels on every [getItems] call.
+  ///
+  /// Pass this to standalone [OrderHDForm] instances (e.g. the detail form
+  /// used by [TomMasterDetailScaffold] or an edit dialog) so the "Ship to"
+  /// picker always shows the customer's current addresses.
+  TomSelectableSource<String> get shippingAddressLabelSource =>
+      _ShippingLabelSource(() => shippingAddresses);
+
+  /// Creates a standalone [OrderHDForm] pre-wired with this customer's
+  /// shipping address picker. Use as the [TomMasterDetailScaffold.detailForm]
+  /// or inside a dialog that needs a full order editor.
+  OrderHDForm createOrderDetailForm() =>
+      OrderHDForm(shippingLabelSource: shippingAddressLabelSource);
 
   @override
   void createFormElements() {}
@@ -365,6 +402,35 @@ class CustomerHDForm extends TomForm<CustomerHD> {
   void onUnbinding() {
     shippingAddresses.unbind();
     orders.unbind();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic shipping-label source — reads current address labels on demand
+// ---------------------------------------------------------------------------
+
+/// A [TomSelectableSource<String>] that builds its item list from the
+/// customer's shipping address list form each time [getItems] is called.
+///
+/// By using a provider callback instead of capturing the list form at
+/// construction time, the source stays correct even if the field is
+/// accessed before the parent form fully initialises its late fields.
+class _ShippingLabelSource extends TomSelectableSource<String> {
+  final ShippingAddressHDListForm Function() _listProvider;
+
+  _ShippingLabelSource(this._listProvider);
+
+  @override
+  Future<List<SelectableItem<String>>> getItems() async {
+    final list = _listProvider();
+    final items = <SelectableItem<String>>[];
+    for (var i = 0; i < list.length; i++) {
+      final label = list[i].currentBinding?.label.get() ?? '';
+      if (label.isNotEmpty) {
+        items.add(SelectableItem<String>(value: label, label: label));
+      }
+    }
+    return items;
   }
 }
 
