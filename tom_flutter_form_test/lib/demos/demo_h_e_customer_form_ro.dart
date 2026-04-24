@@ -2,25 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../common/customer_hd_panes.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/customer_hd_form.dart';
 import '../state/phase_hd_state.dart';
 
 // ---------------------------------------------------------------------------
-// Demo H-E — Customer Form with read-only lists + per-row Edit dialogs
+// Demo H-E — Customer Form with read-only lists + master-detail edit overlays
 // ---------------------------------------------------------------------------
 //
-// The customer info and billing address are editable in-place (identical to
-// Demo H-D). The shipping addresses and orders sections show read-only
-// summary rows. Each row has an "Edit" button that opens an AlertDialog
-// containing the full editor form for that item.  An "Add" button on each
-// section header adds a new item and immediately opens its edit dialog.
+// Customer info and billing address are editable in-place (identical to
+// Demo H-D). The shipping addresses and orders sections show fully
+// read-only summary lists. Each section header has a single "Edit list"
+// button that opens a modal overlay containing a TomMasterDetailScaffold
+// (master list on the left, full editor on the right) — the same panes
+// used by Demo H-D, but presented as a focused editing surface.
 //
-// Architecture note: The dialog widgets create and own their own form
-// instances (ShippingAddressHDForm / OrderHDForm), bound to the same
-// underlying TomClass objects as the list forms inside CustomerHDForm.
-// Saves propagate back through the shared observable objects; the main
-// form's dirty flag reflects mutations committed by the dialogs.
+// Adding and removing items happens inside the overlay. Closing the
+// overlay returns the user to the read-only summary which immediately
+// reflects all changes (the overlay edits the same TomClass instances).
 class DemoHECustomerForm extends StatefulWidget {
   const DemoHECustomerForm({super.key});
 
@@ -47,7 +47,7 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
   @override
   Widget build(BuildContext context) {
     return DemoScaffold(
-      title: 'Demo H-E — Customer Form (read-only lists + edit dialogs)',
+      title: 'Demo H-E — Customer Form (read-only lists + edit overlays)',
       child: TomUnsavedChangesGuard(
         form: _form,
         child: SingleChildScrollView(
@@ -97,11 +97,11 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
               'Same CustomerHDForm as Demo H-D, bound to an independent '
               'state instance. Customer info and billing address are '
               'editable in-place. Shipping addresses and orders are shown '
-              'as compact read-only lists — each row has an "Edit" button '
-              'that opens a dialog with the full editor for that item. '
-              'The "Add" button in each section header adds a new item and '
-              'immediately opens its dialog. Dialogs own their own form '
-              'instances; saves commit back to the shared TomClass objects.',
+              'as compact read-only lists; each section header has an '
+              '"Edit list" button that opens a modal overlay with the '
+              'full master-detail editor (add, remove, edit). Closing '
+              'the overlay returns to the read-only summary, which '
+              'immediately reflects all changes.',
             ),
           ],
         ),
@@ -174,22 +174,14 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
                   child: Text('Shipping addresses',
                       style: theme.textTheme.titleSmall)),
               FilledButton.tonalIcon(
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add'),
-                onPressed: () async {
-                  _form.shippingAddresses.add();
-                  final newIndex = _form.shippingAddresses.length - 1;
-                  final item = _form.shippingAddresses[newIndex].currentBinding;
-                  if (item != null && context.mounted) {
-                    await showDialog<void>(
-                      context: context,
-                      builder: (_) => _ShippingAddressEditDialog(
-                        address: item,
-                        title: 'New shipping address',
-                      ),
-                    );
-                  }
-                },
+                icon: const Icon(Icons.edit, size: 14),
+                label: const Text('Edit list'),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) =>
+                      _ShippingEditOverlay(listForm: _form.shippingAddresses),
+                ),
               ),
             ]),
             const SizedBox(height: 8),
@@ -202,7 +194,6 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
 
   Widget _ordersCard(BuildContext context) {
     final theme = Theme.of(context);
-    final labelSource = _form.shippingAddressLabelSource;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -213,30 +204,17 @@ class _DemoHECustomerFormState extends State<DemoHECustomerForm> {
               Expanded(
                   child: Text('Orders', style: theme.textTheme.titleSmall)),
               FilledButton.tonalIcon(
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add'),
-                onPressed: () async {
-                  _form.orders.add();
-                  final newIndex = _form.orders.length - 1;
-                  final item = _form.orders[newIndex].currentBinding;
-                  if (item != null && context.mounted) {
-                    await showDialog<void>(
-                      context: context,
-                      builder: (_) => _OrderEditDialog(
-                        order: item,
-                        title: 'New order',
-                        shippingLabelSource: labelSource,
-                      ),
-                    );
-                  }
-                },
+                icon: const Icon(Icons.edit, size: 14),
+                label: const Text('Edit list'),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => _OrderEditOverlay(parentForm: _form),
+                ),
               ),
             ]),
             const SizedBox(height: 8),
-            _OrderROList(
-              listForm: _form.orders,
-              shippingLabelSource: labelSource,
-            ),
+            _OrderROList(listForm: _form.orders),
           ],
         ),
       ),
@@ -327,7 +305,8 @@ class _ShippingROListState extends State<_ShippingROList>
     if (widget.listForm.length == 0) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
-        child: Text('No shipping addresses yet. Tap "Add" to add one.',
+        child: Text(
+            'No shipping addresses yet. Tap "Edit list" to add one.',
             style: TextStyle(fontStyle: FontStyle.italic)),
       );
     }
@@ -337,8 +316,9 @@ class _ShippingROListState extends State<_ShippingROList>
         final itemForm = widget.listForm[i];
         final addr = itemForm.currentBinding;
         return TomMultiObservableBuilder(
-          observables:
-              addr == null ? [] : [addr.label, addr.line1, addr.city, addr.country],
+          observables: addr == null
+              ? []
+              : [addr.label, addr.line1, addr.city, addr.country],
           builder: (context) => Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -349,8 +329,8 @@ class _ShippingROListState extends State<_ShippingROList>
             child: ListTile(
               leading: CircleAvatar(
                   radius: 14,
-                  child: Text('${i + 1}',
-                      style: const TextStyle(fontSize: 11))),
+                  child:
+                      Text('${i + 1}', style: const TextStyle(fontSize: 11))),
               title: Text(
                 addr?.label.get().isEmpty ?? true
                     ? '(unnamed)'
@@ -366,29 +346,6 @@ class _ShippingROListState extends State<_ShippingROList>
                 ].join(', '),
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit, size: 14),
-                    label: const Text('Edit'),
-                    onPressed: addr == null
-                        ? null
-                        : () => showDialog<void>(
-                              context: context,
-                              builder: (_) => _ShippingAddressEditDialog(
-                                address: addr,
-                                title: 'Edit shipping address',
-                              ),
-                            ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: 'Remove address',
-                    onPressed: () => widget.listForm.removeAt(i),
-                  ),
-                ],
-              ),
             ),
           ),
         );
@@ -402,13 +359,9 @@ class _ShippingROListState extends State<_ShippingROList>
 // ---------------------------------------------------------------------------
 
 class _OrderROList extends StatefulWidget {
-  const _OrderROList({
-    required this.listForm,
-    this.shippingLabelSource,
-  });
+  const _OrderROList({required this.listForm});
 
   final TomListForm<OrderHD, OrderHDForm> listForm;
-  final TomSelectableSource<String>? shippingLabelSource;
 
   @override
   State<_OrderROList> createState() => _OrderROListState();
@@ -446,7 +399,7 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
     if (widget.listForm.length == 0) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
-        child: Text('No orders yet. Tap "Add" to add one.',
+        child: Text('No orders yet. Tap "Edit list" to add one.',
             style: TextStyle(fontStyle: FontStyle.italic)),
       );
     }
@@ -469,8 +422,8 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
             child: ListTile(
               leading: CircleAvatar(
                   radius: 14,
-                  child: Text('${i + 1}',
-                      style: const TextStyle(fontSize: 11))),
+                  child:
+                      Text('${i + 1}', style: const TextStyle(fontSize: 11))),
               title: Text(
                 order?.orderId.get().isEmpty ?? true
                     ? '(new order)'
@@ -487,31 +440,6 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
                 ].join(' · '),
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit, size: 14),
-                    label: const Text('Edit'),
-                    onPressed: order == null
-                        ? null
-                        : () => showDialog<void>(
-                              context: context,
-                              builder: (_) => _OrderEditDialog(
-                                order: order,
-                                title: 'Edit order',
-                                shippingLabelSource:
-                                    widget.shippingLabelSource,
-                              ),
-                            ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: 'Remove order',
-                    onPressed: () => widget.listForm.removeAt(i),
-                  ),
-                ],
-              ),
             ),
           ),
         );
@@ -521,302 +449,173 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
 }
 
 // ---------------------------------------------------------------------------
-// Shipping address edit dialog
+// Shipping addresses edit overlay
 // ---------------------------------------------------------------------------
 
-class _ShippingAddressEditDialog extends StatefulWidget {
-  const _ShippingAddressEditDialog({
-    required this.address,
-    required this.title,
-  });
+class _ShippingEditOverlay extends StatefulWidget {
+  const _ShippingEditOverlay({required this.listForm});
 
-  final ShippingAddressHD address;
-  final String title;
+  final TomListForm<ShippingAddressHD, ShippingAddressHDForm> listForm;
 
   @override
-  State<_ShippingAddressEditDialog> createState() =>
-      _ShippingAddressEditDialogState();
+  State<_ShippingEditOverlay> createState() => _ShippingEditOverlayState();
 }
 
-class _ShippingAddressEditDialogState
-    extends State<_ShippingAddressEditDialog> {
-  late final ShippingAddressHDForm _form;
+class _ShippingEditOverlayState extends State<_ShippingEditOverlay> {
+  late final ShippingAddressHDForm _detail;
 
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('demoHE', () => ShippingAddressHDForm());
-    _form.bind(widget.address);
+    _detail = TomScope.withScope('demoHE', () => ShippingAddressHDForm());
   }
 
   @override
   void dispose() {
-    _form.dispose();
+    _detail.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 420,
-        child: ListenableBuilder(
-          listenable: _form.changes,
-          builder: (context, _) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _form.label.widget,
-                const SizedBox(height: 8),
-                _form.line1.widget,
-                const SizedBox(height: 8),
-                _form.line2.widget,
-                const SizedBox(height: 8),
-                _form.city.widget,
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _form.stateRegion.widget),
-                  const SizedBox(width: 8),
-                  SizedBox(width: 110, child: _form.zipCode.widget),
-                ]),
-                const SizedBox(height: 8),
-                _form.country.widget,
-                const SizedBox(height: 8),
-                TomErrorView(form: _form, title: 'Address errors'),
-              ],
-            ),
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            _form.discard();
-            Navigator.of(context).pop();
-          },
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final ok = await _form.save();
-            if (!context.mounted) return;
-            if (ok) {
-              Navigator.of(context).pop();
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Validation failed — check errors.'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Order edit dialog — metadata + inline items table
-// ---------------------------------------------------------------------------
-
-class _OrderEditDialog extends StatefulWidget {
-  const _OrderEditDialog({
-    required this.order,
-    required this.title,
-    this.shippingLabelSource,
-  });
-
-  final OrderHD order;
-  final String title;
-  final TomSelectableSource<String>? shippingLabelSource;
-
-  @override
-  State<_OrderEditDialog> createState() => _OrderEditDialogState();
-}
-
-class _OrderEditDialogState extends State<_OrderEditDialog>
-    implements TomObserver {
-  late final OrderHDForm _form;
-
-  @override
-  void initState() {
-    super.initState();
-    _form = TomScope.withScope(
-      'demoHE',
-      () => OrderHDForm(shippingLabelSource: widget.shippingLabelSource),
-    );
-    _form.bind(widget.order);
-    _form.items.addObserver(this);
-  }
-
-  @override
-  void dispose() {
-    _form.items.removeObserver(this);
-    _form.dispose();
-    super.dispose();
-  }
-
-  @override
-  void onNotify(TomObservable _) {
-    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AlertDialog(
-      title: Text(widget.title),
-      content: SizedBox(
-        width: 700,
-        child: ListenableBuilder(
-          listenable: _form.changes,
-          builder: (context, _) => SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Order metadata
-                Row(children: [
-                  Expanded(child: _form.orderId.widget),
-                  const SizedBox(width: 8),
-                  Expanded(child: _form.orderDate.widget),
-                ]),
-                const SizedBox(height: 8),
-                _form.shippingLabel.widget,
-                const SizedBox(height: 12),
-                // Items header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Items (${_form.items.length})',
-                        style: theme.textTheme.labelLarge),
-                    FilledButton.tonalIcon(
-                      icon: const Icon(Icons.add, size: 14),
-                      label: const Text('Add item'),
-                      onPressed: () => _form.items.add(),
-                    ),
-                  ],
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 880, maxHeight: 600),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                Expanded(
+                    child: Text('Edit shipping addresses',
+                        style: theme.textTheme.titleMedium)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
-                const SizedBox(height: 4),
-                _itemsTable(context),
-                const SizedBox(height: 8),
-                // Order total
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    'Order total: \$${_form.totalAmount.toStringAsFixed(2)}',
-                    style: theme.textTheme.titleSmall,
+              ]),
+              const Divider(),
+              const SizedBox(height: 8),
+              Expanded(
+                child: TomMasterDetailScaffold<ShippingAddressHD,
+                    ShippingAddressHDForm>(
+                  listForm: widget.listForm,
+                  detailForm: _detail,
+                  masterPaneWidth: 220,
+                  masterBuilder:
+                      (context, listForm, selected, selectIndex) =>
+                          AddressMasterPane(
+                    listForm: listForm,
+                    selectedIndex: selected,
+                    selectIndex: selectIndex,
                   ),
-                ),
-                const SizedBox(height: 8),
-                TomErrorView(form: _form, title: 'Order errors'),
-              ],
-            ),
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            _form.discard();
-            Navigator.of(context).pop();
-          },
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () async {
-            final ok = await _form.save();
-            if (!context.mounted) return;
-            if (ok) {
-              Navigator.of(context).pop();
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Validation failed — check errors.'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    );
-  }
-
-  Widget _itemsTable(BuildContext context) {
-    final theme = Theme.of(context);
-    if (_form.items.length == 0) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text('No items yet. Tap "Add item" to begin.',
-            style: TextStyle(fontStyle: FontStyle.italic)),
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowHeight: 32,
-        dataRowMinHeight: 72,
-        dataRowMaxHeight: 120,
-        columnSpacing: 8,
-        columns: const [
-          DataColumn(label: Text('Product')),
-          DataColumn(label: Text('Qty')),
-          DataColumn(label: Text('Price')),
-          DataColumn(label: Text('Notes')),
-          DataColumn(label: Text('Total'), numeric: true),
-          DataColumn(label: Text('')),
-        ],
-        rows: List.generate(_form.items.length, (i) {
-          final itemForm = _form.items[i];
-          return DataRow(cells: [
-            DataCell(SizedBox(
-                width: 180,
-                child: _cellStyle(itemForm.productName.widget))),
-            DataCell(SizedBox(
-                width: 60, child: _cellStyle(itemForm.quantity.widget))),
-            DataCell(SizedBox(
-                width: 80, child: _cellStyle(itemForm.unitPrice.widget))),
-            DataCell(SizedBox(
-                width: 120, child: _cellStyle(itemForm.notes.widget))),
-            DataCell(
-              ListenableBuilder(
-                listenable: itemForm.changes,
-                builder: (context, _) => Text(
-                  '\$${itemForm.computedTotal.toStringAsFixed(2)}',
-                  style: theme.textTheme.bodyMedium,
+                  detailBuilder: (context, form) =>
+                      AddressDetailPane(form: form),
                 ),
               ),
-            ),
-            DataCell(IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18),
-              tooltip: 'Remove item',
-              onPressed: () => _form.items.removeAt(i),
-            )),
-          ]);
-        }),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+}
 
-  /// Suppresses the field's outer label+description anatomy so cells
-  /// stay compact — the column header takes the role of the label.
-  Widget _cellStyle(Widget fieldWidget) {
-    return TomFormStyleScope(
-      tomId: 'orderItems',
-      style: TomFormStyle.material3.copyWith(
-        defaults: TomFormStyle.material3.defaults.copyWith(
-          descriptionPlacement: DescriptionPlacement.tooltip,
+// ---------------------------------------------------------------------------
+// Orders edit overlay
+// ---------------------------------------------------------------------------
+
+class _OrderEditOverlay extends StatefulWidget {
+  const _OrderEditOverlay({required this.parentForm});
+
+  final CustomerHDForm parentForm;
+
+  @override
+  State<_OrderEditOverlay> createState() => _OrderEditOverlayState();
+}
+
+class _OrderEditOverlayState extends State<_OrderEditOverlay> {
+  late final OrderHDForm _detail;
+
+  @override
+  void initState() {
+    super.initState();
+    // createOrderDetailForm() pre-wires the shipping address picker so the
+    // "Ship to" field lists the customer's current addresses.
+    _detail = TomScope.withScope(
+        'demoHE', () => widget.parentForm.createOrderDetailForm());
+  }
+
+  @override
+  void dispose() {
+    _detail.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Dialog(
+      insetPadding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100, maxHeight: 720),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(children: [
+                Expanded(
+                    child: Text('Edit orders',
+                        style: theme.textTheme.titleMedium)),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ]),
+              const Divider(),
+              const SizedBox(height: 8),
+              Expanded(
+                child: TomMasterDetailScaffold<OrderHD, OrderHDForm>(
+                  listForm: widget.parentForm.orders,
+                  detailForm: _detail,
+                  masterPaneWidth: 220,
+                  masterBuilder:
+                      (context, listForm, selected, selectIndex) =>
+                          OrderMasterPane(
+                    listForm: listForm,
+                    selectedIndex: selected,
+                    selectIndex: selectIndex,
+                  ),
+                  detailBuilder: (context, form) =>
+                      OrderDetailPane(form: form),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      child: fieldWidget,
     );
   }
 }

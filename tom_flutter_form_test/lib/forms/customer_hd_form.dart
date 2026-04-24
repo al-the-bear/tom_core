@@ -275,7 +275,7 @@ class ShippingAddressHDListForm
   @override
   ShippingAddressHD createItem() {
     final a = ShippingAddressHD();
-    a.label | 'New address';
+    a.label | '';
     a.line1 | '';
     a.line2 | '';
     a.city | '';
