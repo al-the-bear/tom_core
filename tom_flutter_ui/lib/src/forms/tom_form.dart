@@ -457,6 +457,22 @@ abstract class TomForm<T extends TomClass> extends TomClass
   // --- Dispose ---
 
   void dispose() {
+    // Detach from the bound TomClass so post-dispose mutations driven by
+    // a sibling form (e.g. a master-detail scaffold's standalone detail
+    // form committing edits to the same TomClass instance) cannot fire
+    // our binding observer and reach now-disposed field notifiers.
+    _detachBindingObserver();
+    // Cascade cleanup into child containers (today: TomListForm). Their
+    // child sub-forms also hold binding observers and field notifiers
+    // that must be torn down before this form's dispose returns — without
+    // this, the disposed sub-form's _bindingObserver lambda would still
+    // fire on subsequent setValues to the same underlying TomClass.
+    for (final child in childContainers) {
+      child.unbind();
+    }
+    for (final nested in nestedForms) {
+      nested.dispose();
+    }
     for (final field in fields.values) {
       field.dispose();
     }
@@ -767,6 +783,14 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
   /// Debounce timer for slow validation (separate, longer).
   Timer? _slowDebounceTimer;
 
+  /// Set in [dispose] so async validators that resolve after disposal
+  /// don't try to write into the (then-disposed) [_validationNotifier].
+  /// `_applyBindLifecycle` launches `field.validate()` without awaiting,
+  /// and a parent's dispose can cascade through child sub-forms before
+  /// those pending validates finish — without this guard, the late
+  /// resolution would assert "ValueNotifier used after dispose".
+  bool _disposed = false;
+
   /// Debounce duration for fast validation. Default: 300ms.
   Duration get validationDebounce => const Duration(milliseconds: 300);
 
@@ -785,6 +809,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     for (final validator in validators) {
       if (validator is SlowValidator) continue;
       final result = await (validator as Validator<T>)(get());
+      if (_disposed) return result;
       if (result is ValidationError) {
         _slowValidationPending = false;
         _validationNotifier.value = result;
@@ -799,10 +824,12 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     // Run slow validators — show pending state
     final slowValidators = validators.whereType<SlowValidator<T>>().toList();
     if (slowValidators.isNotEmpty) {
+      if (_disposed) return const ValidationPristine();
       _slowValidationPending = true;
       _validationNotifier.value = const ValidationPending();
       for (final slow in slowValidators) {
         final result = await slow.validate(get());
+        if (_disposed) return result;
         if (result is ValidationError) {
           _slowValidationPending = false;
           _validationNotifier.value = result;
@@ -817,6 +844,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
     }
 
     const success = ValidationSuccess();
+    if (_disposed) return success;
     _validationNotifier.value = success;
     form?._fireEvent(FieldValidatedEvent(
       source: tomId,
@@ -834,6 +862,7 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Dispose resources (timers, controllers, listeners).
   void dispose() {
+    _disposed = true;
     _debounceTimer?.cancel();
     _slowDebounceTimer?.cancel();
     _validationNotifier.dispose();

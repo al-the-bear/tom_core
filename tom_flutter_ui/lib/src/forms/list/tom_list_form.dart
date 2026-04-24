@@ -410,6 +410,13 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
         '("$listId") so resources are shared, got "${form.formId}".',
       );
     }
+    // Bubble row-level form events into this list's observer channel so
+    // anything observing the list (e.g. the parent form's dirty-tracking
+    // UI) re-evaluates when a row's field changes — not only on the
+    // structural add / remove / move / bind / unbind notifications. The
+    // bubble listener is removed automatically when the sub-form is
+    // disposed (TomForm.dispose clears _listeners).
+    form.addListener(_ChildFormBubbleListener(notifyObservers));
     return form;
   }
 
@@ -421,4 +428,17 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     _forms.clear();
     _localListeners.clear();
   }
+}
+
+/// Listener that re-fires a list's [TomObservable.notifyObservers] in
+/// response to any event raised by one of its sub-forms. Used by
+/// [TomListForm._instantiate] so observers of the list react to row-level
+/// edits and not only structural mutations.
+class _ChildFormBubbleListener with TomFormEventListener {
+  _ChildFormBubbleListener(this._notify);
+
+  final void Function() _notify;
+
+  @override
+  void handleEvent(TomFormEvent event) => _notify();
 }
