@@ -115,9 +115,14 @@ class TomObservable {
       return;
     }
 
+    // Snapshot the observer list before iterating so that add/remove calls
+    // inside onNotify callbacks (e.g. from TomMultiObservableBuilder disposing
+    // or a form save propagating through nested TomClass / TomList chains)
+    // cannot cause a ConcurrentModificationError on _observers.
+    final snapshot = List.of(_observers);
     bool hasDeadReferences = false;
 
-    for (var element in _observers) {
+    for (var element in snapshot) {
       var target = element.target;
       if (target != null) {
         target.onNotify(this);
@@ -126,7 +131,9 @@ class TomObservable {
       }
     }
 
-    // Clean up dead weak references
+    // Clean up dead weak references from the live list (snapshot may have
+    // captured stale entries; the live list may also have grown since then,
+    // so removeWhere only affects entries that are still dead).
     if (hasDeadReferences) {
       _observers.removeWhere((ref) => ref.target == null);
     }
