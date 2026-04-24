@@ -27,6 +27,8 @@ import 'demos/demo_h_complex_authorization.dart';
 import 'demos/demo_h_a_master_detail.dart';
 import 'demos/demo_h_b_expandable_rows.dart';
 import 'demos/demo_h_c_editable_table.dart';
+import 'demos/demo_h_d_customer_form.dart';
+import 'demos/demo_h_e_customer_form_ro.dart';
 import 'demos/demo_i_numeric_forms.dart';
 import 'demos/demo_j_date_time_forms.dart';
 import 'demos/demo_k_enum_object.dart';
@@ -219,6 +221,30 @@ class DemoListScreen extends StatelessWidget {
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoHCEditableTable()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.person_outline,
+            title: 'Demo H-D: Customer Form (master-detail)',
+            description: 'Full customer record: contact info + billing '
+                'address (flat fields) + two TomMasterDetailScaffolds '
+                'for shipping addresses and orders. Each order has an '
+                'inline DataTable of line items.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoHDCustomerForm()),
+            ),
+          ),
+          _DemoTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Demo H-E: Customer Form (read-only + edit dialogs)',
+            description: 'Same customer data as H-D. Shipping addresses and '
+                'orders shown as compact read-only rows. Each row has an '
+                '"Edit" button that opens a full edit dialog. "Add" '
+                'creates a new item and opens its dialog immediately.',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const DemoHECustomerForm()),
             ),
           ),
           const SizedBox(height: 12),
