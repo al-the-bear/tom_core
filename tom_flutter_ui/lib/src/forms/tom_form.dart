@@ -194,22 +194,37 @@ abstract class TomForm<T extends TomClass> extends TomClass
     _bindingObserver = null;
   }
 
-  /// Fires when the bound [TomClass] mutates from outside this form.
-  /// Re-snapshot the field values from the binding ONLY when:
-  ///   - we are not in the middle of pushing this form's own values
-  ///     back to the binding (re-entrancy guard during `_applySave`),
-  ///   - the form has no pending local edits (don't clobber in-flight
-  ///     user input — the local change is the source of truth until
-  ///     the user explicitly saves or discards).
+  /// Fires when the bound [TomClass] mutates from outside this form —
+  /// typically because a sibling form (e.g. a master-detail scaffold's
+  /// standalone detail form) wrote new values to the same TomClass.
+  ///
+  /// Updates field values so the UI reflects the external change, but
+  /// deliberately does NOT update the initial snapshot / `_initialValue`.
+  /// Preserving the bind-time baseline means the outer form's [discard]
+  /// can still roll back sub-item edits that were committed through the
+  /// sibling form — if we updated the snapshot here, "Discard" would
+  /// reset to the post-edit state instead of the original.
+  ///
+  /// Guard conditions (same as before):
+  ///   - skip if we are currently writing to the binding ourselves
+  ///     (re-entrancy guard for `_applySave`),
+  ///   - skip if the form already has local edits (don't clobber
+  ///     in-flight user input).
   void _onBindingExternallyChanged() {
     if (_writingBackToBinding) return;
     final binding = _binding;
     if (binding == null) return;
     if (isDirty) return;
     setValues(binding.getValues());
-    // Re-snapshot the initial values + reset validation so the form
-    // continues to report "pristine" against the new binding contents.
-    _applyBindLifecycle(binding);
+    // Clear stale validation state only — do NOT touch _initialSnapshot or
+    // field._initialValue. Clearing allows the field decorations to reset to
+    // pristine so the user doesn't see errors that no longer apply.
+    for (final field in fields.values) {
+      field._debounceTimer?.cancel();
+      if (!field._disposed) {
+        field._validationNotifier.value = const ValidationPristine();
+      }
+    }
     _changes.fire();
   }
 
@@ -285,7 +300,20 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// Discard edits — resets every field in this form, every nested form,
   /// and every child container (e.g. `TomListForm`) back to its last
-  /// bound / committed value.
+  /// bound / committed value, then writes the initial snapshot back to
+  /// the binding.
+  ///
+  /// The write-back is necessary because sibling forms (e.g. a
+  /// master-detail scaffold's detail pane) may have written to the same
+  /// TomClass between bind and discard. Without the write-back, the
+  /// backing state would retain those external edits even after the outer
+  /// form says "Discard".
+  ///
+  /// TomList members are intentionally excluded from the write-back
+  /// because [setValues] recreates list elements from scratch (via
+  /// reflection), which would orphan the existing sub-form bindings that
+  /// TomListForm holds. TomListForm.discard() handles structural restoration
+  /// and delegates per-element write-back to each sub-form's own discard().
   void discard() {
     onDiscarding();
     for (final field in fields.values) {
@@ -296,6 +324,24 @@ abstract class TomForm<T extends TomClass> extends TomClass
     }
     for (final child in childContainers) {
       child.discard();
+    }
+    // Restore the binding to its bind-time / last-saved state so external
+    // writes (e.g. a detail-pane save to the same TomClass) are also
+    // rolled back. Skip TomList members — they are managed by child
+    // TomListForm containers whose discard() recursively restores each
+    // element via per-element write-backs.
+    final snapshot = _initialSnapshot;
+    final binding = _binding;
+    if (snapshot != null && binding != null) {
+      final members = binding.getMembers();
+      final filteredSnapshot = Map<String, dynamic>.from(snapshot)
+        ..removeWhere((key, _) => members[key] is TomList);
+      _writingBackToBinding = true;
+      try {
+        binding.setValues(filteredSnapshot);
+      } finally {
+        _writingBackToBinding = false;
+      }
     }
     onDiscarded();
     _fireEvent(FormDiscardedEvent(source: formId));
@@ -741,6 +787,52 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 
   /// Whether the field is visible (not `none`).
   bool get isVisible => effectiveAuthState != TomAuthState.none;
+
+  // --- Label / error resolution (for error-display widgets) ---
+
+  /// Human-readable label for this field. Used by error-display widgets
+  /// (e.g. `TomRowErrorStrip`) to compose messages like
+  /// "• Product Name: This field is required."
+  ///
+  /// Resolution order: resource key `<basePath>.label` → [tomId] fallback.
+  ///
+  /// Subclasses that carry an explicit label-text override (e.g.
+  /// [TomFormStringField]) should override this to surface that override
+  /// at the highest priority, before the resource lookup.
+  String get resolvedLabel =>
+      TomCtr.textOrNull(basePath, 'label') ?? tomId;
+
+  /// Translates the field's current [ValidationError] to a human-readable
+  /// string, or returns an empty string when the field has no error.
+  ///
+  /// Resolution order for the error key (e.g. `error.required`):
+  ///   1. Scoped:  `<basePath>.<key>` — allows field-level overrides.
+  ///   2. Global:  `<key>` alone — the validator's own resource key.
+  ///   3. Raw key: the key itself as a visible fallback.
+  ///
+  /// Parameter interpolation (`{param}` → value) is applied at every
+  /// level so validators that pass `params` (e.g. `{min}`, `{max}`)
+  /// produce localised messages correctly.
+  String get resolvedErrorMessage {
+    final state = validationState;
+    if (state is! ValidationError) return '';
+    return _resolveErrorKey(state.errorKey, state.params);
+  }
+
+  String _resolveErrorKey(String key, Map<String, Object?>? params) {
+    final scoped = TomCtr.textOrNull(basePath, key);
+    if (scoped != null) return _applyParams(scoped, params);
+    final global = TomCtr.textOrNull(key);
+    if (global != null) return _applyParams(global, params);
+    return key;
+  }
+
+  static String _applyParams(String template, Map<String, Object?>? params) {
+    if (params == null || params.isEmpty) return template;
+    var out = template;
+    params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
+    return out;
+  }
 
   // --- Validation ---
 

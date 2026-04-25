@@ -62,6 +62,12 @@ abstract class TomFormStringField extends TomField<String> {
   String? get labelText =>
       labelTextOverride ?? TomCtr.textOrNull(basePath, 'label');
 
+  /// Overrides [TomField.resolvedLabel] to surface the explicit
+  /// [labelTextOverride] at the highest priority, matching the resolution
+  /// order already used by [labelText].
+  @override
+  String get resolvedLabel => labelText ?? tomId;
+
   /// Resolved hint: explicit → resource → null.
   String? get hintText =>
       hintTextOverride ?? TomCtr.textOrNull(basePath, 'hint');
