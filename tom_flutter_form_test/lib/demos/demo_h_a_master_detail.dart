@@ -95,7 +95,7 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
                         masterPaneWidth: 240,
                         draggableSplitter: true,
                         minMasterPaneWidth: 160,
-                        maxMasterPaneWidth: 420,
+                        maxMasterPaneWidth: 600,
                         masterBuilder:
                             (context, listForm, selected, selectIndex) =>
                                 _CustomerMasterPane(
@@ -118,7 +118,7 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
                         masterPaneWidth: 240,
                         draggableSplitter: true,
                         minMasterPaneWidth: 160,
-                        maxMasterPaneWidth: 420,
+                        maxMasterPaneWidth: 600,
                         initialSelectedIndex: 0,
                         masterBuilder:
                             (context, listForm, selected, selectIndex) =>

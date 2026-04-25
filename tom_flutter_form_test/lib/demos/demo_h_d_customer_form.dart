@@ -193,7 +193,7 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                 masterPaneWidth: 200,
                 draggableSplitter: true,
                 minMasterPaneWidth: 140,
-                maxMasterPaneWidth: 360,
+                maxMasterPaneWidth: 600,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
                         AddressMasterPane(
@@ -228,7 +228,7 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                 masterPaneWidth: 200,
                 draggableSplitter: true,
                 minMasterPaneWidth: 140,
-                maxMasterPaneWidth: 360,
+                maxMasterPaneWidth: 600,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
                         OrderMasterPane(
