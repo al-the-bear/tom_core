@@ -19,15 +19,15 @@ import 'tom_list_form.dart';
 /// current selection (e.g. *Move up* disabled at index 0; *Remove*
 /// disabled when nothing is selected).
 ///
-/// **Layout.** When both structural buttons (Add / Remove) and reorder
-/// buttons (Move up / Move down) are visible, the toolbar renders them on
-/// two stacked rows — the wide tonal-filled Add/Remove on top, the
-/// narrower icon-only Move-up/Move-down underneath. This avoids the
-/// lopsided wrap that occurs in narrow master panes when a single
-/// `Wrap` mixes wide and narrow children. When only one group is visible
-/// (e.g. `showMoveUp: false, showMoveDown: false`), the toolbar collapses
-/// back to a single `Wrap` so single-group hosts retain the original
-/// inline layout.
+/// **Layout.** Buttons are rendered inside a single [Wrap]. The reorder
+/// pair (Move up / Move down) is bundled into an inner [Row] so the
+/// `Wrap` treats it as one atomic child — the two arrows always stay
+/// next to each other, and they only flow onto a new line *as a pair*
+/// when the host doesn't have enough horizontal space for them to fit
+/// alongside the wide tonal-filled Add/Remove buttons. This avoids the
+/// lopsided break (one arrow next to Add/Remove, the other arrow alone
+/// on the second line) reported against narrow master panes, while
+/// still letting the toolbar lay out inline when there's room.
 ///
 /// Example:
 ///
@@ -338,9 +338,28 @@ class TomListFormToolbar<TItem extends TomClass,
     final canMoveDown =
         hasSelection && selectedIndex! < listForm.length - 1;
 
-    // Action group #1 — structural mutations: [beforeActions, add, remove].
-    // These are the wide tonal-filled buttons.
-    final primaryGroup = <Widget>[
+    // Build the individual reorder buttons first; we'll bundle them into
+    // an inner Row so the outer Wrap sees them as a single atomic child
+    // and they always stay next to each other (only wrapping together
+    // when there's not enough room).
+    final moveButtons = <Widget>[
+      if (_visible(_moveUpAuthState, showMoveUp))
+        _moveButton(
+          icon: _resolvedMoveUpIcon,
+          tooltip: _resolvedMoveUpTooltip,
+          label: _resolvedMoveUpLabel,
+          onPressed: _gatedCallback(_moveUpAuthState, canMoveUp, _moveUp),
+        ),
+      if (_visible(_moveDownAuthState, showMoveDown))
+        _moveButton(
+          icon: _resolvedMoveDownIcon,
+          tooltip: _resolvedMoveDownTooltip,
+          label: _resolvedMoveDownLabel,
+          onPressed: _gatedCallback(_moveDownAuthState, canMoveDown, _moveDown),
+        ),
+    ];
+
+    final children = <Widget>[
       ...?beforeActions,
       if (_visible(_addAuthState, showAdd))
         _filledButton(
@@ -356,59 +375,28 @@ class TomListFormToolbar<TItem extends TomClass,
           _gatedCallback(_removeAuthState, hasSelection, _remove),
           tooltip: _resolvedRemoveTooltip,
         ),
-    ];
-
-    // Action group #2 — reorder controls: [moveUp, moveDown, afterActions].
-    // These are the narrow icon-only buttons (when no label is set).
-    final secondaryGroup = <Widget>[
-      if (_visible(_moveUpAuthState, showMoveUp))
-        _moveButton(
-          icon: _resolvedMoveUpIcon,
-          tooltip: _resolvedMoveUpTooltip,
-          label: _resolvedMoveUpLabel,
-          onPressed: _gatedCallback(_moveUpAuthState, canMoveUp, _moveUp),
-        ),
-      if (_visible(_moveDownAuthState, showMoveDown))
-        _moveButton(
-          icon: _resolvedMoveDownIcon,
-          tooltip: _resolvedMoveDownTooltip,
-          label: _resolvedMoveDownLabel,
-          onPressed: _gatedCallback(_moveDownAuthState, canMoveDown, _moveDown),
+      if (moveButtons.isNotEmpty)
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: moveButtons.length == 1
+              ? moveButtons
+              : [
+                  moveButtons[0],
+                  SizedBox(width: spacing),
+                  moveButtons[1],
+                ],
         ),
       ...?afterActions,
     ];
 
-    Widget makeWrap(List<Widget> children) => Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          alignment: alignment,
-          children: children,
-        );
+    if (children.isEmpty) return const SizedBox.shrink();
 
-    // When only one group has content, rendering an empty second `Wrap`
-    // would leave a stray gap — fall back to a single row in that case
-    // to preserve the historical layout for hosts that disable move (or
-    // structural) buttons entirely.
-    if (primaryGroup.isEmpty) return makeWrap(secondaryGroup);
-    if (secondaryGroup.isEmpty) return makeWrap(primaryGroup);
-
-    // Both groups present — stack them so Add/Remove never share a row
-    // with the narrow Move-up/Move-down icons. This avoids the lopsided
-    // wrap (one arrow next to Add/Remove, the other arrow alone on the
-    // second line) reported against master-detail demos.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: alignment == WrapAlignment.end
-          ? CrossAxisAlignment.end
-          : alignment == WrapAlignment.center
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
-      children: [
-        makeWrap(primaryGroup),
-        SizedBox(height: runSpacing),
-        makeWrap(secondaryGroup),
-      ],
+    return Wrap(
+      spacing: spacing,
+      runSpacing: runSpacing,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      alignment: alignment,
+      children: children,
     );
   }
 }

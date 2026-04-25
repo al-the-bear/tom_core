@@ -594,13 +594,14 @@ void main() {
     });
 
     testWidgets(
-        'Add/Remove and Move-up/down render in two stacked Wrap groups',
+        'Move-up and Move-down share an inner Row so they wrap as a unit',
         (tester) async {
-      // Bug (a): in master-detail layouts the toolbar previously placed
-      // all four buttons in a single Wrap; the wide Add/Remove + narrow
-      // Move arrows wrapped lopsidedly. The current contract is: when
-      // both groups are visible they must occupy distinct rows so the
-      // arrows always sit together.
+      // Bug (a) refinement: the move arrows must always sit next to each
+      // other. The toolbar bundles them inside a single inner Row inside
+      // the outer Wrap, so the Wrap treats the pair as one atomic child
+      // and only breaks the pair onto a new line as a unit when there's
+      // not enough horizontal space — never separating one arrow from
+      // the other.
       final form = makeBound(items: 3);
       addTearDown(form.dispose);
 
@@ -612,35 +613,60 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
+      // Single outer Wrap holding all toolbar children.
       final wraps = find.descendant(
         of: find.byType(TomListFormToolbar<OrderItem, OrderItemForm>),
         matching: find.byType(Wrap),
       );
-      expect(wraps, findsNWidgets(2),
+      expect(wraps, findsOneWidget,
           reason:
-              'Both action groups visible → toolbar must render two stacked Wraps');
+              'Toolbar must render a single Wrap so children flow inline when there is room');
 
-      // The Add/Remove (FilledButton) live in one Wrap; Move-up / Move-down
-      // (IconButton) live in the other.
-      final addBtnFinder = find.widgetWithText(FilledButton, 'Add');
       final moveUpFinder = find.byTooltip('Move up');
+      final moveDownFinder = find.byTooltip('Move down');
+      final addBtnFinder = find.widgetWithText(FilledButton, 'Add');
       expect(addBtnFinder, findsOneWidget);
       expect(moveUpFinder, findsOneWidget);
+      expect(moveDownFinder, findsOneWidget);
 
-      Wrap ancestorWrapOf(Finder f) => tester.widget<Wrap>(
-            find.ancestor(of: f, matching: find.byType(Wrap)).first,
-          );
-      expect(identical(ancestorWrapOf(addBtnFinder),
-              ancestorWrapOf(moveUpFinder)),
-          isFalse,
-          reason: 'Add and Move up must live in different Wraps');
+      Element nearestRowAncestor(Finder f) {
+        final element = tester.element(f);
+        Element? row;
+        element.visitAncestorElements((ancestor) {
+          if (ancestor.widget is Row) {
+            row = ancestor;
+            return false;
+          }
+          return true;
+        });
+        expect(row, isNotNull,
+            reason: 'Expected the move arrows to be nested in a Row');
+        return row!;
+      }
+
+      final upRow = nearestRowAncestor(moveUpFinder);
+      final downRow = nearestRowAncestor(moveDownFinder);
+      expect(identical(upRow, downRow), isTrue,
+          reason: 'Move-up and Move-down must share an immediate Row ancestor');
+
+      // Add must NOT be inside that same inner Row.
+      bool addInsideMoveRow = false;
+      tester.element(addBtnFinder).visitAncestorElements((ancestor) {
+        if (identical(ancestor, upRow)) {
+          addInsideMoveRow = true;
+          return false;
+        }
+        return true;
+      });
+      expect(addInsideMoveRow, isFalse,
+          reason: 'Add must live outside the inner move-buttons Row');
     });
 
     testWidgets(
-        'collapses to a single Wrap when only one action group is visible',
+        'still renders a single Wrap when only one action group is visible',
         (tester) async {
-      // Backwards-compat: hosts that hide either group should keep the
-      // single-row historical layout.
+      // Backwards-compat: hosts that hide either group keep the original
+      // inline layout.
       final form = makeBound(items: 3);
       addTearDown(form.dispose);
 
@@ -661,6 +687,10 @@ void main() {
       expect(wraps, findsOneWidget,
           reason:
               'Only the Add/Remove group is visible — the toolbar must render a single Wrap');
+
+      // No move buttons → no inner move-buttons Row should exist.
+      expect(find.byTooltip('Move up'), findsNothing);
+      expect(find.byTooltip('Move down'), findsNothing);
     });
   });
 
