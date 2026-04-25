@@ -45,12 +45,14 @@ void main() {
   /// Open the first row and force a quantity error (qty = 0) so the
   /// row-error strip renders.
   Future<void> openFirstRowAndBreakQty(WidgetTester tester) async {
-    // The first row's title in the seed data is a product name — tap
-    // its ExpansionTile to expand. The seed has 3 items, expand the
-    // first by tapping any ExpansionTile.
-    final tiles = find.byType(ExpansionTile);
-    expect(tiles, findsAtLeastNWidgets(1));
-    await tester.tap(tiles.first);
+    // After the migration to `TomExpandableListForm` rows are no longer
+    // built from `ExpansionTile`. Each row's summary contains the
+    // product-name text — tap it to expand. Seed item 1 in
+    // phase2aExpandableOrder is "Difference Engine pinion".
+    final firstRowSummary = find.text('Difference Engine pinion');
+    expect(firstRowSummary, findsAtLeastNWidgets(1),
+        reason: 'First row summary text must be in the tree');
+    await tester.tap(firstRowSummary.first);
     await tester.pumpAndSettle();
     // Locate the qty EditableText by its seed value '12' (item 1 in
     // phase2aExpandableOrder) and walk up to its TextField ancestor.

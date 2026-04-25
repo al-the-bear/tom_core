@@ -351,44 +351,10 @@ class _OrderMasterPaneState extends State<OrderMasterPane>
 // Order detail pane — metadata fields + inline items table
 // ---------------------------------------------------------------------------
 
-class OrderDetailPane extends StatefulWidget {
+class OrderDetailPane extends StatelessWidget {
   const OrderDetailPane({super.key, required this.form});
 
   final OrderHDForm form;
-
-  @override
-  State<OrderDetailPane> createState() => _OrderDetailPaneState();
-}
-
-class _OrderDetailPaneState extends State<OrderDetailPane>
-    implements TomObserver {
-  OrderHDForm get form => widget.form;
-
-  @override
-  void initState() {
-    super.initState();
-    form.items.addObserver(this);
-  }
-
-  @override
-  void didUpdateWidget(covariant OrderDetailPane old) {
-    super.didUpdateWidget(old);
-    if (old.form.items != form.items) {
-      old.form.items.removeObserver(this);
-      form.items.addObserver(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    form.items.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void onNotify(TomObservable _) {
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -420,22 +386,37 @@ class _OrderDetailPaneState extends State<OrderDetailPane>
                 const SizedBox(height: 8),
                 form.shippingLabel.widget,
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Items (${form.items.length})',
-                        style: theme.textTheme.labelLarge),
-                    Wrap(spacing: 6, children: [
-                      FilledButton.tonalIcon(
-                        icon: const Icon(Icons.add, size: 14),
-                        label: const Text('Add item'),
-                        onPressed: () => form.items.add(),
-                      ),
-                    ]),
-                  ],
+                TomInlineListForm<OrderItemHD, OrderItemHDForm>(
+                  listForm: form.items,
+                  headerBuilder: (context, list) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Items (${list.length})',
+                            style: theme.textTheme.labelLarge),
+                        Wrap(spacing: 6, children: [
+                          FilledButton.tonalIcon(
+                            icon: const Icon(Icons.add, size: 14),
+                            label: const Text('Add item'),
+                            onPressed: () => list.add(),
+                          ),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  emptyBuilder: (_) => const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('No items yet. Tap "Add item" to begin.',
+                        style: TextStyle(fontStyle: FontStyle.italic)),
+                  ),
+                  rowSeparatorBuilder: (_, _) =>
+                      const Divider(height: 1),
+                  rowBuilder: (context, i, itemForm) => _ItemRow(
+                    form: itemForm,
+                    onRemove: () => form.items.removeAt(i),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                _itemsTable(context),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
@@ -480,60 +461,63 @@ class _OrderDetailPaneState extends State<OrderDetailPane>
       ),
     );
   }
+}
 
-  Widget _itemsTable(BuildContext context) {
+/// One row of the order-items inline list. Lives at top level so the
+/// hosting [TomInlineListForm] can pass each row's own [OrderItemHDForm]
+/// and a remove callback without rebuilding closures from the parent.
+///
+/// The row mimics a column-aligned table: fixed-width cells side by side,
+/// each holding the field's own widget. The wrapping
+/// [TomFormStyleScope] suppresses the per-field label+description so the
+/// column header above each cell can take that role.
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.form, required this.onRemove});
+
+  final OrderItemHDForm form;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (form.items.length == 0) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
-        child: Text('No items yet. Tap "Add item" to begin.',
-            style: TextStyle(fontStyle: FontStyle.italic)),
-      );
-    }
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        headingRowHeight: 32,
-        dataRowMinHeight: 72,
-        dataRowMaxHeight: 120,
-        columnSpacing: 8,
-        columns: const [
-          DataColumn(label: Text('Product')),
-          DataColumn(label: Text('Qty')),
-          DataColumn(label: Text('Price')),
-          DataColumn(label: Text('Notes')),
-          DataColumn(label: Text('Total'), numeric: true),
-          DataColumn(label: Text('')),
-        ],
-        rows: List.generate(form.items.length, (i) {
-          final itemForm = form.items[i];
-          return DataRow(cells: [
-            DataCell(SizedBox(
-                width: 180,
-                child: _cellStyle(itemForm.productName.widget))),
-            DataCell(SizedBox(
-                width: 60, child: _cellStyle(itemForm.quantity.widget))),
-            DataCell(SizedBox(
-                width: 80, child: _cellStyle(itemForm.unitPrice.widget))),
-            DataCell(SizedBox(
-                width: 120, child: _cellStyle(itemForm.notes.widget))),
-            DataCell(
-              ListenableBuilder(
-                listenable: itemForm.changes,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+                width: 180, child: _cellStyle(form.productName.widget)),
+            const SizedBox(width: 8),
+            SizedBox(
+                width: 60, child: _cellStyle(form.quantity.widget)),
+            const SizedBox(width: 8),
+            SizedBox(
+                width: 80, child: _cellStyle(form.unitPrice.widget)),
+            const SizedBox(width: 8),
+            SizedBox(
+                width: 120, child: _cellStyle(form.notes.widget)),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 70,
+              child: ListenableBuilder(
+                listenable: form.changes,
                 builder: (context, _) => Text(
-                  '\$${itemForm.computedTotal.toStringAsFixed(2)}',
+                  '\$${form.computedTotal.toStringAsFixed(2)}',
                   style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.right,
                 ),
               ),
             ),
-            DataCell(IconButton(
+            const SizedBox(width: 4),
+            IconButton(
               icon: const Icon(Icons.delete_outline, size: 18),
               tooltip: 'Remove item',
-              onPressed: () => form.items.removeAt(i),
-            )),
-          ]);
-        }),
+              onPressed: onRemove,
+            ),
+          ],
+        ),
       ),
     );
   }

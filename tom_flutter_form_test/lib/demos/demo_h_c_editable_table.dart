@@ -330,29 +330,25 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               ]),
             ),
             const Divider(height: 8),
-            if (items.length == 0)
-              _emptyState(context)
-            else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  // Fixed width keeps the inner Row's children bounded —
-                  // if we used ConstrainedBox(minWidth:..) the Row would
-                  // still see an infinite max width via the horizontal
-                  // scroll viewport, blowing up Spacer/Expanded layouts.
-                  // Bumped 760 → 870 in round-5 (e) to absorb the
-                  // wider product cell.
-                  width: 870,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _variantBHeaderRow(theme),
-                      for (var i = 0; i < items.length; i++)
-                        _variantBRow(context, i, items[i], theme),
-                    ],
-                  ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                // Fixed width keeps the inner Row's children bounded —
+                // if we used ConstrainedBox(minWidth:..) the Row would
+                // still see an infinite max width via the horizontal
+                // scroll viewport, blowing up Spacer/Expanded layouts.
+                // Bumped 760 → 870 in round-5 (e) to absorb the
+                // wider product cell.
+                width: 870,
+                child: TomInlineListForm<OrderItem, OrderItemForm>(
+                  listForm: items,
+                  headerBuilder: (_, _) => _variantBHeaderRow(theme),
+                  emptyBuilder: (context) => _emptyState(context),
+                  rowBuilder: (context, i, rowForm) =>
+                      _variantBRow(context, i, rowForm, theme),
                 ),
               ),
+            ),
           ],
         ),
       ),

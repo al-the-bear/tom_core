@@ -43,11 +43,12 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
   late final OrderForm _form;
   late final TomFormInspector _inspector;
 
-  /// Index of the single currently-expanded row, or `null` when every
-  /// row is collapsed. Single-row exclusive expansion is the spec
-  /// default for §16 — it avoids the foot-gun where two dirty rows
-  /// fight for the user's attention.
-  int? _expandedRow;
+  /// Drives [TomExpandableListForm]. We hold the controller so the demo
+  /// can programmatically collapse every row after a successful save and
+  /// after Discard, and so the "Add item" path can grow + expand the new
+  /// row in one shot. Single-row exclusive expansion comes from the
+  /// default [TomExpansionPolicy.singleOpen].
+  late final TomExpandableListFormController _expandController;
 
   /// Round-6 (c): demo control for the row error strip's text alignment
   /// (start = left, center = centered). Lives in the demo because real
@@ -61,6 +62,7 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
     _form.bind(phase2aExpandableOrder);
     _inspector = TomFormInspector();
     _form.addListener(_inspector);
+    _expandController = TomExpandableListFormController();
     // Validate after first frame so the "Form valid / invalid" chip
     // reflects the loaded data instead of the pristine `false`. We
     // defer to post-frame so the field widgets have had a chance to
@@ -74,6 +76,7 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
 
   @override
   void dispose() {
+    _expandController.dispose();
     _form.removeListener(_inspector);
     _form.dispose();
     super.dispose();
@@ -195,53 +198,54 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Row(children: [
-                Text('Items (${items.length})',
-                    style: theme.textTheme.titleSmall),
-                const Spacer(),
-                Text(
-                  'Order total: \$${_orderTotal().toStringAsFixed(2)}',
-                  style: theme.textTheme.titleSmall,
-                ),
-              ]),
-            ),
-            const Divider(height: 8),
-            for (var i = 0; i < items.length; i++)
-              _expandableRow(context, i, items[i]),
-            const Divider(height: 16),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add item'),
-                    onPressed: () async {
-                      // Adding a row also "switches" to it — apply the
-                      // same row-switch guard so we don't lose edits in
-                      // an open invalid row.
-                      final ok = await _guardSwitchAwayFromExpanded();
-                      if (!ok) return;
-                      items.add();
-                      setState(() => _expandedRow = items.length - 1);
-                    },
-                  ),
-                ],
+        child: TomExpandableListForm<OrderItem, OrderItemForm>(
+          listForm: items,
+          controller: _expandController,
+          onBeforeChange: _onBeforeRowExpansionChange,
+          headerBuilder: (context, list) => Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+            child: Row(children: [
+              Text('Items (${list.length})',
+                  style: theme.textTheme.titleSmall),
+              const Spacer(),
+              Text(
+                'Order total: \$${_orderTotal().toStringAsFixed(2)}',
+                style: theme.textTheme.titleSmall,
               ),
+            ]),
+          ),
+          rowSeparatorBuilder: (_, _) => const Divider(height: 1),
+          summaryBuilder: (context, index, rowForm) =>
+              _summary(context, index, rowForm),
+          bodyBuilder: (context, index, rowForm) =>
+              _rowBody(context, rowForm),
+          footerBuilder: (context, list) => const Divider(height: 16),
+          toolbarBuilder: (context, list) => Padding(
+            padding: const EdgeInsets.all(8),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add item'),
+                  onPressed: () async {
+                    // Adding a row also "switches" to it — run the
+                    // same row-switch guard so we don't lose edits in
+                    // an open invalid row.
+                    if (!await _guardSwitchAwayFromExpanded()) return;
+                    list.add();
+                    _expandController.expand(list.length - 1);
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _expandableRow(BuildContext context, int index, OrderItemForm form) {
+  Widget _summary(BuildContext context, int index, OrderItemForm form) {
     final theme = Theme.of(context);
     return ListenableBuilder(
       listenable: form.changes,
@@ -249,99 +253,74 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         final qty = int.tryParse(form.quantity.get()) ?? 0;
         final price = double.tryParse(form.unitPrice.get()) ?? 0.0;
         final total = qty * price;
-        final isOpen = _expandedRow == index;
-        return ExpansionTile(
-          // The key embeds `isOpen` so the ExpansionTile is *re-created*
-          // (fresh State) whenever we externally change `_expandedRow`.
-          // `initiallyExpanded` is only consulted on first build of a
-          // given State instance — without rotating the key, programmatic
-          // collapses (save-success, row-switch veto, "Discard all")
-          // wouldn't visually take effect because the existing State
-          // would keep its own `_isExpanded=true` regardless of the
-          // updated `initiallyExpanded` prop. See round-5 (b).
-          key: ValueKey('row-$index-${isOpen ? 'open' : 'closed'}'),
-          initiallyExpanded: isOpen,
-          maintainState: true,
-          onExpansionChanged: (open) async {
-            if (open) {
-              await _requestOpenRow(index);
-            } else {
-              // Round-5 (c): closing the row by tapping its header
-              // must also go through the validate-before-switch
-              // guard. Otherwise users could "escape" a row with
-              // pending errors (e.g. quantity=0) by collapsing it,
-              // sidestepping the same gate that protects switching
-              // to a sibling row.
-              final ok = await _guardSwitchAwayFromExpanded();
-              if (!ok) {
-                // Re-rotate the key back to the open variant on the
-                // next frame so the visual state matches the model.
-                if (mounted) setState(() {});
-                return;
-              }
-              setState(() => _expandedRow = null);
-            }
-          },
-          title: Text(
-            form.productName.get().isEmpty
-                ? '(no product)'
-                : form.productName.get(),
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
-          subtitle: Text('Qty ${form.quantity.get()} '
-              '× \$${form.unitPrice.get()}'),
-          trailing: Wrap(
-            spacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          child: Row(
             children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      form.productName.get().isEmpty
+                          ? '(no product)'
+                          : form.productName.get(),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Qty ${form.quantity.get()} '
+                      '× \$${form.unitPrice.get()}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
               Text('\$${total.toStringAsFixed(2)}',
                   style: theme.textTheme.titleSmall),
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
                 tooltip: 'Remove row',
-                onPressed: () {
-                  setState(() {
-                    if (_expandedRow == index) _expandedRow = null;
-                  });
-                  _form.items.removeAt(index);
-                },
+                onPressed: () => _form.items.removeAt(index),
               ),
             ],
           ),
-          // Round-6 (c): childrenPadding intentionally zero so the row
-          // error strip below can stretch flush with the items card's
-          // edges. Each non-strip child applies its own horizontal pad.
-          childrenPadding: EdgeInsets.zero,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-              child: form.productName.widget,
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(children: [
-                Expanded(child: form.quantity.widget),
-                const SizedBox(width: 12),
-                Expanded(child: form.unitPrice.widget),
-              ]),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: form.notes.widget,
-            ),
-            const SizedBox(height: 8),
-            // Strip itself fills the full row width — no horizontal pad.
-            TomRowErrorStrip(
-              key: const ValueKey('h-b-row-error-strip'),
-              form: form,
-              crossAxisAlignment: _rowErrorAlignment,
-            ),
-            const SizedBox(height: 12),
-          ],
         );
       },
+    );
+  }
+
+  Widget _rowBody(BuildContext context, OrderItemForm form) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: form.productName.widget,
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            Expanded(child: form.quantity.widget),
+            const SizedBox(width: 12),
+            Expanded(child: form.unitPrice.widget),
+          ]),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: form.notes.widget,
+        ),
+        const SizedBox(height: 8),
+        // Strip itself fills the full row width — no horizontal pad.
+        TomRowErrorStrip(
+          key: const ValueKey('h-b-row-error-strip'),
+          form: form,
+          crossAxisAlignment: _rowErrorAlignment,
+        ),
+        const SizedBox(height: 12),
+      ],
     );
   }
 
@@ -395,8 +374,10 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                 final ok = await _form.save();
                 if (!context.mounted) return;
                 if (ok) {
-                  // (c) collapse the open row on a clean save.
-                  setState(() => _expandedRow = null);
+                  // (c) collapse the open row on a clean save —
+                  // controller.collapseAll() is programmatic and
+                  // bypasses the row-switch veto by design.
+                  _expandController.collapseAll();
                 }
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                   content: Text(ok
@@ -419,7 +400,7 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               label: const Text('Discard all'),
               onPressed: () {
                 _form.discard();
-                setState(() => _expandedRow = null);
+                _expandController.collapseAll();
               },
             ),
             // Round-6 (c): segmented toggle so the demo can flip the row
@@ -448,42 +429,42 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
     );
   }
 
-  /// (d) Row-switch guard. Validates the currently-expanded row; if it
-  /// has errors, refuses the switch and shows a snackbar. Returns
-  /// `true` when the caller may proceed to open another row.
-  Future<bool> _guardSwitchAwayFromExpanded() async {
-    final cur = _expandedRow;
-    if (cur == null) return true;
-    if (cur < 0 || cur >= _form.items.length) return true;
-    final form = _form.items[cur];
+  /// onBeforeChange callback for [TomExpandableListForm].
+  ///
+  /// Fires for every row whose open/closed state is about to flip
+  /// (including, in [TomExpansionPolicy.singleOpen], the
+  /// previously-open row when a sibling is being opened). When the row
+  /// is about to *close* we run validation and refuse the close if
+  /// errors exist — that's the "validate-before-switch" gate from
+  /// spec §16. Opens are always allowed.
+  Future<bool> _onBeforeRowExpansionChange(
+      int index, OrderItemForm form, bool willOpen) async {
+    if (willOpen) return true;
     final errors = await form.validate();
     if (errors.isEmpty) return true;
     if (!mounted) return false;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(
-        'Row ${cur + 1} has ${errors.length} '
+        'Row ${index + 1} has ${errors.length} '
         '${errors.length == 1 ? "error" : "errors"} — fix them or '
         'discard before switching.',
       ),
       duration: const Duration(seconds: 3),
     ));
-    setState(() {});
     return false;
   }
 
-  /// Apply the row-switch guard and, on success, expand `index`.
-  Future<void> _requestOpenRow(int index) async {
-    if (_expandedRow == index) return;
-    final ok = await _guardSwitchAwayFromExpanded();
-    if (!ok) {
-      // ExpansionTile will already have toggled itself open optimistically
-      // — force a rebuild that reverts to the prior state by bumping the
-      // key set. Setting state with the same _expandedRow is enough since
-      // we read `initiallyExpanded` from it on rebuild.
-      setState(() {});
-      return;
-    }
-    setState(() => _expandedRow = index);
+  /// Imperative version of the same guard, used by "Add item" — the
+  /// add path bypasses [TomExpandableListForm]'s own toggle flow so we
+  /// have to run the gate by hand before calling
+  /// `controller.expand(...)` (which is programmatic and bypasses the
+  /// veto).
+  Future<bool> _guardSwitchAwayFromExpanded() async {
+    final open = _expandController.expanded;
+    if (open.isEmpty) return true;
+    final cur = open.first;
+    if (cur < 0 || cur >= _form.items.length) return true;
+    return _onBeforeRowExpansionChange(cur, _form.items[cur], false);
   }
 
   double _orderTotal() {
