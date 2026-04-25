@@ -1,6 +1,5 @@
 import 'tom_action.dart';
 import 'tom_action_context.dart';
-import 'tom_action_controller.dart';
 import 'tom_action_transaction.dart';
 
 /// Application-level undo/redo history.
@@ -107,9 +106,9 @@ class TomUndoAction extends TomSimpleAction<TomUndoRedoContext> {
   final TomUndoHistory history;
 
   TomUndoAction({
-    required TomActionController controller,
+    required super.controller,
     required this.history,
-  }) : super(actionId: 'undo', controller: controller);
+  }) : super(actionId: 'undo');
 
   @override
   bool canExecute(TomUndoRedoContext context) => history.canUndo;
@@ -125,9 +124,9 @@ class TomRedoAction extends TomSimpleAction<TomUndoRedoContext> {
   final TomUndoHistory history;
 
   TomRedoAction({
-    required TomActionController controller,
+    required super.controller,
     required this.history,
-  }) : super(actionId: 'redo', controller: controller);
+  }) : super(actionId: 'redo');
 
   @override
   bool canExecute(TomUndoRedoContext context) => history.canRedo;

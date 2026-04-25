@@ -114,16 +114,16 @@ abstract class TomFormFileField extends TomField<FileRef?> {
   final FilePicker picker;
 
   TomFormFileField(
-    String tomId,
-    FileRef? initialValue, {
+    super.tomId,
+    super.initialValue, {
     required this.picker,
     this.labelTextOverride,
     this.descriptionTextOverride,
     this.allowedExtensions,
     this.maxSizeBytes,
-    TomForm? form,
+    super.form,
     List<Object> validators = const [],
-    bool autoValidate = false,
+    super.autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
@@ -131,10 +131,6 @@ abstract class TomFormFileField extends TomField<FileRef?> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          tomId,
-          initialValue,
-          form: form,
-          autoValidate: autoValidate,
           validators: [
             if (allowedExtensions != null)
               _fileExtensionValidator(allowedExtensions),

@@ -19,11 +19,11 @@ class TomDataTable extends TomTableBase {
   final bool sortAscending;
   final ValueSetter<bool?>? onSelectAll;
   final Decoration? decoration;
-  final MaterialStateProperty<Color?>? dataRowColor;
+  final WidgetStateProperty<Color?>? dataRowColor;
   final double? dataRowMinHeight;
   final double? dataRowMaxHeight;
   final TextStyle? dataTextStyle;
-  final MaterialStateProperty<Color?>? headingRowColor;
+  final WidgetStateProperty<Color?>? headingRowColor;
   final double? headingRowHeight;
   final TextStyle? headingTextStyle;
   final double? horizontalMargin;
@@ -168,7 +168,7 @@ class TomPaginatedDataTable extends TomTableBase {
   final DragStartBehavior dragStartBehavior;
   final double? arrowHeadColor;
   final double? checkboxHorizontalMargin;
-  final MaterialStateProperty<Color?>? headingRowColor;
+  final WidgetStateProperty<Color?>? headingRowColor;
   final bool showEmptyRows;
   final DataTableSource source;
 
@@ -721,9 +721,9 @@ class TomDataColumn extends DataColumn {
     this.scope,
     Widget? label,
     String? tooltip,
-    bool numeric = false,
-    DataColumnSortCallback? onSort,
-    WidgetStateProperty<MouseCursor?>? mouseCursor,
+    super.numeric = false,
+    super.onSort,
+    super.mouseCursor,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
           label: _TomAuthContent(
@@ -732,9 +732,6 @@ class TomDataColumn extends DataColumn {
             child: label ?? TomCtr.defaultTextOrEmpty(TomCtr.childTomId(tomId, 'label'), scope, tomGroup),
           ),
           tooltip: tooltip ?? TomCtr.textOrNull(_p(tomId, scope, 'tooltip')),
-          numeric: numeric,
-          onSort: onSort,
-          mouseCursor: mouseCursor,
         );
 
   /// Helper to build full path with suffix (for value resolution).
@@ -800,21 +797,14 @@ class TomDataRow extends DataRow {
     this.tomGroup,
     this.scope,
     super.key,
-    bool selected = false,
-    ValueChanged<bool?>? onSelectChanged,
-    GestureLongPressCallback? onLongPress,
-    WidgetStateProperty<Color?>? color,
-    required List<DataCell> cells,
-    WidgetStateProperty<MouseCursor?>? mouseCursor,
+    super.selected = false,
+    super.onSelectChanged,
+    super.onLongPress,
+    super.color,
+    required super.cells,
+    super.mouseCursor,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
-       super(
-          selected: selected,
-          onSelectChanged: onSelectChanged,
-          onLongPress: onLongPress,
-          color: color,
-          cells: cells,
-          mouseCursor: mouseCursor,
-        );
+       super();
 
   /// Returns true if this row should be visible based on authorization.
   ///

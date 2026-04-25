@@ -252,7 +252,7 @@ void main() {
         'name',
         '',
         uiStateController: TomUIStateController(
-          resolve: (_, __) => TomAuthState.disabled,
+          resolve: (_, _) => TomAuthState.disabled,
         ),
       );
       expect(field.effectiveAuthState, TomAuthState.disabled);

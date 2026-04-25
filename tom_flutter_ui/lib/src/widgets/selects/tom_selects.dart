@@ -615,7 +615,7 @@ class TomDropdownButtonFormField<T> extends TomSelectBase {
   Widget buildContent(BuildContext context) {
     return DropdownButtonFormField<T>(
       items: items,
-      value: value,
+      initialValue: value,
       onChanged: onChanged,
       onTap: onTap,
       decoration: _effectiveDecoration,

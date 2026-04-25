@@ -78,7 +78,7 @@ class TomSwitch extends TomToggleBase {
     return Switch(
       value: value,
       onChanged: onChanged,
-      activeColor: _resolvedActiveColor,
+      activeThumbColor: _resolvedActiveColor,
       activeTrackColor: _resolvedActiveTrackColor,
       inactiveThumbColor: _resolvedInactiveThumbColor,
       inactiveTrackColor: _resolvedInactiveTrackColor,
@@ -269,8 +269,8 @@ class TomRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     return Radio<T>(
       value: value,
-      groupValue: groupValue,
-      onChanged: onChanged,
+      groupValue: groupValue, // ignore: deprecated_member_use
+      onChanged: onChanged, // ignore: deprecated_member_use
       activeColor: _resolvedActiveColor,
       fillColor: fillColor,
       focusColor: _resolvedFocusColor,
@@ -395,7 +395,7 @@ class TomSwitchListTile extends TomToggleBase {
       isThreeLine: _resolvedIsThreeLine,
       dense: _resolvedDense,
       contentPadding: _resolvedContentPadding,
-      activeColor: _resolvedActiveColor,
+      activeThumbColor: _resolvedActiveColor,
       activeTrackColor: _resolvedActiveTrackColor,
       inactiveThumbColor: _resolvedInactiveThumbColor,
       inactiveTrackColor: _resolvedInactiveTrackColor,
@@ -649,8 +649,8 @@ class TomRadioListTile<T> extends TomToggleBase {
 
     return RadioListTile<T>(
       value: value,
-      groupValue: groupValue,
-      onChanged: onChanged,
+      groupValue: groupValue, // ignore: deprecated_member_use
+      onChanged: onChanged, // ignore: deprecated_member_use
       title: effectiveTitle,
       subtitle: subtitle,
       secondary: secondary,
@@ -859,7 +859,7 @@ class TomCupertinoSwitch extends TomToggleBase {
       onChanged: onChanged,
       activeTrackColor: _resolvedActiveTrackColor,
       thumbColor: _resolvedThumbColor,
-      trackColor: _resolvedTrackColor,
+      inactiveTrackColor: _resolvedTrackColor,
       dragStartBehavior: dragStartBehavior,
       applyTheme: applyTheme,
       focusColor: _resolvedFocusColor,
@@ -937,7 +937,7 @@ class TomCupertinoCheckbox extends TomToggleBase {
       value: value,
       onChanged: onChanged,
       activeColor: _resolvedActiveColor,
-      inactiveColor: _resolvedInactiveColor,
+      fillColor: WidgetStatePropertyAll(_resolvedInactiveColor),
       checkColor: _resolvedCheckColor,
       tristate: tristate,
       focusColor: _resolvedFocusColor,
@@ -1014,8 +1014,8 @@ class TomCupertinoRadio<T> extends TomToggleBase {
   Widget buildContent(BuildContext context) {
     return CupertinoRadio<T>(
       value: value,
-      groupValue: groupValue,
-      onChanged: onChanged,
+      groupValue: groupValue, // ignore: deprecated_member_use
+      onChanged: onChanged, // ignore: deprecated_member_use
       mouseCursor: mouseCursor,
       toggleable: toggleable,
       activeColor: _resolvedActiveColor,

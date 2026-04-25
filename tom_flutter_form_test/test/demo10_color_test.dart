@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 /// Regression test: TomFormStyleScope with tomId picks up cs.* colour
 /// tokens from resources and those colours reach the actual TextField
 /// (typed-text colour and floating-label colour) when the ambient Flutter
@@ -12,7 +13,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
 import 'package:tom_flutter_form_test/forms/company_forms.dart';
-import 'package:tom_flutter_ui/src/resource_auth/tom_colors.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers

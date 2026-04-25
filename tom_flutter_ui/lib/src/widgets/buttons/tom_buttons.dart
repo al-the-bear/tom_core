@@ -799,7 +799,7 @@ class TomFloatingActionButton extends TomButtonBase {
             focusNode: focusNode,
             isExtended: _resolvedIsExtended ?? true,
             icon: _resolvedIcon,
-            label: Text(_resolvedLabel!),
+            label: Text(_resolvedLabel),
           );
         }
 

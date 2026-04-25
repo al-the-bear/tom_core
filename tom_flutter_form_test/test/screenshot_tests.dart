@@ -5,7 +5,6 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,7 +30,7 @@ Future<void> loadRealFonts() async {
     ('Roboto-Thin.ttf', 100),
     ('Roboto-Black.ttf', 900),
   ];
-  for (final (fileName, weight) in variants) {
+  for (final (fileName, _) in variants) {
     final file = File('$fontDir/$fileName');
     if (file.existsSync()) {
       final bytes = file.readAsBytesSync();

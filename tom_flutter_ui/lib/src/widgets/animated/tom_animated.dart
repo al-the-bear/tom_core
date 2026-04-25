@@ -54,12 +54,12 @@ class TomAnimatedAlign extends TomAnimatedBase {
   Widget buildContent(BuildContext context) {
     return AnimatedAlign(
       alignment: _resolvedAlignment ?? Alignment.center,
-      child: child,
       heightFactor: _resolvedHeightFactor,
       widthFactor: _resolvedWidthFactor,
       duration: _resolvedDuration,
       curve: curve,
       onEnd: onEnd,
+      child: child,
     );
   }
   AlignmentGeometry? _resolveAlignment(String suffix) {

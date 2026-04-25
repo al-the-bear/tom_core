@@ -6,7 +6,7 @@
 /// the one matching the current 700-px breakpoint. The page-root
 /// `TomFormStyleScope` flips form style at the same threshold via
 /// `styleBpOverrides`. The header badge reads
-/// "width: NNN px → family: <kind> (wide → Material | narrow → Cupertino)".
+/// "width: NNN px → family: `<kind>` (wide → Material | narrow → Cupertino)".
 ///
 /// Coverage:
 ///   * baseline at wide viewport (>=700) — Material family rendered,

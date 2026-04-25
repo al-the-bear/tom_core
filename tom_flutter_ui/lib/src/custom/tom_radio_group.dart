@@ -117,8 +117,8 @@ class TomRadioGroup<T> extends StatelessWidget {
                 children: [
                   Radio<T>(
                     value: item.value,
-                    groupValue: selected,
-                    onChanged: isInteractive
+                    groupValue: selected, // ignore: deprecated_member_use
+                    onChanged: isInteractive // ignore: deprecated_member_use
                         ? (T? value) {
                             if (value != null) onChanged?.call(value);
                           }

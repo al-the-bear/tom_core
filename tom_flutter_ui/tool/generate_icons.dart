@@ -1,7 +1,6 @@
 // ignore_for_file: avoid_print
-/// Generates tom_icons_generated.dart from Flutter SDK icon source files.
-///
-/// Run with: dart run tool/generate_icons.dart
+// Generates tom_icons_generated.dart from Flutter SDK icon source files.
+// Run with: dart run tool/generate_icons.dart
 import 'dart:io';
 
 void main() async {

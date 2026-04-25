@@ -799,20 +799,20 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclBorderStyle] from a resource map at [basePath]/[suffix].
   AclBorderStyle? _resolveBorderStyle(String basePath, String suffix) {
-    final map = TomCtr.map(basePath!, suffix);
+    final map = TomCtr.map(basePath,suffix);
     if (map == null || map.isEmpty) return null;
     return AclBorderStyle(
       kind: _parseBorderKind(map['kind'] as String?) ?? AclBorderKind.none,
       color:
-          TomCtr.color(basePath!, '$suffix.color') ??
+          TomCtr.color(basePath, '$suffix.color') ??
           const Color(0x00000000),
       lineWidth:
-          TomCtr.doubleVal(basePath!, '$suffix.lineWidth') ?? 1.0,
-      rounded: TomCtr.boolVal(basePath!, '$suffix.rounded') ?? false,
+          TomCtr.doubleVal(basePath, '$suffix.lineWidth') ?? 1.0,
+      rounded: TomCtr.boolVal(basePath, '$suffix.rounded') ?? false,
       borderRadius:
-          TomCtr.doubleVal(basePath!, '$suffix.borderRadius') ?? 0.0,
+          TomCtr.doubleVal(basePath, '$suffix.borderRadius') ?? 0.0,
       borderInsets:
-          TomCtr.edgeInsets(basePath!, '$suffix.borderInsets') ??
+          TomCtr.edgeInsets(basePath, '$suffix.borderInsets') ??
           EdgeInsets.zero,
     );
   }
@@ -828,7 +828,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitlePosition] from a resource text at [basePath]/titlePosition.
   AclTitlePosition? _resolveTitlePosition(String basePath) {
-    final value = TomCtr.value(basePath!, 'titlePosition');
+    final value = TomCtr.value(basePath, 'titlePosition');
     if (value == null) return null;
     final text = value.toString();
     for (final pos in AclTitlePosition.values) {
@@ -839,7 +839,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
 
   /// Resolves an [AclTitleBorderAlign] from a resource text at [basePath]/titleBorderAlign.
   AclTitleBorderAlign? _resolveTitleBorderAlign(String basePath) {
-    final value = TomCtr.value(basePath!, 'titleBorderAlign');
+    final value = TomCtr.value(basePath, 'titleBorderAlign');
     if (value == null) return null;
     final text = value.toString();
     for (final align in AclTitleBorderAlign.values) {

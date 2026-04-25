@@ -36,16 +36,16 @@ abstract class TomFormIntField extends TomField<int> {
   final int? maxValue;
 
   TomFormIntField(
-    String tomId,
-    int initialValue, {
+    super.tomId,
+    super.initialValue, {
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
     this.minValue,
     this.maxValue,
-    TomForm? form,
+    super.form,
     List<Object> validators = const [],
-    bool autoValidate = false,
+    super.autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
@@ -53,10 +53,6 @@ abstract class TomFormIntField extends TomField<int> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          tomId,
-          initialValue,
-          form: form,
-          autoValidate: autoValidate,
           validators: [
             if (minValue != null) Validators.min(minValue),
             if (maxValue != null) Validators.max(maxValue),

@@ -276,7 +276,7 @@ class TomTextField extends TomInputBase {
       autofillHints: autofillHints,
       clipBehavior: clipBehavior,
       restorationId: _resolvedRestorationId,
-      scribbleEnabled: _resolvedScribbleEnabled,
+      stylusHandwritingEnabled: _resolvedScribbleEnabled,
       enableIMEPersonalizedLearning: _resolvedEnableIMEPersonalizedLearning,
       contentInsertionConfiguration: contentInsertionConfiguration,
       contextMenuBuilder: contextMenuBuilder,

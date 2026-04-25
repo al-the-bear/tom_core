@@ -1106,7 +1106,9 @@ class _AclContainerState extends State<AclContainer> {
       if (!comp.expandX || comp.isGap) continue;
       if (comp.child is Flexible ||
           comp.child is Expanded ||
-          comp.child is Spacer) continue;
+          comp.child is Spacer) {
+        continue;
+      }
       final pref = comp.preferredSize?.width ??
           comp.minimumSize?.width ??
           _naturalWidth(comp) ??
@@ -1167,7 +1169,9 @@ class _AclContainerState extends State<AclContainer> {
           if (comp.isGap) continue;
           if (comp.child is Flexible ||
               comp.child is Expanded ||
-              comp.child is Spacer) continue;
+              comp.child is Spacer) {
+            continue;
+          }
           final pref = comp.preferredSize?.width ??
               comp.minimumSize?.width ??
               _naturalWidth(comp) ??

@@ -125,9 +125,10 @@ class _RemainingWidgetsDemoContentState
     return TomColumn(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // TomButtonBar
+        // TomButtonBar (deprecated — use TomOverflowBar)
         _DemoCard(
           tomId: 'demo.buttonBar',
+          // ignore: deprecated_member_use
           child: TomButtonBar(
             tomId: 'buttonBar.demo',
             children: [
@@ -144,18 +145,20 @@ class _RemainingWidgetsDemoContentState
         ),
         TomSizedBox(height: 16),
 
-        // TomMaterialButton
+        // TomMaterialButton (deprecated — use TomElevatedButton, TomTextButton, or TomOutlinedButton)
         _DemoCard(
           tomId: 'demo.materialButton',
           child: TomWrap(
             spacing: 8,
             runSpacing: 8,
             children: [
+              // ignore: deprecated_member_use
               TomMaterialButton(
                 tomId: 'materialBtn.basic',
                 onPressed: () {},
                 child: const Text('Material'),
               ),
+              // ignore: deprecated_member_use
               TomMaterialButton(
                 tomId: 'materialBtn.styled',
                 onPressed: () {},

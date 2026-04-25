@@ -714,7 +714,7 @@ class TomTooltip extends TomDialogBase {
     return Tooltip(
       message: _resolvedMessage,
       richMessage: richMessage,
-      height: _resolvedHeight,
+      constraints: _resolvedHeight != null ? BoxConstraints(minHeight: _resolvedHeight) : null,
       padding: _resolvedPadding,
       margin: _resolvedMargin,
       verticalOffset: _resolvedVerticalOffset,

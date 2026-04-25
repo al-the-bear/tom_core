@@ -33,7 +33,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  TextField _findByText(WidgetTester tester, String text) => tester
+  TextField findByText(WidgetTester tester, String text) => tester
       .widgetList<TextField>(find.byType(TextField))
       .firstWhere((t) => t.controller?.text == text);
 
@@ -49,27 +49,27 @@ void main() {
     await tester.pumpAndSettle();
 
     // Email is enabled while phone has its pre-bound value.
-    expect(_findByText(tester, 'jane.doe@example.com').enabled, isTrue,
+    expect(findByText(tester, 'jane.doe@example.com').enabled, isTrue,
         reason: 'Non-empty phone must leave email enabled.');
 
     // Clear the phone field. `enterText` on a spec-aligned TomFormStringInput
     // drives field.setValue(), which reliably notifies observers and flips
     // email's UIStateController result.
-    final phoneField = _findByText(tester, '+1 555 0100');
+    final phoneField = findByText(tester, '+1 555 0100');
     await tester.enterText(find.byWidget(phoneField), '');
     await tester.pumpAndSettle();
 
     // Email should now be disabled — resolve returns disabled when phone
     // is empty, which then narrows currentAuth.
-    expect(_findByText(tester, 'jane.doe@example.com').enabled, isFalse,
+    expect(findByText(tester, 'jane.doe@example.com').enabled, isFalse,
         reason: 'Empty phone must disable email via the UIStateController.');
 
     // Refill the phone and email re-enables.
-    final blankPhoneField = _findByText(tester, '');
+    final blankPhoneField = findByText(tester, '');
     await tester.enterText(find.byWidget(blankPhoneField), '+1 555 0200');
     await tester.pumpAndSettle();
 
-    expect(_findByText(tester, 'jane.doe@example.com').enabled, isTrue,
+    expect(findByText(tester, 'jane.doe@example.com').enabled, isTrue,
         reason: 'Refilling phone must re-enable email.');
   });
 
@@ -85,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Billing street should be editable under the default tier 'gold'.
-    expect(_findByText(tester, '100 Market Street').enabled, isTrue);
+    expect(findByText(tester, '100 Market Street').enabled, isTrue);
 
     // Switch customerTier to platinum via the dropdown item.
     await tester.tap(find.text('Gold').last);
@@ -94,7 +94,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Billing street should now be read-only (TextField.enabled = false).
-    expect(_findByText(tester, '100 Market Street').enabled, isFalse,
+    expect(findByText(tester, '100 Market Street').enabled, isFalse,
         reason: 'Platinum tier + authorizer ON must narrow billing to read.');
   });
 }

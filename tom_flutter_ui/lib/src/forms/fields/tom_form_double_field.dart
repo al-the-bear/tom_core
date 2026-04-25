@@ -32,16 +32,16 @@ abstract class TomFormDoubleField extends TomField<double> {
   final double? maxValue;
 
   TomFormDoubleField(
-    String tomId,
-    double initialValue, {
+    super.tomId,
+    super.initialValue, {
     this.labelTextOverride,
     this.hintTextOverride,
     this.descriptionTextOverride,
     this.minValue,
     this.maxValue,
-    TomForm? form,
+    super.form,
     List<Object> validators = const [],
-    bool autoValidate = false,
+    super.autoValidate = false,
     super.tomGroup,
     super.authorizer,
     super.uiStateController,
@@ -49,10 +49,6 @@ abstract class TomFormDoubleField extends TomField<double> {
     super.actionIconTooltip,
     super.onActionIconPressed,
   }) : super(
-          tomId,
-          initialValue,
-          form: form,
-          autoValidate: autoValidate,
           validators: [
             if (minValue != null) Validators.min(minValue),
             if (maxValue != null) Validators.max(maxValue),

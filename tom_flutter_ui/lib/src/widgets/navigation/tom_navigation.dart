@@ -1498,7 +1498,6 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
 
   // Pre-resolved resource values
   late final String? _resolvedTitle;
-  late final String? _resolvedPreviousPageTitle;
 
   TomCupertinoNavigationBarBackButton({
     super.key,
@@ -1513,7 +1512,6 @@ class TomCupertinoNavigationBarBackButton extends TomNavigationBase {
     VoidCallback? onPressed,
   }) : onPressed = InScopeBuilder(scope: scope).wrap0n(onPressed) {
     _resolvedTitle = previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
-    _resolvedPreviousPageTitle = previousPageTitle ?? TomCtr.textOrNull(basePath, 'previousPageTitle');
   }
 
   @override

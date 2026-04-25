@@ -53,7 +53,7 @@ void main() {
   /// Locate the lookup display TextField — it carries the picked
   /// Country label in its controller. Brittle string match is OK
   /// because the demo uses a known initial value.
-  Finder _findLookupTextField() {
+  Finder findLookupTextField() {
     return find.byWidgetPredicate(
       (w) => w is TextField &&
           w.readOnly == true &&
@@ -71,7 +71,7 @@ void main() {
     // selected country in its controller; sharing the TextField anatomy
     // means baseline + content padding + inputStyle match every other
     // form input (which the InputDecorator+Text version did not).
-    expect(_findLookupTextField(), findsOneWidget,
+    expect(findLookupTextField(), findsOneWidget,
         reason:
             'Lookup field should render its selected value through a read-only TextField');
   });
@@ -81,7 +81,7 @@ void main() {
       (tester) async {
     await openDemo(tester, 'Demo K: Enum, Object & Lookup');
     // Open the lookup dialog by tapping the field's TextField.
-    await tester.tap(_findLookupTextField());
+    await tester.tap(findLookupTextField());
     await tester.pumpAndSettle();
     expect(find.text('Pick a country'), findsOneWidget);
     // Search-icon size: the prefix Icon inside the dialog should be
@@ -115,13 +115,13 @@ void main() {
     await openDemo(tester, 'Demo K: Enum, Object & Lookup');
     // The display TextField has an explicit `style:` — same source of
     // truth as every other input via `style.inputStyle`.
-    final displayTf = tester.widget<TextField>(_findLookupTextField());
+    final displayTf = tester.widget<TextField>(findLookupTextField());
     expect(displayTf.style, isNotNull,
         reason: 'Lookup field text must use the form input style');
     expect(displayTf.style!.fontSize, isNotNull);
     // Open the dialog and confirm the filter TextField + tile labels
     // share the same explicit style.
-    await tester.tap(_findLookupTextField());
+    await tester.tap(findLookupTextField());
     await tester.pumpAndSettle();
     final filterTf = tester.widget<TextField>(find
         .descendant(

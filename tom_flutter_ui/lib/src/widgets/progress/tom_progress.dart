@@ -394,7 +394,7 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     this.authorizer,
     this.authorizerStrategy = TomAuthorizerStrategy.authorizerNarrowsOnly,
     this.uiStateController,
-    double? value,
+    super.value,
     Color? backgroundColor,
     Color? color,
     super.valueColor,
@@ -405,7 +405,6 @@ class TomRefreshProgressIndicator extends RefreshProgressIndicator
     super.strokeCap,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
-          value: value,
           backgroundColor: backgroundColor ?? TomCtr.color(_p(tomId, scope, 'backgroundColor')),
           color: color ?? TomCtr.color(_p(tomId, scope, 'color')),
           strokeWidth: strokeWidth ?? TomCtr.doubleVal(_p(tomId, scope, 'strokeWidth')) ?? RefreshProgressIndicator.defaultStrokeWidth,
