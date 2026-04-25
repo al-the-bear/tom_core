@@ -158,7 +158,7 @@ class _TomFormStringInputWidgetState
     extends State<_TomFormStringInputWidget> {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
-  late final TomFunctionObserver<TomObservable> _observer;
+  late TomFunctionObserver<TomObservable> _observer;
   bool _updatingFromField = false;
 
   TomFormStringInput get field => widget.field;
@@ -168,7 +168,15 @@ class _TomFormStringInputWidgetState
     super.initState();
     _controller = TextEditingController(text: field.get());
     _focusNode = FocusNode();
-    _observer = field >> (observable) {
+    _subscribe(field);
+  }
+
+  /// Wires the observer + validation listener to [target]. Used both
+  /// from [initState] and from [didUpdateWidget] when the parent
+  /// reuses our element with a different field instance (master/detail
+  /// row swap, or any other widget.field reassignment).
+  void _subscribe(TomFormStringInput target) {
+    _observer = target >> (observable) {
       if (!_updatingFromField) {
         final newText = (observable as TomObject<String>).get();
         if (_controller.text != newText) {
@@ -177,7 +185,29 @@ class _TomFormStringInputWidgetState
       }
       if (mounted) setState(() {});
     };
-    field.validationListenable.addListener(_onValidationChanged);
+    target.validationListenable.addListener(_onValidationChanged);
+  }
+
+  void _unsubscribe(TomFormStringInput target) {
+    target.validationListenable.removeListener(_onValidationChanged);
+    target.removeObserver(_observer);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TomFormStringInputWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.field, widget.field)) {
+      _unsubscribe(oldWidget.field);
+      _subscribe(widget.field);
+      // Sync the controller text to the new field's current value so the
+      // displayed text matches the field we now observe (otherwise the
+      // controller keeps the previous field's text until the user types
+      // or the new field fires a change).
+      final newText = widget.field.get();
+      if (_controller.text != newText) {
+        _controller.text = newText;
+      }
+    }
   }
 
   void _onValidationChanged() {
@@ -186,8 +216,7 @@ class _TomFormStringInputWidgetState
 
   @override
   void dispose() {
-    field.validationListenable.removeListener(_onValidationChanged);
-    field.removeObserver(_observer);
+    _unsubscribe(field);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -355,7 +384,7 @@ class _TomFormStringDropdownWidgetState
     extends State<_TomFormStringDropdownWidget> {
   List<SelectableItem<String>> _items = [];
   StreamSubscription<List<SelectableItem<String>>>? _subscription;
-  late final TomFunctionObserver<TomObservable> _observer;
+  late TomFunctionObserver<TomObservable> _observer;
 
   TomFormStringDropdown get field => widget.field;
 
@@ -367,10 +396,34 @@ class _TomFormStringDropdownWidgetState
     // hint text for one frame while the async load re-runs.
     _items = field._cachedItems ?? const [];
     _loadItems();
-    _observer = field >> (_) {
+    _subscribe(field);
+  }
+
+  void _subscribe(TomFormStringDropdown target) {
+    _observer = target >> (_) {
       if (mounted) setState(() {});
     };
-    field.validationListenable.addListener(_onValidationChanged);
+    target.validationListenable.addListener(_onValidationChanged);
+  }
+
+  void _unsubscribe(TomFormStringDropdown target) {
+    target.validationListenable.removeListener(_onValidationChanged);
+    target.removeObserver(_observer);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TomFormStringDropdownWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.field, widget.field)) {
+      _unsubscribe(oldWidget.field);
+      _subscribe(widget.field);
+      // Re-seed items synchronously from the new field's cache and kick
+      // off a (re)load against the new source.
+      _subscription?.cancel();
+      _subscription = null;
+      _items = widget.field._cachedItems ?? const [];
+      _loadItems();
+    }
   }
 
   void _onValidationChanged() {
@@ -412,8 +465,7 @@ class _TomFormStringDropdownWidgetState
   @override
   void dispose() {
     _subscription?.cancel();
-    field.validationListenable.removeListener(_onValidationChanged);
-    field.removeObserver(_observer);
+    _unsubscribe(field);
     super.dispose();
   }
 

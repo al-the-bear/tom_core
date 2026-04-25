@@ -43,5 +43,24 @@ class TomFieldWidgetAdapter extends StatelessWidget
   TomAuthState get effectiveAuthState => field.effectiveAuthState;
 
   @override
-  Widget build(BuildContext context) => child;
+  Widget build(BuildContext context) {
+    // Force a fresh State subtree whenever the underlying field identity
+    // changes. Without this, Flutter's positional element reconciliation
+    // happily reuses a field-widget's State across row swaps in
+    // master/detail (and any other parent that swaps `field` at the same
+    // tree position). The reused State keeps observing the *previous*
+    // field — its TextEditingController never updates, the displayed
+    // value goes stale, and edits flow into the wrong field.
+    //
+    // Keying by the field instance means the slot's effective key
+    // changes whenever the underlying field changes, so Flutter
+    // disposes the old State and constructs a new one bound to the
+    // new field. For breakpoint-driven re-layouts the field instance
+    // is the same → key is the same → State is preserved (focus,
+    // selection, controller text are not flashed).
+    return KeyedSubtree(
+      key: ValueKey<TomField>(field),
+      child: child,
+    );
+  }
 }
