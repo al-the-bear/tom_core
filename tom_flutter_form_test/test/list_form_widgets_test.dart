@@ -152,6 +152,132 @@ void main() {
       expect(find.text('row-0'), findsOneWidget);
     });
 
+    testWidgets(
+        'showRowMoveButtons renders per-row arrows that move rows in place',
+        (tester) async {
+      // Bug (c): inline lists without a master pane need per-row move
+      // buttons because there is no selection-driven toolbar host.
+      final form = makeBound(items: 3);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomInlineListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          showRowMoveButtons: true,
+          rowBuilder: (ctx, i, rowForm) =>
+              Text('row-$i:${rowForm.productName.get()}'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // Three rows, three pairs of move buttons → six buttons total.
+      // Each row gets one Move up + one Move down (button enabled or
+      // disabled depending on position).
+      final moveUpFinder =
+          find.widgetWithIcon(IconButton, Icons.arrow_upward);
+      final moveDownFinder =
+          find.widgetWithIcon(IconButton, Icons.arrow_downward);
+      expect(moveUpFinder, findsNWidgets(3));
+      expect(moveDownFinder, findsNWidgets(3));
+
+      // Row 0's "Move up" must be disabled (no row above).
+      final firstMoveUp =
+          tester.widget<IconButton>(moveUpFinder.first);
+      expect(firstMoveUp.onPressed, isNull,
+          reason: 'first row has no row above — Move up must be disabled');
+
+      // Last row's "Move down" must be disabled (no row below).
+      final lastMoveDown =
+          tester.widget<IconButton>(moveDownFinder.last);
+      expect(lastMoveDown.onPressed, isNull,
+          reason: 'last row has no row below — Move down must be disabled');
+
+      // Tap the second row's "Move up" → row order becomes B, A, C.
+      await tester.tap(moveUpFinder.at(1));
+      await tester.pumpAndSettle();
+      expect(find.text('row-0:Item B'), findsOneWidget);
+      expect(find.text('row-1:Item A'), findsOneWidget);
+      expect(find.text('row-2:Item C'), findsOneWidget);
+    });
+
+    testWidgets(
+        'rowMoveButtonsPosition.leading puts arrows before row body',
+        (tester) async {
+      final form = makeBound(items: 2);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomInlineListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          showRowMoveButtons: true,
+          rowMoveButtonsPosition: TomRowMoveButtonsPosition.leading,
+          rowBuilder: (ctx, i, rowForm) =>
+              Text('body-$i', key: ValueKey('body-$i')),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      // The pair of Move buttons must come before the row body in the
+      // first row's Row.children. We assert by global position: a Move
+      // up icon button must be left of body-0 on the screen.
+      final upX = tester
+          .getTopLeft(
+              find.widgetWithIcon(IconButton, Icons.arrow_upward).first)
+          .dx;
+      final bodyX =
+          tester.getTopLeft(find.byKey(const ValueKey('body-0'))).dx;
+      expect(upX, lessThan(bodyX),
+          reason:
+              'leading position must place the move buttons left of the row body');
+    });
+
+    testWidgets(
+        'rowMoveButtonsPosition.trailing (default) puts arrows after row body',
+        (tester) async {
+      final form = makeBound(items: 2);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomInlineListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          showRowMoveButtons: true,
+          rowBuilder: (ctx, i, rowForm) =>
+              Text('body-$i', key: ValueKey('body-$i')),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final upX = tester
+          .getTopLeft(
+              find.widgetWithIcon(IconButton, Icons.arrow_upward).first)
+          .dx;
+      final bodyX =
+          tester.getTopLeft(find.byKey(const ValueKey('body-0'))).dx;
+      expect(upX, greaterThan(bodyX),
+          reason:
+              'trailing (default) must place the move buttons right of the row body');
+    });
+
+    testWidgets('showRowMoveButtons defaults to false (no extra buttons)',
+        (tester) async {
+      final form = makeBound(items: 3);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomInlineListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          rowBuilder: (ctx, i, rowForm) => Text('row-$i'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithIcon(IconButton, Icons.arrow_upward),
+          findsNothing,
+          reason: 'opt-in only — no per-row arrows appear by default');
+      expect(find.widgetWithIcon(IconButton, Icons.arrow_downward),
+          findsNothing);
+    });
+
     testWidgets('header / footer / toolbar all render', (tester) async {
       final form = makeBound(items: 1);
       addTearDown(form.dispose);
