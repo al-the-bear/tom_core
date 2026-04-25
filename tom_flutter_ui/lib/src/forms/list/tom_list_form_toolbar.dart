@@ -19,6 +19,16 @@ import 'tom_list_form.dart';
 /// current selection (e.g. *Move up* disabled at index 0; *Remove*
 /// disabled when nothing is selected).
 ///
+/// **Layout.** When both structural buttons (Add / Remove) and reorder
+/// buttons (Move up / Move down) are visible, the toolbar renders them on
+/// two stacked rows — the wide tonal-filled Add/Remove on top, the
+/// narrower icon-only Move-up/Move-down underneath. This avoids the
+/// lopsided wrap that occurs in narrow master panes when a single
+/// `Wrap` mixes wide and narrow children. When only one group is visible
+/// (e.g. `showMoveUp: false, showMoveDown: false`), the toolbar collapses
+/// back to a single `Wrap` so single-group hosts retain the original
+/// inline layout.
+///
 /// Example:
 ///
 /// ```dart
@@ -328,7 +338,9 @@ class TomListFormToolbar<TItem extends TomClass,
     final canMoveDown =
         hasSelection && selectedIndex! < listForm.length - 1;
 
-    final children = <Widget>[
+    // Action group #1 — structural mutations: [beforeActions, add, remove].
+    // These are the wide tonal-filled buttons.
+    final primaryGroup = <Widget>[
       ...?beforeActions,
       if (_visible(_addAuthState, showAdd))
         _filledButton(
@@ -344,6 +356,11 @@ class TomListFormToolbar<TItem extends TomClass,
           _gatedCallback(_removeAuthState, hasSelection, _remove),
           tooltip: _resolvedRemoveTooltip,
         ),
+    ];
+
+    // Action group #2 — reorder controls: [moveUp, moveDown, afterActions].
+    // These are the narrow icon-only buttons (when no label is set).
+    final secondaryGroup = <Widget>[
       if (_visible(_moveUpAuthState, showMoveUp))
         _moveButton(
           icon: _resolvedMoveUpIcon,
@@ -361,12 +378,37 @@ class TomListFormToolbar<TItem extends TomClass,
       ...?afterActions,
     ];
 
-    return Wrap(
-      spacing: spacing,
-      runSpacing: runSpacing,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      alignment: alignment,
-      children: children,
+    Widget makeWrap(List<Widget> children) => Wrap(
+          spacing: spacing,
+          runSpacing: runSpacing,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          alignment: alignment,
+          children: children,
+        );
+
+    // When only one group has content, rendering an empty second `Wrap`
+    // would leave a stray gap — fall back to a single row in that case
+    // to preserve the historical layout for hosts that disable move (or
+    // structural) buttons entirely.
+    if (primaryGroup.isEmpty) return makeWrap(secondaryGroup);
+    if (secondaryGroup.isEmpty) return makeWrap(primaryGroup);
+
+    // Both groups present — stack them so Add/Remove never share a row
+    // with the narrow Move-up/Move-down icons. This avoids the lopsided
+    // wrap (one arrow next to Add/Remove, the other arrow alone on the
+    // second line) reported against master-detail demos.
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: alignment == WrapAlignment.end
+          ? CrossAxisAlignment.end
+          : alignment == WrapAlignment.center
+              ? CrossAxisAlignment.center
+              : CrossAxisAlignment.start,
+      children: [
+        makeWrap(primaryGroup),
+        SizedBox(height: runSpacing),
+        makeWrap(secondaryGroup),
+      ],
     );
   }
 }
