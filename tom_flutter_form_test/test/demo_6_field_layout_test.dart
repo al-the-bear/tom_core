@@ -56,9 +56,16 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(
-        find.text('Demo 6: Field Layout Options'), 200);
-    await tester.tap(find.text('Demo 6: Field Layout Options'));
+    final tile = find.text('Demo 6: Field Layout Options');
+    // scrollUntilVisible only guarantees the finder *exists* in the tree
+    // — the tile may still straddle the bottom edge so tap() ends up
+    // outside the viewport. ensureVisible scrolls until the widget is
+    // fully on-screen (matches the pattern in tapOutlined). Adding more
+    // demos to the home list shouldn't break this helper.
+    await tester.scrollUntilVisible(tile, 200);
+    await tester.ensureVisible(tile);
+    await tester.pumpAndSettle();
+    await tester.tap(tile);
     await tester.pumpAndSettle();
   }
 
