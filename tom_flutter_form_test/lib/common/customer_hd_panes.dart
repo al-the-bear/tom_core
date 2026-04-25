@@ -333,6 +333,7 @@ class OrderDetailPane extends StatelessWidget {
                     key: ValueKey('h-d-item-${itemForm.hashCode}'),
                     index: i,
                     form: itemForm,
+                    listForm: form.items,
                     onRemove: () => form.items.removeAt(i),
                   ),
                 ),
@@ -396,11 +397,13 @@ class _ItemRow extends StatelessWidget {
     super.key,
     required this.index,
     required this.form,
+    required this.listForm,
     required this.onRemove,
   });
 
   final int index;
   final OrderItemHDForm form;
+  final TomListForm<OrderItemHD, OrderItemHDForm> listForm;
   final VoidCallback onRemove;
 
   @override
@@ -414,6 +417,13 @@ class _ItemRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             TomReorderHandle(index: index),
+            // Per-row Move-up / Move-down arrows. The order items list
+            // has no master section to host a selection-driven toolbar,
+            // so the row itself owns the explicit reorder controls.
+            TomListRowMoveButtons<OrderItemHD, OrderItemHDForm>(
+              listForm: listForm,
+              index: index,
+            ),
             const SizedBox(width: 4),
             SizedBox(
                 width: 180, child: _cellStyle(form.productName.widget)),
