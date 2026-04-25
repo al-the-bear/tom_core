@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../widget_base/tom_construction_helpers.dart';
+import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
 import 'tom_list_form.dart';
 import 'tom_reorder_handle.dart';
@@ -63,10 +65,33 @@ import 'tom_reorder_handle.dart';
 ///   emptyBuilder: (ctx) => const Text('No items yet.'),
 /// )
 /// ```
+///
+/// **Resource resolution.** When [tomId] is set, the following keys are
+/// consulted (each falls back to the constructor argument or a hard-
+/// coded default if no resource exists):
+///
+/// | Key                         | Type        | Default                     |
+/// |-----------------------------|-------------|-----------------------------|
+/// | `<basePath>.padding`        | EdgeInsets  | (no padding)                |
+/// | `<basePath>.empty`          | string      | (no auto-empty widget)      |
+///
+/// **Authorization.** The whole widget passes through the standard
+/// [TomPolicyNodeBase] gate at `<basePath>` — `none` hides the entire
+/// list, `disabled` greys it out and absorbs pointers, `read` applies
+/// the readonly visual treatment. Per-row authorization is **not**
+/// supported by design — every row of a list shares the list's auth
+/// state. Authorize the *fields* of the row sub-form via the field
+/// widgets themselves; the same field auth applies to every row.
 class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
-    extends StatefulWidget {
-  const TomInlineListForm({
+    extends TomListBase {
+  TomInlineListForm({
     super.key,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.listForm,
     required this.rowBuilder,
     this.headerBuilder,
@@ -74,12 +99,15 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     this.toolbarBuilder,
     this.emptyBuilder,
     this.rowSeparatorBuilder,
-    this.padding,
+    EdgeInsetsGeometry? padding,
     this.crossAxisAlignment = CrossAxisAlignment.stretch,
     this.reorderable = false,
     this.onReorder,
     this.proxyDecorator,
-  });
+  }) : _padding = padding {
+    _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
+  }
 
   /// The list whose rows are rendered inline.
   final TomListForm<TItem, TForm> listForm;
@@ -114,7 +142,9 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   )? toolbarBuilder;
 
   /// Optional widget shown in place of any rows when the list is empty.
-  /// Header / footer / toolbar still render around it.
+  /// Header / footer / toolbar still render around it. When omitted,
+  /// the resource `<basePath>.empty` (if any) is shown as plain text;
+  /// otherwise nothing is shown.
   final Widget Function(BuildContext context)? emptyBuilder;
 
   /// Optional separator inserted between consecutive rows. The [index]
@@ -126,8 +156,9 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// so any separator must live inside the row itself.
   final Widget Function(BuildContext context, int index)? rowSeparatorBuilder;
 
-  /// Outer padding applied to the entire stack.
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? _padding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final String? _resolvedEmptyText;
 
   /// Cross-axis alignment of the inner [Column]. Defaults to
   /// [CrossAxisAlignment.stretch] so rows fill the available width.
@@ -155,13 +186,74 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       proxyDecorator;
 
   @override
-  State<TomInlineListForm<TItem, TForm>> createState() =>
-      _TomInlineListFormState<TItem, TForm>();
+  Widget buildContent(BuildContext context) {
+    return _TomInlineListFormImpl<TItem, TForm>(
+      listForm: listForm,
+      rowBuilder: rowBuilder,
+      headerBuilder: headerBuilder,
+      footerBuilder: footerBuilder,
+      toolbarBuilder: toolbarBuilder,
+      emptyBuilder: emptyBuilder,
+      emptyText: _resolvedEmptyText,
+      rowSeparatorBuilder: rowSeparatorBuilder,
+      padding: _resolvedPadding,
+      crossAxisAlignment: crossAxisAlignment,
+      reorderable: reorderable,
+      onReorder: onReorder,
+      proxyDecorator: proxyDecorator,
+    );
+  }
 }
 
-class _TomInlineListFormState<TItem extends TomClass,
+/// Internal stateful renderer that owns the [TomListForm] subscription
+/// and rebuilds on every structural / per-row change. The public
+/// [TomInlineListForm] resolves resources up-front and delegates to this
+/// widget so the auth / resource pipeline (which is StatelessWidget-
+/// shaped) and the live observer chain don't fight each other.
+class _TomInlineListFormImpl<TItem extends TomClass,
+    TForm extends TomForm<TItem>> extends StatefulWidget {
+  const _TomInlineListFormImpl({
+    super.key,
+    required this.listForm,
+    required this.rowBuilder,
+    required this.crossAxisAlignment,
+    required this.reorderable,
+    this.headerBuilder,
+    this.footerBuilder,
+    this.toolbarBuilder,
+    this.emptyBuilder,
+    this.emptyText,
+    this.rowSeparatorBuilder,
+    this.padding,
+    this.onReorder,
+    this.proxyDecorator,
+  });
+
+  final TomListForm<TItem, TForm> listForm;
+  final Widget Function(BuildContext, int, TForm) rowBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)? headerBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)? footerBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)?
+      toolbarBuilder;
+  final Widget Function(BuildContext)? emptyBuilder;
+  final String? emptyText;
+  final Widget Function(BuildContext, int)? rowSeparatorBuilder;
+  final EdgeInsetsGeometry? padding;
+  final CrossAxisAlignment crossAxisAlignment;
+  final bool reorderable;
+  final void Function(int from, int to)? onReorder;
+  final Widget Function(Widget child, int index, Animation<double> animation)?
+      proxyDecorator;
+
+  @override
+  State<_TomInlineListFormImpl<TItem, TForm>> createState() =>
+      _TomInlineListFormImplState<TItem, TForm>();
+}
+
+class _TomInlineListFormImplState<TItem extends TomClass,
         TForm extends TomForm<TItem>>
-    extends State<TomInlineListForm<TItem, TForm>> implements TomObserver {
+    extends State<_TomInlineListFormImpl<TItem, TForm>>
+    implements TomObserver {
   @override
   void initState() {
     super.initState();
@@ -169,7 +261,7 @@ class _TomInlineListFormState<TItem extends TomClass,
   }
 
   @override
-  void didUpdateWidget(covariant TomInlineListForm<TItem, TForm> old) {
+  void didUpdateWidget(covariant _TomInlineListFormImpl<TItem, TForm> old) {
     super.didUpdateWidget(old);
     if (!identical(old.listForm, widget.listForm)) {
       old.listForm.removeObserver(this);
@@ -232,6 +324,14 @@ class _TomInlineListFormState<TItem extends TomClass,
     );
   }
 
+  Widget? _buildEmpty(BuildContext context) {
+    final builder = widget.emptyBuilder;
+    if (builder != null) return builder(context);
+    final text = widget.emptyText;
+    if (text != null && text.isNotEmpty) return Text(text);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = widget.listForm;
@@ -241,7 +341,7 @@ class _TomInlineListFormState<TItem extends TomClass,
     if (header != null) children.add(header);
 
     if (list.isEmpty) {
-      final empty = widget.emptyBuilder?.call(context);
+      final empty = _buildEmpty(context);
       if (empty != null) children.add(empty);
     } else {
       children.add(_buildRows(context, list));

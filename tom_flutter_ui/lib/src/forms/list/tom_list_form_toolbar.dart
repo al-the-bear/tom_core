@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../widget_base/tom_construction_helpers.dart';
+import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
 import 'tom_list_form.dart';
 
@@ -38,12 +40,50 @@ import 'tom_list_form.dart';
 /// selection some other way.
 ///
 /// Pass `showXxx: false` to hide individual buttons, or override
-/// [actions] to inject custom buttons before / after / replacing the
-/// standard set.
+/// [beforeActions] / [afterActions] to inject custom buttons before /
+/// after the standard set.
+///
+/// **Resource resolution.** The toolbar follows the standard Tom
+/// resource pattern. Each button's label / tooltip / icon falls back to
+/// resources when the matching constructor argument is null:
+///
+/// | Argument          | Resource key              | Default              |
+/// |-------------------|---------------------------|----------------------|
+/// | `addLabel`        | `<basePath>.add.label`    | `'Add'`              |
+/// | `addIcon`         | `<basePath>.add.icon`     | `Icons.add`          |
+/// | `addTooltip`      | `<basePath>.add.tooltip`  | (none)               |
+/// | `removeLabel`     | `<basePath>.remove.label` | `'Remove'`           |
+/// | `removeIcon`      | `<basePath>.remove.icon`  | `Icons.delete_outline` |
+/// | `removeTooltip`   | `<basePath>.remove.tooltip` | (none)             |
+/// | `moveUpLabel`     | `<basePath>.moveUp.label` | (icon-only)          |
+/// | `moveUpIcon`      | `<basePath>.moveUp.icon`  | `Icons.arrow_upward` |
+/// | `moveUpTooltip`   | `<basePath>.moveUp.tooltip` | `'Move up'`        |
+/// | `moveDownLabel`   | `<basePath>.moveDown.label` | (icon-only)        |
+/// | `moveDownIcon`    | `<basePath>.moveDown.icon` | `Icons.arrow_downward` |
+/// | `moveDownTooltip` | `<basePath>.moveDown.tooltip` | `'Move down'`    |
+///
+/// **Authorization.** The whole toolbar respects the standard
+/// [TomPolicyNodeBase] gate at `<basePath>` (none → toolbar disappears,
+/// disabled → all buttons greyed out, read → readonly treatment, full →
+/// normal). In addition, each button consults its own sub-resource path
+/// (`<basePath>.add`, `<basePath>.remove`, `<basePath>.moveUp`,
+/// `<basePath>.moveDown`) — when its sub-state is `none` the button is
+/// hidden regardless of `showXxx`; when `disabled` or `read` it is
+/// rendered without an `onPressed` callback so the user cannot fire it.
+///
+/// Per-row authorization is not supported by design — the same toolbar
+/// auth applies to every row of the list. Authorize individual fields
+/// of the row sub-form via the field widgets themselves.
 class TomListFormToolbar<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatelessWidget {
-  const TomListFormToolbar({
+    TForm extends TomForm<TItem>> extends TomContainerBase {
+  TomListFormToolbar({
     super.key,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.listForm,
     this.selectedIndex,
     this.onSelectionChanged,
@@ -55,21 +95,63 @@ class TomListFormToolbar<TItem extends TomClass,
     this.runSpacing = 4,
     this.dense = true,
     this.alignment = WrapAlignment.start,
-    this.addLabel = 'Add',
-    this.removeLabel = 'Remove',
-    this.moveUpTooltip = 'Move up',
-    this.moveDownTooltip = 'Move down',
-    this.addIcon = Icons.add,
-    this.removeIcon = Icons.delete_outline,
-    this.moveUpIcon = Icons.arrow_upward,
-    this.moveDownIcon = Icons.arrow_downward,
+    String? addLabel,
+    String? removeLabel,
+    String? moveUpLabel,
+    String? moveDownLabel,
+    String? addTooltip,
+    String? removeTooltip,
+    String? moveUpTooltip,
+    String? moveDownTooltip,
+    IconData? addIcon,
+    IconData? removeIcon,
+    IconData? moveUpIcon,
+    IconData? moveDownIcon,
     this.iconSize = 16,
     this.beforeActions,
     this.afterActions,
     this.beforeAdd,
     this.beforeRemove,
     this.beforeMove,
-  });
+  }) {
+    final addBase = _childKey(basePath, 'add');
+    final removeBase = _childKey(basePath, 'remove');
+    final moveUpBase = _childKey(basePath, 'moveUp');
+    final moveDownBase = _childKey(basePath, 'moveDown');
+
+    _resolvedAddLabel = addLabel ?? TomCtr.textOrNull(addBase, 'label') ?? 'Add';
+    _resolvedRemoveLabel =
+        removeLabel ?? TomCtr.textOrNull(removeBase, 'label') ?? 'Remove';
+    _resolvedMoveUpLabel = moveUpLabel ?? TomCtr.textOrNull(moveUpBase, 'label');
+    _resolvedMoveDownLabel =
+        moveDownLabel ?? TomCtr.textOrNull(moveDownBase, 'label');
+
+    _resolvedAddTooltip = addTooltip ?? TomCtr.textOrNull(addBase, 'tooltip');
+    _resolvedRemoveTooltip =
+        removeTooltip ?? TomCtr.textOrNull(removeBase, 'tooltip');
+    _resolvedMoveUpTooltip = moveUpTooltip ??
+        TomCtr.textOrNull(moveUpBase, 'tooltip') ??
+        'Move up';
+    _resolvedMoveDownTooltip = moveDownTooltip ??
+        TomCtr.textOrNull(moveDownBase, 'tooltip') ??
+        'Move down';
+
+    _resolvedAddIcon = addIcon ?? TomCtr.icon(addBase, 'icon') ?? Icons.add;
+    _resolvedRemoveIcon = removeIcon ??
+        TomCtr.icon(removeBase, 'icon') ??
+        Icons.delete_outline;
+    _resolvedMoveUpIcon = moveUpIcon ??
+        TomCtr.icon(moveUpBase, 'icon') ??
+        Icons.arrow_upward;
+    _resolvedMoveDownIcon = moveDownIcon ??
+        TomCtr.icon(moveDownBase, 'icon') ??
+        Icons.arrow_downward;
+
+    _addAuthState = _resolveButtonAuth(addBase);
+    _removeAuthState = _resolveButtonAuth(removeBase);
+    _moveUpAuthState = _resolveButtonAuth(moveUpBase);
+    _moveDownAuthState = _resolveButtonAuth(moveDownBase);
+  }
 
   /// The list whose membership / order is mutated by the buttons.
   final TomListForm<TItem, TForm> listForm;
@@ -103,14 +185,6 @@ class TomListFormToolbar<TItem extends TomClass,
   /// Horizontal alignment of the [Wrap]'s rows.
   final WrapAlignment alignment;
 
-  final String addLabel;
-  final String removeLabel;
-  final String moveUpTooltip;
-  final String moveDownTooltip;
-  final IconData addIcon;
-  final IconData removeIcon;
-  final IconData moveUpIcon;
-  final IconData moveDownIcon;
   final double iconSize;
 
   /// Optional extra buttons inserted before the standard action set.
@@ -132,6 +206,37 @@ class TomListFormToolbar<TItem extends TomClass,
   /// destination indices (in [TomListForm] semantics — `to` is the
   /// post-move position). Return `false` to cancel.
   final Future<bool> Function(int from, int to)? beforeMove;
+
+  // Pre-resolved resource values
+  late final String _resolvedAddLabel;
+  late final String _resolvedRemoveLabel;
+  late final String? _resolvedMoveUpLabel;
+  late final String? _resolvedMoveDownLabel;
+  late final String? _resolvedAddTooltip;
+  late final String? _resolvedRemoveTooltip;
+  late final String _resolvedMoveUpTooltip;
+  late final String _resolvedMoveDownTooltip;
+  late final IconData _resolvedAddIcon;
+  late final IconData _resolvedRemoveIcon;
+  late final IconData _resolvedMoveUpIcon;
+  late final IconData _resolvedMoveDownIcon;
+
+  // Per-button authorization snapshot (resolved at construction time so
+  // the build pass is purely declarative).
+  late final TomAuthState _addAuthState;
+  late final TomAuthState _removeAuthState;
+  late final TomAuthState _moveUpAuthState;
+  late final TomAuthState _moveDownAuthState;
+
+  static String? _childKey(String? base, String suffix) {
+    if (base == null) return null;
+    return '$base.$suffix';
+  }
+
+  static TomAuthState _resolveButtonAuth(String? path) {
+    if (path == null) return TomAuthState.full;
+    return TomAuthorization.resolveAuth(path);
+  }
 
   Future<void> _add() async {
     if (beforeAdd != null && !await beforeAdd!()) return;
@@ -163,8 +268,61 @@ class TomListFormToolbar<TItem extends TomClass,
     await onSelectionChanged?.call(i + 1);
   }
 
+  /// Whether [state] permits the host's `showXxx` flag to actually
+  /// produce a button. `none` is a hard hide (auth wins over `show`);
+  /// any other state falls through to the host's flag.
+  bool _visible(TomAuthState state, bool show) =>
+      show && state != TomAuthState.none;
+
+  /// Whether [state] permits a button to be interactive given the
+  /// host's "is this action meaningful right now" flag. Read-only or
+  /// disabled auth states force a null `onPressed`.
+  VoidCallback? _gatedCallback(
+    TomAuthState state,
+    bool meaningful,
+    Future<void> Function() action,
+  ) {
+    if (!meaningful) return null;
+    if (state != TomAuthState.full) return null;
+    return action;
+  }
+
+  Widget _filledButton(IconData icon, String label, VoidCallback? onPressed,
+      {String? tooltip}) {
+    final button = dense
+        ? FilledButton.tonalIcon(
+            icon: Icon(icon, size: iconSize),
+            label: Text(label),
+            onPressed: onPressed,
+          )
+        : FilledButton.icon(
+            icon: Icon(icon),
+            label: Text(label),
+            onPressed: onPressed,
+          );
+    if (tooltip == null || tooltip.isEmpty) return button;
+    return Tooltip(message: tooltip, child: button);
+  }
+
+  Widget _moveButton({
+    required IconData icon,
+    required String tooltip,
+    required String? label,
+    required VoidCallback? onPressed,
+  }) {
+    if (label != null && label.isNotEmpty) {
+      return _filledButton(icon, label, onPressed, tooltip: tooltip);
+    }
+    return IconButton(
+      tooltip: tooltip,
+      icon: Icon(icon, size: iconSize + 2),
+      onPressed: onPressed,
+      visualDensity: dense ? VisualDensity.compact : VisualDensity.standard,
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget buildContent(BuildContext context) {
     final hasSelection = selectedIndex != null;
     final canMoveUp = hasSelection && selectedIndex! > 0;
     final canMoveDown =
@@ -172,45 +330,33 @@ class TomListFormToolbar<TItem extends TomClass,
 
     final children = <Widget>[
       ...?beforeActions,
-      if (showAdd)
-        dense
-            ? FilledButton.tonalIcon(
-                icon: Icon(addIcon, size: iconSize),
-                label: Text(addLabel),
-                onPressed: _add,
-              )
-            : FilledButton.icon(
-                icon: Icon(addIcon),
-                label: Text(addLabel),
-                onPressed: _add,
-              ),
-      if (showRemove)
-        dense
-            ? FilledButton.tonalIcon(
-                icon: Icon(removeIcon, size: iconSize),
-                label: Text(removeLabel),
-                onPressed: hasSelection ? _remove : null,
-              )
-            : FilledButton.icon(
-                icon: Icon(removeIcon),
-                label: Text(removeLabel),
-                onPressed: hasSelection ? _remove : null,
-              ),
-      if (showMoveUp)
-        IconButton(
-          tooltip: moveUpTooltip,
-          icon: Icon(moveUpIcon, size: iconSize + 2),
-          onPressed: canMoveUp ? _moveUp : null,
-          visualDensity:
-              dense ? VisualDensity.compact : VisualDensity.standard,
+      if (_visible(_addAuthState, showAdd))
+        _filledButton(
+          _resolvedAddIcon,
+          _resolvedAddLabel,
+          _gatedCallback(_addAuthState, true, _add),
+          tooltip: _resolvedAddTooltip,
         ),
-      if (showMoveDown)
-        IconButton(
-          tooltip: moveDownTooltip,
-          icon: Icon(moveDownIcon, size: iconSize + 2),
-          onPressed: canMoveDown ? _moveDown : null,
-          visualDensity:
-              dense ? VisualDensity.compact : VisualDensity.standard,
+      if (_visible(_removeAuthState, showRemove))
+        _filledButton(
+          _resolvedRemoveIcon,
+          _resolvedRemoveLabel,
+          _gatedCallback(_removeAuthState, hasSelection, _remove),
+          tooltip: _resolvedRemoveTooltip,
+        ),
+      if (_visible(_moveUpAuthState, showMoveUp))
+        _moveButton(
+          icon: _resolvedMoveUpIcon,
+          tooltip: _resolvedMoveUpTooltip,
+          label: _resolvedMoveUpLabel,
+          onPressed: _gatedCallback(_moveUpAuthState, canMoveUp, _moveUp),
+        ),
+      if (_visible(_moveDownAuthState, showMoveDown))
+        _moveButton(
+          icon: _resolvedMoveDownIcon,
+          tooltip: _resolvedMoveDownTooltip,
+          label: _resolvedMoveDownLabel,
+          onPressed: _gatedCallback(_moveDownAuthState, canMoveDown, _moveDown),
         ),
       ...?afterActions,
     ];

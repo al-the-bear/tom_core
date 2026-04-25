@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../widget_base/tom_construction_helpers.dart';
+import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
 import '../widgets/tom_unsaved_changes_guard.dart';
 import 'tom_list_form.dart';
@@ -44,19 +46,54 @@ import 'tom_list_form.dart';
 /// [TomListForm] — each maintains its own selection observable, so
 /// scaffold A may be looking at row 0 while scaffold B is looking at
 /// row 2. (See Demo H-A for the canonical two-scaffold-one-list demo.)
+///
+/// **Resource resolution.** When [tomId] is set, the following keys are
+/// consulted (each falls back to the constructor argument or a hard-
+/// coded default if no resource exists):
+///
+/// | Key                          | Type        | Default                     |
+/// |------------------------------|-------------|-----------------------------|
+/// | `<basePath>.padding`         | EdgeInsets  | (no padding)                |
+/// | `<basePath>.empty`           | string      | the built-in italic hint    |
+/// | `<basePath>.masterPaneWidth` | double      | `280`                       |
+/// | `<basePath>.gap`             | double      | `16`                        |
+///
+/// **Authorization.** The whole widget passes through the standard
+/// [TomPolicyNodeBase] gate at `<basePath>` — `none` hides the entire
+/// scaffold (both panes), `disabled` greys it out and absorbs pointers,
+/// `read` applies the readonly visual treatment. Per-row authorization is
+/// **not** supported by design — every row of a list shares the list's
+/// auth state. Authorize the *fields* of the row sub-form via the field
+/// widgets themselves; the same field auth applies to every row.
 class TomMasterDetailListForm<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatefulWidget {
-  const TomMasterDetailListForm({
+    TForm extends TomForm<TItem>> extends TomListBase {
+  TomMasterDetailListForm({
     super.key,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.listForm,
     required this.masterBuilder,
     required this.detailBuilder,
     this.emptyDetailBuilder,
-    this.masterPaneWidth = 280,
-    this.gap = 16,
+    double? masterPaneWidth,
+    double? gap,
+    EdgeInsetsGeometry? padding,
     this.guardUnsavedSelectionChange = true,
     this.initialSelectedIndex,
-  });
+  })  : _masterPaneWidth = masterPaneWidth,
+        _gap = gap,
+        _padding = padding {
+    _resolvedMasterPaneWidth = _masterPaneWidth ??
+        TomCtr.doubleVal(basePath, 'masterPaneWidth') ??
+        280.0;
+    _resolvedGap = _gap ?? TomCtr.doubleVal(basePath, 'gap') ?? 16.0;
+    _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
+  }
 
   /// The list whose rows feed both panes.
   final TomListForm<TItem, TForm> listForm;
@@ -93,11 +130,18 @@ class TomMasterDetailListForm<TItem extends TomClass,
   ) detailBuilder;
 
   /// Optional widget shown when nothing is selected. Defaults to a
-  /// centred italic hint.
+  /// centred italic hint (resolved from `<basePath>.empty` if set,
+  /// otherwise the built-in fallback).
   final WidgetBuilder? emptyDetailBuilder;
 
-  final double masterPaneWidth;
-  final double gap;
+  final double? _masterPaneWidth;
+  final double? _gap;
+  final EdgeInsetsGeometry? _padding;
+
+  late final double _resolvedMasterPaneWidth;
+  late final double _resolvedGap;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final String? _resolvedEmptyText;
 
   /// When `true` (default), selection changes prompt Save/Discard/Cancel
   /// if the currently-selected row's sub-form is dirty. Set to `false`
@@ -105,13 +149,67 @@ class TomMasterDetailListForm<TItem extends TomClass,
   final bool guardUnsavedSelectionChange;
 
   @override
-  State<TomMasterDetailListForm<TItem, TForm>> createState() =>
-      _TomMasterDetailListFormState<TItem, TForm>();
+  Widget buildContent(BuildContext context) {
+    return _TomMasterDetailListFormImpl<TItem, TForm>(
+      listForm: listForm,
+      masterBuilder: masterBuilder,
+      detailBuilder: detailBuilder,
+      emptyDetailBuilder: emptyDetailBuilder,
+      emptyText: _resolvedEmptyText,
+      masterPaneWidth: _resolvedMasterPaneWidth,
+      gap: _resolvedGap,
+      padding: _resolvedPadding,
+      guardUnsavedSelectionChange: guardUnsavedSelectionChange,
+      initialSelectedIndex: initialSelectedIndex,
+    );
+  }
 }
 
-class _TomMasterDetailListFormState<TItem extends TomClass,
+/// Internal stateful renderer that owns the selection observable and the
+/// [TomListForm] subscription. The public [TomMasterDetailListForm]
+/// resolves resources up-front and delegates to this widget so the auth
+/// / resource pipeline (which is StatelessWidget-shaped) and the live
+/// observer chain don't fight each other.
+class _TomMasterDetailListFormImpl<TItem extends TomClass,
+    TForm extends TomForm<TItem>> extends StatefulWidget {
+  const _TomMasterDetailListFormImpl({
+    super.key,
+    required this.listForm,
+    required this.masterBuilder,
+    required this.detailBuilder,
+    required this.masterPaneWidth,
+    required this.gap,
+    required this.guardUnsavedSelectionChange,
+    this.emptyDetailBuilder,
+    this.emptyText,
+    this.padding,
+    this.initialSelectedIndex,
+  });
+
+  final TomListForm<TItem, TForm> listForm;
+  final Widget Function(
+    BuildContext context,
+    TomListForm<TItem, TForm> listForm,
+    int? selectedIndex,
+    Future<void> Function(int? index) selectIndex,
+  ) masterBuilder;
+  final Widget Function(BuildContext, int, TForm) detailBuilder;
+  final WidgetBuilder? emptyDetailBuilder;
+  final String? emptyText;
+  final double masterPaneWidth;
+  final double gap;
+  final EdgeInsetsGeometry? padding;
+  final bool guardUnsavedSelectionChange;
+  final int? initialSelectedIndex;
+
+  @override
+  State<_TomMasterDetailListFormImpl<TItem, TForm>> createState() =>
+      _TomMasterDetailListFormImplState<TItem, TForm>();
+}
+
+class _TomMasterDetailListFormImplState<TItem extends TomClass,
         TForm extends TomForm<TItem>>
-    extends State<TomMasterDetailListForm<TItem, TForm>>
+    extends State<_TomMasterDetailListFormImpl<TItem, TForm>>
     implements TomObserver {
   final TomNInt _selectedIndex = TomNInt(null);
 
@@ -130,7 +228,8 @@ class _TomMasterDetailListFormState<TItem extends TomClass,
   }
 
   @override
-  void didUpdateWidget(covariant TomMasterDetailListForm<TItem, TForm> old) {
+  void didUpdateWidget(
+      covariant _TomMasterDetailListFormImpl<TItem, TForm> old) {
     super.didUpdateWidget(old);
     if (!identical(old.listForm, widget.listForm)) {
       old.listForm.removeObserver(this);
@@ -186,6 +285,32 @@ class _TomMasterDetailListFormState<TItem extends TomClass,
     }
   }
 
+  Widget _buildEmptyDetail(BuildContext context) {
+    final builder = widget.emptyDetailBuilder;
+    if (builder != null) return builder(context);
+    final text = widget.emptyText;
+    if (text != null && text.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            text,
+            style: const TextStyle(fontStyle: FontStyle.italic),
+          ),
+        ),
+      );
+    }
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Select an item from the list to edit it.',
+          style: TextStyle(fontStyle: FontStyle.italic),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = ~_selectedIndex;
@@ -200,16 +325,7 @@ class _TomMasterDetailListFormState<TItem extends TomClass,
     if (selected == null ||
         selected < 0 ||
         selected >= widget.listForm.length) {
-      detail = widget.emptyDetailBuilder?.call(context) ??
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'Select an item from the list to edit it.',
-                style: TextStyle(fontStyle: FontStyle.italic),
-              ),
-            ),
-          );
+      detail = _buildEmptyDetail(context);
     } else {
       detail = widget.detailBuilder(
         context,
@@ -218,7 +334,7 @@ class _TomMasterDetailListFormState<TItem extends TomClass,
       );
     }
 
-    return Row(
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(width: widget.masterPaneWidth, child: master),
@@ -226,5 +342,9 @@ class _TomMasterDetailListFormState<TItem extends TomClass,
         Expanded(child: detail),
       ],
     );
+
+    return widget.padding != null
+        ? Padding(padding: widget.padding!, child: row)
+        : row;
   }
 }

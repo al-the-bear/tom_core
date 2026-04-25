@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../../widget_base/tom_construction_helpers.dart';
+import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
 import 'tom_list_form.dart';
 import 'tom_reorder_handle.dart';
@@ -116,10 +118,38 @@ class TomExpandableListFormController extends ChangeNotifier {
 /// External control: pass a [TomExpandableListFormController] to drive
 /// or observe expansion from outside (e.g. `controller.collapseAll()`
 /// after a successful save).
+///
+/// **Resource resolution.** When [tomId] is set, the following keys are
+/// consulted (each falls back to the constructor argument or a hard-
+/// coded default if no resource exists):
+///
+/// | Key                         | Type        | Default                     |
+/// |-----------------------------|-------------|-----------------------------|
+/// | `<basePath>.padding`        | EdgeInsets  | (no padding)                |
+/// | `<basePath>.empty`          | string      | (no auto-empty widget)      |
+/// | `<basePath>.policy`         | string      | `'singleOpen'`              |
+///
+/// The resource value `singleOpen` / `multipleOpen` resolves to the
+/// matching [TomExpansionPolicy]; an explicit [policy] argument always
+/// wins over the resource.
+///
+/// **Authorization.** The whole widget passes through the standard
+/// [TomPolicyNodeBase] gate at `<basePath>` — `none` hides the entire
+/// list, `disabled` greys it out and absorbs pointers, `read` applies
+/// the readonly visual treatment. Per-row authorization is **not**
+/// supported by design — every row of a list shares the list's auth
+/// state. Authorize the *fields* of the row sub-form via the field
+/// widgets themselves; the same field auth applies to every row.
 class TomExpandableListForm<TItem extends TomClass,
-    TForm extends TomForm<TItem>> extends StatefulWidget {
-  const TomExpandableListForm({
+    TForm extends TomForm<TItem>> extends TomListBase {
+  TomExpandableListForm({
     super.key,
+    super.tomId,
+    super.tomGroup,
+    super.scope,
+    super.authorizer,
+    super.authorizerStrategy,
+    super.uiStateController,
     required this.listForm,
     required this.summaryBuilder,
     required this.bodyBuilder,
@@ -128,17 +158,22 @@ class TomExpandableListForm<TItem extends TomClass,
     this.toolbarBuilder,
     this.emptyBuilder,
     this.rowSeparatorBuilder,
-    this.policy = TomExpansionPolicy.singleOpen,
+    TomExpansionPolicy? policy,
     this.controller,
     this.initialExpanded,
     this.onBeforeChange,
     this.onExpansionChanged,
-    this.padding,
+    EdgeInsetsGeometry? padding,
     this.crossAxisAlignment = CrossAxisAlignment.stretch,
     this.reorderable = false,
     this.onReorder,
     this.proxyDecorator,
-  });
+  })  : _policy = policy,
+        _padding = padding {
+    _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
+    _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
+    _resolvedPolicy = _policy ?? _resolvePolicyResource(basePath);
+  }
 
   /// The list whose rows are rendered as expandable tiles.
   final TomListForm<TItem, TForm> listForm;
@@ -176,14 +211,16 @@ class TomExpandableListForm<TItem extends TomClass,
   )? toolbarBuilder;
 
   /// Optional widget shown in place of any rows when the list is empty.
-  /// Header / footer / toolbar still render around it.
+  /// Header / footer / toolbar still render around it. When omitted,
+  /// the resource `<basePath>.empty` (if any) is shown as plain text;
+  /// otherwise nothing is shown.
   final Widget Function(BuildContext context)? emptyBuilder;
 
   /// Optional separator between consecutive rows.
   final Widget Function(BuildContext context, int index)? rowSeparatorBuilder;
 
-  /// Single-open vs multi-open. Defaults to [TomExpansionPolicy.singleOpen].
-  final TomExpansionPolicy policy;
+  final TomExpansionPolicy? _policy;
+  late final TomExpansionPolicy _resolvedPolicy;
 
   /// Optional external controller. If null, one is created internally
   /// (seeded from [initialExpanded] if supplied).
@@ -213,8 +250,9 @@ class TomExpandableListForm<TItem extends TomClass,
   /// post-change set of expanded indices.
   final void Function(Set<int> expanded)? onExpansionChanged;
 
-  /// Outer padding applied to the entire stack.
-  final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? _padding;
+  late final EdgeInsetsGeometry? _resolvedPadding;
+  late final String? _resolvedEmptyText;
 
   /// Cross-axis alignment of the inner [Column]. Defaults to
   /// [CrossAxisAlignment.stretch] so rows fill the available width.
@@ -240,14 +278,102 @@ class TomExpandableListForm<TItem extends TomClass,
   final Widget Function(Widget child, int index, Animation<double> animation)?
       proxyDecorator;
 
+  static TomExpansionPolicy _resolvePolicyResource(String? basePath) {
+    final raw = TomCtr.textOrNull(basePath, 'policy');
+    switch (raw) {
+      case 'multipleOpen':
+        return TomExpansionPolicy.multipleOpen;
+      case 'singleOpen':
+      default:
+        return TomExpansionPolicy.singleOpen;
+    }
+  }
+
   @override
-  State<TomExpandableListForm<TItem, TForm>> createState() =>
-      _TomExpandableListFormState<TItem, TForm>();
+  Widget buildContent(BuildContext context) {
+    return _TomExpandableListFormImpl<TItem, TForm>(
+      listForm: listForm,
+      summaryBuilder: summaryBuilder,
+      bodyBuilder: bodyBuilder,
+      headerBuilder: headerBuilder,
+      footerBuilder: footerBuilder,
+      toolbarBuilder: toolbarBuilder,
+      emptyBuilder: emptyBuilder,
+      emptyText: _resolvedEmptyText,
+      rowSeparatorBuilder: rowSeparatorBuilder,
+      policy: _resolvedPolicy,
+      controller: controller,
+      initialExpanded: initialExpanded,
+      onBeforeChange: onBeforeChange,
+      onExpansionChanged: onExpansionChanged,
+      padding: _resolvedPadding,
+      crossAxisAlignment: crossAxisAlignment,
+      reorderable: reorderable,
+      onReorder: onReorder,
+      proxyDecorator: proxyDecorator,
+    );
+  }
 }
 
-class _TomExpandableListFormState<TItem extends TomClass,
+/// Internal stateful renderer that owns the [TomListForm] subscription,
+/// the expansion controller, and the toggle/veto pipeline. The public
+/// [TomExpandableListForm] resolves resources up-front and delegates to
+/// this widget so the auth / resource pipeline (StatelessWidget-shaped)
+/// and the live observer / controller chain don't fight each other.
+class _TomExpandableListFormImpl<TItem extends TomClass,
+    TForm extends TomForm<TItem>> extends StatefulWidget {
+  const _TomExpandableListFormImpl({
+    super.key,
+    required this.listForm,
+    required this.summaryBuilder,
+    required this.bodyBuilder,
+    required this.policy,
+    required this.crossAxisAlignment,
+    required this.reorderable,
+    this.headerBuilder,
+    this.footerBuilder,
+    this.toolbarBuilder,
+    this.emptyBuilder,
+    this.emptyText,
+    this.rowSeparatorBuilder,
+    this.controller,
+    this.initialExpanded,
+    this.onBeforeChange,
+    this.onExpansionChanged,
+    this.padding,
+    this.onReorder,
+    this.proxyDecorator,
+  });
+
+  final TomListForm<TItem, TForm> listForm;
+  final Widget Function(BuildContext, int, TForm) summaryBuilder;
+  final Widget Function(BuildContext, int, TForm) bodyBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)? headerBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)? footerBuilder;
+  final Widget Function(BuildContext, TomListForm<TItem, TForm>)?
+      toolbarBuilder;
+  final Widget Function(BuildContext)? emptyBuilder;
+  final String? emptyText;
+  final Widget Function(BuildContext, int)? rowSeparatorBuilder;
+  final TomExpansionPolicy policy;
+  final TomExpandableListFormController? controller;
+  final Set<int>? initialExpanded;
+  final Future<bool> Function(int, TForm, bool)? onBeforeChange;
+  final void Function(Set<int>)? onExpansionChanged;
+  final EdgeInsetsGeometry? padding;
+  final CrossAxisAlignment crossAxisAlignment;
+  final bool reorderable;
+  final void Function(int, int)? onReorder;
+  final Widget Function(Widget, int, Animation<double>)? proxyDecorator;
+
+  @override
+  State<_TomExpandableListFormImpl<TItem, TForm>> createState() =>
+      _TomExpandableListFormImplState<TItem, TForm>();
+}
+
+class _TomExpandableListFormImplState<TItem extends TomClass,
         TForm extends TomForm<TItem>>
-    extends State<TomExpandableListForm<TItem, TForm>>
+    extends State<_TomExpandableListFormImpl<TItem, TForm>>
     implements TomObserver {
   late TomExpandableListFormController _controller;
   bool _ownsController = false;
@@ -262,7 +388,7 @@ class _TomExpandableListFormState<TItem extends TomClass,
   }
 
   @override
-  void didUpdateWidget(covariant TomExpandableListForm<TItem, TForm> old) {
+  void didUpdateWidget(covariant _TomExpandableListFormImpl<TItem, TForm> old) {
     super.didUpdateWidget(old);
     if (!identical(old.controller, widget.controller)) {
       _detachController();
@@ -355,6 +481,14 @@ class _TomExpandableListFormState<TItem extends TomClass,
     }
   }
 
+  Widget? _buildEmpty(BuildContext context) {
+    final builder = widget.emptyBuilder;
+    if (builder != null) return builder(context);
+    final text = widget.emptyText;
+    if (text != null && text.isNotEmpty) return Text(text);
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final list = widget.listForm;
@@ -364,7 +498,7 @@ class _TomExpandableListFormState<TItem extends TomClass,
     if (header != null) children.add(header);
 
     if (list.isEmpty) {
-      final empty = widget.emptyBuilder?.call(context);
+      final empty = _buildEmpty(context);
       if (empty != null) children.add(empty);
     } else if (widget.reorderable) {
       children.add(ReorderableListView.builder(
