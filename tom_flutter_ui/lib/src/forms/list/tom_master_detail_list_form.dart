@@ -51,12 +51,21 @@ import 'tom_list_form.dart';
 /// consulted (each falls back to the constructor argument or a hard-
 /// coded default if no resource exists):
 ///
-/// | Key                          | Type        | Default                     |
-/// |------------------------------|-------------|-----------------------------|
-/// | `<basePath>.padding`         | EdgeInsets  | (no padding)                |
-/// | `<basePath>.empty`           | string      | the built-in italic hint    |
-/// | `<basePath>.masterPaneWidth` | double      | `280`                       |
-/// | `<basePath>.gap`             | double      | `16`                        |
+/// | Key                            | Type        | Default                     |
+/// |--------------------------------|-------------|-----------------------------|
+/// | `<basePath>.padding`           | EdgeInsets  | (no padding)                |
+/// | `<basePath>.empty`             | string      | the built-in italic hint    |
+/// | `<basePath>.masterPaneWidth`   | double      | `280`                       |
+/// | `<basePath>.gap`               | double      | `16`                        |
+/// | `<basePath>.minMasterPaneWidth`| double      | `120`                       |
+/// | `<basePath>.maxMasterPaneWidth`| double      | (half of viewport)          |
+///
+/// **Draggable splitter.** Pass [draggableSplitter]: true to make the
+/// gap between the master and detail panes a horizontal-resize handle.
+/// The user can then drag the splitter to widen or shrink the master
+/// pane between [minMasterPaneWidth] and [maxMasterPaneWidth] (or, when
+/// [maxMasterPaneWidth] is null, half the available width). The starting
+/// width is [masterPaneWidth] (or its resource fallback).
 ///
 /// **Authorization.** The whole widget passes through the standard
 /// [TomPolicyNodeBase] gate at `<basePath>` — `none` hides the entire
@@ -84,15 +93,25 @@ class TomMasterDetailListForm<TItem extends TomClass,
     EdgeInsetsGeometry? padding,
     this.guardUnsavedSelectionChange = true,
     this.initialSelectedIndex,
+    this.draggableSplitter = false,
+    double? minMasterPaneWidth,
+    double? maxMasterPaneWidth,
   })  : _masterPaneWidth = masterPaneWidth,
         _gap = gap,
-        _padding = padding {
+        _padding = padding,
+        _minMasterPaneWidth = minMasterPaneWidth,
+        _maxMasterPaneWidth = maxMasterPaneWidth {
     _resolvedMasterPaneWidth = _masterPaneWidth ??
         TomCtr.doubleVal(basePath, 'masterPaneWidth') ??
         280.0;
     _resolvedGap = _gap ?? TomCtr.doubleVal(basePath, 'gap') ?? 16.0;
     _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
+    _resolvedMinMasterPaneWidth = _minMasterPaneWidth ??
+        TomCtr.doubleVal(basePath, 'minMasterPaneWidth') ??
+        120.0;
+    _resolvedMaxMasterPaneWidth = _maxMasterPaneWidth ??
+        TomCtr.doubleVal(basePath, 'maxMasterPaneWidth');
   }
 
   /// The list whose rows feed both panes.
@@ -137,16 +156,26 @@ class TomMasterDetailListForm<TItem extends TomClass,
   final double? _masterPaneWidth;
   final double? _gap;
   final EdgeInsetsGeometry? _padding;
+  final double? _minMasterPaneWidth;
+  final double? _maxMasterPaneWidth;
 
   late final double _resolvedMasterPaneWidth;
   late final double _resolvedGap;
   late final EdgeInsetsGeometry? _resolvedPadding;
   late final String? _resolvedEmptyText;
+  late final double _resolvedMinMasterPaneWidth;
+  late final double? _resolvedMaxMasterPaneWidth;
 
   /// When `true` (default), selection changes prompt Save/Discard/Cancel
   /// if the currently-selected row's sub-form is dirty. Set to `false`
   /// to switch silently.
   final bool guardUnsavedSelectionChange;
+
+  /// When `true`, the gap between the master pane and the detail pane
+  /// becomes a draggable splitter handle that lets the user resize the
+  /// master pane interactively. Defaults to `false` so existing
+  /// scaffolds keep their fixed-width master pane.
+  final bool draggableSplitter;
 
   @override
   Widget buildContent(BuildContext context) {
@@ -161,6 +190,9 @@ class TomMasterDetailListForm<TItem extends TomClass,
       padding: _resolvedPadding,
       guardUnsavedSelectionChange: guardUnsavedSelectionChange,
       initialSelectedIndex: initialSelectedIndex,
+      draggableSplitter: draggableSplitter,
+      minMasterPaneWidth: _resolvedMinMasterPaneWidth,
+      maxMasterPaneWidth: _resolvedMaxMasterPaneWidth,
     );
   }
 }
@@ -180,10 +212,13 @@ class _TomMasterDetailListFormImpl<TItem extends TomClass,
     required this.masterPaneWidth,
     required this.gap,
     required this.guardUnsavedSelectionChange,
+    required this.draggableSplitter,
+    required this.minMasterPaneWidth,
     this.emptyDetailBuilder,
     this.emptyText,
     this.padding,
     this.initialSelectedIndex,
+    this.maxMasterPaneWidth,
   });
 
   final TomListForm<TItem, TForm> listForm;
@@ -201,6 +236,9 @@ class _TomMasterDetailListFormImpl<TItem extends TomClass,
   final EdgeInsetsGeometry? padding;
   final bool guardUnsavedSelectionChange;
   final int? initialSelectedIndex;
+  final bool draggableSplitter;
+  final double minMasterPaneWidth;
+  final double? maxMasterPaneWidth;
 
   @override
   State<_TomMasterDetailListFormImpl<TItem, TForm>> createState() =>
@@ -213,11 +251,18 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
     implements TomObserver {
   final TomNInt _selectedIndex = TomNInt(null);
 
+  /// Live master pane width when the splitter is draggable. Initialised
+  /// to the constructor / resource value and adjusted on horizontal
+  /// drag. When the splitter is disabled this field is unused — the
+  /// build path goes straight through `widget.masterPaneWidth`.
+  late double _masterPaneWidth;
+
   @override
   void initState() {
     super.initState();
     widget.listForm.addObserver(this);
     _selectedIndex.addObserver(this);
+    _masterPaneWidth = widget.masterPaneWidth;
     final initial = widget.initialSelectedIndex;
     if (initial != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -238,6 +283,15 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
       // the new list — clear it to avoid the detail pane flashing
       // stale content.
       _selectedIndex | null;
+    }
+    // Reset the live width when the host pushes a new starting width.
+    // We only do so if the user hasn't yet dragged (dragged-from-start
+    // is detected by the live width still equalling the previous
+    // constructor value). This keeps user-driven drags sticky across
+    // unrelated widget rebuilds.
+    if (old.masterPaneWidth != widget.masterPaneWidth &&
+        _masterPaneWidth == old.masterPaneWidth) {
+      _masterPaneWidth = widget.masterPaneWidth;
     }
   }
 
@@ -311,6 +365,48 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
     );
   }
 
+  /// Clamps a candidate master pane width into the [min, max] range,
+  /// where `max` defaults to half of the available width when not
+  /// supplied by the host.
+  double _clampWidth(double candidate, double availableWidth) {
+    final min = widget.minMasterPaneWidth;
+    final max = widget.maxMasterPaneWidth ?? availableWidth / 2;
+    final effectiveMax = max < min ? min : max;
+    if (candidate < min) return min;
+    if (candidate > effectiveMax) return effectiveMax;
+    return candidate;
+  }
+
+  Widget _buildSplitterHandle() {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragUpdate: (details) {
+          final box = context.findRenderObject() as RenderBox?;
+          final available = box?.size.width ?? double.infinity;
+          setState(() {
+            _masterPaneWidth =
+                _clampWidth(_masterPaneWidth + details.delta.dx, available);
+          });
+        },
+        child: SizedBox(
+          width: widget.gap,
+          child: Center(
+            child: Container(
+              width: 2,
+              decoration: BoxDecoration(
+                color:
+                    Theme.of(context).dividerColor.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = ~_selectedIndex;
@@ -334,11 +430,18 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
       );
     }
 
+    final separator = widget.draggableSplitter
+        ? _buildSplitterHandle()
+        : SizedBox(width: widget.gap);
+    final effectiveWidth = widget.draggableSplitter
+        ? _masterPaneWidth
+        : widget.masterPaneWidth;
+
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(width: widget.masterPaneWidth, child: master),
-        SizedBox(width: widget.gap),
+        SizedBox(width: effectiveWidth, child: master),
+        separator,
         Expanded(child: detail),
       ],
     );
