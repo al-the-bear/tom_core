@@ -61,6 +61,15 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     // `getMembers()` can't discover it — explicit registration closes
     // that gap.
     parentForm?.registerChildContainer(this);
+    // Forward every notification from the inner TomList — which already
+    // observes each contained sub-form per the kernel chain
+    // (field.notifyObservers → form.notifyObservers via TomClass member
+    // observation → TomList.notifyObservers via element observation) — to
+    // this list-form's own observers. That way row-level field edits
+    // automatically wake up anything observing this list (Save buttons,
+    // dirty chips, item-table builders), without each sub-form needing a
+    // hand-rolled bubble listener.
+    _forms >> (_) => notifyObservers();
   }
 
   /// Stable resource / event id for the list. Used as the `source` field
@@ -75,7 +84,13 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   final TomForm? _parentForm;
   TomForm? get parentForm => _parentForm;
 
-  final List<TForm> _forms = [];
+  /// The sub-forms backing this list. Stored as a kernel [TomList] so
+  /// element observation is automatic: every contained [TForm] is watched
+  /// for value-channel notifications, which propagate up to this list-form
+  /// via the forwarder installed in the constructor. Add / insert /
+  /// removeAt / clear all use the standard [TomList] mutators so the
+  /// add / remove observer wiring stays in sync.
+  final TomList<TForm> _forms = TomList<TForm>();
 
   /// The bound list (back-reference for save push-back).
   TomList<TItem>? _binding;
@@ -92,7 +107,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   // --- Read-only views ---
 
   /// All currently mounted sub-forms in their list order.
-  List<TForm> get forms => List.unmodifiable(_forms);
+  List<TForm> get forms => List<TForm>.unmodifiable(_forms);
 
   /// Number of sub-forms (== bound list length).
   int get length => _forms.length;
@@ -410,13 +425,6 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
         '("$listId") so resources are shared, got "${form.formId}".',
       );
     }
-    // Bubble row-level form events into this list's observer channel so
-    // anything observing the list (e.g. the parent form's dirty-tracking
-    // UI) re-evaluates when a row's field changes — not only on the
-    // structural add / remove / move / bind / unbind notifications. The
-    // bubble listener is removed automatically when the sub-form is
-    // disposed (TomForm.dispose clears _listeners).
-    form.addListener(_ChildFormBubbleListener(notifyObservers));
     return form;
   }
 
@@ -430,15 +438,3 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   }
 }
 
-/// Listener that re-fires a list's [TomObservable.notifyObservers] in
-/// response to any event raised by one of its sub-forms. Used by
-/// [TomListForm._instantiate] so observers of the list react to row-level
-/// edits and not only structural mutations.
-class _ChildFormBubbleListener with TomFormEventListener {
-  _ChildFormBubbleListener(this._notify);
-
-  final void Function() _notify;
-
-  @override
-  void handleEvent(TomFormEvent event) => _notify();
-}
