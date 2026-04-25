@@ -339,6 +339,76 @@ void main() {
       expect(removeBtn.onPressed, isNull,
           reason: 'Remove must be disabled when selectedIndex is null');
     });
+
+    testWidgets(
+        'Add/Remove and Move-up/down render in two stacked Wrap groups',
+        (tester) async {
+      // Bug (a): in master-detail layouts the toolbar previously placed
+      // all four buttons in a single Wrap; the wide Add/Remove + narrow
+      // Move arrows wrapped lopsidedly. The current contract is: when
+      // both groups are visible they must occupy distinct rows so the
+      // arrows always sit together.
+      final form = makeBound(items: 3);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomListFormToolbar<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          selectedIndex: 1,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final wraps = find.descendant(
+        of: find.byType(TomListFormToolbar<OrderItem, OrderItemForm>),
+        matching: find.byType(Wrap),
+      );
+      expect(wraps, findsNWidgets(2),
+          reason:
+              'Both action groups visible → toolbar must render two stacked Wraps');
+
+      // The Add/Remove (FilledButton) live in one Wrap; Move-up / Move-down
+      // (IconButton) live in the other.
+      final addBtnFinder = find.widgetWithText(FilledButton, 'Add');
+      final moveUpFinder = find.byTooltip('Move up');
+      expect(addBtnFinder, findsOneWidget);
+      expect(moveUpFinder, findsOneWidget);
+
+      Wrap ancestorWrapOf(Finder f) => tester.widget<Wrap>(
+            find.ancestor(of: f, matching: find.byType(Wrap)).first,
+          );
+      expect(identical(ancestorWrapOf(addBtnFinder),
+              ancestorWrapOf(moveUpFinder)),
+          isFalse,
+          reason: 'Add and Move up must live in different Wraps');
+    });
+
+    testWidgets(
+        'collapses to a single Wrap when only one action group is visible',
+        (tester) async {
+      // Backwards-compat: hosts that hide either group should keep the
+      // single-row historical layout.
+      final form = makeBound(items: 3);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomListFormToolbar<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          selectedIndex: 1,
+          showMoveUp: false,
+          showMoveDown: false,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final wraps = find.descendant(
+        of: find.byType(TomListFormToolbar<OrderItem, OrderItemForm>),
+        matching: find.byType(Wrap),
+      );
+      expect(wraps, findsOneWidget,
+          reason:
+              'Only the Add/Remove group is visible — the toolbar must render a single Wrap');
+    });
   });
 
   // -------------------------------------------------------------------------
