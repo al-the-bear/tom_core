@@ -376,6 +376,133 @@ void main() {
           reason: 'previous detail must be replaced');
     });
 
+    testWidgets(
+        'draggableSplitter widens / narrows the master pane on horizontal drag',
+        (tester) async {
+      // Bug (b): the gap between the master and detail panes must be
+      // optionally draggable. With draggableSplitter: true a horizontal
+      // drag on the gap region should resize the master pane within
+      // the [min, max] range.
+      final form = makeBound(items: 2);
+      addTearDown(form.dispose);
+
+      const startWidth = 220.0;
+      await tester.pumpWidget(host(
+        TomMasterDetailListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          masterPaneWidth: startWidth,
+          gap: 16,
+          draggableSplitter: true,
+          minMasterPaneWidth: 100,
+          maxMasterPaneWidth: 400,
+          masterBuilder: (ctx, list, sel, selectIndex) =>
+              const ColoredBox(
+                  key: ValueKey('master-pane'),
+                  color: Color(0xFFEEEEEE)),
+          detailBuilder: (ctx, i, rowForm) => const Text('detail'),
+          emptyDetailBuilder: (_) => const Text('empty'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final masterFinder = find.byKey(const ValueKey('master-pane'));
+      final initialWidth = tester.getSize(masterFinder).width;
+      expect(initialWidth, startWidth,
+          reason: 'master pane must start at masterPaneWidth');
+
+      // Find the splitter handle — the GestureDetector is sized exactly
+      // `gap` (16) wide and is the only one in this widget subtree.
+      final gestureFinder = find.descendant(
+        of: find.byType(TomMasterDetailListForm<OrderItem, OrderItemForm>),
+        matching: find.byType(GestureDetector),
+      );
+      expect(gestureFinder, findsOneWidget,
+          reason: 'draggable splitter must expose a GestureDetector');
+
+      // Drag the splitter +60px to the right.
+      await tester.drag(gestureFinder, const Offset(60, 0));
+      await tester.pumpAndSettle();
+      final widerWidth = tester.getSize(masterFinder).width;
+      expect(widerWidth, closeTo(startWidth + 60, 0.1),
+          reason: 'rightward drag must widen the master pane by the drag delta');
+
+      // Drag the splitter back -120px → narrower than the start.
+      await tester.drag(gestureFinder, const Offset(-120, 0));
+      await tester.pumpAndSettle();
+      final narrowerWidth = tester.getSize(masterFinder).width;
+      expect(narrowerWidth, closeTo(startWidth - 60, 0.1),
+          reason: 'leftward drag must narrow the master pane');
+    });
+
+    testWidgets(
+        'draggableSplitter clamps the master pane to [min, max]',
+        (tester) async {
+      final form = makeBound(items: 2);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomMasterDetailListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          masterPaneWidth: 200,
+          gap: 16,
+          draggableSplitter: true,
+          minMasterPaneWidth: 150,
+          maxMasterPaneWidth: 300,
+          masterBuilder: (ctx, list, sel, selectIndex) =>
+              const ColoredBox(
+                  key: ValueKey('master-pane'),
+                  color: Color(0xFFEEEEEE)),
+          detailBuilder: (ctx, i, rowForm) => const Text('detail'),
+          emptyDetailBuilder: (_) => const Text('empty'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final masterFinder = find.byKey(const ValueKey('master-pane'));
+      final gestureFinder = find.descendant(
+        of: find.byType(TomMasterDetailListForm<OrderItem, OrderItemForm>),
+        matching: find.byType(GestureDetector),
+      );
+
+      // Try to drag way past the max → must clamp to 300.
+      await tester.drag(gestureFinder, const Offset(500, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(masterFinder).width, 300,
+          reason: 'rightward over-drag must clamp to maxMasterPaneWidth');
+
+      // Now drag way past the min → must clamp to 150.
+      await tester.drag(gestureFinder, const Offset(-500, 0));
+      await tester.pumpAndSettle();
+      expect(tester.getSize(masterFinder).width, 150,
+          reason: 'leftward over-drag must clamp to minMasterPaneWidth');
+    });
+
+    testWidgets(
+        'draggableSplitter defaults to false (no GestureDetector in the gap)',
+        (tester) async {
+      final form = makeBound(items: 1);
+      addTearDown(form.dispose);
+
+      await tester.pumpWidget(host(
+        TomMasterDetailListForm<OrderItem, OrderItemForm>(
+          listForm: form.items,
+          masterBuilder: (ctx, list, sel, selectIndex) =>
+              const SizedBox.shrink(),
+          detailBuilder: (ctx, i, rowForm) => const Text('detail'),
+          emptyDetailBuilder: (_) => const Text('empty'),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final gestureInWidget = find.descendant(
+        of: find.byType(TomMasterDetailListForm<OrderItem, OrderItemForm>),
+        matching: find.byType(GestureDetector),
+      );
+      expect(gestureInWidget, findsNothing,
+          reason:
+              'opt-in only — without draggableSplitter the gap is a plain SizedBox');
+    });
+
     testWidgets('emptyDetailBuilder renders when list is empty',
         (tester) async {
       final form = makeBound(items: 0);
