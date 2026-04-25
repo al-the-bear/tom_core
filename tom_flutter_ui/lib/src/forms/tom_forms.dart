@@ -38,9 +38,11 @@ export 'fields/tom_form_bool_field.dart';
 export 'list/tom_list_form.dart';
 export 'list/tom_inline_list_form.dart';
 export 'list/tom_expandable_list_form.dart';
+export 'list/tom_master_detail_list_form.dart';
+export 'list/tom_list_form_toolbar.dart';
+export 'list/tom_reorder_handle.dart';
 export 'widgets/tom_unsaved_changes_guard.dart';
 export 'widgets/tom_error_view.dart';
-export 'widgets/tom_master_detail_scaffold.dart';
 export 'widgets/tom_row_error_strip.dart';
 
 // Phase 3 — numeric, date/time, duration field types

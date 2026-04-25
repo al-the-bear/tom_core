@@ -1,8 +1,9 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../tom_form.dart';
 import 'tom_list_form.dart';
+import 'tom_reorder_handle.dart';
 
 // ---------------------------------------------------------------------------
 // TomExpandableListForm — Phase 2a §16
@@ -134,6 +135,9 @@ class TomExpandableListForm<TItem extends TomClass,
     this.onExpansionChanged,
     this.padding,
     this.crossAxisAlignment = CrossAxisAlignment.stretch,
+    this.reorderable = false,
+    this.onReorder,
+    this.proxyDecorator,
   });
 
   /// The list whose rows are rendered as expandable tiles.
@@ -216,6 +220,26 @@ class TomExpandableListForm<TItem extends TomClass,
   /// [CrossAxisAlignment.stretch] so rows fill the available width.
   final CrossAxisAlignment crossAxisAlignment;
 
+  /// When `true`, rows are wrapped in a [ReorderableListView] so the
+  /// user can drag them into a new order via [TomReorderHandle]
+  /// instances embedded inside [summaryBuilder]. Reorder events forward
+  /// to [TomListForm.reorder] (and [onReorder] if supplied). The
+  /// [rowSeparatorBuilder] is ignored in reorderable mode (place
+  /// separator chrome inside the row body instead).
+  final bool reorderable;
+
+  /// Optional reorder hook fired *after* [TomListForm.reorder] runs.
+  /// Arguments use [TomListForm] semantics — `to` is the destination
+  /// index AFTER the reorder (NOT the pre-removal index that
+  /// [ReorderableListView] reports natively).
+  final void Function(int from, int to)? onReorder;
+
+  /// Custom proxy decorator forwarded to [ReorderableListView] when
+  /// [reorderable] is true. Use to style the floating row that follows
+  /// the user's pointer during a drag.
+  final Widget Function(Widget child, int index, Animation<double> animation)?
+      proxyDecorator;
+
   @override
   State<TomExpandableListForm<TItem, TForm>> createState() =>
       _TomExpandableListFormState<TItem, TForm>();
@@ -286,6 +310,22 @@ class _TomExpandableListFormState<TItem extends TomClass,
     if (mounted) setState(() {});
   }
 
+  /// Compute the post-move index of a row that was at [original] before
+  /// a move that took the row at [from] to position [to]. Used to keep
+  /// the controller's expanded-set aligned after a drag-reorder.
+  int _remapIndexAfterMove(int original, int from, int to) {
+    if (original == from) return to;
+    if (from < to) {
+      // Moving downward: rows in [from+1 .. to] shift up by one.
+      if (original > from && original <= to) return original - 1;
+      return original;
+    } else {
+      // Moving upward: rows in [to .. from-1] shift down by one.
+      if (original >= to && original < from) return original + 1;
+      return original;
+    }
+  }
+
   Future<void> _toggle(int index) async {
     final form = widget.listForm[index];
     final isOpen = _controller.isExpanded(index);
@@ -326,6 +366,52 @@ class _TomExpandableListFormState<TItem extends TomClass,
     if (list.isEmpty) {
       final empty = widget.emptyBuilder?.call(context);
       if (empty != null) children.add(empty);
+    } else if (widget.reorderable) {
+      children.add(ReorderableListView.builder(
+        shrinkWrap: true,
+        buildDefaultDragHandles: false,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: list.length,
+        proxyDecorator: widget.proxyDecorator,
+        onReorder: (from, to) {
+          final adjusted = to > from ? to - 1 : to;
+          if (adjusted == from) return;
+          // Recompute expansion state after the move so the dragged
+          // row stays in its previous open/closed state at the new
+          // index.
+          final wasExpanded = _controller.isExpanded(from);
+          // Build a new expansion set with each index remapped to its
+          // post-reorder position. (singleOpen vs multipleOpen treated
+          // identically — we're moving rows, not toggling them.)
+          final remapped = <int>{};
+          for (final idx in _controller.expanded) {
+            remapped.add(_remapIndexAfterMove(idx, from, adjusted));
+          }
+          _controller._expanded
+            ..clear()
+            ..addAll(remapped);
+          // Make sure the dragged row's state is preserved at its new
+          // index in case the remap ate it (e.g. drag from collapsed
+          // sibling).
+          if (wasExpanded) {
+            _controller._expanded.add(adjusted);
+          }
+          list.reorder(from, adjusted);
+          widget.onReorder?.call(from, adjusted);
+        },
+        itemBuilder: (context, i) {
+          return _TomExpandableRow<TItem, TForm>(
+            key: ValueKey('tom-expandable-row-${list[i].hashCode}-$i-'
+                '${_controller.isExpanded(i) ? 'open' : 'closed'}'),
+            index: i,
+            rowForm: list[i],
+            isExpanded: _controller.isExpanded(i),
+            summaryBuilder: widget.summaryBuilder,
+            bodyBuilder: widget.bodyBuilder,
+            onTap: () => _toggle(i),
+          );
+        },
+      ));
     } else {
       for (var i = 0; i < list.length; i++) {
         if (i > 0 && widget.rowSeparatorBuilder != null) {
