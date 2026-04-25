@@ -322,4 +322,45 @@ void main() {
       form.dispose();
     });
   });
+
+  group('TomForm — sibling form change propagation', () {
+    // Regression: when a sibling TomForm bound to the SAME TomClass
+    // mutates a nested list (e.g. a master-detail detail pane removes an
+    // item from order.items), the outer form's `changes` listenable must
+    // fire so dirty-driven UI (Save / Discard buttons) can re-evaluate.
+    //
+    // Before the fix, `_onBindingExternallyChanged` short-circuited at
+    // `if (isDirty) return;` without firing `_changes`, leaving the outer
+    // discard button permanently disabled even though the form had become
+    // dirty via the sibling's edit.
+    test(
+        'outer form.changes fires when sibling list-form removes an element '
+        'and outer becomes dirty', () {
+      final order = makeOrder();
+      final outer = TomScope.withScope('listFormTest', () => OrderForm());
+      final sibling = TomScope.withScope('listFormTest', () => OrderForm());
+      outer.bind(order);
+      sibling.bind(order);
+
+      var outerNotifications = 0;
+      void onChange() => outerNotifications++;
+      outer.changes.addListener(onChange);
+
+      // Sibling removes an item from the shared order.items list.
+      sibling.items.removeAt(0);
+
+      // Outer's changes channel must fire so isDirty-bound UI re-renders.
+      expect(outerNotifications, greaterThan(0),
+          reason:
+              'outer.changes should fire after sibling structural mutation');
+      // And the outer form must actually report dirty.
+      expect(outer.isDirty, isTrue,
+          reason: 'outer.items.hasStructuralChanges should propagate '
+              'into outer.isDirty');
+
+      outer.changes.removeListener(onChange);
+      outer.dispose();
+      sibling.dispose();
+    });
+  });
 }

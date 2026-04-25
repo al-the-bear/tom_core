@@ -196,24 +196,34 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   /// Fires when the bound [TomClass] mutates from outside this form —
   /// typically because a sibling form (e.g. a master-detail scaffold's
-  /// standalone detail form) wrote new values to the same TomClass.
+  /// standalone detail form) wrote new values to the same TomClass, or
+  /// because a nested list inside the binding had elements added/removed
+  /// through a sibling [TomListForm].
   ///
-  /// Updates field values so the UI reflects the external change, but
-  /// deliberately does NOT update the initial snapshot / `_initialValue`.
-  /// Preserving the bind-time baseline means the outer form's [discard]
-  /// can still roll back sub-item edits that were committed through the
-  /// sibling form — if we updated the snapshot here, "Discard" would
-  /// reset to the post-edit state instead of the original.
+  /// Always fires [_changes] so any UI reading aggregate state (notably
+  /// [isDirty] for save/discard buttons) re-renders. The dirty flag itself
+  /// can flip from external mutations — e.g. a sibling form removes an
+  /// element from a nested TomList, which changes our nested
+  /// [TomListForm.hasStructuralChanges] from false to true. Without firing
+  /// here, the outer form's discard button would stay disabled.
   ///
-  /// Guard conditions (same as before):
-  ///   - skip if we are currently writing to the binding ourselves
-  ///     (re-entrancy guard for `_applySave`),
-  ///   - skip if the form already has local edits (don't clobber
-  ///     in-flight user input).
+  /// Snapshot-restore is gated below and only runs when the form is not
+  /// dirty:
+  ///   - if dirty, leave field values alone so we don't clobber in-flight
+  ///     user input;
+  ///   - if not dirty, re-snapshot from the (now externally-updated)
+  ///     binding so the UI shows the latest data.
+  ///
+  /// Re-entrancy: skipped entirely while we are writing back to the
+  /// binding ourselves ([_writingBackToBinding] guard for [_applySave]).
   void _onBindingExternallyChanged() {
     if (_writingBackToBinding) return;
     final binding = _binding;
     if (binding == null) return;
+    // Always notify dependent UI — external mutations may have flipped
+    // isDirty (e.g. via a sibling TomListForm removing a nested element)
+    // and the "Save / Discard" buttons must re-read aggregate state.
+    _changes.fire();
     if (isDirty) return;
     setValues(binding.getValues());
     // Clear stale validation state only — do NOT touch _initialSnapshot or
@@ -225,7 +235,6 @@ abstract class TomForm<T extends TomClass> extends TomClass
         field._validationNotifier.value = const ValidationPristine();
       }
     }
-    _changes.fire();
   }
 
   /// Core of [bind]: per-form lifecycle reset + recursion into nested
