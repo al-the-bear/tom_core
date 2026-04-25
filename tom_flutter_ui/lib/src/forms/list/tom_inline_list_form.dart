@@ -5,7 +5,21 @@ import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
 import '../tom_form.dart';
 import 'tom_list_form.dart';
+import 'tom_list_row_move_buttons.dart';
 import 'tom_reorder_handle.dart';
+
+/// Where to attach the per-row Move-up / Move-down buttons that
+/// [TomInlineListForm] auto-prepends or auto-appends when
+/// [TomInlineListForm.showRowMoveButtons] is `true`.
+enum TomRowMoveButtonsPosition {
+  /// Render the move buttons before the user's row body. Useful when
+  /// the row already has trailing chrome (delete buttons, reorder
+  /// handles).
+  leading,
+
+  /// Render the move buttons after the user's row body. Default.
+  trailing,
+}
 
 // ---------------------------------------------------------------------------
 // TomInlineListForm — Phase 2a §16
@@ -104,6 +118,8 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     this.reorderable = false,
     this.onReorder,
     this.proxyDecorator,
+    this.showRowMoveButtons = false,
+    this.rowMoveButtonsPosition = TomRowMoveButtonsPosition.trailing,
   }) : _padding = padding {
     _resolvedPadding = _padding ?? TomCtr.edgeInsets(basePath, 'padding');
     _resolvedEmptyText = TomCtr.textOrNull(basePath, 'empty');
@@ -185,6 +201,24 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   final Widget Function(Widget child, int index, Animation<double> animation)?
       proxyDecorator;
 
+  /// When `true`, the inline list automatically prepends or appends a
+  /// pair of [TomListRowMoveButtons] to every row built by [rowBuilder].
+  ///
+  /// Use this when there is no master pane to host the toolbar's
+  /// selection-driven move buttons — every row owns its own up/down
+  /// arrows so the user can reorder without ever picking a "selected"
+  /// row first.
+  ///
+  /// The buttons are bound to the row's index and call
+  /// [TomListForm.move] directly. Single-row lists render disabled
+  /// arrows, which is the same behaviour as the toolbar.
+  final bool showRowMoveButtons;
+
+  /// Whether the auto-rendered move buttons appear before or after the
+  /// user's row body. Ignored when [showRowMoveButtons] is `false`.
+  /// Defaults to [TomRowMoveButtonsPosition.trailing].
+  final TomRowMoveButtonsPosition rowMoveButtonsPosition;
+
   @override
   Widget buildContent(BuildContext context) {
     return _TomInlineListFormImpl<TItem, TForm>(
@@ -201,6 +235,8 @@ class TomInlineListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
       reorderable: reorderable,
       onReorder: onReorder,
       proxyDecorator: proxyDecorator,
+      showRowMoveButtons: showRowMoveButtons,
+      rowMoveButtonsPosition: rowMoveButtonsPosition,
     );
   }
 }
@@ -218,6 +254,8 @@ class _TomInlineListFormImpl<TItem extends TomClass,
     required this.rowBuilder,
     required this.crossAxisAlignment,
     required this.reorderable,
+    required this.showRowMoveButtons,
+    required this.rowMoveButtonsPosition,
     this.headerBuilder,
     this.footerBuilder,
     this.toolbarBuilder,
@@ -244,6 +282,8 @@ class _TomInlineListFormImpl<TItem extends TomClass,
   final void Function(int from, int to)? onReorder;
   final Widget Function(Widget child, int index, Animation<double> animation)?
       proxyDecorator;
+  final bool showRowMoveButtons;
+  final TomRowMoveButtonsPosition rowMoveButtonsPosition;
 
   @override
   State<_TomInlineListFormImpl<TItem, TForm>> createState() =>
@@ -280,6 +320,27 @@ class _TomInlineListFormImplState<TItem extends TomClass,
     if (mounted) setState(() {});
   }
 
+  /// Wraps the user's row body with leading or trailing per-row move
+  /// buttons when [TomInlineListForm.showRowMoveButtons] is enabled.
+  Widget _wrapRow(BuildContext context, int index, Widget rowBody,
+      TomListForm<TItem, TForm> list) {
+    if (!widget.showRowMoveButtons) return rowBody;
+    final moveButtons = TomListRowMoveButtons<TItem, TForm>(
+      listForm: list,
+      index: index,
+      onReorder: widget.onReorder,
+    );
+    final children = widget.rowMoveButtonsPosition ==
+            TomRowMoveButtonsPosition.leading
+        ? <Widget>[moveButtons, Expanded(child: rowBody)]
+        : <Widget>[Expanded(child: rowBody), moveButtons];
+    return Row(
+      mainAxisSize: MainAxisSize.max,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: children,
+    );
+  }
+
   Widget _buildRows(BuildContext context, TomListForm<TItem, TForm> list) {
     if (widget.reorderable) {
       return ReorderableListView.builder(
@@ -304,7 +365,8 @@ class _TomInlineListFormImplState<TItem extends TomClass,
           // structural mutation.
           return KeyedSubtree(
             key: ValueKey('tom-inline-row-${list[i].hashCode}-$i'),
-            child: widget.rowBuilder(context, i, list[i]),
+            child: _wrapRow(
+                context, i, widget.rowBuilder(context, i, list[i]), list),
           );
         },
       );
@@ -315,7 +377,8 @@ class _TomInlineListFormImplState<TItem extends TomClass,
       if (i > 0 && widget.rowSeparatorBuilder != null) {
         rowChildren.add(widget.rowSeparatorBuilder!(context, i - 1));
       }
-      rowChildren.add(widget.rowBuilder(context, i, list[i]));
+      rowChildren
+          .add(_wrapRow(context, i, widget.rowBuilder(context, i, list[i]), list));
     }
     return Column(
       crossAxisAlignment: widget.crossAxisAlignment,

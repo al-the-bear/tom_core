@@ -40,6 +40,7 @@ export 'list/tom_inline_list_form.dart';
 export 'list/tom_expandable_list_form.dart';
 export 'list/tom_master_detail_list_form.dart';
 export 'list/tom_list_form_toolbar.dart';
+export 'list/tom_list_row_move_buttons.dart';
 export 'list/tom_reorder_handle.dart';
 export 'widgets/tom_unsaved_changes_guard.dart';
 export 'widgets/tom_error_view.dart';
