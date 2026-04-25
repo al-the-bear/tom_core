@@ -191,6 +191,9 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                   ShippingAddressHDForm>(
                 listForm: _form.shippingAddresses,
                 masterPaneWidth: 200,
+                draggableSplitter: true,
+                minMasterPaneWidth: 140,
+                maxMasterPaneWidth: 360,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
                         AddressMasterPane(
@@ -223,6 +226,9 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
               child: TomMasterDetailListForm<OrderHD, OrderHDForm>(
                 listForm: _form.orders,
                 masterPaneWidth: 200,
+                draggableSplitter: true,
+                minMasterPaneWidth: 140,
+                maxMasterPaneWidth: 360,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
                         OrderMasterPane(

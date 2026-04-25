@@ -377,32 +377,64 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
     return candidate;
   }
 
-  Widget _buildSplitterHandle() {
-    return MouseRegion(
-      cursor: SystemMouseCursors.resizeColumn,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onHorizontalDragUpdate: (details) {
-          final box = context.findRenderObject() as RenderBox?;
-          final available = box?.size.width ?? double.infinity;
-          setState(() {
-            _masterPaneWidth =
-                _clampWidth(_masterPaneWidth + details.delta.dx, available);
-          });
-        },
-        child: SizedBox(
-          width: widget.gap,
-          child: Center(
+  /// Minimum mouse-friendly hit target around the visual splitter line.
+  /// The visual line stays at 2px in the centre of the gap; we widen the
+  /// gesture region to at least this many logical pixels so the user
+  /// doesn't have to land the cursor on the 2px stripe to start a drag.
+  static const double _minHandleHitWidth = 12.0;
+
+  Widget _buildSplitterHandle(BuildContext context, double availableWidth) {
+    // Make the gesture-active region at least [_minHandleHitWidth] wide
+    // even when the host's `gap` is small. We render the handle inside
+    // a fixed-width SizedBox(widget.gap) but use Stack + Positioned so
+    // the GestureDetector overflows on either side when needed — that
+    // way the visible layout still respects `gap` while the drag area
+    // is comfortable to hit.
+    final gap = widget.gap;
+    final hitWidth = gap >= _minHandleHitWidth ? gap : _minHandleHitWidth;
+    final overflow = ((hitWidth - gap) / 2).clamp(0.0, double.infinity);
+    final dividerColor = Theme.of(context).dividerColor;
+
+    return SizedBox(
+      width: gap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          // Visible handle — thin centred line.
+          Center(
             child: Container(
               width: 2,
               decoration: BoxDecoration(
-                color:
-                    Theme.of(context).dividerColor.withValues(alpha: 0.6),
+                color: dividerColor.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(1),
               ),
             ),
           ),
-        ),
+          // Hit target — wider invisible region with the resize cursor
+          // and the drag handler. May overflow the gap on either side
+          // (Stack(clipBehavior: none)) when `gap` is narrow.
+          Positioned(
+            left: -overflow,
+            right: -overflow,
+            top: 0,
+            bottom: 0,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.resizeColumn,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragUpdate: (details) {
+                  setState(() {
+                    _masterPaneWidth = _clampWidth(
+                      _masterPaneWidth + details.delta.dx,
+                      availableWidth,
+                    );
+                  });
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -430,24 +462,46 @@ class _TomMasterDetailListFormImplState<TItem extends TomClass,
       );
     }
 
-    final separator = widget.draggableSplitter
-        ? _buildSplitterHandle()
-        : SizedBox(width: widget.gap);
-    final effectiveWidth = widget.draggableSplitter
-        ? _masterPaneWidth
-        : widget.masterPaneWidth;
+    Widget rowFor(double availableWidth) {
+      final separator = widget.draggableSplitter
+          ? _buildSplitterHandle(context, availableWidth)
+          : SizedBox(width: widget.gap);
+      // When the splitter is draggable, also clamp the live width on
+      // every build so a viewport that shrinks below our current width
+      // doesn't leave the master pane bleeding into the detail.
+      final effectiveWidth = widget.draggableSplitter
+          ? _clampWidth(_masterPaneWidth, availableWidth)
+          : widget.masterPaneWidth;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(width: effectiveWidth, child: master),
+          separator,
+          Expanded(child: detail),
+        ],
+      );
+    }
 
-    final row = Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(width: effectiveWidth, child: master),
-        separator,
-        Expanded(child: detail),
-      ],
-    );
+    Widget body;
+    if (widget.draggableSplitter) {
+      // LayoutBuilder gives us the actual content-area width every
+      // frame — far more reliable than reaching into the State's own
+      // RenderObject (which previously only surfaced *after* the first
+      // layout pass and missed any padding the host applied above us).
+      body = LayoutBuilder(
+        builder: (context, constraints) {
+          final available = constraints.maxWidth.isFinite
+              ? constraints.maxWidth
+              : double.infinity;
+          return rowFor(available);
+        },
+      );
+    } else {
+      body = rowFor(double.infinity);
+    }
 
     return widget.padding != null
-        ? Padding(padding: widget.padding!, child: row)
-        : row;
+        ? Padding(padding: widget.padding!, child: body)
+        : body;
   }
 }
