@@ -14,9 +14,10 @@ import '../state/phase_hd_state.dart';
 // Customer info and billing address are editable in-place (identical to
 // Demo H-D). The shipping addresses and orders sections show fully
 // read-only summary lists. Each section header has a single "Edit list"
-// button that opens a modal overlay containing a TomMasterDetailScaffold
-// (master list on the left, full editor on the right) — the same panes
-// used by Demo H-D, but presented as a focused editing surface.
+// button that opens a modal overlay containing a TomMasterDetailListForm
+// (master list on the left, the row's own sub-form on the right) — the
+// same panes used by Demo H-D, but presented as a focused editing
+// surface.
 //
 // Adding and removing items happens inside the overlay. Closing the
 // overlay returns the user to the read-only summary which immediately
@@ -452,29 +453,10 @@ class _OrderROListState extends State<_OrderROList> implements TomObserver {
 // Shipping addresses edit overlay
 // ---------------------------------------------------------------------------
 
-class _ShippingEditOverlay extends StatefulWidget {
+class _ShippingEditOverlay extends StatelessWidget {
   const _ShippingEditOverlay({required this.listForm});
 
   final TomListForm<ShippingAddressHD, ShippingAddressHDForm> listForm;
-
-  @override
-  State<_ShippingEditOverlay> createState() => _ShippingEditOverlayState();
-}
-
-class _ShippingEditOverlayState extends State<_ShippingEditOverlay> {
-  late final ShippingAddressHDForm _detail;
-
-  @override
-  void initState() {
-    super.initState();
-    _detail = TomScope.withScope('demoHE', () => ShippingAddressHDForm());
-  }
-
-  @override
-  void dispose() {
-    _detail.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -501,10 +483,9 @@ class _ShippingEditOverlayState extends State<_ShippingEditOverlay> {
               const Divider(),
               const SizedBox(height: 8),
               Expanded(
-                child: TomMasterDetailScaffold<ShippingAddressHD,
+                child: TomMasterDetailListForm<ShippingAddressHD,
                     ShippingAddressHDForm>(
-                  listForm: widget.listForm,
-                  detailForm: _detail,
+                  listForm: listForm,
                   masterPaneWidth: 220,
                   masterBuilder:
                       (context, listForm, selected, selectIndex) =>
@@ -513,8 +494,8 @@ class _ShippingEditOverlayState extends State<_ShippingEditOverlay> {
                     selectedIndex: selected,
                     selectIndex: selectIndex,
                   ),
-                  detailBuilder: (context, form) =>
-                      AddressDetailPane(form: form),
+                  detailBuilder: (context, _, rowForm) =>
+                      AddressDetailPane(form: rowForm),
                 ),
               ),
               const SizedBox(height: 12),
@@ -537,32 +518,10 @@ class _ShippingEditOverlayState extends State<_ShippingEditOverlay> {
 // Orders edit overlay
 // ---------------------------------------------------------------------------
 
-class _OrderEditOverlay extends StatefulWidget {
+class _OrderEditOverlay extends StatelessWidget {
   const _OrderEditOverlay({required this.parentForm});
 
   final CustomerHDForm parentForm;
-
-  @override
-  State<_OrderEditOverlay> createState() => _OrderEditOverlayState();
-}
-
-class _OrderEditOverlayState extends State<_OrderEditOverlay> {
-  late final OrderHDForm _detail;
-
-  @override
-  void initState() {
-    super.initState();
-    // createOrderDetailForm() pre-wires the shipping address picker so the
-    // "Ship to" field lists the customer's current addresses.
-    _detail = TomScope.withScope(
-        'demoHE', () => widget.parentForm.createOrderDetailForm());
-  }
-
-  @override
-  void dispose() {
-    _detail.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -589,9 +548,8 @@ class _OrderEditOverlayState extends State<_OrderEditOverlay> {
               const Divider(),
               const SizedBox(height: 8),
               Expanded(
-                child: TomMasterDetailScaffold<OrderHD, OrderHDForm>(
-                  listForm: widget.parentForm.orders,
-                  detailForm: _detail,
+                child: TomMasterDetailListForm<OrderHD, OrderHDForm>(
+                  listForm: parentForm.orders,
                   masterPaneWidth: 220,
                   masterBuilder:
                       (context, listForm, selected, selectIndex) =>
@@ -600,8 +558,8 @@ class _OrderEditOverlayState extends State<_OrderEditOverlay> {
                     selectedIndex: selected,
                     selectIndex: selectIndex,
                   ),
-                  detailBuilder: (context, form) =>
-                      OrderDetailPane(form: form),
+                  detailBuilder: (context, _, rowForm) =>
+                      OrderDetailPane(form: rowForm),
                 ),
               ),
               const SizedBox(height: 12),

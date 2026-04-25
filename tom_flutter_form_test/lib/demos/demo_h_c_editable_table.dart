@@ -338,10 +338,13 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
                 // still see an infinite max width via the horizontal
                 // scroll viewport, blowing up Spacer/Expanded layouts.
                 // Bumped 760 → 870 in round-5 (e) to absorb the
-                // wider product cell.
-                width: 870,
+                // wider product cell. +26 in this round to make room
+                // for the drag-handle column on the left.
+                width: 896,
                 child: TomInlineListForm<OrderItem, OrderItemForm>(
                   listForm: items,
+                  reorderable: true,
+                  onReorder: (_, _) => setState(() {}),
                   headerBuilder: (_, _) => _variantBHeaderRow(theme),
                   emptyBuilder: (context) => _emptyState(context),
                   rowBuilder: (context, i, rowForm) =>
@@ -362,6 +365,8 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
       child: Row(
         children: [
+          // Spacer for drag-handle column to keep title alignment.
+          const SizedBox(width: 22),
           SizedBox(width: 330, child: Text('Product', style: style)),
           const SizedBox(width: 12),
           SizedBox(
@@ -399,6 +404,12 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Drag handle for the inline-list reorder.
+                  Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: TomReorderHandle(index: index),
+                  ),
+                  const SizedBox(width: 4),
                   _quietCell(330, form.productName.widget),
                   const SizedBox(width: 12),
                   _quietCell(70, form.quantity.widget),
@@ -530,16 +541,21 @@ class _DemoHCEditableTableState extends State<DemoHCEditableTable> {
 
   Widget _addRemoveBar(BuildContext context) {
     final items = _form.items;
+    // Reusable Add (the per-row Remove buttons in `_rowActions` cover
+    // single-row removal). Keep the bulk "Remove all" alongside it.
     return Padding(
       padding: const EdgeInsets.all(8),
-      child: Wrap(
-        spacing: 8,
+      child: Row(
         children: [
-          FilledButton.tonalIcon(
-            icon: const Icon(Icons.add, size: 16),
-            label: const Text('Add row'),
-            onPressed: () => setState(() => items.add()),
+          TomListFormToolbar<OrderItem, OrderItemForm>(
+            listForm: items,
+            showRemove: false,
+            showMoveUp: false,
+            showMoveDown: false,
+            addLabel: 'Add row',
+            onSelectionChanged: (_) async => setState(() {}),
           ),
+          const SizedBox(width: 8),
           OutlinedButton.icon(
             icon: const Icon(Icons.delete_sweep_outlined, size: 16),
             label: const Text('Remove all'),

@@ -16,14 +16,17 @@ import '../state/phase_hd_state.dart';
 //
 //   1. Customer info  — fullName, email, phone (direct fields)
 //   2. Billing address — flat address fields on the same form
-//   3. Shipping addresses — TomMasterDetailScaffold: list on left, full
-//      ShippingAddressHDForm on right
-//   4. Orders — TomMasterDetailScaffold: list on left, OrderHDForm on right
-//      The order detail pane shows orderId / date / shippingLabel plus an
-//      inline items table (add / remove / edit all rows in place).
+//   3. Shipping addresses — TomMasterDetailListForm: list on left, the
+//      row's own ShippingAddressHDForm on right (no sibling form)
+//   4. Orders — TomMasterDetailListForm: list on left, the row's own
+//      OrderHDForm on right. Each order detail shows orderId / date /
+//      shippingLabel plus an inline reorderable items table.
 //
 // All four sections share ONE CustomerHDForm, so the form's isDirty
 // aggregates across info + billing + all shipping + all orders.
+//
+// Both master panes use TomReorderHandle for drag reordering and the
+// reusable TomListFormToolbar for add / remove / move-up / move-down.
 //
 // The reusable list/detail panes live in common/customer_hd_panes.dart so
 // Demo H-E can drop the same scaffolds into an edit overlay.
@@ -37,31 +40,16 @@ class DemoHDCustomerForm extends StatefulWidget {
 class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
   late final CustomerHDForm _form;
 
-  // Each master-detail scaffold needs its own stand-alone detail form that
-  // gets rebound to the selected item. The list forms inside _form track
-  // dirty state across all rows; the scaffold's detailForm is what the
-  // user actually edits.
-  late final ShippingAddressHDForm _shippingDetail;
-  late final OrderHDForm _orderDetail;
-
   @override
   void initState() {
     super.initState();
     _form = TomScope.withScope('demoHD', () => CustomerHDForm());
-    _shippingDetail =
-        TomScope.withScope('demoHD', () => ShippingAddressHDForm());
-    // createOrderDetailForm() pre-wires the shipping address picker so the
-    // "Ship to" field lists the customer's current addresses.
-    _orderDetail =
-        TomScope.withScope('demoHD', () => _form.createOrderDetailForm());
     _form.bind(phaseHdCustomer);
   }
 
   @override
   void dispose() {
     _form.dispose();
-    _shippingDetail.dispose();
-    _orderDetail.dispose();
     super.dispose();
   }
 
@@ -118,12 +106,16 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
             const Text(
               'A full customer record bound to one CustomerHDForm. '
               'Direct fields (name, email, phone) and billing address '
-              'sit at the top. Below them, two TomMasterDetailScaffold '
-              'instances handle: (1) the shipping addresses list with a '
-              'full address editor on the right, and (2) the orders list '
-              'with order metadata + an inline DataTable of line items '
-              'on the right. Save / Discard at the bottom covers the '
-              'entire form — isDirty aggregates across all four sections.',
+              'sit at the top. Below them, two TomMasterDetailListForm '
+              'instances handle: (1) the shipping addresses list with '
+              'the row\'s own ShippingAddressHDForm rendered on the '
+              'right, and (2) the orders list with the row\'s own '
+              'OrderHDForm — including an inline reorderable items '
+              'table — on the right. Each master pane uses '
+              'TomListFormToolbar (Add / Remove / Move up / Move down) '
+              'and TomReorderHandle for drag-and-drop reordering. Save '
+              '/ Discard at the bottom covers the entire form — isDirty '
+              'aggregates across all four sections.',
             ),
           ],
         ),
@@ -195,10 +187,9 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
             const SizedBox(height: 8),
             SizedBox(
               height: 380,
-              child: TomMasterDetailScaffold<ShippingAddressHD,
+              child: TomMasterDetailListForm<ShippingAddressHD,
                   ShippingAddressHDForm>(
                 listForm: _form.shippingAddresses,
-                detailForm: _shippingDetail,
                 masterPaneWidth: 200,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
@@ -207,8 +198,8 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                   selectedIndex: selected,
                   selectIndex: selectIndex,
                 ),
-                detailBuilder: (context, form) =>
-                    AddressDetailPane(form: form),
+                detailBuilder: (context, _, rowForm) =>
+                    AddressDetailPane(form: rowForm),
               ),
             ),
           ],
@@ -229,9 +220,8 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
             const SizedBox(height: 8),
             SizedBox(
               height: 560,
-              child: TomMasterDetailScaffold<OrderHD, OrderHDForm>(
+              child: TomMasterDetailListForm<OrderHD, OrderHDForm>(
                 listForm: _form.orders,
-                detailForm: _orderDetail,
                 masterPaneWidth: 200,
                 masterBuilder:
                     (context, listForm, selected, selectIndex) =>
@@ -240,8 +230,8 @@ class _DemoHDCustomerFormState extends State<DemoHDCustomerForm> {
                   selectedIndex: selected,
                   selectIndex: selectIndex,
                 ),
-                detailBuilder: (context, form) =>
-                    OrderDetailPane(form: form),
+                detailBuilder: (context, _, rowForm) =>
+                    OrderDetailPane(form: rowForm),
               ),
             ),
           ],

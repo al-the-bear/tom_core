@@ -377,17 +377,11 @@ class CustomerHDForm extends TomForm<CustomerHD> {
   /// A live [TomSelectableSource<String>] that reads this customer's current
   /// shipping address labels on every [getItems] call.
   ///
-  /// Pass this to standalone [OrderHDForm] instances (e.g. the detail form
-  /// used by [TomMasterDetailScaffold] or an edit dialog) so the "Ship to"
-  /// picker always shows the customer's current addresses.
+  /// Pass this to standalone [OrderHDForm] instances when the picker
+  /// should track the customer's current addresses live (e.g. an
+  /// embedded "create order" form).
   TomSelectableSource<String> get shippingAddressLabelSource =>
       _ShippingLabelSource(() => shippingAddresses);
-
-  /// Creates a standalone [OrderHDForm] pre-wired with this customer's
-  /// shipping address picker. Use as the [TomMasterDetailScaffold.detailForm]
-  /// or inside a dialog that needs a full order editor.
-  OrderHDForm createOrderDetailForm() =>
-      OrderHDForm(shippingLabelSource: shippingAddressLabelSource);
 
   @override
   void createFormElements() {}

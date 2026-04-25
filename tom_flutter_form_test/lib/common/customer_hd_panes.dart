@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../forms/customer_hd_form.dart';
@@ -11,13 +10,19 @@ import '../state/phase_hd_state.dart';
 // These panes are pulled out of demo_h_d_customer_form.dart so the H-E demo
 // can drop the same scaffolds into an edit overlay without duplicating any
 // of the list/detail wiring.
+//
+// All four panes are stateless — selection is owned by the hosting
+// `TomMasterDetailListForm`, list mutations are routed through the
+// reusable `TomListFormToolbar`, and per-row drag handles use
+// `TomReorderHandle` so the rows reorder via either the toolbar arrows
+// or pointer drag.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Shipping address master pane
 // ---------------------------------------------------------------------------
 
-class AddressMasterPane extends StatefulWidget {
+class AddressMasterPane extends StatelessWidget {
   const AddressMasterPane({
     super.key,
     required this.listForm,
@@ -30,38 +35,6 @@ class AddressMasterPane extends StatefulWidget {
   final Future<void> Function(int? index) selectIndex;
 
   @override
-  State<AddressMasterPane> createState() => _AddressMasterPaneState();
-}
-
-class _AddressMasterPaneState extends State<AddressMasterPane>
-    implements TomObserver {
-  @override
-  void initState() {
-    super.initState();
-    widget.listForm.addObserver(this);
-  }
-
-  @override
-  void didUpdateWidget(covariant AddressMasterPane old) {
-    super.didUpdateWidget(old);
-    if (old.listForm != widget.listForm) {
-      old.listForm.removeObserver(this);
-      widget.listForm.addObserver(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.listForm.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void onNotify(TomObservable _) {
-    if (mounted) setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
@@ -72,26 +45,28 @@ class _AddressMasterPaneState extends State<AddressMasterPane>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Addresses (${widget.listForm.length})',
+              child: Text('Addresses (${listForm.length})',
                   style: theme.textTheme.titleSmall),
             ),
             const Divider(height: 8),
             Expanded(
-              child: ListView.builder(
-                itemCount: widget.listForm.length,
-                itemBuilder: (context, i) {
-                  final addr = widget.listForm[i].currentBinding;
-                  final sel = i == widget.selectedIndex;
+              child: TomInlineListForm<ShippingAddressHD,
+                  ShippingAddressHDForm>(
+                listForm: listForm,
+                reorderable: true,
+                onReorder: (from, to) =>
+                    _trackSelection(from, to, selectedIndex, selectIndex),
+                rowBuilder: (context, i, rowForm) {
+                  final addr = rowForm.currentBinding;
+                  final sel = i == selectedIndex;
                   return TomMultiObservableBuilder(
+                    key: ValueKey('h-d-addr-${rowForm.hashCode}'),
                     observables:
                         addr == null ? [] : [addr.label, addr.city],
                     builder: (context) => ListTile(
                       dense: true,
                       selected: sel,
-                      leading: CircleAvatar(
-                          radius: 12,
-                          child: Text('${i + 1}',
-                              style: const TextStyle(fontSize: 10))),
+                      leading: TomReorderHandle(index: i),
                       title: Text(
                         addr?.label.get().isEmpty ?? true
                             ? '(unnamed)'
@@ -104,33 +79,18 @@ class _AddressMasterPaneState extends State<AddressMasterPane>
                       ),
                       subtitle: Text(addr?.city.get() ?? '',
                           overflow: TextOverflow.ellipsis),
-                      onTap: () => widget.selectIndex(i),
+                      onTap: () => selectIndex(i),
                     ),
                   );
                 },
               ),
             ),
             const Divider(height: 8),
-            Wrap(spacing: 6, children: [
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add'),
-                onPressed: () async {
-                  widget.listForm.add();
-                  await widget.selectIndex(widget.listForm.length - 1);
-                },
-              ),
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.delete_outline, size: 14),
-                label: const Text('Remove'),
-                onPressed: widget.selectedIndex == null
-                    ? null
-                    : () async {
-                        widget.listForm.removeAt(widget.selectedIndex!);
-                        await widget.selectIndex(null);
-                      },
-              ),
-            ]),
+            TomListFormToolbar<ShippingAddressHD, ShippingAddressHDForm>(
+              listForm: listForm,
+              selectedIndex: selectedIndex,
+              onSelectionChanged: selectIndex,
+            ),
           ],
         ),
       ),
@@ -225,7 +185,7 @@ class AddressDetailPane extends StatelessWidget {
 // Order master pane
 // ---------------------------------------------------------------------------
 
-class OrderMasterPane extends StatefulWidget {
+class OrderMasterPane extends StatelessWidget {
   const OrderMasterPane({
     super.key,
     required this.listForm,
@@ -238,38 +198,6 @@ class OrderMasterPane extends StatefulWidget {
   final Future<void> Function(int? index) selectIndex;
 
   @override
-  State<OrderMasterPane> createState() => _OrderMasterPaneState();
-}
-
-class _OrderMasterPaneState extends State<OrderMasterPane>
-    implements TomObserver {
-  @override
-  void initState() {
-    super.initState();
-    widget.listForm.addObserver(this);
-  }
-
-  @override
-  void didUpdateWidget(covariant OrderMasterPane old) {
-    super.didUpdateWidget(old);
-    if (old.listForm != widget.listForm) {
-      old.listForm.removeObserver(this);
-      widget.listForm.addObserver(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.listForm.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void onNotify(TomObservable _) {
-    if (mounted) setState(() {});
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
@@ -280,27 +208,28 @@ class _OrderMasterPaneState extends State<OrderMasterPane>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Orders (${widget.listForm.length})',
+              child: Text('Orders (${listForm.length})',
                   style: theme.textTheme.titleSmall),
             ),
             const Divider(height: 8),
             Expanded(
-              child: ListView.builder(
-                itemCount: widget.listForm.length,
-                itemBuilder: (context, i) {
-                  final order = widget.listForm[i].currentBinding;
-                  final sel = i == widget.selectedIndex;
+              child: TomInlineListForm<OrderHD, OrderHDForm>(
+                listForm: listForm,
+                reorderable: true,
+                onReorder: (from, to) =>
+                    _trackSelection(from, to, selectedIndex, selectIndex),
+                rowBuilder: (context, i, rowForm) {
+                  final order = rowForm.currentBinding;
+                  final sel = i == selectedIndex;
                   return TomMultiObservableBuilder(
+                    key: ValueKey('h-d-order-${rowForm.hashCode}'),
                     observables: order == null
                         ? []
                         : [order.orderId, order.orderDate],
                     builder: (context) => ListTile(
                       dense: true,
                       selected: sel,
-                      leading: CircleAvatar(
-                          radius: 12,
-                          child: Text('${i + 1}',
-                              style: const TextStyle(fontSize: 10))),
+                      leading: TomReorderHandle(index: i),
                       title: Text(
                         order?.orderId.get().isEmpty ?? true
                             ? '(new order)'
@@ -313,33 +242,18 @@ class _OrderMasterPaneState extends State<OrderMasterPane>
                       ),
                       subtitle: Text(order?.orderDate.get() ?? '',
                           overflow: TextOverflow.ellipsis),
-                      onTap: () => widget.selectIndex(i),
+                      onTap: () => selectIndex(i),
                     ),
                   );
                 },
               ),
             ),
             const Divider(height: 8),
-            Wrap(spacing: 6, children: [
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('Add'),
-                onPressed: () async {
-                  widget.listForm.add();
-                  await widget.selectIndex(widget.listForm.length - 1);
-                },
-              ),
-              FilledButton.tonalIcon(
-                icon: const Icon(Icons.delete_outline, size: 14),
-                label: const Text('Remove'),
-                onPressed: widget.selectedIndex == null
-                    ? null
-                    : () async {
-                        widget.listForm.removeAt(widget.selectedIndex!);
-                        await widget.selectIndex(null);
-                      },
-              ),
-            ]),
+            TomListFormToolbar<OrderHD, OrderHDForm>(
+              listForm: listForm,
+              selectedIndex: selectedIndex,
+              onSelectionChanged: selectIndex,
+            ),
           ],
         ),
       ),
@@ -348,7 +262,7 @@ class _OrderMasterPaneState extends State<OrderMasterPane>
 }
 
 // ---------------------------------------------------------------------------
-// Order detail pane — metadata fields + inline items table
+// Order detail pane — metadata fields + inline reorderable items table
 // ---------------------------------------------------------------------------
 
 class OrderDetailPane extends StatelessWidget {
@@ -388,6 +302,7 @@ class OrderDetailPane extends StatelessWidget {
                 const SizedBox(height: 12),
                 TomInlineListForm<OrderItemHD, OrderItemHDForm>(
                   listForm: form.items,
+                  reorderable: true,
                   headerBuilder: (context, list) => Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Row(
@@ -395,13 +310,17 @@ class OrderDetailPane extends StatelessWidget {
                       children: [
                         Text('Items (${list.length})',
                             style: theme.textTheme.labelLarge),
-                        Wrap(spacing: 6, children: [
-                          FilledButton.tonalIcon(
-                            icon: const Icon(Icons.add, size: 14),
-                            label: const Text('Add item'),
-                            onPressed: () => list.add(),
-                          ),
-                        ]),
+                        TomListFormToolbar<OrderItemHD, OrderItemHDForm>(
+                          listForm: list,
+                          // No selection in an inline table — the
+                          // toolbar's Add still appends a fresh row;
+                          // Move-up / Move-down are disabled (no
+                          // selection to act on).
+                          showMoveUp: false,
+                          showMoveDown: false,
+                          showRemove: false,
+                          addLabel: 'Add item',
+                        ),
                       ],
                     ),
                   ),
@@ -410,9 +329,9 @@ class OrderDetailPane extends StatelessWidget {
                     child: Text('No items yet. Tap "Add item" to begin.',
                         style: TextStyle(fontStyle: FontStyle.italic)),
                   ),
-                  rowSeparatorBuilder: (_, _) =>
-                      const Divider(height: 1),
                   rowBuilder: (context, i, itemForm) => _ItemRow(
+                    key: ValueKey('h-d-item-${itemForm.hashCode}'),
+                    index: i,
                     form: itemForm,
                     onRemove: () => form.items.removeAt(i),
                   ),
@@ -467,13 +386,20 @@ class OrderDetailPane extends StatelessWidget {
 /// hosting [TomInlineListForm] can pass each row's own [OrderItemHDForm]
 /// and a remove callback without rebuilding closures from the parent.
 ///
-/// The row mimics a column-aligned table: fixed-width cells side by side,
-/// each holding the field's own widget. The wrapping
-/// [TomFormStyleScope] suppresses the per-field label+description so the
-/// column header above each cell can take that role.
+/// The row mimics a column-aligned table: drag handle on the left,
+/// fixed-width cells side by side, each holding the field's own widget,
+/// and a delete button on the right. The wrapping [TomFormStyleScope]
+/// suppresses the per-field label+description so the column header
+/// above each cell can take that role.
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.form, required this.onRemove});
+  const _ItemRow({
+    super.key,
+    required this.index,
+    required this.form,
+    required this.onRemove,
+  });
 
+  final int index;
   final OrderItemHDForm form;
   final VoidCallback onRemove;
 
@@ -487,6 +413,8 @@ class _ItemRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            TomReorderHandle(index: index),
+            const SizedBox(width: 4),
             SizedBox(
                 width: 180, child: _cellStyle(form.productName.widget)),
             const SizedBox(width: 8),
@@ -534,5 +462,29 @@ class _ItemRow extends StatelessWidget {
       ),
       child: fieldWidget,
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Selection-tracking helper used by both master panes after a drag-reorder.
+// Keeps the user's selected row pinned to whichever index the dragged row
+// landed on, and shifts neighbouring selections accordingly.
+// ---------------------------------------------------------------------------
+
+void _trackSelection(
+  int from,
+  int to,
+  int? selectedIndex,
+  Future<void> Function(int? index) selectIndex,
+) {
+  if (selectedIndex == null) return;
+  if (selectedIndex == from) {
+    selectIndex(to);
+    return;
+  }
+  if (from < selectedIndex && selectedIndex <= to) {
+    selectIndex(selectedIndex - 1);
+  } else if (to <= selectedIndex && selectedIndex < from) {
+    selectIndex(selectedIndex + 1);
   }
 }

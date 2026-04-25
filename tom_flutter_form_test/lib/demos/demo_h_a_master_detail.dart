@@ -12,16 +12,20 @@ import '../state/phase2a_state.dart';
 // Demo H-A — Master-Detail Customer Editor (Phase 2a).
 // ---------------------------------------------------------------------------
 //
-// Left pane:  TomListForm<Customer, CustomerDetailForm> with add / remove /
-//             reorder buttons.
-// Right pane: A single CustomerDetailForm re-bound on selection.
+// Left pane:  Reorderable list of customers driven by the shared
+//             CustomerListForm. The standard TomListFormToolbar handles
+//             add / remove / move up / move down. Each row exposes a
+//             TomReorderHandle so it can be dragged to a new position.
+// Right pane: The selected customer's own row sub-form
+//             (`listForm[selectedIndex]`) — there is NO sibling form
+//             bound to the same Customer.
 // Bottom:     EventLogPanel showing the interleaved stream of list events
-//             (added / removed / reordered) and detail-form value /
-//             validation events — proving they share one event bus.
+//             (added / removed / reordered) and per-row form events
+//             (value / validation) coming through the shared event bus.
 //
-// Selection is guarded by TomMasterDetailScaffold's built-in
-// guardUnsavedChanges call; switching items while the detail is dirty
-// pops a Save / Discard / Cancel dialog.
+// Two TomMasterDetailListForm instances share one TomListForm so the demo
+// shows that selection state is per-scaffold while structural mutations
+// and field edits flow through both panes immediately.
 class DemoHAMasterDetail extends StatefulWidget {
   const DemoHAMasterDetail({super.key});
 
@@ -30,40 +34,36 @@ class DemoHAMasterDetail extends StatefulWidget {
 }
 
 class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
-  // The two scaffolds share the same list form so mutations on either side
-  // (add / remove / reorder / value edits) flow through to the other pane
-  // immediately — both scaffolds observe the same TomListForm.
   late final CustomerListForm _listForm;
-  // Each scaffold needs its own detail form because the scaffold rebinds
-  // it on selection changes, and the two scaffolds maintain independent
-  // selection state.
-  late final CustomerDetailForm _detailFormA;
-  late final CustomerDetailForm _detailFormB;
   late final TomFormInspector _inspector;
+
+  /// Bridges the [TomListForm]'s event bus into a [ChangeNotifier] so the
+  /// [EventLogPanel] (which expects a [Listenable]) can rebuild whenever
+  /// list / row events fire. The inspector swallows the events itself;
+  /// this notifier just relays "something happened".
+  final ChangeNotifier _eventTick = ChangeNotifier();
+  late final TomFormEventListener _eventTickListener;
 
   @override
   void initState() {
     super.initState();
     _listForm = TomScope.withScope('demoHA', () => CustomerListForm());
-    _detailFormA =
-        TomScope.withScope('demoHA', () => CustomerDetailForm());
-    _detailFormB =
-        TomScope.withScope('demoHA', () => CustomerDetailForm());
     _listForm.bind(phase2aCustomers.customers);
     _inspector = TomFormInspector();
     _listForm.addListener(_inspector);
-    _detailFormA.addListener(_inspector);
-    _detailFormB.addListener(_inspector);
+    _eventTickListener = _RelayListener(() {
+      // ignore: invalid_use_of_visible_for_testing_member, invalid_use_of_protected_member
+      _eventTick.notifyListeners();
+    });
+    _listForm.addListener(_eventTickListener);
   }
 
   @override
   void dispose() {
+    _listForm.removeListener(_eventTickListener);
     _listForm.removeListener(_inspector);
-    _detailFormA.removeListener(_inspector);
-    _detailFormB.removeListener(_inspector);
     _listForm.dispose();
-    _detailFormA.dispose();
-    _detailFormB.dispose();
+    _eventTick.dispose();
     super.dispose();
   }
 
@@ -71,87 +71,75 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
   Widget build(BuildContext context) {
     return DemoScaffold(
       title: 'Demo H-A — Master-Detail Customer Editor',
-      // The outer guard covers detail form A; detail form B's own
-      // selection-change guard inside its scaffold still protects against
-      // losing edits when switching rows. (Top-level navigation away from
-      // the demo is rare in this gallery, so a single outer guard is
-      // enough for the worst case.)
-      child: TomUnsavedChangesGuard(
-        form: _detailFormA,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _intro(context),
-              const SizedBox(height: 12),
-              // Round-6 (a2): bump container height so the full detail form
-              // — header, 5 fields, error view, Save / Discard row — fits
-              // without the inner SingleChildScrollView clipping the Save
-              // button at common viewport sizes.
-              SizedBox(
-                height: 660,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _ScaffoldFrame(
-                        label: 'Scaffold A — no preselection',
-                        child:
-                            TomMasterDetailScaffold<Customer, CustomerDetailForm>(
-                          listForm: _listForm,
-                          detailForm: _detailFormA,
-                          masterPaneWidth: 240,
-                          masterBuilder:
-                              (context, listForm, selected, selectIndex) =>
-                                  _MasterPane(
-                            listForm: listForm,
-                            selectedIndex: selected,
-                            selectIndex: selectIndex,
-                          ),
-                          detailBuilder: (context, form) =>
-                              _DetailPane(form: form),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _ScaffoldFrame(
-                        label: 'Scaffold B — preselects row 0',
-                        child:
-                            TomMasterDetailScaffold<Customer, CustomerDetailForm>(
-                          listForm: _listForm,
-                          detailForm: _detailFormB,
-                          masterPaneWidth: 240,
-                          initialSelectedIndex: 0,
-                          masterBuilder:
-                              (context, listForm, selected, selectIndex) =>
-                                  _MasterPane(
-                            listForm: listForm,
-                            selectedIndex: selected,
-                            selectIndex: selectIndex,
-                          ),
-                          detailBuilder: (context, form) =>
-                              _DetailPane(form: form),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              InfoPanel(
-                title: 'Event log (shared list + both detail forms)',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _intro(context),
+            const SizedBox(height: 12),
+            // Round-7: bumped to fit detail header + 5 fields + error
+            // view + Save / Discard row at common viewport sizes.
+            SizedBox(
+              height: 660,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  EventLogPanel(
-                    inspector: _inspector,
-                    rebuildOn: _detailFormA.changes,
+                  Expanded(
+                    child: _ScaffoldFrame(
+                      label: 'Scaffold A — no preselection',
+                      child:
+                          TomMasterDetailListForm<Customer, CustomerDetailForm>(
+                        listForm: _listForm,
+                        masterPaneWidth: 240,
+                        masterBuilder:
+                            (context, listForm, selected, selectIndex) =>
+                                _CustomerMasterPane(
+                          listForm: listForm,
+                          selectedIndex: selected,
+                          selectIndex: selectIndex,
+                        ),
+                        detailBuilder: (context, _, rowForm) =>
+                            _DetailPane(form: rowForm),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _ScaffoldFrame(
+                      label: 'Scaffold B — preselects row 0',
+                      child:
+                          TomMasterDetailListForm<Customer, CustomerDetailForm>(
+                        listForm: _listForm,
+                        masterPaneWidth: 240,
+                        initialSelectedIndex: 0,
+                        masterBuilder:
+                            (context, listForm, selected, selectIndex) =>
+                                _CustomerMasterPane(
+                          listForm: listForm,
+                          selectedIndex: selected,
+                          selectIndex: selectIndex,
+                        ),
+                        detailBuilder: (context, _, rowForm) =>
+                            _DetailPane(form: rowForm),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 12),
+            InfoPanel(
+              title: 'Event log (shared list-form bus)',
+              children: [
+                EventLogPanel(
+                  inspector: _inspector,
+                  rebuildOn: _eventTick,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -166,21 +154,21 @@ class _DemoHAMasterDetailState extends State<DemoHAMasterDetail> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('What this demo covers',
-                style: theme.textTheme.titleSmall),
+            Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
             const Text(
-                'Two master-detail scaffolds, both bound to the SAME '
+                'Two TomMasterDetailListForm instances bound to the SAME '
                 'TomListForm. Scaffold B preselects row 0 via its '
                 'initialSelectedIndex parameter, while Scaffold A starts '
-                'with no selection. Click a customer in either list to '
-                'edit them on the right. Make a change and click another '
-                'row — the scaffold runs the unsaved-changes guard and '
-                'pops Save / Discard / Cancel before re-binding the '
-                'detail form. Add / Remove / Move Up / Move Down on '
-                'either side emit list events into the shared bus, so '
-                'both lists refresh together — see the events '
-                'interleaved in the log below.'),
+                'with no selection. Each detail pane edits the row\'s own '
+                'sub-form (`listForm[selectedIndex]`) — no sibling form, '
+                'no rebinding. Click a customer to edit them on the '
+                'right; make a change and click another row to see the '
+                'unsaved-changes guard pop Save / Discard / Cancel before '
+                'switching. The toolbar (Add / Remove / Move up / Move '
+                'down) and the per-row drag handles both drive the same '
+                'TomListForm so events appear interleaved in the log '
+                'below.'),
           ],
         ),
       ),
@@ -247,10 +235,10 @@ class CustomerListForm extends TomListForm<Customer, CustomerDetailForm> {
 }
 
 // ---------------------------------------------------------------------------
-// Master pane — list + add / remove / reorder buttons.
+// Master pane — reorderable list of customer summaries + standard toolbar.
 // ---------------------------------------------------------------------------
-class _MasterPane extends StatefulWidget {
-  const _MasterPane({
+class _CustomerMasterPane extends StatelessWidget {
+  const _CustomerMasterPane({
     required this.listForm,
     required this.selectedIndex,
     required this.selectIndex,
@@ -259,38 +247,6 @@ class _MasterPane extends StatefulWidget {
   final TomListForm<Customer, CustomerDetailForm> listForm;
   final int? selectedIndex;
   final Future<void> Function(int? index) selectIndex;
-
-  @override
-  State<_MasterPane> createState() => _MasterPaneState();
-}
-
-class _MasterPaneState extends State<_MasterPane>
-    implements TomObserver {
-  @override
-  void initState() {
-    super.initState();
-    widget.listForm.addObserver(this);
-  }
-
-  @override
-  void didUpdateWidget(covariant _MasterPane oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.listForm != widget.listForm) {
-      oldWidget.listForm.removeObserver(this);
-      widget.listForm.addObserver(this);
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.listForm.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void onNotify(TomObservable observable) {
-    if (mounted) setState(() {});
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -303,90 +259,41 @@ class _MasterPaneState extends State<_MasterPane>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-              child: Text('Customers (${widget.listForm.length})',
+              child: Text('Customers (${listForm.length})',
                   style: theme.textTheme.titleSmall),
             ),
             const Divider(height: 8),
             Expanded(
-              child: ListView.builder(
-                itemCount: widget.listForm.length,
-                itemBuilder: (context, index) {
-                  final form = widget.listForm[index];
-                  final customer = form.currentBinding;
-                  final isSelected = index == widget.selectedIndex;
-                  // Subscribe each row to the bound customer's
-                  // displayed fields. Without this the row only
-                  // rebuilds on list-structural changes (add /
-                  // remove / reorder) and stale values linger until
-                  // the next structural mutation.
-                  //
-                  // Round-5 feedback (a): the master list (and the
-                  // sibling list in scaffold B) used to show stale
-                  // names / companies after a detail-form save —
-                  // because `_MasterPaneState.onNotify` only fires
-                  // on `TomListForm` notifications, not on per-item
-                  // field changes. Observing the fields here makes
-                  // the row reactive to *any* mutation of those
-                  // values, regardless of which scaffold's detail
-                  // form (or external code path) caused it.
-                  return _CustomerListTile(
-                    customer: customer,
-                    index: index,
-                    isSelected: isSelected,
-                    onTap: () => widget.selectIndex(index),
-                  );
+              child: TomInlineListForm<Customer, CustomerDetailForm>(
+                listForm: listForm,
+                reorderable: true,
+                onReorder: (from, to) {
+                  // Keep the user's selection on the row they just dragged.
+                  if (selectedIndex == from) {
+                    selectIndex(to);
+                  } else if (selectedIndex != null) {
+                    final cur = selectedIndex!;
+                    if (from < cur && cur <= to) {
+                      selectIndex(cur - 1);
+                    } else if (to <= cur && cur < from) {
+                      selectIndex(cur + 1);
+                    }
+                  }
                 },
+                rowBuilder: (context, i, rowForm) => _CustomerListTile(
+                  key: ValueKey('h-a-cust-${rowForm.hashCode}'),
+                  customer: rowForm.currentBinding,
+                  index: i,
+                  isSelected: i == selectedIndex,
+                  onTap: () => selectIndex(i),
+                ),
               ),
             ),
             const Divider(height: 8),
-            Wrap(
-              spacing: 6,
-              children: [
-                FilledButton.tonalIcon(
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add'),
-                  onPressed: () async {
-                    widget.listForm.add();
-                    await widget.selectIndex(widget.listForm.length - 1);
-                  },
-                ),
-                FilledButton.tonalIcon(
-                  icon: const Icon(Icons.delete_outline, size: 16),
-                  label: const Text('Remove'),
-                  onPressed: widget.selectedIndex == null
-                      ? null
-                      : () async {
-                          final idx = widget.selectedIndex!;
-                          widget.listForm.removeAt(idx);
-                          await widget.selectIndex(null);
-                        },
-                ),
-                IconButton(
-                  tooltip: 'Move up',
-                  onPressed: (widget.selectedIndex == null ||
-                          widget.selectedIndex! == 0)
-                      ? null
-                      : () {
-                          final i = widget.selectedIndex!;
-                          widget.listForm.move(i, i - 1);
-                          widget.selectIndex(i - 1);
-                        },
-                  icon: const Icon(Icons.arrow_upward, size: 18),
-                ),
-                IconButton(
-                  tooltip: 'Move down',
-                  onPressed: (widget.selectedIndex == null ||
-                          widget.selectedIndex! >=
-                              widget.listForm.length - 1)
-                      ? null
-                      : () {
-                          final i = widget.selectedIndex!;
-                          widget.listForm.move(i, i + 1);
-                          widget.selectIndex(i + 1);
-                        },
-                  icon: const Icon(Icons.arrow_downward, size: 18),
-                ),
-              ],
+            TomListFormToolbar<Customer, CustomerDetailForm>(
+              listForm: listForm,
+              selectedIndex: selectedIndex,
+              onSelectionChanged: selectIndex,
             ),
           ],
         ),
@@ -396,7 +303,7 @@ class _MasterPaneState extends State<_MasterPane>
 }
 
 // ---------------------------------------------------------------------------
-// Detail pane — the same CustomerDetailForm re-bound on selection.
+// Detail pane — renders the row's own sub-form directly.
 // ---------------------------------------------------------------------------
 class _DetailPane extends StatelessWidget {
   const _DetailPane({required this.form});
@@ -411,10 +318,6 @@ class _DetailPane extends StatelessWidget {
         child: ListenableBuilder(
           listenable: form.changes,
           builder: (context, _) {
-            // The detail content (5 form fields + error view + button row)
-            // can exceed the available height — especially when the demo
-            // packs two scaffolds side-by-side. Wrap in a scroll view so
-            // it adapts gracefully to smaller heights.
             return SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -483,12 +386,13 @@ class _DetailPane extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // One row in the master pane. Subscribed to the bound customer's
 // `fullName` and `company` TomString observables via
-// `TomMultiObservableBuilder`, so any mutation (detail-form save in
-// either scaffold, programmatic update, anything) reflects immediately
-// in both lists. See round-5 feedback (a).
+// `TomMultiObservableBuilder`, so any mutation (detail edit in either
+// scaffold, programmatic update, anything) reflects immediately in
+// both lists.
 // ---------------------------------------------------------------------------
 class _CustomerListTile extends StatelessWidget {
   const _CustomerListTile({
+    super.key,
     required this.customer,
     required this.index,
     required this.isSelected,
@@ -521,13 +425,7 @@ class _CustomerListTile extends StatelessWidget {
     return ListTile(
       selected: isSelected,
       dense: true,
-      leading: CircleAvatar(
-        radius: 14,
-        child: Text(
-          '${index + 1}',
-          style: const TextStyle(fontSize: 11),
-        ),
-      ),
+      leading: TomReorderHandle(index: index),
       title: Text(
         title.isEmpty ? '(unnamed)' : title,
         style: TextStyle(
@@ -538,5 +436,21 @@ class _CustomerListTile extends StatelessWidget {
       subtitle: Text(subtitle, overflow: TextOverflow.ellipsis),
       onTap: onTap,
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tiny adapter — relays every TomFormEventListener event to a single
+// callback. Used to bridge the TomListForm event bus into a Flutter
+// Listenable for the EventLogPanel.
+// ---------------------------------------------------------------------------
+class _RelayListener with TomFormEventListener {
+  _RelayListener(this._onAny);
+  final VoidCallback _onAny;
+
+  @override
+  void handleEvent(TomFormEvent event) {
+    super.handleEvent(event);
+    _onAny();
   }
 }

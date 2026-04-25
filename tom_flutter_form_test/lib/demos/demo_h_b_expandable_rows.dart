@@ -148,7 +148,13 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
                 'Switching to another row while the open row has '
                 'validation errors is refused — the open row stays '
                 'expanded and a snackbar tells you why. Saving the order '
-                'collapses the open row on success.'),
+                'collapses the open row on success.\n\n'
+                'Each row also carries a drag handle (left edge of the '
+                'summary) that lets you reorder rows; the open row stays '
+                'open at its new position after the drop. The toolbar '
+                'below the rows is the reusable TomListFormToolbar — '
+                'Add / Remove / Move up / Move down all operate on the '
+                'currently-open row.'),
           ],
         ),
       ),
@@ -202,6 +208,7 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
           listForm: items,
           controller: _expandController,
           onBeforeChange: _onBeforeRowExpansionChange,
+          reorderable: true,
           headerBuilder: (context, list) => Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
             child: Row(children: [
@@ -214,7 +221,6 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
               ),
             ]),
           ),
-          rowSeparatorBuilder: (_, _) => const Divider(height: 1),
           summaryBuilder: (context, index, rowForm) =>
               _summary(context, index, rowForm),
           bodyBuilder: (context, index, rowForm) =>
@@ -222,22 +228,30 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
           footerBuilder: (context, list) => const Divider(height: 16),
           toolbarBuilder: (context, list) => Padding(
             padding: const EdgeInsets.all(8),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                FilledButton.tonalIcon(
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add item'),
-                  onPressed: () async {
-                    // Adding a row also "switches" to it — run the
-                    // same row-switch guard so we don't lose edits in
-                    // an open invalid row.
-                    if (!await _guardSwitchAwayFromExpanded()) return;
-                    list.add();
-                    _expandController.expand(list.length - 1);
-                  },
-                ),
-              ],
+            child: TomListFormToolbar<OrderItem, OrderItemForm>(
+              listForm: list,
+              // Single-row exclusive expansion means the open row IS the
+              // selection from the toolbar's perspective. Wire the
+              // controller's expanded set into the toolbar so Move-up /
+              // Move-down / Remove operate on the open row.
+              selectedIndex:
+                  _expandController.expanded.isEmpty
+                      ? null
+                      : _expandController.expanded.first,
+              addLabel: 'Add item',
+              removeLabel: 'Remove item',
+              // Adding a row also "switches" away from the open row —
+              // run the validate-before-switch gate before append.
+              beforeAdd: _guardSwitchAwayFromExpanded,
+              // After Add: expand the newly appended row.
+              // After Remove / Move: the controller already remaps
+              // (Remove drops the open row; Move keeps it open at the
+              // new index courtesy of the widget's reorder remap).
+              onSelectionChanged: (i) async {
+                if (i != null && i == list.length - 1) {
+                  _expandController.expand(i);
+                }
+              },
             ),
           ),
         ),
@@ -254,9 +268,14 @@ class _DemoHBExpandableRowsState extends State<DemoHBExpandableRows> {
         final price = double.tryParse(form.unitPrice.get()) ?? 0.0;
         final total = qty * price;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
           child: Row(
             children: [
+              // Drag handle — TomReorderHandle wraps a
+              // ReorderableDragStartListener so the long-press starts a
+              // drag instead of toggling the row's expansion state.
+              TomReorderHandle(index: index),
+              const SizedBox(width: 4),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -193,9 +193,11 @@ class DemoListScreen extends StatelessWidget {
           _DemoTile(
             icon: Icons.view_sidebar_outlined,
             title: 'Demo H-A: Master-Detail Customer Editor',
-            description: 'TomMasterDetailScaffold with TomListForm + a '
-                're-bound CustomerDetailForm; selection guarded by '
-                'TomUnsavedChangesGuard; interleaved list+detail event log.',
+            description: 'TomMasterDetailListForm with TomListForm + the '
+                'row sub-form rendered directly in the detail pane (no '
+                'sibling form). Selection guarded by the built-in '
+                'unsaved-changes prompt. Drag-handle reorder + toolbar '
+                'add/remove. Interleaved list+detail event log.',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoHAMasterDetail()),
@@ -227,9 +229,10 @@ class DemoListScreen extends StatelessWidget {
             icon: Icons.person_outline,
             title: 'Demo H-D: Customer Form (master-detail)',
             description: 'Full customer record: contact info + billing '
-                'address (flat fields) + two TomMasterDetailScaffolds '
-                'for shipping addresses and orders. Each order has an '
-                'inline DataTable of line items.',
+                'address (flat fields) + two TomMasterDetailListForms '
+                'for shipping addresses and orders, with toolbar '
+                'add/remove and drag-handle reorder in each master pane. '
+                'Each order owns an inline reorderable items table.',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const DemoHDCustomerForm()),
