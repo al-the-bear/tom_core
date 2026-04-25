@@ -24,7 +24,15 @@ abstract interface class TomFormChildContainer {
 
   /// Aggregate save. Returns `false` when validation or any nested save
   /// fails so the parent form can short-circuit its own commit.
-  Future<bool> save();
+  ///
+  /// [commitBaselines] mirrors [TomForm.save]'s policy parameter and is
+  /// passed by `TomForm`'s internal save cascade so that a user-initiated
+  /// nested `save()` (e.g. `orderForm.save()` while a customer form is
+  /// the outer baseline owner) does NOT clobber list-level baselines
+  /// such as `TomListForm._initialOrder`. Pass `null` to let the
+  /// container auto-detect from its parent chain (the typical
+  /// public-API call shape).
+  Future<bool> save({bool? commitBaselines});
 
   /// Aggregate discard — restore last bound / saved state.
   void discard();

@@ -325,18 +325,41 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Save every sub-form. Returns `true` only when *every* sub-form
   /// saved successfully and [validateList] returned no errors.
+  ///
+  /// [commitBaselines] mirrors [TomForm.save]'s policy parameter — when
+  /// `false`, the per-row sub-form saves cascade with the same flag and
+  /// `_initialOrder` is left untouched so an outer ancestor can still
+  /// roll back structural changes via `discard()`. When `null` (default
+  /// for direct user calls), the policy is auto-detected from the parent
+  /// chain: a list-form whose parent form has its own ancestor in the
+  /// tree is considered nested and skips the baseline update.
   @override
-  Future<bool> save() async {
+  Future<bool> save({bool? commitBaselines}) async {
+    final commit = commitBaselines ?? !_hasFormAncestor;
     final errors = await validate();
     if (errors.isNotEmpty) return false;
     for (final form in _forms) {
-      final ok = await form.save();
+      final ok = await form.save(commitBaselines: commit);
       if (!ok) return false;
     }
-    if (_binding != null) {
+    if (commit && _binding != null) {
       _initialOrder = List<TItem>.from(_binding!.toList());
     }
     return true;
+  }
+
+  /// `true` when this list-form sits below a parent form that itself
+  /// has an ancestor in the form tree. A list-form whose parent form is
+  /// the root of its tree (e.g. `OrderForm.items` when `OrderForm` is
+  /// standalone) still commits baselines on save — only lists whose
+  /// parent is nested further up (e.g. `OrderForm.items` when `OrderForm`
+  /// lives inside a customer form's orders list) skip the baseline
+  /// update so the outer transactional baseline is preserved.
+  ///
+  /// Read by [save]'s policy auto-detection.
+  bool get _hasFormAncestor {
+    final parent = _parentForm;
+    return parent != null && parent.hasFormAncestor;
   }
 
   /// Discard edits in every sub-form AND restore the original list order
@@ -457,6 +480,12 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
         '("$listId") so resources are shared, got "${form.formId}".',
       );
     }
+    // Record the form-tree topology on the new sub-form so its public
+    // `save()` can detect it has an outer ancestor and skip baseline
+    // updates accordingly. Without this, a user-initiated `subForm.save()`
+    // would clobber the outer parent form's transactional baseline (the
+    // root cause of the H-D nested-save bug).
+    form.attachToEnclosingForm(_parentForm);
     return form;
   }
 

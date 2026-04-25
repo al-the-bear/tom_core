@@ -38,7 +38,7 @@ void main() {
   CustomerHD makeCustomer() {
     final c = CustomerHD();
     c.fullName | 'Ada Lovelace';
-    c.email | 'ada@analytical.example';
+    c.email | 'ada@analytical.com';
     final o1 = OrderHD();
     o1.orderId | 'ORD-1';
     o1.orderDate | '2026-01-01';
@@ -159,6 +159,90 @@ void main() {
       // Save so the new structure becomes the baseline.
       // ignore: unawaited_futures
       form2.save();
+    });
+  });
+
+  group(
+      'H-D reproduction — nested-save preserves outer baseline (bug b\'\')',
+      () {
+    // Bug (b''): when the user deletes rows inside an order and then
+    // saves THAT order (the inner form), the outer customer form
+    // currently loses its Discard option because every level's baseline
+    // is updated to the post-delete state. Per spec the inner save
+    // should commit values to the in-memory binding only — the outer
+    // form must remain dirty and a customer-level discard must restore
+    // the deleted items.
+
+    test(
+        'after inner orderForm.save() the outer customerForm stays dirty',
+        () async {
+      final form = makeBound();
+      final orderForm = form.orders[0];
+      final order = orderForm.currentBinding!;
+      expect(order.items.length, 3);
+      orderForm.items.removeAt(1);
+      expect(order.items.length, 2,
+          reason: 'sanity: removeAt removes from the bound list');
+
+      final ok = await orderForm.save();
+      expect(ok, isTrue, reason: 'inner save itself succeeds');
+
+      // Spec (b''): order is committed in-memory, but the outer customer
+      // form still owns the transaction baseline — so it must report
+      // dirty so the Discard button stays visible.
+      expect(form.isDirty, isTrue,
+          reason:
+              'outer customerForm must remain dirty after inner orderForm.save() '
+              'because the structural change to items is still pending against '
+              'the customer-form baseline');
+      form.dispose();
+    });
+
+    test(
+        'after inner orderForm.save() + customerForm.discard restores items',
+        () async {
+      final form = makeBound();
+      final orderForm = form.orders[0];
+      orderForm.items.removeAt(1);
+      expect(orderForm.currentBinding!.items.length, 2);
+
+      await orderForm.save();
+      // Outer-level discard must reach all the way down and restore the
+      // items list to its pre-edit length.
+      form.discard();
+
+      expect(form.currentBinding!.orders[0].items.length, 3,
+          reason:
+              'customer-level discard must restore items deleted before the '
+              'inner order save');
+      expect(form.orders[0].items.length, 3,
+          reason: 'recreated order form must rebuild its items sub-list');
+      form.dispose();
+    });
+
+    test(
+        'after a top-level customerForm.save() the items baseline DOES update',
+        () async {
+      // Companion test: when the user saves at the top, the entire tree
+      // becomes the new baseline. A subsequent customer-level discard
+      // must NOT bring the deleted item back, because the deletion is
+      // now part of the saved state.
+      final form = makeBound();
+      final orderForm = form.orders[0];
+      orderForm.items.removeAt(1);
+      expect(orderForm.currentBinding!.items.length, 2);
+
+      final ok = await form.save();
+      expect(ok, isTrue);
+      expect(form.isDirty, isFalse,
+          reason: 'top-level save commits the whole tree as the new baseline');
+
+      form.discard();
+      expect(form.currentBinding!.orders[0].items.length, 2,
+          reason:
+              'after a top-level save the deleted item is part of the new '
+              'baseline and must NOT be restored by discard');
+      form.dispose();
     });
   });
 

@@ -38,6 +38,30 @@ abstract class TomForm<T extends TomClass> extends TomClass
 
   late final String formId;
   late final TomForm? parentForm;
+
+  /// Back-reference set by a [TomFormChildContainer] (today: `TomListForm`)
+  /// when it instantiates this form as one of its rows. Lets the form
+  /// detect it has an ancestor in the form tree even when the user
+  /// didn't pass an explicit [parentForm] — required so a user-initiated
+  /// `save()` on a nested form can know it must NOT clobber the outer
+  /// form's transactional baseline (see [hasFormAncestor] /
+  /// [_resolveCommitBaselines]).
+  TomForm? _enclosingForm;
+
+  /// Records that this form is owned by a list-form (or other child
+  /// container) whose own owner is [enclosingForm]. Called by
+  /// `TomListForm._instantiate` — most users never need to invoke this
+  /// themselves.
+  void attachToEnclosingForm(TomForm? enclosingForm) {
+    _enclosingForm = enclosingForm;
+  }
+
+  /// `true` when this form is wired below another form in the form tree —
+  /// either via an explicit [parentForm] passed at construction, or via a
+  /// child container (e.g. [TomListForm]) that instantiated this form on
+  /// behalf of its parent.
+  bool get hasFormAncestor => parentForm != null || _enclosingForm != null;
+
   late final Map<String, TomField> fields = {};
 
   /// The bound data object (back-reference for save push-back).
@@ -273,18 +297,34 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// validations) first — returns `false` if any errors. On success,
   /// commits every field in the form tree, snapshots each child
   /// container, and fires `FormSavedEvent` at each level.
-  Future<bool> save() async {
+  ///
+  /// **Nested-save semantics.** When the user calls `save()` on a form
+  /// that has an outer ancestor in the form tree (see [hasFormAncestor]),
+  /// the save is treated as an *in-memory commit only*: values are written
+  /// back to the bound business object, but no field, snapshot, or
+  /// list-form `_initialOrder` is updated. That keeps the outer ancestor's
+  /// transactional baseline intact so the user can still discard the
+  /// whole transaction from above. Conversely, a `save()` initiated on
+  /// the outermost (root) form cascades a full baseline commit through
+  /// the entire subtree — matching the user's intent that "this is the
+  /// new saved state".
+  ///
+  /// [commitBaselines] is passed by internal cascade calls and should
+  /// normally be left at its default for user code — the public entry
+  /// point auto-detects the right policy from [hasFormAncestor].
+  Future<bool> save({bool? commitBaselines}) async {
+    final commit = commitBaselines ?? !hasFormAncestor;
     final errors = await validate();
     if (errors.isNotEmpty) return false;
-    _applySave();
+    _applySave(commitBaselines: commit);
     for (final child in childContainers) {
-      final ok = await child.save();
+      final ok = await child.save(commitBaselines: commit);
       if (!ok) return false;
     }
     return true;
   }
 
-  void _applySave() {
+  void _applySave({required bool commitBaselines}) {
     onSaving();
     // Round-6 (a): suppress our own binding observer while writing back —
     // setValues fires the binding's observers synchronously, and we
@@ -296,12 +336,14 @@ abstract class TomForm<T extends TomClass> extends TomClass
     } finally {
       _writingBackToBinding = false;
     }
-    for (final field in fields.values) {
-      field.commit();
+    if (commitBaselines) {
+      for (final field in fields.values) {
+        field.commit();
+      }
+      _initialSnapshot = Map<String, dynamic>.unmodifiable(getValues());
     }
-    _initialSnapshot = Map<String, dynamic>.unmodifiable(getValues());
     for (final nested in nestedForms) {
-      nested._applySave();
+      nested._applySave(commitBaselines: commitBaselines);
     }
     onSaved();
     _fireEvent(FormSavedEvent(source: formId));
