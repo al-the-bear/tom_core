@@ -916,40 +916,50 @@ class TomClass extends TomObject<Map<String, TomObject>>
     String key,
     bool clear,
   ) {
-    if (clear) {
-      member.clear();
-    }
-    var memberMirror = tomReflectionInfo.singleElementType(member);
-    if (value is List) {
-      for (var element in value) {
-        //tomReflectionInfo.reflect(memberMirror);
-        if (memberMirror.isAssignableTo(TomClass._classMirror)) {
-          var obj = memberMirror.newInstance("", []);
-          if (obj is TomClass) {
-            if (element is Map<String, dynamic>) {
-              obj.setValues(element);
-            } else {
-              throw TomObservableException(
-                "TomClass.set_list_member_error.not_a_map",
-                "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
-              );
-            }
-          } else {
-            throw TomObservableException(
-              "TomClass.set_list_member_error.invalid_list_type",
-              "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
-            );
-          }
-          member.add(obj);
-        } else {
-          member.add(TomObject._createFrom(element));
-        }
-      }
-    } else {
+    if (value is! List) {
       throw TomObservableException(
         "TomClass.set_list_member_error.not_a_list",
         "TomList member $key must get deserialized from a list, but ${value.runtimeType} ",
       );
+    }
+    // Build all new element instances before touching the list so that
+    // resetWith() (used when clear=true) can fire onBeforeClear while the
+    // old elements are still intact, then install all new elements, then
+    // fire onAfterReset with a fully populated list.
+    var memberMirror = tomReflectionInfo.singleElementType(member);
+    final newElements = <TomObject<dynamic>>[];
+    for (var element in value) {
+      if (memberMirror.isAssignableTo(TomClass._classMirror)) {
+        var obj = memberMirror.newInstance("", []);
+        if (obj is TomClass) {
+          if (element is Map<String, dynamic>) {
+            obj.setValues(element);
+          } else {
+            throw TomObservableException(
+              "TomClass.set_list_member_error.not_a_map",
+              "TomClass elements of type ${memberMirror.simpleName} must be deserialized from Map objects but found ${element.runtimeType}",
+            );
+          }
+        } else {
+          throw TomObservableException(
+            "TomClass.set_list_member_error.invalid_list_type",
+            "Only lists with TomObject or TomClass types are allowed. Found ${obj.runtimeType}",
+          );
+        }
+        newElements.add(obj);
+      } else {
+        newElements.add(TomObject._createFrom(element));
+      }
+    }
+    if (clear) {
+      // Atomically replace all elements — fires onBeforeClear / onAfterReset
+      // lifecycle hooks so registered TomListLifecycleListeners (e.g.
+      // TomListForm) can tear down and recreate sub-state in one pass.
+      member.resetWith(newElements);
+    } else {
+      for (final e in newElements) {
+        member.add(e);
+      }
     }
   }
 
@@ -1015,6 +1025,33 @@ class TomClass extends TomObject<Map<String, TomObject>>
   }
 }
 
+// ---------------------------------------------------------------------------
+// TomListLifecycleListener
+// ---------------------------------------------------------------------------
+
+/// Listener for structural reset events on a [TomList].
+///
+/// Register via [TomList.addLifecycleListener]. Implementors are notified
+/// around the [TomList.resetWith] batch-replacement operation so they can
+/// tear down state tied to the old elements before the list is cleared and
+/// re-create state for the new elements after they are installed.
+///
+/// This is the mechanism used by `TomListForm` in `tom_flutter_ui` to
+/// keep its sub-form instances in sync when `TomClass.setValues()` replaces
+/// the contents of a list member (e.g. when an outer form discards its
+/// changes and restores the bind-time snapshot).
+abstract class TomListLifecycleListener {
+  /// Called immediately **before** all elements are removed from [list].
+  /// The list is still intact when this fires — implementors may read
+  /// current elements for cleanup.
+  void onBeforeClear(TomList list) {}
+
+  /// Called immediately **after** new elements have been installed in
+  /// [list]. The list is fully populated when this fires — implementors
+  /// may read the new contents to recreate state.
+  void onAfterReset(TomList list) {}
+}
+
 /// An observable list that automatically observes all contained elements.
 ///
 /// [TomList] wraps a [List] of [TomObject] elements and provides:
@@ -1044,6 +1081,20 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
     implements TomObserver, Iterable {
   // ignore: prefer_final_fields
   bool _serializing = false;
+
+  /// Registered lifecycle listeners.
+  final List<TomListLifecycleListener> _lifecycleListeners = [];
+
+  /// Register a [TomListLifecycleListener] to be called around structural
+  /// batch-replacement operations (see [resetWith]).
+  void addLifecycleListener(TomListLifecycleListener listener) {
+    _lifecycleListeners.add(listener);
+  }
+
+  /// Unregister a previously added [TomListLifecycleListener].
+  void removeLifecycleListener(TomListLifecycleListener listener) {
+    _lifecycleListeners.remove(listener);
+  }
 
   /// Creates an empty observable list.
   TomList() : super(List<E>.empty(growable: true));
@@ -1294,6 +1345,36 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   Iterable<E> where(bool Function(E element) test) => _value.where(test);
   @override
   Iterable<T> whereType<T>() => _value.whereType<T>();
+
+  /// Replace the entire list contents atomically.
+  ///
+  /// Fires [TomListLifecycleListener.onBeforeClear] on all registered
+  /// listeners before removing the current elements, installs [elements] as
+  /// the new contents, then fires [TomListLifecycleListener.onAfterReset]
+  /// so listeners can recreate state for the new contents.  A single
+  /// [notifyObservers] call is made after all elements are installed.
+  ///
+  /// [TomClass._setListMember] uses this method so that observers such as
+  /// `TomListForm` can teardown / recreate their sub-form instances when
+  /// a parent form writes its bind-time snapshot back via `setValues()`.
+  void resetWith(Iterable<E> elements) {
+    // Snapshot the listener list before iterating to guard against
+    // concurrent modification inside a listener callback.
+    final listeners = List.of(_lifecycleListeners);
+    for (final l in listeners) {
+      l.onBeforeClear(this);
+    }
+    _detachFrom(_value);
+    _value.clear();
+    for (final e in elements) {
+      e.addObserver(this);
+      _value.add(e);
+    }
+    for (final l in listeners) {
+      l.onAfterReset(this);
+    }
+    notifyObservers();
+  }
 
   void add(E value) {
     value.addObserver(this);

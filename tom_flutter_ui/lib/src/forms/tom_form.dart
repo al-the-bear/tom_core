@@ -310,10 +310,13 @@ abstract class TomForm<T extends TomClass> extends TomClass
   /// form says "Discard".
   ///
   /// TomList members are intentionally excluded from the write-back
-  /// because [setValues] recreates list elements from scratch (via
-  /// reflection), which would orphan the existing sub-form bindings that
-  /// TomListForm holds. TomListForm.discard() handles structural restoration
-  /// and delegates per-element write-back to each sub-form's own discard().
+  /// because `_initialSnapshot` stores raw TomClass instances for list
+  /// fields (getValues() returns the live list, not a serialized copy),
+  /// so setValues() cannot deserialise them. Instead, each TomListForm
+  /// child container restores its list structure via
+  /// TomList.resetWith(_initialOrder) in its own discard() above, which
+  /// fires TomListLifecycleListener hooks to atomically dispose the old
+  /// sub-forms (onBeforeClear) and recreate them (onAfterReset).
   void discard() {
     onDiscarding();
     for (final field in fields.values) {
@@ -325,11 +328,9 @@ abstract class TomForm<T extends TomClass> extends TomClass
     for (final child in childContainers) {
       child.discard();
     }
-    // Restore the binding to its bind-time / last-saved state so external
-    // writes (e.g. a detail-pane save to the same TomClass) are also
-    // rolled back. Skip TomList members — they are managed by child
-    // TomListForm containers whose discard() recursively restores each
-    // element via per-element write-backs.
+    // Restore non-list fields of the binding to their bind-time values so
+    // external writes (e.g. from a master-detail detail pane) are rolled back.
+    // TomList members are excluded — see doc-comment above.
     final snapshot = _initialSnapshot;
     final binding = _binding;
     if (snapshot != null && binding != null) {

@@ -48,7 +48,8 @@ import '../validation/form_validation_error.dart';
 /// ```
 class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     extends TomObservable
-    implements TomFormEventSource, TomFormChildContainer {
+    implements TomFormEventSource, TomFormChildContainer,
+        TomListLifecycleListener {
   TomListForm({
     required this.listId,
     required TForm Function(int index) formFactory,
@@ -216,12 +217,20 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Bind this list to a [TomList] of [TItem]. Tears down any sub-forms
   /// from a prior binding and re-instantiates one form per element.
+  ///
+  /// Registers [this] as a [TomListLifecycleListener] on [items] so that
+  /// structural resets driven by an outer `TomClass.setValues()` call (e.g.
+  /// when an outer form discards its snapshot) automatically tear down the
+  /// old sub-forms ([onBeforeClear]) and rebuild them for the new elements
+  /// ([onAfterReset]).
   void bind(TomList<TItem> items) {
+    _binding?.removeLifecycleListener(this);
     for (final f in _forms) {
       f.dispose();
     }
     _forms.clear();
     _binding = items;
+    items.addLifecycleListener(this);
     for (var i = 0; i < items.length; i++) {
       final form = _instantiate(i);
       form.bind(items[i]);
@@ -234,6 +243,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
   /// Detach from the bound list. Sub-forms are unbound and disposed.
   @override
   void unbind() {
+    _binding?.removeLifecycleListener(this);
     for (final f in _forms) {
       f.unbind();
       f.dispose();
@@ -241,6 +251,38 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
     _forms.clear();
     _binding = null;
     _initialOrder = const [];
+    notifyObservers();
+  }
+
+  // --- TomListLifecycleListener ---
+
+  /// Called by [TomList.resetWith] immediately before elements are removed.
+  /// Disposes all current sub-forms so they are not left orphaned after the
+  /// list contents are replaced (e.g. when an outer `TomForm.discard()`
+  /// writes its snapshot back via `binding.setValues()`).
+  @override
+  void onBeforeClear(TomList list) {
+    for (final f in _forms) {
+      f.unbind();
+      f.dispose();
+    }
+    _forms.clear();
+  }
+
+  /// Called by [TomList.resetWith] immediately after new elements are
+  /// installed. Creates and binds fresh sub-forms for every element now in
+  /// the list. Resets [_initialOrder] to the new contents so [isDirty] and
+  /// [hasStructuralChanges] start from the correct baseline.
+  @override
+  void onAfterReset(TomList list) {
+    final binding = _binding;
+    if (binding == null) return;
+    for (var i = 0; i < binding.length; i++) {
+      final form = _instantiate(i);
+      form.bind(binding[i]);
+      _forms.add(form);
+    }
+    _initialOrder = List<TItem>.from(binding.toList());
     notifyObservers();
   }
 
@@ -299,43 +341,33 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Discard edits in every sub-form AND restore the original list order
   /// / membership captured at bind / save time.
+  ///
+  /// The restoration is driven by [TomList.resetWith] so that the
+  /// [TomListLifecycleListener] hooks ([onBeforeClear] / [onAfterReset])
+  /// atomically dispose the current sub-forms and recreate fresh ones for
+  /// the restored elements.
+  ///
+  /// Order matters: sub-form field values are reset BEFORE [resetWith] so
+  /// that [onAfterReset]'s `bind()` captures the correct (initial) TomClass
+  /// state in the new sub-form's snapshot.
   @override
   void discard() {
+    // Step 1: reset every current sub-form's field values (and recurse into
+    // any nested child containers they own, e.g. nested TomListForms).
     for (final form in _forms) {
       form.discard();
     }
+    // Step 2: atomically restore list structure. onBeforeClear disposes the
+    // current (already-discarded) sub-forms; onAfterReset creates fresh
+    // sub-forms bound to the original elements whose TomClass values were
+    // already reset in step 1.
     final binding = _binding;
-    if (binding != null && _initialOrder.isNotEmpty) {
-      // Rebuild the bound list to match the snapshot.
-      final desired = List<TItem>.from(_initialOrder);
-      // Remove items that are not in the snapshot.
-      final snapshotSet = Set<TItem>.identity()..addAll(desired);
-      for (var i = binding.length - 1; i >= 0; i--) {
-        if (!snapshotSet.contains(binding[i])) {
-          binding.removeAt(i);
-          if (i < _forms.length) {
-            _forms.removeAt(i).dispose();
-          }
-        }
-      }
-      // Re-add missing items in snapshot order; reorder to match.
-      for (var i = 0; i < desired.length; i++) {
-        final item = desired[i];
-        final currentIndex = binding.toList().indexOf(item);
-        if (currentIndex < 0) {
-          binding.insert(i, item);
-          final form = _instantiate(i);
-          form.bind(item);
-          _forms.insert(i, form);
-        } else if (currentIndex != i) {
-          final f = _forms.removeAt(currentIndex);
-          _forms.insert(i, f);
-          binding.removeAt(currentIndex);
-          binding.insert(i, item);
-        }
-      }
+    if (binding != null) {
+      // resetWith fires notifyObservers() internally via onAfterReset.
+      binding.resetWith(_initialOrder);
+    } else {
+      notifyObservers();
     }
-    notifyObservers();
   }
 
   // --- Aggregate state ---
@@ -430,6 +462,7 @@ class TomListForm<TItem extends TomClass, TForm extends TomForm<TItem>>
 
   /// Dispose every sub-form and clear listeners.
   void dispose() {
+    _binding?.removeLifecycleListener(this);
     for (final f in _forms) {
       f.dispose();
     }
