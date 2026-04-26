@@ -79,11 +79,6 @@ class TomDateTimeFormat {
   /// US datetime: `MM/DD/YYYY HH:mm` (e.g. `05/12/2026 09:30`)
   static const usDateTime = TomDateTimeFormat('MM/DD/YYYY HH:mm');
 
-  /// German/Austrian datetime: `DD.MM.YYYY HH:mm` (e.g. `12.05.2026 09:30`)
-  /// Hint shows `TT.MM.JJJJ HH:mm`.
-  static const germanDateTime =
-      TomDateTimeFormat('DD.MM.YYYY HH:mm', displayPattern: 'TT.MM.JJJJ HH:mm');
-
   /// 24-hour time: `HH:mm` (e.g. `09:30`)
   static const time24 = TomDateTimeFormat('HH:mm');
 
