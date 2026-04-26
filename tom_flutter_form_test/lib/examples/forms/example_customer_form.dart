@@ -1,3 +1,4 @@
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../state/phase2a_state.dart';
@@ -12,6 +13,7 @@ import '../../state/phase2a_state.dart';
 /// resource map in `examples/shared/example_resources.dart` and the static
 /// authorization map in `examples/shared/example_authorization.dart` resolve
 /// labels and per-field auth automatically.
+@tomReflector
 class ExampleCustomerForm extends TomForm<Customer> {
   ExampleCustomerForm({required FormFieldFamily family})
       : _family = family,
@@ -74,6 +76,7 @@ final _tierSource = StaticSelectableSource<String>(const [
 
 /// `TomListForm` that owns a list of [Customer] records and produces an
 /// [ExampleCustomerForm] of the chosen family for each row.
+@tomReflector
 class ExampleCustomerListForm
     extends TomListForm<Customer, ExampleCustomerForm> {
   ExampleCustomerListForm({required FormFieldFamily family})

@@ -96,7 +96,6 @@ class _OrderHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final acl = AclBuilder()
       ..setAclDefaultAppendGap(8)
-      ..setAclDefaultRowHeight(56)
       ..setAclExpandXDefault(true);
 
     acl.append(form.orderId.widget);

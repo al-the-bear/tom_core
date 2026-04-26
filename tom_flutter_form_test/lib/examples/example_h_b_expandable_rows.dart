@@ -81,7 +81,7 @@ class _ExampleHBExpandableRowsState extends State<ExampleHBExpandableRows> {
         title: 'Example H-B · $familyLabel',
         child: ListenableBuilder(
           listenable: _form.changes,
-          builder: (context, _) => Padding(
+          builder: (context, _) => SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Card(
               child: Padding(
@@ -209,7 +209,6 @@ class _Body extends StatelessWidget {
   Widget build(BuildContext context) {
     final header = AclBuilder()
       ..setAclDefaultAppendGap(8)
-      ..setAclDefaultRowHeight(56)
       ..setAclExpandXDefault(true);
 
     header.append(form.orderId.widget);

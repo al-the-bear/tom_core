@@ -158,7 +158,6 @@ class _CustomerCard extends StatelessWidget {
       builder: (ctx) {
         final acl = AclBuilder()
           ..setAclDefaultAppendGap(8)
-          ..setAclDefaultRowHeight(56)
           ..setAclExpandXDefault(true);
 
         acl.append(form.fullName.widget);
@@ -284,7 +283,6 @@ class _AddressesCard extends StatelessWidget {
       builder: (ctx) {
         final acl = AclBuilder()
           ..setAclDefaultAppendGap(8)
-          ..setAclDefaultRowHeight(56)
           ..setAclExpandXDefault(true);
 
         acl.append(form.label.widget);
@@ -414,7 +412,6 @@ class _OrdersCard extends StatelessWidget {
       builder: (ctx) {
         final acl = AclBuilder()
           ..setAclDefaultAppendGap(8)
-          ..setAclDefaultRowHeight(56)
           ..setAclExpandXDefault(true);
 
         acl.append(form.orderId.widget);

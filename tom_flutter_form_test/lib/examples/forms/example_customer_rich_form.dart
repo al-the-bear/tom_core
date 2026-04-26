@@ -1,3 +1,4 @@
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../state/example_state.dart';
@@ -22,6 +23,7 @@ import '../state/example_state.dart';
 // ---------------------------------------------------------------------------
 // Order item — string / int / double / nullable string
 // ---------------------------------------------------------------------------
+@tomReflector
 class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
   ExampleOrderItemForm({required FormFieldFamily family})
       : _f = family,
@@ -68,6 +70,7 @@ class ExampleOrderItemForm extends TomForm<ExampleOrderItem> {
   void createFormElements() {}
 }
 
+@tomReflector
 class ExampleOrderItemListForm
     extends TomListForm<ExampleOrderItem, ExampleOrderItemForm> {
   ExampleOrderItemListForm({required FormFieldFamily family, super.parentForm})
@@ -89,12 +92,11 @@ class ExampleOrderItemListForm
 // ---------------------------------------------------------------------------
 // Order — string / date / enum-like string / bool + items list
 // ---------------------------------------------------------------------------
+@tomReflector
 class ExampleOrderForm extends TomForm<ExampleOrder> {
   ExampleOrderForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.order') {
-    items = ExampleOrderItemListForm(family: family, parentForm: this);
-  }
+        super(formId: 'example.order');
 
   final FormFieldFamily _f;
 
@@ -132,7 +134,8 @@ class ExampleOrderForm extends TomForm<ExampleOrder> {
     labelTextOverride: 'Paid',
   );
 
-  late final ExampleOrderItemListForm items;
+  late final ExampleOrderItemListForm items =
+      ExampleOrderItemListForm(family: _f, parentForm: this);
 
   /// Sum of every item's line total — purely derived, but useful for the
   /// summary row in the H-B and H-C examples.
@@ -158,6 +161,7 @@ class ExampleOrderForm extends TomForm<ExampleOrder> {
   }
 }
 
+@tomReflector
 class ExampleOrderListForm
     extends TomListForm<ExampleOrder, ExampleOrderForm> {
   ExampleOrderListForm({required FormFieldFamily family, super.parentForm})
@@ -181,6 +185,7 @@ class ExampleOrderListForm
 // ---------------------------------------------------------------------------
 // Address — pure string input form
 // ---------------------------------------------------------------------------
+@tomReflector
 class ExampleAddressForm extends TomForm<ExampleAddress> {
   ExampleAddressForm({required FormFieldFamily family})
       : _f = family,
@@ -224,6 +229,7 @@ class ExampleAddressForm extends TomForm<ExampleAddress> {
   void createFormElements() {}
 }
 
+@tomReflector
 class ExampleAddressListForm
     extends TomListForm<ExampleAddress, ExampleAddressForm> {
   ExampleAddressListForm({required FormFieldFamily family, super.parentForm})
@@ -254,13 +260,11 @@ class ExampleAddressListForm
 //   date    → memberSince
 //   list    → addresses, orders
 // ---------------------------------------------------------------------------
+@tomReflector
 class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
   ExampleCustomerRichForm({required FormFieldFamily family})
       : _f = family,
-        super(formId: 'example.customer') {
-    addresses = ExampleAddressListForm(family: family, parentForm: this);
-    orders = ExampleOrderListForm(family: family, parentForm: this);
-  }
+        super(formId: 'example.customer');
 
   final FormFieldFamily _f;
 
@@ -338,8 +342,10 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
   );
 
   // --- Nested lists -----------------------------------------------------
-  late final ExampleAddressListForm addresses;
-  late final ExampleOrderListForm orders;
+  late final ExampleAddressListForm addresses =
+      ExampleAddressListForm(family: _f, parentForm: this);
+  late final ExampleOrderListForm orders =
+      ExampleOrderListForm(family: _f, parentForm: this);
 
   @override
   void createFormElements() {}

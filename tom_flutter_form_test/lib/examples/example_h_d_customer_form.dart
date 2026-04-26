@@ -126,7 +126,6 @@ class _CustomerInfoCard extends StatelessWidget {
     // vertically when the viewport is narrow.
     final acl = AclBuilder()
       ..setAclDefaultAppendGap(8)
-      ..setAclDefaultRowHeight(56)
       ..setAclExpandXDefault(true);
 
     acl.append(form.fullName.widget);
@@ -278,7 +277,6 @@ class _AddressDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final acl = AclBuilder()
       ..setAclDefaultAppendGap(8)
-      ..setAclDefaultRowHeight(56)
       ..setAclExpandXDefault(true);
 
     acl.append(form.label.widget);
@@ -425,7 +423,6 @@ class _OrderDetail extends StatelessWidget {
     final theme = Theme.of(context);
     final header = AclBuilder()
       ..setAclDefaultAppendGap(8)
-      ..setAclDefaultRowHeight(56)
       ..setAclExpandXDefault(true);
 
     header.append(form.orderId.widget);
@@ -437,11 +434,11 @@ class _OrderDetail extends StatelessWidget {
     header.append(form.paid.widget);
     header.addRowBreakpoint(atWidth: 480);
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: ListenableBuilder(
-        listenable: form.changes,
-        builder: (context, _) => Column(
+    return ListenableBuilder(
+      listenable: form.changes,
+      builder: (context, _) => SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             header.build(),
@@ -455,14 +452,11 @@ class _OrderDetail extends StatelessWidget {
               ],
             ),
             const Divider(height: 12),
-            Expanded(
-              child:
-                  TomInlineListForm<ExampleOrderItem, ExampleOrderItemForm>(
-                listForm: form.items,
-                reorderable: true,
-                rowBuilder: (context, i, itemForm) =>
-                    _OrderItemRow(index: i, form: itemForm),
-              ),
+            TomInlineListForm<ExampleOrderItem, ExampleOrderItemForm>(
+              listForm: form.items,
+              reorderable: true,
+              rowBuilder: (context, i, itemForm) =>
+                  _OrderItemRow(index: i, form: itemForm),
             ),
             TomListFormToolbar<ExampleOrderItem, ExampleOrderItemForm>(
               listForm: form.items,

@@ -238,7 +238,6 @@ class _DetailPane extends StatelessWidget {
           builder: (context, _) {
             final acl = AclBuilder()
               ..setAclDefaultAppendGap(8)
-              ..setAclDefaultRowHeight(56)
               ..setAclExpandXDefault(true);
 
             acl.append(form.fullName.widget);
