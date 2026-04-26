@@ -39,14 +39,19 @@ import 'demos/demo_o_cupertino_search_lookup_file.dart';
 import 'demos/demo_p_family_swap_breakpoint.dart';
 import 'demos/demo_q_auth_empty_overlay.dart';
 import 'demos/demo_r_tree_radio_infinite.dart';
+import 'examples/example_list_screen.dart';
+import 'examples/shared/example_resources.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   initializeReflection();
 
-  // Load resources from JSON asset and register with the resource provider.
+  // Load resources from JSON asset, merge in the Examples section's keys
+  // (nested under `example.*` so they cannot collide), then register the
+  // composed map with the resource provider.
   final jsonStr = await rootBundle.loadString('assets/demo_resources.json');
   final resources = json.decode(jsonStr) as Map<String, dynamic>;
+  resources.addAll(exampleResourceMap);
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(resources),
   );
@@ -69,7 +74,39 @@ class FormDemoApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      home: const DemoListScreen(),
+      home: const RootScreen(),
+    );
+  }
+}
+
+/// Top-level shell with two tabs:
+///   1. **Demos**     — every existing demo, unchanged.
+///   2. **Examples**  — stripped-down sample code (see `lib/examples/`).
+class RootScreen extends StatelessWidget {
+  const RootScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Tom Form Framework'),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          bottom: const TabBar(
+            tabs: [
+              Tab(icon: Icon(Icons.science_outlined), text: 'Demos'),
+              Tab(icon: Icon(Icons.menu_book_outlined), text: 'Examples'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            DemoListScreen(),
+            ExampleListScreen(),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -79,14 +116,9 @@ class DemoListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Form Framework Demos'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
           const _DemoHeader(
             title: 'Tom Form Framework',
             description: 'Comprehensive demo showcasing form binding, '
@@ -495,8 +527,7 @@ class DemoListScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const Demo10CentralJsonStyle()),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
