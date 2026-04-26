@@ -885,6 +885,14 @@ class TomFormDateTextInput extends TomFormDateField
     return format ?? TomDateTimeFormat.isoDate;
   }
 
+  /// Resolves the hint text shown in the text field placeholder and error
+  /// message.  Precedence:
+  ///   1. Resource key `{fieldBasePath}.dateHint` (e.g. `'TT.MM.JJJJ'`)
+  ///   2. [TomDateTimeFormat.displayPattern] on the resolved format
+  ///   3. [TomDateTimeFormat.pattern] (fallback)
+  String get resolvedHintText =>
+      TomCtr.textOrNull(basePath, 'dateHint') ?? resolvedFormat.hintText;
+
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
     final form = TomFormStyleScope.of(context);
@@ -999,7 +1007,7 @@ class _TomFormDateTextInputWidgetState
     );
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
+          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
     }
   }
 
@@ -1022,7 +1030,6 @@ class _TomFormDateTextInputWidgetState
 
   @override
   Widget build(BuildContext context) {
-    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1030,7 +1037,7 @@ class _TomFormDateTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: fmt.hintText,
+        hintText: field.resolvedHintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.calendar_today, size: 18),
@@ -1090,6 +1097,14 @@ class TomFormTimeTextInput extends TomFormTimeField
     if (resource != null) return TomDateTimeFormat(resource);
     return format ?? TomDateTimeFormat.time24;
   }
+
+  /// Resolves the hint text shown in the text field placeholder and error
+  /// message.  Precedence:
+  ///   1. Resource key `{fieldBasePath}.timeHint`
+  ///   2. [TomDateTimeFormat.displayPattern] on the resolved format
+  ///   3. [TomDateTimeFormat.pattern] (fallback)
+  String get resolvedHintText =>
+      TomCtr.textOrNull(basePath, 'timeHint') ?? resolvedFormat.hintText;
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -1197,7 +1212,7 @@ class _TomFormTimeTextInputWidgetState
     final parsed = field.resolvedFormat.parseTime(_ctrl.text);
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
+          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
     }
   }
 
@@ -1217,7 +1232,6 @@ class _TomFormTimeTextInputWidgetState
 
   @override
   Widget build(BuildContext context) {
-    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1225,7 +1239,7 @@ class _TomFormTimeTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: fmt.hintText,
+        hintText: field.resolvedHintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.access_time, size: 18),
@@ -1288,6 +1302,14 @@ class TomFormDateTimeTextInput extends TomFormDateTimeField
     if (resource != null) return TomDateTimeFormat(resource);
     return format ?? TomDateTimeFormat.isoDateTime;
   }
+
+  /// Resolves the hint text shown in the text field placeholder and error
+  /// message.  Precedence:
+  ///   1. Resource key `{fieldBasePath}.dateTimeHint`
+  ///   2. [TomDateTimeFormat.displayPattern] on the resolved format
+  ///   3. [TomDateTimeFormat.pattern] (fallback)
+  String get resolvedHintText =>
+      TomCtr.textOrNull(basePath, 'dateTimeHint') ?? resolvedFormat.hintText;
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -1404,7 +1426,7 @@ class _TomFormDateTimeTextInputWidgetState
     );
     if (mounted) {
       setState(() => _parseError =
-          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
+          parsed == null ? 'Format: ${field.resolvedHintText}' : null);
     }
   }
 
@@ -1438,7 +1460,6 @@ class _TomFormDateTimeTextInputWidgetState
 
   @override
   Widget build(BuildContext context) {
-    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1446,7 +1467,7 @@ class _TomFormDateTimeTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: fmt.hintText,
+        hintText: field.resolvedHintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.event, size: 18),

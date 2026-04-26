@@ -42,10 +42,17 @@ import 'package:flutter/material.dart' show TimeOfDay;
 /// Construct with a pattern string — see file header for token reference.
 /// Use the built-in [presets] for the most common international formats.
 class TomDateTimeFormat {
-  /// The format pattern string.
+  /// The format pattern string (machine-readable, used for parsing and formatting).
   final String pattern;
 
-  const TomDateTimeFormat(this.pattern);
+  /// Optional localised display pattern shown to the user as a hint in the
+  /// text field.  When `null`, [hintText] falls back to [pattern].
+  ///
+  /// Example: pattern `'DD.MM.YYYY'` with displayPattern `'TT.MM.JJJJ'`
+  /// keeps the same parsing logic but shows German placeholder letters.
+  final String? displayPattern;
+
+  const TomDateTimeFormat(this.pattern, {this.displayPattern});
 
   // ── Common presets ────────────────────────────────────────────────────────
 
@@ -59,7 +66,9 @@ class TomDateTimeFormat {
   static const usDate = TomDateTimeFormat('MM/DD/YYYY');
 
   /// German/Austrian date: `DD.MM.YYYY` (e.g. `12.05.2026`)
-  static const germanDate = TomDateTimeFormat('DD.MM.YYYY');
+  /// Hint shows `TT.MM.JJJJ` (Tag / Monat / Jahr).
+  static const germanDate =
+      TomDateTimeFormat('DD.MM.YYYY', displayPattern: 'TT.MM.JJJJ');
 
   /// ISO 8601 datetime: `YYYY-MM-DD HH:mm` (e.g. `2026-05-12 09:30`)
   static const isoDateTime = TomDateTimeFormat('YYYY-MM-DD HH:mm');
@@ -70,6 +79,11 @@ class TomDateTimeFormat {
   /// US datetime: `MM/DD/YYYY HH:mm` (e.g. `05/12/2026 09:30`)
   static const usDateTime = TomDateTimeFormat('MM/DD/YYYY HH:mm');
 
+  /// German/Austrian datetime: `DD.MM.YYYY HH:mm` (e.g. `12.05.2026 09:30`)
+  /// Hint shows `TT.MM.JJJJ HH:mm`.
+  static const germanDateTime =
+      TomDateTimeFormat('DD.MM.YYYY HH:mm', displayPattern: 'TT.MM.JJJJ HH:mm');
+
   /// 24-hour time: `HH:mm` (e.g. `09:30`)
   static const time24 = TomDateTimeFormat('HH:mm');
 
@@ -78,8 +92,12 @@ class TomDateTimeFormat {
 
   // ── Hint text ─────────────────────────────────────────────────────────────
 
-  /// The pattern itself used as placeholder hint in empty fields.
-  String get hintText => pattern;
+  /// The placeholder hint shown to the user in empty text fields.
+  ///
+  /// Returns [displayPattern] when set, otherwise falls back to [pattern].
+  /// This allows localised placeholder letters (e.g. `TT.MM.JJJJ` in German)
+  /// while the underlying parsing pattern stays language-neutral.
+  String get hintText => displayPattern ?? pattern;
 
   // ── Tokeniser ─────────────────────────────────────────────────────────────
 

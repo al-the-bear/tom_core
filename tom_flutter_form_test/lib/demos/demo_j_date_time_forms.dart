@@ -222,7 +222,12 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
               'Format tokens: YYYY YY · MM M · DD D · HH H · mm m · ss s\n'
               'Set via constructor (format:) or resource key '
               '{tomId}.dateFormat / .timeFormat / .dateTimeFormat — resource '
-              'config takes priority.',
+              'config takes priority.\n\n'
+              'Hint text (placeholder) is separately overridable: supply a '
+              'displayPattern on the TomDateTimeFormat constructor, or set '
+              'resource key {tomId}.dateHint / .timeHint / .dateTimeHint. '
+              'The "German" row below uses TomDateTimeFormat.germanDate which '
+              'parses DD.MM.YYYY but shows TT.MM.JJJJ to German users.',
               style: TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 12),
@@ -233,6 +238,8 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
             _form.typedDateEu.widget,
             const SizedBox(height: 8),
             _form.typedDateUs.widget,
+            const SizedBox(height: 8),
+            _form.typedDateDe.widget,
             const SizedBox(height: 12),
             Text('Time format', style: theme.textTheme.labelMedium),
             const SizedBox(height: 6),

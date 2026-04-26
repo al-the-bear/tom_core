@@ -109,6 +109,22 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
     descriptionTextOverride: 'Type a date or tap the calendar icon',
   );
 
+  /// German date — `DD.MM.YYYY` with localised hint `TT.MM.JJJJ`
+  ///
+  /// The parsing pattern stays `DD.MM.YYYY` (machine-readable); the user
+  /// sees the German placeholder `TT.MM.JJJJ` (Tag / Monat / Jahr).
+  late final typedDateDe = TomFormDateTextInput(
+    'typedDateDe',
+    DateTime(2026, 5, 12),
+    form: this,
+    format: TomDateTimeFormat.germanDate,
+    firstDate: DateTime(2024, 1, 1),
+    lastDate: DateTime(2030, 12, 31),
+    labelTextOverride: 'Date — German (TT.MM.JJJJ hint)',
+    descriptionTextOverride:
+        'Parsing pattern: DD.MM.YYYY  ·  hint shown: TT.MM.JJJJ',
+  );
+
   /// 24-hour time — `HH:mm`
   late final typedTime = TomFormTimeTextInput(
     'typedTime',
