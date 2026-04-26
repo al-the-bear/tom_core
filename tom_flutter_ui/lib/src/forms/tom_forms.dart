@@ -50,6 +50,7 @@ export 'widgets/tom_row_error_strip.dart';
 export 'fields/tom_form_int_field.dart';
 export 'fields/tom_form_double_field.dart';
 export 'fields/tom_form_range_fields.dart';
+export 'fields/tom_date_time_format.dart';
 export 'fields/tom_form_date_time_fields.dart';
 export 'fields/tom_form_duration_field.dart';
 

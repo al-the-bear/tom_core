@@ -8,6 +8,7 @@ import '../decoration/tom_generic_field_decoration_mixin.dart';
 import '../style/tom_form_style.dart';
 import '../style/tom_form_style_scope.dart';
 import '../tom_form.dart';
+import 'tom_date_time_format.dart';
 import 'tom_field_widget_adapter.dart';
 
 // ---------------------------------------------------------------------------
@@ -834,18 +835,28 @@ abstract class TomFormDateTimeRangeField extends TomField<DateTimeRange> {
 
 // ---------------------------------------------------------------------------
 // TomFormDateTextInput — text field + calendar icon that opens the date
-// picker dialog. Accepts manual entry in `YYYY-MM-DD` format; the picker
-// can fill the field without typing.
+// picker dialog. Accepts manual entry in the configured date format; the
+// picker can fill the field without typing.
+//
+// Format precedence (highest first):
+//   1. Resource key `{fieldBasePath}.dateFormat` (e.g. 'DD/MM/YYYY')
+//   2. Constructor parameter `format`
+//   3. Default: [TomDateTimeFormat.isoDate] (`YYYY-MM-DD`)
 // ---------------------------------------------------------------------------
 
 @tomReflector
 class TomFormDateTextInput extends TomFormDateField
     with TomGenericFieldDecorationMixin<DateTime> {
+  /// Optional explicit format.  Overridden by the `dateFormat` resource key
+  /// when one is present for this field's base path.
+  final TomDateTimeFormat? format;
+
   TomFormDateTextInput(
     super.tomId,
     super.initialValue, {
     required super.firstDate,
     required super.lastDate,
+    this.format,
     super.labelTextOverride,
     super.descriptionTextOverride,
     super.form,
@@ -866,6 +877,13 @@ class TomFormDateTextInput extends TomFormDateField
   @override
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  /// Resolves the effective format: resource → constructor param → ISO default.
+  TomDateTimeFormat get resolvedFormat {
+    final resource = TomCtr.textOrNull(basePath, 'dateFormat');
+    if (resource != null) return TomDateTimeFormat(resource);
+    return format ?? TomDateTimeFormat.isoDate;
+  }
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -903,7 +921,8 @@ class _TomFormDateTextInputWidgetState
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: field.formatDate(field.get()));
+    _ctrl = TextEditingController(
+        text: field.resolvedFormat.formatDate(field.get()));
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
@@ -911,7 +930,7 @@ class _TomFormDateTextInputWidgetState
   void _subscribe(TomFormDateTextInput target) {
     _observer = target >> (_) {
       if (!_updatingFromField) {
-        final text = target.formatDate(target.get());
+        final text = target.resolvedFormat.formatDate(target.get());
         if (_ctrl.text != text) {
           _ctrl.text = text;
           _parseError = null;
@@ -933,7 +952,7 @@ class _TomFormDateTextInputWidgetState
     if (!identical(oldWidget.field, widget.field)) {
       _unsubscribe(oldWidget.field);
       _subscribe(widget.field);
-      final text = widget.field.formatDate(widget.field.get());
+      final text = widget.field.resolvedFormat.formatDate(widget.field.get());
       if (_ctrl.text != text) {
         _ctrl.text = text;
         _parseError = null;
@@ -958,28 +977,12 @@ class _TomFormDateTextInputWidgetState
     if (!_focus.hasFocus) _validateText();
   }
 
-  /// Parses `YYYY-MM-DD` (also `YYYY-M-D`). Returns `null` on failure.
-  DateTime? _parseDate(String text) {
-    final m =
-        RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(text.trim());
-    if (m == null) return null;
-    try {
-      final y = int.parse(m.group(1)!);
-      final mo = int.parse(m.group(2)!);
-      final d = int.parse(m.group(3)!);
-      if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-      final date = DateTime(y, mo, d);
-      if (date.isBefore(field.firstDate) || date.isAfter(field.lastDate)) {
-        return null;
-      }
-      return date;
-    } catch (_) {
-      return null;
-    }
-  }
-
   void _onChanged(String text) {
-    final parsed = _parseDate(text);
+    final parsed = field.resolvedFormat.parseDate(
+      text,
+      firstDate: field.firstDate,
+      lastDate: field.lastDate,
+    );
     if (parsed != null) {
       _updatingFromField = true;
       field.setValue(parsed);
@@ -989,9 +992,14 @@ class _TomFormDateTextInputWidgetState
   }
 
   void _validateText() {
-    final parsed = _parseDate(_ctrl.text);
+    final parsed = field.resolvedFormat.parseDate(
+      _ctrl.text,
+      firstDate: field.firstDate,
+      lastDate: field.lastDate,
+    );
     if (mounted) {
-      setState(() => _parseError = parsed == null ? 'Format: YYYY-MM-DD' : null);
+      setState(() => _parseError =
+          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
     }
   }
 
@@ -1007,13 +1015,14 @@ class _TomFormDateTextInputWidgetState
       _updatingFromField = true;
       field.setValue(d);
       _updatingFromField = false;
-      _ctrl.text = field.formatDate(d);
+      _ctrl.text = field.resolvedFormat.formatDate(d);
       setState(() => _parseError = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1021,7 +1030,7 @@ class _TomFormDateTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: 'YYYY-MM-DD',
+        hintText: fmt.hintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.calendar_today, size: 18),
@@ -1036,15 +1045,24 @@ class _TomFormDateTextInputWidgetState
 
 // ---------------------------------------------------------------------------
 // TomFormTimeTextInput — text field + clock icon that opens the time picker
-// dialog. Accepts manual entry in `HH:MM` format.
+// dialog. Accepts manual entry in the configured time format.
+//
+// Format precedence (highest first):
+//   1. Resource key `{fieldBasePath}.timeFormat` (e.g. 'H:mm')
+//   2. Constructor parameter `format`
+//   3. Default: [TomDateTimeFormat.time24] (`HH:mm`)
 // ---------------------------------------------------------------------------
 
 @tomReflector
 class TomFormTimeTextInput extends TomFormTimeField
     with TomGenericFieldDecorationMixin<TimeOfDay> {
+  /// Optional explicit format.  Overridden by the `timeFormat` resource key.
+  final TomDateTimeFormat? format;
+
   TomFormTimeTextInput(
     super.tomId,
     super.initialValue, {
+    this.format,
     super.labelTextOverride,
     super.descriptionTextOverride,
     super.form,
@@ -1065,6 +1083,13 @@ class TomFormTimeTextInput extends TomFormTimeField
   @override
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  /// Resolves the effective format: resource → constructor param → 24 h default.
+  TomDateTimeFormat get resolvedFormat {
+    final resource = TomCtr.textOrNull(basePath, 'timeFormat');
+    if (resource != null) return TomDateTimeFormat(resource);
+    return format ?? TomDateTimeFormat.time24;
+  }
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -1102,7 +1127,8 @@ class _TomFormTimeTextInputWidgetState
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: field.formatTime(field.get()));
+    _ctrl = TextEditingController(
+        text: field.resolvedFormat.formatTime(field.get()));
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
@@ -1110,7 +1136,7 @@ class _TomFormTimeTextInputWidgetState
   void _subscribe(TomFormTimeTextInput target) {
     _observer = target >> (_) {
       if (!_updatingFromField) {
-        final text = target.formatTime(target.get());
+        final text = target.resolvedFormat.formatTime(target.get());
         if (_ctrl.text != text) {
           _ctrl.text = text;
           _parseError = null;
@@ -1132,7 +1158,7 @@ class _TomFormTimeTextInputWidgetState
     if (!identical(oldWidget.field, widget.field)) {
       _unsubscribe(oldWidget.field);
       _subscribe(widget.field);
-      final text = widget.field.formatTime(widget.field.get());
+      final text = widget.field.resolvedFormat.formatTime(widget.field.get());
       if (_ctrl.text != text) {
         _ctrl.text = text;
         _parseError = null;
@@ -1157,18 +1183,8 @@ class _TomFormTimeTextInputWidgetState
     if (!_focus.hasFocus) _validateText();
   }
 
-  /// Parses `HH:MM` (also single-digit hour, e.g. `9:05`).
-  TimeOfDay? _parseTime(String text) {
-    final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(text.trim());
-    if (m == null) return null;
-    final h = int.parse(m.group(1)!);
-    final min = int.parse(m.group(2)!);
-    if (h > 23 || min > 59) return null;
-    return TimeOfDay(hour: h, minute: min);
-  }
-
   void _onChanged(String text) {
-    final parsed = _parseTime(text);
+    final parsed = field.resolvedFormat.parseTime(text);
     if (parsed != null) {
       _updatingFromField = true;
       field.setValue(parsed);
@@ -1178,9 +1194,10 @@ class _TomFormTimeTextInputWidgetState
   }
 
   void _validateText() {
-    final parsed = _parseTime(_ctrl.text);
+    final parsed = field.resolvedFormat.parseTime(_ctrl.text);
     if (mounted) {
-      setState(() => _parseError = parsed == null ? 'Format: HH:MM' : null);
+      setState(() => _parseError =
+          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
     }
   }
 
@@ -1193,13 +1210,14 @@ class _TomFormTimeTextInputWidgetState
       _updatingFromField = true;
       field.setValue(picked);
       _updatingFromField = false;
-      _ctrl.text = field.formatTime(picked);
+      _ctrl.text = field.resolvedFormat.formatTime(picked);
       setState(() => _parseError = null);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1207,7 +1225,7 @@ class _TomFormTimeTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: 'HH:MM',
+        hintText: fmt.hintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.access_time, size: 18),
@@ -1222,18 +1240,27 @@ class _TomFormTimeTextInputWidgetState
 
 // ---------------------------------------------------------------------------
 // TomFormDateTimeTextInput — text field + calendar icon that opens the
-// sequential date-then-time picker dialogs. Accepts manual entry in
-// `YYYY-MM-DD HH:MM` format.
+// sequential date-then-time picker dialogs. Accepts manual entry in the
+// configured datetime format.
+//
+// Format precedence (highest first):
+//   1. Resource key `{fieldBasePath}.dateTimeFormat` (e.g. 'DD/MM/YYYY HH:mm')
+//   2. Constructor parameter `format`
+//   3. Default: [TomDateTimeFormat.isoDateTime] (`YYYY-MM-DD HH:mm`)
 // ---------------------------------------------------------------------------
 
 @tomReflector
 class TomFormDateTimeTextInput extends TomFormDateTimeField
     with TomGenericFieldDecorationMixin<DateTime> {
+  /// Optional explicit format.  Overridden by the `dateTimeFormat` resource key.
+  final TomDateTimeFormat? format;
+
   TomFormDateTimeTextInput(
     super.tomId,
     super.initialValue, {
     required super.firstDate,
     required super.lastDate,
+    this.format,
     super.labelTextOverride,
     super.descriptionTextOverride,
     super.form,
@@ -1254,6 +1281,13 @@ class TomFormDateTimeTextInput extends TomFormDateTimeField
   @override
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
+
+  /// Resolves the effective format: resource → constructor param → ISO default.
+  TomDateTimeFormat get resolvedFormat {
+    final resource = TomCtr.textOrNull(basePath, 'dateTimeFormat');
+    if (resource != null) return TomDateTimeFormat(resource);
+    return format ?? TomDateTimeFormat.isoDateTime;
+  }
 
   @override
   TomFieldStyle resolveStyle(BuildContext context) {
@@ -1291,7 +1325,8 @@ class _TomFormDateTimeTextInputWidgetState
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: field.formatDateTime(field.get()));
+    _ctrl = TextEditingController(
+        text: field.resolvedFormat.formatDateTime(field.get()));
     _focus = FocusNode()..addListener(_onFocusChange);
     _subscribe(field);
   }
@@ -1299,7 +1334,7 @@ class _TomFormDateTimeTextInputWidgetState
   void _subscribe(TomFormDateTimeTextInput target) {
     _observer = target >> (_) {
       if (!_updatingFromField) {
-        final text = target.formatDateTime(target.get());
+        final text = target.resolvedFormat.formatDateTime(target.get());
         if (_ctrl.text != text) {
           _ctrl.text = text;
           _parseError = null;
@@ -1321,7 +1356,8 @@ class _TomFormDateTimeTextInputWidgetState
     if (!identical(oldWidget.field, widget.field)) {
       _unsubscribe(oldWidget.field);
       _subscribe(widget.field);
-      final text = widget.field.formatDateTime(widget.field.get());
+      final text =
+          widget.field.resolvedFormat.formatDateTime(widget.field.get());
       if (_ctrl.text != text) {
         _ctrl.text = text;
         _parseError = null;
@@ -1346,32 +1382,12 @@ class _TomFormDateTimeTextInputWidgetState
     if (!_focus.hasFocus) _validateText();
   }
 
-  /// Parses `YYYY-MM-DD HH:MM` (space or T separator, single-digit parts ok).
-  DateTime? _parseDateTime(String text) {
-    final m = RegExp(
-      r'^(\d{4})-(\d{1,2})-(\d{1,2})[\s T]+(\d{1,2}):(\d{2})$',
-    ).firstMatch(text.trim());
-    if (m == null) return null;
-    try {
-      final y = int.parse(m.group(1)!);
-      final mo = int.parse(m.group(2)!);
-      final d = int.parse(m.group(3)!);
-      final h = int.parse(m.group(4)!);
-      final min = int.parse(m.group(5)!);
-      if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-      if (h > 23 || min > 59) return null;
-      final dt = DateTime(y, mo, d, h, min);
-      if (dt.isBefore(field.firstDate) || dt.isAfter(field.lastDate)) {
-        return null;
-      }
-      return dt;
-    } catch (_) {
-      return null;
-    }
-  }
-
   void _onChanged(String text) {
-    final parsed = _parseDateTime(text);
+    final parsed = field.resolvedFormat.parseDateTime(
+      text,
+      firstDate: field.firstDate,
+      lastDate: field.lastDate,
+    );
     if (parsed != null) {
       _updatingFromField = true;
       field.setValue(parsed);
@@ -1381,10 +1397,14 @@ class _TomFormDateTimeTextInputWidgetState
   }
 
   void _validateText() {
-    final parsed = _parseDateTime(_ctrl.text);
+    final parsed = field.resolvedFormat.parseDateTime(
+      _ctrl.text,
+      firstDate: field.firstDate,
+      lastDate: field.lastDate,
+    );
     if (mounted) {
-      setState(
-          () => _parseError = parsed == null ? 'Format: YYYY-MM-DD HH:MM' : null);
+      setState(() => _parseError =
+          parsed == null ? 'Format: ${field.resolvedFormat.hintText}' : null);
     }
   }
 
@@ -1412,12 +1432,13 @@ class _TomFormDateTimeTextInputWidgetState
     _updatingFromField = true;
     field.setValue(dt);
     _updatingFromField = false;
-    _ctrl.text = field.formatDateTime(dt);
+    _ctrl.text = field.resolvedFormat.formatDateTime(dt);
     setState(() => _parseError = null);
   }
 
   @override
   Widget build(BuildContext context) {
+    final fmt = field.resolvedFormat;
     final inner = TextField(
       controller: _ctrl,
       focusNode: _focus,
@@ -1425,7 +1446,7 @@ class _TomFormDateTimeTextInputWidgetState
       keyboardType: TextInputType.datetime,
       onChanged: _onChanged,
       decoration: InputDecoration(
-        hintText: 'YYYY-MM-DD HH:MM',
+        hintText: fmt.hintText,
         errorText: _parseError,
         suffixIcon: IconButton(
           icon: const Icon(Icons.event, size: 18),
