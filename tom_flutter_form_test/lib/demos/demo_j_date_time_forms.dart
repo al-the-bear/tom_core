@@ -210,26 +210,42 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Text input + picker icon', style: theme.textTheme.titleSmall),
+            Text('Text input + picker icon — configurable format',
+                style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
             const Text(
-              'Each field accepts typed input and also accepts a value from the '
-              'picker opened by the trailing icon. The field value updates '
-              'immediately on valid input; a format hint appears when focus '
-              'leaves an unparseable entry.',
+              'Each field accepts typed input in the configured format and '
+              'also accepts a value from the picker opened by the trailing '
+              'icon. The field value updates immediately on valid input; a '
+              'format hint appears when focus leaves with an unparseable '
+              'entry.\n\n'
+              'Format tokens: YYYY YY · MM M · DD D · HH H · mm m · ss s\n'
+              'Set via constructor (format:) or resource key '
+              '{tomId}.dateFormat / .timeFormat / .dateTimeFormat — resource '
+              'config takes priority.',
               style: TextStyle(fontSize: 12),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+            Text('Date formats', style: theme.textTheme.labelMedium),
+            const SizedBox(height: 6),
             _form.typedDate.widget,
             const SizedBox(height: 8),
-            _form.typedTime.widget,
+            _form.typedDateEu.widget,
             const SizedBox(height: 8),
+            _form.typedDateUs.widget,
+            const SizedBox(height: 12),
+            Text('Time format', style: theme.textTheme.labelMedium),
+            const SizedBox(height: 6),
+            _form.typedTime.widget,
+            const SizedBox(height: 12),
+            Text('Date + time format', style: theme.textTheme.labelMedium),
+            const SizedBox(height: 6),
             _form.typedDateTime.widget,
             const SizedBox(height: 8),
             ListenableBuilder(
               listenable: _form.changes,
               builder: (context, _) => Text(
-                'Typed date: ${_isoDate(_form.typedDate.get())}  '
+                'ISO date: ${_isoDate(_form.typedDate.get())}  '
                 '  time: ${_form.typedTime.get().format(context)}'
                 '  datetime: ${_form.typedDateTime.get()}',
                 style: theme.textTheme.bodySmall,

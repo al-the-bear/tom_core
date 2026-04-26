@@ -66,33 +66,69 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
   );
 
   // ── Text-input variants (type by hand + picker icon) ─────────────────
+  //
+  // Each field carries an explicit TomDateTimeFormat.  The format can also
+  // be set at runtime through the resource system: place the pattern string
+  // at `{tomId}.dateFormat`, `{tomId}.timeFormat`, or
+  // `{tomId}.dateTimeFormat` in the app's resource map — resource config
+  // wins over the constructor parameter.
 
+  /// ISO date — `YYYY-MM-DD`  (international standard, sortable)
   late final typedDate = TomFormDateTextInput(
     'typedDate',
     DateTime(2026, 5, 12),
     form: this,
+    format: TomDateTimeFormat.isoDate,
     firstDate: DateTime(2024, 1, 1),
     lastDate: DateTime(2030, 12, 31),
-    labelTextOverride: 'Date (text input)',
-    descriptionTextOverride: 'Type YYYY-MM-DD or use the calendar icon',
+    labelTextOverride: 'Date — ISO (YYYY-MM-DD)',
+    descriptionTextOverride: 'Type a date or tap the calendar icon',
   );
 
+  /// European date — `DD/MM/YYYY`
+  late final typedDateEu = TomFormDateTextInput(
+    'typedDateEu',
+    DateTime(2026, 5, 12),
+    form: this,
+    format: TomDateTimeFormat.europeanDate,
+    firstDate: DateTime(2024, 1, 1),
+    lastDate: DateTime(2030, 12, 31),
+    labelTextOverride: 'Date — European (DD/MM/YYYY)',
+    descriptionTextOverride: 'Type a date or tap the calendar icon',
+  );
+
+  /// US date — `MM/DD/YYYY`
+  late final typedDateUs = TomFormDateTextInput(
+    'typedDateUs',
+    DateTime(2026, 5, 12),
+    form: this,
+    format: TomDateTimeFormat.usDate,
+    firstDate: DateTime(2024, 1, 1),
+    lastDate: DateTime(2030, 12, 31),
+    labelTextOverride: 'Date — US (MM/DD/YYYY)',
+    descriptionTextOverride: 'Type a date or tap the calendar icon',
+  );
+
+  /// 24-hour time — `HH:mm`
   late final typedTime = TomFormTimeTextInput(
     'typedTime',
     const TimeOfDay(hour: 9, minute: 0),
     form: this,
-    labelTextOverride: 'Time (text input)',
-    descriptionTextOverride: 'Type HH:MM or use the clock icon',
+    format: TomDateTimeFormat.time24,
+    labelTextOverride: 'Time — 24 h (HH:mm)',
+    descriptionTextOverride: 'Type a time or tap the clock icon',
   );
 
+  /// European datetime — `DD/MM/YYYY HH:mm`
   late final typedDateTime = TomFormDateTimeTextInput(
     'typedDateTime',
     DateTime(2026, 5, 12, 9, 30),
     form: this,
+    format: TomDateTimeFormat.europeanDateTime,
     firstDate: DateTime(2024, 1, 1),
     lastDate: DateTime(2030, 12, 31),
-    labelTextOverride: 'Date + time (text input)',
-    descriptionTextOverride: 'Type YYYY-MM-DD HH:MM or use the calendar icon',
+    labelTextOverride: 'Date + time — European (DD/MM/YYYY HH:mm)',
+    descriptionTextOverride: 'Type date and time or tap the calendar icon',
   );
 
   /// Equivalent minute count slider — the Demo J intro promises a side-
