@@ -79,6 +79,8 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
               },
             ),
             const SizedBox(height: 12),
+            _textInputCard(context),
+            const SizedBox(height: 12),
             _durationCard(context),
           ],
         ),
@@ -199,6 +201,45 @@ class _DemoJDateTimeFormsState extends State<DemoJDateTimeForms> {
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
+
+  Widget _textInputCard(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Text input + picker icon', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            const Text(
+              'Each field accepts typed input and also accepts a value from the '
+              'picker opened by the trailing icon. The field value updates '
+              'immediately on valid input; a format hint appears when focus '
+              'leaves an unparseable entry.',
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            _form.typedDate.widget,
+            const SizedBox(height: 8),
+            _form.typedTime.widget,
+            const SizedBox(height: 8),
+            _form.typedDateTime.widget,
+            const SizedBox(height: 8),
+            ListenableBuilder(
+              listenable: _form.changes,
+              builder: (context, _) => Text(
+                'Typed date: ${_isoDate(_form.typedDate.get())}  '
+                '  time: ${_form.typedTime.get().format(context)}'
+                '  datetime: ${_form.typedDateTime.get()}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _durationCard(BuildContext context) {
     final theme = Theme.of(context);

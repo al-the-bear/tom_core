@@ -65,6 +65,36 @@ class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
     descriptionTextOverride: 'Segmented h / m entry',
   );
 
+  // ── Text-input variants (type by hand + picker icon) ─────────────────
+
+  late final typedDate = TomFormDateTextInput(
+    'typedDate',
+    DateTime(2026, 5, 12),
+    form: this,
+    firstDate: DateTime(2024, 1, 1),
+    lastDate: DateTime(2030, 12, 31),
+    labelTextOverride: 'Date (text input)',
+    descriptionTextOverride: 'Type YYYY-MM-DD or use the calendar icon',
+  );
+
+  late final typedTime = TomFormTimeTextInput(
+    'typedTime',
+    const TimeOfDay(hour: 9, minute: 0),
+    form: this,
+    labelTextOverride: 'Time (text input)',
+    descriptionTextOverride: 'Type HH:MM or use the clock icon',
+  );
+
+  late final typedDateTime = TomFormDateTimeTextInput(
+    'typedDateTime',
+    DateTime(2026, 5, 12, 9, 30),
+    form: this,
+    firstDate: DateTime(2024, 1, 1),
+    lastDate: DateTime(2030, 12, 31),
+    labelTextOverride: 'Date + time (text input)',
+    descriptionTextOverride: 'Type YYYY-MM-DD HH:MM or use the calendar icon',
+  );
+
   /// Equivalent minute count slider — the Demo J intro promises a side-
   /// by-side comparison with the duration input. Stored as plain int
   /// minutes; the demo synchronises it with [taskDuration] manually.
