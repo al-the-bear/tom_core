@@ -96,7 +96,7 @@ final ExampleCustomerRich exampleCustomerHc = _seedRichCustomer();
 ExampleCustomerRich _seedRichCustomer() {
   final c = ExampleCustomerRich();
   c.fullName | 'Ada Lovelace';
-  c.email | 'ada@analytical.example';
+  c.email | 'ada@example.com';
   c.phone | '+44 20 7946 0958';
   c.company | 'Analytical Engines Ltd.';
   c.tier | 'gold';

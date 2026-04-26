@@ -89,12 +89,12 @@ class _ExampleHDCustomerFormState extends State<ExampleHDCustomerForm> {
                 _CustomerInfoCard(form: _form),
                 const SizedBox(height: 12),
                 SizedBox(
-                  height: 320,
+                  height: 420,
                   child: _AddressesCard(form: _form, family: _family),
                 ),
                 const SizedBox(height: 12),
                 SizedBox(
-                  height: 380,
+                  height: 540,
                   child: _OrdersCard(form: _form, family: _family),
                 ),
                 const SizedBox(height: 12),
@@ -293,7 +293,35 @@ class _AddressDetail extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: ListenableBuilder(
         listenable: form.changes,
-        builder: (context, _) => SingleChildScrollView(child: acl.build()),
+        builder: (context, _) => SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              acl.build(),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: [
+                  FilledButton.icon(
+                    icon: const Icon(Icons.save, size: 16),
+                    label: const Text('Save'),
+                    onPressed: () => form.save(),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.undo, size: 16),
+                    label: const Text('Discard'),
+                    onPressed: () => form.discard(),
+                  ),
+                  if (form.isDirty)
+                    const Chip(
+                      label: Text('Dirty'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -460,6 +488,27 @@ class _OrderDetail extends StatelessWidget {
             ),
             TomListFormToolbar<ExampleOrderItem, ExampleOrderItemForm>(
               listForm: form.items,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.save, size: 16),
+                  label: const Text('Save'),
+                  onPressed: () => form.save(),
+                ),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.undo, size: 16),
+                  label: const Text('Discard'),
+                  onPressed: () => form.discard(),
+                ),
+                if (form.isDirty)
+                  const Chip(
+                    label: Text('Dirty'),
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
             ),
           ],
         ),

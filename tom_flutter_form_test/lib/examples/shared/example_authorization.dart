@@ -43,14 +43,11 @@ class ExampleAuthAdapter implements TomAuthorizationAdapter {
 
 /// The static authorization table the Examples section installs at startup.
 ///
-/// - `example.customer.email` → read-only (you can see it, you can't edit it)
-/// - `example.customer.tier`  → disabled (visible but greyed)
-/// - `example.address`        → fully authorized (default — listed for clarity)
+/// - `example.customer.tier`  → disabled (visible but greyed — demonstrates
+///   the `disabled` auth state so the examples show a real auth scenario)
 /// - everything else          → fully authorized (default)
 final Map<String, TomAuthState> exampleAuthMap = <String, TomAuthState>{
-  'example.customer.email': TomAuthState.read,
   'example.customer.tier': TomAuthState.disabled,
-  'example.address': TomAuthState.full,
 };
 
 /// Installs the example authorization adapter as the global adapter.

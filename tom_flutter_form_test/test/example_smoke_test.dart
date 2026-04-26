@@ -184,7 +184,7 @@ void main() {
     await _pump(
         tester, const ExampleHEReadOnly(family: ExampleFamily.material));
     expect(find.textContaining('Ada Lovelace'), findsAtLeastNWidgets(1));
-    expect(find.textContaining('ada@analytical'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('ada@example.com'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('H-E Cupertino — mounts without exceptions', (tester) async {
