@@ -6,6 +6,7 @@
 library;
 
 export 'src/cancellation.dart';
+export 'src/category_log.dart';
 export 'src/close_guard.dart';
 export 'src/collection_equality.dart';
 export 'src/dedup_by_id.dart';
