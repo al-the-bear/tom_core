@@ -16,6 +16,7 @@ assistant, and any future agent runtime.
 | `textPreview` | Single-line, length-bounded preview of arbitrary text. |
 | `HttpDate` | RFC 7231 / RFC 1123 HTTP-date parsing and formatting. |
 | `YamlConfigReader` | Typed, dotted-path reads over parsed YAML with `${ENV}` expansion. |
+| `percentileDuration` / `LatencySummary` | Nearest-rank percentile maths and a count/min/max/p50/p95 summary over `Duration` samples (domain-free; the caller supplies the pass target). |
 
 ## What does NOT live here
 

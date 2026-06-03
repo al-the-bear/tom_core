@@ -1,0 +1,62 @@
+ID,Groups,Description,Baseline [06-03 11:26]
+,CloseGuard,markClosed transitions once and reports it; close() stays idempotent,OK/OK
+,buildUniqueById,keys items by their extracted id,OK/OK
+,textPreview,clips at limit and appends the default ellipsis,OK/OK
+,buildUniqueById,returns an unmodifiable map,OK/OK
+,textPreview,a clipped result has length limit + ellipsis.length,OK/OK
+,textPreview,honours a custom ASCII ellipsis,OK/OK
+,buildUniqueById,rejects a duplicate id with the default message,OK/OK
+,textPreview,rejects a negative limit,OK/OK
+,textPreview,limit zero yields only the ellipsis for non-empty input,OK/OK
+,buildUniqueById,uses a caller-supplied duplicate message when given,OK/OK
+,promptSha256,formats as sha256:<lowercase-hex>,OK/OK
+,CloseGuard,starts open,OK/OK
+,buildUniqueById,empty input yields an empty map,OK/OK
+,promptSha256,matches a hand-computed digest of the UTF-8 bytes,OK/OK
+,CloseGuard,ensureOpen is a no-op while open,OK/OK
+,promptSha256,is deterministic for the same input,OK/OK
+,promptSha256,differs for different input,OK/OK
+,promptSha256,"hashes UTF-8 bytes, not code units (multi-byte input)",OK/OK
+,promptSha256,empty string hashes to the canonical empty-input digest,OK/OK
+,CloseGuard,ensureOpen throws after close with the operation in the message,OK/OK
+,textPreview,returns the text unchanged when within the limit,OK/OK
+,percentileDuration (nearest-rank),p50 of 10 ascending samples is the 5th (nearest-rank),OK/OK
+,percentileDuration (nearest-rank),p95 of 10 ascending samples is the 10th (nearest-rank),OK/OK
+,percentileDuration (nearest-rank),"p0 clamps to the smallest, p100 to the largest",OK/OK
+,percentileDuration (nearest-rank),a single-sample list returns that sample for any quantile,OK/OK
+,percentileDuration (nearest-rank),an empty list is a programming error,OK/OK
+,percentileDuration (nearest-rank),"a quantile outside [0, 1] is rejected",OK/OK
+,LatencySummary.fromSamples,computes count/min/max/p50/p95 and leaves the caller list unsorted,OK/OK
+,LatencySummary.fromSamples,an empty sample set is rejected,OK/OK
+,LatencySummary.fromSamples,meetsTarget gates on p95 against the supplied target,OK/OK
+,YamlConfigReader typed accessors,requireString returns the value,OK/OK
+,HttpDate.parse,parses RFC 1123 format to UTC,OK/OK
+,HttpDate.parse,"parses RFC 850 format (2-digit year, dash-separated)",OK/OK
+,HttpDate.parse,parses asctime format,OK/OK
+,YamlConfigReader typed accessors,requireString throws domain exception when missing,OK/OK
+,HttpDate.parse,tolerates surrounding whitespace,OK/OK
+,YamlConfigReader typed accessors,requireString throws on type mismatch with path + runtimeType,OK/OK
+,YamlConfigReader typed accessors,optionalString returns null when absent,OK/OK
+,HttpDate.parse,throws FormatException on an unknown month,OK/OK
+,HttpDate.parse,throws FormatException on a malformed date,OK/OK
+,OperationCancelled,toString reflects the optional operation label,OK/OK
+,YamlConfigReader typed accessors,requireDouble accepts int and double,OK/OK
+,YamlConfigReader typed accessors,"optionalDouble returns null when absent, throws on non-number",OK/OK
+,YamlConfigReader typed accessors,optionalBool,OK/OK
+,YamlConfigReader typed accessors,requireMap / optionalMap,OK/OK
+,YamlConfigReader typed accessors,requireList / optionalList,OK/OK
+,YamlConfigReader typed accessors,parseUri,OK/OK
+,YamlConfigReader.expandEnv,returns input unchanged when no token,OK/OK
+,YamlConfigReader.expandEnv,substitutes a defined variable,OK/OK
+,YamlConfigReader.expandEnv,substitutes multiple variables,OK/OK
+,YamlConfigReader.expandEnv,throws on undefined variable with path,OK/OK
+,YamlConfigReader.expandEnv,throws on unterminated token,OK/OK
+,YamlConfigReader.expandEnv,throws on empty token,OK/OK
+,YamlConfigReader.expandEnv,a bare $ without brace is passed through verbatim,OK/OK
+,CancellationTokenSource,token starts uncancelled,OK/OK
+,CancellationTokenSource,cancel signals the token and resolves whenCancelled,OK/OK
+,CancellationTokenSource,cancel is idempotent,OK/OK
+,CancellationTokenSource,awaiting an already-cancelled token returns immediately,OK/OK
+,CancellationToken.none,is never cancelled,OK/OK
+,CancellationToken.none,whenCancelled never resolves,OK/OK
+,YamlConfigReader typed accessors,requireInt / optionalInt,OK/OK
