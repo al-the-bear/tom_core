@@ -10,3 +10,4 @@ export 'src/close_guard.dart';
 export 'src/dedup_by_id.dart';
 export 'src/http_date.dart';
 export 'src/text_preview.dart';
+export 'src/yaml_config_reader.dart';
