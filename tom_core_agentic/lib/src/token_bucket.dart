@@ -74,6 +74,39 @@ class _BucketState {
   _BucketState(this.tokens, this.lastRefill);
 }
 
+/// Immutable snapshot of one key's bucket state — the persistable form.
+///
+/// Captures exactly what the lazy refill needs to resume a bucket after a
+/// process restart: the (fractional) [tokens] it held and the [lastRefill]
+/// instant they were computed at. Because refill is computed lazily from the
+/// wall-clock elapsed since [lastRefill], a snapshot restored after downtime
+/// naturally credits the idle time on its next take — there is no separate
+/// "catch-up" step. A caller persists these (via [TokenBucket.snapshot] /
+/// [TokenBucket.snapshotOf]) and seeds them back with [TokenBucket.restore].
+final class TokenBucketSnapshot {
+  /// The fractional token count the bucket held at [lastRefill].
+  final double tokens;
+
+  /// The wall-clock instant [tokens] was last computed at.
+  final DateTime lastRefill;
+
+  /// Builds a snapshot of [tokens] held at [lastRefill].
+  const TokenBucketSnapshot({required this.tokens, required this.lastRefill});
+
+  @override
+  bool operator ==(Object other) =>
+      other is TokenBucketSnapshot &&
+      other.tokens == tokens &&
+      other.lastRefill.isAtSameMomentAs(lastRefill);
+
+  @override
+  int get hashCode => Object.hash(tokens, lastRefill.microsecondsSinceEpoch);
+
+  @override
+  String toString() =>
+      'TokenBucketSnapshot(tokens: $tokens, lastRefill: $lastRefill)';
+}
+
 /// A keyed continuous-refill token bucket.
 ///
 /// One bucket per key, created full on first sight and held for the
@@ -110,6 +143,50 @@ final class TokenBucket {
 
   /// Drops all bucket state. Every key is full again on its next [tryTake].
   void clear() => _buckets.clear();
+
+  /// Snapshot of every live bucket, keyed by the same key — the durable form.
+  ///
+  /// A caller persists these and restores them with [restore] after a process
+  /// restart, so a long-horizon throttle layered on the bucket survives the
+  /// restart. An empty map when no key has been seen.
+  Map<String, TokenBucketSnapshot> snapshot() => <String, TokenBucketSnapshot>{
+        for (final entry in _buckets.entries)
+          entry.key: TokenBucketSnapshot(
+            tokens: entry.value.tokens,
+            lastRefill: entry.value.lastRefill,
+          ),
+      };
+
+  /// Snapshot of a single [key]'s bucket, or `null` when it has no live state.
+  ///
+  /// The single-key form a caller uses to persist incrementally — after one
+  /// [tryTake] for [key], write just that key's row rather than the whole map.
+  TokenBucketSnapshot? snapshotOf(String key) {
+    final bucket = _buckets[key];
+    if (bucket == null) return null;
+    return TokenBucketSnapshot(
+      tokens: bucket.tokens,
+      lastRefill: bucket.lastRefill,
+    );
+  }
+
+  /// Seeds bucket state from a previously taken [snapshot] (e.g. read from
+  /// durable storage at boot).
+  ///
+  /// Each key in [snapshot] overwrites any existing bucket for that key; keys
+  /// absent from [snapshot] are left untouched. A restored token count is
+  /// clamped to `[0, capacity]` so a snapshot taken under a larger capacity (a
+  /// since-shrunk policy) cannot seed an over-full bucket. Each key must be
+  /// non-empty (the same invariant [tryTake] enforces).
+  void restore(Map<String, TokenBucketSnapshot> snapshot) {
+    snapshot.forEach((key, state) {
+      requireNonEmpty(key, 'key');
+      _buckets[key] = _BucketState(
+        state.tokens.clamp(0.0, policy.capacity.toDouble()),
+        state.lastRefill,
+      );
+    });
+  }
 
   /// Attempts to take one token for [key].
   ///
