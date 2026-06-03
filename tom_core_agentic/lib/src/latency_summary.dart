@@ -36,6 +36,33 @@ Duration percentileDuration(List<Duration> sorted, double q) {
   return sorted[clamped];
 }
 
+/// The nearest-rank percentile of [sortedAsc] (which MUST already be
+/// ascending) for a quantile [q] in `[0, 1]`, over integer samples.
+///
+/// The integer-millisecond counterpart of [percentileDuration]: trackers
+/// that buffer raw millisecond counts (rather than [Duration]s) share the
+/// same nearest-rank maths without boxing every sample into a [Duration].
+/// Same contract: `rank = ceil(q · n)` (at least 1), sample at index
+/// `rank − 1` clamped into range. An empty list throws [ArgumentError];
+/// a [q] outside `[0, 1]` is rejected.
+int nearestRankPercentile(List<int> sortedAsc, double q) {
+  if (sortedAsc.isEmpty) {
+    throw ArgumentError.value(sortedAsc, 'sortedAsc', 'must be non-empty');
+  }
+  if (q < 0 || q > 1) {
+    throw ArgumentError.value(q, 'q', 'must be within [0, 1]');
+  }
+  final int n = sortedAsc.length;
+  final int rank = (q * n).ceil();
+  final int index = (rank < 1 ? 1 : rank) - 1;
+  final int clamped = index < 0
+      ? 0
+      : index > n - 1
+          ? n - 1
+          : index;
+  return sortedAsc[clamped];
+}
+
 /// An immutable summary of a set of latency samples — count, min/max, p50, p95.
 ///
 /// Built from raw samples via [LatencySummary.fromSamples], which sorts a copy

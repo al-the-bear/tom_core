@@ -2,6 +2,37 @@ import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:test/test.dart';
 
 void main() {
+  group('nearestRankPercentile (int millis)', () {
+    final List<int> tenAscending = <int>[
+      for (int ms = 10; ms <= 100; ms += 10) ms,
+    ];
+
+    test('p50 of 10 ascending samples is the 5th (nearest-rank)', () {
+      expect(nearestRankPercentile(tenAscending, 0.50), 50);
+    });
+
+    test('p95 of 10 ascending samples is the 10th (nearest-rank)', () {
+      expect(nearestRankPercentile(tenAscending, 0.95), 100);
+    });
+
+    test('single sample returns itself for any quantile', () {
+      expect(nearestRankPercentile(<int>[7], 0.50), 7);
+      expect(nearestRankPercentile(<int>[7], 0.95), 7);
+    });
+
+    test('q = 0 returns the smallest sample', () {
+      expect(nearestRankPercentile(tenAscending, 0), 10);
+    });
+
+    test('empty list throws ArgumentError', () {
+      expect(() => nearestRankPercentile(<int>[], 0.5), throwsArgumentError);
+    });
+
+    test('out-of-range quantile throws ArgumentError', () {
+      expect(() => nearestRankPercentile(tenAscending, 1.5), throwsArgumentError);
+    });
+  });
+
   group('percentileDuration (nearest-rank)', () {
     // Ten samples, 10 ms … 100 ms, already ascending.
     final List<Duration> tenAscending = <Duration>[
