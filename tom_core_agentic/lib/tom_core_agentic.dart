@@ -14,6 +14,7 @@ export 'src/exception_format.dart';
 export 'src/http_date.dart';
 export 'src/json_helpers.dart';
 export 'src/latency_summary.dart';
+export 'src/map_field_reader.dart';
 export 'src/prompt_sha256.dart';
 export 'src/sql_helpers.dart';
 export 'src/text_preview.dart';
