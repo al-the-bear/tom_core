@@ -9,5 +9,6 @@ export 'src/cancellation.dart';
 export 'src/close_guard.dart';
 export 'src/dedup_by_id.dart';
 export 'src/http_date.dart';
+export 'src/prompt_sha256.dart';
 export 'src/text_preview.dart';
 export 'src/yaml_config_reader.dart';
