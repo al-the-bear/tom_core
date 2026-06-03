@@ -71,4 +71,53 @@ void main() {
       expect(listEquals([1, 2], [1, 2, 3]), isFalse);
     });
   });
+
+  group('deepValueEquals', () {
+    test('two nulls are equal', () {
+      expect(deepValueEquals(null, null), isTrue);
+    });
+
+    test('null and non-null are unequal', () {
+      expect(deepValueEquals(null, 1), isFalse);
+      expect(deepValueEquals('a', null), isFalse);
+    });
+
+    test('scalars compare with ==', () {
+      expect(deepValueEquals(1, 1), isTrue);
+      expect(deepValueEquals('a', 'a'), isTrue);
+      expect(deepValueEquals(1, 2), isFalse);
+    });
+
+    test('nested lists compare by contents, not reference', () {
+      expect(
+        deepValueEquals([1, [2, 3]], [1, [2, 3]]),
+        isTrue,
+      );
+      expect(
+        deepValueEquals([1, [2, 3]], [1, [2, 4]]),
+        isFalse,
+      );
+    });
+
+    test('lists of differing length are unequal', () {
+      expect(deepValueEquals([1, 2], [1, 2, 3]), isFalse);
+    });
+  });
+
+  group('deepValueHash', () {
+    test('null hashes to 0', () {
+      expect(deepValueHash(null), 0);
+    });
+
+    test('a scalar uses its own hashCode', () {
+      expect(deepValueHash('a'), 'a'.hashCode);
+    });
+
+    test('equal nested values hash equal', () {
+      expect(
+        deepValueHash([1, 2, 3]),
+        deepValueHash([1, 2, 3]),
+      );
+    });
+  });
 }

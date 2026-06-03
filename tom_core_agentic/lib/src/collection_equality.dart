@@ -49,3 +49,38 @@ bool listEquals<E>(List<E> a, List<E> b) {
   }
   return true;
 }
+
+/// Deep equality for a value that may be a scalar or an arbitrarily nested
+/// `List` of scalars/lists.
+///
+/// Two `null`s are equal; a `null` and a non-`null` are not. Two `List`s
+/// compare element-wise (recursively, so nested lists are compared by their
+/// contents rather than by reference). Every other value falls back to `==`.
+/// Short-circuits on `identical`.
+///
+/// This is the comparison a typed attribute value needs when it holds either
+/// a plain scalar or a list of scalars — where [listEquals] (which compares
+/// elements with `==`) would compare nested lists by reference.
+bool deepValueEquals(Object? a, Object? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!deepValueEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+
+/// Hash companion to [deepValueEquals].
+///
+/// `null` hashes to 0, a `List` hashes by its (ordered) elements, and every
+/// other value uses its own `hashCode`. Consistent with [deepValueEquals]:
+/// values that compare equal hash equal.
+int deepValueHash(Object? v) {
+  if (v == null) return 0;
+  if (v is List) return Object.hashAll(v);
+  return v.hashCode;
+}
