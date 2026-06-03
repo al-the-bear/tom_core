@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:test/test.dart';
 
@@ -59,6 +61,42 @@ void main() {
 
     test('rejects negative maxLength', () {
       expect(() => sqlSafeIdentifier('x', maxLength: -1), throwsArgumentError);
+    });
+  });
+
+  group('blobFromColumnOrNull', () {
+    test('passes a Uint8List through unchanged', () {
+      final bytes = Uint8List.fromList(<int>[1, 2, 3]);
+      expect(identical(blobFromColumnOrNull(bytes), bytes), isTrue);
+    });
+
+    test('copies a List<int> into a Uint8List', () {
+      final result = blobFromColumnOrNull(<int>[4, 5, 6]);
+      expect(result, isA<Uint8List>());
+      expect(result, <int>[4, 5, 6]);
+    });
+
+    test('returns null for a non-blob value', () {
+      expect(blobFromColumnOrNull('not a blob'), isNull);
+      expect(blobFromColumnOrNull(null), isNull);
+    });
+  });
+
+  group('blobFromColumn', () {
+    test('returns the blob for a valid column', () {
+      final result = blobFromColumn(<int>[7, 8], context: 't.col');
+      expect(result, <int>[7, 8]);
+    });
+
+    test('throws a context-tagged StateError for a non-blob', () {
+      expect(
+        () => blobFromColumn(42, context: 'pending.payload_blob'),
+        throwsA(isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('pending.payload_blob'), contains('expected BLOB')),
+        )),
+      );
     });
   });
 }

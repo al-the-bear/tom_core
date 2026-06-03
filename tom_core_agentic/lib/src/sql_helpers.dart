@@ -1,11 +1,14 @@
 // SQLite query-building helpers.
 //
-// Any SQLite-backed store repeats the same three domain-free idioms: a
+// Any SQLite-backed store repeats the same domain-free idioms: a
 // `?,?,?` placeholder run for an `IN (…)` clause, a non-cryptographic
-// hash to disambiguate a derived identifier, and a "string → safe SQL
-// identifier" sanitiser. Each was hand-rolled at every call site, and
-// the placeholder separator even drifted (`','` vs `', '`). These are
-// those idioms, with one definition each.
+// hash to disambiguate a derived identifier, a "string → safe SQL
+// identifier" sanitiser, and the cast that normalises a dynamically-typed
+// BLOB column read into a `Uint8List`. Each was hand-rolled at every call
+// site, and the placeholder separator even drifted (`','` vs `', '`).
+// These are those idioms, with one definition each.
+
+import 'dart:typed_data';
 
 /// Builds a comma-separated run of `count` bind placeholders for an
 /// `IN (…)` clause: `sqlPlaceholders(3)` ⇒ `'?,?,?'`.
@@ -60,4 +63,34 @@ String sqlSafeIdentifier(String input, {int maxLength = 32}) {
     out.write(isAlnum || isUnderscore ? String.fromCharCode(ch) : '_');
   }
   return out.toString();
+}
+
+/// Normalises a dynamically-typed BLOB column read into a [Uint8List],
+/// or returns `null` when [raw] is neither a `Uint8List` nor a
+/// `List<int>`.
+///
+/// `sqlite3` returns a fresh `Uint8List` for BLOB columns under most
+/// builds, but the dynamic typing of a result `Row` hands the caller
+/// `Object?`. This collapses the recurring `is Uint8List` / `is
+/// List<int>` cast. Use [blobFromColumn] when a non-blob is a hard
+/// error; use this variant when the caller filters malformed rows out
+/// of a bulk read.
+Uint8List? blobFromColumnOrNull(Object? raw) {
+  if (raw is Uint8List) return raw;
+  if (raw is List<int>) return Uint8List.fromList(raw);
+  return null;
+}
+
+/// Normalises a dynamically-typed BLOB column read into a [Uint8List],
+/// throwing a [StateError] tagged with [context] when [raw] is not a
+/// BLOB.
+///
+/// [context] names the column so a corrupt row points the operator at
+/// the offending table.column (e.g. `'pending_vector_writes.payload_blob'`).
+Uint8List blobFromColumn(Object? raw, {required String context}) {
+  final blob = blobFromColumnOrNull(raw);
+  if (blob == null) {
+    throw StateError('$context: expected BLOB, got ${raw.runtimeType}');
+  }
+  return blob;
 }
