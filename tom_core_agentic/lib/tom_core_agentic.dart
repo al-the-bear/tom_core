@@ -5,10 +5,13 @@
 /// assistant, and any future agent runtime.
 library;
 
+export 'src/argument_guards.dart';
+export 'src/async_shutdown.dart';
 export 'src/cancellation.dart';
 export 'src/category_log.dart';
 export 'src/close_guard.dart';
 export 'src/collection_equality.dart';
+export 'src/day_boundary.dart';
 export 'src/dedup_by_id.dart';
 export 'src/exception_format.dart';
 export 'src/http_date.dart';
@@ -17,5 +20,9 @@ export 'src/latency_summary.dart';
 export 'src/map_field_reader.dart';
 export 'src/prompt_sha256.dart';
 export 'src/sql_helpers.dart';
+export 'src/system_clock.dart';
 export 'src/text_preview.dart';
+export 'src/token_bucket.dart';
+export 'src/token_estimate.dart';
+export 'src/ttl_cache.dart';
 export 'src/yaml_config_reader.dart';
