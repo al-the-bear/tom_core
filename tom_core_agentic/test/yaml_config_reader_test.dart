@@ -14,7 +14,10 @@ class _CfgException implements Exception {
 YamlConfigReader _reader({Map<String, String> env = const {}}) =>
     YamlConfigReader(env: env, errorFactory: _CfgException.new);
 
-YamlMap _map(String yaml) => loadYaml(yaml) as YamlMap;
+/// The reader now operates on the **plain** map [loadYamlAsMap] produces at
+/// the parse boundary — never a `package:yaml` `YamlMap` (prototype-plan-2
+/// item 5). Every test builds its node through this helper.
+Map<Object?, Object?> _map(String yaml) => loadYamlAsMap(yaml);
 
 void main() {
   group('YamlConfigReader typed accessors', () {
@@ -86,9 +89,12 @@ void main() {
       );
     });
 
-    test('requireMap / optionalMap', () {
+    test('requireMap / optionalMap return plain maps (not YamlMap)', () {
       final r = _reader();
-      expect(r.requireMap(_map('a: {x: 1}'), 'a', 'root.a'), isA<YamlMap>());
+      final m = r.requireMap(_map('a: {x: 1}'), 'a', 'root.a');
+      expect(m, isA<Map<Object?, Object?>>());
+      expect(m, isNot(isA<YamlMap>()));
+      expect(m['x'], 1);
       expect(r.optionalMap(_map('b: 1'), 'a'), isNull);
       expect(
         () => r.optionalMap(_map('a: 1'), 'a'),
@@ -100,14 +106,35 @@ void main() {
       );
     });
 
-    test('requireList / optionalList', () {
+    test('requireList / optionalList return plain lists (not YamlList)', () {
       final r = _reader();
-      expect(r.requireList(_map('a: [1, 2]'), 'a', 'root.a'), isA<YamlList>());
+      final l = r.requireList(_map('a: [1, 2]'), 'a', 'root.a');
+      expect(l, isA<List<Object?>>());
+      expect(l, isNot(isA<YamlList>()));
+      expect(l, <Object?>[1, 2]);
       expect(r.optionalList(_map('b: 1'), 'a', 'root.a'), isNull);
       expect(
         () => r.requireList(_map('a: 1'), 'a', 'root.a'),
         throwsA(isA<_CfgException>()),
       );
+    });
+
+    test('no YamlMap or YamlList is accepted or produced by the read path', () {
+      final r = _reader();
+      // The boundary loader yields a plain map: feeding the reader a YamlMap
+      // is impossible through the sanctioned path, and every nested node it
+      // returns is plain too.
+      final doc = _map('outer:\n  inner:\n    leaf: [1, 2, {k: v}]');
+      expect(doc, isNot(isA<YamlMap>()));
+      final outer = r.requireMap(doc, 'outer', 'root.outer');
+      expect(outer, isNot(isA<YamlMap>()));
+      final inner = r.requireMap(outer, 'inner', 'root.outer.inner');
+      expect(inner, isNot(isA<YamlMap>()));
+      final leaf = r.requireList(inner, 'leaf', 'root.outer.inner.leaf');
+      expect(leaf, isNot(isA<YamlList>()));
+      // The map element inside the list is plain as well.
+      expect(leaf[2], isA<Map<Object?, Object?>>());
+      expect(leaf[2], isNot(isA<YamlMap>()));
     });
 
     test('parseUri', () {
