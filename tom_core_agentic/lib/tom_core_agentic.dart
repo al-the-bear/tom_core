@@ -24,6 +24,7 @@ export 'src/system_clock.dart';
 export 'src/text_preview.dart';
 export 'src/token_bucket.dart';
 export 'src/token_estimate.dart';
+export 'src/tool_call_text_parser.dart';
 export 'src/ttl_cache.dart';
 export 'src/yaml_config_reader.dart';
 export 'src/yaml_config_writer.dart';
