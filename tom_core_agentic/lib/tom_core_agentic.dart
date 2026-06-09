@@ -21,6 +21,7 @@ export 'src/json_helpers.dart';
 export 'src/latency_summary.dart';
 export 'src/map_field_reader.dart';
 export 'src/path_scope.dart';
+export 'src/plan_ordering.dart';
 export 'src/procedure_rerank.dart';
 export 'src/prompt_sha256.dart';
 export 'src/sql_helpers.dart';
