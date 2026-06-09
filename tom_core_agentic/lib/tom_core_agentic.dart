@@ -1,8 +1,8 @@
 /// Generic, domain-free building blocks for agentic systems.
 ///
 /// Everything exported here depends only on `tom_basics` (plus `yaml`
-/// for [YamlConfigReader]) and is safe to reuse across the brain, the
-/// assistant, and any future agent runtime.
+/// for [YamlConfigReader] and `path` for [PathScope]) and is safe to
+/// reuse across the brain, the assistant, and any future agent runtime.
 library;
 
 export 'src/argument_guards.dart';
@@ -12,6 +12,7 @@ export 'src/category_log.dart';
 export 'src/close_guard.dart';
 export 'src/collection_equality.dart';
 export 'src/day_boundary.dart';
+export 'src/deadline.dart';
 export 'src/dedup_by_id.dart';
 export 'src/deliberation_cue.dart';
 export 'src/exception_format.dart';
@@ -19,6 +20,7 @@ export 'src/http_date.dart';
 export 'src/json_helpers.dart';
 export 'src/latency_summary.dart';
 export 'src/map_field_reader.dart';
+export 'src/path_scope.dart';
 export 'src/procedure_rerank.dart';
 export 'src/prompt_sha256.dart';
 export 'src/sql_helpers.dart';
