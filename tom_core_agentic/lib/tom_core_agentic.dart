@@ -17,6 +17,7 @@ export 'src/dedup_by_id.dart';
 export 'src/deliberation_cue.dart';
 export 'src/exception_format.dart';
 export 'src/http_date.dart';
+export 'src/isolate_streaming/isolate_streaming.dart';
 export 'src/json_helpers.dart';
 export 'src/latency_summary.dart';
 export 'src/map_field_reader.dart';
