@@ -12,7 +12,11 @@
 //   * [BackpressureTracker] — credit-based producer/consumer flow
 //     control.
 //   * [IsolateStreamCloseSignal] — per-stream clean-stop block.
+//   * [IsolateRequestGuard] — worker-death + per-request deadline race
+//     that fails a pending request with a typed [IsolateRequestFailure]
+//     instead of hanging when the worker isolate dies.
 
 export 'backpressure_tracker.dart';
 export 'isolate_cancellation.dart';
+export 'isolate_request_guard.dart';
 export 'isolate_stream_close_signal.dart';
