@@ -15,8 +15,12 @@
 //   * [IsolateRequestGuard] — worker-death + per-request deadline race
 //     that fails a pending request with a typed [IsolateRequestFailure]
 //     instead of hanging when the worker isolate dies.
+//   * [IsolateExceptionRegistry] — host-side map that reconstructs the
+//     typed exception a worker threw from its flat wire form, so
+//     consumers catch the real type instead of a generic wrapper.
 
 export 'backpressure_tracker.dart';
 export 'isolate_cancellation.dart';
+export 'isolate_exception_registry.dart';
 export 'isolate_request_guard.dart';
 export 'isolate_stream_close_signal.dart';
