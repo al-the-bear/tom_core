@@ -5,7 +5,7 @@ description: >-
   previews, HTTP-date parsing, typed YAML config reading, and the
   sha256 content-hash convention. No domain dependencies beyond
   tom_basics.
-version: 1.1.0
+version: 1.2.0
 publish_to: none
 
 environment:
