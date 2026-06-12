@@ -1,220 +1,318 @@
-ID,Groups,Description,Baseline [06-03 11:26],[06-03 15:11],[06-03 20:12],[06-05 10:03],[06-05 10:08],[06-05 10:12],[06-05 10:17],[06-05 11:06],[06-05 17:54],[06-09 10:22]
-,CategoryLog.tagMessage,tags a lazy () => Object message only when evaluated,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,buildUniqueById,keys items by their extracted id,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,clips at limit and appends the default ellipsis,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,buildUniqueById,returns an unmodifiable map,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,a clipped result has length limit + ellipsis.length,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,honours a custom ASCII ellipsis,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,buildUniqueById,rejects a duplicate id with the default message,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,rejects a negative limit,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,limit zero yields only the ellipsis for non-empty input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,buildUniqueById,uses a caller-supplied duplicate message when given,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,formats as sha256:<lowercase-hex>,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CloseGuard,starts open,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,buildUniqueById,empty input yields an empty map,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,matches a hand-computed digest of the UTF-8 bytes,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CloseGuard,ensureOpen is a no-op while open,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,is deterministic for the same input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,differs for different input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,"hashes UTF-8 bytes, not code units (multi-byte input)",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,promptSha256,empty string hashes to the canonical empty-input digest,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CloseGuard,ensureOpen throws after close with the operation in the message,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,textPreview,returns the text unchanged when within the limit,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),p50 of 10 ascending samples is the 5th (nearest-rank),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),p95 of 10 ascending samples is the 10th (nearest-rank),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),"p0 clamps to the smallest, p100 to the largest",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),a single-sample list returns that sample for any quantile,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),an empty list is a programming error,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,percentileDuration (nearest-rank),"a quantile outside [0, 1] is rejected",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,LatencySummary.fromSamples,computes count/min/max/p50/p95 and leaves the caller list unsorted,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,LatencySummary.fromSamples,an empty sample set is rejected,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,LatencySummary.fromSamples,meetsTarget gates on p95 against the supplied target,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireString returns the value,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,parses RFC 1123 format to UTC,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,"parses RFC 850 format (2-digit year, dash-separated)",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,parses asctime format,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireString throws domain exception when missing,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,tolerates surrounding whitespace,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireString throws on type mismatch with path + runtimeType,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,optionalString returns null when absent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,throws FormatException on an unknown month,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CloseGuard,markClosed transitions once and reports it; close() stays idempotent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,OperationCancelled,toString reflects the optional operation label,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireDouble accepts int and double,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,"optionalDouble returns null when absent, throws on non-number",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,optionalBool,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireList / optionalList return plain lists (not YamlList),--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireMap / optionalMap return plain maps (not YamlMap),--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,parseUri,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,returns input unchanged when no token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,substitutes a defined variable,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,substitutes multiple variables,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,throws on undefined variable with path,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,throws on unterminated token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,throws on empty token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv,a bare $ without brace is passed through verbatim,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationTokenSource,token starts uncancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationTokenSource,cancel signals the token and resolves whenCancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationTokenSource,cancel is idempotent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,HttpDate.parse,throws FormatException on a malformed date,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationToken.none,is never cancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationToken.none,whenCancelled never resolves,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireInt / optionalInt,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalString returns the value,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalString throws with path + runtimeType on mismatch,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CancellationTokenSource,awaiting an already-cancelled token returns immediately,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,requireString throws when missing,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalNum throws on non-numeric,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalBool returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalMap returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,optionalList returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader value accessors,stringValue validates a value in hand,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader value accessors,stringValue allowNull passes a null through,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader value accessors,mapValue validates a value in hand,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CategoryLog.tagMessage,tags an eager (non-function) message,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,MapFieldReader keyed accessors,"optionalNum accepts int and double, null when absent",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CategoryLog.tagMessage,tags a lazy () => String message,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,CategoryLog subclass,exposes the category name and supports const instances,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,identical references are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,decodeJsonObject,rethrows a FormatException on malformed JSON,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,differing length is unequal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,"same length, differing key is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,"same key, differing value is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,"null value is matched, not treated as absent",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,two empty maps are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,setEquals,same members are equal regardless of order,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,setEquals,"same length, differing member is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,listEquals,same elements in same order are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,listEquals,order matters,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlPlaceholders,builds a comma-separated run,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlPlaceholders,count of one yields a single placeholder,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlPlaceholders,count of zero yields the empty string,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlPlaceholders,honours a custom separator,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlPlaceholders,rejects negative count,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,fnv1a32,is stable for a given input,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,formatException,bare form omits the parenthesised context,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,fnv1a32,fits in 32 bits,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,formatException,context form wraps the fragment in parentheses,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nearestRankPercentile (int millis),single sample returns itself for any quantile,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,fnv1a32,differs for different inputs,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,formatException,empty context renders as (),--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nearestRankPercentile (int millis),q = 0 returns the smallest sample,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,fnv1a32,empty string hashes to the FNV offset basis,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,formatException,resolves the most-derived runtimeType via this,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nearestRankPercentile (int millis),empty list throws ArgumentError,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlSafeIdentifier,lowercases and replaces non-alnum with underscore,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nearestRankPercentile (int millis),out-of-range quantile throws ArgumentError,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlSafeIdentifier,preserves underscores and digits,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlSafeIdentifier,caps at maxLength,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,sqlSafeIdentifier,rejects negative maxLength,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,blobFromColumnOrNull,passes a Uint8List through unchanged,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,blobFromColumnOrNull,copies a List<int> into a Uint8List,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,blobFromColumnOrNull,returns null for a non-blob value,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,blobFromColumn,returns the blob for a valid column,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,decodeJsonObject,null returns the empty map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,blobFromColumn,throws a context-tagged StateError for a non-blob,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,decodeJsonObject,decodes a JSON object into a String-keyed map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,AsyncShutdownCoordinator,dispose stops listening without triggering shutdown,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,decodeJsonObject,throws a context-tagged StateError on a non-object payload,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,mapEquals,same keys and values are equal regardless of order,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache construction,rejects a non-positive ttl,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucketPolicy,rejects a capacity below 1,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache construction,rejects a maxEntries below 1,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucketPolicy,rejects a non-positive refill rate,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucketPolicy,rejects a non-positive refill period,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache get/set,returns a stored value before it expires,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,a fresh bucket starts full at capacity,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader.expandEnv delegates to expandEnvVars,shares the exact same behaviour and messages,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,returns the wait until one token refills when empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache get/set,expires entries by absolute write time,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,no YamlMap or YamlList is accepted or produced by the read path,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache get/set,a re-write refreshes the TTL,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache get/set,length reflects only live entries,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,a rejected take does not push the retry window further out,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache size ceiling,evicts the least-recently-used entry past the ceiling,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,keys are independent,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache size ceiling,a read marks an entry most-recently-used,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,rejects an empty key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,clear resets every bucket to full,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,a backwards clock does not credit the bucket,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,snapshot() is empty for an untouched bucket,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,estimateTokens,empty string estimates to zero,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,snapshot() captures the current count and last-refill per key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,estimateTokens,rounds up partial tokens,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,"snapshotOf() returns one key, or null when unseen",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,estimateTokens,scales with length using approxCharsPerToken,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,restore() seeds state a fresh bucket resumes from,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,looksLikeToolCallAttempt,false for plain prose,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,TokenBucket snapshot/restore,restore() lets elapsed downtime refill the bucket lazily,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,,clear drops every entry,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,restore() clamps tokens to the current capacity,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,restore() rejects an empty key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket snapshot/restore,"TokenBucketSnapshot value equality is by moment, not zone",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueEquals,two nulls are equal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueEquals,null and non-null are unequal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueEquals,scalars compare with ==,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueEquals,"nested lists compare by contents, not reference",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueEquals,lists of differing length are unequal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueHash,null hashes to 0,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueHash,a scalar uses its own hashCode,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,deepValueHash,equal nested values hash equal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,requireNonEmpty,returns the value unchanged when non-empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,requireNonEmpty,throws ArgumentError naming the field when empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,requireNonEmpty,treats a whitespace string as non-empty (length only),--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,systemClock,returns a current DateTime,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,systemClock,is usable as an injectable-clock default,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,startOfDay,truncates a UTC instant to UTC midnight,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,startOfDay,truncates a local instant to local midnight,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nextDayStart,returns the start of the following day,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nextDayStart,normalises month rollover,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nextDayStart,normalises year rollover,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,nextDayStart,the wait until the boundary is positive within a day,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,AsyncShutdownCoordinator,runs the teardown to completion then terminates cleanly,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,AsyncShutdownCoordinator,a second signal during teardown is ignored,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,AsyncShutdownCoordinator,a throwing teardown still terminates with the error code,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,decodeJsonObject,empty object decodes to an empty map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — round-trip,"nested maps, lists and scalars become plain collections",--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — round-trip,output contains no YamlMap/YamlList/YamlScalar anywhere,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — round-trip,a plain mutable map is returned (values are assignable),--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — type errors,a non-map document fails with a located message (default factory),--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — type errors,an empty document fails as a non-map,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — type errors,a non-string key fails with a located message,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — type errors,a custom error factory wraps the message in the caller type,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,loadYamlAsMap — type errors,rootPath appears verbatim in messages,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,returns input unchanged when there is no token,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,expands a single token,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,expands multiple tokens,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,a bare $ that is not a token is left untouched,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,throws on unterminated token with path,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,throws on empty token with path,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,expandEnvVars,a custom error factory wraps env-expansion failures,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TtlCache get/set,returns null for an absent key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,TokenBucket,refills continuously over elapsed wall-clock time,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter — round-trip,source getter mirrors toString(),--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter.remove,removing a list element preserves the surrounding list,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter.set,"editing a scalar preserves comments, order, and other lines",--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter.set,editing a nested scalar changes only the targeted line,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter.set,addressing a list element by index works,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter.remove,removing a key leaves neighbours and their comments intact,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigWriter — round-trip,an untouched writer returns the original source verbatim,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,looksLikeToolCallAttempt,true for an object-leading or marker-bearing text,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — known-name filter & non-calls,malformed input never throws — returns empty,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},parses the <|tool_call>call:web.search{...}<tool_call|> dialect,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},"parses a bare call:file.search{pattern: ""...""} without sentinels",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},functional call with no args yields an empty argument map,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — JSON object dialects,"OpenAI-ish {""tool"", ""arguments""} object",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — JSON object dialects,"{""name"", ""parameters""} variant",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — JSON object dialects,"OpenAI nested {""function"": {""name"", ""arguments"": ""<json-string>""}}",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — JSON object dialects,markdown-fenced JSON tool call,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — JSON object dialects,a JSON array of calls yields one ParsedToolCall each,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,<tool_call>{...}</tool_call> (Hermes/Qwen),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,[TOOL_CALLS] [ {...} ] (Mistral),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,multiple <tool_call> blocks are all parsed in order,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — lenient argument values,"single-quoted strings, numbers, booleans and null",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — lenient argument values,nested objects and arrays,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — known-name filter & non-calls,plain prose yields no calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — known-name filter & non-calls,a JSON object without a tool key yields no calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,parseToolCallsFromText — known-name filter & non-calls,knownToolNames filters out calls to unknown tools,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
-,TtlCache size ceiling,an unbounded cache never evicts by size,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
-,YamlConfigReader typed accessors,requireMap / optionalMap,OK/OK,OK/OK,OK/OK,OK/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK
-,YamlConfigReader typed accessors,requireList / optionalList,OK/OK,OK/OK,OK/OK,OK/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK
+ID,Groups,Description,Baseline [06-03 11:26],[06-03 15:11],[06-03 20:12],[06-05 10:03],[06-05 10:08],[06-05 10:12],[06-05 10:17],[06-05 11:06],[06-05 17:54],[06-09 10:22],[06-12 10:59]
+,sqlSafeIdentifier,caps at maxLength,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,buildUniqueById,keys items by their extracted id,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,clips at limit and appends the default ellipsis,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,buildUniqueById,returns an unmodifiable map,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,a clipped result has length limit + ellipsis.length,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,honours a custom ASCII ellipsis,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,buildUniqueById,rejects a duplicate id with the default message,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,rejects a negative limit,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,limit zero yields only the ellipsis for non-empty input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,buildUniqueById,uses a caller-supplied duplicate message when given,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,formats as sha256:<lowercase-hex>,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CloseGuard,starts open,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,buildUniqueById,empty input yields an empty map,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,matches a hand-computed digest of the UTF-8 bytes,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CloseGuard,ensureOpen is a no-op while open,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,is deterministic for the same input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,differs for different input,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,"hashes UTF-8 bytes, not code units (multi-byte input)",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,promptSha256,empty string hashes to the canonical empty-input digest,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CloseGuard,ensureOpen throws after close with the operation in the message,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,textPreview,returns the text unchanged when within the limit,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),p50 of 10 ascending samples is the 5th (nearest-rank),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),p95 of 10 ascending samples is the 10th (nearest-rank),OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),"p0 clamps to the smallest, p100 to the largest",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),a single-sample list returns that sample for any quantile,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),an empty list is a programming error,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,percentileDuration (nearest-rank),"a quantile outside [0, 1] is rejected",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,LatencySummary.fromSamples,computes count/min/max/p50/p95 and leaves the caller list unsorted,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,LatencySummary.fromSamples,an empty sample set is rejected,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,LatencySummary.fromSamples,meetsTarget gates on p95 against the supplied target,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireString returns the value,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,parses RFC 1123 format to UTC,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,"parses RFC 850 format (2-digit year, dash-separated)",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,parses asctime format,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireString throws domain exception when missing,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,tolerates surrounding whitespace,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireString throws on type mismatch with path + runtimeType,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,optionalString returns null when absent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,throws FormatException on an unknown month,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CloseGuard,markClosed transitions once and reports it; close() stays idempotent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,OperationCancelled,toString reflects the optional operation label,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireDouble accepts int and double,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,"optionalDouble returns null when absent, throws on non-number",OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,optionalBool,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireList / optionalList return plain lists (not YamlList),--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireMap / optionalMap return plain maps (not YamlMap),--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,parseUri,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,returns input unchanged when no token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,substitutes a defined variable,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,substitutes multiple variables,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,throws on undefined variable with path,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,throws on unterminated token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,throws on empty token,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv,a bare $ without brace is passed through verbatim,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationTokenSource,token starts uncancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationTokenSource,cancel signals the token and resolves whenCancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationTokenSource,cancel is idempotent,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,HttpDate.parse,throws FormatException on a malformed date,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationToken.none,is never cancelled,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationToken.none,whenCancelled never resolves,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireInt / optionalInt,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalString returns the value,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalString throws with path + runtimeType on mismatch,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CancellationTokenSource,awaiting an already-cancelled token returns immediately,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,requireString throws when missing,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalNum throws on non-numeric,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalBool returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalMap returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,optionalList returns value / null / throws,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader value accessors,stringValue validates a value in hand,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader value accessors,stringValue allowNull passes a null through,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader value accessors,mapValue validates a value in hand,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CategoryLog.tagMessage,tags an eager (non-function) message,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,MapFieldReader keyed accessors,"optionalNum accepts int and double, null when absent",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CategoryLog.tagMessage,tags a lazy () => String message,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CategoryLog subclass,exposes the category name and supports const instances,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,identical references are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,decodeJsonObject,rethrows a FormatException on malformed JSON,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,differing length is unequal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,"same length, differing key is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,"same key, differing value is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,"null value is matched, not treated as absent",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,two empty maps are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,setEquals,same members are equal regardless of order,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,setEquals,"same length, differing member is unequal",--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,listEquals,same elements in same order are equal,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,listEquals,order matters,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlPlaceholders,builds a comma-separated run,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlPlaceholders,count of one yields a single placeholder,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlPlaceholders,count of zero yields the empty string,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlPlaceholders,honours a custom separator,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlPlaceholders,rejects negative count,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,fnv1a32,is stable for a given input,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,formatException,bare form omits the parenthesised context,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,fnv1a32,fits in 32 bits,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,formatException,context form wraps the fragment in parentheses,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nearestRankPercentile (int millis),single sample returns itself for any quantile,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,fnv1a32,differs for different inputs,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,formatException,empty context renders as (),--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nearestRankPercentile (int millis),q = 0 returns the smallest sample,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,fnv1a32,empty string hashes to the FNV offset basis,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,formatException,resolves the most-derived runtimeType via this,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nearestRankPercentile (int millis),empty list throws ArgumentError,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlSafeIdentifier,lowercases and replaces non-alnum with underscore,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nearestRankPercentile (int millis),out-of-range quantile throws ArgumentError,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlSafeIdentifier,preserves underscores and digits,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,CategoryLog.tagMessage,tags a lazy () => Object message only when evaluated,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,sqlSafeIdentifier,rejects negative maxLength,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,blobFromColumnOrNull,passes a Uint8List through unchanged,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,blobFromColumnOrNull,copies a List<int> into a Uint8List,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,blobFromColumnOrNull,returns null for a non-blob value,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,blobFromColumn,returns the blob for a valid column,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,decodeJsonObject,null returns the empty map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,blobFromColumn,throws a context-tagged StateError for a non-blob,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,decodeJsonObject,decodes a JSON object into a String-keyed map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,AsyncShutdownCoordinator,dispose stops listening without triggering shutdown,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,decodeJsonObject,throws a context-tagged StateError on a non-object payload,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,mapEquals,same keys and values are equal regardless of order,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache construction,rejects a non-positive ttl,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucketPolicy,rejects a capacity below 1,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache construction,rejects a maxEntries below 1,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucketPolicy,rejects a non-positive refill rate,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucketPolicy,rejects a non-positive refill period,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache get/set,returns a stored value before it expires,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,a fresh bucket starts full at capacity,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader.expandEnv delegates to expandEnvVars,shares the exact same behaviour and messages,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,returns the wait until one token refills when empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache get/set,expires entries by absolute write time,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,no YamlMap or YamlList is accepted or produced by the read path,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache get/set,a re-write refreshes the TTL,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache get/set,length reflects only live entries,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,a rejected take does not push the retry window further out,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache size ceiling,evicts the least-recently-used entry past the ceiling,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,keys are independent,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache size ceiling,a read marks an entry most-recently-used,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,rejects an empty key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,clear resets every bucket to full,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,a backwards clock does not credit the bucket,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,snapshot() is empty for an untouched bucket,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,estimateTokens,empty string estimates to zero,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,snapshot() captures the current count and last-refill per key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,estimateTokens,rounds up partial tokens,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,"snapshotOf() returns one key, or null when unseen",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,estimateTokens,scales with length using approxCharsPerToken,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,restore() seeds state a fresh bucket resumes from,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,looksLikeToolCallAttempt,false for plain prose,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,restore() lets elapsed downtime refill the bucket lazily,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,,clear drops every entry,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,restore() clamps tokens to the current capacity,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,restore() rejects an empty key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket snapshot/restore,"TokenBucketSnapshot value equality is by moment, not zone",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueEquals,two nulls are equal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueEquals,null and non-null are unequal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueEquals,scalars compare with ==,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueEquals,"nested lists compare by contents, not reference",--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueEquals,lists of differing length are unequal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueHash,null hashes to 0,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueHash,a scalar uses its own hashCode,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,deepValueHash,equal nested values hash equal,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,requireNonEmpty,returns the value unchanged when non-empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,requireNonEmpty,throws ArgumentError naming the field when empty,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,requireNonEmpty,treats a whitespace string as non-empty (length only),--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,systemClock,returns a current DateTime,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,systemClock,is usable as an injectable-clock default,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,startOfDay,truncates a UTC instant to UTC midnight,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,startOfDay,truncates a local instant to local midnight,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nextDayStart,returns the start of the following day,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nextDayStart,normalises month rollover,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nextDayStart,normalises year rollover,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,nextDayStart,the wait until the boundary is positive within a day,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,AsyncShutdownCoordinator,runs the teardown to completion then terminates cleanly,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,AsyncShutdownCoordinator,a second signal during teardown is ignored,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,AsyncShutdownCoordinator,a throwing teardown still terminates with the error code,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,decodeJsonObject,empty object decodes to an empty map,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — round-trip,"nested maps, lists and scalars become plain collections",--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — round-trip,output contains no YamlMap/YamlList/YamlScalar anywhere,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — round-trip,a plain mutable map is returned (values are assignable),--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — type errors,a non-map document fails with a located message (default factory),--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — type errors,an empty document fails as a non-map,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — type errors,a non-string key fails with a located message,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — type errors,a custom error factory wraps the message in the caller type,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,loadYamlAsMap — type errors,rootPath appears verbatim in messages,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,returns input unchanged when there is no token,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,expands a single token,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,expands multiple tokens,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,a bare $ that is not a token is left untouched,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,throws on unterminated token with path,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,throws on empty token with path,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,expandEnvVars,a custom error factory wraps env-expansion failures,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TtlCache get/set,returns null for an absent key,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,TokenBucket,refills continuously over elapsed wall-clock time,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter — round-trip,source getter mirrors toString(),--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter.remove,removing a list element preserves the surrounding list,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter.set,"editing a scalar preserves comments, order, and other lines",--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter.set,editing a nested scalar changes only the targeted line,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter.set,addressing a list element by index works,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter.remove,removing a key leaves neighbours and their comments intact,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,YamlConfigWriter — round-trip,an untouched writer returns the original source verbatim,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,looksLikeToolCallAttempt,true for an object-leading or marker-bearing text,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — known-name filter & non-calls,malformed input never throws — returns empty,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},parses the <|tool_call>call:web.search{...}<tool_call|> dialect,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},"parses a bare call:file.search{pattern: ""...""} without sentinels",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — Gemma/Google sentinel + call:name{args},functional call with no args yields an empty argument map,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON object dialects,"OpenAI-ish {""tool"", ""arguments""} object",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON object dialects,"{""name"", ""parameters""} variant",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON object dialects,"OpenAI nested {""function"": {""name"", ""arguments"": ""<json-string>""}}",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON object dialects,markdown-fenced JSON tool call,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON object dialects,a JSON array of calls yields one ParsedToolCall each,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,<tool_call>{...}</tool_call> (Hermes/Qwen),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,[TOOL_CALLS] [ {...} ] (Mistral),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),a string containing braces does not desync the span scan,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — lenient argument values,"single-quoted strings, numbers, booleans and null",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — lenient argument values,nested objects and arrays,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — known-name filter & non-calls,plain prose yields no calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — known-name filter & non-calls,a JSON object without a tool key yields no calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,parseToolCallsFromText — known-name filter & non-calls,knownToolNames filters out calls to unknown tools,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,TtlCache size ceiling,an unbounded cache never evicts by size,--/OK,--/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),knownToolNames still filters embedded calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),an embedded non-tool JSON object inside prose still yields no calls,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — happy path,a completing request returns its value and drains bookkeeping,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — happy path,a request that throws propagates its own error unchanged,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — worker death,markWorkerDead fails an in-flight request with workerDeath,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — worker death,markWorkerDead fails every in-flight request at once,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — worker death,a request guarded after death fails fast with workerDeath,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — worker death,markWorkerDead is idempotent,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — worker death,a request that already completed is unaffected by a later death,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,normalises roots to absolute on construction,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — per-request deadline,a hanging request fails with timeout after the deadline,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,rejects an empty root set,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,admits a plain relative path under the root,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,admits the root itself,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,drops a path that escapes the single root via ..,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,drops an absolute path outside the root,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,treats roots as a union — a hit in any root is in scope,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,reconstruct rebuilds the registered type from message + details,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,returns hits in configured root order (priority preserved),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,admits is false only when every root is escaped,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,reconstruct preserves structured fields including lists/ints,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,reconstruct returns null for an unregistered type (fallback),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,details defaults to empty when omitted,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,isRegistered / registeredTypes reflect the registered set,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,PathScope,contains a real created file and excludes its sibling,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateExceptionRegistry,register overwrites a prior factory for the same tag,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,mcp_auth contract constants,bearerTokenMetaKey is the agreed namespaced _meta slot,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,mcp_auth contract constants,bearerAuthRpcErrorCode sits in the JSON-RPC server-defined range,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerAuthFailureReason,is a closed set of exactly three categories,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerAuthFailure,toString carries the reason tag and the diagnostic message,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerAuthFailure,is an Exception with stable reason + message fields,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,a linear chain orders dependencies first,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerTokenAuthenticator<P> generic contract,resolves a known token to its principal of type P,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,a diamond places the fork before both arms and the join last,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,independent steps keep their insertion order (deterministic),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,"a ready step is emitted in insertion order, not discovery order",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerTokenAuthenticator<P> generic contract,throws missing for an empty token,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,an empty graph orders to nothing,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerTokenAuthenticator<P> generic contract,throws rejected for an unknown token,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,a dependency on an unknown (external) id is ignored for ordering,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BearerTokenAuthenticator<P> generic contract,a BearerTokenAuthenticator<P> is a subtype of the raw interface,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — acyclic,duplicate dependency edges do not double-count,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — cyclic,a two-node cycle is reported and excluded from the order,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — cyclic,a self-dependency is a cycle,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — cyclic,the acyclic part is ordered; only the cycle is quarantined,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,orderPlanSteps — cyclic,cyclic ids are reported in insertion order,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,is a weight-normalised average of the four factors,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,all-1 inputs score 1.0 and all-0 inputs score 0.0,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,a heavier weight pulls the score toward that factor,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,"inputs outside [0,1] are clamped, not extrapolated",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,zero total weight yields a zero score rather than NaN,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,scoreProcedureCandidate,the balanced default weights all four factors positively,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,recencyDecay,a brand-new run scores 1.0,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,recencyDecay,an age of exactly one half-life scores 0.5,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,recencyDecay,older runs decay monotonically toward 0,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,recencyDecay,a negative age (clock skew) clamps to the freshest score,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,recencyDecay,a never-run candidate (null age) scores 0.0,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,startingNow sets expiry to now + budget,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,is not expired before the budget elapses,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,is expired exactly at the deadline instant,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,clamps remaining to zero after expiry,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,throwIfExpired stays silent before expiry and throws after,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,Deadline,Deadline.at accepts a pre-computed expiry,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,a plain prompt with no cue is normal,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,"a ""think about"" prompt is thinking",--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,every canonical cue triggers the thinking branch,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,matching is case-insensitive,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,matching is word-boundary aware — no substring false positives,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,empty and whitespace-only text are normal (total + deterministic),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,the same input always yields the same verdict,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,classifyDeliberationCue,a multi-word cue matches across its internal space,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,register then cancel flips the flag,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,cancel-before-register is remembered (late-cancel race),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — per-request deadline,a fast request under the deadline resolves and cancels the timer,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,throwIfCancelled raises IsolateCancellationException with the token,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,cancelled future completes when the request is cancelled,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,dispose is idempotent and unregisters,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationRegistry,cancel on unknown then register elsewhere does not leak,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationToken / allocator,value equality keys off the id,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateCancellationToken / allocator,allocator hands out monotonic ids,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,rejects negative initial credits,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,awaitCredit returns immediately when credits > 0,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — per-request deadline,an explicit per-call timeout overrides the default,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,awaitCredit parks at zero and unblocks on grant,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestGuard — per-request deadline,worker death pre-empts a pending deadline (no wait for the timer),--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestFailure — value semantics,toString carries the reason tag and the message,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,grant wakes parked waiters in FIFO order,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,consume rejects negative and over-consume,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,grant rejects non-positive,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateRequestFailure — value semantics,reason enum has exactly the two boundary failure modes,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,BackpressureTracker,close fails parked waiters and rejects later awaitCredit,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateStreamCloseSignal,requestClose raises the flag and fires the signal,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,IsolateStreamCloseSignal,requestClose is idempotent,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),a single JSON object wrapped in surrounding prose is recovered,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),a JSON array wrapped in prose is recovered,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),multiple concatenated bare objects (no array) are all parsed,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9),multiple bare objects separated by prose are all parsed,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK
+,parseToolCallsFromText — Hermes/Qwen + Mistral dialects,multiple <tool_call> blocks are all parsed in order,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,OK/OK,OK/OK
+,YamlConfigReader typed accessors,requireMap / optionalMap,OK/OK,OK/OK,OK/OK,OK/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK
+,YamlConfigReader typed accessors,requireList / optionalList,OK/OK,OK/OK,OK/OK,OK/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK,--/OK

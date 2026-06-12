@@ -110,6 +110,66 @@ void main() {
     });
   });
 
+  group('parseToolCallsFromText — JSON family robustness (§ 9.3 Todo 9)', () {
+    test('a single JSON object wrapped in surrounding prose is recovered', () {
+      // Not a delimited dialect (no fence, no <tool_call>, no [TOOL_CALLS]):
+      // a bare object the model buried in a sentence. The whole-text decode
+      // fails; the embedded-span scan recovers it.
+      final calls = parseToolCallsFromText(
+          'Here is the call you asked for: '
+          '{"tool": "memory.read", "arguments": {"id": "n1"}} — done.');
+      expect(calls, hasLength(1));
+      expect(calls.single.name, 'memory.read');
+      expect(calls.single.arguments, <String, Object?>{'id': 'n1'});
+    });
+
+    test('a JSON array wrapped in prose is recovered', () {
+      final calls = parseToolCallsFromText(
+          'Sure, running these: '
+          '[{"tool": "a", "arguments": {}}, {"tool": "b", "arguments": {"n": 1}}]'
+          ' now.');
+      expect(calls.map((c) => c.name), <String>['a', 'b']);
+      expect(calls[1].arguments, <String, Object?>{'n': 1});
+    });
+
+    test('multiple concatenated bare objects (no array) are all parsed', () {
+      final calls = parseToolCallsFromText(
+          '{"tool": "a", "arguments": {}}'
+          '{"tool": "b", "arguments": {"n": 1}}');
+      expect(calls.map((c) => c.name), <String>['a', 'b']);
+      expect(calls[1].arguments, <String, Object?>{'n': 1});
+    });
+
+    test('multiple bare objects separated by prose are all parsed', () {
+      final calls = parseToolCallsFromText(
+          'first {"tool": "a", "arguments": {}} then '
+          '{"tool": "b", "arguments": {}} please');
+      expect(calls.map((c) => c.name), <String>['a', 'b']);
+    });
+
+    test('an embedded non-tool JSON object inside prose still yields no calls', () {
+      // Robustness must not turn ordinary data-bearing prose into a call.
+      expect(parseToolCallsFromText('The record is {"answer": 42} for you.'),
+          isEmpty);
+    });
+
+    test('knownToolNames still filters embedded calls', () {
+      final filtered = parseToolCallsFromText(
+          'Do this: {"tool": "web.search", "arguments": {}} '
+          'and {"tool": "rm_rf", "arguments": {}}',
+          knownToolNames: <String>{'web.search'});
+      expect(filtered.map((c) => c.name), <String>['web.search']);
+    });
+
+    test('a string containing braces does not desync the span scan', () {
+      // The brace inside the quoted value must not break balance tracking.
+      final calls = parseToolCallsFromText(
+          'note: {"tool": "echo", "arguments": {"text": "a } b { c"}} end');
+      expect(calls.single.name, 'echo');
+      expect(calls.single.arguments, <String, Object?>{'text': 'a } b { c'});
+    });
+  });
+
   group('parseToolCallsFromText — lenient argument values', () {
     test('single-quoted strings, numbers, booleans and null', () {
       final calls = parseToolCallsFromText(

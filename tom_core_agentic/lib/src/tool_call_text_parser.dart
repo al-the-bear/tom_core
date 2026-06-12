@@ -164,8 +164,68 @@ List<ParsedToolCall> _jsonCalls(String text) {
   if (mistral != null) {
     return _interpretJsonPayload(text.substring(mistral.end));
   }
-  // Bare or fenced JSON object/array.
-  return _interpretJsonPayload(text);
+  // Bare or fenced JSON object/array, possibly embedded in prose or
+  // concatenated with siblings.
+  return _scanBareJsonCalls(text);
+}
+
+/// Recovers every JSON tool call carried by [text] when it is neither tagged
+/// nor marker-delimited.
+///
+/// Beyond the whole-text decode (the common case where the completion *is* a
+/// single JSON value), this scans for each balanced `{…}` / `[…]` span — so a
+/// JSON call buried in surrounding prose, or several concatenated bare objects
+/// that are not wrapped in an array, are all recovered. Each span is
+/// interpreted independently; spans that do not lower to a tool call are
+/// dropped, so ordinary data-bearing prose never becomes a call.
+List<ParsedToolCall> _scanBareJsonCalls(String text) {
+  final cleaned = _stripFence(text);
+  final out = <ParsedToolCall>[];
+  var i = 0;
+  while (i < cleaned.length) {
+    final c = cleaned[i];
+    if (c == '{' || c == '[') {
+      final end = _matchBalanced(cleaned, i);
+      if (end != null) {
+        out.addAll(_interpretJsonPayload(cleaned.substring(i, end + 1)));
+        i = end + 1;
+        continue;
+      }
+    }
+    i++;
+  }
+  return out;
+}
+
+/// Returns the index of the delimiter that closes the `{`/`[` at [start], or
+/// null when the span is unbalanced or its brackets mismatch. String contents
+/// (single or double quoted, with backslash escapes) are skipped so a `{`, `}`,
+/// `[` or `]` inside a value does not affect the depth.
+int? _matchBalanced(String s, int start) {
+  final closers = <String>[];
+  String? quote;
+  for (var i = start; i < s.length; i++) {
+    final c = s[i];
+    if (quote != null) {
+      if (c == r'\') {
+        i++; // skip the escaped char
+        continue;
+      }
+      if (c == quote) quote = null;
+      continue;
+    }
+    if (c == '"' || c == "'") {
+      quote = c;
+    } else if (c == '{') {
+      closers.add('}');
+    } else if (c == '[') {
+      closers.add(']');
+    } else if (c == '}' || c == ']') {
+      if (closers.isEmpty || closers.removeLast() != c) return null;
+      if (closers.isEmpty) return i;
+    }
+  }
+  return null;
 }
 
 List<ParsedToolCall> _interpretJsonPayload(String raw) {
