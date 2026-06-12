@@ -152,45 +152,54 @@ void main() {
       expect(_reader().expandEnv('plain', 'root.x'), 'plain');
     });
 
-    test('substitutes a defined variable', () {
+    test('substitutes a defined env var via the env: prefix', () {
       final r = _reader(env: {'TOKEN': 'secret'});
-      expect(r.expandEnv(r'Bearer ${TOKEN}', 'root.x'), 'Bearer secret');
+      expect(r.expandEnv(r'Bearer ${env:TOKEN}', 'root.x'), 'Bearer secret');
     });
 
-    test('substitutes multiple variables', () {
+    test('substitutes multiple env vars', () {
       final r = _reader(env: {'A': '1', 'B': '2'});
-      expect(r.expandEnv(r'${A}-${B}', 'root.x'), '1-2');
+      expect(r.expandEnv(r'${env:A}-${env:B}', 'root.x'), '1-2');
     });
 
-    test('throws on undefined variable with path', () {
+    test('throws on undefined env var with path', () {
       expect(
-        () => _reader().expandEnv(r'${MISSING}', 'root.x'),
+        () => _reader().expandEnv(r'${env:MISSING}', 'root.x'),
         throwsA(isA<_CfgException>().having(
           (e) => e.message,
           'message',
-          contains(r'root.x references undefined env var `${MISSING}`'),
+          contains(r'root.x references undefined env var `${env:MISSING}`'),
         )),
       );
     });
 
-    test('throws on unterminated token', () {
+    test('a bare \${name} (no env: prefix) is an unbound-placeholder error '
+        'that points at the env: form', () {
       expect(
-        () => _reader().expandEnv(r'${UNCLOSED', 'root.x'),
+        () => _reader(env: {'TOKEN': 'secret'}).expandEnv(r'${TOKEN}', 'root.x'),
         throwsA(isA<_CfgException>().having(
           (e) => e.message,
           'message',
-          contains('root.x has unterminated'),
+          allOf(
+            contains(r'root.x references unbound placeholder `${TOKEN}`'),
+            contains(r'${env:TOKEN}'),
+          ),
         )),
       );
     });
 
-    test('throws on empty token', () {
+    test('an unterminated \${ (no closing brace) is passed through verbatim',
+        () {
+      expect(_reader().expandEnv(r'${UNCLOSED', 'root.x'), r'${UNCLOSED');
+    });
+
+    test('empty \${} is an unbound-placeholder error', () {
       expect(
         () => _reader().expandEnv(r'${}', 'root.x'),
         throwsA(isA<_CfgException>().having(
           (e) => e.message,
           'message',
-          contains('root.x has empty'),
+          contains('unbound placeholder'),
         )),
       );
     });

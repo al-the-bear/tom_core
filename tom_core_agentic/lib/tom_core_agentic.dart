@@ -23,6 +23,7 @@ export 'src/latency_summary.dart';
 export 'src/map_field_reader.dart';
 export 'src/mcp_auth/mcp_auth.dart';
 export 'src/path_scope.dart';
+export 'src/placeholders/placeholders.dart';
 export 'src/plan_ordering.dart';
 export 'src/procedure_rerank.dart';
 export 'src/prompt_sha256.dart';

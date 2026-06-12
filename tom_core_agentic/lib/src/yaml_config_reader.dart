@@ -1,3 +1,4 @@
+import 'placeholders/placeholders.dart';
 import 'yaml_to_map.dart';
 
 /// Builds the domain-specific exception a [YamlConfigReader] throws when
@@ -203,16 +204,37 @@ final class YamlConfigReader {
   }
 
   // ---------------------------------------------------------------
-  // `${NAME}` substitution.
+  // `${env:NAME}` substitution (the shared placeholder resolver).
   // ---------------------------------------------------------------
 
-  /// Expands every `${NAME}` token in [input] against [env].
+  /// Expands `${env:NAME}` tokens in [input] against [env].
   ///
-  /// Delegates to the canonical [expandEnvVars] so the field-reader and any
-  /// free-function config path share one substitution implementation and can
-  /// never drift. Returns [input] unchanged when it contains no `$`; throws
-  /// via [errorFactory] when a token is unterminated, empty, or names an
-  /// undefined variable — each with [path] in the message.
-  String expandEnv(String input, String path) =>
-      expandEnvVars(input, env, path: path, errorFactory: errorFactory);
+  /// Routes through the single shared [PlaceholderResolver] (env-only,
+  /// synchronous: no bindings, no `${{ … }}` backing), so the whole config
+  /// layer and the engine resolve placeholders through one mechanism. The
+  /// environment is reachable **only** via the `${env:NAME}` form; a bare
+  /// `${NAME}` is treated as an (unbound) simple placeholder and — in the
+  /// default strict mode — fails. A `${{ … }}` expression form is rejected
+  /// on this synchronous path.
+  ///
+  /// Returns [input] unchanged when it has no placeholder; throws via
+  /// [errorFactory] — each message carrying [path] — when a token names an
+  /// undefined variable, is an unbound bare placeholder, fails to converge,
+  /// or uses the unsupported expression form.
+  String expandEnv(String input, String path) {
+    final resolver = PlaceholderResolver(environment: env);
+    try {
+      return resolver.resolveSync(input);
+    } on PlaceholderUnresolvedException catch (e) {
+      final ref = e.reference;
+      throw errorFactory(ref.startsWith('env:')
+          ? '$path references undefined env var `\${$ref}`.'
+          : '$path references unbound placeholder `\${$ref}` '
+              '(reach the environment with `\${env:$ref}`).');
+    } on PlaceholderRecursionException catch (e) {
+      throw errorFactory('$path: ${e.message}');
+    } on PlaceholderExpressionException catch (e) {
+      throw errorFactory('$path: ${e.message}');
+    }
+  }
 }

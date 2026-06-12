@@ -1,12 +1,12 @@
 import 'package:yaml/yaml.dart';
 
-/// Builds the domain-specific exception [loadYamlAsMap] and [expandEnvVars]
-/// throw when parsing, type-checking, or `${NAME}` expansion fails.
+/// Builds the domain-specific exception [loadYamlAsMap] throws when parsing
+/// or type-checking fails.
 ///
 /// Every caller supplies its own factory so the thrown error *type* stays
 /// domain-specific (e.g. a loader's `SubstrateConfigException`, or
 /// `FormatException` at an untrusted-input boundary) while the conversion
-/// and substitution logic is shared. The factory receives the fully-formed,
+/// logic is shared. The factory receives the fully-formed,
 /// engineer-readable message and wraps it in the caller's error type. The
 /// default is [FormatException.new].
 typedef YamlMapErrorFactory = Object Function(String message);
@@ -79,50 +79,3 @@ Object? _toPlain(Object? node, String path, YamlMapErrorFactory err) {
 }
 
 String _typeName(Object? value) => value == null ? 'Null' : '${value.runtimeType}';
-
-/// Expands every `${NAME}` token in [input] against [env].
-///
-/// This is the canonical `${NAME}` expander shared by the brain config
-/// loaders; [YamlConfigReader.expandEnv] delegates here so the two cannot
-/// drift. Returns [input] unchanged when it contains no `$`. A `$` that does
-/// not begin a `${` token (e.g. `cost $5`) is left untouched.
-///
-/// Throws via [errorFactory] (default [FormatException.new]) — each message
-/// carrying [path] — when a token is unterminated, empty, or names a variable
-/// absent from [env].
-///
-/// Deliberately a hand-written scanner rather than a regex: the input is small
-/// and an explicit scan yields precise, located error messages.
-String expandEnvVars(
-  String input,
-  Map<String, String> env, {
-  required String path,
-  YamlMapErrorFactory errorFactory = FormatException.new,
-}) {
-  if (!input.contains(r'$')) return input;
-  final out = StringBuffer();
-  var i = 0;
-  while (i < input.length) {
-    final ch = input[i];
-    if (ch == r'$' && i + 1 < input.length && input[i + 1] == '{') {
-      final close = input.indexOf('}', i + 2);
-      if (close < 0) {
-        throw errorFactory('$path has unterminated `\${` token.');
-      }
-      final name = input.substring(i + 2, close);
-      if (name.isEmpty) {
-        throw errorFactory('$path has empty `\${}` token.');
-      }
-      final value = env[name];
-      if (value == null) {
-        throw errorFactory('$path references undefined env var `\${$name}`.');
-      }
-      out.write(value);
-      i = close + 1;
-    } else {
-      out.write(ch);
-      i++;
-    }
-  }
-  return out.toString();
-}

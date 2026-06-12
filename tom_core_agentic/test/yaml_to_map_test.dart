@@ -6,9 +6,11 @@
 // `YamlMap` or `YamlList`. Downstream type-safe reads then go through
 // `MapFieldReader` (item 5), which operates on plain maps.
 //
-// `expandEnvVars` is the canonical `${NAME}` expander these loaders share;
-// `YamlConfigReader.expandEnv` now delegates to it, so the two can never
-// drift.
+// Environment expansion is no longer a free function here: the single
+// `${env:NAME}` engine is `PlaceholderResolver` (in
+// `tom_core_agentic/placeholders`), and `YamlConfigReader.expandEnv` routes
+// through it. The env-expansion behaviour is pinned by
+// `placeholder_resolver_test.dart` and `yaml_config_reader_test.dart`.
 //
 // What this file pins:
 //   1. Round-trip: nested maps/lists/scalars convert to plain collections.
@@ -16,8 +18,6 @@
 //      (recursive type walk — the item-4 verification gate).
 //   3. Type-error messages: a non-map document and a non-string key fail
 //      with located, engineer-readable messages.
-//   4. `${ENV}` expansion: substitution, multiple tokens, and the three
-//      failure modes (undefined / unterminated / empty), each with path.
 
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:yaml/yaml.dart';
@@ -165,73 +165,6 @@ list:
     });
   });
 
-  group('expandEnvVars', () {
-    const env = {'TOKEN': 'secret', 'A': '1', 'B': '2'};
-
-    test('returns input unchanged when there is no token', () {
-      expect(expandEnvVars('plain', env, path: 'root.x'), 'plain');
-    });
-
-    test('expands a single token', () {
-      expect(
-          expandEnvVars(r'Bearer ${TOKEN}', env, path: 'root.x'), 'Bearer secret');
-    });
-
-    test('expands multiple tokens', () {
-      expect(expandEnvVars(r'${A}-${B}', env, path: 'root.x'), '1-2');
-    });
-
-    test('a bare \$ that is not a token is left untouched', () {
-      expect(expandEnvVars(r'cost $5', env, path: 'root.x'), r'cost $5');
-    });
-
-    test('throws on undefined variable with path', () {
-      expect(
-        () => expandEnvVars(r'${MISSING}', env, path: 'root.x'),
-        throwsA(isA<FormatException>().having((e) => e.message, 'message',
-            contains(r'root.x references undefined env var `${MISSING}`'))),
-      );
-    });
-
-    test('throws on unterminated token with path', () {
-      expect(
-        () => expandEnvVars(r'${UNCLOSED', env, path: 'root.x'),
-        throwsA(isA<FormatException>().having(
-            (e) => e.message, 'message', contains('root.x has unterminated'))),
-      );
-    });
-
-    test('throws on empty token with path', () {
-      expect(
-        () => expandEnvVars(r'${}', env, path: 'root.x'),
-        throwsA(isA<FormatException>().having(
-            (e) => e.message, 'message', contains('root.x has empty'))),
-      );
-    });
-
-    test('a custom error factory wraps env-expansion failures', () {
-      expect(
-        () => expandEnvVars(r'${MISSING}', env,
-            path: 'root.x', errorFactory: _ConfigError.new),
-        throwsA(isA<_ConfigError>()),
-      );
-    });
-  });
-
-  group('YamlConfigReader.expandEnv delegates to expandEnvVars', () {
-    test('shares the exact same behaviour and messages', () {
-      final reader = YamlConfigReader(
-        env: const {'TOKEN': 'secret'},
-        errorFactory: _ConfigError.new,
-      );
-      expect(reader.expandEnv(r'Bearer ${TOKEN}', 'p'), 'Bearer secret');
-      expect(
-        () => reader.expandEnv(r'${MISSING}', 'p'),
-        throwsA(isA<_ConfigError>()
-            .having((e) => e.message, 'message', contains('undefined env var'))),
-      );
-    });
-  });
 }
 
 /// A loader-style domain exception used to prove the `errorFactory` seam.
