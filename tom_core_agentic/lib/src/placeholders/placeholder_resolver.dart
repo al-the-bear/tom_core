@@ -9,6 +9,14 @@
 // Forms (§ 21.7):
 //   ${name}      simple-identifier fast path — reads a binding from the
 //                current scope; equivalent to `${{ name }}`.
+//   ${name?}     OPTIONAL simple lookup (`prompt_configuration.md` §2 / §13):
+//                an unbound name renders as the empty string regardless of
+//                the resolver's strict/lenient mode — the injection slot
+//                simply vanishes. A bound name renders its value exactly like
+//                `${name}`. Optionality is a property of the call site (the
+//                `?` in the template), not of the binding, and is scoped to
+//                the simple form only — `${env:NAME?}` and `${{ … ?}}` do NOT
+//                take the marker (the `?` is then just part of the name/body).
 //   ${{ expr }}  an arbitrary expression evaluated through the injected
 //                [PlaceholderExpressions] backing (d4rt in the engine).
 //   ${env:NAME}  process-environment read — the one pure, non-expression
@@ -47,6 +55,10 @@ typedef _Token = ({
   int tokenEnd,
   _PlaceholderForm form,
   String body,
+  // True only for the optional simple form `${name?}`: an unbound name
+  // renders empty regardless of [PlaceholderResolver.strict]. Always false
+  // for env / expression / reserved forms.
+  bool optional,
 });
 
 /// Resolves placeholder scaffolds against a [PlaceholderStack] of bindings,
@@ -153,7 +165,7 @@ final class PlaceholderResolver {
         case _PlaceholderForm.env:
           out.write(_resolveEnv(token.body));
         case _PlaceholderForm.simple:
-          out.write(_resolveSimple(token.body));
+          out.write(_resolveSimple(token.body, optional: token.optional));
         case _PlaceholderForm.expression:
           out.write(_render(await _evaluateExpression(token.body)));
       }
@@ -180,7 +192,7 @@ final class PlaceholderResolver {
         case _PlaceholderForm.env:
           out.write(_resolveEnv(token.body));
         case _PlaceholderForm.simple:
-          out.write(_resolveSimple(token.body));
+          out.write(_resolveSimple(token.body, optional: token.optional));
         case _PlaceholderForm.expression:
           throw PlaceholderExpressionException(
             expression: token.body,
@@ -236,9 +248,14 @@ final class PlaceholderResolver {
     return '';
   }
 
-  String _resolveSimple(String name) {
+  String _resolveSimple(String name, {bool optional = false}) {
     if (stack.has(name)) {
       return _render(stack.lookup(name));
+    }
+    // The optional marker (`${name?}`) overrides strict mode for this slot:
+    // an unbound optional name vanishes rather than throwing.
+    if (optional) {
+      return '';
     }
     if (strict) {
       throw PlaceholderUnresolvedException(name);
@@ -271,6 +288,7 @@ final class PlaceholderResolver {
           tokenEnd: end + 2,
           form: _PlaceholderForm.expression,
           body: input.substring(open + 3, end).trim(),
+          optional: false,
         );
       }
       final close = input.indexOf('}', open + 2);
@@ -279,11 +297,17 @@ final class PlaceholderResolver {
         continue;
       }
       final raw = input.substring(open + 2, close).trim();
+      final form = _classify(raw);
+      // The optional marker is scoped to the simple binding form only: a
+      // trailing `?` on `${name?}` makes the slot vanish when unbound. `?` is
+      // not a valid identifier character, so a trailing `?` is unambiguous.
+      final optional = form == _PlaceholderForm.simple && raw.endsWith('?');
       return (
         start: open,
         tokenEnd: close + 1,
-        form: _classify(raw),
-        body: _bodyOf(raw),
+        form: form,
+        body: optional ? raw.substring(0, raw.length - 1).trimRight() : _bodyOf(raw),
+        optional: optional,
       );
     }
   }

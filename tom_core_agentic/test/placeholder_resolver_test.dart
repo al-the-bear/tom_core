@@ -75,6 +75,63 @@ void main() {
     });
   });
 
+  group(r'PlaceholderResolver — optional form (${name?})', () {
+    test(r'an unbound ${name?} renders empty even in strict mode', () {
+      // strict is the default — the ? overrides it for this slot only.
+      final r = PlaceholderResolver(environment: const {});
+      expect(r.resolveSync(r'[${absent?}]'), '[]');
+    });
+
+    test(r'a bound ${name?} renders its value', () {
+      final r = PlaceholderResolver(environment: const {});
+      r.stack.bind('todo_list', '- buy milk');
+      expect(r.resolveSync(r'${todo_list?}'), '- buy milk');
+    });
+
+    test(r'a bare ${name} (no ?) still throws in strict mode', () {
+      // The ? is per-slot: the strict default is untouched for bare lookups.
+      final r = PlaceholderResolver(environment: const {});
+      expect(
+        () => r.resolveSync(r'${absent}'),
+        throwsA(isA<PlaceholderUnresolvedException>()
+            .having((e) => e.reference, 'reference', 'absent')),
+      );
+    });
+
+    test(r'${name?} works identically on the async resolve() path', () async {
+      final r = PlaceholderResolver(
+        environment: const {},
+        expressions: _FakeExpressions(),
+      );
+      expect(await r.resolve(r'[${absent?}]'), '[]');
+      r.stack.bind('present', 'X');
+      expect(await r.resolve(r'${present?}'), 'X');
+    });
+
+    test(r'a bound ${name?} re-scans its value like a bare binding', () {
+      final r = PlaceholderResolver(environment: const {'ROOT': '/srv'});
+      r.stack.bind('hint', r'${env:ROOT}/x');
+      expect(r.resolveSync(r'${hint?}'), '/srv/x');
+    });
+
+    test(r'the optional marker does not apply to ${env:NAME?}', () {
+      // Optionality is scoped to the simple binding form only (spec §13/§2);
+      // an env name carrying a trailing ? is just an unresolvable env lookup.
+      final r = PlaceholderResolver(environment: const {'TOKEN': 'secret'});
+      expect(
+        () => r.resolveSync(r'${env:TOKEN?}'),
+        throwsA(isA<PlaceholderUnresolvedException>()
+            .having((e) => e.reference, 'reference', 'env:TOKEN?')),
+      );
+    });
+
+    test(r'a literal ? outside a placeholder is untouched', () {
+      final r = PlaceholderResolver(environment: const {});
+      r.stack.bind('name', 'Tom');
+      expect(r.resolveSync(r'${name}, are you there?'), 'Tom, are you there?');
+    });
+  });
+
   group(r'PlaceholderResolver — expression form (${{ … }})', () {
     test('resolveSync rejects an expression form', () {
       final r = PlaceholderResolver(environment: const {});
