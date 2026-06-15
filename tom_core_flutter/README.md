@@ -58,7 +58,7 @@ counter | 5; // the widget rebuilds with "Count: 5"
 
 The following module folders are reserved for planned client capabilities and
 currently contain only a `readme.md` placeholder (no implementation):
-`localstorage`, `preferences`, `qrcode`.
+`preferences`, `qrcode`.
 
 ## Additional information
 

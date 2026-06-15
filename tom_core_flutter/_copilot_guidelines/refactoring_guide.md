@@ -19,7 +19,6 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 | ------ | ----------- |
 | `forms/` | Form handling and validation widgets |
 | `little_things/` | Small utility widgets and helpers |
-| `localstorage/` | Local storage abstraction |
 | `observing/` | Observable state patterns for Flutter |
 | `preferences/` | User preferences management |
 | `qrcode/` | QR code generation and scanning |

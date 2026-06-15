@@ -17,6 +17,10 @@
   `readme.md` with no implementation and was referenced by nothing. Removed
   rather than implemented — camera capture is a substantial feature (plugin,
   platform channels, capture/switch/video) outside the scope of this pass.
+- **`localstorage/` placeholder module**: contained only a `readme.md` of
+  research links (shared prefs / secure storage / hive / sqflite / objectbox)
+  with no implementation and no references. Removed rather than implemented — a
+  storage abstraction is a substantial feature with no current consumer.
 
 ## 1.0.0
 
