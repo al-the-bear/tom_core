@@ -51,7 +51,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo M: Material vs Cupertino (Phase 5a)'), 200);
+        find.text('Demo M: Material vs Cupertino (Phase 5a)'), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(find.text('Demo M: Material vs Cupertino (Phase 5a)'));
     await tester.pumpAndSettle();
   }

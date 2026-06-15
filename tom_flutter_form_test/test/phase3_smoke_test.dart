@@ -6,6 +6,8 @@ library;
 
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -31,8 +33,22 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200);
-    await tester.tap(find.text(tile));
+    await tester.scrollUntilVisible(find.text(tile), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
+    // scrollUntilVisible only guarantees the tile is in the tree; tiles
+    // near the list's end can straddle the viewport bottom. ensureVisible
+    // nudges it on-screen, and we tap the ListTile ancestor (full-row hit
+    // target) rather than the Text node — the Text box can stay clipped by
+    // the card padding so a tap on it silently misses.
+    await tester.ensureVisible(find.text(tile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.ancestor(
+      of: find.text(tile),
+      matching: find.byType(ListTile),
+    ));
     await tester.pumpAndSettle();
   }
 

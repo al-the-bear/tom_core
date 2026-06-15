@@ -5,6 +5,7 @@
 /// without throwing.
 library;
 
+import 'package:flutter/widgets.dart';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -33,7 +34,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200);
+    await tester.scrollUntilVisible(find.text(tile), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.ensureVisible(find.text(tile));
     await tester.pumpAndSettle();
     await tester.tap(find.text(tile), warnIfMissed: false);

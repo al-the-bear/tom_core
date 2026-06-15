@@ -44,7 +44,11 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
-    await tester.scrollUntilVisible(find.text(tile), 200);
+    await tester.scrollUntilVisible(find.text(tile), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(find.text(tile));
     await tester.pumpAndSettle();
   }

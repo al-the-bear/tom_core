@@ -57,7 +57,11 @@ void main() {
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
         find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'),
-        200);
+        200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(
         find.text('Demo N: Cupertino numeric + date/time (Phase 5b)'));
     await tester.pumpAndSettle();

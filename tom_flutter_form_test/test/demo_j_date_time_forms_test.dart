@@ -66,7 +66,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo J: Date/Time/Duration Forms'), 200);
+        find.text('Demo J: Date/Time/Duration Forms'), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(find.text('Demo J: Date/Time/Duration Forms'));
     await tester.pumpAndSettle();
     if (finalSize != const Size(2400, 2400)) {

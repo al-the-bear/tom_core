@@ -3,6 +3,7 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -67,6 +68,14 @@ void main() {
       await tester.scrollUntilVisible(
         find.text(label),
         80,
+        // RootScreen wraps the demo list in a TabBarView, so the tree
+        // holds several Scrollables (the TabBarView's PageView plus each
+        // tab's ListView). Scope the scroll to the DemoListScreen's own
+        // Scrollable; the bare finder would match >1 and throw.
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),
         duration: const Duration(milliseconds: 500),
       );
       expect(find.text(label), findsOneWidget);

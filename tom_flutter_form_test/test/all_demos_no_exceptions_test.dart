@@ -106,7 +106,10 @@ void main() {
       find.text(tile),
       80,
       duration: const Duration(milliseconds: 500),
-    );
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     // `scrollUntilVisible` sometimes leaves the tile's centre just
     // beyond the viewport edge — `ensureVisible` nudges it fully
     // on-screen so the subsequent tap actually hits.

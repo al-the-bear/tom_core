@@ -53,8 +53,22 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo 9: Preset Showcase'), 200);
-    await tester.tap(find.text('Demo 9: Preset Showcase'));
+        find.text('Demo 9: Preset Showcase'), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
+    // Demo 9 sits near the list's end; scrollUntilVisible can leave the
+    // tile straddling the viewport bottom. ensureVisible nudges it
+    // on-screen, and we tap the ListTile ancestor (full-row hit target)
+    // rather than the Text node — the Text box can stay clipped by the
+    // card padding so a tap on it silently misses.
+    await tester.ensureVisible(find.text('Demo 9: Preset Showcase'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.ancestor(
+      of: find.text('Demo 9: Preset Showcase'),
+      matching: find.byType(ListTile),
+    ));
     await tester.pumpAndSettle();
   }
 

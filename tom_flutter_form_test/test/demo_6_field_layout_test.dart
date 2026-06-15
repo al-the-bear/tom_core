@@ -60,7 +60,11 @@ void main() {
     // outside the viewport. ensureVisible scrolls until the widget is
     // fully on-screen (matches the pattern in tapOutlined). Adding more
     // demos to the home list shouldn't break this helper.
-    await tester.scrollUntilVisible(tile, 200);
+    await tester.scrollUntilVisible(tile, 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.ensureVisible(tile);
     await tester.pumpAndSettle();
     await tester.tap(tile);

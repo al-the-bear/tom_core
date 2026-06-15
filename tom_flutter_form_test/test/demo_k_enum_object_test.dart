@@ -50,7 +50,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo K: Enum, Object & Lookup'), 200);
+        find.text('Demo K: Enum, Object & Lookup'), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(find.text('Demo K: Enum, Object & Lookup'));
     await tester.pumpAndSettle();
   }

@@ -37,7 +37,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
-        find.text('Demo H-B: Expandable Rows (Order Items)'), 200);
+        find.text('Demo H-B: Expandable Rows (Order Items)'), 200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(find.text('Demo H-B: Expandable Rows (Order Items)'));
     await tester.pumpAndSettle();
   }

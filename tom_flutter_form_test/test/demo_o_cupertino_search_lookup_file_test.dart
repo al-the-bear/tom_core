@@ -52,7 +52,11 @@ void main() {
     await tester.pumpWidget(const FormDemoApp());
     await tester.scrollUntilVisible(
         find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'),
-        200);
+        200,
+        scrollable: find.descendant(
+          of: find.byType(DemoListScreen),
+          matching: find.byType(Scrollable),
+        ),);
     await tester.tap(
         find.text('Demo O: Cupertino search / lookup / file (Phase 5c)'));
     await tester.pumpAndSettle();
