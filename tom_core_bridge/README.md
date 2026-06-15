@@ -94,6 +94,12 @@ server instead, point the bridge command/args at `core_bs`:
 Once registered, every D4rt script run through the VS Code bridge has the full
 Tom Framework bridge set available in addition to the DCli and VS Code APIs.
 
+## Operations
+
+For the full operational runbook — build pipeline and artifact locations, the
+bridge-profile configuration shape, switching profiles, and a troubleshooting
+table for failed launches — see [`doc/operations.md`](doc/operations.md).
+
 ## License
 
 Proprietary and confidential — see [`LICENSE`](LICENSE).
