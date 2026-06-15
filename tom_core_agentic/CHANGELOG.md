@@ -8,6 +8,11 @@
   `example/isolate_streaming/isolate_streaming_example.dart`. Filled the one
   remaining dartdoc gap (`IsolateStreamCloseSignal.closeRequested`). No public
   API change; the existing isolate-streaming test files remain the coverage.
+- **`mcp_auth/`**: added `doc/mcp_auth.md` (the bearer-token wire contract, the
+  authenticator interface, the closed failure taxonomy, and the tier boundary)
+  and a runnable `example/mcp_auth/mcp_auth_example.dart` that plays both sides
+  of an MCP `initialize` handshake. No public API change; the existing
+  `mcp_auth_test.dart` remains the coverage.
 
 ## 1.4.0
 
