@@ -106,6 +106,16 @@
   WebSocket, and richer-authorization work is now recorded in the quest
   completion steps and folded into the relevant dartdoc).
 
+### Removed
+
+- **Removed the empty `externalapis/` placeholder module.** It contained no
+  Dart code — only a `readme.md` holding a single bookmark URL
+  (`https://dart.dev/guides/google-apis`) — and was not exported, referenced, or
+  depended on anywhere. Implementing it would have been speculative (no contract
+  or consumer existed), so the placeholder was deleted. The workspace metadata
+  still lists an `externalapis` module entry (no sources) until the next
+  metadata regeneration.
+
 ### Fixed
 
 - **`TomStandardSqlDialect.iterableOp` now comma-joins correctly.** The
