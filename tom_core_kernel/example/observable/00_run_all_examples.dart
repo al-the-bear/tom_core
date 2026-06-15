@@ -16,6 +16,7 @@ import '03_tom_class.dart' as example_03;
 import '04_tom_list.dart' as example_04;
 import '05_tom_map.dart' as example_05;
 import '06_timezone_types.dart' as example_06;
+import '07_list_reset_lifecycle.dart' as example_07;
 
 void main() {
   // Initialize reflection once for all examples
@@ -55,6 +56,11 @@ void main() {
   print('Example 6: Timezone Types');
   print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   example_06.run();
+
+  print('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  print('Example 7: TomList Reset & Lifecycle');
+  print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  example_07.run();
 
   print('\n╔══════════════════════════════════════════════════════════════╗');
   print('║          All Examples Completed Successfully!                ║');

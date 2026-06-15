@@ -8,6 +8,7 @@ library;
 
 import '01_user_principal_example.dart' as user_principal;
 import '02_access_control_example.dart' as access_control;
+import '03_ui_authorization_example.dart' as ui_authorization;
 
 void main() {
   print('╔═══════════════════════════════════════════════════════════════════╗');
@@ -17,6 +18,7 @@ void main() {
 
   user_principal.run();
   access_control.run();
+  ui_authorization.run();
 
   print('╔═══════════════════════════════════════════════════════════════════╗');
   print('║                     All Examples Complete!                        ║');
