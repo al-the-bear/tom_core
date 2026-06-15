@@ -41,6 +41,11 @@ verifyNotNull(ProcessState.stopped, 'ProcessState.stopped');
 verifyNotNull(ProcessState.failed, 'ProcessState.failed');
 verifyNotNull(ProcessState.starting, 'ProcessState.starting');
 verifyNotNull(ProcessState.stopping, 'ProcessState.stopping');
+verifyNotNull(ProcessState.crashed, 'ProcessState.crashed');
+verifyNotNull(ProcessState.retrying, 'ProcessState.retrying');
+verifyNotNull(ProcessState.disabled, 'ProcessState.disabled');
+verifyEquals(ProcessState.running.name, 'running', 'ProcessState.running name');
+verifyEquals(ProcessState.values.length, 8, 'ProcessState has 8 values');
 
 # =============================================================================
 # Test: RestartPolicy (all optional with defaults)
@@ -101,6 +106,32 @@ verifyNotNull(disabledEx, 'ProcessDisabledException created');
 
 var permEx = PermissionDeniedException('Permission denied');
 verifyNotNull(permEx, 'PermissionDeniedException created');
+
+# =============================================================================
+# Test: Networking re-exports (tom_basics_network)
+# =============================================================================
+
+var rc = RetryConfig();
+verifyEquals(rc.retryDelaysMs.length, 5, 'RetryConfig default delays length');
+verifyEquals(kDefaultRetryDelaysMs.length, 5, 'kDefaultRetryDelaysMs length');
+verifyEquals(kDefaultRetryDelaysMs[0], 2000, 'kDefaultRetryDelaysMs first delay');
+
+var ds = DiscoveredServer(serverUrl: 'http://localhost:8080', status: {'service': 'pm', 'port': 8080});
+verifyEquals(ds.serverUrl, 'http://localhost:8080', 'DiscoveredServer serverUrl');
+verifyEquals(ds.service, 'pm', 'DiscoveredServer service getter');
+verifyEquals(ds.port, 8080, 'DiscoveredServer port getter');
+
+# =============================================================================
+# Test: Classes exist
+# =============================================================================
+
+verifyNotNull(ProcessRegistry, 'ProcessRegistry class exists');
+verifyNotNull(RegistryService, 'RegistryService class exists');
+verifyNotNull(ProcessControl, 'ProcessControl class exists');
+verifyNotNull(ProcessMonitor, 'ProcessMonitor class exists');
+verifyNotNull(LocalProcessMonitorClient, 'LocalProcessMonitorClient class exists');
+verifyNotNull(RemoteProcessMonitorClient, 'RemoteProcessMonitorClient class exists');
+verifyNotNull(ServerDiscovery, 'ServerDiscovery class exists');
 
 # =============================================================================
 # Summary
