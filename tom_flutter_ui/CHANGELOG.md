@@ -31,6 +31,12 @@ change — this release records the widget set that already exists.
   toggles, trees, plus animated/builder/effect/image/interaction helpers).
 - **`custom/`** — non-form composite widgets (auth guard, auth tree, empty state,
   error boundary, infinite scroll, loading overlay, radio group, skeleton loader).
+- **`TomFieldWidgetAdapter`** — now exported from the `forms/` barrel. It wraps
+  every concrete field's rendered widget so `TomAuthorizable`-aware consumers
+  (e.g. ACL hide-unauthorized) can reach a field's auth state; it appears in the
+  public widget tree, so consumers must be able to name the type. (The generated
+  `GeneratedColors` / `GeneratedIcons` lookup tables remain internal — they back
+  the public `TomUIColors` / `TomUIIcons` resolvers.)
 
 ### Documentation
 

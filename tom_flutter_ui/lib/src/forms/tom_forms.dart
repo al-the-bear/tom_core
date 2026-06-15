@@ -25,6 +25,9 @@ export 'decoration/tom_generic_field_decoration_mixin.dart';
 export 'decoration/tom_stub_decoration_mixins.dart';
 export 'widgets/tom_form_error_banner.dart';
 export 'widgets/tom_multi_observable_builder.dart';
+// Wraps every concrete field's rendered widget so TomAuthorizable-aware
+// consumers (e.g. ACL hide-unauthorized) can reach the field's auth state.
+export 'fields/tom_field_widget_adapter.dart';
 
 // Phase 1 — concrete string fields
 export 'fields/tom_form_string_field.dart';
