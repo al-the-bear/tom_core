@@ -1,23 +1,24 @@
 // D4rt Bridge - Generated file, do not edit
 // Dartscript registration for tom_dartscript_bridges
-// Generated: 2026-03-12T17:01:57.725270
+// Generated: 2026-06-15T11:35:54.592543
 
 /// D4rt Bridge Registration for tom_dartscript_bridges
 library;
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt_dcli/dartscript.b.dart' as imported_0;
-import 'src\tom_basics\tom_basics_bridges.b.dart' as tom_basics_bridges;
-import 'src\tom_reflection\tom_reflection_bridges.b.dart' as tom_reflection_bridges;
-import 'src\tom_process_monitor\tom_process_monitor_bridges.b.dart' as tom_process_monitor_bridges;
-import 'src\tom_core_kernel\tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
-import 'src\tom_build\tom_build_bridges.b.dart' as tom_build_bridges;
-import 'src\tom_core_server\tom_core_server_bridges.b.dart' as tom_core_server_bridges;
-import 'src\tom_dist_ledger\tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
-import 'src\tom_doc_scanner\tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
-import 'src\tom_doc_specs\tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
-import 'src\tom_md2latex\tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
-import 'src\tom_md2pdf\tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
+import 'src/tom_basics/tom_basics_bridges.b.dart' as tom_basics_bridges;
+import 'src/tom_reflection/tom_reflection_bridges.b.dart' as tom_reflection_bridges;
+import 'src/tom_process_monitor/tom_process_monitor_bridges.b.dart' as tom_process_monitor_bridges;
+import 'src/tom_core_kernel/tom_core_kernel_bridges.b.dart' as tom_core_kernel_bridges;
+import 'src/tom_build/tom_build_bridges.b.dart' as tom_build_bridges;
+import 'src/tom_core_server/tom_core_server_bridges.b.dart' as tom_core_server_bridges;
+import 'src/tom_dist_ledger/tom_dist_ledger_bridges.b.dart' as tom_dist_ledger_bridges;
+import 'src/tom_doc_scanner/tom_doc_scanner_bridges.b.dart' as tom_doc_scanner_bridges;
+import 'src/tom_doc_specs/tom_doc_specs_bridges.b.dart' as tom_doc_specs_bridges;
+import 'src/tom_md2latex/tom_md2latex_bridges.b.dart' as tom_md2latex_bridges;
+import 'src/tom_md2pdf/tom_md2pdf_bridges.b.dart' as tom_md2pdf_bridges;
+import 'src/tom_basics/relaxers.b.dart' as relaxer_factories;
 
 /// Combined bridge registration for tom_dartscript_bridges.
 class TomDartscriptBridges {
@@ -117,6 +118,11 @@ class TomDartscriptBridges {
     for (final barrel in tom_md2pdf_bridges.TomMd2pdfBridge.subPackageBarrels()) {
       tom_md2pdf_bridges.TomMd2pdfBridge.registerBridges(d4rt, barrel);
     }
+
+    // RC-2: Register generic constructor factories
+    relaxer_factories.registerGenericConstructors();
+    // GEN-079: Register relaxer wrapper factories
+    relaxer_factories.registerRelaxers();
   }
 
   /// Get import block for all modules.

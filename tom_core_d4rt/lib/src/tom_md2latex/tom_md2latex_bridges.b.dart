@@ -1,16 +1,18 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 4 files
-// Generated: 2026-03-12T17:01:55.671012
+// Generated: 2026-06-15T11:35:51.959823
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'dart:async';
 import 'dart:io';
 
-import 'package:tom_md2latex/src/markdown_parser.dart' as $tom_md2latex_1;
-import 'package:tom_md2latex/src/md_latex_converter.dart' as $tom_md2latex_2;
+import 'package:tom_md2latex/src/latex_macros.dart' as $tom_md2latex_1;
+import 'package:tom_md2latex/src/markdown_parser.dart' as $tom_md2latex_2;
+import 'package:tom_md2latex/src/md2latex.dart' as $tom_md2latex_3;
+import 'package:tom_md2latex/src/md_latex_converter.dart' as $tom_md2latex_4;
 
 /// Bridge class for tom_md2latex module.
 class TomMd2latexBridge {
@@ -49,29 +51,53 @@ class TomMd2latexBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'Md2Latex': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md2latex.dart',
-      'LatexMacros': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\latex_macros.dart',
-      'MarkdownParserOptions': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'MarkdownParser': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'ParsedMarkdown': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'MarkdownElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'HeadingElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'ParagraphElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'CodeBlockElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'InlineCodeElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'TableElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'UnorderedListElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'OrderedListElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'BlockQuoteElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'HorizontalRuleElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'LinkElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'ImageElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'RawTextElement': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'MdLatexConverter': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
-      'MdLatexConverterOptions': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
-      'MdLatexConverterResult': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
-      'ConvertedFile': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
-      'ConversionError': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
+      'Md2Latex': 'package:tom_md2latex/src/md2latex.dart',
+      'LatexMacros': 'package:tom_md2latex/src/latex_macros.dart',
+      'MarkdownParserOptions': 'package:tom_md2latex/src/markdown_parser.dart',
+      'MarkdownParser': 'package:tom_md2latex/src/markdown_parser.dart',
+      'ParsedMarkdown': 'package:tom_md2latex/src/markdown_parser.dart',
+      'MarkdownElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'HeadingElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'ParagraphElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'CodeBlockElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'InlineCodeElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'TableElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'UnorderedListElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'OrderedListElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'BlockQuoteElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'HorizontalRuleElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'LinkElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'ImageElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'RawTextElement': 'package:tom_md2latex/src/markdown_parser.dart',
+      'MdLatexConverter': 'package:tom_md2latex/src/md_latex_converter.dart',
+      'MdLatexConverterOptions': 'package:tom_md2latex/src/md_latex_converter.dart',
+      'MdLatexConverterResult': 'package:tom_md2latex/src/md_latex_converter.dart',
+      'ConvertedFile': 'package:tom_md2latex/src/md_latex_converter.dart',
+      'ConversionError': 'package:tom_md2latex/src/md_latex_converter.dart',
+    };
+  }
+
+  /// Returns a map of class names to their flattened (transitive)
+  /// native supertype names (superclasses, interfaces and mixins).
+  ///
+  /// Fed to `BridgedClass.registerSupertypes` so interpreted subclasses
+  /// of bridged classes pass `is`/subtype checks against bridged
+  /// ancestors and the interface-proxy supertype walk resolves up the
+  /// chain (MCI#1 / A1).
+  static Map<String, List<String>> classSupertypes() {
+    return {
+      'HeadingElement': ['MarkdownElement'],
+      'ParagraphElement': ['MarkdownElement'],
+      'CodeBlockElement': ['MarkdownElement'],
+      'InlineCodeElement': ['MarkdownElement'],
+      'TableElement': ['MarkdownElement'],
+      'UnorderedListElement': ['MarkdownElement'],
+      'OrderedListElement': ['MarkdownElement'],
+      'BlockQuoteElement': ['MarkdownElement'],
+      'HorizontalRuleElement': ['MarkdownElement'],
+      'LinkElement': ['MarkdownElement'],
+      'ImageElement': ['MarkdownElement'],
+      'RawTextElement': ['MarkdownElement'],
     };
   }
 
@@ -121,6 +147,22 @@ class TomMd2latexBridge {
     };
   }
 
+  /// GEN-107: Library re-exports declared by the bridged source
+  /// libraries. Each tuple mirrors a Dart `export '…'` directive.
+  /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
+  /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
+  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  bridgeReExports() {
+    return [
+      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/md2latex.dart', show: null, hide: null),
+      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/md_latex_converter.dart', show: null, hide: null),
+      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/latex_macros.dart', show: null, hide: null),
+      (source: 'package:tom_md2latex/tom_md2latex.dart', target: 'package:tom_md2latex/src/markdown_parser.dart', show: null, hide: null),
+      (source: 'package:tom_md2latex/src/md_latex_converter.dart', target: 'package:tom_md2latex/src/latex_macros.dart', show: null, hide: null),
+      (source: 'package:tom_md2latex/src/md_latex_converter.dart', target: 'package:tom_md2latex/src/markdown_parser.dart', show: null, hide: null),
+    ];
+  }
+
   /// Registers all bridges with an interpreter.
   ///
   /// [importPath] is the package import path that D4rt scripts will use
@@ -131,6 +173,16 @@ class TomMd2latexBridge {
     final classSources = classSourceUris();
     for (final bridge in classes) {
       interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    }
+
+    // MCI#1 / A1: Register the flattened native supertype table so
+    // interpreted subclasses pass subtype checks against bridged
+    // ancestors. Idempotent — safe to call per barrel.
+    BridgedClass.registerSupertypes(classSupertypes());
+
+    // GEN-107: Register library re-exports
+    for (final r in bridgeReExports()) {
+      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
     }
   }
 
@@ -156,10 +208,10 @@ class TomMd2latexBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\latex_macros.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\markdown_parser.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md2latex.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\devops\tom_md2latex\lib\src\md_latex_converter.dart',
+      'package:tom_md2latex/src/latex_macros.dart',
+      'package:tom_md2latex/src/markdown_parser.dart',
+      'package:tom_md2latex/src/md2latex.dart',
+      'package:tom_md2latex/src/md_latex_converter.dart',
     ];
   }
 
@@ -189,9 +241,9 @@ class TomMd2latexBridge {
 
 BridgedClass _createMd2LatexBridge() {
   return BridgedClass(
-    nativeType: Md2Latex,
+    nativeType: $tom_md2latex_3.Md2Latex,
     name: 'Md2Latex',
-    isAssignable: (v) => v is Md2Latex,
+    isAssignable: (v) => v is $tom_md2latex_3.Md2Latex,
     constructors: {
     },
     staticMethods: {
@@ -202,7 +254,7 @@ BridgedClass _createMd2LatexBridge() {
         final generatePreamble = D4.getNamedArgWithDefault<bool>(named, 'generatePreamble', true);
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', false);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        return Md2Latex.convertString(markdown: markdown, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
+        return $tom_md2latex_3.Md2Latex.convertString(markdown: markdown, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
       },
       'convertFile': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFile');
@@ -212,7 +264,7 @@ BridgedClass _createMd2LatexBridge() {
         final generatePreamble = D4.getNamedArgWithDefault<bool>(named, 'generatePreamble', true);
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', true);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        return Md2Latex.convertFile(inputPath: inputPath, outputPath: outputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
+        return $tom_md2latex_3.Md2Latex.convertFile(inputPath: inputPath, outputPath: outputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
       },
       'convertFileToString': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFileToString');
@@ -221,7 +273,7 @@ BridgedClass _createMd2LatexBridge() {
         final generatePreamble = D4.getNamedArgWithDefault<bool>(named, 'generatePreamble', true);
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', false);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        return Md2Latex.convertFileToString(inputPath: inputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
+        return $tom_md2latex_3.Md2Latex.convertFileToString(inputPath: inputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
       },
       'convertFileToStringSync': (visitor, positional, named, typeArgs) {
         final inputPath = D4.getRequiredNamedArg<String>(named, 'inputPath', 'convertFileToStringSync');
@@ -230,7 +282,7 @@ BridgedClass _createMd2LatexBridge() {
         final generatePreamble = D4.getNamedArgWithDefault<bool>(named, 'generatePreamble', true);
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', false);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        return Md2Latex.convertFileToStringSync(inputPath: inputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
+        return $tom_md2latex_3.Md2Latex.convertFileToStringSync(inputPath: inputPath, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth);
       },
       'convertDirectory': (visitor, positional, named, typeArgs) {
         final inputDir = D4.getRequiredNamedArg<String>(named, 'inputDir', 'convertDirectory');
@@ -243,13 +295,13 @@ BridgedClass _createMd2LatexBridge() {
         final excludePatterns = named.containsKey('excludePatterns') && named['excludePatterns'] != null
             ? D4.coerceList<String>(named['excludePatterns'], 'excludePatterns')
             : const ['.git', 'node_modules', '.dart_tool'];
-        return Md2Latex.convertDirectory(inputDir: inputDir, outputDir: outputDir, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth, excludePatterns: excludePatterns);
+        return $tom_md2latex_3.Md2Latex.convertDirectory(inputDir: inputDir, outputDir: outputDir, documentClass: documentClass, author: author, generatePreamble: generatePreamble, generateToc: generateToc, tocDepth: tocDepth, excludePatterns: excludePatterns);
       },
       'parse': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parse');
         final markdown = D4.getRequiredArg<String>(positional, 0, 'markdown', 'parse');
-        final options = D4.getNamedArgWithDefault<$tom_md2latex_1.MarkdownParserOptions>(named, 'options', const $tom_md2latex_1.MarkdownParserOptions());
-        return Md2Latex.parse(markdown, options: options);
+        final options = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_3.Md2Latex.parse(markdown, options: options);
       },
     },
     staticMethodSignatures: {
@@ -269,9 +321,9 @@ BridgedClass _createMd2LatexBridge() {
 
 BridgedClass _createLatexMacrosBridge() {
   return BridgedClass(
-    nativeType: LatexMacros,
+    nativeType: $tom_md2latex_1.LatexMacros,
     name: 'LatexMacros',
-    isAssignable: (v) => v is LatexMacros,
+    isAssignable: (v) => v is $tom_md2latex_1.LatexMacros,
     constructors: {
     },
     staticMethods: {
@@ -281,21 +333,21 @@ BridgedClass _createLatexMacrosBridge() {
         final author = D4.getOptionalNamedArg<String?>(named, 'author');
         final date = D4.getOptionalNamedArg<String?>(named, 'date');
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        return LatexMacros.preamble(documentClass: documentClass, title: title, author: author, date: date, tocDepth: tocDepth);
+        return $tom_md2latex_1.LatexMacros.preamble(documentClass: documentClass, title: title, author: author, date: date, tocDepth: tocDepth);
       },
       'beginDocument': (visitor, positional, named, typeArgs) {
-        return LatexMacros.beginDocument();
+        return $tom_md2latex_1.LatexMacros.beginDocument();
       },
       'endDocument': (visitor, positional, named, typeArgs) {
-        return LatexMacros.endDocument();
+        return $tom_md2latex_1.LatexMacros.endDocument();
       },
       'makeTitle': (visitor, positional, named, typeArgs) {
-        return LatexMacros.makeTitle();
+        return $tom_md2latex_1.LatexMacros.makeTitle();
       },
       'textToSlug': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'textToSlug');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'textToSlug');
-        return LatexMacros.textToSlug(text);
+        return $tom_md2latex_1.LatexMacros.textToSlug(text);
       },
       'heading': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'heading');
@@ -303,38 +355,38 @@ BridgedClass _createLatexMacrosBridge() {
         final level = D4.getRequiredArg<int>(positional, 1, 'level', 'heading');
         final label = D4.getOptionalNamedArg<String?>(named, 'label');
         final numbered = D4.getNamedArgWithDefault<bool>(named, 'numbered', true);
-        return LatexMacros.heading(text, level, label: label, numbered: numbered);
+        return $tom_md2latex_1.LatexMacros.heading(text, level, label: label, numbered: numbered);
       },
       'paragraph': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'paragraph');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'paragraph');
-        return LatexMacros.paragraph(text);
+        return $tom_md2latex_1.LatexMacros.paragraph(text);
       },
       'bold': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'bold');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'bold');
-        return LatexMacros.bold(text);
+        return $tom_md2latex_1.LatexMacros.bold(text);
       },
       'italic': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'italic');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'italic');
-        return LatexMacros.italic(text);
+        return $tom_md2latex_1.LatexMacros.italic(text);
       },
       'inlineCode': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'inlineCode');
         final code = D4.getRequiredArg<String>(positional, 0, 'code', 'inlineCode');
-        return LatexMacros.inlineCode(code);
+        return $tom_md2latex_1.LatexMacros.inlineCode(code);
       },
       'codeBlock': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'codeBlock');
         final code = D4.getRequiredArg<String>(positional, 0, 'code', 'codeBlock');
         final language = D4.getOptionalNamedArg<String?>(named, 'language');
-        return LatexMacros.codeBlock(code, language: language);
+        return $tom_md2latex_1.LatexMacros.codeBlock(code, language: language);
       },
       'asciiDiagram': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'asciiDiagram');
         final diagram = D4.getRequiredArg<String>(positional, 0, 'diagram', 'asciiDiagram');
-        return LatexMacros.asciiDiagram(diagram);
+        return $tom_md2latex_1.LatexMacros.asciiDiagram(diagram);
       },
       'table': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'table');
@@ -350,7 +402,7 @@ BridgedClass _createLatexMacrosBridge() {
           throw ArgumentError('table: Missing required argument "alignments" at position 2');
         }
         final alignments = D4.coerceList<String>(positional[2], 'alignments');
-        return LatexMacros.table(headers, rows, alignments);
+        return $tom_md2latex_1.LatexMacros.table(headers, rows, alignments);
       },
       'unorderedList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'unorderedList');
@@ -358,7 +410,7 @@ BridgedClass _createLatexMacrosBridge() {
           throw ArgumentError('unorderedList: Missing required argument "items" at position 0');
         }
         final items = D4.coerceList<String>(positional[0], 'items');
-        return LatexMacros.unorderedList(items);
+        return $tom_md2latex_1.LatexMacros.unorderedList(items);
       },
       'orderedList': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'orderedList');
@@ -366,32 +418,32 @@ BridgedClass _createLatexMacrosBridge() {
           throw ArgumentError('orderedList: Missing required argument "items" at position 0');
         }
         final items = D4.coerceList<String>(positional[0], 'items');
-        return LatexMacros.orderedList(items);
+        return $tom_md2latex_1.LatexMacros.orderedList(items);
       },
       'blockQuote': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'blockQuote');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'blockQuote');
-        return LatexMacros.blockQuote(text);
+        return $tom_md2latex_1.LatexMacros.blockQuote(text);
       },
       'horizontalRule': (visitor, positional, named, typeArgs) {
-        return LatexMacros.horizontalRule();
+        return $tom_md2latex_1.LatexMacros.horizontalRule();
       },
       'link': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'link');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'link');
         final url = D4.getRequiredArg<String>(positional, 1, 'url', 'link');
-        return LatexMacros.link(text, url);
+        return $tom_md2latex_1.LatexMacros.link(text, url);
       },
       'image': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 2, 'image');
         final altText = D4.getRequiredArg<String>(positional, 0, 'altText', 'image');
         final url = D4.getRequiredArg<String>(positional, 1, 'url', 'image');
-        return LatexMacros.image(altText, url);
+        return $tom_md2latex_1.LatexMacros.image(altText, url);
       },
       'escapeText': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'escapeText');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'escapeText');
-        return LatexMacros.escapeText(text);
+        return $tom_md2latex_1.LatexMacros.escapeText(text);
       },
     },
     staticMethodSignatures: {
@@ -425,21 +477,21 @@ BridgedClass _createLatexMacrosBridge() {
 
 BridgedClass _createMarkdownParserOptionsBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_1.MarkdownParserOptions,
+    nativeType: $tom_md2latex_2.MarkdownParserOptions,
     name: 'MarkdownParserOptions',
-    isAssignable: (v) => v is $tom_md2latex_1.MarkdownParserOptions,
+    isAssignable: (v) => v is $tom_md2latex_2.MarkdownParserOptions,
     constructors: {
       '': (visitor, positional, named) {
         final detectAsciiDiagrams = D4.getNamedArgWithDefault<bool>(named, 'detectAsciiDiagrams', true);
         final asciiDiagramPatterns = named.containsKey('asciiDiagramPatterns') && named['asciiDiagramPatterns'] != null
             ? D4.coerceList<String>(named['asciiDiagramPatterns'], 'asciiDiagramPatterns')
             : const ['├', '└', '│', '─', '┬', '┴', '┼', '┤', '┌', '┐', '┘', '┐', '+--', '|--', '\\--', '+-', '|-', '/---', '\\---', '[', ']'];
-        return $tom_md2latex_1.MarkdownParserOptions(detectAsciiDiagrams: detectAsciiDiagrams, asciiDiagramPatterns: asciiDiagramPatterns);
+        return $tom_md2latex_2.MarkdownParserOptions(detectAsciiDiagrams: detectAsciiDiagrams, asciiDiagramPatterns: asciiDiagramPatterns);
       },
     },
     getters: {
-      'detectAsciiDiagrams': (visitor, target) => D4.validateTarget<$tom_md2latex_1.MarkdownParserOptions>(target, 'MarkdownParserOptions').detectAsciiDiagrams,
-      'asciiDiagramPatterns': (visitor, target) => D4.validateTarget<$tom_md2latex_1.MarkdownParserOptions>(target, 'MarkdownParserOptions').asciiDiagramPatterns,
+      'detectAsciiDiagrams': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MarkdownParserOptions>(target, 'MarkdownParserOptions').detectAsciiDiagrams,
+      'asciiDiagramPatterns': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MarkdownParserOptions>(target, 'MarkdownParserOptions').asciiDiagramPatterns,
     },
     constructorSignatures: {
       '': 'const MarkdownParserOptions({bool detectAsciiDiagrams = true, List<String> asciiDiagramPatterns = const [\'├\', \'└\', \'│\', \'─\', \'┬\', \'┴\', \'┼\', \'┤\', \'┌\', \'┐\', \'┘\', \'┐\', \'+--\', \'|--\', \'\\\\--\', \'+-\', \'|-\', \'/---\', \'\\\\---\', \'[\', \']\']})',
@@ -457,24 +509,24 @@ BridgedClass _createMarkdownParserOptionsBridge() {
 
 BridgedClass _createMarkdownParserBridge() {
   return BridgedClass(
-    nativeType: MarkdownParser,
+    nativeType: $tom_md2latex_2.MarkdownParser,
     name: 'MarkdownParser',
-    isAssignable: (v) => v is MarkdownParser,
+    isAssignable: (v) => v is $tom_md2latex_2.MarkdownParser,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MarkdownParser');
         final content = D4.getRequiredArg<String>(positional, 0, 'content', 'MarkdownParser');
-        final options = D4.getNamedArgWithDefault<$tom_md2latex_1.MarkdownParserOptions>(named, 'options', const $tom_md2latex_1.MarkdownParserOptions());
-        return MarkdownParser(content, options: options);
+        final options = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'options', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_2.MarkdownParser(content, options: options);
       },
     },
     getters: {
-      'content': (visitor, target) => D4.validateTarget<MarkdownParser>(target, 'MarkdownParser').content,
-      'options': (visitor, target) => D4.validateTarget<MarkdownParser>(target, 'MarkdownParser').options,
+      'content': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MarkdownParser>(target, 'MarkdownParser').content,
+      'options': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MarkdownParser>(target, 'MarkdownParser').options,
     },
     methods: {
       'parse': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<MarkdownParser>(target, 'MarkdownParser');
+        final t = D4.validateTarget<$tom_md2latex_2.MarkdownParser>(target, 'MarkdownParser');
         return t.parse();
       },
     },
@@ -497,9 +549,9 @@ BridgedClass _createMarkdownParserBridge() {
 
 BridgedClass _createParsedMarkdownBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_1.ParsedMarkdown,
+    nativeType: $tom_md2latex_2.ParsedMarkdown,
     name: 'ParsedMarkdown',
-    isAssignable: (v) => v is $tom_md2latex_1.ParsedMarkdown,
+    isAssignable: (v) => v is $tom_md2latex_2.ParsedMarkdown,
     constructors: {
       '': (visitor, positional, named) {
         final title = D4.getOptionalNamedArg<String?>(named, 'title');
@@ -510,17 +562,17 @@ BridgedClass _createParsedMarkdownBridge() {
         if (!named.containsKey('elements') || named['elements'] == null) {
           throw ArgumentError('ParsedMarkdown: Missing required named argument "elements"');
         }
-        final elements = D4.coerceList<$tom_md2latex_1.MarkdownElement>(named['elements'], 'elements');
-        return $tom_md2latex_1.ParsedMarkdown(title: title, author: author, date: date, generateToc: generateToc, tocDepth: tocDepth, elements: elements);
+        final elements = D4.coerceList<$tom_md2latex_2.MarkdownElement>(named['elements'], 'elements');
+        return $tom_md2latex_2.ParsedMarkdown(title: title, author: author, date: date, generateToc: generateToc, tocDepth: tocDepth, elements: elements);
       },
     },
     getters: {
-      'title': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').title,
-      'author': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').author,
-      'date': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').date,
-      'generateToc': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').generateToc,
-      'tocDepth': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').tocDepth,
-      'elements': (visitor, target) => D4.validateTarget<$tom_md2latex_1.ParsedMarkdown>(target, 'ParsedMarkdown').elements,
+      'title': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').title,
+      'author': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').author,
+      'date': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').date,
+      'generateToc': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').generateToc,
+      'tocDepth': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').tocDepth,
+      'elements': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParsedMarkdown>(target, 'ParsedMarkdown').elements,
     },
     constructorSignatures: {
       '': 'const ParsedMarkdown({String? title, String? author, String? date, bool generateToc = false, int? tocDepth, required List<MarkdownElement> elements})',
@@ -542,13 +594,10 @@ BridgedClass _createParsedMarkdownBridge() {
 
 BridgedClass _createMarkdownElementBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_1.MarkdownElement,
+    nativeType: $tom_md2latex_2.MarkdownElement,
     name: 'MarkdownElement',
-    isAssignable: (v) => v is $tom_md2latex_1.MarkdownElement,
+    isAssignable: (v) => v is $tom_md2latex_2.MarkdownElement,
     constructors: {
-    },
-    constructorSignatures: {
-      '': 'MarkdownElement()',
     },
   );
 }
@@ -559,20 +608,21 @@ BridgedClass _createMarkdownElementBridge() {
 
 BridgedClass _createHeadingElementBridge() {
   return BridgedClass(
-    nativeType: HeadingElement,
+    nativeType: $tom_md2latex_2.HeadingElement,
     name: 'HeadingElement',
-    isAssignable: (v) => v is HeadingElement,
+    isAssignable: (v) => v is $tom_md2latex_2.HeadingElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 2, 'HeadingElement');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'HeadingElement');
         final level = D4.getRequiredArg<int>(positional, 1, 'level', 'HeadingElement');
-        return HeadingElement(text, level);
+        return $tom_md2latex_2.HeadingElement(text, level);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<HeadingElement>(target, 'HeadingElement').text,
-      'level': (visitor, target) => D4.validateTarget<HeadingElement>(target, 'HeadingElement').level,
+      'text': (visitor, target) => D4.validateTarget<$tom_md2latex_2.HeadingElement>(target, 'HeadingElement').text,
+      'level': (visitor, target) => D4.validateTarget<$tom_md2latex_2.HeadingElement>(target, 'HeadingElement').level,
     },
     constructorSignatures: {
       '': 'HeadingElement(String text, int level)',
@@ -590,17 +640,18 @@ BridgedClass _createHeadingElementBridge() {
 
 BridgedClass _createParagraphElementBridge() {
   return BridgedClass(
-    nativeType: ParagraphElement,
+    nativeType: $tom_md2latex_2.ParagraphElement,
     name: 'ParagraphElement',
-    isAssignable: (v) => v is ParagraphElement,
+    isAssignable: (v) => v is $tom_md2latex_2.ParagraphElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final text = D4.getRequiredNamedArg<String>(named, 'text', 'ParagraphElement');
-        return ParagraphElement(text: text);
+        return $tom_md2latex_2.ParagraphElement(text: text);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<ParagraphElement>(target, 'ParagraphElement').text,
+      'text': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ParagraphElement>(target, 'ParagraphElement').text,
     },
     constructorSignatures: {
       '': 'ParagraphElement({required String text})',
@@ -617,21 +668,22 @@ BridgedClass _createParagraphElementBridge() {
 
 BridgedClass _createCodeBlockElementBridge() {
   return BridgedClass(
-    nativeType: CodeBlockElement,
+    nativeType: $tom_md2latex_2.CodeBlockElement,
     name: 'CodeBlockElement',
-    isAssignable: (v) => v is CodeBlockElement,
+    isAssignable: (v) => v is $tom_md2latex_2.CodeBlockElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final code = D4.getRequiredNamedArg<String>(named, 'code', 'CodeBlockElement');
         final language = D4.getOptionalNamedArg<String?>(named, 'language');
         final isAsciiDiagram = D4.getNamedArgWithDefault<bool>(named, 'isAsciiDiagram', false);
-        return CodeBlockElement(code: code, language: language, isAsciiDiagram: isAsciiDiagram);
+        return $tom_md2latex_2.CodeBlockElement(code: code, language: language, isAsciiDiagram: isAsciiDiagram);
       },
     },
     getters: {
-      'code': (visitor, target) => D4.validateTarget<CodeBlockElement>(target, 'CodeBlockElement').code,
-      'language': (visitor, target) => D4.validateTarget<CodeBlockElement>(target, 'CodeBlockElement').language,
-      'isAsciiDiagram': (visitor, target) => D4.validateTarget<CodeBlockElement>(target, 'CodeBlockElement').isAsciiDiagram,
+      'code': (visitor, target) => D4.validateTarget<$tom_md2latex_2.CodeBlockElement>(target, 'CodeBlockElement').code,
+      'language': (visitor, target) => D4.validateTarget<$tom_md2latex_2.CodeBlockElement>(target, 'CodeBlockElement').language,
+      'isAsciiDiagram': (visitor, target) => D4.validateTarget<$tom_md2latex_2.CodeBlockElement>(target, 'CodeBlockElement').isAsciiDiagram,
     },
     constructorSignatures: {
       '': 'CodeBlockElement({required String code, String? language, bool isAsciiDiagram = false})',
@@ -650,17 +702,18 @@ BridgedClass _createCodeBlockElementBridge() {
 
 BridgedClass _createInlineCodeElementBridge() {
   return BridgedClass(
-    nativeType: InlineCodeElement,
+    nativeType: $tom_md2latex_2.InlineCodeElement,
     name: 'InlineCodeElement',
-    isAssignable: (v) => v is InlineCodeElement,
+    isAssignable: (v) => v is $tom_md2latex_2.InlineCodeElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final code = D4.getRequiredNamedArg<String>(named, 'code', 'InlineCodeElement');
-        return InlineCodeElement(code: code);
+        return $tom_md2latex_2.InlineCodeElement(code: code);
       },
     },
     getters: {
-      'code': (visitor, target) => D4.validateTarget<InlineCodeElement>(target, 'InlineCodeElement').code,
+      'code': (visitor, target) => D4.validateTarget<$tom_md2latex_2.InlineCodeElement>(target, 'InlineCodeElement').code,
     },
     constructorSignatures: {
       '': 'InlineCodeElement({required String code})',
@@ -677,9 +730,10 @@ BridgedClass _createInlineCodeElementBridge() {
 
 BridgedClass _createTableElementBridge() {
   return BridgedClass(
-    nativeType: TableElement,
+    nativeType: $tom_md2latex_2.TableElement,
     name: 'TableElement',
-    isAssignable: (v) => v is TableElement,
+    isAssignable: (v) => v is $tom_md2latex_2.TableElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         if (!named.containsKey('headers') || named['headers'] == null) {
@@ -689,18 +743,18 @@ BridgedClass _createTableElementBridge() {
         if (!named.containsKey('rows') || named['rows'] == null) {
           throw ArgumentError('TableElement: Missing required named argument "rows"');
         }
-        final rows = D4.coerceList<List<String>>(named['rows'], 'rows');
+        final rows = D4.coerceNestedList<String>(named['rows'], 'rows');
         if (!named.containsKey('alignments') || named['alignments'] == null) {
           throw ArgumentError('TableElement: Missing required named argument "alignments"');
         }
         final alignments = D4.coerceList<String>(named['alignments'], 'alignments');
-        return TableElement(headers: headers, rows: rows, alignments: alignments);
+        return $tom_md2latex_2.TableElement(headers: headers, rows: rows, alignments: alignments);
       },
     },
     getters: {
-      'headers': (visitor, target) => D4.validateTarget<TableElement>(target, 'TableElement').headers,
-      'rows': (visitor, target) => D4.validateTarget<TableElement>(target, 'TableElement').rows,
-      'alignments': (visitor, target) => D4.validateTarget<TableElement>(target, 'TableElement').alignments,
+      'headers': (visitor, target) => D4.validateTarget<$tom_md2latex_2.TableElement>(target, 'TableElement').headers,
+      'rows': (visitor, target) => D4.validateTarget<$tom_md2latex_2.TableElement>(target, 'TableElement').rows,
+      'alignments': (visitor, target) => D4.validateTarget<$tom_md2latex_2.TableElement>(target, 'TableElement').alignments,
     },
     constructorSignatures: {
       '': 'TableElement({required List<String> headers, required List<List<String>> rows, required List<String> alignments})',
@@ -719,20 +773,21 @@ BridgedClass _createTableElementBridge() {
 
 BridgedClass _createUnorderedListElementBridge() {
   return BridgedClass(
-    nativeType: UnorderedListElement,
+    nativeType: $tom_md2latex_2.UnorderedListElement,
     name: 'UnorderedListElement',
-    isAssignable: (v) => v is UnorderedListElement,
+    isAssignable: (v) => v is $tom_md2latex_2.UnorderedListElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         if (!named.containsKey('items') || named['items'] == null) {
           throw ArgumentError('UnorderedListElement: Missing required named argument "items"');
         }
         final items = D4.coerceList<String>(named['items'], 'items');
-        return UnorderedListElement(items: items);
+        return $tom_md2latex_2.UnorderedListElement(items: items);
       },
     },
     getters: {
-      'items': (visitor, target) => D4.validateTarget<UnorderedListElement>(target, 'UnorderedListElement').items,
+      'items': (visitor, target) => D4.validateTarget<$tom_md2latex_2.UnorderedListElement>(target, 'UnorderedListElement').items,
     },
     constructorSignatures: {
       '': 'UnorderedListElement({required List<String> items})',
@@ -749,20 +804,21 @@ BridgedClass _createUnorderedListElementBridge() {
 
 BridgedClass _createOrderedListElementBridge() {
   return BridgedClass(
-    nativeType: OrderedListElement,
+    nativeType: $tom_md2latex_2.OrderedListElement,
     name: 'OrderedListElement',
-    isAssignable: (v) => v is OrderedListElement,
+    isAssignable: (v) => v is $tom_md2latex_2.OrderedListElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         if (!named.containsKey('items') || named['items'] == null) {
           throw ArgumentError('OrderedListElement: Missing required named argument "items"');
         }
         final items = D4.coerceList<String>(named['items'], 'items');
-        return OrderedListElement(items: items);
+        return $tom_md2latex_2.OrderedListElement(items: items);
       },
     },
     getters: {
-      'items': (visitor, target) => D4.validateTarget<OrderedListElement>(target, 'OrderedListElement').items,
+      'items': (visitor, target) => D4.validateTarget<$tom_md2latex_2.OrderedListElement>(target, 'OrderedListElement').items,
     },
     constructorSignatures: {
       '': 'OrderedListElement({required List<String> items})',
@@ -779,17 +835,18 @@ BridgedClass _createOrderedListElementBridge() {
 
 BridgedClass _createBlockQuoteElementBridge() {
   return BridgedClass(
-    nativeType: BlockQuoteElement,
+    nativeType: $tom_md2latex_2.BlockQuoteElement,
     name: 'BlockQuoteElement',
-    isAssignable: (v) => v is BlockQuoteElement,
+    isAssignable: (v) => v is $tom_md2latex_2.BlockQuoteElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final text = D4.getRequiredNamedArg<String>(named, 'text', 'BlockQuoteElement');
-        return BlockQuoteElement(text: text);
+        return $tom_md2latex_2.BlockQuoteElement(text: text);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<BlockQuoteElement>(target, 'BlockQuoteElement').text,
+      'text': (visitor, target) => D4.validateTarget<$tom_md2latex_2.BlockQuoteElement>(target, 'BlockQuoteElement').text,
     },
     constructorSignatures: {
       '': 'BlockQuoteElement({required String text})',
@@ -806,12 +863,13 @@ BridgedClass _createBlockQuoteElementBridge() {
 
 BridgedClass _createHorizontalRuleElementBridge() {
   return BridgedClass(
-    nativeType: HorizontalRuleElement,
+    nativeType: $tom_md2latex_2.HorizontalRuleElement,
     name: 'HorizontalRuleElement',
-    isAssignable: (v) => v is HorizontalRuleElement,
+    isAssignable: (v) => v is $tom_md2latex_2.HorizontalRuleElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        return HorizontalRuleElement();
+        return $tom_md2latex_2.HorizontalRuleElement();
       },
     },
     constructorSignatures: {
@@ -826,19 +884,20 @@ BridgedClass _createHorizontalRuleElementBridge() {
 
 BridgedClass _createLinkElementBridge() {
   return BridgedClass(
-    nativeType: LinkElement,
+    nativeType: $tom_md2latex_2.LinkElement,
     name: 'LinkElement',
-    isAssignable: (v) => v is LinkElement,
+    isAssignable: (v) => v is $tom_md2latex_2.LinkElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final text = D4.getRequiredNamedArg<String>(named, 'text', 'LinkElement');
         final url = D4.getRequiredNamedArg<String>(named, 'url', 'LinkElement');
-        return LinkElement(text: text, url: url);
+        return $tom_md2latex_2.LinkElement(text: text, url: url);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<LinkElement>(target, 'LinkElement').text,
-      'url': (visitor, target) => D4.validateTarget<LinkElement>(target, 'LinkElement').url,
+      'text': (visitor, target) => D4.validateTarget<$tom_md2latex_2.LinkElement>(target, 'LinkElement').text,
+      'url': (visitor, target) => D4.validateTarget<$tom_md2latex_2.LinkElement>(target, 'LinkElement').url,
     },
     constructorSignatures: {
       '': 'LinkElement({required String text, required String url})',
@@ -856,19 +915,20 @@ BridgedClass _createLinkElementBridge() {
 
 BridgedClass _createImageElementBridge() {
   return BridgedClass(
-    nativeType: ImageElement,
+    nativeType: $tom_md2latex_2.ImageElement,
     name: 'ImageElement',
-    isAssignable: (v) => v is ImageElement,
+    isAssignable: (v) => v is $tom_md2latex_2.ImageElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final altText = D4.getRequiredNamedArg<String>(named, 'altText', 'ImageElement');
         final url = D4.getRequiredNamedArg<String>(named, 'url', 'ImageElement');
-        return ImageElement(altText: altText, url: url);
+        return $tom_md2latex_2.ImageElement(altText: altText, url: url);
       },
     },
     getters: {
-      'altText': (visitor, target) => D4.validateTarget<ImageElement>(target, 'ImageElement').altText,
-      'url': (visitor, target) => D4.validateTarget<ImageElement>(target, 'ImageElement').url,
+      'altText': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ImageElement>(target, 'ImageElement').altText,
+      'url': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ImageElement>(target, 'ImageElement').url,
     },
     constructorSignatures: {
       '': 'ImageElement({required String altText, required String url})',
@@ -886,17 +946,18 @@ BridgedClass _createImageElementBridge() {
 
 BridgedClass _createRawTextElementBridge() {
   return BridgedClass(
-    nativeType: RawTextElement,
+    nativeType: $tom_md2latex_2.RawTextElement,
     name: 'RawTextElement',
-    isAssignable: (v) => v is RawTextElement,
+    isAssignable: (v) => v is $tom_md2latex_2.RawTextElement,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final text = D4.getRequiredNamedArg<String>(named, 'text', 'RawTextElement');
-        return RawTextElement(text: text);
+        return $tom_md2latex_2.RawTextElement(text: text);
       },
     },
     getters: {
-      'text': (visitor, target) => D4.validateTarget<RawTextElement>(target, 'RawTextElement').text,
+      'text': (visitor, target) => D4.validateTarget<$tom_md2latex_2.RawTextElement>(target, 'RawTextElement').text,
     },
     constructorSignatures: {
       '': 'RawTextElement({required String text})',
@@ -913,40 +974,40 @@ BridgedClass _createRawTextElementBridge() {
 
 BridgedClass _createMdLatexConverterBridge() {
   return BridgedClass(
-    nativeType: MdLatexConverter,
+    nativeType: $tom_md2latex_4.MdLatexConverter,
     name: 'MdLatexConverter',
-    isAssignable: (v) => v is MdLatexConverter,
+    isAssignable: (v) => v is $tom_md2latex_4.MdLatexConverter,
     constructors: {
       '': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'MdLatexConverter');
         final sourcePath = D4.getRequiredArg<String>(positional, 0, 'sourcePath', 'MdLatexConverter');
-        final options = D4.getOptionalNamedArg<$tom_md2latex_2.MdLatexConverterOptions?>(named, 'options');
-        return MdLatexConverter(sourcePath, options: options);
+        final options = D4.getOptionalNamedArg<$tom_md2latex_4.MdLatexConverterOptions?>(named, 'options');
+        return $tom_md2latex_4.MdLatexConverter(sourcePath, options: options);
       },
     },
     getters: {
-      'sourcePath': (visitor, target) => D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter').sourcePath,
-      'options': (visitor, target) => D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter').options,
+      'sourcePath': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter').sourcePath,
+      'options': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter').options,
     },
     methods: {
       'findMarkdownFiles': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter');
+        final t = D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter');
         return t.findMarkdownFiles();
       },
       'convertAll': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter');
+        final t = D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter');
         final outputDir = D4.getRequiredNamedArg<String>(named, 'outputDir', 'convertAll');
         return t.convertAll(outputDir: outputDir);
       },
       'convertFile': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter');
+        final t = D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter');
         D4.requireMinArgs(positional, 1, 'convertFile');
         final file = D4.getRequiredArg<File>(positional, 0, 'file', 'convertFile');
         final outputDir = D4.getRequiredNamedArg<String>(named, 'outputDir', 'convertFile');
         return t.convertFile(file, outputDir: outputDir);
       },
       'convert': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<MdLatexConverter>(target, 'MdLatexConverter');
+        final t = D4.validateTarget<$tom_md2latex_4.MdLatexConverter>(target, 'MdLatexConverter');
         D4.requireMinArgs(positional, 1, 'convert');
         final markdownContent = D4.getRequiredArg<String>(positional, 0, 'markdownContent', 'convert');
         return t.convert(markdownContent);
@@ -974,9 +1035,9 @@ BridgedClass _createMdLatexConverterBridge() {
 
 BridgedClass _createMdLatexConverterOptionsBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_2.MdLatexConverterOptions,
+    nativeType: $tom_md2latex_4.MdLatexConverterOptions,
     name: 'MdLatexConverterOptions',
-    isAssignable: (v) => v is $tom_md2latex_2.MdLatexConverterOptions,
+    isAssignable: (v) => v is $tom_md2latex_4.MdLatexConverterOptions,
     constructors: {
       '': (visitor, positional, named) {
         final excludePatterns = named.containsKey('excludePatterns') && named['excludePatterns'] != null
@@ -987,18 +1048,18 @@ BridgedClass _createMdLatexConverterOptionsBridge() {
         final author = D4.getOptionalNamedArg<String?>(named, 'author');
         final generateToc = D4.getNamedArgWithDefault<bool>(named, 'generateToc', true);
         final tocDepth = D4.getNamedArgWithDefault<int>(named, 'tocDepth', 3);
-        final parserOptions = D4.getNamedArgWithDefault<$tom_md2latex_1.MarkdownParserOptions>(named, 'parserOptions', const $tom_md2latex_1.MarkdownParserOptions());
-        return $tom_md2latex_2.MdLatexConverterOptions(excludePatterns: excludePatterns, generatePreamble: generatePreamble, documentClass: documentClass, author: author, generateToc: generateToc, tocDepth: tocDepth, parserOptions: parserOptions);
+        final parserOptions = D4.getNamedArgWithDefault<$tom_md2latex_2.MarkdownParserOptions>(named, 'parserOptions', const $tom_md2latex_2.MarkdownParserOptions());
+        return $tom_md2latex_4.MdLatexConverterOptions(excludePatterns: excludePatterns, generatePreamble: generatePreamble, documentClass: documentClass, author: author, generateToc: generateToc, tocDepth: tocDepth, parserOptions: parserOptions);
       },
     },
     getters: {
-      'excludePatterns': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').excludePatterns,
-      'generatePreamble': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').generatePreamble,
-      'documentClass': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').documentClass,
-      'author': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').author,
-      'generateToc': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').generateToc,
-      'tocDepth': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').tocDepth,
-      'parserOptions': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').parserOptions,
+      'excludePatterns': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').excludePatterns,
+      'generatePreamble': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').generatePreamble,
+      'documentClass': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').documentClass,
+      'author': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').author,
+      'generateToc': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').generateToc,
+      'tocDepth': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').tocDepth,
+      'parserOptions': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterOptions>(target, 'MdLatexConverterOptions').parserOptions,
     },
     constructorSignatures: {
       '': 'const MdLatexConverterOptions({List<String> excludePatterns = const [\'.git\', \'node_modules\', \'.dart_tool\'], bool generatePreamble = true, String documentClass = \'article\', String? author, bool generateToc = true, int tocDepth = 3, MarkdownParserOptions parserOptions = const MarkdownParserOptions()})',
@@ -1021,19 +1082,19 @@ BridgedClass _createMdLatexConverterOptionsBridge() {
 
 BridgedClass _createMdLatexConverterResultBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_2.MdLatexConverterResult,
+    nativeType: $tom_md2latex_4.MdLatexConverterResult,
     name: 'MdLatexConverterResult',
-    isAssignable: (v) => v is $tom_md2latex_2.MdLatexConverterResult,
+    isAssignable: (v) => v is $tom_md2latex_4.MdLatexConverterResult,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_md2latex_2.MdLatexConverterResult();
+        return $tom_md2latex_4.MdLatexConverterResult();
       },
     },
     getters: {
-      'converted': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterResult>(target, 'MdLatexConverterResult').converted,
-      'errors': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterResult>(target, 'MdLatexConverterResult').errors,
-      'isSuccess': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterResult>(target, 'MdLatexConverterResult').isSuccess,
-      'totalProcessed': (visitor, target) => D4.validateTarget<$tom_md2latex_2.MdLatexConverterResult>(target, 'MdLatexConverterResult').totalProcessed,
+      'converted': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterResult>(target, 'MdLatexConverterResult').converted,
+      'errors': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterResult>(target, 'MdLatexConverterResult').errors,
+      'isSuccess': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterResult>(target, 'MdLatexConverterResult').isSuccess,
+      'totalProcessed': (visitor, target) => D4.validateTarget<$tom_md2latex_4.MdLatexConverterResult>(target, 'MdLatexConverterResult').totalProcessed,
     },
     constructorSignatures: {
       '': 'MdLatexConverterResult()',
@@ -1053,21 +1114,21 @@ BridgedClass _createMdLatexConverterResultBridge() {
 
 BridgedClass _createConvertedFileBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_2.ConvertedFile,
+    nativeType: $tom_md2latex_4.ConvertedFile,
     name: 'ConvertedFile',
-    isAssignable: (v) => v is $tom_md2latex_2.ConvertedFile,
+    isAssignable: (v) => v is $tom_md2latex_4.ConvertedFile,
     constructors: {
       '': (visitor, positional, named) {
         final sourcePath = D4.getRequiredNamedArg<String>(named, 'sourcePath', 'ConvertedFile');
         final outputPath = D4.getRequiredNamedArg<String>(named, 'outputPath', 'ConvertedFile');
-        final parsed = D4.getRequiredNamedArg<$tom_md2latex_1.ParsedMarkdown>(named, 'parsed', 'ConvertedFile');
-        return $tom_md2latex_2.ConvertedFile(sourcePath: sourcePath, outputPath: outputPath, parsed: parsed);
+        final parsed = D4.getRequiredNamedArg<$tom_md2latex_2.ParsedMarkdown>(named, 'parsed', 'ConvertedFile');
+        return $tom_md2latex_4.ConvertedFile(sourcePath: sourcePath, outputPath: outputPath, parsed: parsed);
       },
     },
     getters: {
-      'sourcePath': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConvertedFile>(target, 'ConvertedFile').sourcePath,
-      'outputPath': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConvertedFile>(target, 'ConvertedFile').outputPath,
-      'parsed': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConvertedFile>(target, 'ConvertedFile').parsed,
+      'sourcePath': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConvertedFile>(target, 'ConvertedFile').sourcePath,
+      'outputPath': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConvertedFile>(target, 'ConvertedFile').outputPath,
+      'parsed': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConvertedFile>(target, 'ConvertedFile').parsed,
     },
     constructorSignatures: {
       '': 'const ConvertedFile({required String sourcePath, required String outputPath, required ParsedMarkdown parsed})',
@@ -1086,25 +1147,25 @@ BridgedClass _createConvertedFileBridge() {
 
 BridgedClass _createConversionErrorBridge() {
   return BridgedClass(
-    nativeType: $tom_md2latex_2.ConversionError,
+    nativeType: $tom_md2latex_4.ConversionError,
     name: 'ConversionError',
-    isAssignable: (v) => v is $tom_md2latex_2.ConversionError,
+    isAssignable: (v) => v is $tom_md2latex_4.ConversionError,
     constructors: {
       '': (visitor, positional, named) {
         final sourcePath = D4.getRequiredNamedArg<String>(named, 'sourcePath', 'ConversionError');
         final message = D4.getRequiredNamedArg<String>(named, 'message', 'ConversionError');
         final stackTrace = D4.getOptionalNamedArg<StackTrace?>(named, 'stackTrace');
-        return $tom_md2latex_2.ConversionError(sourcePath: sourcePath, message: message, stackTrace: stackTrace);
+        return $tom_md2latex_4.ConversionError(sourcePath: sourcePath, message: message, stackTrace: stackTrace);
       },
     },
     getters: {
-      'sourcePath': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConversionError>(target, 'ConversionError').sourcePath,
-      'message': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConversionError>(target, 'ConversionError').message,
-      'stackTrace': (visitor, target) => D4.validateTarget<$tom_md2latex_2.ConversionError>(target, 'ConversionError').stackTrace,
+      'sourcePath': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConversionError>(target, 'ConversionError').sourcePath,
+      'message': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConversionError>(target, 'ConversionError').message,
+      'stackTrace': (visitor, target) => D4.validateTarget<$tom_md2latex_4.ConversionError>(target, 'ConversionError').stackTrace,
     },
     methods: {
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_md2latex_2.ConversionError>(target, 'ConversionError');
+        final t = D4.validateTarget<$tom_md2latex_4.ConversionError>(target, 'ConversionError');
         return t.toString();
       },
     },

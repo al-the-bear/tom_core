@@ -1,17 +1,19 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 6 files
-// Generated: 2026-03-12T17:01:54.613706
+// Generated: 2026-06-15T11:35:51.324327
 
-// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls
+// ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
 import 'package:tom_d4rt/d4rt.dart';
 import 'package:tom_d4rt/tom_d4rt.dart';
 import 'dart:async';
 
-import 'package:tom_doc_scanner/src/doc_scanner_factory.dart' as $tom_doc_scanner_1;
-import 'package:tom_doc_scanner/src/models/document.dart' as $tom_doc_scanner_2;
-import 'package:tom_doc_scanner/src/models/document_folder.dart' as $tom_doc_scanner_3;
-import 'package:tom_doc_scanner/src/models/section.dart' as $tom_doc_scanner_4;
+import 'package:tom_doc_scanner/src/doc_scanner.dart' as $tom_doc_scanner_1;
+import 'package:tom_doc_scanner/src/doc_scanner_factory.dart' as $tom_doc_scanner_2;
+import 'package:tom_doc_scanner/src/markdown_parser.dart' as $tom_doc_scanner_3;
+import 'package:tom_doc_scanner/src/models/document.dart' as $tom_doc_scanner_4;
+import 'package:tom_doc_scanner/src/models/document_folder.dart' as $tom_doc_scanner_5;
+import 'package:tom_doc_scanner/src/models/section.dart' as $tom_doc_scanner_6;
 
 /// Bridge class for tom_doc_scanner module.
 class TomDocScannerBridge {
@@ -34,13 +36,26 @@ class TomDocScannerBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> classSourceUris() {
     return {
-      'DocScanner': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\doc_scanner.dart',
-      'DocScannerFactory': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\doc_scanner_factory.dart',
-      'ParsedHeadline': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\markdown_parser.dart',
-      'MarkdownParser': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\markdown_parser.dart',
-      'Document': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\document.dart',
-      'DocumentFolder': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\document_folder.dart',
-      'Section': 'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\section.dart',
+      'DocScanner': 'package:tom_doc_scanner/src/doc_scanner.dart',
+      'DocScannerFactory': 'package:tom_doc_scanner/src/doc_scanner_factory.dart',
+      'ParsedHeadline': 'package:tom_doc_scanner/src/markdown_parser.dart',
+      'MarkdownParser': 'package:tom_doc_scanner/src/markdown_parser.dart',
+      'Document': 'package:tom_doc_scanner/src/models/document.dart',
+      'DocumentFolder': 'package:tom_doc_scanner/src/models/document_folder.dart',
+      'Section': 'package:tom_doc_scanner/src/models/section.dart',
+    };
+  }
+
+  /// Returns a map of class names to their flattened (transitive)
+  /// native supertype names (superclasses, interfaces and mixins).
+  ///
+  /// Fed to `BridgedClass.registerSupertypes` so interpreted subclasses
+  /// of bridged classes pass `is`/subtype checks against bridged
+  /// ancestors and the interface-proxy supertype walk resolves up the
+  /// chain (MCI#1 / A1).
+  static Map<String, List<String>> classSupertypes() {
+    return {
+      'Document': ['Section'],
     };
   }
 
@@ -90,6 +105,22 @@ class TomDocScannerBridge {
     };
   }
 
+  /// GEN-107: Library re-exports declared by the bridged source
+  /// libraries. Each tuple mirrors a Dart `export '…'` directive.
+  /// Consumed by `registerBridges` via `D4rt.registerLibraryReExport`
+  /// (mirrored on `D4rtRunner` in tom_d4rt_ast).
+  static List<({String source, String target, Set<String>? show, Set<String>? hide})>
+  bridgeReExports() {
+    return [
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/doc_scanner.dart', show: {'DocScanner'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/doc_scanner_factory.dart', show: {'DocScannerFactory'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/markdown_parser.dart', show: {'ParsedHeadline', 'MarkdownParser'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/document.dart', show: {'Document'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/document_folder.dart', show: {'DocumentFolder'}, hide: null),
+      (source: 'package:tom_doc_scanner/tom_doc_scanner.dart', target: 'package:tom_doc_scanner/src/models/section.dart', show: {'Section'}, hide: null),
+    ];
+  }
+
   /// Registers all bridges with an interpreter.
   ///
   /// [importPath] is the package import path that D4rt scripts will use
@@ -100,6 +131,16 @@ class TomDocScannerBridge {
     final classSources = classSourceUris();
     for (final bridge in classes) {
       interpreter.registerBridgedClass(bridge, importPath, sourceUri: classSources[bridge.name]);
+    }
+
+    // MCI#1 / A1: Register the flattened native supertype table so
+    // interpreted subclasses pass subtype checks against bridged
+    // ancestors. Idempotent — safe to call per barrel.
+    BridgedClass.registerSupertypes(classSupertypes());
+
+    // GEN-107: Register library re-exports
+    for (final r in bridgeReExports()) {
+      interpreter.registerLibraryReExport(r.source, r.target, show: r.show, hide: r.hide);
     }
   }
 
@@ -125,12 +166,12 @@ class TomDocScannerBridge {
   /// multiple barrels.
   static List<String> sourceLibraries() {
     return [
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\doc_scanner.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\doc_scanner_factory.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\markdown_parser.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\document.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\document_folder.dart',
-      'C:\Code\al_the_bear\inhouse\second_wind\enterprise_flutter\tom_agent_container\tom_ai\ai_build\tom_doc_scanner\lib\src\models\section.dart',
+      'package:tom_doc_scanner/src/doc_scanner.dart',
+      'package:tom_doc_scanner/src/doc_scanner_factory.dart',
+      'package:tom_doc_scanner/src/markdown_parser.dart',
+      'package:tom_doc_scanner/src/models/document.dart',
+      'package:tom_doc_scanner/src/models/document_folder.dart',
+      'package:tom_doc_scanner/src/models/section.dart',
     ];
   }
 
@@ -160,26 +201,26 @@ class TomDocScannerBridge {
 
 BridgedClass _createDocScannerBridge() {
   return BridgedClass(
-    nativeType: DocScanner,
+    nativeType: $tom_doc_scanner_1.DocScanner,
     name: 'DocScanner',
-    isAssignable: (v) => v is DocScanner,
+    isAssignable: (v) => v is $tom_doc_scanner_1.DocScanner,
     constructors: {
       '': (visitor, positional, named) {
-        return DocScanner();
+        return $tom_doc_scanner_1.DocScanner();
       },
     },
     staticMethods: {
       'scanTree': (visitor, positional, named, typeArgs) {
         final path = D4.getRequiredNamedArg<String>(named, 'path', 'scanTree');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanTree(path: path, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanTree(path: path, workspaceRoot: workspaceRoot, factory: factory);
       },
       'scanTreeSync': (visitor, positional, named, typeArgs) {
         final path = D4.getRequiredNamedArg<String>(named, 'path', 'scanTreeSync');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanTreeSync(path: path, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanTreeSync(path: path, workspaceRoot: workspaceRoot, factory: factory);
       },
       'scanDocuments': (visitor, positional, named, typeArgs) {
         if (!named.containsKey('filepaths') || named['filepaths'] == null) {
@@ -187,8 +228,8 @@ BridgedClass _createDocScannerBridge() {
         }
         final filepaths = D4.coerceList<String>(named['filepaths'], 'filepaths');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanDocuments(filepaths: filepaths, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanDocuments(filepaths: filepaths, workspaceRoot: workspaceRoot, factory: factory);
       },
       'scanDocumentsSync': (visitor, positional, named, typeArgs) {
         if (!named.containsKey('filepaths') || named['filepaths'] == null) {
@@ -196,20 +237,20 @@ BridgedClass _createDocScannerBridge() {
         }
         final filepaths = D4.coerceList<String>(named['filepaths'], 'filepaths');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanDocumentsSync(filepaths: filepaths, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanDocumentsSync(filepaths: filepaths, workspaceRoot: workspaceRoot, factory: factory);
       },
       'scanDocument': (visitor, positional, named, typeArgs) {
         final filepath = D4.getRequiredNamedArg<String>(named, 'filepath', 'scanDocument');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanDocument(filepath: filepath, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanDocument(filepath: filepath, workspaceRoot: workspaceRoot, factory: factory);
       },
       'scanDocumentSync': (visitor, positional, named, typeArgs) {
         final filepath = D4.getRequiredNamedArg<String>(named, 'filepath', 'scanDocumentSync');
         final workspaceRoot = D4.getOptionalNamedArg<String?>(named, 'workspaceRoot');
-        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_1.DocScannerFactory?>(named, 'factory');
-        return DocScanner.scanDocumentSync(filepath: filepath, workspaceRoot: workspaceRoot, factory: factory);
+        final factory = D4.getOptionalNamedArg<$tom_doc_scanner_2.DocScannerFactory?>(named, 'factory');
+        return $tom_doc_scanner_1.DocScanner.scanDocumentSync(filepath: filepath, workspaceRoot: workspaceRoot, factory: factory);
       },
     },
     constructorSignatures: {
@@ -232,17 +273,17 @@ BridgedClass _createDocScannerBridge() {
 
 BridgedClass _createDocScannerFactoryBridge() {
   return BridgedClass(
-    nativeType: $tom_doc_scanner_1.DocScannerFactory,
+    nativeType: $tom_doc_scanner_2.DocScannerFactory,
     name: 'DocScannerFactory',
-    isAssignable: (v) => v is $tom_doc_scanner_1.DocScannerFactory,
+    isAssignable: (v) => v is $tom_doc_scanner_2.DocScannerFactory,
     constructors: {
       '': (visitor, positional, named) {
-        return $tom_doc_scanner_1.DocScannerFactory();
+        return $tom_doc_scanner_2.DocScannerFactory();
       },
     },
     methods: {
       'createSection': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_1.DocScannerFactory>(target, 'DocScannerFactory');
+        final t = D4.validateTarget<$tom_doc_scanner_2.DocScannerFactory>(target, 'DocScannerFactory');
         final index = D4.getRequiredNamedArg<int>(named, 'index', 'createSection');
         final lineNumber = D4.getRequiredNamedArg<int>(named, 'lineNumber', 'createSection');
         final rawHeadline = D4.getRequiredNamedArg<String>(named, 'rawHeadline', 'createSection');
@@ -253,11 +294,11 @@ BridgedClass _createDocScannerFactoryBridge() {
           throw ArgumentError('createSection: Missing required named argument "fields"');
         }
         final fields = D4.coerceMap<String, String>(named['fields'], 'fields');
-        final sections = D4.coerceListOrNull<$tom_doc_scanner_4.Section>(named['sections'], 'sections');
+        final sections = D4.coerceListOrNull<$tom_doc_scanner_6.Section>(named['sections'], 'sections');
         return t.createSection(index: index, lineNumber: lineNumber, rawHeadline: rawHeadline, name: name, id: id, text: text, fields: fields, sections: sections);
       },
       'createDocument': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_1.DocScannerFactory>(target, 'DocScannerFactory');
+        final t = D4.validateTarget<$tom_doc_scanner_2.DocScannerFactory>(target, 'DocScannerFactory');
         final index = D4.getRequiredNamedArg<int>(named, 'index', 'createDocument');
         final lineNumber = D4.getRequiredNamedArg<int>(named, 'lineNumber', 'createDocument');
         final rawHeadline = D4.getRequiredNamedArg<String>(named, 'rawHeadline', 'createDocument');
@@ -268,7 +309,7 @@ BridgedClass _createDocScannerFactoryBridge() {
           throw ArgumentError('createDocument: Missing required named argument "fields"');
         }
         final fields = D4.coerceMap<String, String>(named['fields'], 'fields');
-        final sections = D4.coerceListOrNull<$tom_doc_scanner_4.Section>(named['sections'], 'sections');
+        final sections = D4.coerceListOrNull<$tom_doc_scanner_6.Section>(named['sections'], 'sections');
         final filenameWithPath = D4.getRequiredNamedArg<String>(named, 'filenameWithPath', 'createDocument');
         final loadTimestamp = D4.getRequiredNamedArg<String>(named, 'loadTimestamp', 'createDocument');
         final filename = D4.getRequiredNamedArg<String>(named, 'filename', 'createDocument');
@@ -298,9 +339,9 @@ BridgedClass _createDocScannerFactoryBridge() {
 
 BridgedClass _createParsedHeadlineBridge() {
   return BridgedClass(
-    nativeType: ParsedHeadline,
+    nativeType: $tom_doc_scanner_3.ParsedHeadline,
     name: 'ParsedHeadline',
-    isAssignable: (v) => v is ParsedHeadline,
+    isAssignable: (v) => v is $tom_doc_scanner_3.ParsedHeadline,
     constructors: {
       '': (visitor, positional, named) {
         final level = D4.getRequiredNamedArg<int>(named, 'level', 'ParsedHeadline');
@@ -311,16 +352,16 @@ BridgedClass _createParsedHeadlineBridge() {
         final fields = named.containsKey('fields') && named['fields'] != null
             ? D4.coerceMap<String, String>(named['fields'], 'fields')
             : const <String, String>{};
-        return ParsedHeadline(level: level, lineNumber: lineNumber, rawHeadline: rawHeadline, explicitId: explicitId, text: text, fields: fields);
+        return $tom_doc_scanner_3.ParsedHeadline(level: level, lineNumber: lineNumber, rawHeadline: rawHeadline, explicitId: explicitId, text: text, fields: fields);
       },
     },
     getters: {
-      'level': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').level,
-      'lineNumber': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').lineNumber,
-      'rawHeadline': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').rawHeadline,
-      'explicitId': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').explicitId,
-      'text': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').text,
-      'fields': (visitor, target) => D4.validateTarget<ParsedHeadline>(target, 'ParsedHeadline').fields,
+      'level': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').level,
+      'lineNumber': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').lineNumber,
+      'rawHeadline': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').rawHeadline,
+      'explicitId': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').explicitId,
+      'text': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').text,
+      'fields': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.ParsedHeadline>(target, 'ParsedHeadline').fields,
     },
     constructorSignatures: {
       '': 'const ParsedHeadline({required int level, required int lineNumber, required String rawHeadline, String? explicitId, required String text, Map<String, String> fields = const {}})',
@@ -342,51 +383,51 @@ BridgedClass _createParsedHeadlineBridge() {
 
 BridgedClass _createMarkdownParserBridge() {
   return BridgedClass(
-    nativeType: MarkdownParser,
+    nativeType: $tom_doc_scanner_3.MarkdownParser,
     name: 'MarkdownParser',
-    isAssignable: (v) => v is MarkdownParser,
+    isAssignable: (v) => v is $tom_doc_scanner_3.MarkdownParser,
     constructors: {
       '': (visitor, positional, named) {
-        return MarkdownParser();
+        return $tom_doc_scanner_3.MarkdownParser();
       },
     },
     staticMethods: {
       'parseHeadlines': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'parseHeadlines');
         final content = D4.getRequiredArg<String>(positional, 0, 'content', 'parseHeadlines');
-        return MarkdownParser.parseHeadlines(content);
+        return $tom_doc_scanner_3.MarkdownParser.parseHeadlines(content);
       },
       'extractText': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'extractText');
         final content = D4.getRequiredArg<String>(positional, 0, 'content', 'extractText');
         final startLine = D4.getRequiredArg<int>(positional, 1, 'startLine', 'extractText');
         final endLine = D4.getRequiredArg<int>(positional, 2, 'endLine', 'extractText');
-        return MarkdownParser.extractText(content, startLine, endLine);
+        return $tom_doc_scanner_3.MarkdownParser.extractText(content, startLine, endLine);
       },
       'generateId': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 3, 'generateId');
         final text = D4.getRequiredArg<String>(positional, 0, 'text', 'generateId');
         final parentId = D4.getRequiredArg<String?>(positional, 1, 'parentId', 'generateId');
         final index = D4.getRequiredArg<int>(positional, 2, 'index', 'generateId');
-        return MarkdownParser.generateId(text, parentId, index);
+        return $tom_doc_scanner_3.MarkdownParser.generateId(text, parentId, index);
       },
       'calculateMaxDepth': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'calculateMaxDepth');
         if (positional.isEmpty) {
           throw ArgumentError('calculateMaxDepth: Missing required argument "headlines" at position 0');
         }
-        final headlines = D4.coerceList<(dynamic, int startLine, int endLine)>(positional[0], 'headlines');
-        return MarkdownParser.calculateMaxDepth(headlines);
+        final headlines = D4.coerceList<($tom_doc_scanner_3.ParsedHeadline, int, int)>(positional[0], 'headlines');
+        return $tom_doc_scanner_3.MarkdownParser.calculateMaxDepth(headlines);
       },
     },
     constructorSignatures: {
       '': 'MarkdownParser()',
     },
     staticMethodSignatures: {
-      'parseHeadlines': 'List<(ParsedHeadline, int startLine, int endLine)> parseHeadlines(String content)',
+      'parseHeadlines': 'List<(ParsedHeadline, int, int)> parseHeadlines(String content)',
       'extractText': 'String extractText(String content, int startLine, int endLine)',
       'generateId': 'String generateId(String text, String? parentId, int index)',
-      'calculateMaxDepth': 'int calculateMaxDepth(List<(ParsedHeadline, int startLine, int endLine)> headlines)',
+      'calculateMaxDepth': 'int calculateMaxDepth(List<(ParsedHeadline, int, int)> headlines)',
     },
   );
 }
@@ -397,9 +438,10 @@ BridgedClass _createMarkdownParserBridge() {
 
 BridgedClass _createDocumentBridge() {
   return BridgedClass(
-    nativeType: $tom_doc_scanner_2.Document,
+    nativeType: $tom_doc_scanner_4.Document,
     name: 'Document',
-    isAssignable: (v) => v is $tom_doc_scanner_2.Document,
+    isAssignable: (v) => v is $tom_doc_scanner_4.Document,
+    hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
         final index = D4.getRequiredNamedArg<int>(named, 'index', 'Document');
@@ -412,7 +454,7 @@ BridgedClass _createDocumentBridge() {
         }
         final fields = D4.coerceMap<String, String>(named['fields'], 'fields');
         final text = D4.getRequiredNamedArg<String>(named, 'text', 'Document');
-        final sections = D4.coerceListOrNull<$tom_doc_scanner_4.Section>(named['sections'], 'sections');
+        final sections = D4.coerceListOrNull<$tom_doc_scanner_6.Section>(named['sections'], 'sections');
         final filenameWithPath = D4.getRequiredNamedArg<String>(named, 'filenameWithPath', 'Document');
         final loadTimestamp = D4.getRequiredNamedArg<String>(named, 'loadTimestamp', 'Document');
         final filename = D4.getRequiredNamedArg<String>(named, 'filename', 'Document');
@@ -423,7 +465,7 @@ BridgedClass _createDocumentBridge() {
         final workspaceRoot = D4.getRequiredNamedArg<String>(named, 'workspaceRoot', 'Document');
         final projectRoot = D4.getRequiredNamedArg<String>(named, 'projectRoot', 'Document');
         final hierarchyDepth = D4.getRequiredNamedArg<int>(named, 'hierarchyDepth', 'Document');
-        return $tom_doc_scanner_2.Document(index: index, lineNumber: lineNumber, name: name, id: id, rawHeadline: rawHeadline, fields: fields, text: text, sections: sections, filenameWithPath: filenameWithPath, loadTimestamp: loadTimestamp, filename: filename, fullPath: fullPath, workspacePath: workspacePath, project: project, projectPath: projectPath, workspaceRoot: workspaceRoot, projectRoot: projectRoot, hierarchyDepth: hierarchyDepth);
+        return $tom_doc_scanner_4.Document(index: index, lineNumber: lineNumber, name: name, id: id, rawHeadline: rawHeadline, fields: fields, text: text, sections: sections, filenameWithPath: filenameWithPath, loadTimestamp: loadTimestamp, filename: filename, fullPath: fullPath, workspacePath: workspacePath, project: project, projectPath: projectPath, workspaceRoot: workspaceRoot, projectRoot: projectRoot, hierarchyDepth: hierarchyDepth);
       },
       'fromJson': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Document');
@@ -431,36 +473,36 @@ BridgedClass _createDocumentBridge() {
           throw ArgumentError('Document: Missing required argument "json" at position 0');
         }
         final json = D4.coerceMap<String, dynamic>(positional[0], 'json');
-        return $tom_doc_scanner_2.Document.fromJson(json);
+        return $tom_doc_scanner_4.Document.fromJson(json);
       },
     },
     getters: {
-      'index': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').index,
-      'lineNumber': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').lineNumber,
-      'rawHeadline': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').rawHeadline,
-      'name': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').name,
-      'id': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').id,
-      'text': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').text,
-      'fields': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').fields,
-      'sections': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').sections,
-      'filenameWithPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').filenameWithPath,
-      'loadTimestamp': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').loadTimestamp,
-      'filename': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').filename,
-      'fullPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').fullPath,
-      'workspacePath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').workspacePath,
-      'project': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').project,
-      'projectPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').projectPath,
-      'workspaceRoot': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').workspaceRoot,
-      'projectRoot': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').projectRoot,
-      'hierarchyDepth': (visitor, target) => D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document').hierarchyDepth,
+      'index': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').index,
+      'lineNumber': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').lineNumber,
+      'rawHeadline': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').rawHeadline,
+      'name': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').name,
+      'id': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').id,
+      'text': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').text,
+      'fields': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').fields,
+      'sections': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').sections,
+      'filenameWithPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').filenameWithPath,
+      'loadTimestamp': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').loadTimestamp,
+      'filename': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').filename,
+      'fullPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').fullPath,
+      'workspacePath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').workspacePath,
+      'project': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').project,
+      'projectPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').projectPath,
+      'workspaceRoot': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').workspaceRoot,
+      'projectRoot': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').projectRoot,
+      'hierarchyDepth': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document').hierarchyDepth,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document');
+        final t = D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document');
         return t.toJson();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_2.Document>(target, 'Document');
+        final t = D4.validateTarget<$tom_doc_scanner_4.Document>(target, 'Document');
         return t.toString();
       },
     },
@@ -501,9 +543,9 @@ BridgedClass _createDocumentBridge() {
 
 BridgedClass _createDocumentFolderBridge() {
   return BridgedClass(
-    nativeType: $tom_doc_scanner_3.DocumentFolder,
+    nativeType: $tom_doc_scanner_5.DocumentFolder,
     name: 'DocumentFolder',
-    isAssignable: (v) => v is $tom_doc_scanner_3.DocumentFolder,
+    isAssignable: (v) => v is $tom_doc_scanner_5.DocumentFolder,
     constructors: {
       '': (visitor, positional, named) {
         final foldername = D4.getRequiredNamedArg<String>(named, 'foldername', 'DocumentFolder');
@@ -512,12 +554,12 @@ BridgedClass _createDocumentFolderBridge() {
         if (!named.containsKey('documents') || named['documents'] == null) {
           throw ArgumentError('DocumentFolder: Missing required named argument "documents"');
         }
-        final documents = D4.coerceList<$tom_doc_scanner_2.Document>(named['documents'], 'documents');
+        final documents = D4.coerceList<$tom_doc_scanner_4.Document>(named['documents'], 'documents');
         if (!named.containsKey('folders') || named['folders'] == null) {
           throw ArgumentError('DocumentFolder: Missing required named argument "folders"');
         }
-        final folders = D4.coerceList<$tom_doc_scanner_3.DocumentFolder>(named['folders'], 'folders');
-        return $tom_doc_scanner_3.DocumentFolder(foldername: foldername, workspaceFolderPath: workspaceFolderPath, absoluteFolderPath: absoluteFolderPath, documents: documents, folders: folders);
+        final folders = D4.coerceList<$tom_doc_scanner_5.DocumentFolder>(named['folders'], 'folders');
+        return $tom_doc_scanner_5.DocumentFolder(foldername: foldername, workspaceFolderPath: workspaceFolderPath, absoluteFolderPath: absoluteFolderPath, documents: documents, folders: folders);
       },
       'fromJson': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'DocumentFolder');
@@ -525,24 +567,24 @@ BridgedClass _createDocumentFolderBridge() {
           throw ArgumentError('DocumentFolder: Missing required argument "json" at position 0');
         }
         final json = D4.coerceMap<String, dynamic>(positional[0], 'json');
-        return $tom_doc_scanner_3.DocumentFolder.fromJson(json);
+        return $tom_doc_scanner_5.DocumentFolder.fromJson(json);
       },
     },
     getters: {
-      'foldername': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').foldername,
-      'workspaceFolderPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').workspaceFolderPath,
-      'absoluteFolderPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').absoluteFolderPath,
-      'documents': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').documents,
-      'folders': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').folders,
-      'allDocuments': (visitor, target) => D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder').allDocuments,
+      'foldername': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').foldername,
+      'workspaceFolderPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').workspaceFolderPath,
+      'absoluteFolderPath': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').absoluteFolderPath,
+      'documents': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').documents,
+      'folders': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').folders,
+      'allDocuments': (visitor, target) => D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder').allDocuments,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder');
+        final t = D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder');
         return t.toJson();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_3.DocumentFolder>(target, 'DocumentFolder');
+        final t = D4.validateTarget<$tom_doc_scanner_5.DocumentFolder>(target, 'DocumentFolder');
         return t.toString();
       },
     },
@@ -571,9 +613,9 @@ BridgedClass _createDocumentFolderBridge() {
 
 BridgedClass _createSectionBridge() {
   return BridgedClass(
-    nativeType: $tom_doc_scanner_4.Section,
+    nativeType: $tom_doc_scanner_6.Section,
     name: 'Section',
-    isAssignable: (v) => v is $tom_doc_scanner_4.Section,
+    isAssignable: (v) => v is $tom_doc_scanner_6.Section,
     constructors: {
       '': (visitor, positional, named) {
         final index = D4.getRequiredNamedArg<int>(named, 'index', 'Section');
@@ -585,8 +627,8 @@ BridgedClass _createSectionBridge() {
         final fields = named.containsKey('fields') && named['fields'] != null
             ? D4.coerceMap<String, String>(named['fields'], 'fields')
             : const <String, String>{};
-        final sections = D4.coerceListOrNull<$tom_doc_scanner_4.Section>(named['sections'], 'sections');
-        return $tom_doc_scanner_4.Section(index: index, lineNumber: lineNumber, rawHeadline: rawHeadline, name: name, id: id, text: text, fields: fields, sections: sections);
+        final sections = D4.coerceListOrNull<$tom_doc_scanner_6.Section>(named['sections'], 'sections');
+        return $tom_doc_scanner_6.Section(index: index, lineNumber: lineNumber, rawHeadline: rawHeadline, name: name, id: id, text: text, fields: fields, sections: sections);
       },
       'fromJson': (visitor, positional, named) {
         D4.requireMinArgs(positional, 1, 'Section');
@@ -594,26 +636,26 @@ BridgedClass _createSectionBridge() {
           throw ArgumentError('Section: Missing required argument "json" at position 0');
         }
         final json = D4.coerceMap<String, dynamic>(positional[0], 'json');
-        return $tom_doc_scanner_4.Section.fromJson(json);
+        return $tom_doc_scanner_6.Section.fromJson(json);
       },
     },
     getters: {
-      'index': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').index,
-      'lineNumber': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').lineNumber,
-      'rawHeadline': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').rawHeadline,
-      'name': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').name,
-      'id': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').id,
-      'text': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').text,
-      'fields': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').fields,
-      'sections': (visitor, target) => D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section').sections,
+      'index': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').index,
+      'lineNumber': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').lineNumber,
+      'rawHeadline': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').rawHeadline,
+      'name': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').name,
+      'id': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').id,
+      'text': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').text,
+      'fields': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').fields,
+      'sections': (visitor, target) => D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section').sections,
     },
     methods: {
       'toJson': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section');
+        final t = D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section');
         return t.toJson();
       },
       'toString': (visitor, target, positional, named, typeArgs) {
-        final t = D4.validateTarget<$tom_doc_scanner_4.Section>(target, 'Section');
+        final t = D4.validateTarget<$tom_doc_scanner_6.Section>(target, 'Section');
         return t.toString();
       },
     },
