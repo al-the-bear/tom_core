@@ -6,20 +6,23 @@ import '../state/phase2a_state.dart';
 // ---------------------------------------------------------------------------
 // OrderItemForm — single row of the order's items list.
 // ---------------------------------------------------------------------------
-//
-// `formId` matches the parent's listId ('items') so resources resolve
-// uniformly for every row (spec §13: "Resources and authorization apply
-// uniformly to all list items").
-//
-// The product field is a `TomFormSearchInput<String>` over the
-// `phase2aProductCatalog`, so the demos exercise a real type-ahead
-// picker. Selecting a known catalog entry auto-fills `unitPrice` via
-// the observer attached in `createFormElements`.
-//
-// `quantity` and `unitPrice` use `autoValidate: true` so demo H-B and
-// H-C surface inline errors as the user types — e.g. quantity = 0
-// trips `error.mustBePositive` immediately, which the row-switch
-// guard in H-B uses to refuse switching away from an invalid row.
+
+/// Single row of the order's items list (used by Demos H-B / H-C).
+///
+/// Exercises `tom_flutter_ui`'s `TomFormSearchInput<String>` type-ahead
+/// picker (over `phase2aProductCatalog`) alongside auto-validating
+/// `TomFormStringInput` fields.
+///
+/// `formId` matches the parent's listId ('items') so resources resolve
+/// uniformly for every row (spec §13: "Resources and authorization apply
+/// uniformly to all list items").
+///
+/// Selecting a known catalog entry auto-fills `unitPrice` via the observer
+/// attached in `createFormElements`. `quantity` and `unitPrice` use
+/// `autoValidate: true` so Demos H-B and H-C surface inline errors as the
+/// user types — e.g. quantity = 0 trips `error.mustBePositive` immediately,
+/// which the row-switch guard in H-B uses to refuse switching away from an
+/// invalid row.
 @tomReflector
 class OrderItemForm extends TomForm<OrderItem> {
   OrderItemForm() : super(formId: 'items');

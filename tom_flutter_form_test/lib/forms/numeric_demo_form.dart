@@ -6,10 +6,18 @@ import '../state/phase3_state.dart';
 // ---------------------------------------------------------------------------
 // NumericDemoForm — hosts every Phase 3 numeric field for Demo I.
 // ---------------------------------------------------------------------------
-//
-// The same TomInt (`quantity`) is bound to both the input and the slider
-// — typing in one updates the other live, fulfilling the spec's
-// "IntInput + IntSlider sharing a TomInt" bullet.
+
+/// Hosts every Phase 3 numeric field for Demo I.
+///
+/// Exercises `tom_flutter_ui`'s numeric concretes bound to kernel `TomInt` /
+/// `TomDouble` observables: `TomFormIntInput`, `TomFormIntSlider`,
+/// `TomFormIntStepper`, `TomFormDoubleInput`, `TomFormCurrencyDoubleInput`,
+/// `TomFormPercentDoubleInput`, `TomFormDoubleSlider`,
+/// `TomFormIntRangeSlider` and `TomFormDoubleRangeSlider`.
+///
+/// The same TomInt (`quantity`) is bound to both the input and the slider —
+/// typing in one updates the other live, fulfilling the spec's
+/// "IntInput + IntSlider sharing a TomInt" bullet.
 @tomReflector
 class NumericDemoForm extends TomForm<NumericDemoState> {
   NumericDemoForm() : super(formId: 'numericDemo');

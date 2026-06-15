@@ -9,14 +9,17 @@ import '../state/phase3_state.dart';
 // ---------------------------------------------------------------------------
 // Demo I — Numeric Forms (Phase 3)
 // ---------------------------------------------------------------------------
-//
-// Covers every Phase 3 numeric concrete: IntInput, IntSlider, IntStepper,
-// DoubleInput, CurrencyDoubleInput (with locale switcher), PercentDoubleInput,
-// DoubleSlider, IntRangeSlider, DoubleRangeSlider.
-//
-// The Quantity row binds the same `TomInt` to both an IntInput and an
-// IntSlider — typing in either side updates the other live, exercising
-// the spec's bullet "IntInput + IntSlider sharing a TomInt".
+
+/// Exercises `tom_flutter_ui`'s numeric form concretes bound to kernel
+/// `TomInt` / `TomDouble` observables.
+///
+/// Covers every Phase 3 numeric concrete: IntInput, IntSlider, IntStepper,
+/// DoubleInput, CurrencyDoubleInput (with locale switcher), PercentDoubleInput,
+/// DoubleSlider, IntRangeSlider, DoubleRangeSlider.
+///
+/// The Quantity row binds the same `TomInt` to both an IntInput and an
+/// IntSlider — typing in either side updates the other live, exercising
+/// the spec's bullet "IntInput + IntSlider sharing a TomInt".
 class DemoINumericForms extends StatefulWidget {
   const DemoINumericForms({super.key});
 

@@ -21,6 +21,10 @@ import '../state/phase2a_state.dart'; // for phase2aProductSource
 // 1. Order item form
 // ---------------------------------------------------------------------------
 
+/// One line item inside an [OrderHDForm] (Demos H-D / H-E).
+///
+/// Exercises `tom_flutter_ui`'s `TomFormSearchInput<String>` product picker
+/// plus auto-validating `TomFormStringInput` quantity / unit-price fields.
 @tomReflector
 class OrderItemHDForm extends TomForm<OrderItemHD> {
   OrderItemHDForm() : super(formId: 'orderItemHD');
@@ -99,6 +103,12 @@ class OrderItemHDListForm
 // 3. Order form
 // ---------------------------------------------------------------------------
 
+/// One order (Demos H-D / H-E) — header fields plus a nested
+/// [OrderItemHDListForm].
+///
+/// Exercises `tom_flutter_ui`'s nested `TomListForm` ownership and a
+/// `TomFormSearchInput<String>` "Ship to" picker driven by a live
+/// shipping-label source.
 @tomReflector
 class OrderHDForm extends TomForm<OrderHD> {
   /// [shippingLabelSource] — when provided, the "Ship to" field renders as a
@@ -197,6 +207,10 @@ class OrderHDListForm extends TomListForm<OrderHD, OrderHDForm> {
 // 5. Shipping address form
 // ---------------------------------------------------------------------------
 
+/// One shipping address (Demos H-D / H-E).
+///
+/// Exercises a flat block of `tom_flutter_ui` `TomFormStringInput` fields
+/// rendered as the detail pane of a `TomMasterDetailListForm`.
 @tomReflector
 class ShippingAddressHDForm extends TomForm<ShippingAddressHD> {
   ShippingAddressHDForm() : super(formId: 'shippingAddressHD');
@@ -290,6 +304,13 @@ class ShippingAddressHDListForm
 // 7. Customer HD form — the root form for Demos H-D and H-E
 // ---------------------------------------------------------------------------
 
+/// Root form for Demos H-D and H-E.
+///
+/// Exercises a deep `tom_flutter_ui` form: flat contact + billing fields plus
+/// two nested list forms ([ShippingAddressHDListForm] and [OrderHDListForm])
+/// whose dirty state aggregates into this one parent. The orders list's
+/// "Ship to" picker reads the customer's current shipping-address labels
+/// live via [shippingAddressLabelSource].
 @tomReflector
 class CustomerHDForm extends TomForm<CustomerHD> {
   CustomerHDForm() : super(formId: 'customerHD');

@@ -7,6 +7,16 @@ import '../state/phase3_state.dart';
 // ---------------------------------------------------------------------------
 // DateTimeDemoForm — hosts every Phase 3 date/time/duration field for Demo J.
 // ---------------------------------------------------------------------------
+
+/// Hosts every Phase 3 date/time/duration field for Demo J.
+///
+/// Exercises `tom_flutter_ui`'s date/time concretes: `TomFormDatePicker`,
+/// `TomFormDateCalendar` (inline), `TomFormTimePicker`,
+/// `TomFormDateTimePicker`, `TomFormDateRangePicker`,
+/// `TomFormDurationInput`, the typed-input variants
+/// (`TomFormDateTextInput` / `TomFormTimeTextInput` /
+/// `TomFormDateTimeTextInput` with configurable `TomDateTimeFormat`), and a
+/// companion `TomFormIntSlider`.
 @tomReflector
 class DateTimeDemoForm extends TomForm<DateTimeDemoState> {
   DateTimeDemoForm() : super(formId: 'dateTimeDemo');

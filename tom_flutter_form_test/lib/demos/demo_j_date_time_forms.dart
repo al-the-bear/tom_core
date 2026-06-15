@@ -8,17 +8,20 @@ import '../state/phase3_state.dart';
 // ---------------------------------------------------------------------------
 // Demo J — Date / Time / Duration Forms (Phase 3)
 // ---------------------------------------------------------------------------
-//
-// Covers DatePicker, DateCalendar (inline), TimePicker, DateTimePicker,
-// DateRangePicker and DurationInput. The duration row sits next to a
-// DoubleSlider-like minute count for direct comparison.
-//
-// At narrow widths (< 700 px) the dialog-based picker collapses to the
-// inline calendar — matching the spec's "at narrow widths the pickers
-// collapse to inline calendars; at wide widths they open as dialogs"
-// bullet. The TimePicker, DateTimePicker and DateRangePicker stay in
-// the dialog flow at all widths because there's no inline calendar
-// equivalent in Material for them.
+
+/// Exercises `tom_flutter_ui`'s date/time/duration form concretes and their
+/// breakpoint-driven dialog-vs-inline-calendar behaviour.
+///
+/// Covers DatePicker, DateCalendar (inline), TimePicker, DateTimePicker,
+/// DateRangePicker and DurationInput. The duration row sits next to a
+/// DoubleSlider-like minute count for direct comparison.
+///
+/// At narrow widths (< 700 px) the dialog-based picker collapses to the
+/// inline calendar — matching the spec's "at narrow widths the pickers
+/// collapse to inline calendars; at wide widths they open as dialogs"
+/// bullet. The TimePicker, DateTimePicker and DateRangePicker stay in
+/// the dialog flow at all widths because there's no inline calendar
+/// equivalent in Material for them.
 class DemoJDateTimeForms extends StatefulWidget {
   const DemoJDateTimeForms({super.key});
 

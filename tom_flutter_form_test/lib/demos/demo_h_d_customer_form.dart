@@ -10,26 +10,30 @@ import '../state/phase_hd_state.dart';
 // ---------------------------------------------------------------------------
 // Demo H-D — Full Customer Form with master-detail for addresses + orders
 // ---------------------------------------------------------------------------
-//
-// A single CustomerHD record is shown as a scrollable form with four
-// sections:
-//
-//   1. Customer info  — fullName, email, phone (direct fields)
-//   2. Billing address — flat address fields on the same form
-//   3. Shipping addresses — TomMasterDetailListForm: list on left, the
-//      row's own ShippingAddressHDForm on right (no sibling form)
-//   4. Orders — TomMasterDetailListForm: list on left, the row's own
-//      OrderHDForm on right. Each order detail shows orderId / date /
-//      shippingLabel plus an inline reorderable items table.
-//
-// All four sections share ONE CustomerHDForm, so the form's isDirty
-// aggregates across info + billing + all shipping + all orders.
-//
-// Both master panes use TomReorderHandle for drag reordering and the
-// reusable TomListFormToolbar for add / remove / move-up / move-down.
-//
-// The reusable list/detail panes live in common/customer_hd_panes.dart so
-// Demo H-E can drop the same scaffolds into an edit overlay.
+
+/// Exercises a deep `tom_flutter_ui` form: flat fields plus two nested
+/// `TomMasterDetailListForm`s (with `TomReorderHandle` / `TomListFormToolbar`)
+/// whose dirty state aggregates into one parent `CustomerHDForm`.
+///
+/// A single CustomerHD record is shown as a scrollable form with four
+/// sections:
+///
+///   1. Customer info  — fullName, email, phone (direct fields)
+///   2. Billing address — flat address fields on the same form
+///   3. Shipping addresses — TomMasterDetailListForm: list on left, the
+///      row's own ShippingAddressHDForm on right (no sibling form)
+///   4. Orders — TomMasterDetailListForm: list on left, the row's own
+///      OrderHDForm on right. Each order detail shows orderId / date /
+///      shippingLabel plus an inline reorderable items table.
+///
+/// All four sections share ONE CustomerHDForm, so the form's isDirty
+/// aggregates across info + billing + all shipping + all orders.
+///
+/// Both master panes use TomReorderHandle for drag reordering and the
+/// reusable TomListFormToolbar for add / remove / move-up / move-down.
+///
+/// The reusable list/detail panes live in common/customer_hd_panes.dart so
+/// Demo H-E can drop the same scaffolds into an edit overlay.
 class DemoHDCustomerForm extends StatefulWidget {
   const DemoHDCustomerForm({super.key});
 

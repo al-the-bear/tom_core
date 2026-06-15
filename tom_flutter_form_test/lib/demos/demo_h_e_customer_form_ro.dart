@@ -10,18 +10,22 @@ import '../state/phase_hd_state.dart';
 // ---------------------------------------------------------------------------
 // Demo H-E — Customer Form with read-only lists + master-detail edit overlays
 // ---------------------------------------------------------------------------
-//
-// Customer info and billing address are editable in-place (identical to
-// Demo H-D). The shipping addresses and orders sections show fully
-// read-only summary lists. Each section header has a single "Edit list"
-// button that opens a modal overlay containing a TomMasterDetailListForm
-// (master list on the left, the row's own sub-form on the right) — the
-// same panes used by Demo H-D, but presented as a focused editing
-// surface.
-//
-// Adding and removing items happens inside the overlay. Closing the
-// overlay returns the user to the read-only summary which immediately
-// reflects all changes (the overlay edits the same TomClass instances).
+
+/// Exercises `tom_flutter_ui`'s `TomMasterDetailListForm` presented inside a
+/// modal edit overlay, with read-only summary lists outside the overlay bound
+/// to the same `TomClass` instances.
+///
+/// Customer info and billing address are editable in-place (identical to
+/// Demo H-D). The shipping addresses and orders sections show fully
+/// read-only summary lists. Each section header has a single "Edit list"
+/// button that opens a modal overlay containing a TomMasterDetailListForm
+/// (master list on the left, the row's own sub-form on the right) — the
+/// same panes used by Demo H-D, but presented as a focused editing
+/// surface.
+///
+/// Adding and removing items happens inside the overlay. Closing the
+/// overlay returns the user to the read-only summary which immediately
+/// reflects all changes (the overlay edits the same TomClass instances).
 class DemoHECustomerForm extends StatefulWidget {
   const DemoHECustomerForm({super.key});
 

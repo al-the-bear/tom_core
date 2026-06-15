@@ -11,21 +11,24 @@ import '../state/phase2a_state.dart';
 // ---------------------------------------------------------------------------
 // Demo H-A — Master-Detail Customer Editor (Phase 2a).
 // ---------------------------------------------------------------------------
-//
-// Left pane:  Reorderable list of customers driven by the shared
-//             CustomerListForm. The standard TomListFormToolbar handles
-//             add / remove / move up / move down. Each row exposes a
-//             TomReorderHandle so it can be dragged to a new position.
-// Right pane: The selected customer's own row sub-form
-//             (`listForm[selectedIndex]`) — there is NO sibling form
-//             bound to the same Customer.
-// Bottom:     EventLogPanel showing the interleaved stream of list events
-//             (added / removed / reordered) and per-row form events
-//             (value / validation) coming through the shared event bus.
-//
-// Two TomMasterDetailListForm instances share one TomListForm so the demo
-// shows that selection state is per-scaffold while structural mutations
-// and field edits flow through both panes immediately.
+
+/// Exercises `tom_flutter_ui`'s `TomMasterDetailListForm` / `TomListForm`
+/// master-detail pattern, with `TomListFormToolbar` and `TomReorderHandle`.
+///
+/// Left pane:  Reorderable list of customers driven by the shared
+///             CustomerListForm. The standard TomListFormToolbar handles
+///             add / remove / move up / move down. Each row exposes a
+///             TomReorderHandle so it can be dragged to a new position.
+/// Right pane: The selected customer's own row sub-form
+///             (`listForm[selectedIndex]`) — there is NO sibling form
+///             bound to the same Customer.
+/// Bottom:     EventLogPanel showing the interleaved stream of list events
+///             (added / removed / reordered) and per-row form events
+///             (value / validation) coming through the shared event bus.
+///
+/// Two TomMasterDetailListForm instances share one TomListForm so the demo
+/// shows that selection state is per-scaffold while structural mutations
+/// and field edits flow through both panes immediately.
 class DemoHAMasterDetail extends StatefulWidget {
   const DemoHAMasterDetail({super.key});
 

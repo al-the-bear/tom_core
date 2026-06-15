@@ -12,26 +12,29 @@ import '../state/phase2a_state.dart';
 // ---------------------------------------------------------------------------
 // Demo H-B — Expandable Rows (Order Items)  [Phase 2a §16]
 // ---------------------------------------------------------------------------
-//
-// Renders a TomListForm<OrderItem, OrderItemForm> as one ExpansionTile per
-// row. Collapsed state shows the read-only summary (product name / qty /
-// total); expanded state reveals the editable sub-form, including the
-// type-ahead Product picker that auto-fills the unit price.
-//
-// Behaviours wired in for spec §16:
-//
-// * Single-row exclusive expansion: opening one row collapses the
-//   currently-open row.
-// * Row-switch guard: switching while the open row has validation
-//   errors (e.g. `quantity = 0`) is refused — the open row stays
-//   expanded and a snackbar surfaces the reason.
-// * Save → validate → collapse on success: if the order saves
-//   cleanly, the open row collapses to its read-only summary.
-// * Validate-on-bind: the form runs `validate()` once after binding
-//   so the "Form valid / invalid" badge reflects the actual state of
-//   the loaded data (instead of the pristine `false`).
-// * Per-row + parent error panels surface every reason the form is
-//   invalid, so the badge is never the only signal.
+
+/// Exercises `tom_flutter_ui`'s `TomListForm` rendered as one `ExpansionTile`
+/// per row, with a type-ahead `TomFormSearchInput` product picker.
+///
+/// Renders a `TomListForm<OrderItem, OrderItemForm>` as one ExpansionTile per
+/// row. Collapsed state shows the read-only summary (product name / qty /
+/// total); expanded state reveals the editable sub-form, including the
+/// type-ahead Product picker that auto-fills the unit price.
+///
+/// Behaviours wired in for spec §16:
+///
+/// * Single-row exclusive expansion: opening one row collapses the
+///   currently-open row.
+/// * Row-switch guard: switching while the open row has validation
+///   errors (e.g. `quantity = 0`) is refused — the open row stays
+///   expanded and a snackbar surfaces the reason.
+/// * Save → validate → collapse on success: if the order saves
+///   cleanly, the open row collapses to its read-only summary.
+/// * Validate-on-bind: the form runs `validate()` once after binding
+///   so the "Form valid / invalid" badge reflects the actual state of
+///   the loaded data (instead of the pristine `false`).
+/// * Per-row + parent error panels surface every reason the form is
+///   invalid, so the badge is never the only signal.
 class DemoHBExpandableRows extends StatefulWidget {
   const DemoHBExpandableRows({super.key});
 

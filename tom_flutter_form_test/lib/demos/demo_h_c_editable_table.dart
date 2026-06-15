@@ -12,25 +12,29 @@ import '../state/phase2a_state.dart';
 // ---------------------------------------------------------------------------
 // Demo H-C — Editable Order-Items Table  [Phase 2a §16]
 // ---------------------------------------------------------------------------
-//
-// Renders an OrderForm.items list as TWO Material DataTables, both bound
-// to the SAME `_form.items` so editing in one variant immediately updates
-// the other:
-//
-// * Variant A — "in-cell errors": the standard renderer, error text and
-//   error border appear directly under / around each invalid cell. Also
-//   exposes the `TomAclBuilder` row-per-item pattern via a segmented
-//   switch (§16, "DataTable / TomAclBuilder side-by-side").
-// * Variant B — "error strip below row": the cells are wrapped in a
-//   `TomFormStyleScope` that promotes the error message into a tooltip
-//   and disables the error border, so the cell never grows or shifts;
-//   below each row a per-row error strip lists every field error.
-//
-// Cells are top-aligned so the row heights stay anchored to the same
-// baseline whether or not an error is on screen — answers feedback (g).
-//
-// The product field is a `TomFormSearchInput<String>` over the catalog;
-// selecting an entry auto-fills the unit price.
+
+/// Exercises `tom_flutter_ui` field widgets embedded in Material `DataTable`
+/// cells (plus the `TomAclBuilder` row pattern and `TomFormStyleScope` error
+/// placement), with a `TomFormSearchInput` product picker.
+///
+/// Renders an OrderForm.items list as TWO Material DataTables, both bound
+/// to the SAME `_form.items` so editing in one variant immediately updates
+/// the other:
+///
+/// * Variant A — "in-cell errors": the standard renderer, error text and
+///   error border appear directly under / around each invalid cell. Also
+///   exposes the `TomAclBuilder` row-per-item pattern via a segmented
+///   switch (§16, "DataTable / TomAclBuilder side-by-side").
+/// * Variant B — "error strip below row": the cells are wrapped in a
+///   `TomFormStyleScope` that promotes the error message into a tooltip
+///   and disables the error border, so the cell never grows or shifts;
+///   below each row a per-row error strip lists every field error.
+///
+/// Cells are top-aligned so the row heights stay anchored to the same
+/// baseline whether or not an error is on screen — answers feedback (g).
+///
+/// The product field is a `TomFormSearchInput<String>` over the catalog;
+/// selecting an entry auto-fills the unit price.
 class DemoHCEditableTable extends StatefulWidget {
   const DemoHCEditableTable({super.key});
 

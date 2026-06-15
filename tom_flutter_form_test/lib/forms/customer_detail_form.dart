@@ -7,11 +7,14 @@ import '../state/phase2a_state.dart';
 // ---------------------------------------------------------------------------
 // CustomerDetailForm — used by Demo H-A (Master-Detail).
 // ---------------------------------------------------------------------------
-//
-// Stable formId: the SAME `customerDetail` form instance is re-bound to a
-// different [Customer] every time the master selection changes. Only the
-// data binding moves — the form identity, resources, and authorization
-// stay constant (per spec §15: "Form Identity in Master-Detail").
+
+/// Detail form for Demo H-A's `tom_flutter_ui` master-detail pattern.
+///
+/// Exercises `TomFormStringInput` / `TomFormStringDropdown` fields with a
+/// stable `formId`: the SAME `customerDetail` form instance is re-bound to a
+/// different [Customer] every time the master selection changes. Only the
+/// data binding moves — the form identity, resources, and authorization
+/// stay constant (per spec §15: "Form Identity in Master-Detail").
 @tomReflector
 class CustomerDetailForm extends TomForm<Customer> {
   CustomerDetailForm() : super(formId: 'customerDetail');
