@@ -1,5 +1,12 @@
 ## Unreleased
 
+### Documentation
+
+- **Forms module**: added dartdoc to `TomFieldOld`, `TomEmailField`,
+  `TomPasswordField`, and `TomFormOld`; a module guide at `doc/forms.md`; an
+  executable example at `example/forms/`; and the first test suite at
+  `test/forms_test.dart`. No public API change (removed only dead comments).
+
 ### Removed
 
 - **`camera/` placeholder module**: the folder contained only an aspirational
