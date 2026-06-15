@@ -88,6 +88,23 @@
   `TomDbMigrationAdaptor` type binding, and the exception types). No public API
   change — the literal-escaping of directly-interpolated migration scripts is
   noted in the module doc and tracked with the datasources follow-up.
+- **Endpoints module**: added dartdoc to all public symbols across the two files
+  — the annotations (`TomEndpoint`, `TomApiEndpointImplementation`,
+  `TomService` / `tomService`, `TomApiImplementation`, `TomComponentReference`,
+  `TomTransactional`, `TomErrorHandler` / `TomDefaultErrorHandler`, the
+  `TomEndpointBase` contract) and the pipeline (`TomEndpointRouting`,
+  `TomEndpointHandler`, `TomMethodMetadata`, `TomClassScanResult`,
+  `TomEndpointRoutingInfo`, `TomEndpointHandlerException`,
+  `TomEndpointPipelineException`), documenting the annotation-driven routing
+  model, the per-request pipeline (access → parameter binding → transaction →
+  invoke → result/error conversion), and the default opaque-`500` error handler;
+  a module guide at `doc/endpoints.md`; an executable example at
+  `example/endpoints/`; and a test suite at `test/endpoints_test.dart` covering
+  the reflection-free surface (the annotations and the default error handler).
+  No public API change — removed several stray `// TODO:` comments (the
+  unimplemented form-field/file-upload/redirect, streaming/file response,
+  WebSocket, and richer-authorization work is now recorded in the quest
+  completion steps and folded into the relevant dartdoc).
 
 ### Fixed
 

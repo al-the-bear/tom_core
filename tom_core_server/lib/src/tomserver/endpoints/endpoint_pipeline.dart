@@ -11,7 +11,11 @@ import '../transactions/transaction_manager.dart';
 
 import 'endpoint_annotation.dart';
 
+/// Thrown while *serving* a request: access denied, parameter instantiation
+/// failure, a failing error handler, or a result that cannot be converted.
 class TomEndpointHandlerException extends TomServerException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomServerException].
   TomEndpointHandlerException(
     super.key,
     super.defaultUserMessage, {
@@ -22,7 +26,11 @@ class TomEndpointHandlerException extends TomServerException {
   });
 }
 
+/// Thrown while *building* the router from reflected metadata: conflicting
+/// annotations, an invalid component reference, an unknown HTTP method, etc.
 class TomEndpointPipelineException extends TomServerException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomServerException].
   TomEndpointPipelineException(
     super.key,
     super.defaultUserMessage, {
@@ -33,16 +41,39 @@ class TomEndpointPipelineException extends TomServerException {
   });
 }
 
+/// Serves one endpoint: binds a reflected service [method] to a route and runs
+/// the per-request pipeline.
+///
+/// For each request [handleMethodCall] answers CORS preflight, enforces access
+/// ([checkAccess] / [checkAutomaticAccess]), materialises the method's
+/// parameters from the request (principal/token from the zone, the request
+/// object, path/query params, JSON body, request or execution context),
+/// optionally wraps the call in a transaction, invokes the method by reflection,
+/// and converts the result (or any error, via the endpoint's [TomErrorHandler])
+/// into a shelf `Response`.
 class TomEndpointHandler {
+  /// A human-readable identifier for the route (used in logs).
   String name;
+
+  /// The reflected service instance the method is invoked on.
   InstanceMirror instance;
+
+  /// The reflected endpoint method.
   MethodMirror method;
+
+  /// The service interface/annotation type, when routed via an interface.
   ClassMirror? interface;
+
+  /// The concrete implementation class mirror.
   ClassMirror implementation;
+
+  /// The qualified name of the method to invoke.
   String methodName;
 
+  /// The collected annotation metadata (endpoint, access, transaction, API).
   TomMethodMetadata metadata;
 
+  /// Creates a handler from the resolved instance, method, and metadata.
   TomEndpointHandler({
     required this.name,
     required this.instance,
@@ -53,15 +84,27 @@ class TomEndpointHandler {
     required this.metadata,
   });
 
+  /// Whether requests are logged when an endpoint does not specify
+  /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
 
+  /// Default `Access-Control-Allow-Origin` when an endpoint does not override it.
   static String globalSettingCorsAllowedOriginsDefault = "*";
+
+  /// Default `Access-Control-Allow-Methods` when an endpoint does not override it.
   static String globalSettingCorsAllowedMethodsDefault = "GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT";
+
+  /// Default `Access-Control-Allow-Headers` when an endpoint does not override it.
   static String globalSettingCorsAllowedHeadersDefault = "Origin, Content-Type, Accept, Authorization, Referer, User-Agent";
 
+  /// When true, logs the request context for each call (debugging aid).
   static bool debugPrintContext = false;
+
+  /// When true, logs the resolved principal/token for each call (debugging aid).
   static bool debugPrintAuthentication = false;
 
+  /// Answers a CORS preflight (`OPTIONS`) request with the endpoint's (or the
+  /// global default) allowed origins/methods/headers.
   Response handlePreflight(Request req) {
     return Response.ok(
       '',
@@ -73,9 +116,13 @@ class TomEndpointHandler {
     );
   }
 
-  // TODO: also support web socket communications
-  // TODO: integrate all types of authorization, e.g. automated resource key generation
-  // think about how to integrate roles, groups and entitlements
+  /// Runs the full request pipeline for this endpoint and returns the response.
+  ///
+  /// Handles preflight, access control, reflection-based parameter binding,
+  /// optional transaction wrapping, method invocation, and result/error
+  /// conversion (see the class doc). WebSocket transport, richer
+  /// role/group/entitlement authorization, and stream/file upload binding are
+  /// tracked follow-ups (see the quest completion steps).
   Future<Response> handleMethodCall(Request req) async {
 
     if( req.method == TomHttpMethod.options.name ) return handlePreflight(req);
@@ -108,7 +155,6 @@ class TomEndpointHandler {
       );
     }
 
-    // TODO: add handling of streams/file uploads
     if( debugPrintContext ) tomLog.trace("$reqId-${req.url}: Request context is ${req.context} TomPrincipal is $authentication");
     if( debugPrintAuthentication) tomLog.trace("$reqId-${req.url}: Found $authentication and $token for request",);
     for (var pm in method.parameters) {
@@ -327,7 +373,6 @@ class TomEndpointHandler {
       // will be converted to a structured error response in the pipeline
       rethrow;
     }
-    // TODO: add handling of returning files/streaming to the client
     try {
       String? resultString = result == null
           ? null
@@ -417,6 +462,9 @@ class TomEndpointHandler {
     }
   }
 
+  /// Decides whether [principal] may call this endpoint from its declared
+  /// [TomAccessControl], falling back to the global protection default when the
+  /// endpoint declares no access rule.
   bool checkAccess(TomPrincipal? principal) {
     if (metadata.access != null) {
       return metadata.access!.checkAccessibility(principal);
@@ -424,6 +472,10 @@ class TomEndpointHandler {
     return !TomResourceKeyProtection.globalSettingProtectionDefault;
   }
 
+  /// Second-chance access check via resource-key protection: grants access when
+  /// the interface/API (and not the specific method/endpoint) is unprotected,
+  /// honouring per-method `-Interface.method` exceptions. Takes the prior
+  /// [accessCheck] and returns the possibly-upgraded decision.
   bool checkAutomaticAccess(bool accessCheck) {
     if (interface != null) {
       if (!TomResourceKeyProtection.isProtected(interface!.simpleName)) {
@@ -466,18 +518,36 @@ class TomEndpointHandler {
   }
 }
 
+/// Pairs a mounted route's [handler] with the [endpoint] it was built from.
 class TomEndpointRoutingInfo {
+  /// The handler invoked for the route.
   TomEndpointHandler handler;
+
+  /// The endpoint definition the route was built from.
   TomEndpoint endpoint;
 
+  /// Pairs [handler] with its [endpoint].
   TomEndpointRoutingInfo(this.handler, this.endpoint);
 }
 
+/// Builds the shelf [Router] for the application by reflecting over annotated
+/// service/API classes and mounting one route per endpoint method.
+///
+/// [scanClasses] partitions the reflected classes into service interfaces, API
+/// implementations, and components; [initializeRouter] resolves each service's
+/// instance (via [TomComponentReference], bean lookup, or a matching component
+/// class) and mounts its endpoint methods. The mounted handlers and a
+/// uri→[TomEndpointRoutingInfo] map are exposed statically for diagnostics.
 class TomEndpointRouting {
+  /// Every endpoint handler mounted during the last [initializeRouter] run.
   static List<TomEndpointHandler> handlers = [];
 
+  /// Mounted routes keyed by URI, for diagnostics.
   static Map<String, TomEndpointRoutingInfo> routingInfo = {};
 
+  /// Reflects over the annotated classes and partitions them into service
+  /// interfaces, API implementations, and components. Throws if a class carries
+  /// both `@TomApiImplementation` and `@tomService`.
   TomClassScanResult scanClasses() {
     List<ClassMirror> serviceInterfaces = [];
     List<ClassMirror> apiImplementations = [];
@@ -518,10 +588,9 @@ class TomEndpointRouting {
       componentClasses: componentClasses,
     );
   }
-  /*
-    recurse through beans to get everything initialized
-   */
-
+  /// Scans the annotated classes and mounts every endpoint method onto a fresh
+  /// [Router], resolving each service's implementation instance, and returns the
+  /// router.
   Router initializeRouter() {
     final Router router = Router();
     var scanResult = scanClasses();
@@ -544,6 +613,9 @@ class TomEndpointRouting {
     return router;
   }
 
+  /// Mounts every endpoint method of [serviceType] (invoked on
+  /// [serviceInstance]) onto [router], building a [TomEndpointHandler] per
+  /// method from its collected metadata.
   void createRoutesForClassMirror(ClassMirror serviceType, Object? serviceInstance, Router router) {
     tomLog.trace(
       "tomService interface $serviceType, ${serviceType.metadata}, $serviceInstance",
@@ -575,6 +647,9 @@ class TomEndpointRouting {
     }
   }
 
+  /// Resolves the implementation instance named by a [TomComponentReference] on
+  /// [serviceType] (by name or by type), or `null` when none is present. Throws
+  /// if the reference is malformed (neither/both set) or duplicated.
   Object? getReferencedComponent(ClassMirror serviceType) {
     Object? serviceInstance;
     for (var anno in serviceType.metadata) {
@@ -607,6 +682,9 @@ class TomEndpointRouting {
     return serviceInstance;
   }
 
+  /// Registers [teph] on [router] for each HTTP method of [tep] (plus an
+  /// `OPTIONS` route for CORS preflight) and records it in [routingInfo] /
+  /// [handlers]. Throws on an unsupported HTTP method.
   void createRoutesForEndpoint(
     TomEndpoint<Object, Object> tep,
     Router router,
@@ -647,6 +725,10 @@ class TomEndpointRouting {
     handlers.add(teph);
   }
 
+  /// Collects, for each endpoint-annotated method of [classMirror], the merged
+  /// [TomMethodMetadata] (endpoint, access control, transaction, and remote-API
+  /// tags). Throws on conflicting/duplicate tags or a missing
+  /// `@TomApiImplementation` for an API-endpoint method.
   List<TomMethodMetadata> getClassMethodMetadata(ClassMirror classMirror) {
     List<TomMethodMetadata> methodMetadata = [];
     nextDeclaration:
@@ -738,6 +820,9 @@ class TomEndpointRouting {
     return methodMetadata;
   }
 
+  /// Fallback resolution for an interface-based service: finds a component
+  /// class that extends or implements [serviceType] and returns its bean,
+  /// otherwise returns the passed-in [serviceInstance].
   Object? findServiceInstance(
     List<ClassMirror> componentClasses,
     ClassMirror serviceType,
@@ -762,18 +847,35 @@ class TomEndpointRouting {
   }
 }
 
+/// All annotation metadata collected for one endpoint method: the reflected
+/// method plus its [endpoint], optional [access] control and [transactionInfo],
+/// and (for registry-based endpoints) the resolved remote-API tags.
 class TomMethodMetadata {
+  /// The reflected endpoint method.
   MethodMirror methodMirror;
 
+  /// The endpoint definition (route, mime types, error handler, …).
   TomEndpoint endpoint;
+
+  /// The access-control rule, if the method declared one.
   TomAccessControl? access;
+
+  /// The transaction directive, if the method declared one.
   TomTransactional? transactionInfo;
 
+  /// The `@TomApiEndpointImplementation` tag, for registry-based endpoints.
   TomApiEndpointImplementation? apiEndpointImplementation;
+
+  /// The class's `@TomApiImplementation` tag, for registry-based endpoints.
   TomApiImplementation? apiImplementation;
+
+  /// The resolved remote API, for registry-based endpoints.
   TomApi? api;
+
+  /// The resolved remote-API endpoint, for registry-based endpoints.
   TomApiEndpoint? apiEndpoint;
 
+  /// Bundles the metadata for one endpoint method.
   TomMethodMetadata({
     required this.endpoint,
     required this.methodMirror,
@@ -786,11 +888,19 @@ class TomMethodMetadata {
   });
 }
 
+/// The partitioned result of scanning the annotated classes: interface-based
+/// services, remote-API implementations, and component classes.
 class TomClassScanResult {
+    /// Classes annotated with `@tomService` (interface-based services).
     List<ClassMirror> serviceInterfaces = [];
+
+    /// Classes annotated with `@TomApiImplementation`.
     List<ClassMirror> apiImplementations = [];
+
+    /// Classes annotated with `@TomComponent` (candidate implementations).
     List<ClassMirror> componentClasses = [];
 
+    /// Creates a scan result from the three class lists.
     TomClassScanResult({
       this.serviceInterfaces = const [],
       this.apiImplementations = const [],
