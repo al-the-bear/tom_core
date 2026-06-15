@@ -6,6 +6,10 @@
   `TomPasswordField`, and `TomFormOld`; a module guide at `doc/forms.md`; an
   executable example at `example/forms/`; and the first test suite at
   `test/forms_test.dart`. No public API change (removed only dead comments).
+- **Little Things module**: added dartdoc to `TomClientException` and
+  `TomClientUIException`; a module guide at `doc/little_things.md`; an executable
+  example at `example/little_things/`; and tests at
+  `test/little_things_test.dart`. No public API change.
 
 ### Removed
 
