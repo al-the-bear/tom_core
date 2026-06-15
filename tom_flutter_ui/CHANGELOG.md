@@ -117,3 +117,19 @@ change — this release records the widget set that already exists.
   and `build()` producing an `Acl` (including the duplicate-instance guard). The
   module already carried `acl_hide_unauthorized_test.dart` (10 tests, still
   green); no public API change.
+- **`widgets/`** — authored `doc/widgets.md` (the general widget kit: ~200 Tom
+  wrappers over Flutter/Cupertino across 21 families behind `widgets.dart`, the
+  shared `TomFamilyBase` → `TomPolicyNodeBase` → `TomNodeBase` contract — family
+  tagging, `tomId`/`basePath`, `effectiveAuthState`, and construction-time
+  `TomCtr` resource resolution — a full family catalogue, and the
+  authorization/group/scope rules); added
+  `example/widgets/widgets_example.dart` (pure-logic: family tagging across
+  button/label/toggle/container/progress wrappers, `basePath` resolution and
+  scope prefixing, and `effectiveAuthState` resolution via resource auth and a
+  `TomUIGroup` ceiling — all without a `BuildContext`); added
+  `test/widgets/widgets_example_test.dart` (7 tests) covering the example end to
+  end plus direct checks on `family`/`families`/`isFamily`, `basePath` (top
+  level and scoped), and auth resolution (resource read, default full, group
+  narrowing). Scoped to module doc + pure-logic example/smoke test, not a
+  ~23k-LOC refactor of thin Flutter wrappers; per-widget visual rendering stays
+  with the `testWidgets` suites / `phase1_demo.dart`. No public API change.
