@@ -35,6 +35,14 @@
   `example/cache/`; and a test suite at `test/cache_test.dart`. Removed a dead
   embedded `main()` test scaffold from `server_cache.dart` (its LRU coverage is
   now expressed through observable behaviour in the test suite).
+- **Command-line module**: added dartdoc to `TomArgs` and its members
+  (`fillFromArgs`, `parseArgsToMap`, `convertToObjectMap`, `intPattern`,
+  `doublePattern`), documenting the shared value-conversion table and the
+  flag-encoding difference between `fillFromArgs` (string `"true"`) and
+  `parseArgsToMap` (boolean `true`); a module guide at `doc/cmdline.md`; an
+  executable example at `example/cmdline/`; and a test suite at
+  `test/cmdline_test.dart`. `TomEnvFile` was already documented. No public API
+  change.
 
 ### Fixed
 
