@@ -57,14 +57,52 @@ var noneLevel = TomLogLevel.none;
 verifyEquals(noneLevel.levelPattern, 0, 'None level pattern is 0');
 
 # =============================================================================
-# Test: TomPlatform Constants (5 tests)
+# Test: TomLogLevel byName / matches (3 tests)
+# =============================================================================
+
+verifyEquals(TomLogLevel.byName('info').levelPattern, 8, 'byName(info) resolves to info');
+verify(TomLogLevel.all.matches(TomLogLevel.info), 'all matches info');
+verifyEquals(TomLogLevel.trace.levelPattern, 1, 'Trace level pattern is 1');
+
+# =============================================================================
+# Test: TomPlatform Constants (9 tests)
 # =============================================================================
 
 verifyNotNull(platformMacos, 'macOS platform constant');
 verifyNotNull(platformLinux, 'Linux platform constant');
 verifyNotNull(platformWindows, 'Windows platform constant');
 verifyNotNull(platformWeb, 'Web platform constant');
+verifyNotNull(platformAndroid, 'Android platform constant');
+verifyNotNull(platformIos, 'iOS platform constant');
 verifyNotNull(noTomPlatform, 'No platform constant');
+verifyEquals(platformLinux.name, 'linux', 'Linux platform name');
+verifyEquals(platformMacos.name, 'macos', 'macOS platform name (lower-case id)');
+
+# =============================================================================
+# Test: TomEnvironment (3 tests)
+# =============================================================================
+
+var env = TomEnvironment('staging');
+verifyEquals(env.env, 'staging', 'Environment name is staging');
+verifyEquals(env.isTest, false, 'isTest defaults to false');
+verifyEquals(env.isDevelopment, false, 'isDevelopment defaults to false');
+
+# =============================================================================
+# Test: TomBaseException (3 tests)
+# =============================================================================
+
+var ex = TomBaseException('err.boom', 'Something went boom');
+verifyEquals(ex.key, 'err.boom', 'Exception key preserved');
+verifyEquals(ex.defaultUserMessage, 'Something went boom', 'Exception user message preserved');
+verifyNotNull(ex.uuid, 'Exception has a generated uuid');
+
+# =============================================================================
+# Test: limited() global function (3 tests)
+# =============================================================================
+
+verifyEquals(limited('abcdefghij', 4), 'abcd...', 'limited truncates long strings');
+verifyEquals(limited('ab', 4), 'ab', 'limited leaves short strings untouched');
+verifyEquals(limited(12345, 3), '123...', 'limited stringifies non-strings');
 
 # =============================================================================
 # Summary
