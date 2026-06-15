@@ -114,6 +114,18 @@
   global analyzer). The `/health` route itself is mounted by the reflection
   pipeline and is documented, not unit-tested. No public API change.
 
+- **Little-things module**: added dartdoc to the sole public symbol
+  `TomServerException` and its members (`isolateName`, `clientThrow`, the
+  constructor, and the `toString` override), documenting its role as the base
+  class for every server-raised exception and its two server-specific concerns —
+  isolate attribution (`Isolate.current.debugName`) and zone-based request
+  correlation (copying the current `TomRequestId`'s UUID into the inherited
+  `requestUuid`); a module guide at `doc/little_things.md`; an executable example
+  at `example/little_things/`; and a test suite at `test/little_things_test.dart`
+  covering construction, defaults, the `TomException` inheritance, isolate
+  attribution, the `toString` format, and request correlation via a `runZoned`
+  carrying a `TomRequestId`. No public API change.
+
 ### Removed
 
 - **Removed the empty `externalapis/` placeholder module.** It contained no
