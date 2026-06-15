@@ -3,7 +3,7 @@
 `tom_core_server` is the server-side layer of the Tom Framework. It builds on
 the platform-neutral [`tom_core_kernel`](../tom_core_kernel) (dependency
 injection, observable state, security, resources) and adds the pieces a backend
-service needs: an HTTP/WebSocket host, an endpoint pipeline, a relational
+service needs: an HTTP host, an endpoint pipeline, a relational
 persistence layer with a type-safe query model, database datasources and
 migrations, server configuration, caching, and authentication/authorization
 services.
@@ -67,7 +67,7 @@ final some = await repository.findByQuery(query, params);
 
 | Module | Summary |
 | ------ | ------- |
-| Server | `TomServer` — the shelf-based HTTP/WebSocket host, with request IDs, diagnostics, monitoring, and form handling |
+| Server | `TomServer` — the shelf-based HTTP host: the middleware pipeline (request context, per-request IDs, authentication, logging, JSON error mapping) around the endpoint router |
 | Endpoints | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` and the `TomService` / `TomApiImplementation` annotations — declarative endpoints and the request-handling pipeline |
 | Object Persistence | `TomRepository` / `TomSqlDatasourceRepository`, persistence annotations (`TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomReference`), the `TomQueryBuilder`, and the expression operators (`Eq`, `And`, `Like`, `In`, …) — an ORM-style layer with type-safe queries |
 | Datasources | `TomDataSource` and the MariaDB driver (`MariaDbDatasource` / `MariaDbXADatasource`), SQL dialects, the `TomDbType` typed-column model, and the `TomQuery` family (`TomSelect`, `TomCount`, `TomDelete`) |

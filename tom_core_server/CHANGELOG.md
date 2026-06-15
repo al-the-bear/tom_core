@@ -1,4 +1,10 @@
-## Unreleased
+## 1.1.0
+
+This release is a documentation, test, and example pass over every module of
+`tom_core_server` — adding dartdoc to all public symbols, a `doc/<module>.md`
+guide, an executable example, and a test suite per module — plus a handful of
+genuine bug fixes pinned by regression tests. No public API was added or
+removed (the deletions below were unexported placeholders).
 
 ### Documentation
 
@@ -7,6 +13,16 @@
   usage snippets (`TomServer`, `TomArgs.fillFromArgs`, `TomEnvFile.read`,
   repository CRUD), and a Modules table covering all 13 exported modules. No
   code or public API change.
+- **Final-review accuracy pass**: the README Server-module summary and the
+  intro no longer advertise the unimplemented WebSocket / diagnostics /
+  monitoring / form-handling capabilities (those were empty placeholders,
+  removed below). The Server description now reflects the actual surface — the
+  shelf middleware pipeline around the endpoint router — matching
+  `doc/server.md`'s "Not Yet Implemented" section. Verified that all 13 modules
+  have a one-to-one `doc/<module>.md`, an `example/<module>/`, and a
+  `test/<module>_test.dart`; reflection/DB/socket-dependent surfaces are
+  documented and integration-tested, the connection-free surfaces are
+  unit-tested (196 tests, all green).
 - **Authentication module**: added dartdoc to all public symbols
   (`TomAuthenticationServer`, `TomAuthenticationService`,
   `TomAuthenticationData`, `TomAuthenticationInfo`,
