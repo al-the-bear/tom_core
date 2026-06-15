@@ -134,6 +134,48 @@ verifyNotNull(dispAttach, 'TomContentDisposition.attachment exists');
 verifyEquals(dispAttach, 'attachment', 'Attachment value');
 
 # =============================================================================
+# Test: Observable boxed scalars (8 tests)
+# =============================================================================
+
+var boxedString = TomString('ada');
+verifyNotNull(boxedString, 'TomString created');
+verifyEquals(boxedString.get(), 'ada', 'TomString.get returns initial value');
+verifyEquals(boxedString.isNull, false, 'TomString is not null');
+
+var boxedInt = TomInt(42);
+verifyEquals(boxedInt.get(), 42, 'TomInt.get returns initial value');
+
+var boxedBool = TomBool(true);
+verifyEquals(boxedBool.get(), true, 'TomBool.get returns initial value');
+
+boxedString.set('lovelace');
+verifyEquals(boxedString.get(), 'lovelace', 'TomString.set updates value');
+
+# =============================================================================
+# Test: TomObservable (2 tests)
+# =============================================================================
+
+var observable = TomObservable();
+verifyNotNull(observable, 'TomObservable created');
+verifyEquals(observable.isMuted, false, 'TomObservable not muted by default');
+
+# =============================================================================
+# Test: Principal model (8 tests)
+# =============================================================================
+
+var role = TomRole(name: 'admin', entitlements: ['read', 'write']);
+verifyNotNull(role, 'TomRole created');
+verifyEquals(role.name, 'admin', 'TomRole name');
+
+var entitlement = TomEntitlement(name: 'read');
+verifyNotNull(entitlement, 'TomEntitlement created');
+verifyEquals(entitlement.name, 'read', 'TomEntitlement name');
+
+var group = TomGroup(name: 'staff');
+verifyNotNull(group, 'TomGroup created');
+verifyEquals(group.name, 'staff', 'TomGroup name');
+
+# =============================================================================
 # Summary
 # =============================================================================
 
