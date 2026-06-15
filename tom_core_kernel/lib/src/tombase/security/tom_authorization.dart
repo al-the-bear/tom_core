@@ -184,11 +184,13 @@ class TomAuthorizationGroup {
     return _members.length;
   }
 
+  /// Whether the group has no live members (after pruning stale references).
   bool get isEmpty {
     _cleanupStaleReferences();
     return _members.isEmpty;
   }
 
+  /// Whether the group has at least one live member.
   bool get isNotEmpty => !isEmpty;
 
   void _cleanupStaleReferences() {
@@ -297,6 +299,10 @@ class TomAuthorization {
 
   static TomAuthorizationAdapter? _adapter;
 
+  /// Installs the [TomAuthorizationAdapter] that backs [resolveAuth].
+  ///
+  /// When no adapter is set, authorization resolves to [TomAuthState.full]
+  /// (development mode).
   static set adapter(TomAuthorizationAdapter adapter) => _adapter = adapter;
 
   /// Resolves authorization for the given resource key path.

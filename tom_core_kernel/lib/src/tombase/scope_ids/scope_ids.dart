@@ -1,14 +1,29 @@
-
 import 'dart:async';
 import 'package:tom_core_kernel/src/tombase/little_things/little_things.dart';
 
+/// A hierarchical, zone-propagated identifier used to namespace resource
+/// lookups (e.g. `app.checkout.orderForm`).
+///
+/// Scopes form a parent chain rooted at [defaultScope]. The active scope is
+/// carried on the current [Zone], so [current] resolves to whichever scope was
+/// installed by the nearest enclosing [withScope] / [runInScope] call.
 abstract class TomScope {
+  /// This scope's local identifier (the last segment of its path).
   String get id;
+
+  /// The enclosing scope, or `null` for the root [defaultScope].
   TomScope? get parent;
+
+  /// The root scope used when no scope is installed on the current zone.
   static TomScope defaultScope = TomScopeBase(scopeId: 'default', parentScope: null);
+
+  /// The scope installed on the current [Zone], or [defaultScope] if none.
   static TomScope get current => getFromCurrentZone<TomScope>() ?? defaultScope;
+
+  /// Runs [body] in a new child scope named [scope], parented to [current].
   static T withScope<T>(String scope, T Function() body) {
-    return runZoned(body, zoneValues: { TomScope: TomScopeBase(scopeId: scope, parentScope: current)  }); 
+    return runZoned(body,
+        zoneValues: {TomScope: TomScopeBase(scopeId: scope, parentScope: current)});
   }
 
   /// Runs [body] inside this scope's zone.
@@ -41,22 +56,32 @@ abstract class TomScope {
   String getScopePath() => buildScopePath(this);
 }
 
+/// Concrete [TomScope] built from a scope id and an optional parent.
 class TomScopeBase with TomScopeMixin {
-  TomScopeBase({ required String scopeId, TomScope? parentScope}) {
+  TomScopeBase({required String scopeId, TomScope? parentScope}) {
     initScope(scopeId: scopeId, parentScope: parentScope);
   }
 }
 
+/// Reusable [TomScope] implementation backing [TomScopeBase].
+///
+/// Mix into a class and call [initScope] once during construction to set the
+/// scope's identity. The backing fields are write-once.
 mixin TomScopeMixin on Object implements TomScope {
   late final String _id;
   late final TomScope? _parent;
-  void initScope({ required String scopeId, TomScope? parentScope}) {
+
+  /// Initialises this scope's identity. Call exactly once during construction.
+  void initScope({required String scopeId, TomScope? parentScope}) {
     _id = scopeId;
     _parent = parentScope;
   }
 
-  void set id(String newId) => _id = newId;
-  void set parent(TomScope? newParent) => _parent = newParent;
+  /// Sets the scope id. Only valid before [initScope] has run (write-once).
+  set id(String newId) => _id = newId;
+
+  /// Sets the parent scope. Only valid before [initScope] has run (write-once).
+  set parent(TomScope? newParent) => _parent = newParent;
 
   @override
   String get id => _id;

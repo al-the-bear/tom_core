@@ -258,7 +258,7 @@ class TomTextResourceProvider {
         : s;
   }
 
-   /// Retrieves the text value at the given path.
+  /// Retrieves the text value at the given path.
   ///
   /// Supports both flat keys (e.g., 'title') and hierarchical paths
   /// using dot notation (e.g., 'screens.home.title').
