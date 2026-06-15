@@ -2,6 +2,13 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+/// Raised by [TomAuthorizationCache] when a cached principal cannot be
+/// returned — currently when a matching entry exists but its expiry has
+/// already passed.
+///
+/// The distinct type lets a caller catch it specifically: an expired
+/// principal is a signal that the client should re-authorize, as opposed to a
+/// cache miss (which simply returns `null`).
 class TomAuthorizationCacheException extends TomException {
   TomAuthorizationCacheException(
     super.key,
@@ -15,16 +22,21 @@ class TomAuthorizationCacheException extends TomException {
   });
 }
 
-/// this class with cache the authorization tokens received during calls to
-/// getSettingsAndAssociateWithAuthorization so the information is available for subsequent calls
-/// the information is stored in the main isolate to make it accessible from all requests
+/// A single entry in the [TomAuthorizationCache]: the authorized
+/// [TomPrincipal] paired with the [deletionTime] at which it should be
+/// considered stale and evicted.
 ///
-///
-
+/// When no explicit deletion time is supplied the entry lives for one day.
 class TomAuthorizationCacheEntry {
+  /// The instant after which this entry is expired and may be evicted. Set to
+  /// the token's `validUntil` when stored via [TomAuthorizationCache.storePrincipal].
   late DateTime deletionTime;
+
+  /// The principal resolved for the associated authentication token.
   TomPrincipal authorizedPrincipal;
 
+  /// Creates an entry for [authorizedPrincipal]. [deletionTime] defaults to one
+  /// day from now when omitted.
   TomAuthorizationCacheEntry(
     this.authorizedPrincipal, [
     DateTime? deletionTime,
@@ -33,6 +45,19 @@ class TomAuthorizationCacheEntry {
   }
 }
 
+/// Caches the [TomPrincipal] resolved for an authentication token so that the
+/// authorization lookup runs once per token rather than on every request.
+///
+/// The cache lives in the **main isolate** and is keyed by the JWT token
+/// string. Worker isolates do not hold their own copy: [getPrincipal] and
+/// [storePrincipal] detect when they run off the main isolate and forward the
+/// request to the creator isolate via [TomWorker.executeInCreator], where the
+/// [TomAuthorizationCacheExecutor] services the [TomAuthorizationCacheStoreMessage]
+/// / [TomAuthorizationCacheRetrieveMessage] against the single shared map.
+///
+/// A periodic timer evicts entries whose [TomAuthorizationCacheEntry.deletionTime]
+/// has passed once an hour; reads also reject an expired entry by throwing a
+/// [TomAuthorizationCacheException].
 class TomAuthorizationCache {
   static final TomAuthorizationCache _current = TomAuthorizationCache();
 
@@ -58,6 +83,12 @@ class TomAuthorizationCache {
 
   final Map<String, TomAuthorizationCacheEntry> _cache = {};
 
+  /// Returns the cached principal for [authenticationToken], or `null` if no
+  /// entry exists (a cache miss).
+  ///
+  /// Throws [TomAuthorizationCacheException] when an entry exists but has
+  /// expired — the caller should treat that as a prompt to re-authorize. When
+  /// called from a worker isolate the lookup is forwarded to the main isolate.
   static Future<TomPrincipal?> getPrincipal(
     TomClientJwtToken authenticationToken,
   ) async {
@@ -71,7 +102,6 @@ class TomAuthorizationCache {
           );
           return entry.authorizedPrincipal;
         } else {
-          // TODO: introduce specific exception here, this might be important for reauthorizing the user
           throw TomAuthorizationCacheException(
             "tomclient.authorization_cache.expired_principal",
             "AuthorizedPrincipal expired for user $authenticationToken",
@@ -89,6 +119,11 @@ class TomAuthorizationCache {
     return null;
   }
 
+  /// Stores [authorizedPrincipal] under [authenticationToken], using the
+  /// token's `validUntil` payload claim as the entry's expiry.
+  ///
+  /// When called from a worker isolate the store is forwarded to the main
+  /// isolate. Always returns `0`.
   static Future<int> storePrincipal(
     TomClientJwtToken authenticationToken,
     TomPrincipal authorizedPrincipal,
@@ -114,6 +149,9 @@ class TomAuthorizationCache {
   }
 }
 
+/// Cross-isolate command asking the main isolate to store
+/// [authorizedPrincipal] for [authenticationToken]. Handled by
+/// [TomAuthorizationCacheExecutor].
 class TomAuthorizationCacheStoreMessage {
   TomClientJwtToken authenticationToken;
   TomPrincipal authorizedPrincipal;
@@ -123,11 +161,18 @@ class TomAuthorizationCacheStoreMessage {
   );
 }
 
+/// Cross-isolate command asking the main isolate to return the cached
+/// principal for [authenticationToken]. Handled by
+/// [TomAuthorizationCacheExecutor].
 class TomAuthorizationCacheRetrieveMessage {
   TomClientJwtToken authenticationToken;
   TomAuthorizationCacheRetrieveMessage(this.authenticationToken);
 }
 
+/// Runs in the main isolate and services the [TomAuthorizationCacheStoreMessage]
+/// and [TomAuthorizationCacheRetrieveMessage] commands forwarded from worker
+/// isolates, delegating to [TomAuthorizationCache]. Returns
+/// [TomExecutor.noResult] for any other command.
 class TomAuthorizationCacheExecutor extends TomExecutor {
   @override
   Object execute(Object command) {
