@@ -130,6 +130,26 @@ void main() {
       r.stack.bind('name', 'Tom');
       expect(r.resolveSync(r'${name}, are you there?'), 'Tom, are you there?');
     });
+
+    test(r'whitespace around the ? is tolerated (${ name ? })', () {
+      // The optional marker is as whitespace-forgiving as the bare form: the
+      // trailing ? is stripped and the remainder right-trimmed, so `${ name ? }`
+      // optionally resolves the binding `name`.
+      final r = PlaceholderResolver(environment: const {});
+      r.stack.bind('name', 'Tom');
+      expect(r.resolveSync(r'[${ name ? }]'), '[Tom]');
+      // …and an unbound spaced optional still vanishes rather than throwing.
+      expect(r.resolveSync(r'[${ absent ? }]'), '[]');
+    });
+
+    test(r'optional overrides lenient mode identically to strict', () {
+      // D1.5: an unbound ${name?} renders empty whether the resolver is strict
+      // or lenient — the marker's whole purpose is "render empty".
+      final lenient = PlaceholderResolver(strict: false, environment: const {});
+      expect(lenient.resolveSync(r'[${absent?}]'), '[]');
+      lenient.stack.bind('present', 'X');
+      expect(lenient.resolveSync(r'${present?}'), 'X');
+    });
   });
 
   group(r'PlaceholderResolver — expression form (${{ … }})', () {
