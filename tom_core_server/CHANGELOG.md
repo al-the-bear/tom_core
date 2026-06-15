@@ -43,6 +43,17 @@
   executable example at `example/cmdline/`; and a test suite at
   `test/cmdline_test.dart`. `TomEnvFile` was already documented. No public API
   change.
+- **Configuration module**: added dartdoc to all public symbols
+  (`TomServerConfigResourceProvider`, `TomConfig` and its `TomStringConfig` /
+  `TomIntConfig` / `TomDoubleConfig` / `TomBoolConfig` specialisations,
+  `TomBaseServerConfiguration`, `tomAppId`), documenting the resource-provider
+  lookup model, `TomConfig`'s construction-time resolution, and the
+  resources → environment → `.env` → args source precedence; a module guide at
+  `doc/configuration.md`; an executable example at `example/configuration/`; and
+  a test suite at `test/configuration_test.dart`. `TomYaml` was already
+  documented. No public API change — removed only a stray `// TODO:` comment
+  (the deferred JWT-settings work is now recorded in the class dartdoc and the
+  quest completion steps).
 
 ### Fixed
 

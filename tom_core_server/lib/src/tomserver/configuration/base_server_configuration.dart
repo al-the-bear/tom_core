@@ -3,38 +3,53 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-// TODO: add settings for JWT creation
+/// Holds the resolved configuration tree and answers property lookups for
+/// [TomConfig].
+///
+/// A single provider is shared process-wide through [getServerConfig]; install
+/// a populated one at startup with [setServerConfigProvider] or by setting the
+/// static [loader]. Keys may be dotted paths into the nested [resources] map
+/// (resolved via the kernel's tree walker).
 class TomServerConfigResourceProvider {
-
   static TomServerConfigResourceProvider? _configProvider;
 
+  /// Optional factory for the default provider's [resources]. When set, it is
+  /// invoked the first time [getServerConfig] lazily creates a provider.
   static Map<String, dynamic> Function()? loader;
 
+  /// Installs [provider] as the process-wide configuration source.
   static void setServerConfigProvider(
     TomServerConfigResourceProvider provider,
   ) {
     _configProvider = provider;
   }
 
+  /// Returns the active provider, creating a default one (using [loader] if
+  /// set) on first access.
   static TomServerConfigResourceProvider getServerConfig() {
     _configProvider ??= TomServerConfigResourceProvider();
     return _configProvider!;
   }
 
+  /// The configuration tree: a possibly-nested map of property values.
   Map<String, dynamic> resources = {};
 
+  /// Creates a provider, populating [resources] from [loader] if it is set.
   TomServerConfigResourceProvider() {
     if (loader != null) {
       resources = loader!();
     }
   }
 
+  /// Creates a provider whose [resources] are produced by [loader].
   TomServerConfigResourceProvider.load(Map<String, dynamic> Function() loader) {
     resources = loader();
   }
 
+  /// Creates a provider directly from an existing [resources] map.
   TomServerConfigResourceProvider.from(this.resources);
 
+  /// Whether property [s] exists, as a dotted tree path or a top-level key.
   bool exists(String s) {
     try {
       getObjectFromTree(resources, s);
@@ -45,6 +60,11 @@ class TomServerConfigResourceProvider {
     return resources[s] != null;
   }
 
+  /// Returns property [s] (dotted path or top-level key).
+  ///
+  /// As a deliberate fallback, an unknown key resolves to the key string [s]
+  /// itself rather than throwing; callers gate on [exists] when absence must be
+  /// distinguished (as [TomConfig] does).
   Object get(String s) {
     try {
       dynamic value = getObjectFromTree(resources, s);
@@ -56,8 +76,24 @@ class TomServerConfigResourceProvider {
   }
 }
 
+/// The process-wide application id, set from configuration at startup.
 String tomAppId = "";
 
+/// Reflected base class for a server's configuration.
+///
+/// Subclasses declare typed fields (port, TLS material, handlers, logging, …);
+/// the reflection layer fills them from the merged configuration sources in the
+/// constructor. The defaults below are sensible for local development — notably
+/// [certificateChain] / [privateKey] hold a throwaway self-signed `localhost`
+/// pair that MUST be overridden in production.
+///
+/// Sources are merged by [getDefaultValues] with later sources overriding
+/// earlier ones: configuration resources, then the OS environment, then a
+/// `.env` file, then command-line arguments (which win).
+///
+/// JWT signing keys ([jwtRsaPubKey] / [jwtRsaPrivKey] /
+/// [jwtSharedSecretKey]) are present as fields; richer JWT-creation settings
+/// are a tracked follow-up (see the quest completion steps).
 @tomReflector
 abstract class TomBaseServerConfiguration {
   String appId = "";
@@ -201,6 +237,11 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 
   String databaseMigrationsDirectory = "./database_migrations";
 
+  /// Builds the merged value map used to populate a configuration instance.
+  ///
+  /// Starts from the active provider's [TomServerConfigResourceProvider.resources]
+  /// and overlays, in increasing precedence: the OS environment, a `.env` file
+  /// (`./.env`), then the parsed [args]. Command-line arguments therefore win.
   static Map<String, Object?> getDefaultValues(List<String> args) {
     Map<String, Object?> values =
         TomServerConfigResourceProvider.getServerConfig().resources;
@@ -210,8 +251,14 @@ utj3flRQDLaDAl91lySpAjUp9aM8
     return values;
   }
 
+  /// Assigns the merged configuration [values] onto this instance.
+  ///
+  /// Implemented by the generated reflection for the concrete subclass; each
+  /// known field is set from the matching key in [values].
   void setValues(Map<String, Object?> values);
 
+  /// Creates the configuration, resolving and applying values from all sources
+  /// (see [getDefaultValues]) for the given [args].
   TomBaseServerConfiguration(List<String> args) {
     setValues(getDefaultValues(args));
   }
