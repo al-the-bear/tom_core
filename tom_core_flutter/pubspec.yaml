@@ -1,6 +1,6 @@
 name: tom_core_flutter
 description: Flutter integration layer for the TOM framework — re-exports tom_core_kernel and adds Flutter widgets, forms, and client utilities.
-version: 1.0.0
+version: 1.1.0
 publish_to: none
 
 environment:
