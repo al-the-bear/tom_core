@@ -1,82 +1,118 @@
-# Tom Core Kernel Refactoring Workflow
+# Tom Core Kernel — Refactoring Plan
 
-Project-specific workflow for refactoring, testing, documenting, and creating examples for tom_core_kernel modules.
+Project-specific workflow for refactoring, testing, documenting, and creating
+examples for **tom_core_kernel**. This is the **reference package** for the Tom
+Core repository: every other package-style project's refactoring plan targets
+the state achieved here (clean code, full dartdoc, per-module documentation,
+executable examples, comprehensive tests, generated `api.dart`).
+
+**Project type:** Dart library (`publish_to: none`)
+**Source location:** `lib/src/tombase/`
 
 ---
 
 ## Target Modules
 
-Located in `lib/src/tombase/`:
+Located in `lib/src/tombase/` (keep this list in sync with the folder — update
+the plan whenever a module is added or removed):
 
-- `/tombase/beanlocator`
-- `/tombase/context`
-- `/tombase/crypto`
-- `/tombase/http_connection`
-- `/tombase/isolate_pooling`
-- `/tombase/json`
-- `/tombase/little_things`
-- `/tombase/logging`
-- `/tombase/observable`
-- `/tombase/reflection`
-- `/tombase/resources`
-- `/tombase/runtime`
-- `/tombase/security`
-- `/tombase/settings`
-- `/tombase/shutdown_cleanup`
-- `/tombase/timezoned`
+| Module | Refactor? | Notes |
+| ------ | --------- | ----- |
+| `beanlocator/` | yes | Bean locator / dependency injection |
+| `context/` | yes | Execution context management |
+| `http_connection/` | yes | HTTP connection utilities |
+| `isolate_pooling/` | yes | Isolate pool management |
+| `json/` | yes | JSON helpers |
+| `little_things/` | yes | Small cross-cutting utilities |
+| `logging/` | yes | Logging (incl. isolate & remote logging) |
+| `observable/` | **no** | Stable — do not refactor (see Prompt 1) |
+| `reflection/` | **no** | Stable — do not refactor |
+| `resources/` | yes | Resource providers |
+| `scope_ids/` | yes | Scope identifier utilities |
+| `security/` | yes | Auth, authorization, bearer auth, access control |
+| `settings/` | yes | Settings management |
+| `shutdown_cleanup/` | yes | Shutdown cleanup hooks |
+| `timezoned/` | **no** | Stable — do not refactor |
 
----
-
-## Workflow Prompts
-
-### Prompt 1: Full Module Refactoring
-
-1. Go through all subfolders of the tombase folder (exception: observable, timezoned, reflection) and refactor and document the files according to the guidelines in `coding_guidelines.md`. Don't change the functionality or remove/add additional public methods, members, or accessors. You can introduce new private members, methods, and accessors.
-
-2. Create comprehensive examples according to the guidelines in `examples.md` (global). The number of examples should vary depending on the number of methods, classes, etc. to ensure examples cover every important aspect of the functionality.
-
-3. Create comprehensive tests according to the guidelines in `tests.md` (global). The number of tests should vary depending on the number of methods, classes, etc. to ensure tests cover every important aspect of the functionality.
-
-4. Make sure all the examples and tests run. Add files to `build.yaml` for generation using the reflection generator as needed. Import and initialize reflection. Fix any bugs found.
-
-5. Create a package documentation file according to the guidelines in `documentation_guidelines.md`. The length should vary depending on complexity. Name the file after the folder (e.g., `http_connection.md` for `/http_connection/`).
-
-6. Create the API file `api.dart` according to the API file creation rules in the api subfolder. Delete any existing `api.dart` if necessary.
-
-7. Read the complete newly generated `api.dart` file and verify that the API listed matches the code.
-
-8. Verify that documentation covers all public classes, methods, and members. Verify documentation doesn't show features that don't exist in the code. Extract code samples from documentation into an additional example file and ensure examples run. Update documentation if changes are required.
+Crypto lives in the separate `tom_crypto` dependency (not a module here).
+The generated `version.versioner.dart` is tooling output — never hand-edit it.
 
 ---
 
-### Prompt 2: Example and Documentation Revision
+## Concrete Step List
 
-**Group 1: Guidelines Update**
+Iterate through these steps in order. Each step states its **done** condition.
 
-Revise `examples.md` to emphasize that examples must be **executable code**, not code printed to the console.
+1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
+   (short, pre-publish list of recent changes), and `LICENSE` (proprietary —
+   copy the wording from the existing `LICENSE`) exist at the project root.
+   Create any that are missing; customize a template `README.md`.
+   *Done when all three exist and the README describes the package accurately.*
+2. **Per-module pass — `beanlocator/`.** Run the Per-Module Workflow below.
+3. **Per-module pass — `context/`.**
+4. **Per-module pass — `http_connection/`.**
+5. **Per-module pass — `isolate_pooling/`.**
+6. **Per-module pass — `json/`.**
+7. **Per-module pass — `little_things/`.**
+8. **Per-module pass — `logging/`.**
+9. **Per-module pass — `resources/`.**
+10. **Per-module pass — `scope_ids/`.**
+11. **Per-module pass — `security/`.**
+12. **Per-module pass — `settings/`.**
+13. **Per-module pass — `shutdown_cleanup/`.**
+14. **Barrel exports.** Verify every public symbol of every module is exported
+    from the package barrel(s) in `lib/`. *Done when `dart analyze` is clean and
+    no public type is unreachable from the package entrypoint.*
+15. **Whole-package QA.** Run `dart analyze` (zero warnings) and `testkit :test`
+    (all green). Confirm reflection is initialized for examples/tests and that
+    `build.yaml` lists every file needing generation. *Done when analyzer and
+    test suite are both clean.*
+16. **Final review.** Re-read each module doc and `api.dart`; confirm docs only
+    describe features that exist and cover all public API. Update `CHANGELOG.md`
+    with a one-line summary of the refactoring pass.
 
-**Group 2: Example Revision**
+> Modules `observable/`, `reflection/`, and `timezoned/` are intentionally
+> **excluded** from the per-module passes — they are stable. Document and test
+> coverage for them is maintained, but their implementation is not refactored.
 
-Revise all examples using the guidelines in `examples.md`. Replace printed code with actually executed code. Example quality and usefulness for future framework users is priority.
+---
 
-**Reference Projects**: Always use the code in `tom_uam_client`, `tom_uam_server`, `tom_uam_shared` and derived modules in `tom_client/tom_server` source folders to understand intended usage.
+## Per-Module Workflow
 
-**Tasks** (in order):
-1. Update documentation according to `documentation_guidelines.md`
-2. Update examples according to `examples.md`
-3. Update tests according to `tests.md`
-4. Verify that examples and tests actually run
-5. Verify documentation covers all parts of the code
-6. Verify tests cover all parts of the code
-7. Verify examples cover all parts of the code and typical usage scenarios
+For each module step above, perform these sub-steps (do not change public
+behavior; you may add private members/methods):
+
+1. Refactor and document the files per
+   [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md).
+   Do not add/remove/rename public methods, members, or accessors.
+2. Create comprehensive **executable** examples per
+   [`dart/examples.md`](/_copilot_guidelines/dart/examples.md). Scale the count
+   to the surface area so every important aspect is demonstrated.
+3. Create comprehensive tests per
+   [`dart/unit_tests.md`](/_copilot_guidelines/dart/unit_tests.md). Scale the
+   count to the surface area so every important aspect is covered.
+4. Make examples and tests run. Add files to `build.yaml` for the reflection
+   generator as needed; import and initialize reflection. Fix any bugs found.
+5. Create the module documentation file per
+   [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md),
+   named after the folder (e.g. `doc/http_connection.md`). Length scales with
+   complexity.
+6. Create / regenerate the module `api.dart` per the API file rules. Delete any
+   stale `api.dart` first.
+7. Read the generated `api.dart` and verify it matches the code.
+8. Verify documentation covers all public classes, methods, and members and
+   describes nothing that does not exist. Extract code samples from the docs
+   into an example file and confirm they run.
 
 ---
 
 ## Guidelines References
 
 | Guideline | Location | Scope |
-|-----------|----------|-------|
-| Coding Guidelines | `lib/src/tombase/coding_guidelines.md` | tom_core_kernel |
-| Documentation Guidelines | `lib/src/tombase/documentation_guidelines.md` | tom_core_kernel |
-| Test Guidelines | `/_copilot_guidelines/tests.md` (global) | All projects |
-| Example Guidelines | `/_copilot_guidelines/examples.md` (global) | All projects |
+| --------- | -------- | ----- |
+| Coding Guidelines | [`dart/coding_guidelines.md`](/_copilot_guidelines/dart/coding_guidelines.md) | All Dart |
+| Clean Code | [`dart/clean_code_principles.md`](/_copilot_guidelines/dart/clean_code_principles.md) | All Dart |
+| Documentation | [`documentation_guidelines.md`](/_copilot_guidelines/documentation_guidelines.md) | All projects |
+| Unit Tests | [`dart/unit_tests.md`](/_copilot_guidelines/dart/unit_tests.md) | All projects |
+| Examples | [`dart/examples.md`](/_copilot_guidelines/dart/examples.md) | All projects |
+| API Summary | [`dart/api_summary_creation.md`](/_copilot_guidelines/dart/api_summary_creation.md) | All projects |

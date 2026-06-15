@@ -1,7 +1,7 @@
-# Tom DartScript Bridges - Copilot Guidelines
+# Tom Core D4rt - Copilot Guidelines
 
-**Project:** `tom_dartscript_bridges`  
-**Type:** Dart Package
+**Project:** `tom_core_d4rt`  
+**Type:** Dart bridge library + `d4rt` CLI executable
 
 ## Applicable Guidelines
 
@@ -22,6 +22,7 @@
 
 | Document | Purpose |
 |----------|---------|
+| [Refactoring Plan](refactoring_plan.md) | Step-by-step refactor / test / example / document plan per bridge module; reference target state is `tom_core_kernel` |
 | [Testing](testing.md) | Replay-based integration test architecture, running tests, adding new tests |
 
 ## Quick Reference
