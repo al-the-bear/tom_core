@@ -97,3 +97,23 @@ change — this release records the widget set that already exists.
   end plus the typedef identity, each mode's ceiling/floor/replace behaviour,
   effective-auth resolution, register/unregister tracking, and scope paths. The
   module had no prior tests or example; no public API change.
+- **`advanced_container_layout/`** — authored `doc/advanced_container_layout.md`
+  (the fluent, row-based ACL layout engine: the `AclBuilder` → `Acl` build
+  pipeline and its append/gap/row/size/alignment vocabulary, the `AclFlags`
+  AWT-style attribute bits, `RowAlignment`, responsive variants vs. row
+  breakpoints, the `AclDeviceContext` static resolvers and AND-combined
+  `buildConvenienceDetector`, the `AclBinaryVisibilityController` /
+  `AclCallbackVisibilityController` group-visibility controllers, `AclScope`
+  id/group propagation, and the `setAclDefaultHideUnauthorized` /
+  `setHideUnauthorized` authorization-aware hiding); added
+  `example/advanced_container_layout/advanced_container_layout_example.dart`
+  (pure-logic: `AclFlags` bit composition, the device-context resolvers and
+  convenience detector, the two visibility controllers driven by
+  `ValueNotifier`s, and an `AclBuilder` fluent chain producing an `Acl`); added
+  `test/advanced_container_layout/advanced_container_layout_example_test.dart`
+  (11 tests) covering the example end to end plus the flag composition, the
+  width/density/platform resolver thresholds, the convenience-detector
+  null-vs-predicate contract, both controllers' notifier-driven mode updates,
+  and `build()` producing an `Acl` (including the duplicate-instance guard). The
+  module already carried `acl_hide_unauthorized_test.dart` (10 tests, still
+  green); no public API change.
