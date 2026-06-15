@@ -2,8 +2,9 @@
 
 Generic, domain-free building blocks for agentic systems in the TOM
 framework. Everything here depends only on `tom_basics` (plus `yaml` /
-`yaml_edit` for the config read/write path and `crypto` for the
-content-hash convention) and is safe to reuse across the brain, the
+`yaml_edit` for the config read/write path, `crypto` for the
+content-hash convention, and `path` for the `PathScope` sandbox) and is
+safe to reuse across the brain, the
 assistant, and any future agent runtime. The package is deliberately
 **`dart:io`-free**, so it stays usable from `dart:io`-forbidding
 consumers such as `tom_brain_shared`.
