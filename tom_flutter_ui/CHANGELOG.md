@@ -41,3 +41,11 @@ change — this release records the widget set that already exists.
   added `example/widget_base/widget_base_example.dart`; added
   `test/widget_base/widget_base_resolvers_test.dart` covering `TomStyleResolvers`
   (previously untested) and the example end to end. No public API change.
+- **`theme/`** — authored `doc/theme.md` (the "Tom layers on, never replaces,
+  Flutter theming" principle; `TomReadonlyStyle`'s ordered `apply` composition;
+  `TomTheme` / `TomThemeScope` delivery and default fallbacks; the
+  `TomButtonVariants` semantic-style factory); added
+  `example/theme/theme_example.dart`; added `test/theme/theme_test.dart`
+  (previously zero theme tests) covering `TomReadonlyStyle.apply`, `TomTheme`,
+  `TomButtonVariants`, and the `TomThemeScope` inherited-widget lookup. No public
+  API change.
