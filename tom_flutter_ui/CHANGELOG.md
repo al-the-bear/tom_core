@@ -49,3 +49,14 @@ change — this release records the widget set that already exists.
   (previously zero theme tests) covering `TomReadonlyStyle.apply`, `TomTheme`,
   `TomButtonVariants`, and the `TomThemeScope` inherited-widget lookup. No public
   API change.
+- **`actions/`** — authored `doc/actions.md` (the Tom Action system as the
+  behavioural counterpart to widgets: `TomAction` / `TomSimpleAction`, controller
+  grouping and `<controllerId>.<actionId>` canonical paths, typed
+  `TomActionContext`, the `TomActionUndo` → `TomActionTransaction` →
+  `TomUndoHistory` undo model, `TomActionTrigger` widget wiring, composite
+  actions, and `TomAuthorizable` integration); added
+  `example/actions/actions_example.dart`; added `test/actions/actions_test.dart`
+  (previously zero action tests, 25 tests) covering the controller registry,
+  action/simple-action contracts, transaction record/commit/rollback/undoAll,
+  the undo-history stack invariants, the trigger execution path, composite guard
+  behaviour, and the undo/redo coordinator actions. No public API change.
