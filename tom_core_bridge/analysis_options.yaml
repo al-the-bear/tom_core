@@ -2,17 +2,3 @@
 # warnings, and lints).
 
 include: package:lints/recommended.yaml
-
-linter:
-  rules:
-    dangling_library_doc_comments: false
-
-# Suppress lints for generated bridge code
-analyzer:
-  exclude:
-    - "**/*.b.dart"
-  errors:
-    unnecessary_cast: ignore
-    implementation_imports: ignore
-    depend_on_referenced_packages: ignore
-    deprecated_member_use: ignore
