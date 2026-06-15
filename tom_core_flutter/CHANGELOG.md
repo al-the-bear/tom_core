@@ -16,6 +16,11 @@
   at `test/observing_test.dart`. Corrected the README usage snippet (the
   `subState:`/`child:` API; the old snippet referenced non-existent
   `observable:`/`builder:` parameters). No public API change.
+- **Resources module**: added dartdoc to `TomProperty` and its typed subclasses
+  (`TomStringProperty`, `TomIntProperty`, `TomDoubleProperty`,
+  `TomBoolProperty`); a module guide at `doc/resources.md`; an executable
+  example at `example/resources/`; and tests at `test/resources_test.dart`. No
+  public API change.
 
 ### Removed
 
