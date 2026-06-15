@@ -1,0 +1,197 @@
+ID,Groups,Description,Baseline [06-15 12:59],[06-15 12:59]
+,TomServerException,forwards key and message to TomException,OK/OK,OK/OK
+,TomServerException,is a TomException,OK/OK,OK/OK
+,TomServerException,clientThrow defaults to true,OK/OK,OK/OK
+,TomServerException,clientThrow can be set false for internal errors,OK/OK,OK/OK
+,TomServerException,captures a non-empty isolate name,OK/OK,OK/OK
+,TomServerException,requestUuid is unset when constructed outside a request zone,OK/OK,OK/OK
+,TomServerException,correlates requestUuid from a TomRequestId in the zone,OK/OK,OK/OK
+,TomServerException,toString includes isolate name and client-throw flag,OK/OK,OK/OK
+,literals and comparisons,integer literal renders bare,OK/OK,OK/OK
+,literals and comparisons,string literal is single-quoted,OK/OK,OK/OK
+,literals and comparisons,equality renders a = b,OK/OK,OK/OK
+,literals and comparisons,greater-or-equal renders a >= b,OK/OK,OK/OK
+,parameters,render as :name placeholders,OK/OK,OK/OK
+,parameters,contribute their name to getParameters,OK/OK,OK/OK
+,parameters,reference no fields,OK/OK,OK/OK
+,column references,render as table.column,OK/OK,OK/OK
+,column references,are collected as fields,OK/OK,OK/OK
+,compound predicates,AND joins with the right separator and grouping,OK/OK,OK/OK
+,compound predicates,IN renders a comma-separated choice list,OK/OK,OK/OK
+,compound predicates,OR joins predicates with OR,OK/OK,OK/OK
+,BETWEEN arity validation,two bounds renders BETWEEN ... AND ...,OK/OK,OK/OK
+,TomRequestId,generates a non-empty v4 uuid,OK/OK,OK/OK
+,TomRequestId,generates distinct ids per instance,OK/OK,OK/OK
+,TomRequestId,toString carries the uuid,OK/OK,OK/OK
+,TomRequestLogInfo,"defaults to should-be-logged, not-yet-logged",OK/OK,OK/OK
+,TomRequestLogInfo,exposes the context key,OK/OK,OK/OK
+,TomRequestLogInfo,toString reflects both flags,OK/OK,OK/OK
+,BETWEEN arity validation,one bound throws TomQuerySyntaxException,OK/OK,OK/OK
+,BETWEEN arity validation,three bounds throws TomQuerySyntaxException,OK/OK,OK/OK
+,persistence annotations,TomDbColumn.declaredDartType resolves the type argument,OK/OK,OK/OK
+,persistence annotations,TomColumnInformation.getQueryFieldName prefers the column name,OK/OK,OK/OK
+,persistence annotations,TomColumnInformation.getQueryFieldName falls back to the field,OK/OK,OK/OK
+,extractAuthentication,"returns (null, null) when no Authorization header is present",OK/OK,OK/OK
+,persistence annotations,module exceptions are TomServerException subtypes,OK/OK,OK/OK
+,extractAuthentication,"returns (null, null) for a non-bearer scheme",OK/OK,OK/OK
+,TomAuthenticationData,carries the per-attempt fields,OK/OK,OK/OK
+,TomAuthenticationData,key is optional (null for guests),OK/OK,OK/OK
+,extractAuthentication,"returns (null, null) for a malformed bearer token",OK/OK,OK/OK
+,TomDummyAuthenticationService,authenticates any non-GUEST user,OK/OK,OK/OK
+,TomDummyAuthenticationService,treats GUEST as unauthenticated,OK/OK,OK/OK
+,TomDummyAuthenticationService,defaults showErrorMessage to true,OK/OK,OK/OK
+,TomCacheEntry,defaults deletionTime to null,OK/OK,OK/OK
+,TomDummyAuthenticationService,returns a TomAuthenticationInfo pairing principal and acd,OK/OK,OK/OK
+,TomAuthenticationService contract,accepts the correct credential,OK/OK,OK/OK
+,noopHandler,ignores the request and returns the fixed status code,OK/OK,OK/OK
+,TomCacheEntry,carries value and explicit deletion time,OK/OK,OK/OK
+,contextSetupMiddleware,merges entries into the request context,OK/OK,OK/OK
+,contextSetupMiddleware,passes the request through unchanged when no context is given,OK/OK,OK/OK
+,tomLoggingMiddleware,emits at most once and marks the log info,OK/OK,OK/OK
+,TomCacheException,is a TomServerException carrying its key,OK/OK,OK/OK
+,TomAuthenticationService contract,rejects a wrong credential with a LoginException,OK/OK,OK/OK
+,tomLoggingMiddleware,does not re-log a request already marked as logged,OK/OK,OK/OK
+,TomCacheManager,registers and looks caches up by name,OK/OK,OK/OK
+,TomAuthenticationService contract,LoginException carries its key/parameters and is a server exception,OK/OK,OK/OK
+,tomDefaultAuthenticationMiddleware,publishes a TomRequestId into the request zone,OK/OK,OK/OK
+,TomCacheManager,returns null for an unknown cache name,OK/OK,OK/OK
+,Adaptor annotations,TomAuthenticationAdaptor defaults to neither guest- nor user-only,OK/OK,OK/OK
+,tomDefaultAuthenticationMiddleware,resolves no principal when there are no credentials,OK/OK,OK/OK
+,TomCacheManager,uses this isolate in the main isolate,OK/OK,OK/OK
+,Adaptor annotations,TomAuthenticationAdaptor records guestOnly/userOnly,OK/OK,OK/OK
+,TomCacheManager,setCurrent swaps the active manager,OK/OK,OK/OK
+,Adaptor annotations,Tom2FAAdaptor carries its mechanism type and canonicalizes,OK/OK,OK/OK
+,TomAuthenticationServer,"defaults the JWT issuer to ""tom""",OK/OK,OK/OK
+,TomAuthenticationServer,defaults both services to the dummy service,OK/OK,OK/OK
+,TomAuthenticationServer,authenticatePass2 is unimplemented (throws UnsupportedError),OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),stores a value and reads it back,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),returns null for a missing key,OK/OK,OK/OK
+,TomTransactionManager,first startTransaction creates a new transaction,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),treats an entry with a past deletion time as expired,OK/OK,OK/OK
+,TomTransactionManager,a second startTransaction returns the existing one,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),does not return a value stored without a deletion time,OK/OK,OK/OK
+,TomTransactionManager,isReadOnly is honoured for a newly created transaction,OK/OK,OK/OK
+,TomTransactionManager,transactional is false when no transaction is active,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),throws TomCacheException on a type mismatch,OK/OK,OK/OK
+,commitTransaction,commits then ends every participant and clears the manager,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),removes an entry,OK/OK,OK/OK
+,commitTransaction,a vetoing participant turns the commit into a rollback,OK/OK,OK/OK
+,rollbackTransaction,rolls back then ends every participant and clears the manager,OK/OK,OK/OK
+,TomCache store/read/remove (main isolate),type helpers use the type name as the cache name,OK/OK,OK/OK
+,registerParticipant,"deduplicates participants by id, enlisting only once",OK/OK,OK/OK
+,Missing cache in the main isolate throws (no forwarding),toNameCache throws TomCacheException,OK/OK,OK/OK
+,Missing cache in the main isolate throws (no forwarding),fromNameCache throws TomCacheException,OK/OK,OK/OK
+,Missing cache in the main isolate throws (no forwarding),removeFromNameCache throws TomCacheException (regression),OK/OK,OK/OK
+,LRU eviction (bounded cache),evicts the least-recently-used entry when full,OK/OK,OK/OK
+,Tom Core Server tests,Server module exports correctly,OK/OK,OK/OK
+,LRU eviction (bounded cache),reading an entry promotes it so it survives the next eviction,OK/OK,OK/OK
+,LRU eviction (bounded cache),updating an existing key keeps the cache within its bound,OK/OK,OK/OK
+,Cross-isolate command objects (executed locally),store message stores into the named cache,OK/OK,OK/OK
+,registerParticipant,rejects enlistment once the transaction has concluded,OK/OK,OK/OK
+,Cross-isolate command objects (executed locally),retrieve message returns the stored value,OK/OK,OK/OK
+,TomTransactionException,is a TomServerException subtype,OK/OK,OK/OK
+,Cross-isolate command objects (executed locally),remove message deletes the entry,OK/OK,OK/OK
+,TomServerConfigResourceProvider,exists/get resolve a top-level key,OK/OK,OK/OK
+,TomServerConfigResourceProvider,exists/get resolve a dotted path into the tree,OK/OK,OK/OK
+,TomServerConfigResourceProvider,exists is false for an unknown key,OK/OK,OK/OK
+,TomServerConfigResourceProvider,get falls back to the key string for an unknown key,OK/OK,OK/OK
+,TomServerConfigResourceProvider,setServerConfigProvider installs the active provider,OK/OK,OK/OK
+,TomConfig resolution,reads an existing value and casts it to T,OK/OK,OK/OK
+,TomConfig resolution,uses the default when the key is absent,OK/OK,OK/OK
+,TomConfig resolution,prefers the configured value over the default,OK/OK,OK/OK
+,TomConfig resolution,the ~ operator returns the resolved value,OK/OK,OK/OK
+,TomDbType.of conversions,TomDbInt parses an integer string,OK/OK,OK/OK
+,TomDbType.of conversions,TomDbDouble parses a double string,OK/OK,OK/OK
+,TomConfig resolution,throws for an obligatory key with no default,OK/OK,OK/OK
+,TomDbType.of conversions,TomDbBool parses a boolean string,OK/OK,OK/OK
+,TomConfig resolution,throws an Exception on a type mismatch,OK/OK,OK/OK
+,TomDbType.of conversions,TomDbString wraps the value verbatim,OK/OK,OK/OK
+,TomConfig resolution,the typed subclasses resolve their type,OK/OK,OK/OK
+,TomConfig resolution,"the value is captured at construction, not on read",OK/OK,OK/OK
+,TomDbType.of conversions,TomDbDateTime parses an ISO-8601 string,OK/OK,OK/OK
+,TomDbType.of conversions,a null string yields a box holding null,OK/OK,OK/OK
+,TomStandardSqlDialect literals,text is single-quoted,OK/OK,OK/OK
+,TomBaseServerConfiguration.getDefaultValues,command-line args override configuration resources,OK/OK,OK/OK
+,TomStandardSqlDialect literals,intOp / doubleOp / boolOp are bare,OK/OK,OK/OK
+,TomBaseServerConfiguration.getDefaultValues,the OS environment is merged in,OK/OK,OK/OK
+,TomStandardSqlDialect literals,nullOp renders NULL,OK/OK,OK/OK
+,TomStandardSqlDialect literals,p renders a bound-parameter placeholder,OK/OK,OK/OK
+,TomDbMigrationAdaptor,binds a migrator to a data-source type,OK/OK,OK/OK
+,TomDbVersion,has zero/empty defaults before any migration is recorded,OK/OK,OK/OK
+,TomStandardSqlDialect literals,dateTimeOp is a quoted ISO-8601 string,OK/OK,OK/OK
+,TomDbVersion,records the fields of a single applied migration,OK/OK,OK/OK
+,TomStandardSqlDialect.objectOp dispatch,dispatches on runtime type,OK/OK,OK/OK
+,TomStandardSqlDialect.objectOp dispatch,an iterable becomes a comma-separated list of literals,OK/OK,OK/OK
+,TomStandardSqlDialect.objectOp dispatch,a single-element iterable has no trailing separator,OK/OK,OK/OK
+,TomStandardSqlDialect.objectOp dispatch,an empty iterable renders empty,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,comparisons render the SQL operator,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,isNull / isNotNull,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,between uses the two limits,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,isin joins the choices with commas,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,group wraps in parentheses,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,not negates,OK/OK,OK/OK
+,exception types,TomDbMigrationException is a TomServerException,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,and / or join boolean operands,OK/OK,OK/OK
+,TomStandardSqlDialect predicates,like / notLike / regexp,OK/OK,OK/OK
+,exception types,MariadbMigrationException is a TomServerException,OK/OK,OK/OK
+,TomOperator base behaviour,captures its SQL return type at construction,OK/OK,OK/OK
+,TomOperator base behaviour,getParameters is empty by default,OK/OK,OK/OK
+,TomAuthorizationCacheEntry,defaults the deletion time to roughly one day out,OK/OK,OK/OK
+,TomOperator base behaviour,getFields reports referenced fields,OK/OK,OK/OK
+,TomAuthorizationCacheEntry,honours an explicit deletion time,OK/OK,OK/OK
+,TomAuthorizationCacheEntry,carries the authorized principal,OK/OK,OK/OK
+,TomYaml,loads a YAML file into a nested map,OK/OK,OK/OK
+,TomAuthorizationCacheException,is a TomException carrying its key and message,OK/OK,OK/OK
+,TomYaml,substitutes a missing variable with its :default,OK/OK,OK/OK
+,TomYaml,mergeInYamlFile overlays a file onto an existing map,OK/OK,OK/OK
+,TomArgs.parseArgsToMap,parses key=value pairs,OK/OK,OK/OK
+,TomArgs.parseArgsToMap,records a bare flag as boolean true,OK/OK,OK/OK
+,TomArgs.parseArgsToMap,"keeps only the text before the first ""="" as the key",OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,"""true""/""false"" become booleans",OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,all-digit strings become ints,OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,decimal strings become doubles,OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,a leading sign keeps the value a String (no whole-string match),OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,trailing non-numeric text keeps the value a String,OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,a quoted value is unquoted to a String,OK/OK,OK/OK
+,TomArgs.convertToObjectMap value conversion,any other text passes through unchanged,OK/OK,OK/OK
+,TomEnvFile.parse,parses pairs and converts value types,OK/OK,OK/OK
+,TomEnvFile.parse,skips blank lines and # comments,OK/OK,OK/OK
+,TomEndpoint,uses JSON GET defaults,OK/OK,OK/OK
+,TomEnvFile.parse,keeps a quoted value as a String without conversion,OK/OK,OK/OK
+,TomEndpoint,carries the declared route and methods,OK/OK,OK/OK
+,TomEnvFile.parse,strips an inline comment after an unquoted value,OK/OK,OK/OK
+,TomEndpoint,convertToTomEndpoint returns itself,OK/OK,OK/OK
+,TomEnvFile.parse,maps an empty value to null,OK/OK,OK/OK
+,TomApiEndpointImplementation,binds an api/endpoint id with overrides,OK/OK,OK/OK
+,TomEnvFile.parse,"ignores a line with no ""="" and a line with an empty key",OK/OK,OK/OK
+,class-level annotations,TomApiImplementation defaults to logging requests,OK/OK,OK/OK
+,class-level annotations,TomApiImplementation is a TomService,OK/OK,OK/OK
+,TomEnvFile.merge,later sources override earlier ones,OK/OK,OK/OK
+,class-level annotations,TomComponentReference holds a name or a type,OK/OK,OK/OK
+,TomEnvFile.merge,merging nothing yields an empty map,OK/OK,OK/OK
+,TomTransactional,defaults to a read-write transaction,OK/OK,OK/OK
+,TomTransactional,can be marked read-only,OK/OK,OK/OK
+,TomAuthorizationCache (main isolate),stores a principal and reads it back by token,OK/OK,OK/OK
+,TomAuthorizationCache (main isolate),returns null for an unknown token (cache miss),OK/OK,OK/OK
+,DefaultHealthAnalyzer,always returns OK,OK/OK,OK/OK
+,TomHealthServer,defaults to the always-OK analyzer,OK/OK,OK/OK
+,TomEnvFile file IO,read returns an empty map when the file is missing,OK/OK,OK/OK
+,TomHealthServer,health() returns OK with the default analyzer,OK/OK,OK/OK
+,TomHealthServer,health() delegates to the swapped global analyzer,OK/OK,OK/OK
+,TomHealthServer,the analyzer is shared across instances (static field),OK/OK,OK/OK
+,TomAuthorizationCache (main isolate),throws TomAuthorizationCacheException for an expired entry,OK/OK,OK/OK
+,Cross-isolate command objects,store message carries token and principal,OK/OK,OK/OK
+,Cross-isolate command objects,retrieve message carries the token,OK/OK,OK/OK
+,TomDefaultErrorHandler,handleInvocationError returns an opaque 500,OK/OK,OK/OK
+,TomDefaultErrorHandler,handleConversionError returns an opaque 500,OK/OK,OK/OK
+,TomAuthorizationCacheExecutor,handles a store message and returns true,OK/OK,OK/OK
+,TomEnvFile file IO,read parses a .env file from disk,OK/OK,OK/OK
+,TomDefaultErrorHandler,handleUnknowResultTypeError returns an opaque 500,OK/OK,OK/OK
+,routing metadata types,TomClassScanResult defaults to empty partitions,OK/OK,OK/OK
+,TomEnvFile file IO,readAsync parses the same content,OK/OK,OK/OK
+,TomEnvFile file IO,readAsync returns an empty map when the file is missing,OK/OK,OK/OK
+,TomEnvFile file IO,load reads the file (the OS environment is not mutated),OK/OK,OK/OK
+,TomAuthorizationCacheExecutor,"handles a retrieve message, resolving to the stored principal",OK/OK,OK/OK
+,TomAuthorizationCacheExecutor,returns TomExecutor.noResult for an unrelated command,OK/OK,OK/OK
+,exception types,TomEndpointHandlerException is a TomServerException,OK/OK,OK/OK
+,exception types,TomEndpointPipelineException is a TomServerException,OK/OK,OK/OK
