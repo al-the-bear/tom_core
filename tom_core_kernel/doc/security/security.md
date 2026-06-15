@@ -10,6 +10,13 @@ The security module provides a comprehensive authentication and authorization sy
   - [Authentication](#authentication)
   - [Authorization](#authorization)
   - [Access Control](#access-control)
+- [UI Authorization (Four-State Model)](#ui-authorization-four-state-model)
+  - [TomAuthState](#tomauthstate)
+  - [TomAuthorizable](#tomauthorizable)
+  - [TomAuthorizationGroup](#tomauthorizationgroup)
+  - [TomAuthorization (Global Singleton)](#tomauthorization-global-singleton)
+  - [TomAuthorizer](#tomauthorizer)
+  - [TomUIStateController](#tomuistatecontroller)
 - [Usage Examples](#usage-examples)
 - [Best Practices](#best-practices)
 
@@ -17,7 +24,7 @@ The security module provides a comprehensive authentication and authorization sy
 
 ## Overview
 
-The security module consists of four main files:
+The security module consists of these main files:
 
 | File | Purpose |
 | ---- | ------- |
@@ -25,6 +32,7 @@ The security module consists of four main files:
 | `authentication_authorization.dart` | Authentication message DTOs |
 | `bearer_authentication.dart` | JWT token management |
 | `user_principal_aci.dart` | User, principal, and ACI types |
+| `tom_authorization.dart` | UI authorization primitives — the four-state model, groups, authorizers, and the global authorization singleton |
 
 ### Key Concepts
 
@@ -196,6 +204,144 @@ var email = tomProtect(user.email, '[hidden]', 'user.email');
 if (!tomProtected('user.salary')) {
   showSalary(user.salary);
 }
+```
+
+---
+
+## UI Authorization (Four-State Model)
+
+`tom_authorization.dart` layers a **UI-facing** authorization model on top of the
+ACI/access-control primitives above. Where access controls answer "may this user
+perform this operation?", the UI model answers "how should this element be
+presented?" — hidden, greyed out, read-only, or fully interactive. It is
+construction-time and `BuildContext`-free: widgets, forms, and actions read the
+global singleton directly.
+
+### TomAuthState
+
+The four authorization states, ordered from most to least restrictive
+(`none < disabled < read < full`):
+
+| State | Presentation |
+| ----- | ------------ |
+| `none` | Hidden — the element does not exist from the user's perspective |
+| `disabled` | Visible but greyed out, no content; data may exist but is inaccessible |
+| `read` | Shows the current value/state, read-only |
+| `full` | Fully interactive and editable |
+
+Helpers: `isVisible` (`!= none`), `isInteractive` (`== full`), `showsContent`
+(`read` or `full`). Two combinators express the ordering:
+
+```dart
+// narrow → the MORE restrictive of two states
+TomAuthState.full.narrow(TomAuthState.read);   // read
+// widen → the LESS restrictive of two states
+TomAuthState.read.widen(TomAuthState.disabled); // read
+```
+
+### TomAuthorizable
+
+The interface implemented by anything that participates in UI authorization
+(Tom widgets, actions, menu items, routes):
+
+| Member | Description |
+| ------ | ----------- |
+| `String? get tomId` | Plain id used for resource lookups (`null` if it doesn't participate) |
+| `TomAuthorizationGroup? get tomGroup` | The group this element belongs to, if any |
+| `TomAuthState get effectiveAuthState` | The final resolved state after resource auth, group, and authorizers |
+
+### TomAuthorizationGroup
+
+A collection of related authorizables that share authorization control. Members
+are held via `WeakReference`, so garbage-collected elements drop out
+automatically. The group's path is `<scopePath>.<groupId>` (see the
+[Scope IDs module](../scope_ids/scope_ids.md)).
+
+```dart
+final shipping = TomAuthorizationGroup('shipping',
+    mode: AuthGroupMode.controlsAll);
+// TomTextField(tomId: 'street', authorizationGroup: shipping, ...)
+// TomTextField(tomId: 'city',   authorizationGroup: shipping, ...)
+```
+
+`AuthGroupMode` controls how the group's resolved `authState` combines with each
+member's own state via `applyMode(memberState)`:
+
+| Mode | Effect |
+| ---- | ------ |
+| `controlsAll` | Group state replaces the member's state |
+| `controlsWidest` | Group state is the **ceiling** (narrows the member) |
+| `controlsNarrowest` | Group state is the **floor** (widens the member) |
+
+Inspection helpers (all skip hidden `none` members):
+
+| Member | Description |
+| ------ | ----------- |
+| `members` / `memberCount` / `isEmpty` / `isNotEmpty` | Live membership (stale refs pruned) |
+| `isUniform` | `true` if all visible members share one `effectiveAuthState` |
+| `mostRestrictive` | The most restrictive `effectiveAuthState` among visible members (`full` if none) |
+| `findMember(tomId)` | The member with the given id, or `null` |
+
+### TomAuthorization (Global Singleton)
+
+The app-wide entry point for resolving a resource key path to a `TomAuthState`.
+Install a `TomAuthorizationAdapter` at startup; with no adapter the system
+resolves to `TomAuthState.full` (development mode).
+
+```dart
+// App startup
+TomAuthorization.adapter = MyAuthorizationAdapter();
+
+// Anywhere
+final state = TomAuthorization.resolveAuth('checkout.email');
+
+// Tests
+TomAuthorization.reset(); // clears the adapter
+```
+
+`TomAuthorizationAdapter` is the bridging contract — a kernel-backed adapter maps
+resource-key protection to states, while test doubles return predetermined
+results.
+
+### TomAuthorizer
+
+A per-element modifier attached to an individual widget or action. It is handed
+the resource-based state and returns the element's desired state, combined
+according to its `TomAuthorizerStrategy`:
+
+| Strategy | Behaviour |
+| -------- | --------- |
+| `authorizerDecides` | The authorizer's result is final (may widen) |
+| `authorizerNarrowsOnly` | The result is `narrow(resourceAuth, authorizerResult)` — can only restrict |
+
+```dart
+TomAuthorizer(
+  strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+  resolve: (resourceAuth) => hasChanges ? resourceAuth : TomAuthState.disabled,
+);
+```
+
+Factories: `TomAuthorizer.fixed(state)` always returns `state`;
+`TomAuthorizer.fromAction(actionAuth:)` applies the common pattern where a `full`
+widget bound to a `none` action becomes `disabled` (visible but unavailable).
+
+### TomUIStateController
+
+A **build-time** callback that can further narrow (never widen) a widget's state
+based on dynamic, possibly row-level data. Authorization runs at construction
+time; the UI state controller runs later at build time:
+
+```dart
+TomUIStateController(
+  resolve: (currentAuth, data) {
+    if (items.isEmpty) return TomAuthState.disabled;
+    if (data case {'ownerId': int id} when id != currentUserId) {
+      return TomAuthState.read;
+    }
+    return currentAuth;
+  },
+);
+// apply() guarantees the result never widens currentAuth.
 ```
 
 ---
@@ -383,3 +529,4 @@ This module depends on:
 - **Crypto Module**: JWT token generation and parsing
 - **Observable Module**: Reflection annotations for DTOs
 - **Little Things Module**: Zone-based utilities
+- **Scope IDs Module**: `TomScope` path resolution for `TomAuthorizationGroup`

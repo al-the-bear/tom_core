@@ -156,7 +156,8 @@ A singleton provider for text-based resources.
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `exists(key)` | `bool` | Checks if a String value exists at the path |
-| `getText(key)` | `String` | Returns the text value or the key if not found |
+| `getText(key)` | `String` | Returns the text value, or the **key itself** if not found |
+| `getTextOrNull(key)` | `String?` | Returns the text value, or **`null`** if not found |
 
 ### TomConfigResourceProvider
 
@@ -183,7 +184,32 @@ A singleton provider for configuration values of any type.
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `exists(key)` | `bool` | Checks if any value exists at the path |
-| `getText(key)` | `Object` | Returns the value (any type) or the key if not found |
+| `getText(key)` | `String` | Returns the value coerced to text, or the **key itself** if not found |
+| `getObject(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
+| `getObjectOrNull(key)` | `Object?` | Returns the value (any type), or **`null`** if not found |
+
+### Fallback: key vs. null
+
+The `getText` / `getObject` accessors return the **lookup key itself** when a
+resource is missing. This is convenient during development — an unresolved key
+renders visibly instead of crashing — but it means "missing" and "the value
+happens to equal the key" are indistinguishable. When you need to branch on
+presence (rather than render a placeholder), prefer the `OrNull` variants:
+
+```dart
+final resources = TomTextResourceProvider.getAppResources();
+
+// Placeholder behaviour — shows the key when missing.
+String label = resources.getText('screens.home.title');
+
+// Presence behaviour — null when missing.
+String? optional = resources.getTextOrNull('screens.home.subtitle');
+if (optional != null) showSubtitle(optional);
+
+// Config presence without exists() + getObject() double lookup.
+final config = TomConfigResourceProvider.getAppConfig();
+final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+```
 
 ## Usage Examples
 

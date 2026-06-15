@@ -22,6 +22,8 @@ and complex objects with automatic change notification and propagation.
   - [Range Types](#range-types)
 - [TomClass (Observable Objects)](#tomclass-observable-objects)
 - [TomList (Observable Lists)](#tomlist-observable-lists)
+  - [Atomic Replacement with resetWith](#atomic-replacement-with-resetwith)
+  - [Lifecycle Listeners](#lifecycle-listeners)
 - [TomMap (Observable Maps)](#tommap-observable-maps)
 - [Muting Notifications](#muting-notifications)
 - [Error Handling](#error-handling)
@@ -691,6 +693,63 @@ print(listNotifications);  // 2
 tasks[0].completed | true;
 print(listNotifications);  // 3
 ```
+
+### Atomic Replacement with resetWith
+
+`resetWith(Iterable<E>)` replaces the **entire** contents of a `TomList` in a
+single operation and sends exactly **one** notification afterwards. It detaches
+the list's observer from the old elements, clears them, attaches to and installs
+the new elements, then notifies:
+
+```dart
+final rows = TomList<Task>();
+rows.addAll([Task()..title | 'a', Task()..title | 'b']);
+
+int notifications = 0;
+rows >> (obs) => notifications++;
+
+// Swap all contents in one shot — a single notification, not one per element.
+rows.resetWith([Task()..title | 'x', Task()..title | 'y']);
+print(notifications);  // 1
+```
+
+This is the path `TomClass` uses internally when a parent form writes a bind-time
+snapshot back via `setValues()` — the list member's contents are swapped
+wholesale rather than diffed.
+
+### Lifecycle Listeners
+
+`TomListLifecycleListener` lets observers tear down and recreate state that is
+tied to the *identity* of list elements around a `resetWith` replacement. It is
+the mechanism `TomListForm` (in `tom_flutter_ui`) uses to keep its per-row
+sub-form instances in sync when the backing list is replaced.
+
+| Hook | When it fires |
+| ---- | ------------- |
+| `onBeforeClear(list)` | Immediately **before** the old elements are removed (list still intact — safe to read for cleanup) |
+| `onAfterReset(list)` | Immediately **after** the new elements are installed (list fully populated — safe to read to recreate state) |
+
+```dart
+class RowFormSync extends TomListLifecycleListener {
+  @override
+  void onBeforeClear(TomList list) {
+    // dispose sub-forms bound to the outgoing rows
+  }
+  @override
+  void onAfterReset(TomList list) {
+    // build sub-forms for the incoming rows
+  }
+}
+
+final rows = TomList<Task>();
+rows.addLifecycleListener(RowFormSync());
+// ... later
+rows.removeLifecycleListener(listener);
+```
+
+Both `resetWith` and `notifyObservers` snapshot their listener/observer lists
+before iterating, so a listener or observer callback may itself add or remove
+listeners/observers without triggering a `ConcurrentModificationError`.
 
 ## TomMap (Observable Maps)
 
