@@ -1,61 +1,71 @@
 # D4rt Test Suite - Tom Build Classes
 # Run with: d4rt test_d4rt_tom_build.d4rt -test
-# Tests tom_build bridged classes
+# Tests tom_build bridged classes (scripting helpers, enums, tool context).
+#
+# NOTE: rewritten 2026-06-15. The previous suite asserted markdown/doc-scanner
+# classes (MarkdownParser, Document, Section, ValidationError, SchemaSource,
+# PageFormat, ...) that the current tom_build bridge does not contain. The
+# bridge now covers the 17 source files exported by tom_build.dart: the
+# workspace analyzer, the reflection-generator runner, the scripting helpers,
+# the file-object-model, and the tool/platform context.
 
 
 # =============================================================================
-# Test: Analyzer Classes (4 tests)
+# Test: TomText static transforms (8 tests)
 # =============================================================================
 
-var analyzerOpts = AnalyzerOptions();
-verifyNotNull(analyzerOpts, 'AnalyzerOptions created');
+verifyEquals(TomText.camelCase('foo bar baz'), 'fooBarBaz', 'camelCase');
+verifyEquals(TomText.snakeCase('fooBar'), 'foo_bar', 'snakeCase');
+verifyEquals(TomText.kebabCase('foo Bar'), 'foo-bar', 'kebabCase');
+verifyEquals(TomText.pascalCase('foo bar'), 'FooBar', 'pascalCase');
+verifyEquals(TomText.indent('a\nb', 2), '  a\n  b', 'indent');
+verifyEquals(TomText.template('Hi {{name}}', {'name': 'Ada'}), 'Hi Ada', 'template');
+verifyEquals(TomText.lineCount('a\nb\nc'), 3, 'lineCount');
+verifyEquals(TomText.wordCount('one two three'), 3, 'wordCount');
 
 # =============================================================================
-# Test: MarkdownParserOptions (4 tests)
+# Test: TomPth static path ops (4 tests)
 # =============================================================================
 
-var parserOpts = MarkdownParserOptions();
-verifyNotNull(parserOpts, 'MarkdownParserOptions created');
+verifyEquals(TomPth.basename('/a/b/c.txt'), 'c.txt', 'basename');
+verifyEquals(TomPth.dirname('/a/b/c.txt'), '/a/b', 'dirname');
+verifyEquals(TomPth.extension('/a/b/c.txt'), '.txt', 'extension');
+verifyEquals(TomPth.basenameNoExt('/a/b/c.txt'), 'c', 'basenameNoExt');
 
 # =============================================================================
-# Test: Enums (10 tests)
+# Test: Enums (4 tests)
 # =============================================================================
 
-# ValidationErrorCategory enum values: general, schemaDeclaration, sectionType
-var errGeneral = ValidationErrorCategory.general;
-verifyNotNull(errGeneral, 'ValidationErrorCategory.general');
-
-var errSchema = ValidationErrorCategory.schemaDeclaration;
-verifyNotNull(errSchema, 'ValidationErrorCategory.schemaDeclaration');
-
-# SchemaSource enum values: local, user, builtin
-var srcLocal = SchemaSource.local;
-verifyNotNull(srcLocal, 'SchemaSource.local');
-
-var srcUser = SchemaSource.user;
-verifyNotNull(srcUser, 'SchemaSource.user');
-
-var srcBuiltin = SchemaSource.builtin;
-verifyNotNull(srcBuiltin, 'SchemaSource.builtin');
-
-var pageFormat = PageFormat.a4;
-verifyNotNull(pageFormat, 'PageFormat.a4');
-
-var cpuArch = CpuArchitecture.arm64;
-verifyNotNull(cpuArch, 'CpuArchitecture.arm64');
-
-var os = OperatingSystem.macos;
-verifyNotNull(os, 'OperatingSystem.macos');
+verifyEquals(CpuArchitecture.arm64.name, 'arm64', 'CpuArchitecture.arm64 name');
+verifyEquals(OperatingSystem.macos.name, 'macos', 'OperatingSystem.macos name');
+verifyEquals(CpuArchitecture.values.length, 6, 'CpuArchitecture has 6 values');
+verifyEquals(OperatingSystem.values.length, 5, 'OperatingSystem has 5 values');
 
 # =============================================================================
-# Test: Classes Exist (6 tests)
+# Test: PlatformInfo (1 test)
 # =============================================================================
 
-verifyNotNull(ParsedHeadline, 'ParsedHeadline class exists');
-verifyNotNull(Document, 'Document class exists');
-verifyNotNull(Section, 'Section class exists');
-verifyNotNull(MarkdownParser, 'MarkdownParser class exists');
-verifyNotNull(ValidationError, 'ValidationError class exists');
+verifyNotNull(PlatformInfo.detect(), 'PlatformInfo.detect()');
+
+# =============================================================================
+# Test: ModeValidationResult factories (2 tests)
+# =============================================================================
+
+var okResult = ModeValidationResult.success(['dev']);
+verifyEquals(okResult.isValid, true, 'ModeValidationResult.success isValid');
+
+var errResult = ModeValidationResult.error('bad mode');
+verifyEquals(errResult.isValid, false, 'ModeValidationResult.error isValid');
+
+# =============================================================================
+# Test: Exception carriers (2 tests)
+# =============================================================================
+
+var envEx = TomEnvironmentException('boom');
+verifyEquals(envEx.message, 'boom', 'TomEnvironmentException message');
+
+var toolEx = ToolContextException('nope');
+verifyEquals(toolEx.message, 'nope', 'ToolContextException message');
 
 # =============================================================================
 # Summary
