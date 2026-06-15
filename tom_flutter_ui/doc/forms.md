@@ -119,7 +119,9 @@ debugging, tests, or event-log UIs.
 Form rendering is themeable and responsive, kept separate from the model:
 
 - `TomFormStyle` / `TomFormStyleScope` deliver the active style down the tree;
-  `TomColorTokens` and `TomThemeSpec` carry the palette and theme spec.
+  `TomThemeSpec` carries the theme spec, and the `cs.*` colour-scheme token
+  resolvers (`resolveColorSchemeToken` / `resolveAnyColor` / `isColorSchemeToken`)
+  map token strings to concrete `Color`s against the active `ColorScheme`.
 - `TomBreakpoint` holds the shared `mobile` / `tablet` / `desktop` ladder
   (mutable, retuned once at startup) and `resolve(name)` maps a named key to its
   current pixel value (unknown names → `null`, i.e. "skip this entry").

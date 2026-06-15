@@ -175,3 +175,20 @@ change — this release records the widget set that already exists.
   app down). Added `test/phase1_demo_test.dart` (3 tests) pumping the app,
   asserting the Widgets gallery renders, navigating to the Custom gallery, and
   exercising a toggle. No public API change.
+- **Documentation review (close-out)** — final cross-module pass confirming the
+  nine module docs match the code: every `Tom*` type named in
+  `doc/actions.md`, `doc/advanced_container_layout.md`, `doc/custom.md`,
+  `doc/forms.md`, `doc/groups.md`, `doc/resource_auth.md`, `doc/theme.md`,
+  `doc/widget_base.md`, and `doc/widgets.md` was checked against the actual
+  `class` / `enum` / `mixin` / `typedef` / `extension` / `interface`
+  declarations in `lib/src` (and the re-exported `tom_core_kernel` types). One
+  stale reference was corrected — `doc/forms.md` described a non-existent
+  `TomColorTokens` type; `tom_color_tokens.dart` actually exposes the `cs.*`
+  token-resolver functions (`resolveColorSchemeToken` / `resolveAnyColor` /
+  `isColorSchemeToken`), so the doc now names those plus `TomThemeSpec`. Each of
+  the nine `lib/src` modules is exported from the public
+  `lib/tom_flutter_ui.dart` barrel and has a matching `doc/*.md`; barrel
+  coverage of the public symbol set was verified earlier (the only two
+  unexported `lib/src` files are the generated `GeneratedColors` /
+  `GeneratedIcons` lookup tables, intentionally internal behind the public
+  `TomUIColors` / `TomUIIcons` resolvers). No public API change.
