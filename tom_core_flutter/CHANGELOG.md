@@ -27,6 +27,11 @@
   research links (shared prefs / secure storage / hive / sqflite / objectbox)
   with no implementation and no references. Removed rather than implemented — a
   storage abstraction is a substantial feature with no current consumer.
+- **`preferences/` placeholder module**: contained only a `readme.md` of
+  research links (local-storage / database-adapter options) with no
+  implementation and no references. Removed rather than implemented — user
+  preferences would be a thin layer over a not-yet-chosen storage backend, with
+  no current consumer.
 
 ## 1.0.0
 

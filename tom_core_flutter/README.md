@@ -56,9 +56,9 @@ counter | 5; // the widget rebuilds with "Count: 5"
 
 ### Placeholder modules
 
-The following module folders are reserved for planned client capabilities and
-currently contain only a `readme.md` placeholder (no implementation):
-`preferences`, `qrcode`.
+The following module folder is reserved for a planned client capability and
+currently contains only a `readme.md` placeholder (no implementation):
+`qrcode`.
 
 ## Additional information
 
