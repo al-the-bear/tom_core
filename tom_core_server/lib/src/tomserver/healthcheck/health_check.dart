@@ -13,7 +13,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// ```dart
 /// class MyHealthAnalyzer extends HealthAnalyzer {
 ///   @override
-///   Future<String> analyze() async {
+///   Future<String> analyzeHealth() async {
 ///     final dbOk = await checkDatabaseConnection();
 ///     final cacheOk = await checkCacheService();
 ///     if (dbOk && cacheOk) {
@@ -50,6 +50,9 @@ class DefaultHealthAnalyzer extends HealthAnalyzer {
 @tomReflector
 @tomService
 abstract class TomHealthService {
+  /// The `GET /health` endpoint: returns a plain-text status string. Marked
+  /// `@TomPublicAccess` (no authentication) and `logRequests: false` so probe
+  /// traffic does not flood the logs.
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],

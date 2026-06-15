@@ -106,6 +106,14 @@
   WebSocket, and richer-authorization work is now recorded in the quest
   completion steps and folded into the relevant dartdoc).
 
+- **Health-check module**: the module was already dartdoc-documented; added a
+  doc comment to the `TomHealthService.health` endpoint method, a module guide at
+  `doc/healthcheck.md`, an executable example at `example/healthcheck/`, and a
+  test suite at `test/healthcheck_test.dart` covering the server-free surface
+  (the `HealthAnalyzer` contract and `TomHealthServer.health`'s delegation to the
+  global analyzer). The `/health` route itself is mounted by the reflection
+  pipeline and is documented, not unit-tested. No public API change.
+
 ### Removed
 
 - **Removed the empty `externalapis/` placeholder module.** It contained no
@@ -118,6 +126,9 @@
 
 ### Fixed
 
+- **`HealthAnalyzer` dartdoc example now overrides the right method.** The
+  class-doc example overrode a non-existent `analyze()` method; corrected to the
+  actual abstract method `analyzeHealth()` so the snippet matches the contract.
 - **`TomStandardSqlDialect.iterableOp` now comma-joins correctly.** The
   separator was emitted only on the first element (`result.isEmpty ? "," : ""`),
   so `[1, 2, 3]` rendered as `"1,23"` instead of `"1,2,3"` — corrupting any
