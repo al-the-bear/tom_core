@@ -60,3 +60,14 @@ change — this release records the widget set that already exists.
   action/simple-action contracts, transaction record/commit/rollback/undoAll,
   the undo-history stack invariants, the trigger execution path, composite guard
   behaviour, and the undo/redo coordinator actions. No public API change.
+- **`resource_auth/`** — authored `doc/resource_auth.md` (the name → object
+  resolution layer: `TomUIColors` / `AllColorsAdapter` for named/hex/rgb colours,
+  `TomUIIcons` with the `AllIcons` / `MaterialOnly` / `CupertinoOnly` adapters,
+  the `TomConfigProvider` environment/platform/feature-flag store, and the
+  authorization types re-exported from `tom_core_kernel`); added
+  `example/resource_auth/resource_auth_example.dart`; added
+  `test/resource_auth/resource_auth_test.dart` (previously zero tests, 18 tests)
+  covering colour/icon resolution and graceful no-adapter degradation, custom
+  registration precedence, hex 3/6/8-digit and rgb clamping, the config
+  provider's fail-fast and flag semantics, and the `TomAuthState` ordering plus
+  the legacy typedef aliases. No public API change.
