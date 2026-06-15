@@ -3,7 +3,10 @@ import '../datasources/queries.dart';
 import '../little_things/server_exception.dart';
 import 'persistence_annotations.dart';
 
+/// Thrown when an entity's persistence metadata cannot be resolved (e.g. the
+/// type is not registered with `tomReflector`, or has no `@TomDbTable`).
 class TomAnnotationAnalyzerException extends TomServerException {
+  /// Creates an annotation-analyzer exception.
   TomAnnotationAnalyzerException(
     super.key,
     super.defaultUserMessage, {
@@ -14,7 +17,11 @@ class TomAnnotationAnalyzerException extends TomServerException {
   });
 }
 
+/// Thrown when an entity's persistence annotations are present but malformed
+/// (e.g. a `@TomDbColumn` on a non-variable declaration, or an unresolvable
+/// column name).
 class TomAnnotationAnalyzerSyntaxException extends TomServerException {
+  /// Creates an annotation-analyzer syntax exception.
   TomAnnotationAnalyzerSyntaxException(
     super.key,
     super.defaultUserMessage, {
@@ -25,11 +32,27 @@ class TomAnnotationAnalyzerSyntaxException extends TomServerException {
   });
 }
 
+/// Resolves the persistence metadata of an entity type from its reflection
+/// annotations (`@TomDbTable`, `@TomDbColumn`, `@TomEntityId`, `@TomReference`).
+///
+/// Mixed into the typed-persistence base, its static methods read the
+/// `tomReflector` [ClassMirror] of an entity and translate its annotations into
+/// a [TomTypePersistenceInfo] / [TomColumnInformation]. Results are memoised in
+/// the per-type [mirrorCache], [tableCache], and [columnInfoCache].
 mixin TomAnnotationAnalyzer {
+  /// Cache of resolved class mirrors per entity type (`null` = not reflectable).
   static final mirrorCache = <Type, ClassMirror?>{};
+
+  /// Cache of resolved `@TomDbTable` annotations per entity type.
   static final tableCache = <Type, TomDbTable?>{};
+
+  /// Cache of resolved column metadata lists per entity type.
   static final columnInfoCache = <Type, List<TomColumnInformation>?>{};
 
+  /// Resolves the full persistence metadata (table + columns) for entity [T].
+  ///
+  /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,
+  /// has no table annotation, or its columns cannot be resolved.
   static TomTypePersistenceInfo analysePersistentType(Type T) {
     var mirror = findMirror(T);
     if (mirror == null) {
@@ -59,6 +82,8 @@ mixin TomAnnotationAnalyzer {
     return TomTypePersistenceInfo(mirror, table, columns);
   }
 
+  /// Returns the cached/looked-up [ClassMirror] for [dbType], or `null` when it
+  /// is not registered with `tomReflector`.
   static ClassMirror? findMirror(Type dbType) {
     if (mirrorCache.containsKey(dbType)) return mirrorCache[dbType];
     try {
@@ -72,6 +97,7 @@ mixin TomAnnotationAnalyzer {
     return null;
   }
 
+  /// Returns the `@TomDbTable` annotation on [dbType], or `null` if absent.
   static TomDbTable? findTable(Type dbType) {
     if (tableCache.containsKey(dbType)) return tableCache[dbType];
     ClassMirror? mirror = findMirror(dbType);
@@ -87,6 +113,10 @@ mixin TomAnnotationAnalyzer {
     return null;
   }
 
+  /// Returns the persistence metadata for every annotated field of [dbType]
+  /// (each `@TomDbColumn` / `@TomReference`), or `null` if [dbType] is not
+  /// reflectable. Throws [TomAnnotationAnalyzerSyntaxException] for an
+  /// annotation on a non-variable declaration.
   static List<TomColumnInformation>? getPersistentColumns(Type dbType) {
     if (columnInfoCache.containsKey(dbType)) {
       return columnInfoCache[dbType] as List<TomColumnInformation>;
@@ -189,6 +219,10 @@ mixin TomAnnotationAnalyzer {
     }
   }
 
+  /// Finds the [TomColumnInformation] matching [name] across [persistenceInfo],
+  /// trying in order: fully-qualified `table.column`, `type.field`, the query
+  /// field name, then a case-insensitive field-name match. Throws
+  /// [TomAnnotationAnalyzerSyntaxException] when nothing matches.
   static TomColumnInformation determineColumn(
     String name,
     List<TomTypePersistenceInfo> persistenceInfo,

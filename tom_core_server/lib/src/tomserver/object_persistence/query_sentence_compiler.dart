@@ -7,10 +7,29 @@ import 'operators_expressions.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
 
+/// Compiles a Spring-Data-style *query sentence* into a [TomQuery].
+///
+/// A query sentence is a whitespace-separated phrase such as
+/// `find by name = :name order by age desc`, `count by status IS IN ( :s )`, or
+/// `delete by id = $id`. The first word selects the query kind
+/// (`find` → [TomSelect], `count` → [TomCount], `delete` → [TomDelete]); the
+/// part before `by` carries options (`distinct`, `top`/`first` N); the part
+/// after `by` is the predicate, optionally followed by an
+/// `order by <fields> [asc|desc]` clause. The predicate is parsed against the
+/// entity's resolved columns (via [TomQueryBuilder] and [TomAnnotationAnalyzer])
+/// into a [TomOperator] tree.
+///
+/// Throws [TomQuerySyntaxException] for a malformed sentence (unknown kind,
+/// both `top` and `first`, a misplaced order direction, etc.).
+///
+/// (The select/count/delete branches currently build their option fields
+/// independently; unifying them is a tracked follow-up.)
 class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     with TomQueryBuilder {
+  /// Creates a compiler for the given entity [types] (the first is primary).
   TomQuerySentenceCompiler(super.types);
 
+  /// Parses query sentence [qs] into a [TomSelect], [TomCount], or [TomDelete].
   TomQuery compileQuerySentence(String qs) {
     var parts = _splitQuerySentence(qs);
     var queryOptions = parts.sublist(0, _index(parts, "BY"));
@@ -51,7 +70,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         orderBy: orderBy,
         query: query,
       );
-      // TODO: use same fields for all types of queries
     } else if (parts[0].toUpperCase() == "COUNT") {
       return TomCount(
         types,
@@ -1387,7 +1405,6 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
       case TomNDateTime:
         return Parameter<TomDbDateTime>(field) as Parameter<QT>;
       case TomZonedDate:
-        // TODO: complete TomTypes with a Date variant?
         return Parameter<TomDbDate>(field) as Parameter<QT>;
     }
     throw TomQuerySyntaxException(

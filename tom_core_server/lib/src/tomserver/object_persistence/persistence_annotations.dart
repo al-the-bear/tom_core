@@ -2,18 +2,39 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/types_operator.dart';
 import 'crud_repository.dart';
 
+/// Wraps a Dart [Type] so it can be carried as a value (e.g. in an annotation
+/// argument list, where a bare `Type` literal is awkward to pass around).
 class TomDartType {
+  /// The wrapped Dart type.
   final Type type;
+
+  /// Wraps [type].
   TomDartType(this.type);
 }
 
+/// Annotation that maps an entity class to a database table.
+///
+/// Applied to a `@tomReflector` entity, it tells the persistence layer which
+/// [datasource] the table lives in, the [table] name, the [schema] (optional),
+/// the entity field that holds the primary key ([primaryKeyField]), and — if it
+/// differs — the primary-key [idColumn] name.
 class TomDbTable {
+  /// The name of the registered data source that holds this table.
   final String datasource;
+
+  /// The table name.
   final String table;
+
+  /// The schema the table belongs to, if any.
   final String? schema;
+
+  /// The entity field that holds the primary key.
   final String primaryKeyField;
+
+  /// The primary-key column name, when it differs from [primaryKeyField].
   final String? idColumn;
 
+  /// Binds an entity to a table.
   const TomDbTable({
     required this.datasource,
     required this.table,
@@ -23,16 +44,39 @@ class TomDbTable {
   });
 }
 
+/// Annotation that maps an entity field to a database column.
+///
+/// The type parameters carry the Dart-side type ([DART_TYPE]) and the SQL-side
+/// boxed type ([COL_TYPE], a [TomDbType]); [fromDbConverter] / [toDbConverter]
+/// translate between them when reading and writing. [isReadOnly] columns are
+/// skipped on insert/update, [noLoad] columns are not selected, and [isJson]
+/// marks a column whose value is JSON-encoded.
 class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
+  /// The column name; defaults to the field name when `null`.
   final String? columnName;
+
+  /// Whether the column is excluded from inserts and updates.
   final bool isReadOnly;
+
+  /// Whether the column is excluded from selects.
   final bool noLoad;
+
+  /// Whether the column holds JSON-encoded data.
   final bool isJson;
+
+  /// The Dart type, when it cannot be inferred from [DART_TYPE].
   final Type? dartType;
+
+  /// The SQL column type, when it cannot be inferred from [COL_TYPE].
   final Type? columnType;
+
+  /// Converts a stored [COL_TYPE] value back to the Dart [DART_TYPE].
   final DART_TYPE Function(COL_TYPE)? fromDbConverter;
+
+  /// Converts a Dart [DART_TYPE] value to the stored [COL_TYPE].
   final COL_TYPE Function(DART_TYPE)? toDbConverter;
 
+  /// Maps a field to a column.
   const TomDbColumn({
     required this.columnName,
     this.isReadOnly = false,
@@ -44,25 +88,47 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
     this.columnType,
   });
 
+  /// The declared Dart type: [DART_TYPE] when concrete, else [dartType].
   Type? declaredDartType() => DART_TYPE != dynamic ? DART_TYPE : dartType;
+
+  /// The declared SQL column type: [COL_TYPE] when concrete, else [columnType].
   Type? declaredColumnType() =>
       (COL_TYPE != TomDbType<dynamic>) ? COL_TYPE : columnType;
 }
 
+/// Annotation marking the entity field that holds the primary key.
 class TomEntityId {
+  /// Marks a field as the entity id.
   const TomEntityId();
 }
 
-// TODO: include detection and usage of this...
+/// Annotation describing a many-to-many join table between two entities.
+///
+/// Note: declared for future use — the persistence layer does not yet detect or
+/// apply this annotation (see the quest completion steps).
 class TomJoinTable {
+  /// The entity on the far side of the join.
   final Type targetEntity;
+
+  /// The repository type that loads [targetEntity].
   final Type repositoryType;
+
+  /// The entity on the near side of the join.
   final Type originEntity;
+
+  /// The key type linking the two sides.
   final Type keyType;
+
+  /// The join-table columns on the origin side.
   final List<String> leftSideColumns;
+
+  /// The join-table columns on the target side.
   final List<String> rightSideColumns;
+
+  /// Extra join-table columns carried as context.
   final List<String> contextColumns;
 
+  /// Describes a join table.
   const TomJoinTable({
     required this.targetEntity,
     required this.repositoryType,
@@ -74,19 +140,42 @@ class TomJoinTable {
   });
 }
 
+/// Annotation describing a reference (association) from one entity to another,
+/// resolved through a join entity.
+///
+/// The type parameters bind the [TARGET] entity, its key [K], and the [REPO]
+/// that loads it. [isOneToOne] marks a single-valued association; otherwise the
+/// reference is to-many.
 class TomReference<
   TARGET extends Object,
   K,
   REPO extends TomRepository<TARGET, K>
 > {
+  /// The referenced entity type.
   final Type targetEntity;
+
+  /// The repository type that loads [targetEntity].
   final Type repositoryType;
+
+  /// The entity that models the join.
   final Type joinEntity;
+
+  /// The key type linking the two sides.
   final Type keyType;
+
+  /// The join columns on this (owning) side.
   final List<String> leftSideColumns;
+
+  /// The join columns on the referenced side.
   final List<String> rightSideColumns;
+
+  /// Extra join columns carried as context.
   final List<String> contextColumns;
+
+  /// Whether this is a one-to-one (single-valued) association.
   final bool isOneToOne;
+
+  /// Describes a reference to [targetEntity] via [joinEntity].
   const TomReference({
     required this.targetEntity,
     required this.repositoryType,
@@ -98,8 +187,13 @@ class TomReference<
     this.isOneToOne = false,
   });
 
+  /// The referenced entity type ([targetEntity]).
   Type getReferencedType() => targetEntity;
+
+  /// The repository type that loads the referenced entity ([repositoryType]).
   Type getRepositoryType() => repositoryType;
+
+  /// The key type linking the two sides ([keyType]).
   Type getKeyType() => keyType;
 
   @override
@@ -107,12 +201,24 @@ class TomReference<
       "TomReference Target: ${getReferencedType()}, Key: ${getKeyType()}, Repo: ${getRepositoryType()}, 1:1: $isOneToOne joinEntity: $joinEntity leftSide: $leftSideColumns, rightSide: $rightSideColumns, context: $contextColumns";
 }
 
-// TODO: include detection and usage of this...
+/// Annotation registering lifecycle callbacks for an entity ([DBTYPE]).
+///
+/// Note: declared for future use — the persistence layer does not yet detect or
+/// invoke these callbacks (see the quest completion steps).
 class TomPersistenceEventHandler<DBTYPE> {
+  /// Called after the entity is persisted.
   final void Function(DBTYPE)? postPersist;
+
+  /// Called after the entity is loaded.
   final void Function(DBTYPE)? postLoad;
+
+  /// Called before the entity is persisted.
   final void Function(DBTYPE)? prePersist;
+
+  /// Called before the entity is loaded.
   final void Function(DBTYPE)? preLoad;
+
+  /// Registers the lifecycle callbacks.
   TomPersistenceEventHandler({
     this.postPersist,
     this.postLoad,
@@ -121,17 +227,42 @@ class TomPersistenceEventHandler<DBTYPE> {
   });
 }
 
+/// The resolved persistence metadata for a single entity field.
+///
+/// Produced by [TomAnnotationAnalyzer] from the field's annotations, it bundles
+/// the owning [table], the field's [column] / [entityId] / [reference] /
+/// [eventHandler] annotations, the [declaredType] and [declaredName], and the
+/// mapped column [field]. It also provides reflection-backed accessors to read
+/// and write the field on a concrete entity instance.
 class TomColumnInformation {
+  /// The entity type that owns this field.
   Type tableType;
+
+  /// The table the owning entity maps to.
   TomDbTable table;
+
+  /// The field's column mapping, if annotated.
   TomDbColumn? column;
+
+  /// The entity-id annotation, if this field is the primary key.
   TomEntityId? entityId;
+
+  /// The reference annotation, if this field is an association.
   TomReference? reference;
+
+  /// The lifecycle-callback annotation, if any.
   TomPersistenceEventHandler? eventHandler;
+
+  /// The declared Dart type of the field.
   Type declaredType;
+
+  /// The field's name on the entity.
   String declaredName;
+
+  /// The mapped column name.
   String field;
 
+  /// Bundles the resolved metadata for one entity field.
   TomColumnInformation(
     this.table,
     this.tableType,
@@ -144,19 +275,24 @@ class TomColumnInformation {
     this.field,
   );
 
+  /// The owning entity type ([tableType]).
   Type getDatabaseType() {
     return tableType;
   }
 
+  /// The column name to use in a query: the annotated [TomDbColumn.columnName]
+  /// when present, else the [declaredName].
   String getQueryFieldName() {
     return column?.columnName ?? declaredName;
   }
 
+  /// Reads this field's value from [instance] via reflection.
   Object? getVariableValue(Object instance) {
     InstanceMirror tMirror = tomReflector.reflect(instance);
     return tMirror.invokeGetter(declaredName);
   }
 
+  /// Writes [value] to this field on [instance] via reflection.
   Object? setVariableValue(Object instance, Object? value) {
     InstanceMirror tMirror = tomReflector.reflect(instance);
     return tMirror.invokeSetter(declaredName, value);

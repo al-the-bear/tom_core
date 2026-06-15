@@ -10,77 +10,132 @@ import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
 import 'annotation_analyzer.dart';
 
+/// Result holder for a `COUNT(*)` query: a single [count] field populated by
+/// the row mapper. Reflectable so the data source can materialise it.
 @tomReflector
 class TomCountResult {
+  /// The row count returned by the query.
   int count = 0;
 }
 
-// TODO: add support for Pageable results
-// TODO: Limit (see Spring https://docs.spring.io/spring-data/jpa/reference/repositories/query-methods-details.html#repositories.query-methods.reserved-methods)
-// TODO: add slicing and result sorting
+/// The persistence contract for an entity [T] keyed by [K].
+///
+/// Modelled on Spring Data's `CrudRepository`: it offers id-based CRUD
+/// ([save], [findById], [delete], …) plus three query styles — a parsed
+/// Spring-style *query sentence* (`findByQuerySentence` and friends), a built
+/// `TomQuery` object ([findByQuery] / [deleteByQuery] / [countByQuery]), and a
+/// raw SQL string ([executeQueryString]).
+///
+/// Note: pageable/limit/slice/sort result options are not yet supported (see the
+/// quest completion steps).
 abstract class TomRepository<T extends Object, K> {
+  /// Deletes [entity] by its primary key.
   Future<void> delete(T entity);
 
+  /// Deletes every entity whose id is in [ids].
   Future<void> deleteAllById(Iterable<K> ids);
 
+  /// Deletes the entity with the given [id].
   Future<void> deleteById(K id);
 
+  /// Whether every id in [ids] exists.
   Future<bool> existsById(Iterable<K> ids);
 
+  /// Loads all entities.
   Future<List<T>> findAll();
 
+  /// Loads every entity whose id is in [ids].
   Future<List<T>> findAllById(Iterable<K> ids);
 
+  /// Loads the entity with the given [id], or `null` if absent.
   Future<T?> findById(K id);
 
+  /// Counts all entities.
   Future<TomDbInt> count();
 
+  /// Inserts [toSave] (no primary key) or updates it (primary key set), and
+  /// returns the stored entity.
   Future<T> save(T toSave);
 
+  /// Saves every entity in [entities] and returns the stored entities.
   Future<Iterable<T>> saveAll(Iterable<T> entities);
 
+  /// Runs a parsed query sentence as a `SELECT`, binding [params]; an optional
+  /// [resultType] overrides the row type.
   Future<Iterable<T>> findByQuerySentence(
     String querySentence,
     Map<String, Object?> params, [
     Type? resultType,
   ]);
 
+  /// Runs a parsed query sentence as a `DELETE`, binding [params].
   Future<void> deleteByQuerySentence(
     String querySentence,
     Map<String, Object?> params,
   );
 
+  /// Runs a parsed query sentence as a `COUNT`, binding [params].
   Future<TomDbInt> countByQuerySentence(
     String querySentence,
     Map<String, Object?> params,
   );
 
+  /// Runs a built [TomSelect], binding [params].
   Future<Iterable<T>> findByQuery(TomSelect query, Map<String, Object?> params);
 
+  /// Runs a built [TomDelete], binding [params].
   Future<void> deleteByQuery(TomDelete query, Map<String, Object?> params);
 
+  /// Runs a built [TomCount], binding [params].
   Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params);
 
+  /// Runs a raw SQL string [dbQuery], binding [params], and maps the rows to [T].
   Future<Iterable<T>> executeQueryString(
     String dbQuery,
     Map<String, Object?> params,
   );
 }
 
+/// SQL-datasource implementation of [TomRepository].
+///
+/// On construction it resolves the entity's persistence metadata via
+/// [TomAnnotationAnalyzer] (table, primary-key column, columns), looks up the
+/// named [TomDataSourceInfo], and builds a [TomQuerySentenceCompiler] for the
+/// query types. CRUD methods compile/cache prepared statements and render them
+/// through the active [sqlDialect]; the [TomQueryBuilder] mixin supplies the
+/// expression-tree factories. Concrete drivers (e.g. [MariadbRepository])
+/// subclass this and override [sqlDialect].
 abstract class TomSqlDatasourceRepository<T extends Object, K>
     extends TomRepository<T, K>
     with TomQueryBuilder {
+  /// Resolved metadata for the primary-key column.
   late TomColumnInformation primaryKeyColumnInfo;
+
+  /// The resolved data source this repository runs against.
   late TomDataSourceInfo datasourceInfo;
+
+  /// The resolved persistence metadata of the entity.
   late TomTypePersistenceInfo persistenceInfo;
+
+  /// The table the entity maps to.
   late TomDbTable dbTable;
+
   late TomQuerySentenceCompiler _qsc;
 
+  /// The SQL dialect used to render queries; defaults to the data source's
+  /// dialect and is overridden by concrete drivers.
   TomStandardSqlDialect get sqlDialect => datasourceInfo.datasource.sqlDialect;
 
+  /// The entity types this repository can query (first is the primary entity).
   List<Type> queryTypes = [T];
+
+  /// The default row type for results.
   Type resultType = T;
 
+  /// Resolves the entity's persistence metadata and data source.
+  ///
+  /// [queryTypes] defaults to `[T]` and [resultType] to `T`. Throws if the
+  /// data source named on the entity's `@TomDbTable` is not registered.
   TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType]) {
     this.queryTypes = queryTypes ?? this.queryTypes;
     this.resultType = resultType ?? this.resultType;
@@ -432,8 +487,14 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   }
 }
 
+/// Annotation binding a [TomSqlDatasourceRepository] subclass to a named
+/// [datasourceType] (e.g. `"mariadb"`), used by reflection-based repository
+/// discovery to pick the right implementation for a data source.
 @tomReflector
 class TomRepositoryType {
+  /// The data-source type this repository serves.
   final String datasourceType;
+
+  /// Binds the repository to [datasourceType].
   const TomRepositoryType(this.datasourceType);
 }

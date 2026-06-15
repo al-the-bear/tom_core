@@ -125,6 +125,27 @@
   covering construction, defaults, the `TomException` inheritance, isolate
   attribution, the `toString` format, and request correlation via a `runZoned`
   carrying a `TomRequestId`. No public API change.
+- **Object-persistence module**: added dartdoc to all public symbols across the
+  seven module files — the persistence annotations (`TomDartType`, `TomDbTable`,
+  `TomDbColumn`, `TomEntityId`, `TomJoinTable`, `TomReference`,
+  `TomPersistenceEventHandler`) and `TomColumnInformation`; the operator tree
+  (`TomUnaryOperator` / `TomBinaryOperator` and every concrete operator —
+  literals, `Parameter`, the `*Col` references, `And`/`Or`, the comparisons,
+  `Like`/`In`/`Between`/`Group`/`Regexp`, …) and `TomQuerySyntaxException`; the
+  `TomQueryBuilder` DSL mixin and every factory; the `TomAnnotationAnalyzer`
+  mixin and its exceptions; the repository contract (`TomRepository`,
+  `TomSqlDatasourceRepository`, `MariadbRepository`, `TomCountResult`,
+  `TomRepositoryType`); and the `TomQuerySentenceCompiler`. Added a module guide
+  at `doc/object_persistence.md`, an executable example at
+  `example/object_persistence/`, and a test suite at
+  `test/object_persistence_test.dart` covering the connection-free surface (the
+  `TomQueryBuilder` DSL / operator-tree SQL rendering through `MariadbSqlDialect`,
+  BETWEEN arity validation, and the plain-data annotations /
+  `TomColumnInformation`). No public API change — removed only stray `// TODO:`
+  comments (the deferred work — `@TomJoinTable` / `@TomPersistenceEventHandler`
+  detection, pageable / limit / slicing / sort result options, additional
+  query-method keywords, and a `deleteById` prepared-statement bug — is now
+  recorded in the quest completion steps).
 
 ### Removed
 
