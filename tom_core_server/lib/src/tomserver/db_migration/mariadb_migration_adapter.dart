@@ -5,7 +5,12 @@ import '../object_persistence/persistence_annotations.dart';
 import '../datasources/datasource_initialization.dart';
 import 'db_migration.dart';
 
+/// Thrown for MariaDB migration failures (versioning-table creation, version
+/// query, a changed description/checksum for an already-applied version, or a
+/// failed migration script).
 class MariadbMigrationException extends TomServerException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomServerException].
   MariadbMigrationException(
     super.key,
     super.defaultUserMessage, {
@@ -16,10 +21,23 @@ class MariadbMigrationException extends TomServerException {
   });
 }
 
+/// The MariaDB [TomDbMigrator] (registered for the `"mariadb"` type).
+///
+/// Per schema it maintains a `<schema>_versioning` table recording every
+/// applied migration (version, description, script, checksum, timing, success).
+/// [initializeMigration] creates that table if absent and loads the applied
+/// [versions]; [applyMigration] skips a version already present — but first
+/// verifies its description and script checksum are unchanged, failing if a
+/// past migration was edited — and otherwise runs the script and records the
+/// outcome. A failed script is still recorded (with `success = 0`) before the
+/// error is rethrown.
 @TomDbMigrationAdaptor("mariadb")
 @tomReflector
 class MariadbMigrationAdaptor implements TomDbMigrator {
   bool _initialized = false;
+
+  /// The migrations already applied to the current schema, loaded by
+  /// [initializeMigration] and appended to as [applyMigration] runs.
   List<TomDbVersion> versions = [];
 
   @override
@@ -166,6 +184,13 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
   }
 }
 
+/// One row of a `<schema>_versioning` table: the record of a single applied (or
+/// attempted) migration.
+///
+/// It is mapped from query results by reflection, so it is `@tomReflector` and
+/// its fields carry `@TomDbColumn` names. The `@TomDbTable` annotation is
+/// required by the row mapper but its values are unused here (the table name is
+/// computed per schema), hence the `"irrelevant"` placeholders.
 @tomReflector
 @TomDbTable(
   datasource: "irrelevant",
@@ -173,20 +198,35 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
   primaryKeyField: "irrelevant",
 )
 class TomDbVersion {
+  /// Auto-incrementing insertion order (primary key).
   @TomDbColumn(columnName: "installedRank")
   int installedRank = 0;
+
+  /// The migration version number.
   @TomDbColumn(columnName: "version")
   int version = 0;
+
+  /// The migration description (from the file name).
   @TomDbColumn(columnName: "description")
   String description = "";
+
+  /// The full migration script text.
   @TomDbColumn(columnName: "script")
   String script = "";
+
+  /// The script's `hashCode`, stored as a string, used to detect later edits.
   @TomDbColumn(columnName: "checksum")
   String checksum = "";
+
+  /// The database user that applied the migration.
   @TomDbColumn(columnName: "installedBy")
   String installedBy = "";
+
+  /// When the migration was applied.
   @TomDbColumn(columnName: "installedOn")
   DateTime installedOn = DateTime.now();
+
+  /// `1` if the migration script succeeded, `0` if it failed.
   @TomDbColumn(columnName: "success")
   int success = 0;
 }

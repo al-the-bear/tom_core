@@ -75,6 +75,19 @@
   result-set access-control work are now recorded in the quest completion
   steps; the architectural "should be in SqlDialect" notes are captured in the
   module dartdoc).
+- **Database-migration module**: added dartdoc to all public symbols across the
+  two files — the orchestrator and its contract (`TomDbMigrations`,
+  `TomDbMigrator`, `TomDbMigrationAdaptor`, `TomDbMigrationException`) and the
+  MariaDB implementation (`MariadbMigrationAdaptor`, `MariadbMigrationException`,
+  `TomDbVersion`), documenting the keyed directory layout
+  (`<datasourceName>/<schemaName>/[<version>]-<description>.<ext>`), reflection
+  adaptor discovery, and the versioning-table idempotency/checksum-stability
+  model; a module guide at `doc/db_migration.md`; an executable example at
+  `example/db_migration/`; and a test suite at `test/db_migration_test.dart`
+  covering the connection-free surface (`TomDbVersion`, the
+  `TomDbMigrationAdaptor` type binding, and the exception types). No public API
+  change — the literal-escaping of directly-interpolated migration scripts is
+  noted in the module doc and tracked with the datasources follow-up.
 
 ### Fixed
 
