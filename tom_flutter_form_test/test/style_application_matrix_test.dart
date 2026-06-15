@@ -36,8 +36,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
-// ignore: implementation_imports
-import 'package:tom_flutter_ui/src/forms/fields/tom_field_widget_adapter.dart';
 
 import 'package:tom_flutter_form_test/forms/company_forms.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';

@@ -23,10 +23,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
-// TomFieldWidgetAdapter isn't exported from the barrel; we need its
-// concrete type to walk the tree by `field.tomId`.
-// ignore: implementation_imports
-import 'package:tom_flutter_ui/src/forms/fields/tom_field_widget_adapter.dart';
 
 import 'package:tom_flutter_form_test/main.dart';
 import 'package:tom_flutter_form_test/main.reflection.dart';
