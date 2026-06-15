@@ -31,3 +31,13 @@ change — this release records the widget set that already exists.
   toggles, trees, plus animated/builder/effect/image/interaction helpers).
 - **`custom/`** — non-form composite widgets (auth guard, auth tree, empty state,
   error boundary, infinite scroll, loading overlay, radio group, skeleton loader).
+
+### Documentation
+
+- **`widget_base/`** — authored `doc/widget_base.md` (the node hierarchy
+  `TomNodeBase → TomPolicyNodeBase → TomFamilyBase`, the four-state
+  authorization gate, the `TomWidgetFamily` taxonomy, scope propagation, screen-
+  element providers, and the `TomCtr` / `TomStyleResolvers` resource helpers);
+  added `example/widget_base/widget_base_example.dart`; added
+  `test/widget_base/widget_base_resolvers_test.dart` covering `TomStyleResolvers`
+  (previously untested) and the example end to end. No public API change.
