@@ -12,8 +12,13 @@ import '../configuration/base_server_configuration.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../authorization/authorization_cache.dart';
 
-/// this middleware does nothing or just adds the provided context to the inner handler
-
+/// A pass-through shelf [Middleware] that seeds the request [Request.context].
+///
+/// If [context] is supplied, its entries are merged into a copy of the
+/// incoming request's context before the inner handler runs; otherwise the
+/// request is forwarded unchanged. [id] is a label for tracing. The default
+/// pipeline uses it to attach a fresh [TomRequestLogInfo] under
+/// [TomRequestLogInfo.contextName] (see [TomServer.start]).
 Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
     (innerHandler) {
       // FutureOr<Response> Function(Request request)
@@ -30,6 +35,16 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
       };
     };
 
+/// Extracts the bearer credentials from a request's `Authorization` header.
+///
+/// Reads the `Authorization` header and, when it carries a `Bearer <jwt>`
+/// token, parses it into a [TomClientJwtToken] and derives the [TomPrincipal]
+/// via [TomBearerAuthentication.convertTokenPayloadToPrincipal]. Returns a
+/// record `(principal, token)`; either element is `null` when the header is
+/// absent, not a bearer token, or fails to parse. Parsing/derivation errors are
+/// swallowed (the corresponding element stays `null`) so an invalid token is
+/// treated as "no credentials" rather than raising — authorization decisions
+/// are made downstream.
 (TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req) {
   TomPrincipal? resultA;
   TomClientJwtToken? resultB;
@@ -55,8 +70,19 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
   return (resultA, resultB);
 }
 
+/// A per-request correlation id.
+///
+/// [tomDefaultAuthenticationMiddleware] creates one [TomRequestId] per incoming
+/// request and publishes it into the request zone (keyed by `TomRequestId`), so
+/// any code running under that request can recover it with
+/// `getFromCurrentZone<TomRequestId>()`. It is the source of the
+/// `requestUuid` stamped onto server exceptions ([TomServerException]) and of
+/// the request id surfaced by the endpoints pipeline.
 class TomRequestId {
+  /// A freshly generated v4 UUID identifying this request.
   late final String uuid;
+
+  /// Creates a request id with a new random v4 [uuid].
   TomRequestId() {
       var generator = UuidV4();
       uuid = generator.generate();
@@ -66,6 +92,23 @@ class TomRequestId {
   String toString() => "TomRequestId: $uuid";
 }
 
+/// The default authentication [Middleware] of a [TomServer].
+///
+/// For each request it:
+/// 1. extracts bearer credentials with [extractAuthentication];
+/// 2. resolves the effective [TomPrincipal] — preferring a principal cached for
+///    the client token by [TomAuthorizationCache], falling back to the one
+///    derived directly from the token;
+/// 3. runs the inner handler inside a [runZoned] scope whose [TomZoneValues]
+///    expose the shelf [Request], the ambient [TomExecutionContext], the
+///    resolved [TomPrincipal], the [TomClientJwtToken], and a fresh
+///    [TomRequestId] — making them recoverable anywhere in the request via
+///    `getFromCurrentZone`.
+///
+/// [id] labels the middleware for tracing; the optional [context] is merged
+/// into the request context before handling. Replace it via
+/// `TomBaseServerConfiguration.authenticationMiddleware` to customise
+/// authentication.
 Middleware tomDefaultAuthenticationMiddleware(
   String id, [
   Map<String, Object>? context,
@@ -107,6 +150,15 @@ Middleware tomDefaultAuthenticationMiddleware(
   };
 };
 
+/// The default request-logging [Middleware] of a [TomServer].
+///
+/// After the inner handler produces a response, it emits a single
+/// `HTTP/<version> [<method>] <url> ... <status>` info line — but only when the
+/// request's [TomRequestLogInfo] (read from the request context) has
+/// `shouldBeLogged == true` and has not already been logged, after which it
+/// marks `hasBeenLogged`. This one-shot guard prevents duplicate lines when the
+/// pipeline retries or re-enters. It is the default value of
+/// `TomBaseServerConfiguration.loggingMiddleware`.
 Middleware tomLoggingMiddleware() => (innerHandler) {
   // FutureOr<Response> Function(Request request)
   return (request) {
@@ -124,6 +176,10 @@ Middleware tomLoggingMiddleware() => (innerHandler) {
   };
 };
 
+/// A [Handler] that ignores the request and always replies with [statusCode].
+///
+/// Useful as a terminal handler or a placeholder in a [Cascade]; [id] labels it
+/// for tracing.
 Handler noopHandler(String id, int statusCode) {
   return (Request r) {
     tomLog.trace("noopHandler $id");
@@ -131,6 +187,14 @@ Handler noopHandler(String id, int statusCode) {
   };
 }
 
+/// Wraps the inner handler so thrown errors are routed to [errorHandler].
+///
+/// When the inner handler throws, the error and stack trace are logged and
+/// passed to [errorHandler]; a non-null result becomes the response, otherwise
+/// the error is rethrown to the next outer handler. [id] labels the layer for
+/// tracing. The pipeline installs two layers — an outer one (using the
+/// authentication error handler) and an inner one (using the main error
+/// handler) — see [TomServer.start].
 Middleware _handleError(
   Response? Function(Request, Object, StackTrace) errorHandler,
   String id,
@@ -157,9 +221,20 @@ Middleware _handleError(
   };
 };
 
+/// Per-request logging state carried in the shelf request context.
+///
+/// [contextSetupMiddleware] seeds one instance under [contextName] at the start
+/// of the pipeline; [tomLoggingMiddleware] reads it to decide whether to emit
+/// the access-log line and to mark it as logged. Set [shouldBeLogged] to
+/// `false` (e.g. for health checks) to suppress the line.
 class TomRequestLogInfo {
+  /// The request-context key under which the [TomRequestLogInfo] is stored.
   static const String contextName = "loggingInfo";
+
+  /// Whether the access-log line for this request has already been emitted.
   bool hasBeenLogged = false;
+
+  /// Whether this request should produce an access-log line at all.
   bool shouldBeLogged = true;
 
   @override
@@ -167,11 +242,32 @@ class TomRequestLogInfo {
       "TomRequestLogInfo should=$shouldBeLogged has=$hasBeenLogged";
 }
 
+/// The HTTP entry point of a Tom server application.
+///
+/// Built from a [TomBaseServerConfiguration], a [TomServer] assembles a shelf
+/// [Pipeline] — context setup, error handling, authentication, logging — in
+/// front of the endpoint [Router] and binds it to a socket in [start]. TLS,
+/// host/port, isolate sharing, compression, and the powered-by / server headers
+/// all come from the configuration. The error and authentication-error handlers
+/// translate thrown exceptions into JSON error responses and default to
+/// [errorHandler] unless overridden on the configuration.
 class TomServer {
+  /// The configuration that drives binding, TLS, and pipeline composition.
   TomBaseServerConfiguration configuration;
+
+  /// The TLS security context, built from the configuration when SSL is on.
   SecurityContext? securityContext;
+
+  /// The endpoint router, initialised during [start].
   Router? router;
 
+  /// Maps a thrown error to a JSON error response (HTTP 500).
+  ///
+  /// The body always carries `errorType`; a [TomException] additionally
+  /// contributes `errorKey`, `uuid`, `autoLog`, and `requestUuid`, and a
+  /// [TomServerException] adds `clientThrow`. Every response carries the
+  /// `x-tom-error: true` header. Overridden by
+  /// `TomBaseServerConfiguration.errorHandler` when provided.
   Response? Function(Request, Object, StackTrace) errorHandler =
       (request, error, stacktrace) {
         Map<String, Object?> body = {"errorType": error.runtimeType.toString()};
@@ -194,10 +290,18 @@ class TomServer {
         );
       };
 
+  /// Error handler applied by the outer pipeline layer (authentication phase).
+  ///
+  /// Defaults to the configuration's `authenticationErrorHandler`, falling back
+  /// to [errorHandler].
   Response? Function(Request, Object, StackTrace)? authenticationErrorHandler;
 
+  /// The middleware that emits the per-request access log; from the
+  /// configuration (defaults to [tomLoggingMiddleware]).
   late Middleware loggingMiddleware;
 
+  /// Creates a server from [configuration], wiring the error, authentication-
+  /// error, and logging handlers from it (falling back to the defaults).
   TomServer(this.configuration) {
     errorHandler = configuration.errorHandler ?? errorHandler;
     authenticationErrorHandler =
@@ -205,6 +309,14 @@ class TomServer {
     loggingMiddleware = configuration.loggingMiddleware;
   }
 
+  /// Initialises the router, composes the pipeline, and binds the socket.
+  ///
+  /// Builds the TLS [SecurityContext] (unless `noSsl`), resolves the listen
+  /// address (`host`, or any-IPv4 when empty or `listenToAnyIP`), optionally
+  /// wraps the router in a [Cascade] with the configuration's pre/post handlers,
+  /// then serves the assembled pipeline on the configured port (with `shared`
+  /// sockets when running multiple isolates). Fire-and-forget: it starts
+  /// listening and logs the bound address; it does not return the [HttpServer].
   void start() async {
     SecurityContext? securityContext;
 
@@ -290,7 +402,6 @@ class TomServer {
       ),
     };
 
-    // TODO: check for GZIP compression and meaning of this autoCompress flag
     if (configuration.autoCompress) {
       server.autoCompress = true;
     }

@@ -146,6 +146,20 @@
   detection, pageable / limit / slicing / sort result options, additional
   query-method keywords, and a `deleteById` prepared-statement bug — is now
   recorded in the quest completion steps).
+- **Server module**: added dartdoc to every public symbol in `server.dart`
+  (`TomServer` and its members, `TomRequestId`, `TomRequestLogInfo`,
+  `contextSetupMiddleware`, `extractAuthentication`,
+  `tomDefaultAuthenticationMiddleware`, `tomLoggingMiddleware`, `noopHandler`),
+  documenting the shelf pipeline composition, the request-context / request-zone
+  channels, and the JSON error mapping. Added a module guide at `doc/server.md`,
+  an executable example at `example/server/`, and a test suite at
+  `test/server_test.dart` (17 tests) covering the socket-free surface — the
+  per-request value objects, `extractAuthentication`, and the
+  `contextSetupMiddleware` / `tomLoggingMiddleware` /
+  `tomDefaultAuthenticationMiddleware` / `noopHandler` middlewares; `TomServer`
+  binds a real socket and needs a reflected configuration, so it is documented,
+  not unit-tested. No public API change — removed only a stray `// TODO:`
+  comment (the GZIP/autoCompress note).
 
 ### Removed
 
@@ -156,6 +170,13 @@
   or consumer existed), so the placeholder was deleted. The workspace metadata
   still lists an `externalapis` module entry (no sources) until the next
   metadata regeneration.
+- **Removed four empty placeholder files from the `server/` module**
+  (`diagnostics.dart`, `forms.dart`, `monitoring.dart`, `websocket.dart`). They
+  held only `// TODO:` markers (or were empty), were not exported, referenced, or
+  depended on anywhere, and carried no contract — so they were deleted. The
+  intended capabilities (diagnostics, monitoring, WebSocket support, server-side
+  forms) are recorded in the quest completion steps and the `doc/server.md`
+  "Not Yet Implemented" section.
 
 ### Fixed
 
