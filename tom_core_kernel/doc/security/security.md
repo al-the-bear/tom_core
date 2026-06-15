@@ -260,11 +260,15 @@ automatically. The group's path is `<scopePath>.<groupId>` (see the
 ```dart
 final shipping = TomAuthorizationGroup('shipping',
     mode: AuthGroupMode.controlsAll);
+shipping.register(streetField); // and shipping.unregister(streetField)
 // TomTextField(tomId: 'street', authorizationGroup: shipping, ...)
 // TomTextField(tomId: 'city',   authorizationGroup: shipping, ...)
 ```
 
-`AuthGroupMode` controls how the group's resolved `authState` combines with each
+Members join and leave via `register(element)` / `unregister(element)`. The
+group resolves its own state from `authState` (which looks up
+`resolveGroupPath()` — `<scopePath>.<groupId>` — through `TomAuthorization`).
+`AuthGroupMode` then controls how that resolved state combines with each
 member's own state via `applyMode(memberState)`:
 
 | Mode | Effect |
@@ -321,7 +325,9 @@ TomAuthorizer(
 );
 ```
 
-Factories: `TomAuthorizer.fixed(state)` always returns `state`;
+`effectiveAuth(resourceAuth)` computes the final state by combining the resource
+state with the resolver according to the strategy. Factories:
+`TomAuthorizer.fixed(state)` always returns `state`;
 `TomAuthorizer.fromAction(actionAuth:)` applies the common pattern where a `full`
 widget bound to a `none` action becomes `disabled` (visible but unavailable).
 

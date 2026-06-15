@@ -155,9 +155,12 @@ A singleton provider for text-based resources.
 
 | Method | Return Type | Description |
 |--------|-------------|-------------|
-| `exists(key)` | `bool` | Checks if a String value exists at the path |
+| `exists(key)` | `bool` | Checks if a **String** value exists at the path |
+| `existsObject(key)` | `bool` | Checks if **any** value (of any type) exists at the path |
 | `getText(key)` | `String` | Returns the text value, or the **key itself** if not found |
-| `getTextOrNull(key)` | `String?` | Returns the text value, or **`null`** if not found |
+| `getTextOrNull(key)` | `String?` | Returns the text value (Strings only), or **`null`** if not found |
+| `getObject(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
+| `getObjectOrNull(key)` | `Object?` | Returns the value (any type), or **`null`** if not found |
 
 ### TomConfigResourceProvider
 
@@ -184,9 +187,12 @@ A singleton provider for configuration values of any type.
 | Method | Return Type | Description |
 |--------|-------------|-------------|
 | `exists(key)` | `bool` | Checks if any value exists at the path |
-| `getText(key)` | `String` | Returns the value coerced to text, or the **key itself** if not found |
-| `getObject(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
-| `getObjectOrNull(key)` | `Object?` | Returns the value (any type), or **`null`** if not found |
+| `getText(key)` | `Object` | Returns the value (any type), or the **key itself** if not found |
+
+> **Note:** `TomConfigResourceProvider.getText` returns `Object` (callers cast,
+> e.g. `config.getText('api.timeout') as int`). The object/`OrNull` accessors
+> (`getObject`, `getObjectOrNull`, `existsObject`, `getTextOrNull`) live on
+> [`TomTextResourceProvider`](#tomtextresourceprovider), not here.
 
 ### Fallback: key vs. null
 
@@ -206,9 +212,12 @@ String label = resources.getText('screens.home.title');
 String? optional = resources.getTextOrNull('screens.home.subtitle');
 if (optional != null) showSubtitle(optional);
 
-// Config presence without exists() + getObject() double lookup.
+// On the text provider, getObjectOrNull avoids the exists()+get double lookup.
+final retries = resources.getObjectOrNull('api.retries') as int? ?? 3;
+
+// The config provider has no OrNull accessor — guard with exists() before casting.
 final config = TomConfigResourceProvider.getAppConfig();
-final timeout = config.getObjectOrNull('api.timeout') as int? ?? 5000;
+final timeout = config.exists('api.timeout') ? config.getText('api.timeout') as int : 5000;
 ```
 
 ## Usage Examples

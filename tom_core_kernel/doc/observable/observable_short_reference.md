@@ -236,8 +236,21 @@ An observable list implementation that automatically observes all contained elem
 - `operator +` — concatenates two TomLists
 - Iterable methods: `map()`, `where()`, `fold()`, `expand()`, etc.
 
+**Structural Replacement:**
+- `resetWith(Iterable<E>)` — atomically replaces all contents with a single notification
+- `addLifecycleListener(TomListLifecycleListener)` / `removeLifecycleListener(...)` — register hooks around `resetWith`
+
 **Static Methods:**
 - `TomList.castFrom<S, E>()` — casts list element types
+
+---
+
+## `TomListLifecycleListener`
+
+Listener for structural reset events on a `TomList` (fired around `resetWith`).
+
+- `onBeforeClear(TomList)` — before the old elements are removed (list still intact)
+- `onAfterReset(TomList)` — after the new elements are installed (list fully populated)
 
 ---
 
