@@ -71,3 +71,17 @@ change — this release records the widget set that already exists.
   registration precedence, hex 3/6/8-digit and rgb clamping, the config
   provider's fail-fast and flag semantics, and the `TomAuthState` ordering plus
   the legacy typedef aliases. No public API change.
+- **`forms/`** — authored `doc/forms.md` (the declarative form system: the
+  `TomForm` / `TomField` data/presentation split and value/dirty/commit/reset
+  contract, the `Validators` factory and sealed `ValidationResult` family plus
+  cross-field `FormValidationError`, `SelectableItem` / `StaticSelectableSource`,
+  the typed `TomFormEvent` bus with `TomFormEventListener` / `TomFormInspector`,
+  the responsive `TomBreakpoint` ladder and anatomy placement enums, and the
+  `FormFieldFamily` Material-vs-Cupertino factory over the field catalogue);
+  added `example/forms/forms_example.dart` (pure-logic: validators,
+  selectable sources, the event bus, family field construction, a cross-field
+  error, and breakpoints); added `test/forms/forms_example_test.dart` (6 tests)
+  exercising the example end to end plus direct checks on the family factory,
+  unmodifiable source snapshots, inspector filtering, `FormValidationError`
+  ids, and breakpoint resolution. The 62-file module was already documented and
+  carried 20 test files (326 tests, still green); no public API change.
