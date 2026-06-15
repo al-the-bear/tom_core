@@ -19,7 +19,33 @@
   current 11-package bridged set, the architecture (thin entry point delegating
   to `VSCodeBridgeServer` + `TomDartscriptBridges.register`), the build workflow
   (`tom build` / `dart compile exe`), and VS Code registration (point the
-  extension's bridge command/args at `core_bs`). No source changes.
+  extension's bridge command/args at `core_bs`).
+- Documented `bin/core_bs.dart` in place: `// Why:` comments for the
+  `additionalBridgeRegistrars` layering seam (the `BridgeRegistrar` callback
+  shape) and for the JSON-RPC-like stdin/stdout protocol that
+  `VSCodeBridgeServer.start()` wires; refreshed the library doc-comment.
+- Authored `doc/operations.md` — operational runbook: build pipeline and
+  per-platform artifact locations (`$TOM_BINARY_PATH/<platform-vs>/core_bs`),
+  the bridge-profile configuration shape in `tom_vscode_extension.json`,
+  profile switching, and a troubleshooting table keyed on the actual launch log
+  strings. Cross-linked from `README.md` (Operations section).
+
+### Tooling and cleanup
+
+- Added `tool/smoke_test.dart` and `doc/smoke_test.md` — a build-aware smoke
+  test (and the equivalent manual procedure) that builds `core_bs`, launches
+  it, and verifies it answers the minimal `echo` bridge request. While the
+  binary cannot compile (see Known issues) the runner SKIPs cleanly rather than
+  failing; it becomes a live gate once that blocker clears.
+- Removed a dead analyzer-suppression block from `analysis_options.yaml` (a
+  `**/*.b.dart` exclude and `errors:`/lint overrides copied from the
+  bridge-generating sibling `tom_core_d4rt`) — this package has no own generated
+  bridges, so the suppressions masked nothing; removing them tightens the gate.
+  `dart analyze` is clean.
+- Added a `.gitignore` (standard Dart ignores plus the smoke-test temp guard).
+- Corrected `LICENSE` to the workspace proprietary license (matching the README
+  and the sibling `tom_core_*` packages); it had been scaffolded as BSD 3-Clause
+  with a divergent copyright holder.
 
 ### Known issues
 

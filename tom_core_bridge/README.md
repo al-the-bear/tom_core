@@ -58,7 +58,7 @@ using a JSON-RPC-like protocol.
 ## Build
 
 The binary is compiled ahead-of-time and published into the workspace binary
-tree (`$TOM_BINARY_PATH/<platform>/core_bs`). The build is driven by
+tree (`$TOM_BINARY_PATH/<platform-vs>/core_bs`). The build is driven by
 [`buildkit.yaml`](buildkit.yaml) (a `versioner` step that regenerates
 `lib/src/version.versioner.dart`, then per-platform `dart compile exe` pipelines
 that also cross-compile the Linux targets from macOS ARM64).
@@ -87,7 +87,7 @@ is configured it falls back to `dart run bin/tom_bs.dart`. To run the extended
 server instead, point the bridge command/args at `core_bs`:
 
 - **Compiled binary** — set the bridge command to the published
-  `core_bs` executable (`$TOM_BINARY_PATH/<platform>/core_bs`), no args.
+  `core_bs` executable (`$TOM_BINARY_PATH/<platform-vs>/core_bs`), no args.
 - **From source** — set the command to `dart` with args
   `['run', '<path>/tom_core_bridge/bin/core_bs.dart']`.
 
