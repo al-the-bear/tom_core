@@ -5,9 +5,18 @@ framework. Everything here depends only on `tom_basics` (plus `yaml` /
 `yaml_edit` for the config read/write path, `crypto` for the
 content-hash convention, and `path` for the `PathScope` sandbox) and is
 safe to reuse across the brain, the
-assistant, and any future agent runtime. The package is deliberately
+assistant, and any future agent runtime. The package is designed to be
 **`dart:io`-free**, so it stays usable from `dart:io`-forbidding
 consumers such as `tom_brain_shared`.
+
+> **One known exception:** `PlaceholderResolver` (the `placeholders/`
+> module) currently imports `dart:io` for its `Platform.environment`
+> default. This is the package's *only* `dart:io` coupling and is at odds
+> with the design above; removing it (by injecting the environment the
+> way `AsyncShutdownCoordinator` injects `exit`) is tracked in
+> `completion_steps.tom_core.md`. Until then, pass an explicit
+> `environment:` map to keep a resolver `dart:io`-decoupled in practice —
+> which every config-layer call site and every test already does.
 
 ## What lives here
 
