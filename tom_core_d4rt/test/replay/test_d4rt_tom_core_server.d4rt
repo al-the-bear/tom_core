@@ -62,6 +62,39 @@ verifyNotNull(TomYaml, 'TomYaml class exists');
 verifyNotNull(TomArgs, 'TomArgs class exists');
 
 # =============================================================================
+# Test: TomServerException (6 tests)
+# =============================================================================
+
+var srvEx = TomServerException('SRV_DOWN', 'Service unavailable');
+verifyNotNull(srvEx, 'TomServerException created');
+verifyEquals(srvEx.key, 'SRV_DOWN', 'ServerException key');
+verifyEquals(srvEx.defaultUserMessage, 'Service unavailable', 'ServerException message');
+verifyEquals(srvEx.clientThrow, true, 'ServerException clientThrow defaults true');
+verifyEquals(srvEx.autoLog, false, 'ServerException autoLog defaults false');
+
+# =============================================================================
+# Test: Query-DSL literals (4 tests)
+# =============================================================================
+
+var strLit = StringLiteral('ada');
+verifyNotNull(strLit, 'StringLiteral created');
+verifyEquals(strLit.operant1, 'ada', 'StringLiteral wraps its value');
+
+var intLit = IntegerLiteral(42);
+verifyEquals(intLit.operant1, 42, 'IntegerLiteral wraps its value');
+
+# =============================================================================
+# Test: Typed configuration class access (2 tests)
+# Note: TomStringConfig/TomIntConfig eagerly resolve a configuration resource
+# on construction and throw 'Obligatory resource ... not found' when no config
+# is registered. They cannot be constructed bare in a replay script, so we only
+# verify the class symbols are reachable.
+# =============================================================================
+
+verifyNotNull(TomStringConfig, 'TomStringConfig class exists');
+verifyNotNull(TomIntConfig, 'TomIntConfig class exists');
+
+# =============================================================================
 # Summary
 # =============================================================================
 
