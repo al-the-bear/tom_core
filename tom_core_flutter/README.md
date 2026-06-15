@@ -36,8 +36,8 @@ Rebuild a widget automatically whenever an observable kernel value changes:
 final counter = TomInt(0);
 
 TomObservingWidget<TomInt>(
-  observable: counter,
-  builder: (context, value) => Text('Count: ${~counter}'),
+  subState: counter,
+  child: (state) => Text('Count: ${~state}'),
 );
 
 counter | 5; // the widget rebuilds with "Count: 5"

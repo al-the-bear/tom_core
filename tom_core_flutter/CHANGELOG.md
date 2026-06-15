@@ -10,6 +10,12 @@
   `TomClientUIException`; a module guide at `doc/little_things.md`; an executable
   example at `example/little_things/`; and tests at
   `test/little_things_test.dart`. No public API change.
+- **Observing module**: added dartdoc to `TomObservingWidget`,
+  `TomObservingWidgetState`, and `ValueListenableObserver`; a module guide at
+  `doc/observing.md`; an executable example at `example/observing/`; and tests
+  at `test/observing_test.dart`. Corrected the README usage snippet (the
+  `subState:`/`child:` API; the old snippet referenced non-existent
+  `observable:`/`builder:` parameters). No public API change.
 
 ### Removed
 
