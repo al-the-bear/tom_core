@@ -110,3 +110,7 @@ After a successful start the output channel shows:
 
 From that point every D4rt script run through the bridge has the full Tom
 Framework bridge set available in addition to the DCli and VS Code APIs.
+
+For a one-command end-to-end check that the binary builds, starts, and answers
+a bridge request, see the [smoke test](smoke_test.md)
+(`dart run tool/smoke_test.dart`).
