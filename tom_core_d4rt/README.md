@@ -119,4 +119,5 @@ void main() {
 
 - [`doc/build.md`](doc/build.md) — build, bridge generation, binary compilation.
 - [`doc/testing.md`](doc/testing.md) — replay-based bridge testing.
-- [`doc/d4rt_cli_api_design.md`](doc/d4rt_cli_api_design.md) — CLI / API design notes.
+- [`doc/cli.md`](doc/cli.md) — as-built CLI wiring (thin `bin/d4rt.dart` → `lib/src/cli/`).
+- [`doc/d4rt_cli_api_design.md`](doc/d4rt_cli_api_design.md) — forward-looking CLI / API design notes.
