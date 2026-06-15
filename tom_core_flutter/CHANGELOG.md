@@ -26,6 +26,10 @@
   neutral); a module guide at `doc/runtime.md`; an executable example at
   `example/runtime/`; and tests at `test/runtime_test.dart`. No public API
   change.
+- **Security module**: added dartdoc to the `TomClient2FAAdaptor` marker
+  annotation; a module guide at `doc/security.md`; an executable example at
+  `example/security/`; and tests at `test/security_test.dart`. Confirmed the
+  module is exported from the package barrel. No public API change.
 
 ### Removed
 
