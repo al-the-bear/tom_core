@@ -20,7 +20,6 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 | `forms/` | Form handling and validation widgets |
 | `little_things/` | Small utility widgets and helpers |
 | `observing/` | Observable state patterns for Flutter |
-| `qrcode/` | QR code generation and scanning |
 | `resources/` | Resource loading and management |
 | `runtime/` | Flutter runtime / platform detection |
 | `security/` | Security utilities for mobile/web |

@@ -54,12 +54,6 @@ counter | 5; // the widget rebuilds with "Count: 5"
 | Security | `TomClient2FAAdaptor` — client-side authentication and two-factor helpers |
 | Little Things | `TomClientException` / `TomClientUIException` — client-side exception types extending the kernel `TomException` |
 
-### Placeholder modules
-
-The following module folder is reserved for a planned client capability and
-currently contains only a `readme.md` placeholder (no implementation):
-`qrcode`.
-
 ## Additional information
 
 - **Kernel API:** all of `tom_core_kernel` is re-exported here; see its

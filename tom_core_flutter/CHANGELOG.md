@@ -32,6 +32,11 @@
   implementation and no references. Removed rather than implemented — user
   preferences would be a thin layer over a not-yet-chosen storage backend, with
   no current consumer.
+- **`qrcode/` placeholder module**: contained only a three-line aspirational
+  `readme.md` (generate/scan QR, camera integration) with no implementation and
+  no references. Removed rather than implemented — QR generation and scanning
+  require a plugin and camera/image-decode integration (a substantial feature),
+  with no current consumer.
 
 ## 1.0.0
 
