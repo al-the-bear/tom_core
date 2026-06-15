@@ -1,7 +1,9 @@
 name: tom_flutter_ui
-description: "A new Flutter package project."
-version: 0.0.1
-homepage:
+description: >-
+  The Flutter widget library of the Tom Framework: authorization-aware,
+  resource-bound, observable widgets, a declarative form system, the Tom
+  Action system, and a fluent row-based layout engine over tom_core_kernel.
+version: 1.0.0
 publish_to: none
 
 environment:
