@@ -1405,10 +1405,356 @@ void main() {
       expect(access.checkAccessibility(createTestPrincipal()), isFalse);
     });
   });
+
+  // ===========================================================================
+  // TomAuthState — four-state authorization outcome
+  // ===========================================================================
+  group('TomAuthState', () {
+    test('orders from most to least restrictive by index', () {
+      expect(TomAuthState.none.index, lessThan(TomAuthState.disabled.index));
+      expect(TomAuthState.disabled.index, lessThan(TomAuthState.read.index));
+      expect(TomAuthState.read.index, lessThan(TomAuthState.full.index));
+    });
+
+    group('predicates', () {
+      test('isVisible is false only for none', () {
+        expect(TomAuthState.none.isVisible, isFalse);
+        expect(TomAuthState.disabled.isVisible, isTrue);
+        expect(TomAuthState.read.isVisible, isTrue);
+        expect(TomAuthState.full.isVisible, isTrue);
+      });
+
+      test('isInteractive is true only for full', () {
+        expect(TomAuthState.none.isInteractive, isFalse);
+        expect(TomAuthState.disabled.isInteractive, isFalse);
+        expect(TomAuthState.read.isInteractive, isFalse);
+        expect(TomAuthState.full.isInteractive, isTrue);
+      });
+
+      test('showsContent is true for read and full', () {
+        expect(TomAuthState.none.showsContent, isFalse);
+        expect(TomAuthState.disabled.showsContent, isFalse);
+        expect(TomAuthState.read.showsContent, isTrue);
+        expect(TomAuthState.full.showsContent, isTrue);
+      });
+    });
+
+    group('narrow', () {
+      test('returns the more restrictive of the two states', () {
+        expect(TomAuthState.full.narrow(TomAuthState.read),
+            equals(TomAuthState.read));
+        expect(TomAuthState.read.narrow(TomAuthState.full),
+            equals(TomAuthState.read));
+        expect(TomAuthState.disabled.narrow(TomAuthState.none),
+            equals(TomAuthState.none));
+      });
+
+      test('is idempotent for equal states', () {
+        expect(TomAuthState.read.narrow(TomAuthState.read),
+            equals(TomAuthState.read));
+      });
+    });
+
+    group('widen', () {
+      test('returns the less restrictive of the two states', () {
+        expect(TomAuthState.read.widen(TomAuthState.full),
+            equals(TomAuthState.full));
+        expect(TomAuthState.full.widen(TomAuthState.read),
+            equals(TomAuthState.full));
+        expect(TomAuthState.none.widen(TomAuthState.disabled),
+            equals(TomAuthState.disabled));
+      });
+
+      test('is idempotent for equal states', () {
+        expect(TomAuthState.full.widen(TomAuthState.full),
+            equals(TomAuthState.full));
+      });
+    });
+  });
+
+  // ===========================================================================
+  // TomAuthorization — global authorization singleton
+  // ===========================================================================
+  group('TomAuthorization', () {
+    tearDown(TomAuthorization.reset);
+
+    test('resolves to full when no adapter is set (development mode)', () {
+      TomAuthorization.reset();
+      expect(TomAuthorization.resolveAuth('any.path'),
+          equals(TomAuthState.full));
+    });
+
+    test('delegates to the installed adapter', () {
+      TomAuthorization.adapter = _FakeAuthAdapter({
+        'checkout.email': TomAuthState.read,
+        'checkout.secret': TomAuthState.none,
+      });
+      expect(TomAuthorization.resolveAuth('checkout.email'),
+          equals(TomAuthState.read));
+      expect(TomAuthorization.resolveAuth('checkout.secret'),
+          equals(TomAuthState.none));
+      // Unknown paths fall back to the adapter default (full here).
+      expect(TomAuthorization.resolveAuth('unknown'),
+          equals(TomAuthState.full));
+    });
+
+    test('reset removes the adapter', () {
+      TomAuthorization.adapter = _FakeAuthAdapter({'x': TomAuthState.none});
+      TomAuthorization.reset();
+      expect(TomAuthorization.resolveAuth('x'), equals(TomAuthState.full));
+    });
+  });
+
+  // ===========================================================================
+  // TomAuthorizationGroup — collective authorization control
+  // ===========================================================================
+  group('TomAuthorizationGroup', () {
+    tearDown(TomAuthorization.reset);
+
+    test('defaults to controlsWidest mode', () {
+      final group = TomAuthorizationGroup('shipping');
+      expect(group.mode, equals(AuthGroupMode.controlsWidest));
+    });
+
+    group('membership', () {
+      test('register / unregister adjusts member count', () {
+        final group = TomAuthorizationGroup('g');
+        final a = _FakeAuthorizable('a');
+        final b = _FakeAuthorizable('b');
+        expect(group.isEmpty, isTrue);
+        group.register(a);
+        group.register(b);
+        expect(group.memberCount, equals(2));
+        expect(group.isNotEmpty, isTrue);
+        group.unregister(a);
+        expect(group.memberCount, equals(1));
+        expect(group.members.map((m) => m.tomId), equals(['b']));
+      });
+
+      test('findMember locates a member by tomId', () {
+        final group = TomAuthorizationGroup('g');
+        final a = _FakeAuthorizable('street');
+        group.register(a);
+        expect(group.findMember('street'), same(a));
+        expect(group.findMember('missing'), isNull);
+      });
+    });
+
+    group('applyMode', () {
+      test('controlsAll replaces the member state with the group state', () {
+        TomAuthorization.adapter =
+            _FakeAuthAdapter({'g': TomAuthState.read});
+        final group =
+            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsAll);
+        expect(group.applyMode(TomAuthState.full), equals(TomAuthState.read));
+        expect(group.applyMode(TomAuthState.none), equals(TomAuthState.read));
+      });
+
+      test('controlsWidest narrows the member to the group ceiling', () {
+        TomAuthorization.adapter =
+            _FakeAuthAdapter({'g': TomAuthState.read});
+        final group =
+            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsWidest);
+        // Member wider than group → narrowed to group.
+        expect(group.applyMode(TomAuthState.full), equals(TomAuthState.read));
+        // Member already narrower → unchanged.
+        expect(group.applyMode(TomAuthState.disabled),
+            equals(TomAuthState.disabled));
+      });
+
+      test('controlsNarrowest widens the member to the group floor', () {
+        TomAuthorization.adapter =
+            _FakeAuthAdapter({'g': TomAuthState.read});
+        final group =
+            TomAuthorizationGroup('g', mode: AuthGroupMode.controlsNarrowest);
+        // Member narrower than group → widened to group.
+        expect(group.applyMode(TomAuthState.none), equals(TomAuthState.read));
+        // Member already wider → unchanged.
+        expect(group.applyMode(TomAuthState.full), equals(TomAuthState.full));
+      });
+    });
+
+    group('aggregate state', () {
+      test('isUniform is true for an empty group', () {
+        expect(TomAuthorizationGroup('g').isUniform, isTrue);
+      });
+
+      test('isUniform ignores hidden members and compares the rest', () {
+        final group = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.read))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.read))
+          ..register(_FakeAuthorizable('c', auth: TomAuthState.none));
+        expect(group.isUniform, isTrue);
+      });
+
+      test('isUniform is false when visible members differ', () {
+        final group = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.read))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.full));
+        expect(group.isUniform, isFalse);
+      });
+
+      test('mostRestrictive returns the narrowest visible state', () {
+        final group = TomAuthorizationGroup('g')
+          ..register(_FakeAuthorizable('a', auth: TomAuthState.full))
+          ..register(_FakeAuthorizable('b', auth: TomAuthState.read))
+          ..register(_FakeAuthorizable('c', auth: TomAuthState.none));
+        expect(group.mostRestrictive, equals(TomAuthState.read));
+      });
+
+      test('mostRestrictive returns full for an empty group', () {
+        expect(TomAuthorizationGroup('g').mostRestrictive,
+            equals(TomAuthState.full));
+      });
+    });
+
+    test('toString includes groupId and mode', () {
+      final group =
+          TomAuthorizationGroup('shipping', mode: AuthGroupMode.controlsAll);
+      expect(group.toString(), contains('shipping'));
+      expect(group.toString(), contains('controlsAll'));
+    });
+  });
+
+  // ===========================================================================
+  // TomAuthorizer — per-element authorization modifier
+  // ===========================================================================
+  group('TomAuthorizer', () {
+    test('defaults to authorizerNarrowsOnly strategy', () {
+      final authorizer = TomAuthorizer(resolve: (r) => r);
+      expect(authorizer.strategy,
+          equals(TomAuthorizerStrategy.authorizerNarrowsOnly));
+    });
+
+    test('authorizerNarrowsOnly never widens the resource auth', () {
+      final authorizer = TomAuthorizer(
+        strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+        resolve: (_) => TomAuthState.full,
+      );
+      // Authorizer wants full but resource is read → stays read.
+      expect(authorizer.effectiveAuth(TomAuthState.read),
+          equals(TomAuthState.read));
+    });
+
+    test('authorizerNarrowsOnly applies further restriction', () {
+      final authorizer = TomAuthorizer(
+        strategy: TomAuthorizerStrategy.authorizerNarrowsOnly,
+        resolve: (_) => TomAuthState.disabled,
+      );
+      expect(authorizer.effectiveAuth(TomAuthState.full),
+          equals(TomAuthState.disabled));
+    });
+
+    test('authorizerDecides returns the authorizer result verbatim', () {
+      final authorizer = TomAuthorizer(
+        strategy: TomAuthorizerStrategy.authorizerDecides,
+        resolve: (_) => TomAuthState.full,
+      );
+      // Even though resource is none, authorizerDecides can widen.
+      expect(authorizer.effectiveAuth(TomAuthState.none),
+          equals(TomAuthState.full));
+    });
+
+    test('fixed always returns the fixed state regardless of resource', () {
+      final authorizer = TomAuthorizer.fixed(TomAuthState.disabled);
+      expect(authorizer.effectiveAuth(TomAuthState.full),
+          equals(TomAuthState.disabled));
+      expect(authorizer.effectiveAuth(TomAuthState.none),
+          equals(TomAuthState.disabled));
+    });
+
+    group('fromAction', () {
+      test('hidden widget stays hidden', () {
+        final authorizer =
+            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.full);
+        expect(authorizer.effectiveAuth(TomAuthState.none),
+            equals(TomAuthState.none));
+      });
+
+      test('full widget + action none → disabled', () {
+        final authorizer =
+            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.none);
+        expect(authorizer.effectiveAuth(TomAuthState.full),
+            equals(TomAuthState.disabled));
+      });
+
+      test('otherwise narrows to the most restrictive', () {
+        final authorizer =
+            TomAuthorizer.fromAction(actionAuth: () => TomAuthState.read);
+        expect(authorizer.effectiveAuth(TomAuthState.full),
+            equals(TomAuthState.read));
+      });
+    });
+  });
+
+  // ===========================================================================
+  // TomUIStateController — build-time state narrowing
+  // ===========================================================================
+  group('TomUIStateController', () {
+    test('apply never widens the current auth', () {
+      final controller = TomUIStateController(
+        resolve: (current, data) => TomAuthState.full,
+      );
+      // Controller wants full but current is read → stays read.
+      expect(controller.apply(TomAuthState.read), equals(TomAuthState.read));
+    });
+
+    test('apply narrows when the resolver returns a more restrictive state', () {
+      final controller = TomUIStateController(
+        resolve: (current, data) => TomAuthState.disabled,
+      );
+      expect(controller.apply(TomAuthState.full),
+          equals(TomAuthState.disabled));
+    });
+
+    test('apply forwards the data argument to the resolver', () {
+      Object? seen;
+      final controller = TomUIStateController(
+        resolve: (current, data) {
+          seen = data;
+          return current;
+        },
+      );
+      controller.apply(TomAuthState.full, data: {'ownerId': 7});
+      expect(seen, equals({'ownerId': 7}));
+    });
+  });
 }
 
 /// Minimal concrete implementation of TomAccessControl for testing.
 class _TestAccessControl extends TomAccessControl {
   const _TestAccessControl();
   // Uses default implementation that returns false
+}
+
+/// Map-backed [TomAuthorizationAdapter] for authorization tests.
+///
+/// Resolves a known set of resource key paths; unknown paths fall back to
+/// [TomAuthState.full] (matching the no-adapter development default).
+class _FakeAuthAdapter implements TomAuthorizationAdapter {
+  _FakeAuthAdapter(this._states);
+
+  final Map<String, TomAuthState> _states;
+
+  @override
+  TomAuthState resolveAuth(String resourceKeyPath) =>
+      _states[resourceKeyPath] ?? TomAuthState.full;
+}
+
+/// Minimal [TomAuthorizable] used to populate authorization groups in tests.
+class _FakeAuthorizable implements TomAuthorizable {
+  _FakeAuthorizable(this._id, {TomAuthState auth = TomAuthState.full})
+      : _auth = auth;
+
+  final String _id;
+  final TomAuthState _auth;
+
+  @override
+  String? get tomId => _id;
+
+  @override
+  TomAuthorizationGroup? get tomGroup => null;
+
+  @override
+  TomAuthState get effectiveAuthState => _auth;
 }

@@ -1220,4 +1220,137 @@ void main() {
       expect(str, contains("2"));
     });
   });
+
+  group('TomList.resetWith', () {
+    test('replaces all elements atomically', () {
+      final list = TomList<TomInt>();
+      list.append(TomInt(1)).append(TomInt(2));
+
+      list.resetWith([TomInt(10), TomInt(20), TomInt(30)]);
+
+      expect(list.length, equals(3));
+      expect(list.map((e) => e.get()), equals([10, 20, 30]));
+    });
+
+    test('clears the list when given an empty iterable', () {
+      final list = TomList<TomInt>();
+      list.append(TomInt(1)).append(TomInt(2));
+
+      list.resetWith(const []);
+
+      expect(list.length, equals(0));
+    });
+
+    test('notifies observers exactly once for the whole replacement', () {
+      final list = TomList<TomInt>();
+      list.append(TomInt(1));
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.resetWith([TomInt(2), TomInt(3), TomInt(4)]);
+
+      expect(observer.notifyCount, equals(1));
+    });
+
+    test('observes the new elements and detaches the old ones', () {
+      final list = TomList<TomInt>();
+      final old = TomInt(1);
+      list.append(old);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      final fresh = TomInt(2);
+      list.resetWith([fresh]);
+      observer.reset();
+
+      // New element is observed → mutating it notifies the list.
+      fresh.set(99);
+      expect(observer.notifyCount, equals(1));
+
+      // Old element is detached → mutating it no longer notifies the list.
+      observer.reset();
+      old.set(5);
+      expect(observer.notifyCount, equals(0));
+    });
+
+    group('lifecycle listeners', () {
+      test('fires onBeforeClear before clearing and onAfterReset after install',
+          () {
+        final list = TomList<TomInt>();
+        list.append(TomInt(1)).append(TomInt(2));
+        final listener = _RecordingLifecycleListener();
+        list.addLifecycleListener(listener);
+
+        list.resetWith([TomInt(9)]);
+
+        // onBeforeClear saw the original contents (list still intact).
+        expect(listener.beforeClearLength, equals(2));
+        // onAfterReset saw the fully populated new contents.
+        expect(listener.afterResetLength, equals(1));
+        expect(listener.callOrder, equals(['before', 'after']));
+      });
+
+      test('removeLifecycleListener stops further callbacks', () {
+        final list = TomList<TomInt>();
+        final listener = _RecordingLifecycleListener();
+        list.addLifecycleListener(listener);
+        list.removeLifecycleListener(listener);
+
+        list.resetWith([TomInt(1)]);
+
+        expect(listener.callOrder, isEmpty);
+      });
+
+      test('snapshots listeners so a listener may unregister during callback',
+          () {
+        final list = TomList<TomInt>();
+        late _SelfRemovingLifecycleListener listener;
+        listener = _SelfRemovingLifecycleListener(() {
+          list.removeLifecycleListener(listener);
+        });
+        list.addLifecycleListener(listener);
+
+        // Must not throw a concurrent-modification error.
+        expect(() => list.resetWith([TomInt(1)]), returnsNormally);
+        expect(listener.beforeCalls, equals(1));
+      });
+    });
+  });
+}
+
+// ============================================================================
+// Lifecycle listener test helpers
+// ============================================================================
+
+/// Records the order and observed list sizes of lifecycle callbacks.
+class _RecordingLifecycleListener extends TomListLifecycleListener {
+  final List<String> callOrder = [];
+  int? beforeClearLength;
+  int? afterResetLength;
+
+  @override
+  void onBeforeClear(TomList list) {
+    callOrder.add('before');
+    beforeClearLength = list.length;
+  }
+
+  @override
+  void onAfterReset(TomList list) {
+    callOrder.add('after');
+    afterResetLength = list.length;
+  }
+}
+
+/// Unregisters itself during [onBeforeClear] to exercise the listener snapshot.
+class _SelfRemovingLifecycleListener extends TomListLifecycleListener {
+  _SelfRemovingLifecycleListener(this._onBefore);
+
+  final void Function() _onBefore;
+  int beforeCalls = 0;
+
+  @override
+  void onBeforeClear(TomList list) {
+    beforeCalls++;
+    _onBefore();
+  }
 }

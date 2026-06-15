@@ -315,6 +315,96 @@ void main() {
     });
 
     // -------------------------------------------------------------------------
+    // getTextOrNull Tests
+    // -------------------------------------------------------------------------
+    group('getTextOrNull', () {
+      test('should return the value for a flat key', () {
+        final provider = TomTextResourceProvider.from({'greeting': 'Hello'});
+        expect(provider.getTextOrNull('greeting'), equals('Hello'));
+      });
+
+      test('should return the value for a hierarchical path', () {
+        final provider = TomTextResourceProvider.from({
+          'app': {'title': 'My App'},
+        });
+        expect(provider.getTextOrNull('app.title'), equals('My App'));
+      });
+
+      test('should return null for a missing key', () {
+        final provider = TomTextResourceProvider.from({'greeting': 'Hello'});
+        expect(provider.getTextOrNull('unknown'), isNull);
+      });
+
+      test('should return null when the value is not a String', () {
+        final provider = TomTextResourceProvider.from({
+          'nested': {'key': 'value'},
+        });
+        expect(provider.getTextOrNull('nested'), isNull);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // getObject Tests
+    // -------------------------------------------------------------------------
+    group('getObject', () {
+      test('should return a non-String value for a flat key', () {
+        final provider = TomTextResourceProvider.from({'count': 42});
+        final value = provider.getObject('count');
+        expect(value, isA<int>());
+        expect(value, equals(42));
+      });
+
+      test('should return a nested map for a path ending at a map', () {
+        final provider = TomTextResourceProvider.from({
+          'nested': {'key': 'value'},
+        });
+        expect(provider.getObject('nested'), equals({'key': 'value'}));
+      });
+
+      test('should return the key itself for a missing path', () {
+        final provider = TomTextResourceProvider.from({'count': 42});
+        expect(provider.getObject('unknown'), equals('unknown'));
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // getObjectOrNull Tests
+    // -------------------------------------------------------------------------
+    group('getObjectOrNull', () {
+      test('should return a non-String value for a flat key', () {
+        final provider = TomTextResourceProvider.from({'flag': true});
+        expect(provider.getObjectOrNull('flag'), isTrue);
+      });
+
+      test('should return null for a missing path', () {
+        final provider = TomTextResourceProvider.from({'flag': true});
+        expect(provider.getObjectOrNull('unknown'), isNull);
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // existsObject Tests
+    // -------------------------------------------------------------------------
+    group('existsObject', () {
+      test('should return true for a non-String value', () {
+        final provider = TomTextResourceProvider.from({'count': 42});
+        expect(provider.existsObject('count'), isTrue);
+      });
+
+      test('should return true for a hierarchical path', () {
+        final provider = TomTextResourceProvider.from({
+          'nested': {'key': 99},
+        });
+        expect(provider.existsObject('nested.key'), isTrue);
+      });
+
+      test('should return false for a missing path', () {
+        final provider = TomTextResourceProvider.from({'count': 42});
+        expect(provider.existsObject('unknown'), isFalse);
+      });
+    });
+
+    // -------------------------------------------------------------------------
     // resources Field Tests
     // -------------------------------------------------------------------------
     group('resources field', () {
