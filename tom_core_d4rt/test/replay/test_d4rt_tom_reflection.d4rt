@@ -1,34 +1,102 @@
 # D4rt Test Suite - Tom Reflection Classes
-# Run with: d4rt test_d4rt_tom_reflection.d4rt -test
-# Tests tom_reflection bridged classes
+# Run with: d4rt -run-replay test_d4rt_tom_reflection.d4rt -test
+# Tests tom_reflection bridged classes: capability markers + singletons,
+# the StringInvocationKind enum, the mirror interfaces, and the error types.
 
 
 # =============================================================================
-# Test: Reflection Class (2 tests)
-# Note: Reflection is abstract - no constructor, test class existence
+# Test: Reflection / core classes exist (abstract - existence only)
 # =============================================================================
 
 verifyNotNull(Reflection, 'Reflection class exists');
+verifyNotNull(ReflectionInterface, 'ReflectionInterface class exists');
+verifyNotNull(StringInvocation, 'StringInvocation class exists');
+verifyNotNull(TypeValue, 'TypeValue class exists');
 
 # =============================================================================
-# Test: NoSuchCapabilityError (4 tests)
+# Test: Capability classes exist
+# =============================================================================
+
+verifyNotNull(ReflectCapability, 'ReflectCapability class exists');
+verifyNotNull(ApiReflectCapability, 'ApiReflectCapability class exists');
+verifyNotNull(NamePatternCapability, 'NamePatternCapability class exists');
+verifyNotNull(MetadataQuantifiedCapability, 'MetadataQuantifiedCapability class exists');
+verifyNotNull(InstanceInvokeCapability, 'InstanceInvokeCapability class exists');
+verifyNotNull(StaticInvokeCapability, 'StaticInvokeCapability class exists');
+verifyNotNull(TopLevelInvokeCapability, 'TopLevelInvokeCapability class exists');
+verifyNotNull(NewInstanceCapability, 'NewInstanceCapability class exists');
+verifyNotNull(TypeCapability, 'TypeCapability class exists');
+verifyNotNull(LibraryCapability, 'LibraryCapability class exists');
+verifyNotNull(DeclarationsCapability, 'DeclarationsCapability class exists');
+verifyNotNull(InvokingCapability, 'InvokingCapability class exists');
+verifyNotNull(TypingCapability, 'TypingCapability class exists');
+verifyNotNull(SuperclassQuantifyCapability, 'SuperclassQuantifyCapability class exists');
+
+# =============================================================================
+# Test: NamePatternCapability constructors preserve namePattern
+# =============================================================================
+
+var iCap = InstanceInvokeCapability('greet');
+verifyEquals(iCap.namePattern, 'greet', 'InstanceInvokeCapability namePattern preserved');
+
+var sCap = StaticInvokeCapability('build.*');
+verifyEquals(sCap.namePattern, 'build.*', 'StaticInvokeCapability namePattern preserved');
+
+var tCap = TopLevelInvokeCapability('main');
+verifyEquals(tCap.namePattern, 'main', 'TopLevelInvokeCapability namePattern preserved');
+
+var nCap = NewInstanceCapability('from.*');
+verifyEquals(nCap.namePattern, 'from.*', 'NewInstanceCapability namePattern preserved');
+
+# =============================================================================
+# Test: Ready-made capability singletons
+# =============================================================================
+
+verifyNotNull(instanceInvokeCapability, 'instanceInvokeCapability singleton exists');
+verifyEquals(instanceInvokeCapability.namePattern, '', 'instanceInvokeCapability matches all (empty pattern)');
+verifyEquals(staticInvokeCapability.namePattern, '', 'staticInvokeCapability matches all (empty pattern)');
+verifyEquals(topLevelInvokeCapability.namePattern, '', 'topLevelInvokeCapability matches all (empty pattern)');
+verifyEquals(newInstanceCapability.namePattern, '', 'newInstanceCapability matches all (empty pattern)');
+verifyEquals(invokingCapability.namePattern, '', 'invokingCapability matches all (empty pattern)');
+verifyNotNull(typeCapability, 'typeCapability singleton exists');
+verifyNotNull(metadataCapability, 'metadataCapability singleton exists');
+verifyNotNull(libraryCapability, 'libraryCapability singleton exists');
+verifyNotNull(declarationsCapability, 'declarationsCapability singleton exists');
+verifyNotNull(typingCapability, 'typingCapability singleton exists');
+verifyNotNull(uriCapability, 'uriCapability singleton exists');
+
+# =============================================================================
+# Test: StringInvocationKind enum
+# =============================================================================
+
+verifyEquals(StringInvocationKind.method.name, 'method', 'StringInvocationKind.method name');
+verifyEquals(StringInvocationKind.getter.name, 'getter', 'StringInvocationKind.getter name');
+verifyEquals(StringInvocationKind.setter.name, 'setter', 'StringInvocationKind.setter name');
+verifyEquals(StringInvocationKind.constructor.name, 'constructor', 'StringInvocationKind.constructor name');
+verifyLength(StringInvocationKind.values, 4, 'StringInvocationKind has 4 values');
+
+# =============================================================================
+# Test: Error types
 # =============================================================================
 
 var noCapErr = NoSuchCapabilityError('No such capability');
 verifyNotNull(noCapErr, 'NoSuchCapabilityError created');
+verifyNotNull(ReflectionNoSuchMethodError, 'ReflectionNoSuchMethodError class exists');
 
 # =============================================================================
-# Test: Classes Exist (8 tests)
+# Test: Mirror interfaces exist (abstract - existence only)
 # =============================================================================
 
-verifyNotNull(StringInvocation, 'StringInvocation class exists');
-verifyNotNull(ReflectCapability, 'ReflectCapability class exists');
-verifyNotNull(ApiReflectCapability, 'ApiReflectCapability class exists');
-verifyNotNull(InstanceInvokeCapability, 'InstanceInvokeCapability class exists');
-verifyNotNull(TypeCapability, 'TypeCapability class exists');
-verifyNotNull(LibraryCapability, 'LibraryCapability class exists');
+verifyNotNull(Mirror, 'Mirror class exists');
+verifyNotNull(DeclarationMirror, 'DeclarationMirror class exists');
+verifyNotNull(ObjectMirror, 'ObjectMirror class exists');
 verifyNotNull(InstanceMirror, 'InstanceMirror class exists');
+verifyNotNull(LibraryMirror, 'LibraryMirror class exists');
+verifyNotNull(TypeMirror, 'TypeMirror class exists');
 verifyNotNull(ClassMirror, 'ClassMirror class exists');
+verifyNotNull(MethodMirror, 'MethodMirror class exists');
+verifyNotNull(VariableMirror, 'VariableMirror class exists');
+verifyNotNull(ParameterMirror, 'ParameterMirror class exists');
 
 # =============================================================================
 # Summary
