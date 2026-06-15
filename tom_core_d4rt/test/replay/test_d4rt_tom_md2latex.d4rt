@@ -1,0 +1,81 @@
+# D4rt Test Suite - Tom Md2Latex Classes
+# Run with: d4rt test_d4rt_tom_md2latex.d4rt -test
+# Tests tom_md2latex bridged classes (markdown element model, parser, converter API).
+# NOTE: Uses single-line syntax for D4rt parser compatibility.
+
+
+# =============================================================================
+# Test: Markdown element value carriers (8 tests)
+# =============================================================================
+
+var h = HeadingElement('Title', 2);
+verifyEquals(h.text, 'Title', 'HeadingElement text');
+verifyEquals(h.level, 2, 'HeadingElement level');
+
+var para = ParagraphElement(text: 'a paragraph');
+verifyEquals(para.text, 'a paragraph', 'ParagraphElement text');
+
+var code = CodeBlockElement(code: 'print(1)', language: 'dart');
+verifyEquals(code.language, 'dart', 'CodeBlockElement language');
+verifyEquals(code.isAsciiDiagram, false, 'CodeBlockElement isAsciiDiagram default');
+
+var img = ImageElement(altText: 'alt', url: 'u.png');
+verifyEquals(img.altText, 'alt', 'ImageElement altText');
+verifyEquals(img.url, 'u.png', 'ImageElement url');
+
+var link = LinkElement(text: 'site', url: 'https://x');
+verifyEquals(link.url, 'https://x', 'LinkElement url');
+
+# =============================================================================
+# Test: List + table carriers (3 tests)
+# =============================================================================
+
+var ul = UnorderedListElement(items: ['one', 'two']);
+verifyEquals(ul.items.length, 2, 'UnorderedListElement items');
+
+var ol = OrderedListElement(items: ['first']);
+verifyEquals(ol.items.length, 1, 'OrderedListElement items');
+
+var table = TableElement(headers: ['A', 'B'], rows: [['1', '2']], alignments: ['left', 'right']);
+verifyEquals(table.headers.length, 2, 'TableElement headers');
+
+# =============================================================================
+# Test: MarkdownParserOptions defaults (1 test)
+# =============================================================================
+
+var opts = MarkdownParserOptions();
+verifyEquals(opts.detectAsciiDiagrams, true, 'MarkdownParserOptions detectAsciiDiagrams default');
+
+# =============================================================================
+# Test: MarkdownParser end-to-end parse (3 tests)
+# =============================================================================
+
+var parsed = MarkdownParser('# Hello\n\nbody text').parse();
+verifyEquals(parsed.title, 'Hello', 'MarkdownParser parse title from h1');
+verifyEquals(parsed.elements.length, 2, 'MarkdownParser parse element count');
+verify(parsed.elements[0] is HeadingElement, 'MarkdownParser first element is HeadingElement');
+
+# =============================================================================
+# Test: Md2Latex static convenience API (2 tests)
+# =============================================================================
+
+var latex = Md2Latex.convertString(markdown: '# Hello\n\nWorld', generatePreamble: false);
+verifyContains(latex, 'section', 'Md2Latex.convertString emits a section');
+
+var parsed2 = Md2Latex.parse('# Hi');
+verifyEquals(parsed2.title, 'Hi', 'Md2Latex.parse title');
+
+# =============================================================================
+# Test: Classes exist (4 tests)
+# =============================================================================
+
+verifyNotNull(MdLatexConverter, 'MdLatexConverter class exists');
+verifyNotNull(MdLatexConverterOptions, 'MdLatexConverterOptions class exists');
+verifyNotNull(LatexMacros, 'LatexMacros class exists');
+verifyNotNull(ConversionError, 'ConversionError class exists');
+
+# =============================================================================
+# Summary
+# =============================================================================
+
+testSummary();
