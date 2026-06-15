@@ -185,7 +185,6 @@ class AclDemosTab extends StatelessWidget {
         DemoTile(
           title: 'All Dimensions',
           description: 'Full-window layout: expandX + expandY + both combined',
-          fullScreen: true,
           screen: AllDimensionsDemo(),
         ),
         DemoTile(

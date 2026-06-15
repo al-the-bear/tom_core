@@ -9,7 +9,6 @@ class DemoTile extends StatelessWidget {
   final String title;
   final String description;
   final Widget screen;
-  final bool fullScreen;
   final IconData? icon;
 
   const DemoTile({
@@ -17,7 +16,6 @@ class DemoTile extends StatelessWidget {
     required this.title,
     required this.description,
     required this.screen,
-    this.fullScreen = false,
     this.icon,
   });
 
@@ -36,7 +34,6 @@ class DemoTile extends StatelessWidget {
           MaterialPageRoute(
             builder: (context) => DemoScaffold(
               title: title,
-              fullScreen: fullScreen,
               child: screen,
             ),
           ),
@@ -50,14 +47,12 @@ class DemoTile extends StatelessWidget {
 class DemoScaffold extends StatefulWidget {
   final String title;
   final Widget child;
-  final bool fullScreen;
   final bool showRtlToggle;
 
   const DemoScaffold({
     super.key,
     required this.title,
     required this.child,
-    this.fullScreen = false,
     this.showRtlToggle = true,
   });
 
@@ -70,15 +65,12 @@ class _DemoScaffoldState extends State<DemoScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // Initialize direction from locale's text direction if not yet set
+    // Seed the toggle from the ambient locale's text direction on first build;
+    // the RTL switch then owns it for the rest of the page's lifetime.
     final localeDirection = Directionality.of(context);
     _direction ??= localeDirection == TextDirection.rtl
         ? AclDirection.rtl
         : AclDirection.ltr;
-
-    // Demos that use ListView manage their own scrolling and padding.
-    // fullScreen: true is for demos that need the entire screen (no padding).
-    final body = widget.child;
 
     return Scaffold(
       appBar: AppBar(
@@ -109,78 +101,7 @@ class _DemoScaffoldState extends State<DemoScaffold> {
             : TextDirection.ltr,
         child: AclDirectionScope(
           direction: _direction!,
-          child: body,
-        ),
-      ),
-    );
-  }
-}
-
-/// A grid of demo tiles for the main demo listing.
-class DemoGrid extends StatelessWidget {
-  final List<DemoTile> demos;
-
-  const DemoGrid({super.key, required this.demos});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: demos.length,
-      itemBuilder: (context, index) => demos[index],
-    );
-  }
-}
-
-/// An expanding box for demos that need to show expansion behavior.
-class ExpandingBox extends StatelessWidget {
-  final String label;
-  final Color color;
-  final bool expandX;
-  final bool expandY;
-
-  const ExpandingBox({
-    super.key,
-    required this.label,
-    required this.color,
-    this.expandX = false,
-    this.expandY = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withAlpha(50),
-        border: Border.all(color: color),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (expandX || expandY) ...[
-              const SizedBox(height: 4),
-              Text(
-                [
-                  if (expandX) 'expandX',
-                  if (expandY) 'expandY',
-                ].join(' + '),
-                style: TextStyle(
-                  color: color.withAlpha(150),
-                  fontSize: 10,
-                ),
-              ),
-            ],
-          ],
+          child: widget.child,
         ),
       ),
     );
