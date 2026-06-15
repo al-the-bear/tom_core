@@ -157,3 +157,21 @@ change — this release records the widget set that already exists.
   `TomEmptyState` / `TomLoadingOverlay` / `TomSkeletonLoader` / `TomErrorBoundary`
   rendering, and the data models. The module had no prior doc, example, or test;
   no public API change.
+- **`example/phase1_demo.dart`** — promoted the standalone demo from a
+  forms-only `runApp` (which imported the `src/forms/` barrel and crashed on
+  pump because its `@tomReflector` form models need reflection data this package
+  never wires) into a runnable, reflection-free-by-default demo. It now imports
+  the public `package:tom_flutter_ui/tom_flutter_ui.dart` barrel, installs the
+  text-resource provider + `AllColorsAdapter` in `main()`, and pages a
+  `NavigationBar` across three galleries: **Widgets** (the general kit —
+  `TomElevatedButton` / `TomFilledButton` / `TomOutlinedButton`, `TomText`,
+  `TomBadge`, `TomChip`, `TomCard` + `TomListTile`, `TomSwitch`, `TomCheckbox`,
+  `TomSlider`, `TomCircularProgressIndicator` / `TomLinearProgressIndicator`),
+  **Custom** (`TomAuthGuard`, `TomRadioGroup`, `TomSkeletonLoader`,
+  `TomLoadingOverlay`, `TomEmptyState` inside a `TomErrorBoundary`), and the
+  existing **Forms** screen. The default landing tab is Widgets, so the app
+  pumps cleanly; the Forms screen now tolerates missing reflection (it catches
+  the construction error and shows an explanatory panel instead of taking the
+  app down). Added `test/phase1_demo_test.dart` (3 tests) pumping the app,
+  asserting the Widgets gallery renders, navigating to the Custom gallery, and
+  exercising a toggle. No public API change.

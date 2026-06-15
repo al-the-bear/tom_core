@@ -1,31 +1,287 @@
 // ignore_for_file: avoid_print
-/// Phase 1 Demo Application
+/// Tom Flutter UI — runnable demo application.
 ///
-/// Exercises all Phase 1 framework features using ONLY
-/// [TomFormStringInput] + [TomFormStringDropdown]:
+/// A single `runApp` demo that pages, via a [NavigationBar], through the three
+/// pillars of the library:
 ///
-/// 1. setValue(T) usage — typing in fields, selecting from dropdowns
-/// 2. Form bind() / save() / discard() lifecycle — buttons + status bar
-/// 3. Authorization (four states) — popup menu switches global auth
-/// 4. TomAuthorizationGroup — firstName/lastName share a group
-/// 5. TomAuthorizer — email field has per-field authorizer
-/// 6. TomUIStateController — role dropdown uses uiStateController
-/// 7. Form nesting — AddressForm nested inside ProfileForm
-/// 8. Form actions (save, discard) — action buttons
-/// 9. Validation (sync, async, cross-field, debounced)
-/// 10. Validation error reset timing — setValue clears errors
-/// 11. TomFormErrorBanner display — cross-field errors shown in banner
-/// 12. Resource resolution (labels, hints, descriptions via overrides)
+/// 1. **Widgets** — the general widget kit ([TomElevatedButton], [TomText],
+///    [TomChip], [TomBadge], [TomListTile], [TomSwitch], [TomCheckbox],
+///    [TomCard], [TomSlider], [TomLinearProgressIndicator],
+///    [TomCircularProgressIndicator]). Renders without any reflection or
+///    resource setup beyond the app-level provider installed in [main].
+/// 2. **Custom** — the non-form composites ([TomAuthGuard], [TomEmptyState],
+///    [TomLoadingOverlay], [TomSkeletonLoader], [TomRadioGroup],
+///    [TomErrorBoundary]).
+/// 3. **Forms** — the declarative form system exercised through
+///    [TomFormStringInput] + [TomFormStringDropdown]: bind/save/discard
+///    lifecycle, four authorization states, authorization groups, per-field
+///    authorizers, UI-state controllers, nested forms, sync/async/cross-field
+///    validation, the error banner, and resource resolution.
+///
+/// The default landing tab is **Widgets**, so the app pumps cleanly under the
+/// Flutter toolchain (`flutter run example/phase1_demo.dart`). The **Forms**
+/// tab relies on Tom reflection for its `@tomReflector` form models; a host app
+/// must call `initializeReflection()` (with generated reflection data) at
+/// startup. When that wiring is absent — as in this standalone example — the
+/// Forms tab degrades gracefully to an explanatory panel instead of crashing.
 library;
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
-import 'package:tom_flutter_ui/src/forms/tom_forms.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // ---------------------------------------------------------------------------
-// Data Models
+// Entry point
+// ---------------------------------------------------------------------------
+
+void main() {
+  // Tom widgets resolve labels/colours through the resource layer; install a
+  // (here empty) provider and the all-colours adapter so the kit renders with
+  // its explicit values rather than failing a resource lookup.
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(const {}),
+  );
+  TomUIColors.adapter = AllColorsAdapter();
+  runApp(const Phase1DemoApp());
+}
+
+class Phase1DemoApp extends StatelessWidget {
+  const Phase1DemoApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Tom Flutter UI Demo',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
+      home: const _DemoHome(),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shell — NavigationBar paging the three galleries
+// ---------------------------------------------------------------------------
+
+class _DemoHome extends StatefulWidget {
+  const _DemoHome();
+
+  @override
+  State<_DemoHome> createState() => _DemoHomeState();
+}
+
+class _DemoHomeState extends State<_DemoHome> {
+  int _index = 0;
+
+  static const _titles = ['Widgets', 'Custom', 'Forms'];
+
+  @override
+  Widget build(BuildContext context) {
+    // Build only the selected screen — never an IndexedStack — so the
+    // reflection-dependent Forms screen is constructed only when chosen.
+    final Widget body = switch (_index) {
+      0 => const _WidgetsGallery(),
+      1 => const _CustomGallery(),
+      _ => const ProfileFormScreen(),
+    };
+    return Scaffold(
+      appBar: AppBar(title: Text('Tom Flutter UI — ${_titles[_index]}')),
+      body: body,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _index,
+        onDestinationSelected: (i) => setState(() => _index = i),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.widgets), label: 'Widgets'),
+          NavigationDestination(icon: Icon(Icons.extension), label: 'Custom'),
+          NavigationDestination(icon: Icon(Icons.dynamic_form), label: 'Forms'),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Gallery 1 — the general widget kit
+// ---------------------------------------------------------------------------
+
+class _WidgetsGallery extends StatefulWidget {
+  const _WidgetsGallery();
+
+  @override
+  State<_WidgetsGallery> createState() => _WidgetsGalleryState();
+}
+
+class _WidgetsGalleryState extends State<_WidgetsGallery> {
+  bool _switchOn = true;
+  bool _checkOn = false;
+  double _slider = 0.4;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _section('Labels'),
+        TomText(text: 'TomText renders styled text.'),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            TomBadge(labelText: '3', child: const Icon(Icons.notifications)),
+            const SizedBox(width: 16),
+            TomChip(labelText: 'TomChip'),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TomCard(
+          child: TomListTile(
+            leading: const Icon(Icons.person),
+            titleText: 'TomListTile inside a TomCard',
+            subtitle: const Text('subtitle'),
+          ),
+        ),
+
+        _section('Buttons'),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            TomElevatedButton(
+              onPressed: () {},
+              child: const Text('Elevated'),
+            ),
+            TomFilledButton(
+              onPressed: () {},
+              child: const Text('Filled'),
+            ),
+            TomOutlinedButton(
+              onPressed: () {},
+              child: const Text('Outlined'),
+            ),
+          ],
+        ),
+
+        _section('Toggles'),
+        Row(
+          children: [
+            TomSwitch(
+              value: _switchOn,
+              onChanged: (v) => setState(() => _switchOn = v),
+            ),
+            const SizedBox(width: 8),
+            const Text('TomSwitch'),
+            const SizedBox(width: 24),
+            TomCheckbox(
+              value: _checkOn,
+              onChanged: (v) => setState(() => _checkOn = v ?? false),
+            ),
+            const SizedBox(width: 8),
+            const Text('TomCheckbox'),
+          ],
+        ),
+
+        _section('Slider'),
+        TomSlider(
+          value: _slider,
+          onChanged: (v) => setState(() => _slider = v),
+        ),
+
+        _section('Progress'),
+        Row(
+          children: [
+            TomCircularProgressIndicator(value: null),
+            const SizedBox(width: 24),
+            Expanded(child: TomLinearProgressIndicator(value: _slider)),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _section(String title) => Padding(
+        padding: const EdgeInsets.only(top: 20, bottom: 8),
+        child: Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+      );
+}
+
+// ---------------------------------------------------------------------------
+// Gallery 2 — non-form composites
+// ---------------------------------------------------------------------------
+
+class _CustomGallery extends StatelessWidget {
+  const _CustomGallery();
+
+  @override
+  Widget build(BuildContext context) {
+    final titleStyle = Theme.of(context).textTheme.titleMedium;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('TomAuthGuard (full → renders child)', style: titleStyle),
+        const SizedBox(height: 8),
+        const TomAuthGuard(
+          tomId: 'demo.guarded',
+          child: ListTile(
+            leading: Icon(Icons.lock_open),
+            title: Text('Visible because auth resolves to full'),
+          ),
+        ),
+        const Divider(height: 32),
+
+        Text('TomRadioGroup', style: titleStyle),
+        const SizedBox(height: 8),
+        const TomRadioGroup<String>(
+          tomId: 'demo.choice',
+          selected: 'a',
+          items: [
+            TomRadioGroupItem(value: 'a', label: 'Alpha'),
+            TomRadioGroupItem(value: 'b', label: 'Beta'),
+            TomRadioGroupItem(value: 'c', label: 'Gamma'),
+          ],
+        ),
+        const Divider(height: 32),
+
+        Text('TomSkeletonLoader', style: titleStyle),
+        const SizedBox(height: 8),
+        const TomSkeletonLoader(width: 220, height: 14),
+        const SizedBox(height: 8),
+        const TomSkeletonLoader(width: 160, height: 14),
+        const Divider(height: 32),
+
+        Text('TomLoadingOverlay', style: titleStyle),
+        const SizedBox(height: 8),
+        const SizedBox(
+          height: 140,
+          child: TomLoadingOverlay(
+            isLoading: true,
+            message: 'Loading…',
+            child: SizedBox.expand(child: Card(child: Center(child: Text('content')))),
+          ),
+        ),
+        const Divider(height: 32),
+
+        Text('TomEmptyState (wrapped in TomErrorBoundary)', style: titleStyle),
+        const SizedBox(height: 8),
+        const SizedBox(
+          height: 180,
+          child: TomErrorBoundary(
+            child: TomEmptyState(
+              title: 'Nothing here yet',
+              description: 'Create your first item to get started.',
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Forms — data models
 // ---------------------------------------------------------------------------
 
 @tomReflector
@@ -196,25 +452,8 @@ class ProfileForm extends TomForm<UserProfile> {
 }
 
 // ---------------------------------------------------------------------------
-// Demo App
+// Forms screen — reflection-tolerant
 // ---------------------------------------------------------------------------
-
-void main() {
-  runApp(const Phase1DemoApp());
-}
-
-class Phase1DemoApp extends StatelessWidget {
-  const Phase1DemoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Phase 1 Forms Demo',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.blue),
-      home: const ProfileFormScreen(),
-    );
-  }
-}
 
 class ProfileFormScreen extends StatefulWidget {
   const ProfileFormScreen({super.key});
@@ -225,8 +464,10 @@ class ProfileFormScreen extends StatefulWidget {
 
 class _ProfileFormScreenState extends State<ProfileFormScreen>
     with TomFormEventListener {
-  late final ProfileForm _form;
-  late final UserProfile _profile;
+  ProfileForm? _form;
+
+  /// Non-null when the form could not be constructed (reflection not wired).
+  Object? _initError;
 
   // Auth demo controls
   TomAuthState _formAuthState = TomAuthState.full;
@@ -235,27 +476,35 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
   @override
   void initState() {
     super.initState();
-    TomAuthorization.adapter = _authAdapter;
+    // The form models are `@tomReflector` types; without reflection data wired
+    // by the host app this construction throws. Degrade gracefully instead of
+    // taking down the whole demo.
+    try {
+      TomAuthorization.adapter = _authAdapter;
 
-    _form = TomScope.withScope('demo', () => ProfileForm());
-    _form.addListener(this);
+      final form = TomScope.withScope('demo', () => ProfileForm());
+      form.addListener(this);
 
-    // Create and bind initial data
-    _profile = UserProfile();
-    _profile.setValues({
-      'firstName': 'John',
-      'lastName': 'Doe',
-      'email': 'john@example.com',
-      'country': 'US',
-      'role': 'user',
-    });
-    _form.bind(_profile);
+      final profile = UserProfile();
+      profile.setValues({
+        'firstName': 'John',
+        'lastName': 'Doe',
+        'email': 'john@example.com',
+        'country': 'US',
+        'role': 'user',
+      });
+      form.bind(profile);
+
+      _form = form;
+    } catch (e) {
+      _initError = e;
+    }
   }
 
   @override
   void dispose() {
-    _form.removeListener(this);
-    _form.dispose();
+    _form?.removeListener(this);
+    _form?.dispose();
     TomAuthorization.reset();
     super.dispose();
   }
@@ -267,9 +516,11 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
   }
 
   void _onSave() async {
-    final errors = await _form.validate();
+    final form = _form;
+    if (form == null) return;
+    final errors = await form.validate();
     if (errors.isEmpty) {
-      if (await _form.save()) {
+      if (await form.save()) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile saved!')),
@@ -281,7 +532,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
   }
 
   void _onDiscard() {
-    _form.discard();
+    _form?.discard();
     setState(() {});
   }
 
@@ -293,96 +544,131 @@ class _ProfileFormScreenState extends State<ProfileFormScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Phase 1 Forms Demo'),
-        actions: [
-          // Auth state selector
-          PopupMenuButton<TomAuthState>(
-            icon: const Icon(Icons.security),
-            tooltip: 'Set auth state',
-            onSelected: _setAuthState,
-            itemBuilder: (_) => TomAuthState.values.map((s) {
-              return PopupMenuItem(
-                value: s,
-                child: Row(
-                  children: [
-                    Icon(
-                      s == _formAuthState
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(s.name),
-                  ],
+    final form = _form;
+    if (form == null) {
+      return _ReflectionRequiredPanel(error: _initError);
+    }
+    return Column(
+      children: [
+        // Auth state selector strip.
+        Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.security, size: 18),
+                const SizedBox(width: 8),
+                const Text('Auth state:'),
+                const SizedBox(width: 12),
+                DropdownButton<TomAuthState>(
+                  value: _formAuthState,
+                  onChanged: (s) => s == null ? null : _setAuthState(s),
+                  items: TomAuthState.values
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
+                      .toList(),
                 ),
-              );
-            }).toList(),
+              ],
+            ),
           ),
-        ],
-      ),
-      body: TomFormStyleScope(
-        style: const TomFormStyle(),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Error banner
-              TomFormErrorBanner(form: _form),
-              const SizedBox(height: 16),
+        ),
+        Expanded(
+          child: TomFormStyleScope(
+            style: const TomFormStyle(),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TomFormErrorBanner(form: form),
+                  const SizedBox(height: 16),
+                  _StatusBar(form: form),
+                  const SizedBox(height: 16),
+                  form.firstName.widget,
+                  const SizedBox(height: 12),
+                  form.lastName.widget,
+                  const SizedBox(height: 12),
+                  form.email.widget,
+                  const SizedBox(height: 12),
+                  form.country.widget,
+                  const SizedBox(height: 12),
+                  form.role.widget,
+                  const SizedBox(height: 24),
+                  Text(
+                    'Address',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const Divider(),
+                  form.address.street.widget,
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: form.address.city.widget),
+                      const SizedBox(width: 12),
+                      SizedBox(width: 120, child: form.address.zipCode.widget),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: _onDiscard,
+                        child: const Text('Discard'),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        onPressed: _onSave,
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
-              // Status bar
-              _StatusBar(form: _form),
-              const SizedBox(height: 16),
+/// Shown when the `@tomReflector` form models cannot be built because the host
+/// app never called `initializeReflection()`.
+class _ReflectionRequiredPanel extends StatelessWidget {
+  final Object? error;
+  const _ReflectionRequiredPanel({this.error});
 
-              // Field widgets
-              _form.firstName.widget,
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.auto_awesome, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Forms need reflection',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'The form models are @tomReflector types. A host app must call '
+              'initializeReflection() with generated reflection data at startup. '
+              'The Widgets and Custom tabs run without it.',
+              textAlign: TextAlign.center,
+            ),
+            if (error != null) ...[
               const SizedBox(height: 12),
-              _form.lastName.widget,
-              const SizedBox(height: 12),
-              _form.email.widget,
-              const SizedBox(height: 12),
-              _form.country.widget,
-              const SizedBox(height: 12),
-              _form.role.widget,
-              const SizedBox(height: 24),
-
-              // Nested address form
               Text(
-                'Address',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const Divider(),
-              _form.address.street.widget,
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _form.address.city.widget),
-                  const SizedBox(width: 12),
-                  SizedBox(width: 120, child: _form.address.zipCode.widget),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // Actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  OutlinedButton(
-                    onPressed: _onDiscard,
-                    child: const Text('Discard'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: _onSave,
-                    child: const Text('Save'),
-                  ),
-                ],
+                '$error',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
-          ),
+          ],
         ),
       ),
     );
