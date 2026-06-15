@@ -124,7 +124,10 @@ run via the replay harness (`d4rt -run-replay <file> -test`, see
 > claimed `FrameState`/`OperationState` are "NOT exported/bridged", but the
 > current bridge **does** register both — and it was rewritten/extended against
 > the current surface. The documented/tested API was verified **natively**
-> (plain-Dart construction, no d4rt) — 18/18 assertions pass.
+> (plain-Dart construction, no d4rt) — 20/20 assertions pass (including the
+> `DLLogLevelExtension` upper-case `.name` override, the four enums' `.values`
+> counts, `DiscoveryOptions` defaults, `DiscoveredServer` map-derived getters,
+> and `RetryConfig`/`kDefaultRetryDelaysMs`).
 >
 > The bridge could **not** be d4rt-verified in isolation because the generated
 > file has a **generation defect (B4)**: it emits a direct
