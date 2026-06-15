@@ -13,7 +13,8 @@ The app opens on a two-tab shell (`RootScreen`):
 
 ### Demos tab
 
-A catalogue of ~30 demos, grouped into three sections:
+A catalogue of 33 demos, grouped into three sections (each mapped to the
+upstream feature it validates in [`doc/demo_catalogue.md`](doc/demo_catalogue.md)):
 
 - **Phase 1 — Spec-aligned demos** (`Demo A`–`Demo D`): form lifecycle
   (bind / save / discard, pristine behaviour) with sync / async / cross-field
@@ -68,6 +69,7 @@ initializes reflection before `runApp`.
 | `lib/actions/` | Form action handlers |
 | `lib/common/` | Shared helpers |
 | `assets/demo_resources.json` | Text resources consumed by the demos |
+| `doc/demo_catalogue.md` | Demo/example → upstream feature map and launch guide |
 
 ## License
 
