@@ -85,3 +85,15 @@ change — this release records the widget set that already exists.
   unmodifiable source snapshots, inspector filtering, `FormValidationError`
   ids, and breakpoint resolution. The 62-file module was already documented and
   carried 20 test files (326 tests, still green); no public API change.
+- **`groups/`** — authored `doc/groups.md` (collective-visibility control: the
+  `TomUIGroup` typedef over `TomAuthorizationGroup`, weak-reference member
+  tracking, the three `AuthGroupMode`s — `controlsAll` / `controlsWidest` /
+  `controlsNarrowest` — and `TomWidgetMixin`'s id/group/auth/resource wiring and
+  four-layer `getAuth` resolution); added
+  `example/groups/groups_example.dart` (pure-logic: group membership, the three
+  modes via `applyMode`, a `TomWidgetMixin` field resolving through its group,
+  introspection, and scope-prefixed paths); added
+  `test/groups/groups_example_test.dart` (9 tests) covering the example end to
+  end plus the typedef identity, each mode's ceiling/floor/replace behaviour,
+  effective-auth resolution, register/unregister tracking, and scope paths. The
+  module had no prior tests or example; no public API change.
