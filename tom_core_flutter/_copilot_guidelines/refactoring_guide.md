@@ -17,7 +17,6 @@ Located in `lib/src/tomclient/` (keep in sync with the folder):
 
 | Module | Description |
 | ------ | ----------- |
-| `camera/` | Camera integration and image capture |
 | `forms/` | Form handling and validation widgets |
 | `little_things/` | Small utility widgets and helpers |
 | `localstorage/` | Local storage abstraction |
