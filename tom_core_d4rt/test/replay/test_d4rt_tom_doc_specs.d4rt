@@ -1,0 +1,69 @@
+# D4rt Test Suite - Tom Doc Specs Classes
+# Run with: d4rt test_d4rt_tom_doc_specs.d4rt -test
+# Tests tom_doc_specs bridged classes (schema model, validation, enums).
+# NOTE: Uses single-line syntax for D4rt parser compatibility.
+
+
+# =============================================================================
+# Test: ValidationError carrier + default category (4 tests)
+# =============================================================================
+
+var err = ValidationError(message: 'bad', lineNumber: 5, sectionId: 's1');
+verifyNotNull(err, 'ValidationError created');
+verifyEquals(err.message, 'bad', 'ValidationError message');
+verifyEquals(err.lineNumber, 5, 'ValidationError lineNumber');
+verifyEquals(err.category, ValidationErrorCategory.general, 'ValidationError default category');
+
+# =============================================================================
+# Test: ValidationErrorCategory enum (2 tests)
+# =============================================================================
+
+verifyEquals(ValidationErrorCategory.general.name, 'general', 'ValidationErrorCategory.general name');
+verifyEquals(ValidationErrorCategory.values.length, 12, 'ValidationErrorCategory has 12 values');
+
+# =============================================================================
+# Test: SchemaSource enum (3 tests)
+# =============================================================================
+
+verifyEquals(SchemaSource.local.name, 'local', 'SchemaSource.local name');
+verifyEquals(SchemaSource.builtin.name, 'builtin', 'SchemaSource.builtin name');
+verifyEquals(SchemaSource.values.length, 3, 'SchemaSource has 3 values');
+
+# =============================================================================
+# Test: SchemaInfo carrier + derived getters (4 tests)
+# =============================================================================
+
+var info = SchemaInfo(id: 'quest-overview', version: '1.0', path: '/x', source: SchemaSource.builtin);
+verifyNotNull(info, 'SchemaInfo created');
+verifyEquals(info.id, 'quest-overview', 'SchemaInfo id');
+verifyEquals(info.fullId, 'quest-overview/1.0', 'SchemaInfo fullId getter');
+verifyEquals(info.filenameId, 'quest-overview-1.0', 'SchemaInfo filenameId getter');
+
+# =============================================================================
+# Test: SpecSectionType.empty factory (4 tests)
+# =============================================================================
+
+var sst = SpecSectionType.empty('requirement');
+verifyNotNull(sst, 'SpecSectionType.empty created');
+verifyEquals(sst.type, 'requirement', 'SpecSectionType type');
+verifyEquals(sst.isEmpty, true, 'SpecSectionType.empty isEmpty');
+verifyEquals(sst.length, 0, 'SpecSectionType.empty length');
+
+# =============================================================================
+# Test: Classes exist (8 tests)
+# =============================================================================
+
+verifyNotNull(DocSpecs, 'DocSpecs class exists');
+verifyNotNull(DocSpecsFactory, 'DocSpecsFactory class exists');
+verifyNotNull(SpecSection, 'SpecSection class exists');
+verifyNotNull(SpecDoc, 'SpecDoc class exists');
+verifyNotNull(DocSpecSchema, 'DocSpecSchema class exists');
+verifyNotNull(SchemaLoader, 'SchemaLoader class exists');
+verifyNotNull(DocSpecsValidator, 'DocSpecsValidator class exists');
+verifyNotNull(DocSpecsSkeletonGenerator, 'DocSpecsSkeletonGenerator class exists');
+
+# =============================================================================
+# Summary
+# =============================================================================
+
+testSummary();
