@@ -133,3 +133,21 @@ change — this release records the widget set that already exists.
   narrowing). Scoped to module doc + pure-logic example/smoke test, not a
   ~23k-LOC refactor of thin Flutter wrappers; per-widget visual rendering stays
   with the `testWidgets` suites / `phase1_demo.dart`. No public API change.
+- **`custom/`** — authored `doc/custom.md` (the eight non-form composite
+  widgets: the auth-gated `TomAuthGuard`, the per-node `TomAuthTreeView` /
+  `TomAuthTreeNode` with its `ownAuth.narrow(inheritedAuth)` inheritance rule,
+  the group-gated `TomRadioGroup` / `TomRadioGroupItem`, and the
+  `TomEmptyState` / `TomLoadingOverlay` / `TomSkeletonLoader` /
+  `TomErrorBoundary` / `TomInfiniteScroll` state idioms — the shared
+  four-outcome auth contract, the scope-qualified `TomAuthorization.resolveAuth`
+  lookup, and the ref-counted nearest-boundary error routing); added
+  `example/custom/custom_example.dart` (pure-logic: the four-state auth lookup,
+  the `TomAuthState.narrow` lattice the tree inherits with, the
+  `TomRadioGroupItem` / `TomAuthTreeNode` data models, and context-free
+  construction of all eight widgets); added `test/custom/custom_example_test.dart`
+  (13 tests) covering the example end to end, `TomAuthGuard.resolveAuthState`
+  across the four states, and `testWidgets` render cases for the auth gate
+  (none collapses / disabled fades / full renders), `TomRadioGroup` gating,
+  `TomEmptyState` / `TomLoadingOverlay` / `TomSkeletonLoader` / `TomErrorBoundary`
+  rendering, and the data models. The module had no prior doc, example, or test;
+  no public API change.
