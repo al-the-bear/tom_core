@@ -130,9 +130,14 @@ carriers.
 > markdown/doc-scanner classes (`MarkdownParser`, `Document`, `Section`,
 > `ValidationError`, `SchemaSource`, `PageFormat`, …) that the current
 > `tom_build` bridge does not contain — and was rewritten against the current
-> surface. The documented/tested API was verified **natively** (plain-Dart
-> construction, no d4rt) — 22/22 assertions pass. Full d4rt/replay execution is
-> gated on the project-wide blockers (B1: committed `pubspec.lock` pins
-> `tom_d4rt 1.8.10` but the Jun-15 bridges need `≥ 1.8.19`; B2: cross-module
-> duplicate `MarkdownParser` registration clash), deferred to the analyze/replay
-> gate (items 75-76). `dart analyze lib/src/tom_build` clean.
+> surface. The current surface was verified **at the d4rt level** via an
+> isolated single-bridge harness (register only `TomBuildBridge`, then
+> `d4rt.execute` a script importing `package:tom_build/tom_build.dart`) under the
+> resolved `tom_d4rt 1.8.23` — **16/16 assertions pass**, confirming the bridge
+> is d4rt-loadable with no codegen defect. (`pubspec.lock` is gitignored here, so
+> there is no pinned `tom_d4rt`; the `tom_d4rt: any` constraint resolves to
+> 1.8.23 — the "B1" lock-pin blocker recorded for earlier modules does not apply
+> to this package.) The only remaining gate for the **full-binary**
+> `d4rt -run-replay` (which registers *all* bridges at once) is B2 — the
+> cross-module duplicate `MarkdownParser` registration clash — deferred to the
+> analyze/replay gate (items 75-76). `dart analyze lib/src/tom_build` clean.
