@@ -1,39 +1,69 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Tom Core Flutter
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+`tom_core_flutter` is the Flutter integration layer of the Tom Framework. It
+re-exports the whole platform-neutral [`tom_core_kernel`](../tom_core_kernel)
+(dependency injection, observable state, security, resources, runtime
+utilities) and adds the Flutter-specific pieces on top: widgets that bind to
+observable kernel state, form primitives, typed UI properties, client-side
+platform detection, and client authentication helpers.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+Because it surfaces the kernel through its own barrel, a Flutter app only needs
+to depend on `tom_core_flutter` — importing it gives you both the kernel API and
+the Flutter extensions.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+This package is internal to the Tom workspace and is consumed by path:
+
+```yaml
+dependencies:
+  tom_core_flutter:
+    path: ../tom_core_flutter
+```
+
+Import the single barrel — it re-exports `tom_core_kernel` and
+`tom_reflection`, so you rarely need to import those directly:
+
+```dart
+import 'package:tom_core_flutter/tom_core_flutter.dart';
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+Rebuild a widget automatically whenever an observable kernel value changes:
 
 ```dart
-const like = 'sample';
+final counter = TomInt(0);
+
+TomObservingWidget<TomInt>(
+  observable: counter,
+  builder: (context, value) => Text('Count: ${~counter}'),
+);
+
+counter | 5; // the widget rebuilds with "Count: 5"
 ```
+
+## Modules
+
+| Module | Summary |
+| ------ | ------- |
+| Observing | `TomObservingWidget` and `ValueListenableObserver` — rebuild Flutter widgets in response to `TomObservable` kernel state |
+| Forms | Form field and form-state primitives (`TomFieldOld`, `TomEmailField`, `TomPasswordField`, `TomFormOld`) built on observable objects |
+| Resources | `TomProperty<T>` and typed variants (`TomStringProperty`, `TomIntProperty`, `TomDoubleProperty`, `TomBoolProperty`) for UI-bound configuration values |
+| Runtime | `clientPlatformUtils` — conditional platform detection (web / native IO / neutral) returning a kernel `TomPlatformUtils` |
+| Security | `TomClient2FAAdaptor` — client-side authentication and two-factor helpers |
+| Little Things | `TomClientException` / `TomClientUIException` — client-side exception types extending the kernel `TomException` |
+
+### Placeholder modules
+
+The following module folders are reserved for planned client capabilities and
+currently contain only a `readme.md` placeholder (no implementation):
+`camera`, `localstorage`, `preferences`, `qrcode`.
 
 ## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+- **Kernel API:** all of `tom_core_kernel` is re-exported here; see its
+  [README](../tom_core_kernel/README.md) and module docs for the underlying
+  building blocks.
+- **Tests:** run with `flutter test` from the package root.
+- **License:** proprietary — see [LICENSE](LICENSE).

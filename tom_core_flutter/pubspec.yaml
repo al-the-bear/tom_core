@@ -1,5 +1,5 @@
 name: tom_core_flutter
-description: A starting point for Dart libraries or applications.
+description: Flutter integration layer for the TOM framework — re-exports tom_core_kernel and adds Flutter widgets, forms, and client utilities.
 version: 1.0.0
 publish_to: none
 
