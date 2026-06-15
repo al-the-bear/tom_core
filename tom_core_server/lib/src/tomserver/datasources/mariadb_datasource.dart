@@ -13,7 +13,10 @@ import 'datasource_initialization.dart';
 import 'queries.dart';
 import 'types_operator.dart';
 
+/// Thrown for MariaDB data-source failures (connect, execute, result mapping).
 class MariadbDatasourceException extends TomServerException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomServerException].
   MariadbDatasourceException(
     super.key,
     super.defaultUserMessage, {
@@ -24,7 +27,11 @@ class MariadbDatasourceException extends TomServerException {
   });
 }
 
+/// Thrown when a MariaDB prepared statement fails (e.g. a closed connection),
+/// signalling that a single reconnect-and-retry may recover it.
 class MariadbPreparedStatementException extends TomServerException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomServerException].
   MariadbPreparedStatementException(
     super.key,
     super.defaultUserMessage, {
@@ -35,14 +42,28 @@ class MariadbPreparedStatementException extends TomServerException {
   });
 }
 
+/// A MariaDB-backed [TomPreparedStatement]: wraps a server-side `PreparedStmt`,
+/// the ordered [parameterList] its placeholders expect, the owning
+/// [datasource], and the optional [resultType] used to map result rows.
 class MariadbPreparedStatement<T extends Object>
     extends TomPreparedStatement<T> {
+  /// The data source that prepared and runs this statement.
   final MariaDbDatasource datasource;
+
+  /// The live server-side prepared statement handle (replaced on reconnect).
   PreparedStmt preparedStmt;
+
+  /// The placeholder names in positional order, mapping `params` to `?` slots.
   final List<String> parameterList;
+
+  /// The type result rows are mapped to (defaults to `T`).
   final Type? resultType;
+
+  /// The compiled SQL command (kept so the statement can be re-prepared).
   final String command;
 
+  /// Wraps the prepared [preparedStmt] with its [parameterList], owning
+  /// [datasource], [resultType] and original [command].
   MariadbPreparedStatement(
     this.preparedStmt,
     this.parameterList,
@@ -56,8 +77,6 @@ class MariadbPreparedStatement<T extends Object>
     List<Object?> parameters = [];
     if (params != null) {
       for (var p in parameterList) {
-        // TODO: escape parameters to prevent SQL injection
-        // TODO: need to use converters?
         parameters.add(datasource.sqlDialect.objectOp(params[p]));
       }
     }
@@ -108,6 +127,16 @@ class MariadbPreparedStatement<T extends Object>
   }
 }
 
+/// A MariaDB / MySQL [TomDataSource] driver (registered for the `"mariadb"`
+/// type).
+///
+/// Connection settings ([username], [password], [host], [port],
+/// [databaseName], [timeOut]) are filled from the configuration map by
+/// reflection in [initialize], which then opens the [connection]. The driver
+/// implements the full data-source surface — [prepareStatement], [executeQuery]
+/// (with reflection-based row→object mapping), [executeCommand] — and
+/// participates in transactions via plain `START TRANSACTION` / `COMMIT` /
+/// `ROLLBACK` (see [MariaDbXADatasource] for the XA variant).
 @tomReflector
 @TomDatasourceDriver("mariadb")
 class MariaDbDatasource implements TomDataSource {
@@ -116,15 +145,31 @@ class MariaDbDatasource implements TomDataSource {
   @override
   TomStandardSqlDialect get sqlDialect => _sqlDialect;
 
+  /// The connection user name.
   String username = "";
+
+  /// The connection password.
   String password = "";
+
+  /// The database host.
   String host = "";
+
+  /// The database port (`-1` until configured).
   int port = -1;
+
+  /// The schema / database name (empty selects no default schema).
   String databaseName = "";
+
+  /// The connect timeout in milliseconds.
   int timeOut = 10000;
 
+  /// The live MySQL connection (`null` until [connect] succeeds).
   MySQLConnection? connection;
 
+  /// Opens a connection using the configured settings.
+  ///
+  /// Throws a [MariadbDatasourceException] if the connection cannot be created
+  /// or remains unconnected after the attempt.
   Future<void> connect() async {
     connection = await MySQLConnection.createConnection(
       host: host,
@@ -161,6 +206,7 @@ class MariaDbDatasource implements TomDataSource {
     }
   }
 
+  /// Whether the underlying connection is currently established.
   bool get connected => connection != null ? connection!.connected : false;
 
   @override
@@ -173,7 +219,6 @@ class MariaDbDatasource implements TomDataSource {
     }
     var q = query.generateQuery(sqlDialect);
     var params = query.getParameters(sqlDialect);
-    // TODO: What happens if a parameter is twice in the query?
     for (var p in params) {
       q = q.replaceAll(":$p", "?");
     }
@@ -219,7 +264,6 @@ class MariaDbDatasource implements TomDataSource {
     );
   }
 
-  // TODO: include handling of access control, both using default resource keys and annotations
   Future<List<T>> _processResult<T extends Object>(
     IResultSet qResult, [
     Type? resultType,
@@ -288,9 +332,6 @@ class MariaDbDatasource implements TomDataSource {
           );
         }
         for (var col in TomAnnotationAnalyzer.getPersistentColumns(rType)!) {
-          // TODO: this must be cached...?
-          // TODO: need to use converters?
-          // TODO: use name mapping from TomDbColumn annotations
           if (qResult.cols.any((c) => c.name == col.field)) {
             var member = rowResult.getMembers()[col.declaredName];
             var t = member!.getType();
@@ -883,6 +924,14 @@ class MariaDbDatasource implements TomDataSource {
   }
 }
 
+/// A MariaDB [TomDataSource] that uses **XA (distributed) transactions**
+/// (registered for the `"mariadb_xa"` type).
+///
+/// It inherits all connection and execution behaviour from [MariaDbDatasource]
+/// but overrides the transaction lifecycle to issue `XA START` / `XA END` +
+/// `XA PREPARE` / `XA COMMIT` / `XA ROLLBACK` against a per-transaction branch
+/// id, so this data source can take part in a two-phase commit across multiple
+/// resources.
 @tomReflector
 @TomDatasourceDriver("mariadb_xa")
 class MariaDbXADatasource extends MariaDbDatasource {

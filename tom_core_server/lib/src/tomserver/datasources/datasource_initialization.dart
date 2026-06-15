@@ -3,7 +3,11 @@ import '../transactions/transaction_manager.dart';
 import 'sql_dialects.dart';
 import 'queries.dart';
 
+/// Thrown when a data source cannot be discovered, instantiated, or
+/// initialised (duplicate or missing driver, bad configuration, etc.).
 class TomDatasourceInitException extends TomException {
+  /// Creates the exception with a message [key] and [defaultUserMessage]; the
+  /// remaining parameters mirror [TomException].
   TomDatasourceInitException(
     super.key,
     super.defaultUserMessage, {
@@ -16,36 +20,66 @@ class TomDatasourceInitException extends TomException {
   });
 }
 
+/// Annotation marking a [TomDataSource] implementation as the driver for a
+/// named data-source [type] (e.g. `"mariadb"`). Drivers are discovered by
+/// scanning [tomReflector] for this annotation.
 @tomReflector
 class TomDatasourceDriver {
+  /// The data-source type this driver serves.
   final String type;
 
+  /// Binds the annotated class to [type].
   const TomDatasourceDriver(this.type);
 }
 
+/// A reusable, server-side compiled statement that can be [execute]d (with
+/// optional named [params]) any number of times and then [deallocate]d.
 abstract class TomPreparedStatement<T extends Object> {
+  /// Runs the statement and returns the mapped result rows.
   Future<List<T>> execute([Map<String, Object?>? params]);
+
+  /// Releases the statement's server-side resources.
   Future<void> deallocate();
 }
 
+/// A connection to one data source — the abstract contract a driver implements.
+///
+/// A data source exposes its [sqlDialect], lifecycle ([initialize] / [close] /
+/// [isOperational]), and execution surface ([prepareStatement], [executeCommand]
+/// for writes returning an affected-row count, [executeQuery] for reads). It is
+/// a [TomTransactionParticipant], so it can enlist in a transaction.
+///
+/// Concrete drivers register via [TomDatasourceDriver]; obtain one for a type
+/// with [createDatasourceOf], which lazily scans reflection metadata on first
+/// use.
 abstract class TomDataSource implements TomTransactionParticipant {
+  /// The SQL dialect this data source generates against.
   TomStandardSqlDialect get sqlDialect;
 
+  /// Opens the connection and applies [settings] (host, credentials, …).
   Future<void> initialize(Map<String, dynamic> settings);
 
+  /// Closes the connection and frees its resources.
   Future<void> close();
 
+  /// Whether the connection is currently usable (default `true`).
   bool isOperational() {
     return true;
   }
 
+  /// Compiles [query] (optionally mapping rows to [resultType]) into a reusable
+  /// [TomPreparedStatement].
   Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(
     TomQuery query, [
     Type? resultType,
   ]);
 
+  /// Executes a write [command] (optionally with [params]) and returns the
+  /// number of affected rows.
   Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params]);
 
+  /// Executes a read [command] (optionally with [params]), mapping rows to
+  /// [resultType].
   Future<List<T>> executeQuery<T extends Object>(
     String command, [
     Map<String, dynamic>? params,
@@ -91,6 +125,10 @@ abstract class TomDataSource implements TomTransactionParticipant {
     }
   }
 
+  /// Returns a fresh data source for [type], discovering drivers on first call.
+  ///
+  /// Throws a [TomDatasourceInitException] if no driver is registered for
+  /// [type], or if the registered driver fails to instantiate.
   static TomDataSource? createDatasourceOf(String type) {
     if (_datasourceTypes.isEmpty) {
       _initializeDatasourceTypes();
@@ -126,13 +164,24 @@ abstract class TomDataSource implements TomTransactionParticipant {
   }
 }
 
+/// The process-wide registry of named, configured data sources.
+///
+/// Each named entry pairs a [name] with its [settings] and, once
+/// [initialize]d, the live [datasource]. [initializeDatasourceInfo] builds the
+/// registry from a configuration map; [getDataSourceInfo] looks one up by name;
+/// [closeAll] shuts them all down. A `delegateTo` setting aliases one name onto
+/// another already-registered data source instead of opening a new connection.
 class TomDataSourceInfo {
+  /// All registered data sources, keyed by name.
   static Map<String, TomDataSourceInfo> datasources = {};
 
+  /// Returns the registered info for [dsName], or `null` if none.
   static TomDataSourceInfo? getDataSourceInfo(String dsName) {
     return datasources[dsName];
   }
 
+  /// Builds and initialises a registry entry for every map-valued entry in
+  /// [datasourceConfiguration]. Returns `1` on success.
   static Future<int> initializeDatasourceInfo(
     Map<String, dynamic> datasourceConfiguration,
   ) async {
@@ -145,6 +194,7 @@ class TomDataSourceInfo {
     return 1;
   }
 
+  /// Closes every initialised data source in the registry.
   static Future<void> closeAll() async {
     for (TomDataSourceInfo dsi in datasources.values) {
       if (dsi._datasource != null) {
@@ -153,13 +203,20 @@ class TomDataSourceInfo {
     }
   }
 
+  /// The registry key / logical name of this data source.
   String name;
+
+  /// The driver type, resolved from [settings] during [initialize].
   late String type;
+
+  /// The raw configuration for this data source.
   Map<String, dynamic> settings;
   late TomDataSource? _datasource;
 
+  /// Whether the underlying data source exists and reports operational.
   bool get isOperational => _datasource != null && _datasource!.isOperational();
 
+  /// The live data source, or throws if it has not been initialised.
   TomDataSource get datasource {
     if (_datasource != null) {
       return _datasource!;
@@ -171,8 +228,16 @@ class TomDataSourceInfo {
     );
   }
 
+  /// Creates an (uninitialised) registry entry from [name] and [settings].
   TomDataSourceInfo(this.name, this.settings);
 
+  /// Registers this entry and opens its data source.
+  ///
+  /// With a `delegateTo` setting, aliases [name] onto the referenced
+  /// already-registered data source. Otherwise resolves the `type`, creates the
+  /// driver via [TomDataSource.createDatasourceOf], and initialises it with
+  /// [settings]. Throws a [TomDatasourceInitException] on any failure (missing
+  /// delegate, absent/empty `type`, or no driver for the type).
   Future<void> initialize() async {
     String? delegate = settings["delegateTo"];
     if (delegate != null) {

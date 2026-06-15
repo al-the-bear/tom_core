@@ -55,8 +55,34 @@
   (the deferred JWT-settings work is now recorded in the class dartdoc and the
   quest completion steps).
 
+- **Datasources module**: added dartdoc to all public symbols across the six
+  files — the SQL-typed values (`TomDbType` and `TomDbInt` / `TomDbDouble` /
+  `TomDbString` / `TomDbDateTime` / `TomDbDate` / `TomDbTime` / `TomDbBool`), the
+  operator tree (`TomOperator`, `SqlString`), the dialect (`TomStandardSqlDialect`
+  and every fragment method, `TomSqlDialect`, `MariadbSqlDialect`), the query
+  objects (`TomTypePersistenceInfo`, `TomTypedPersistenceBase`, `TomQuery`,
+  `TomGeneratedQuery`, `TomSelect`, `TomLiteralSelect`, `TomCount`, `TomDelete`),
+  and the data-source/driver layer (`TomDatasourceInitException`,
+  `TomDatasourceDriver`, `TomPreparedStatement`, `TomDataSource`,
+  `TomDataSourceInfo`, `MariadbDatasourceException`,
+  `MariadbPreparedStatementException`, `MariadbPreparedStatement`,
+  `MariaDbDatasource`, `MariaDbXADatasource`); a module guide at
+  `doc/datasources.md`; an executable example at `example/datasources/`; and a
+  test suite at `test/datasources_test.dart` covering the connection-independent
+  surface (dialect SQL-fragment generation and `TomDbType` `.of()` conversions).
+  No public API change — removed several stray `// TODO:` comments (the
+  SQL-injection-escaping of directly-interpolated literals and the
+  result-set access-control work are now recorded in the quest completion
+  steps; the architectural "should be in SqlDialect" notes are captured in the
+  module dartdoc).
+
 ### Fixed
 
+- **`TomStandardSqlDialect.iterableOp` now comma-joins correctly.** The
+  separator was emitted only on the first element (`result.isEmpty ? "," : ""`),
+  so `[1, 2, 3]` rendered as `"1,23"` instead of `"1,2,3"` — corrupting any
+  `IN (...)` / list literal built through `objectOp`. Pinned by regression tests
+  for multi-, single-, and empty-element iterables.
 - **Cache `removeFromNameCache` no longer fails to forward / throw correctly in
   worker isolates.** The isolate-routing guard used `useInThisIsolate` without
   the negation present in its `toNameCache` / `fromNameCache` siblings, so the
