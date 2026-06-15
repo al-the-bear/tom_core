@@ -1,35 +1,66 @@
 # D4rt Test Suite - Tom Distributed Ledger Classes
 # Run with: d4rt test_d4rt_tom_dist_ledger.d4rt -test
-# Tests tom_dist_ledger bridged classes
+# Tests tom_dist_ledger bridged classes (enums, value carriers, retry/discovery).
+#
+# NOTE: rewritten 2026-06-15. The previous suite claimed FrameState and
+# OperationState are "NOT exported/bridged" — but the current bridge DOES
+# register both (plus HeartbeatErrorType and DLLogLevel). Extended to cover the
+# value carriers and the re-exported tom_basics_network retry/discovery surface.
 
 
 # =============================================================================
-# Test: Enums
-# Note: Only testing enums that ARE bridged (HeartbeatErrorType, DLLogLevel)
-# FrameState and OperationState are NOT exported/bridged
+# Test: Enums (10 tests)
 # =============================================================================
 
-var hbLedgerNotFound = HeartbeatErrorType.ledgerNotFound;
-verifyNotNull(hbLedgerNotFound, 'HeartbeatErrorType.ledgerNotFound');
+verifyEquals(HeartbeatErrorType.ledgerNotFound.name, 'ledgerNotFound', 'HeartbeatErrorType.ledgerNotFound');
+verifyEquals(HeartbeatErrorType.values.length, 5, 'HeartbeatErrorType has 5 values');
 
-var hbLockFailed = HeartbeatErrorType.lockFailed;
-verifyNotNull(hbLockFailed, 'HeartbeatErrorType.lockFailed');
+# DLLogLevel has an extension overriding `.name` to upper-case (see doc); assert
+# value identity + count to stay robust to extension-method resolution.
+verifyNotNull(DLLogLevel.debug, 'DLLogLevel.debug');
+verifyNotNull(DLLogLevel.error, 'DLLogLevel.error');
+verifyEquals(DLLogLevel.values.length, 4, 'DLLogLevel has 4 values');
 
-var logDebug = DLLogLevel.debug;
-verifyNotNull(logDebug, 'DLLogLevel.debug');
+verifyEquals(FrameState.active.name, 'active', 'FrameState.active');
+verifyEquals(FrameState.values.length, 4, 'FrameState has 4 values');
 
-var logInfo = DLLogLevel.info;
-verifyNotNull(logInfo, 'DLLogLevel.info');
+verifyEquals(OperationState.running.name, 'running', 'OperationState.running');
+verifyEquals(OperationState.values.length, 4, 'OperationState has 4 values');
 
 # =============================================================================
-# Test: Classes Exist
-# Note: Only testing classes that ARE bridged
+# Test: HeartbeatError carrier (2 tests)
 # =============================================================================
 
-verifyNotNull(HeartbeatResult, 'HeartbeatResult class exists');
-verifyNotNull(HeartbeatError, 'HeartbeatError class exists');
-verifyNotNull(Operation, 'Operation class exists');
+var hbErr = HeartbeatError(type: HeartbeatErrorType.lockFailed, message: 'locked');
+verifyEquals(hbErr.message, 'locked', 'HeartbeatError message');
+verifyEquals(hbErr.type, HeartbeatErrorType.lockFailed, 'HeartbeatError type');
+
+# =============================================================================
+# Test: RetryConfig + default delays (3 tests)
+# =============================================================================
+
+var rc = RetryConfig();
+verifyEquals(rc.retryDelaysMs.length, 5, 'RetryConfig default delays length');
+verifyEquals(kDefaultRetryDelaysMs.length, 5, 'kDefaultRetryDelaysMs length');
+verifyEquals(kDefaultRetryDelaysMs[0], 2000, 'kDefaultRetryDelaysMs first delay');
+
+# =============================================================================
+# Test: DiscoveredServer getters (3 tests)
+# =============================================================================
+
+var ds = DiscoveredServer(serverUrl: 'http://localhost:8080', status: {'service': 'ledger', 'port': 8080});
+verifyEquals(ds.serverUrl, 'http://localhost:8080', 'DiscoveredServer serverUrl');
+verifyEquals(ds.service, 'ledger', 'DiscoveredServer service getter');
+verifyEquals(ds.port, 8080, 'DiscoveredServer port getter');
+
+# =============================================================================
+# Test: Classes exist (4 tests)
+# =============================================================================
+
 verifyNotNull(Ledger, 'Ledger class exists');
+verifyNotNull(LocalLedger, 'LocalLedger class exists');
+verifyNotNull(RemoteLedgerClient, 'RemoteLedgerClient class exists');
+verifyNotNull(ServerDiscovery, 'ServerDiscovery class exists');
 
 # =============================================================================
 # Summary
