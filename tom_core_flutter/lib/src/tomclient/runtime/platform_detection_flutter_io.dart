@@ -6,6 +6,13 @@ import 'package:http/http.dart';
 import 'package:http/io_client.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+/// Native (`dart:io`) [TomPlatformUtils] for desktop and mobile targets.
+///
+/// Imports the process environment into the kernel's env vars at construction,
+/// reports platform predicates from Flutter's [defaultTargetPlatform]/[kIsWeb],
+/// and provides an [IOClient] (permissive certificate handling for localhost
+/// only). Selected by the conditional import in
+/// `platform_detection_client.dart`.
 class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   TomFlutterPlatformUtils() {
     getTomEnvVars().addAll(Platform.environment);

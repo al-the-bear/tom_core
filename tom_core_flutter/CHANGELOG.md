@@ -21,6 +21,11 @@
   `TomBoolProperty`); a module guide at `doc/resources.md`; an executable
   example at `example/resources/`; and tests at `test/resources_test.dart`. No
   public API change.
+- **Runtime module**: added dartdoc to `clientPlatformUtils` and the three
+  conditional-import `TomFlutterPlatformUtils` variants (native IO, web,
+  neutral); a module guide at `doc/runtime.md`; an executable example at
+  `example/runtime/`; and tests at `test/runtime_test.dart`. No public API
+  change.
 
 ### Removed
 

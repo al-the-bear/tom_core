@@ -2,6 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+/// Neutral fallback [TomPlatformUtils] for targets that expose neither
+/// `dart:io` nor `dart:js`.
+///
+/// Reports platform predicates from Flutter's [defaultTargetPlatform]/[kIsWeb]
+/// but cannot create an HTTP [Client] — [httpClient] throws, since a concrete
+/// platform variant must be selected for networking. Selected by the
+/// conditional import in `platform_detection_client.dart`.
 class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   @override
   bool isDesktop() =>
