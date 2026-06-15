@@ -26,6 +26,28 @@
   `test/authorization_test.dart`. No public API change — removed only one stray
   `// TODO:` comment (its intent is now captured in the
   `TomAuthorizationCacheException` dartdoc).
+- **Cache module**: added dartdoc to all public symbols (`TomCache`,
+  `TomCacheEntry`, `TomCacheManager`, `TomCacheException`,
+  `TomCacheStoreMessage`, `TomCacheRemoveMessage`, `TomCacheRetrieveMessage`),
+  documenting the main-isolate cache / worker-forwarding model, the LRU bound,
+  per-entry expiry, and the retrievable-entry-requires-a-deletion-time
+  invariant; a module guide at `doc/cache.md`; an executable example at
+  `example/cache/`; and a test suite at `test/cache_test.dart`. Removed a dead
+  embedded `main()` test scaffold from `server_cache.dart` (its LRU coverage is
+  now expressed through observable behaviour in the test suite).
+
+### Fixed
+
+- **Cache `removeFromNameCache` no longer fails to forward / throw correctly in
+  worker isolates.** The isolate-routing guard used `useInThisIsolate` without
+  the negation present in its `toNameCache` / `fromNameCache` siblings, so the
+  forward-or-throw decision was inverted. Pinned by a regression test asserting
+  a missing cache in the main isolate throws `TomCacheException`.
+- **Cache LRU promotion no longer corrupts the tail pointer.** When `getEntry`
+  promoted the most-recently-used *tail* entry to the front, it failed to
+  advance `_last` to the predecessor, leaving a stale tail that could evict the
+  wrong (recently read) entry. Pinned by a test that reads an entry to promote
+  it and asserts it survives the next eviction.
 
 ## 1.0.0
 

@@ -4,6 +4,9 @@ import 'dart:isolate';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 
+/// Raised by the cache API when an operation cannot be completed: the named
+/// cache does not exist in this isolate (and cannot be forwarded), or a
+/// retrieved value does not match the requested type parameter.
 class TomCacheException extends TomServerException {
   TomCacheException(
     super.key,
@@ -15,34 +18,61 @@ class TomCacheException extends TomServerException {
   });
 }
 
+/// A single cached value paired with the optional [deletionTime] after which
+/// it is considered expired.
+///
+/// When a cache is bounded ([TomCache.maximumEntries] set) the entries are also
+/// linked into a most-recently-used list via the private `_next`/`_before`
+/// pointers so the least-recently-used entry can be evicted in O(1).
 class TomCacheEntry {
+  /// The instant after which this entry is expired. `null` means the entry does
+  /// not expire on its own (it may still be evicted by an LRU bound or a clear).
   DateTime? deletionTime;
 
+  /// The cached value.
   Object? value;
 
   TomCacheEntry? _next;
   TomCacheEntry? _before;
   String? _key;
 
+  /// Creates an entry holding [value], optionally expiring at [deletionTime].
   TomCacheEntry(this.value, [this.deletionTime]);
 }
 
+/// Holds the set of named [TomCache] instances for an isolate and decides
+/// whether cache operations run locally or are forwarded to the creator
+/// isolate.
+///
+/// Caches physically live in the main isolate. [useInThisIsolate] is forced to
+/// `true` there; in a worker isolate it stays `false` (unless explicitly set),
+/// so operations on a cache the worker does not hold are forwarded to the main
+/// isolate via [TomWorker.executeInCreator].
 class TomCacheManager {
+  /// Whether caches are served from this isolate. Always `true` in the main
+  /// isolate; `false` in a worker isolate forwards missing-cache operations to
+  /// the creator.
   bool useInThisIsolate;
 
+  /// Creates a manager. [useInThisIsolate] defaults to `false`, but is forced
+  /// to `true` when constructed in the main isolate.
   TomCacheManager([this.useInThisIsolate = false]) {
     if (TomWorker.isMainIsolate) {
       useInThisIsolate = true;
     }
   }
 
+  /// Replaces the process-wide current manager and returns it. Useful in tests
+  /// or to install a pre-populated manager.
   static TomCacheManager setCurrent(TomCacheManager manager) =>
       _current = manager;
 
   static var _current = TomCacheManager();
 
+  /// Returns the cache registered under [name], or `null` if none is.
   static TomCache? getCache(String name) => _current._caches[name];
 
+  /// Registers [cache] under its [TomCache.cacheName].
   static void addCache(TomCache cache) {
     _current._caches[cache.cacheName] = cache;
   }
@@ -50,12 +80,31 @@ class TomCacheManager {
   final Map<Object, TomCache> _caches = {};
 }
 
+/// A named in-memory cache of [TomCacheEntry] values keyed by string.
+///
+/// A cache may be:
+/// - **unbounded** (default) — a plain map with optional time-based expiry, or
+/// - **bounded** ([maximumEntries] set) — a most-recently-used list where the
+///   least-recently-used entry is evicted once the bound is exceeded; [getEntry]
+///   and [putEntry] move the touched entry to the front.
+///
+/// Two background timers can be installed at construction: a *deletion* timer
+/// (every [deletionIntervalSeconds]) that drops entries past their
+/// `deletionTime`, and a *clearance* timer (every [clearIntervalSeconds]) that
+/// empties the whole cache.
+///
+/// The static `…NameCache` / `…TypeCache` helpers are the usual entry points:
+/// they look the cache up by name through [TomCacheManager] and, in a worker
+/// isolate that does not hold the cache, forward the operation to the main
+/// isolate.
 class TomCache {
   TomCacheEntry? _first;
   TomCacheEntry? _last;
 
   final Map<String, TomCacheEntry> _cache = {};
 
+  /// Removes the entry stored under [key], unlinking it from the MRU list if the
+  /// cache is bounded. A no-op when the key is absent.
   void removeEntry(String key) {
     TomCacheEntry? oldEntry = _cache[key];
     // Remove old entry;
@@ -75,6 +124,9 @@ class TomCache {
     }
   }
 
+  /// Returns the entry under [key], or `null` if absent. In a bounded cache the
+  /// returned entry is promoted to the most-recently-used position. Does not
+  /// check expiry — callers (e.g. [fromNameCache]) enforce that.
   TomCacheEntry? getEntry(String key) {
     if (maximumEntries == null) {
       return _cache[key];
@@ -92,6 +144,9 @@ class TomCache {
           }
           if (oldNext != null) {
             oldNext._before = oldBefore;
+          } else {
+            // The promoted entry was the tail; the new tail is its predecessor.
+            _last = oldBefore;
           }
           entry._before = null;
           entry._next = oldFirst;
@@ -104,6 +159,9 @@ class TomCache {
     }
   }
 
+  /// Stores [entry] under [key], inserting it at the most-recently-used
+  /// position. In a bounded cache, exceeding [maximumEntries] evicts the
+  /// least-recently-used entry.
   void putEntry(String key, TomCacheEntry entry) {
     if (maximumEntries == null) {
       _cache[key] = entry;
@@ -158,12 +216,31 @@ class TomCache {
     }
   }
 
+  /// The name this cache is registered under in [TomCacheManager].
   final String cacheName;
+
+  /// How often (seconds) the deletion timer sweeps expired entries. `null`
+  /// disables the timer. Defaults to one hour.
   final int? deletionIntervalSeconds;
+
+  /// Default lifetime (seconds) applied to a stored value when no explicit
+  /// deletion time is given. `null` means entries do not expire by age.
   final int? deleteEntriesAfterSeconds;
+
+  /// How often (seconds) the clearance timer empties the whole cache. `null`
+  /// disables it.
   final int? clearIntervalSeconds;
+
+  /// Upper bound on the number of entries. `null` makes the cache unbounded; a
+  /// value turns on LRU eviction.
   final int? maximumEntries;
 
+  /// Creates a named cache and installs its background timers.
+  ///
+  /// [deleteEntriesAfterSeconds] sets the default per-entry lifetime,
+  /// [deletionIntervalSeconds] the expiry-sweep period (default 3600),
+  /// [maximumEntries] the LRU bound, and [clearIntervalSeconds] a full-clear
+  /// period.
   TomCache(
     this.cacheName, {
     this.deleteEntriesAfterSeconds,
@@ -174,6 +251,9 @@ class TomCache {
     createTimers();
   }
 
+  /// Creates a cache named after [type] (`type.toString()`), so callers can key
+  /// a cache by the Dart type it holds. Parameters mirror the default
+  /// constructor.
   factory TomCache.forType(
     Type type, {
     int? deleteEntriesAfterSeconds,
@@ -190,6 +270,8 @@ class TomCache {
     );
   }
 
+  /// Cancels any running timers and installs the deletion and/or clearance
+  /// timers for which an interval is configured.
   void createTimers() {
     stopTimers();
     if (clearIntervalSeconds != null) {
@@ -200,13 +282,16 @@ class TomCache {
     }
   }
 
+  /// Cancels the deletion and clearance timers if they are running.
   void stopTimers() {
     deletionTimer?.cancel();
     clearanceTimer?.cancel();
   }
 
+  /// The periodic timer that sweeps expired entries, or `null` if disabled.
   Timer? deletionTimer;
 
+  /// Builds the periodic timer that removes entries past their `deletionTime`.
   Timer createDeletionTimer() {
     return Zone.current.createPeriodicTimer(
       Duration(seconds: deletionIntervalSeconds!),
@@ -231,8 +316,10 @@ class TomCache {
     );
   }
 
+  /// The periodic timer that clears the whole cache, or `null` if disabled.
   Timer? clearanceTimer;
 
+  /// Builds the periodic timer that empties the entire cache.
   Timer createClearanceTimer() {
     return Zone.current.createPeriodicTimer(
       Duration(seconds: clearIntervalSeconds!),
@@ -245,10 +332,19 @@ class TomCache {
     );
   }
 
+  /// Reads the value of type [T] keyed by [key] from the cache named after [T].
+  /// See [fromNameCache].
   static Future<T?> fromTypeCache<T>(String key) async {
     return fromNameCache(T.toString(), key);
   }
 
+  /// Reads the value keyed by [key] from the cache named [cacheName].
+  ///
+  /// Returns `null` on a miss or when the entry has expired (the expired entry
+  /// is also removed). Throws [TomCacheException] if the cached value is not a
+  /// [T], or — in an isolate that owns no caches and cannot forward — if the
+  /// named cache does not exist. In a worker isolate that does not hold the
+  /// cache, the read is forwarded to the main isolate.
   static Future<T?> fromNameCache<T>(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
@@ -287,10 +383,18 @@ class TomCache {
     return null;
   }
 
+  /// Stores [value] under [key] in the cache named after [T]. See [toNameCache].
   static Future<int> toTypeCache<T>(String key, Object? value) {
     return toNameCache(T.toString(), key, value);
   }
 
+  /// Stores [value] under [key] in the cache named [cacheName].
+  ///
+  /// If [deletionTime] is omitted the entry expires after the cache's
+  /// [deleteEntriesAfterSeconds] (or never, if that is also unset). Passing a
+  /// [TomCacheEntry] as [value] stores it verbatim. In a worker isolate that
+  /// does not hold the cache the store is forwarded to the main isolate;
+  /// otherwise a missing cache throws [TomCacheException]. Always returns `0`.
   static Future<int> toNameCache(
     String cacheName,
     String key,
@@ -325,15 +429,22 @@ class TomCache {
     return 0;
   }
 
+  /// Removes the entry keyed by [key] from the cache named after [T]. See
+  /// [removeFromNameCache].
   static Future<int> removeFromTypeCache<T>(String key) {
     return removeFromNameCache(T.toString(), key);
   }
 
+  /// Removes the entry keyed by [key] from the cache named [cacheName].
+  ///
+  /// In a worker isolate that does not hold the cache the removal is forwarded
+  /// to the main isolate; otherwise a missing cache throws [TomCacheException].
+  /// Always returns `0`.
   static Future<int> removeFromNameCache(String cacheName, String key) async {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       cache.removeEntry(key);
-    } else if (TomCacheManager._current.useInThisIsolate) {
+    } else if (!TomCacheManager._current.useInThisIsolate) {
       await TomWorker.executeInCreator(TomCacheRemoveMessage(cacheName, key));
     } else {
       throw TomCacheException(
@@ -345,6 +456,9 @@ class TomCache {
   }
 }
 
+/// Cross-isolate command that stores [value] under [key] in cache [cacheName].
+/// Dispatched to the main isolate via [TomWorker.executeInCreator] when a
+/// worker isolate stores into a cache it does not hold.
 class TomCacheStoreMessage extends TomCommand {
   String cacheName;
   String key;
@@ -363,6 +477,9 @@ class TomCacheStoreMessage extends TomCommand {
   }
 }
 
+/// Cross-isolate command that removes [key] from cache [cacheName]. Dispatched
+/// to the main isolate via [TomWorker.executeInCreator] when a worker isolate
+/// removes from a cache it does not hold.
 class TomCacheRemoveMessage extends TomCommand {
   String cacheName;
   String key;
@@ -379,6 +496,9 @@ class TomCacheRemoveMessage extends TomCommand {
   }
 }
 
+/// Cross-isolate command that reads [key] from cache [cacheName] and returns
+/// the value. Dispatched to the main isolate via [TomWorker.executeInCreator]
+/// when a worker isolate reads from a cache it does not hold.
 class TomCacheRetrieveMessage extends TomCommand {
   String cacheName;
   String key;
@@ -392,123 +512,4 @@ class TomCacheRetrieveMessage extends TomCommand {
     );
     return await TomCache.fromNameCache(cacheName, key);
   }
-}
-
-// This is an embedded test function, not meant for production use.
-void main() async {
-  var cache = TomCache("cacheName", maximumEntries: 4);
-  TomCacheManager.addCache(cache);
-
-  assert(TomCacheManager.getCache("cacheName") != null);
-
-  await TomCache.toNameCache("cacheName", "key1", "value1");
-  await TomCache.toNameCache("cacheName", "key2", "value2");
-  await TomCache.toNameCache("cacheName", "key3", "value3");
-
-  assert(cache._first != null && cache._last != null);
-  assert(cache._first!._key == "key3");
-  assert(cache._last!._key == "key1");
-
-  var cacheEntry3 = cache.getEntry("key3")!;
-
-  assert(cacheEntry3._next!._key == "key2");
-  assert(cacheEntry3._before == null);
-
-  await TomCache.toNameCache("cacheName", "key4", "value4");
-
-  assert(cache._first!._key == "key4");
-  assert(cache._first!._next!._key == "key3");
-
-  await TomCache.toNameCache("cacheName", "key3", "value3b");
-  assert(cache._first!._key == "key3");
-  assert(cache._first!.value == "value3b");
-  assert(cache._first!._next!._key == "key4");
-  assert(cache._cache.length == 4);
-
-  assert(cache._last!._key == "key1");
-
-  await TomCache.toNameCache("cacheName", "key5", "value5");
-  assert(cache._last!._key == "key2");
-  assert(cache._cache.length == 4);
-  assert(cache._first!._key == "key5");
-
-  await TomCache.toNameCache("cacheName", "key3", "value3c");
-  assert(cache._first!._key == "key3");
-  assert(cache._first!.value == "value3c");
-  assert(cache._first!._next!._key == "key5");
-  assert(cache._last!._key == "key2");
-  assert(cache._cache.length == 4);
-
-  await TomCache.removeFromNameCache("cacheName", "key1");
-  assert(cache._first!._key == "key3");
-  assert(cache._first!.value == "value3c");
-  assert(cache._first!._next!._key == "key5");
-  assert(cache._last!._key == "key2");
-  assert(cache._cache.length == 4);
-
-  await TomCache.removeFromNameCache("cacheName", "key2");
-  assert(cache._first!._key == "key3");
-  assert(cache._first!.value == "value3c");
-  assert(cache._first!._next!._key == "key5");
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 3);
-
-  await TomCache.removeFromNameCache("cacheName", "key3");
-  assert(cache._first!._key == "key5");
-  assert(cache._first!.value == "value5");
-  assert(cache._first!._next!._key == "key4");
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 2);
-
-  await TomCache.toNameCache("cacheName", "key4", "value4b");
-  assert(cache._first!._key == "key4");
-  assert(cache._first!.value == "value4b");
-  assert(cache._first!._next!._key == "key5");
-  assert(cache._last!._key == "key5");
-  assert(cache._cache.length == 2);
-
-  await TomCache.removeFromNameCache("cacheName", "key5");
-  assert(cache._first!._key == "key4");
-  assert(cache._first!.value == "value4b");
-  assert(cache._first!._next == null);
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 1);
-
-  await TomCache.toNameCache("cacheName", "key4", "value4c");
-  assert(cache._first!._key == "key4");
-  assert(cache._first!.value == "value4c");
-  assert(cache._first!._next == null);
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 1);
-
-  await TomCache.removeFromNameCache("cacheName", "key4");
-  assert(cache._cache.isEmpty);
-
-  await TomCache.toNameCache("cacheName", "key4", "value4d");
-  assert(cache._first!._key == "key4");
-  assert(cache._first!.value == "value4d");
-  assert(cache._first!._next == null);
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 1);
-
-  await TomCache.toNameCache("cacheName", "key1", "value1");
-  await TomCache.toNameCache("cacheName", "key2", "value2");
-  await TomCache.toNameCache("cacheName", "key3", "value3");
-  assert(cache._first!._key == "key3");
-  assert(cache._first!.value == "value3");
-  assert(cache._first!._next!._key == "key2");
-  assert(cache._last!._key == "key4");
-  assert(cache._cache.length == 4);
-
-  await TomCache.toNameCache("cacheName", "key6", "value6");
-  await TomCache.toNameCache("cacheName", "key7", "value7");
-  await TomCache.toNameCache("cacheName", "key8", "value8");
-  assert(cache._first!._key == "key8");
-  assert(cache._first!.value == "value8");
-  assert(cache._first!._next!._key == "key7");
-  assert(cache._last!._key == "key3");
-  assert(cache._last!._before!._key == "key6");
-  assert(cache._cache.length == 4);
-
-  print("All ok");
 }
