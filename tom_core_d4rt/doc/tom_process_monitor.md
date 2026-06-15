@@ -74,6 +74,7 @@ The bridge covers all 31 source files exported by `tom_process_monitor.dart`
 | `DiscoveredServer` | A discovered server (`serverUrl`, `status`; getters `service`/`version`/`port`). |
 | `DiscoveryOptions`, `DiscoveryFailedException` | Discovery options + failure. |
 | `ServerDiscovery` | Server-discovery driver. |
+| `RetryableResponse` (extension on `http.Response`) | Adds `isRetryable` to HTTP responses. |
 
 ## Global variables
 

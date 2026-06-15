@@ -69,6 +69,7 @@ top-level function), including the `tom_basics_network` re-exports.
 | `DiscoveredServer` | A discovered server (`serverUrl`, `status`; getters `service`/`version`/`port`). |
 | `DiscoveryOptions`, `DiscoveryFailedException` | Discovery options + failure. |
 | `ServerDiscovery` | Server-discovery driver. |
+| `RetryableResponse` (extension on `http.Response`) | Adds `isRetryable` to HTTP responses. |
 
 ## Global variables
 

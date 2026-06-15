@@ -77,7 +77,8 @@ The remainder of this document covers the classes the server **owns**.
 | ----- | ------- |
 | `TomDataSource`, `TomDatasourceDriver`, `TomDataSourceInfo`, `TomPreparedStatement` | Datasource abstraction. |
 | `TomDatasourceInitException` | Initialization failure. |
-| `MariaDbDatasource`, `MariaDbXADatasource`, `MariadbPreparedStatement` | MariaDB driver (+ their exceptions). |
+| `MariaDbDatasource`, `MariaDbXADatasource`, `MariadbPreparedStatement` | MariaDB driver. |
+| `MariadbDatasourceException`, `MariadbPreparedStatementException` | MariaDB driver / prepared-statement failures. |
 | `MariadbSqlDialect`, `TomSqlDialect`, `TomStandardSqlDialect` | SQL dialects. |
 | `TomQuery`, `TomSelect`, `TomLiteralSelect`, `TomCount`, `TomDelete`, `TomGeneratedQuery` | Query model. |
 | `TomTypedPersistenceBase`, `TomTypePersistenceInfo` | Typed persistence base. |
@@ -117,7 +118,8 @@ The remainder of this document covers the classes the server **owns**.
 
 | Class | Purpose |
 | ----- | ------- |
-| `TomAnnotationAnalyzer` | Persistence-annotation analyzer (+ syntax exceptions). |
+| `TomAnnotationAnalyzer` | Persistence-annotation analyzer. |
+| `TomAnnotationAnalyzerException`, `TomAnnotationAnalyzerSyntaxException` | Annotation-analyzer failures (general + syntax). |
 | `TomRepository`, `TomSqlDatasourceRepository`, `MariadbRepository`, `TomRepositoryType`, `TomCountResult` | CRUD repositories. |
 | `TomDbTable`, `TomDbColumn`, `TomEntityId`, `TomJoinTable`, `TomReference`, `TomColumnInformation`, `TomDartType`, `TomPersistenceEventHandler` | Persistence annotations + metadata. |
 | `TomQueryBuilder`, `TomQuerySentenceCompiler` | Query builder + SQL compiler. |

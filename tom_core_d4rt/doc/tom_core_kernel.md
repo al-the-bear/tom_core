@@ -107,7 +107,8 @@ Functions `runChecked`, `runCheckedSync`, `tomPrintStackTrace`,
 | `TomObject` | Base boxed value (`get`/`set`/`getOrNull`/`call`, `isNull`, `isMuted`). |
 | `TomString`, `TomInt`, `TomDouble`, `TomBool`, `TomDateTime` | Non-null boxed scalars (`TomString('x').get() == 'x'`). |
 | `TomNString`, `TomNInt`, `TomNDouble`, `TomNBool`, `TomNDateTime` | Nullable boxed scalars. |
-| `TomOTimezoned`, `TomOZonedTime`, `TomOZonedDate`, `TomOZonedDateTime` and `TomN…` variants | Boxed timezone-aware values. |
+| `TomOTimezoned`, `TomOZonedTime`, `TomOZonedDate`, `TomOZonedDateTime` | Boxed (observable) timezone-aware values. |
+| `TomNOTimezoned`, `TomNOZonedTime`, `TomNOZonedDate`, `TomNOZonedDateTime` | Nullable boxed (observable) timezone-aware values. |
 | `TomList`, `TomMap`, `TomListLifecycleListener` | Observable collections. |
 | `TomClass` | Observable class wrapper. |
 | `TomDateRange`, `TomTimeRange`, `TomDateTimeRange` | Range values. |
