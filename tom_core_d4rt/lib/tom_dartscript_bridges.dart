@@ -25,12 +25,10 @@ export 'src/cli/d4rt_repl.dart';
 
 // D4rt runtime and base REPL
 export 'package:tom_d4rt/tom_d4rt.dart';
-// tom_d4rt_dcli incidentally re-exports tom_vscode_scripting_api's ProjectInfo
-// and WorkspaceInfo (via its VS Code integration). In this barrel the intended
-// workspace types are tom_build's, so hide the VS Code variants here. (Once a
-// tom_d4rt_dcli that hides them upstream is published, this becomes a no-op.)
-export 'package:tom_d4rt_dcli/tom_d4rt_dcli.dart'
-    hide ProjectInfo, WorkspaceInfo;
+// tom_d4rt_dcli (>=1.1.6) hides tom_vscode_scripting_api's ProjectInfo and
+// WorkspaceInfo upstream, so this barrel's intended tom_build variants no
+// longer collide and need no local hide.
+export 'package:tom_d4rt_dcli/tom_d4rt_dcli.dart';
 
 // Source packages - re-export main barrels so consumers don't need direct deps
 export 'package:tom_core_kernel/tom_core_kernel.dart';
