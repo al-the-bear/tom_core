@@ -13,6 +13,13 @@
   and a runnable `example/mcp_auth/mcp_auth_example.dart` that plays both sides
   of an MCP `initialize` handshake. No public API change; the existing
   `mcp_auth_test.dart` remains the coverage.
+- **`placeholders/`**: added `doc/placeholders.md` (the four placeholder forms,
+  `resolve`/`resolveSync`, the lexical scope stack, the `${{ … }}` expression
+  seam, strict/lenient + recursion policy, and the typed failures) and a runnable
+  `example/placeholders/placeholders_example.dart`. No public API change; the
+  existing `placeholder_resolver_test.dart` / `placeholder_stack_test.dart`
+  remain the coverage. Flagged (for a follow-up) that `PlaceholderResolver` is
+  the package's sole `dart:io` import, at odds with the `dart:io`-free design.
 
 ## 1.4.0
 
