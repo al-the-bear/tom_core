@@ -160,6 +160,18 @@
   binds a real socket and needs a reflected configuration, so it is documented,
   not unit-tested. No public API change — removed only a stray `// TODO:`
   comment (the GZIP/autoCompress note).
+- **Transactions module**: added dartdoc to all public symbols
+  (`TomTransactionParticipant` and its hooks, `TomTransaction` +
+  `isReadOnly`/`isRunning`/`registerParticipant`/`commitTransaction`/
+  `rollbackTransaction`, `TomTransactionManager` +
+  `startTransaction`/`getCurrentTransaction`/`transactional`, and
+  `TomTransactionException`), documenting the participant contract, the
+  commit-veto → rollback drive, the new-vs-existing return of `startTransaction`,
+  and the single-static (per-isolate) current-transaction model. Added a module
+  guide at `doc/transactions.md`, an executable example at
+  `example/transactions/`, and a test suite at `test/transactions_test.dart`
+  (11 tests) exercising the full self-contained surface with a recording fake
+  participant. No public API change.
 
 ### Removed
 
