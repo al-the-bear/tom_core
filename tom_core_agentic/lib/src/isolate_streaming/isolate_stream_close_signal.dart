@@ -17,6 +17,8 @@ import 'dart:async';
 /// (awaited by an unbounded producer alongside its source completion and
 /// cancellation future).
 final class IsolateStreamCloseSignal {
+  /// Raised by [requestClose]. A backpressured producer polls this flag at
+  /// its yield checkpoints to stop emitting after the current item.
   bool closeRequested = false;
 
   /// Completes the first time [requestClose] is called. Never completes

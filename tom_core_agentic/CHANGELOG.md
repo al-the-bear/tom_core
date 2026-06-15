@@ -1,3 +1,14 @@
+## Unreleased
+
+### Documentation
+
+- **`isolate_streaming/`**: added `doc/isolate_streaming.md` (a module guide for
+  the cancellation family, the per-stream close signal, the backpressure ledger,
+  the request guard, and the exception registry) and a runnable
+  `example/isolate_streaming/isolate_streaming_example.dart`. Filled the one
+  remaining dartdoc gap (`IsolateStreamCloseSignal.closeRequested`). No public
+  API change; the existing isolate-streaming test files remain the coverage.
+
 ## 1.4.0
 
 Consolidated record of the incremental feature development between `1.0.0` and
