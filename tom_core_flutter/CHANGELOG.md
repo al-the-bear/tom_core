@@ -31,6 +31,14 @@
   `example/security/`; and tests at `test/security_test.dart`. Confirmed the
   module is exported from the package barrel. No public API change.
 
+### Changed
+
+- **Runtime module cleanup**: removed dead code in
+  `platform_detection_flutter_io.dart` — an orphaned `@override` annotation, a
+  commented-out `_maxCacheSize` constant, and a commented-out CupertinoClient
+  block with two vague TODOs, replaced by a single concise note recording the
+  deferred native-client intent. No behavior change.
+
 ### Removed
 
 - **`camera/` placeholder module**: the folder contained only an aspirational

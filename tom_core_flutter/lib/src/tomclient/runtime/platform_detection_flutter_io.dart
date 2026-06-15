@@ -49,20 +49,12 @@ class TomFlutterPlatformUtils extends TomFallbackPlatformUtils {
   void out(String s) => print(s);
   @override
   void outError(String s) => print(s);
-  @override
-  //const _maxCacheSize = 2 * 1024 * 1024;
-  // TODO: move custom factories for different client platforms to tom_client
+
+  // Note: iOS/macOS could use a native CupertinoClient (cupertino_http) for
+  // better platform integration; for now all native targets share this
+  // IOClient.
   @override
   Client httpClient() {
-    // TODO: set up CupertinoClient correctly
-    /*if (Platform.isIOS || Platform.isMacOS) {
-    final config = URLSessionConfiguration.ephemeralSessionConfiguration()
-      ..cache = URLCache.withCapacity(memoryCapacity: _maxCacheSize)
-      ..httpAdditionalHeaders = {'User-Agent': 'Book Agent'};
-    return CupertinoClient.fromSessionConfiguration(config);
-  }
-
-   */
     return IOClient(
       HttpClient()
         ..badCertificateCallback =
