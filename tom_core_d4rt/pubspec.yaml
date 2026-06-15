@@ -11,7 +11,8 @@ dependencies:
   tom_d4rt: any
   
   # D4rt base REPL with dcli bridges
-  tom_d4rt_dcli: any
+  # >=1.1.6 carries the duplicate-export fix required for AOT compilation.
+  tom_d4rt_dcli: ^1.1.6
   
   # Projects to bridge
   tom_core_kernel:
