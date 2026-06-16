@@ -37,6 +37,7 @@ library;
 // =============================================================================
 
 import '../little_things/little_things.dart';
+import 'tom_authorization.dart';
 import 'user_principal_aci.dart';
 
 // =============================================================================
@@ -186,6 +187,86 @@ abstract class TomAccessControl {
   /// Returns `true` if access is granted, `false` otherwise.
   /// A `null` principal typically represents an unauthenticated user.
   bool checkAccessibility(TomPrincipal? principal) => false;
+
+  /// Resolves this access control to a four-state [TomAuthState].
+  ///
+  /// The default bridges the binary [checkAccessibility] onto two states —
+  /// granted → [TomAuthState.full], denied → [TomAuthState.none] — so every
+  /// existing binary access control (role/group/entitlement/etc.) keeps its
+  /// meaning unchanged while gaining a four-state outcome. Controls that need
+  /// to express [TomAuthState.read] (read-only) or [TomAuthState.disabled]
+  /// (visible but locked) override this method; see [TomGradedAccess].
+  TomAuthState resolveAuthState(TomPrincipal? principal) =>
+      checkAccessibility(principal) ? TomAuthState.full : TomAuthState.none;
+}
+
+// =============================================================================
+// GRADED ACCESS CONTROL — composes binary controls into all four states
+// =============================================================================
+
+/// Access control that resolves to **all four** [TomAuthState] values by
+/// composing three binary controls — one each for write, read, and visibility.
+///
+/// Resolution, from most to least privileged:
+///
+/// - [write] grants → [TomAuthState.full] (interactive/editable)
+/// - else [read] grants → [TomAuthState.read] (value visible, not editable)
+/// - else [visible] grants → [TomAuthState.disabled] (rendered but locked)
+/// - else → [TomAuthState.none] (hidden)
+///
+/// When [read] is omitted it defaults to [write]; when [visible] is omitted it
+/// defaults to [read]. This preserves the natural monotonicity that anyone who
+/// can write can also read and see, so the common case only needs a single
+/// control.
+///
+/// For binary consumers, [checkAccessibility] collapses to "can see content"
+/// ([TomAuthState.showsContent]): a [TomAuthState.read] or [TomAuthState.full]
+/// outcome is accessible; [TomAuthState.disabled] and [TomAuthState.none] are
+/// not.
+///
+/// ```dart
+/// final salary = TomGradedAccess(
+///   write: const TomRoleAccess(['payroll.admin']),
+///   read: const TomRoleAccess(['manager']),
+///   visible: const TomAuthenticatedAccess(),
+/// );
+/// final state = salary.resolveAuthState(currentPrincipal);
+/// // payroll.admin → full, manager → read, other staff → disabled,
+/// // anonymous → none.
+/// ```
+class TomGradedAccess extends TomAccessControl {
+  /// Grants write access → resolves to [TomAuthState.full].
+  final TomAccessControl write;
+
+  /// Grants read access → resolves to [TomAuthState.read]. Defaults to [write].
+  final TomAccessControl read;
+
+  /// Grants visibility → resolves to [TomAuthState.disabled]. Defaults to
+  /// [read].
+  final TomAccessControl visible;
+
+  /// Creates a graded access control.
+  ///
+  /// Only [write] is required; [read] defaults to [write] and [visible]
+  /// defaults to [read].
+  TomGradedAccess({
+    required this.write,
+    TomAccessControl? read,
+    TomAccessControl? visible,
+  })  : read = read ?? write,
+        visible = visible ?? read ?? write;
+
+  @override
+  TomAuthState resolveAuthState(TomPrincipal? principal) {
+    if (write.checkAccessibility(principal)) return TomAuthState.full;
+    if (read.checkAccessibility(principal)) return TomAuthState.read;
+    if (visible.checkAccessibility(principal)) return TomAuthState.disabled;
+    return TomAuthState.none;
+  }
+
+  @override
+  bool checkAccessibility(TomPrincipal? principal) =>
+      resolveAuthState(principal).showsContent;
 }
 
 // =============================================================================
