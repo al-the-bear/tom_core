@@ -1,3 +1,37 @@
+## 1.7.0
+
+### Features
+
+- **`agent/`**: added the editor-facing agent data models for the TomSpecs
+  editor (`tom_specs_editor_specification.md` §20 step 2) — `AgentProfile`
+  (incl. the editor-specific `interruptRetryPrefix`, N10), the prompt-queue
+  model (`QueuedPrompt` / `QueuedPrePrompt` / `QueuedFollowUpPrompt` with
+  statuses, repeats, reminders and multi-transport routing), the chat / trail
+  model (`ChatMessage` / `TrailPair`), `ReminderTemplate` and `TimedRequest`.
+  All models round-trip through YAML via the new `encodeAgentYaml` /
+  `decodeAgentYaml` codec.
+- **`agent/`**: added `EditorPlaceholderBindings`, a sync + lenient binder over
+  the shared `PlaceholderResolver` that supports `${name}`, `${name?}`,
+  `${env:NAME}` and the `{{name}}` alias, and **rejects** the `${{ … }}`
+  expression form with `PlaceholderExpressionsUnsupportedError` rather than
+  executing it (§11.5, no JS). Coverage: `test/agent_models_test.dart`.
+
+## 1.6.0
+
+### Features
+
+- **`llm/`**: migrated the LLM provider contract (`LlmProvider`, `WirePrompt`,
+  `LlmOptions`, `LlmCallReport`, `CapturedWirePrompt`, the `LlmStreamEvent`
+  family, `LlmFailure`) and the Anthropic Agent-SDK provider path
+  (`AgentSdkLlmProvider`, the `AgentSdkSession*` strategies / store,
+  `agentSdkLooksLikeSessionError`) out of the `tom_brain` substrate / run
+  layers so the provider seam is reusable outside the brain (the TomSpecs
+  editor consumes it over the VS Code bridge). Added the
+  `tom_vscode_scripting_api` dependency. The substrate-coupled HTTP / stub
+  providers are intentionally not migrated (see the quest's
+  `completion_steps.tom_specs.md`, CS-04). Coverage:
+  `test/agent_sdk_provider_test.dart`, `test/agent_sdk_session_test.dart`.
+
 ## 1.5.0
 
 ### Documentation

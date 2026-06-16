@@ -5,6 +5,7 @@
 /// reuse across the brain, the assistant, and any future agent runtime.
 library;
 
+export 'src/agent/agent.dart';
 export 'src/argument_guards.dart';
 export 'src/async_shutdown.dart';
 export 'src/cancellation.dart';

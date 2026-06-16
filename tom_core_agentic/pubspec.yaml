@@ -3,10 +3,12 @@ description: >-
   Generic building blocks for agentic systems in the TOM framework:
   cooperative cancellation, lifecycle close-guards, dedup-by-id, text
   previews, HTTP-date parsing, typed YAML config reading, the sha256
-  content-hash convention, and the LLM provider contract with the
-  Anthropic Agent SDK provider. Domain-neutral, depends only on
-  tom_basics and tom_vscode_scripting_api (for the Agent SDK bridge).
-version: 1.6.0
+  content-hash convention, the LLM provider contract with the Anthropic
+  Agent SDK provider, and the editor-facing agent data models (profiles,
+  prompt queue, chat/trail, reminders, timed requests). Domain-neutral,
+  depends only on tom_basics and tom_vscode_scripting_api (for the Agent
+  SDK bridge).
+version: 1.7.0
 publish_to: none
 
 environment:
