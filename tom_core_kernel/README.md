@@ -1,43 +1,156 @@
-# Tom Core Kernel
+# tom_core_kernel
 
-`tom_core_kernel` is the foundation library of the Tom Framework. It bundles the
-platform-neutral building blocks the rest of the framework (server, Flutter, and
-DartScript layers) is composed from: dependency injection, observable state,
-security and authorization, resource resolution, logging, and a set of runtime
-utilities.
+> **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
+> These packages are proprietary and internal (`publish_to: none`).
 
-The package is reflection-aware (via `tom_reflection`) and has no UI or
-server-runtime dependencies, so it can be consumed from any Dart target.
+Core kernel library for the Tom Framework — the platform-neutral building blocks
+every other Tom layer is composed from.
 
-## Getting started
+## Overview
 
-Add the dependency (this package is internal — consumed by path within the Tom
-workspace):
+`tom_core_kernel` is the foundation of the Tom Framework. It carries no UI and no
+server runtime, so it runs unchanged on any Dart target — CLI, server, Flutter,
+or the [`d4rt`](../tom_core_d4rt/README.md) interpreter. Everything layered above
+it (the [server stack](../tom_core_server/README.md), the
+[Flutter](../tom_core_flutter/README.md) /
+[UI](../tom_flutter_ui/README.md) layers, the DartScript bridge) depends on the
+contracts defined here.
+
+The kernel is **reflection-aware**: it builds on
+[`tom_reflection`](../../reflection/tom_reflection/README.md) so observable
+objects, security principals, and resource trees can be introspected and
+serialized without hand-written boilerplate. Conceptually it provides five things:
+
+- **Observable state** — values and objects that notify observers on change, with
+  a terse operator syntax (`|` set, `~` read, `>>` observe).
+- **Ambient context** — zone-propagated execution context and hierarchical
+  scope identifiers, so a deeply nested call can resolve "where am I" without
+  threading parameters through every frame.
+- **Dependency injection** — a reflection-driven bean container.
+- **Security** — authentication, a layered access-control model, bearer-token
+  auth, and a four-state authorization model (`TomAuthState`).
+- **Runtime utilities** — logging (including isolate/remote), an isolate worker
+  pool, JSON tree helpers, resource providers, settings, timezone-aware
+  timestamps, and ordered shutdown.
+
+## Installation
+
+This package is internal to the Tom workspace and consumed by path (it is
+`publish_to: none`), so there is no `dart pub add` line. Add it as a path
+dependency:
 
 ```yaml
 dependencies:
-  tom_core_kernel: any
+  tom_core_kernel:
+    path: ../tom_core_kernel
 ```
 
-Import the single barrel and use any module:
+Then import the single barrel:
 
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```
 
-## Usage
+The barrel re-exports [`tom_basics`](../../basics/tom_basics/README.md),
+[`tom_crypto`](../../basics/tom_crypto/README.md) and
+[`tom_reflection`](../../reflection/tom_reflection/README.md), so one import
+covers the common surface. **SDK:** Dart `^3.10.0`. Modules that use reflection
+require a `dart run build_runner build` to generate `*.reflection.dart`.
+
+## Features
+
+### Observable state (`observable`)
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomObject<T>` | Base observable holding a single typed value |
+| `TomString` / `TomInt` / `TomDouble` / `TomBool` | Typed scalar observables |
+| `TomClass` / `TomList` / `TomMap` | Observable composites |
+
+### Context & scope (`context`, `scope_ids`)
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomExecutionContext` | Ambient, zone-propagated execution context |
+| `TomContextEntry<T>` | A typed value carried on the context |
+| `TomScope` / `InScopeBuilder` | Hierarchical, zone-propagated scope identifiers |
+
+### Dependency injection (`beanlocator`)
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomComponent` | A registrable framework component |
+| `TomBean<T>` | A located/injected bean instance |
+
+### Security (`security`)
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomAuthorization` / `TomAuthState` | Authorization decisions and the four-state model |
+| `TomAccessControl` (+ `TomNoAccess`, `TomPublicAccess`, `TomAuthenticatedAccess`, `TomGuestAccess`) | Layered access-control rules |
+| `TomBearerAuthentication` | Bearer-token authentication |
+| `TomAccessControlInformation`, `TomGroup`, `TomRole`, `TomEntitlement` | Principal / ACI model |
+
+### Runtime utilities
+
+| Module | Key types | What it does |
+| ------ | --------- | ------------ |
+| `logging` | isolate & remote log output/server | Structured logging across isolates and the wire |
+| `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
+| `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
+| `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
+| `settings` | client settings/authorization | Settings management |
+| `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
+| `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |
+| `http_connection` | server connection, endpoints, headers | HTTP connection helpers |
+| `little_things` | zone helpers, formatting, `TomException` | Small cross-cutting utilities |
+| `reflection` | reflection bootstrap | Reflection support built on `tom_reflection` |
+
+## Quick start
 
 Observable state with automatic observer propagation:
 
 ```dart
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-final count = TomInt(0);
-count >> (obs) => print('changed to ${~count}');
-count | 5; // prints: changed to 5
+void main() {
+  final count = TomInt(0);
+  count >> (obs) => print('changed to ${~count}');
+  count | 5; // prints: changed to 5
+}
 ```
 
-Namespacing lookups with a zone-propagated scope:
+`|` sets the value, `~` reads it, and `>>` registers an observer that fires on
+every change.
+
+## Example projects
+
+Every module ships a runnable sample folder under [`example/`](example/), and a
+top-level [`run_all_samples.dart`](example/run_all_samples.dart) runs them all.
+
+| Sample | Demonstrates |
+| ------ | ------------ |
+| [`example/observable/`](example/observable/) | Observable scalars, composites, and observers |
+| [`example/beanlocator/`](example/beanlocator/) | Registering and locating beans |
+| [`example/context/`](example/context/) | Execution context & context entries |
+| [`example/scope_ids/`](example/scope_ids/) | Hierarchical scope paths |
+| [`example/security/`](example/security/) | Access controls, authorization, bearer auth |
+| [`example/crypto/`](example/crypto/) | JWT / hashing helpers (via `tom_crypto`) |
+| [`example/isolate_pooling/`](example/isolate_pooling/) | Worker-pool execution |
+| [`example/logging/`](example/logging/) | Structured / isolate / remote logging |
+| [`example/resources/`](example/resources/) | Text & config resource providers |
+| [`example/json/`](example/json/) · [`example/timezoned/`](example/timezoned/) · [`example/settings/`](example/settings/) · [`example/shutdown_cleanup/`](example/shutdown_cleanup/) · [`example/http_connection/`](example/http_connection/) · [`example/little_things/`](example/little_things/) · [`example/reflection/`](example/reflection/) | The remaining utility modules |
+
+Run the whole set:
+
+```bash
+dart run build_runner build      # generate reflection (once / on signature change)
+dart run example/run_all_samples.dart
+```
+
+## Usage
+
+### Namespacing with zone-propagated scopes
 
 ```dart
 TomScope.withScope('checkout', () {
@@ -47,34 +160,87 @@ TomScope.withScope('checkout', () {
 });
 ```
 
-Each module ships runnable examples under
-[`example/`](example/) (every module folder has a `00_run_all_examples.dart`
-runner) and a guide under [`doc/`](doc/).
+### Resolving text resources
 
-## Modules
+```dart
+TomTextResourceProvider.setAppResourceProvider(
+  TomTextResourceProvider.from({'greeting': 'Hello, {name}!'}),
+);
+```
 
-| Module | Summary | Docs |
-| ------ | ------- | ---- |
-| Bean Locator | Reflection-based dependency-injection container for service beans | [doc](doc/beanlocator/beanlocator.md) |
-| Context | Ambient execution-context management | [doc](doc/context/context.md) |
-| HTTP Connection | HTTP connection helpers | [doc](doc/http_connection/http_connection.md) |
-| Isolate Pooling | Worker-pool execution across isolates | [doc](doc/isolate_pooling/isolate_pooling.md) |
-| JSON | JSON serialization and tree utilities | [doc](doc/json/json.md) |
-| Little Things | Small zone/utility helpers (e.g. `getFromCurrentZone`) | [doc](doc/little_things/little_things.md) |
-| Logging | Structured logging, including isolate and remote logging | [doc](doc/logging/logging.md) |
-| Observable | Observable objects: `TomObject`, `TomClass`, `TomList`, `TomMap` | [doc](doc/observable/observable.md) |
-| Reflection | Reflection support and helpers | [doc](doc/reflection/reflection.md) |
-| Resources | Text and configuration resource providers | [doc](doc/resources/resources.md) |
-| Scope IDs | Hierarchical, zone-propagated scope identifiers | [doc](doc/scope_ids/scope_ids.md) |
-| Security | Authentication, authorization, access control, and the four-state UI authorization model | [doc](doc/security/security.md) |
-| Settings | Settings management | [doc](doc/settings/settings.md) |
-| Shutdown Cleanup | Ordered shutdown/cleanup hooks | [doc](doc/shutdown_cleanup/shutdown_cleanup.md) |
-| Timezoned | Timezone-aware date/time support | [doc](doc/timezoned/timezoned.md) |
+### Locating a bean
 
-## Additional information
+Components are registered as `TomComponent`s and resolved as `TomBean<T>`s
+through the locator — the container wires dependencies by reflected type rather
+than by manual construction.
 
-- **Examples:** `example/{module}/00_run_all_examples.dart` — run with
-  `dart run example/{module}/00_run_all_examples.dart`. Modules that use
-  reflection require `dart run build_runner build` first.
-- **Tests:** run with `testkit :test` (or `dart test`) from the package root.
+### Ordered shutdown
+
+`TomShutdownCleanup` registers `TomDisposable` / `TomClosable` resources and
+tears them down in a deterministic order on process exit.
+
+## Architecture
+
+```
+                tom_core_kernel
+                      │
+   ┌──────────┬───────┼────────┬───────────┐
+observable  context  security  resources   runtime utils
+ (TomObject) (scope) (TomAuth*) (providers) (logging, isolates,
+                                             json, settings,
+                                             shutdown, timezoned)
+                      │
+              tom_reflection  ← introspection / serialization
+              tom_basics · tom_crypto
+```
+
+The kernel is a single package with one barrel; modules live under
+`lib/src/tombase/<module>/` and are mutually low-coupled — context/scope and
+observable underpin the rest, security builds on both, and the runtime utilities
+are largely independent.
+
+| Type | Responsibility |
+| ---- | -------------- |
+| `TomObject<T>` | Observable value, the unit of reactive state |
+| `TomScope` | Zone-propagated hierarchical scope identifier |
+| `TomExecutionContext` | Ambient context carried through a call tree |
+| `TomAuthorization` / `TomAuthState` | Authorization decision + four-state model |
+| `TomAccessControl` | Base access-control rule |
+| `TomBean<T>` / `TomComponent` | DI bean / registrable component |
+| `TomWorker` / `TomWorkerPool` | Isolate worker-pool execution |
+| `TomTextResourceProvider` | Text resource resolution |
+| `TomShutdownCleanup` | Ordered teardown registry |
+
+## Ecosystem
+
+```
+tom_basics · tom_crypto · tom_reflection
+                 │
+          tom_core_kernel        ← you are here
+        ┌────────┼─────────┐
+tom_core_server  tom_core_flutter  tom_core_d4rt
+                 │                   (bridges the kernel into d4rt scripts)
+          tom_flutter_ui
+```
+
+`tom_core_kernel` sits directly on the basics/crypto/reflection foundation and is
+the common dependency of the server, Flutter, and DartScript layers. See the
+[repository map](../README.md) for the full picture.
+
+## Further documentation
+
+- Per-module guides under [`doc/`](doc/) — one folder per module
+  (`doc/observable/`, `doc/security/`, `doc/scope_ids/`, …).
+- [`tom_core_server`](../tom_core_server/README.md) — the server runtime built on
+  this kernel.
+- [`tom_core_flutter`](../tom_core_flutter/README.md) /
+  [`tom_flutter_ui`](../tom_flutter_ui/README.md) — the client/UI layers.
+- [`tom_core_d4rt`](../tom_core_d4rt/README.md) — exposes these types to `d4rt`
+  scripts.
+
+## Status
+
+- **Version:** 1.1.0
+- **Tests:** 1,464 test cases across 17 module suites (run with `testkit :test`
+  or `dart test`).
 - **License:** proprietary — see [LICENSE](LICENSE).
