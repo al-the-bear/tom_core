@@ -12,6 +12,7 @@ library;
 
 export 'agent_profile.dart';
 export 'agent_yaml.dart';
+export 'bridge_connection.dart';
 export 'chat_message.dart';
 export 'editor_placeholder_bindings.dart';
 export 'prompt_queue.dart';
