@@ -1,17 +1,68 @@
 # tom_flutter_ui_test
 
-A new Flutter project.
+A Flutter demo / smoke-test application for the **Tom Flutter UI** library
+(`tom_flutter_ui`). It is an internal harness — `publish_to: none` — that
+exercises every part of the library against the live Flutter engine: the
+Advanced Container Layout (ACL) engine, the Tom-wrapped Material/Cupertino
+widget set, the form framework, and the resource / authorization machinery
+driven by `tom_core_kernel`.
 
-## Getting Started
+## What it demonstrates
 
-This project is a starting point for a Flutter application.
+The app is a four-tab `MaterialApp` (see `lib/main.dart`). Each tab is a list
+of `DemoTile`s that open a single full-screen demo:
 
-A few resources to get you started if this is your first Flutter project:
+| Tab | Source | What it shows |
+| --- | --- | --- |
+| **ACL Demos** | `lib/acl_demos/` | The Advanced Container Layout engine: rows, alignment, expand flags, spacing, min/preferred/max sizing, character-width sizing, reference & cross-row constraints, titled/bordered groups, nested containers, responsive shrink/grow, row breakpoints, and the fluent `AclBuilder` API. |
+| **Widget Demos** | `lib/widget_demos/` | 27 widget showcases grouped into Input & Actions, Layout & Structure, Display & Info, Advanced, and Scope & Architecture — the Tom wrappers over buttons, inputs, selection, toggles, sliders, cards, tables, navigation, slivers, animation, effects, plus resource resolution and scoped element providers. |
+| **Forms/Actions** | `lib/forms_demos/` | The Tom form framework: `TomForm` field types with validation, selection/boolean variants over a shared `TomSelectableSource`, `TomFormStyleScope` breakpoint overrides, and complex action/authorization gating. |
+| **Authorization/Resources** | `lib/widget_demos/demo_21…`, `demo_28…` | Resource resolution (labels/icons/tooltips by `tomId`) and widget authorization (visibility, readonly, `TomUIGroup`). |
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Running it
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run            # pick a device/emulator
+```
+
+There is **no code-generation step** — unlike the sibling
+`tom_flutter_form_test`, this app does not use reflection generation and has no
+runtime asset bundle. Demo resources (text, icons, colors) are registered
+entirely in Dart by `initializeDemoResources()` (`lib/demo_resources.dart`),
+which `main()` calls **before** `runApp` so the first frame resolves every
+widget's labels, icons and colors. The persisted UI language is loaded by
+`LocaleSettingsService` (`lib/locale_settings.dart`) before the first frame and
+can be changed live from the `AppBar` language selector.
+
+## Tests
+
+```bash
+flutter test                       # default gate (serial; never run in parallel)
+flutter test test/screenshots.dart # on-demand visual-capture harness (not a gate)
+```
+
+`test/screenshots.dart` is a manual "rerun and diff the PNGs" tool, deliberately
+excluded from the default gate (no `_test.dart` suffix). The remaining
+`*_test.dart` files (`widget_test.dart`, `debug_form_test.dart`,
+`debug_heights_test.dart`, `debug_shrink_test.dart`) are the automated suite.
+
+## Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `lib/main.dart` | Entry point, bootstrap ordering, and the four-tab registry. |
+| `lib/demo_resources.dart` | Registers the text/icon/color resource adapters consumed by the demos. |
+| `lib/locale_settings.dart` | Persisted-locale service + `AppBar` language selector. |
+| `lib/acl_demos/` | ACL-engine demos and their scaffolding helpers. |
+| `lib/widget_demos/` | Per-category widget demos (`demo_01…demo_28`). |
+| `lib/forms_demos/` | Form-framework demos. |
+| `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
+| `doc/` | Developer notes on widget resource parameters and discovery. |
+| `test/` | Automated widget suite plus the on-demand screenshot harness. |
+
+## Dependencies
+
+- `tom_flutter_ui` — the library under test (path dependency).
+- `tom_core_kernel` — observables, resources, reflection, security.
+- `flutter_localizations`, `shared_preferences`, `cupertino_icons`.
