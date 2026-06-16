@@ -48,15 +48,31 @@ import 'widget_demos/demo_27_forms.dart';
 import 'widget_demos/demo_28_authorization.dart';
 
 /// Global locale settings service instance.
+///
+/// Why: a single app-wide instance is shared by three collaborators that
+/// have no common widget ancestor to thread it through — `main()` (bootstrap
+/// load), `_TomFlutterUiTestAppState` (listens to rebuild `MaterialApp` on
+/// locale change) and the `LanguageSelectorButton` in the `AppBar` (writes
+/// the selection). A top-level final keeps that one source of truth without
+/// an InheritedWidget layer this demo app doesn't otherwise need.
 final localeSettingsService = LocaleSettingsService();
 
 void main() async {
+  // Why: ensureInitialized() must run before any plugin/binding call
+  // (the SharedPreferences read in localeSettingsService.initialize()
+  // touches a platform channel) and before runApp — async work in main()
+  // requires a live binding.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Tom UI resource and icon adapters
+  // Why: install the Tom UI resource/icon/color adapters before the first
+  // frame. Every demo widget resolves its labels, icons and colors by
+  // tomId through these global adapters at build time, so they must be set
+  // before runApp or the initial build resolves against empty providers.
   initializeDemoResources();
 
-  // Load saved locale preference
+  // Why: await the persisted locale before runApp so the very first frame
+  // renders in the user's saved language — initializing after runApp would
+  // flash the default locale, then rebuild.
   await localeSettingsService.initialize();
 
   runApp(const TomFlutterUiTestApp());

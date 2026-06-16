@@ -3467,7 +3467,12 @@ const _demo28WidgetResources = <String, String>{
 ///
 /// Call this in `main()` before `runApp()`.
 void initializeDemoResources() {
-  // Merge string and structured resources into one map
+  // Why: the per-demo resource maps are kept as separate top-level
+  // declarations (one block per demo) so each demo's keys stay co-located
+  // with that demo's code and reviewable in isolation. They are merged into
+  // one flat map here because TomTextResourceProvider resolves a single
+  // namespace by full `<basePath>.<suffix>` key — the split is an authoring
+  // convenience, not a runtime lookup boundary.
   final Map<String, dynamic> allResources = {
     ..._DemoResources._resources,
     ..._DemoResources._structuredResources,
@@ -3490,6 +3495,11 @@ void initializeDemoResources() {
     ..._demo28CardResources,
     ..._demo28WidgetResources,
   };
+  // Why: these three static adapters are the global seams tom_flutter_ui
+  // widgets read at build time — text by tomId (resource provider), icon
+  // names → IconData (icon adapter), and color names → Color (color
+  // adapter). Setting them here, before runApp, is what makes the demos'
+  // string-keyed `mSave`/`primary` references resolve to real widgets.
   TomTextResourceProvider.setAppResourceProvider(
     TomTextResourceProvider.from(allResources),
   );

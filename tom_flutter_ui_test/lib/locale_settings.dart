@@ -74,11 +74,18 @@ class LocaleSettingsService extends ChangeNotifier {
 
   /// Initialize the service and load saved locale.
   Future<void> initialize() async {
+    // Why: guard against a second await on the platform channel — main()
+    // calls this once at bootstrap, but the public method is idempotent so
+    // a hot-reload or test re-entry can't double-load or re-notify.
     if (_initialized) return;
 
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_localeKey);
 
+    // Why: the locale is persisted as the `lang_country` string produced by
+    // setLocale() below; only restore when both parts are present, otherwise
+    // fall through to the default seeded in the field initializer rather than
+    // construct a malformed Locale from corrupt prefs.
     if (saved != null) {
       final parts = saved.split('_');
       if (parts.length == 2) {
@@ -94,6 +101,10 @@ class LocaleSettingsService extends ChangeNotifier {
   Future<void> setLocale(Locale locale) async {
     if (_locale == locale) return;
 
+    // Why: notify before the async write so the UI re-renders in the new
+    // language immediately; persistence is fire-and-forget for the next
+    // launch and must not block the visible locale switch on disk I/O. The
+    // `lang_country` format here is the exact string initialize() parses.
     _locale = locale;
     notifyListeners();
 
