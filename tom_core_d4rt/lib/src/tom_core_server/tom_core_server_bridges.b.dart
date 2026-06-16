@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 38 files
-// Generated: 2026-06-15T11:35:49.736698
+// Generated: 2026-06-16T13:36:53.509107
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -647,6 +647,14 @@ class TomCoreServerBridge {
       (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:mysql_client/mysql_client.dart', show: null, hide: null),
       (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_kernel/tom_core_kernel.dart', show: null, hide: null),
       (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_basics_console/tom_basics_console.dart', show: null, hide: null),
+      (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/connection.dart', show: null, hide: null),
+      (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/pool.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/logging/logging.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_neutral.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_environment_runtime.dart', show: null, hide: null),
+      (source: 'package:tom_basics_console/tom_basics_console.dart', target: 'package:tom_basics_console/src/runtime/platform_detection_standalone.dart', show: null, hide: null),
+      (source: 'package:tom_basics_console/tom_basics_console.dart', target: 'package:tom_basics/tom_basics.dart', show: null, hide: null),
     ];
   }
 
@@ -787,9 +795,6 @@ class TomCoreServerBridge {
   /// Returns a map of global function names to their native implementations.
   static Map<String, NativeFunctionImpl> globalFunctions() {
     return {
-      'main': (visitor, positional, named, typeArgs) {
-        return $tom_core_server_3.main();
-      },
       'contextSetupMiddleware': (visitor, positional, named, typeArgs) {
         D4.requireMinArgs(positional, 1, 'contextSetupMiddleware');
         final id = D4.getRequiredArg<String>(positional, 0, 'id', 'contextSetupMiddleware');
@@ -832,7 +837,6 @@ class TomCoreServerBridge {
   /// multiple barrels (e.g., tom_core_kernel and tom_core_server).
   static Map<String, String> globalFunctionSourceUris() {
     return {
-      'main': 'package:tom_core_server/src/tomserver/cache/server_cache.dart',
       'contextSetupMiddleware': 'package:tom_core_server/src/tomserver/server/server.dart',
       'extractAuthentication': 'package:tom_core_server/src/tomserver/server/server.dart',
       'tomDefaultAuthenticationMiddleware': 'package:tom_core_server/src/tomserver/server/server.dart',
@@ -845,7 +849,6 @@ class TomCoreServerBridge {
   /// Returns a map of global function names to their display signatures.
   static Map<String, String> globalFunctionSignatures() {
     return {
-      'main': 'void main()',
       'contextSetupMiddleware': 'Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])',
       'extractAuthentication': '(TomPrincipal?, TomClientJwtToken?) extractAuthentication(Request req)',
       'tomDefaultAuthenticationMiddleware': 'Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])',
@@ -14233,7 +14236,7 @@ BridgedClass _createMySQLConnectionBridge() {
           throw ArgumentError('transactional: Missing required argument "callback" at position 0');
         }
         final callbackRaw = positional[0];
-        return t.transactional((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
+        return t.transactional<Object?>((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
       },
       'prepare': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.MySQLConnection>(target, 'MySQLConnection');
@@ -14336,7 +14339,7 @@ BridgedClass _createIResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IResultSet>(target, 'IResultSet');
@@ -14358,7 +14361,7 @@ BridgedClass _createIResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IResultSet>(target, 'IResultSet');
@@ -14393,7 +14396,7 @@ BridgedClass _createIResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IResultSet>(target, 'IResultSet');
@@ -14608,7 +14611,7 @@ BridgedClass _createResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.ResultSet>(target, 'ResultSet');
@@ -14630,7 +14633,7 @@ BridgedClass _createResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.ResultSet>(target, 'ResultSet');
@@ -14665,7 +14668,7 @@ BridgedClass _createResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.ResultSet>(target, 'ResultSet');
@@ -14880,7 +14883,7 @@ BridgedClass _createIterableResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterableResultSet>(target, 'IterableResultSet');
@@ -14902,7 +14905,7 @@ BridgedClass _createIterableResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterableResultSet>(target, 'IterableResultSet');
@@ -14937,7 +14940,7 @@ BridgedClass _createIterableResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterableResultSet>(target, 'IterableResultSet');
@@ -15152,7 +15155,7 @@ BridgedClass _createPreparedStmtResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.PreparedStmtResultSet>(target, 'PreparedStmtResultSet');
@@ -15174,7 +15177,7 @@ BridgedClass _createPreparedStmtResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.PreparedStmtResultSet>(target, 'PreparedStmtResultSet');
@@ -15209,7 +15212,7 @@ BridgedClass _createPreparedStmtResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.PreparedStmtResultSet>(target, 'PreparedStmtResultSet');
@@ -15424,7 +15427,7 @@ BridgedClass _createIterablePreparedStmtResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterablePreparedStmtResultSet>(target, 'IterablePreparedStmtResultSet');
@@ -15446,7 +15449,7 @@ BridgedClass _createIterablePreparedStmtResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterablePreparedStmtResultSet>(target, 'IterablePreparedStmtResultSet');
@@ -15481,7 +15484,7 @@ BridgedClass _createIterablePreparedStmtResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.IterablePreparedStmtResultSet>(target, 'IterablePreparedStmtResultSet');
@@ -15700,7 +15703,7 @@ BridgedClass _createEmptyResultSetBridge() {
           throw ArgumentError('map: Missing required argument "toElement" at position 0');
         }
         final toElementRaw = positional[0];
-        return t.map(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
+        return t.map<Object?>(($mysql_client_1.IResultSet p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, toElementRaw, [p0])); });
       },
       'where': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.EmptyResultSet>(target, 'EmptyResultSet');
@@ -15722,7 +15725,7 @@ BridgedClass _createEmptyResultSetBridge() {
           throw ArgumentError('expand: Missing required argument "toElements" at position 0');
         }
         final toElementsRaw = positional[0];
-        return t.expand((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
+        return t.expand<Object?>((($mysql_client_1.IResultSet p0) { return D4.extractBridgedArg<Iterable<dynamic>>(D4.callInterpreterCallback(visitor!, toElementsRaw, [p0]), 'callback', visitor) as Iterable<dynamic>; }) as Iterable<dynamic> Function($mysql_client_1.IResultSet));
       },
       'contains': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.EmptyResultSet>(target, 'EmptyResultSet');
@@ -15757,7 +15760,7 @@ BridgedClass _createEmptyResultSetBridge() {
           throw ArgumentError('fold: Missing required argument "combine" at position 1');
         }
         final combineRaw = positional[1];
-        return t.fold(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
+        return t.fold<Object?>(initialValue, (dynamic p0, $mysql_client_1.IResultSet p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, combineRaw, [p0, p1])); });
       },
       'every': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_1.EmptyResultSet>(target, 'EmptyResultSet');
@@ -16125,7 +16128,7 @@ BridgedClass _createMySQLConnectionPoolBridge() {
           throw ArgumentError('withConnection: Missing required argument "callback" at position 0');
         }
         final callbackRaw = positional[0];
-        return t.withConnection((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
+        return t.withConnection<Object?>((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
       },
       'transactional': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$mysql_client_2.MySQLConnectionPool>(target, 'MySQLConnectionPool');
@@ -16134,7 +16137,7 @@ BridgedClass _createMySQLConnectionPoolBridge() {
           throw ArgumentError('transactional: Missing required argument "callback" at position 0');
         }
         final callbackRaw = positional[0];
-        return t.transactional((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
+        return t.transactional<Object?>((($mysql_client_1.MySQLConnection p0) { return D4.castCallbackResult<FutureOr<Object?>>(D4.callInterpreterCallback(visitor!, callbackRaw, [p0])); }) as FutureOr<Object?> Function($mysql_client_1.MySQLConnection));
       },
     },
     constructorSignatures: {

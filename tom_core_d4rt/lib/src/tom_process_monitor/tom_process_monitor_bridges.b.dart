@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 31 files
-// Generated: 2026-06-15T11:35:39.430671
+// Generated: 2026-06-16T13:36:50.975202
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -259,6 +259,8 @@ class TomProcessMonitorBridge {
       (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/client/remote_process_monitor_client.dart', show: null, hide: null),
       (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/http/remote_api_server.dart', show: null, hide: null),
       (source: 'package:tom_process_monitor/tom_process_monitor.dart', target: 'package:tom_process_monitor/src/process_monitor.dart', show: null, hide: null),
+      (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/http_retry.dart', show: null, hide: null),
+      (source: 'package:tom_basics_network/tom_basics_network.dart', target: 'package:tom_basics_network/src/server_discovery.dart', show: null, hide: null),
     ];
   }
 
@@ -1724,7 +1726,7 @@ BridgedClass _createRegistryLockBridge() {
           throw ArgumentError('withLock: Missing required argument "operation" at position 0');
         }
         final operationRaw = positional[0];
-        return t.withLock((() { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [])).then((v) => v as dynamic); }) as Future<dynamic> Function());
+        return t.withLock<Object?>((() { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [])).then((v) => v as dynamic); }) as Future<dynamic> Function());
       },
     },
     constructorSignatures: {
@@ -1780,7 +1782,7 @@ BridgedClass _createRegistryServiceBridge() {
           throw ArgumentError('withLock: Missing required argument "operation" at position 0');
         }
         final operationRaw = positional[0];
-        return t.withLock((($tom_process_monitor_17.ProcessRegistry p0) { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [p0])).then((v) => v as dynamic); }) as Future<dynamic> Function($tom_process_monitor_17.ProcessRegistry));
+        return t.withLock<Object?>((($tom_process_monitor_17.ProcessRegistry p0) { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [p0])).then((v) => v as dynamic); }) as Future<dynamic> Function($tom_process_monitor_17.ProcessRegistry));
       },
       'withLockReadOnly': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_process_monitor_28.RegistryService>(target, 'RegistryService');
@@ -1789,7 +1791,7 @@ BridgedClass _createRegistryServiceBridge() {
           throw ArgumentError('withLockReadOnly: Missing required argument "operation" at position 0');
         }
         final operationRaw = positional[0];
-        return t.withLockReadOnly((($tom_process_monitor_17.ProcessRegistry p0) { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [p0])).then((v) => v as dynamic); }) as Future<dynamic> Function($tom_process_monitor_17.ProcessRegistry));
+        return t.withLockReadOnly<Object?>((($tom_process_monitor_17.ProcessRegistry p0) { return Future.value(D4.callInterpreterCallback(visitor!, operationRaw, [p0])).then((v) => v as dynamic); }) as Future<dynamic> Function($tom_process_monitor_17.ProcessRegistry));
       },
       'initialize': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_process_monitor_28.RegistryService>(target, 'RegistryService');

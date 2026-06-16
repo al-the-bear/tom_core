@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 43 files
-// Generated: 2026-06-15T11:35:45.463464
+// Generated: 2026-06-16T13:36:51.926289
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -681,8 +681,18 @@ class TomCoreKernelBridge {
       (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_reflection/tom_reflection.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_reflection/generated.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/logging/logging.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_neutral.dart', show: null, hide: null),
+      (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_environment_runtime.dart', show: null, hide: null),
+      (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/jwt_token.dart', show: null, hide: null),
+      (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/password_hashing.dart', show: null, hide: null),
+      (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_encryption.dart', show: null, hide: null),
+      (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_tools.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart', show: null, hide: null),
       (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart', show: null, hide: null),
+      (source: 'package:tom_reflection/generated.dart', target: 'package:tom_reflection/src/reflection/mirrors.dart', show: null, hide: null),
+      (source: 'package:tom_reflection/generated.dart', target: 'package:tom_reflection/src/reflection/reflection_builder_based.dart', show: {'data', 'memberSymbolMap', 'ReflectorData', 'ReflectionImpl', 'TypeVariableMirrorImpl', 'NonGenericClassMirrorImpl', 'GenericClassMirrorImpl', 'MethodMirrorImpl', 'VariableMirrorImpl', 'LibraryMirrorImpl', 'ParameterMirrorImpl', 'ImplicitGetterMirrorImpl', 'ImplicitSetterMirrorImpl', 'FakeType'}, hide: null),
     ];
   }
 
@@ -3189,7 +3199,7 @@ BridgedClass _createTomExecutionContextBridge() {
         final zoneValues = named.containsKey('zoneValues') && named['zoneValues'] != null
             ? D4.coerceMap<Object?, Object?>(named['zoneValues'], 'zoneValues')
             : const <Object?, Object?>{};
-        return t.runInContext(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); }, zoneValues: zoneValues);
+        return t.runInContext<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); }, zoneValues: zoneValues);
       },
       'runInContextAsync': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_2.TomExecutionContext>(target, 'TomExecutionContext');
@@ -3201,7 +3211,7 @@ BridgedClass _createTomExecutionContextBridge() {
         final zoneValues = named.containsKey('zoneValues') && named['zoneValues'] != null
             ? D4.coerceMap<Object?, Object?>(named['zoneValues'], 'zoneValues')
             : const <Object?, Object?>{};
-        return t.runInContextAsync((() { return Future.value(D4.callInterpreterCallback(visitor!, bodyRaw, [])).then((v) => v as dynamic); }) as Future<dynamic> Function(), zoneValues: zoneValues);
+        return t.runInContextAsync<Object?>((() { return Future.value(D4.callInterpreterCallback(visitor!, bodyRaw, [])).then((v) => v as dynamic); }) as Future<dynamic> Function(), zoneValues: zoneValues);
       },
     },
     staticMethods: {
@@ -6637,7 +6647,7 @@ BridgedClass _createTomScopeBridge() {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
         }
         final bodyRaw = positional[0];
-        return t.runInScope(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+        return t.runInScope<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
       'getScopePath': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.TomScope>(target, 'TomScope');
@@ -6737,7 +6747,7 @@ BridgedClass _createTomScopeBaseBridge() {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
         }
         final bodyRaw = positional[0];
-        return t.runInScope(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+        return t.runInScope<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
     },
     constructorSignatures: {
@@ -6782,7 +6792,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap0: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap0(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
+        return t.wrap0<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
       },
       'wrap1': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6791,7 +6801,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap1: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap1((dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
+        return t.wrap1<Object?, Object?>((dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
       },
       'wrap2': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6800,7 +6810,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap2: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap2((dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
+        return t.wrap2<Object?, Object?, Object?>((dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
       },
       'wrap3': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6809,7 +6819,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap3: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap3((dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
+        return t.wrap3<Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
       },
       'wrap4': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6818,7 +6828,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap4: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap4((dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
+        return t.wrap4<Object?, Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
       },
       'wrap5': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6827,7 +6837,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap5: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap5((dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
+        return t.wrap5<Object?, Object?, Object?, Object?, Object?, Object?>((dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
       },
       'wrap0n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6836,7 +6846,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap0n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap0n(fnRaw == null ? null : () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
+        return t.wrap0n<Object?>(fnRaw == null ? null : () { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [])); });
       },
       'wrap1n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6845,7 +6855,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap1n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap1n(fnRaw == null ? null : (dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
+        return t.wrap1n<Object?, Object?>(fnRaw == null ? null : (dynamic p0) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0])); });
       },
       'wrap2n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6854,7 +6864,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap2n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap2n(fnRaw == null ? null : (dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
+        return t.wrap2n<Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1])); });
       },
       'wrap3n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6863,7 +6873,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap3n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap3n(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
+        return t.wrap3n<Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2])); });
       },
       'wrap4n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6872,7 +6882,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap4n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap4n(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
+        return t.wrap4n<Object?, Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3])); });
       },
       'wrap5n': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6881,7 +6891,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrap5n: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrap5n(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
+        return t.wrap5n<Object?, Object?, Object?, Object?, Object?, Object?>(fnRaw == null ? null : (dynamic p0, dynamic p1, dynamic p2, dynamic p3, dynamic p4) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0, p1, p2, p3, p4])); });
       },
       'wrapCounter': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_22.InScopeBuilder>(target, 'InScopeBuilder');
@@ -6890,7 +6900,7 @@ BridgedClass _createInScopeBuilderBridge() {
           throw ArgumentError('wrapCounter: Missing required argument "fn" at position 0');
         }
         final fnRaw = positional[0];
-        return t.wrapCounter((dynamic p0, {required dynamic currentLength, required dynamic isFocused, required dynamic maxLength}) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0], {'currentLength': currentLength, 'isFocused': isFocused, 'maxLength': maxLength})); });
+        return t.wrapCounter<Object?, Object?, Object?, Object?, Object?>((dynamic p0, {required dynamic currentLength, required dynamic isFocused, required dynamic maxLength}) { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, fnRaw, [p0], {'currentLength': currentLength, 'isFocused': isFocused, 'maxLength': maxLength})); });
       },
     },
     constructorSignatures: {
@@ -6957,7 +6967,7 @@ BridgedClass _createTomScopeMixinBridge() {
           throw ArgumentError('runInScope: Missing required argument "body" at position 0');
         }
         final bodyRaw = positional[0];
-        return t.runInScope(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
+        return t.runInScope<Object?>(() { return D4.castCallbackResult<dynamic>(D4.callInterpreterCallback(visitor!, bodyRaw, [])); });
       },
     },
     methodSignatures: {
