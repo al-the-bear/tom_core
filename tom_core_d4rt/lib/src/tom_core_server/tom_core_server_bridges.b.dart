@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 38 files
-// Generated: 2026-06-16T13:36:53.509107
+// Generated: 2026-06-16T14:05:00.155992
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -615,38 +615,6 @@ class TomCoreServerBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/authentication/authentication_server.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/authorization/authorization_cache.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/cmdline/args.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/cmdline/env_file.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/configuration/base_server_configuration.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/configuration/tom_config.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/configuration/yaml_resources.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/cache/server_cache.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/datasource_initialization.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/mariadb_datasource.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/mariadb_sql_dialect.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/queries.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/sql_dialects.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/datasources/types_operator.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/db_migration/db_migration.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/db_migration/mariadb_migration_adapter.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/endpoints/endpoint_annotation.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/endpoints/endpoint_pipeline.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/healthcheck/health_check.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/little_things/server_exception.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/annotation_analyzer.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/crud_repository.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/mariadb_repository.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/operators_expressions.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/persistence_annotations.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/query_builder.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/object_persistence/query_sentence_compiler.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/server/server.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_server/src/tomserver/transactions/transaction_manager.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:mysql_client/mysql_client.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_core_kernel/tom_core_kernel.dart', show: null, hide: null),
-      (source: 'package:tom_core_server/tom_core_server.dart', target: 'package:tom_basics_console/tom_basics_console.dart', show: null, hide: null),
       (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/connection.dart', show: null, hide: null),
       (source: 'package:mysql_client/mysql_client.dart', target: 'package:mysql_client/src/mysql_client/pool.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),

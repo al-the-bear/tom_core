@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 43 files
-// Generated: 2026-06-16T13:36:51.926289
+// Generated: 2026-06-16T14:04:58.783632
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -646,41 +646,6 @@ class TomCoreKernelBridge {
   static List<({String source, String target, Set<String>? show, Set<String>? hide})>
   bridgeReExports() {
     return [
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_basics/tom_basics.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_crypto/tom_crypto.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/context/execution_context.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/endpoints_apis.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/remote_context.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/httpmethods.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/mimetypes.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/http_connection/headers.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/json/map_merge_and_process.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/json/pretty_json.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/little_things/little_things.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/little_things/exception_base.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/little_things/formatting.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/logging/logging_isolate.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/resources/tom_resource_provider.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/security/access_controls.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/security/authentication_authorization.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/security/bearer_authentication.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/security/user_principal_aci.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/settings/settings_client_authorization.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/shutdown_cleanup/tom_shutdown_cleanup.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/timezoned/date_timestamp.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_reflection/tom_reflection.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/tom_core_kernel.dart', target: 'package:tom_reflection/generated.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/exception_base.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/logging/logging.dart', show: null, hide: null),
       (source: 'package:tom_basics/tom_basics.dart', target: 'package:tom_basics/src/runtime/platform_neutral.dart', show: null, hide: null),
@@ -689,8 +654,6 @@ class TomCoreKernelBridge {
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/password_hashing.dart', show: null, hide: null),
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_encryption.dart', show: null, hide: null),
       (source: 'package:tom_crypto/tom_crypto.dart', target: 'package:tom_crypto/src/rsa_tools.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/observable/tom_observable.dart', show: null, hide: null),
-      (source: 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.dart', target: 'package:tom_core_kernel/src/tombase/reflection/reflection.dart', show: null, hide: null),
       (source: 'package:tom_reflection/generated.dart', target: 'package:tom_reflection/src/reflection/mirrors.dart', show: null, hide: null),
       (source: 'package:tom_reflection/generated.dart', target: 'package:tom_reflection/src/reflection/reflection_builder_based.dart', show: {'data', 'memberSymbolMap', 'ReflectorData', 'ReflectionImpl', 'TypeVariableMirrorImpl', 'NonGenericClassMirrorImpl', 'GenericClassMirrorImpl', 'MethodMirrorImpl', 'VariableMirrorImpl', 'LibraryMirrorImpl', 'ParameterMirrorImpl', 'ImplicitGetterMirrorImpl', 'ImplicitSetterMirrorImpl', 'FakeType'}, hide: null),
     ];
