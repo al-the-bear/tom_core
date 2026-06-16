@@ -1,0 +1,230 @@
+// Tests for the editor agent send pipeline (§7): streaming a prompt through the
+// Agent SDK and refreshing the per-spec session id on a session error (§7.2).
+//
+// The SDK transport is faked so the loop is unit-testable without a socket: the
+// fake emits scripted `agentSdk.chunk` payloads for each started query, keyed by
+// the engine-issued streamId, and can branch on whether the query is resuming a
+// stored session (so a "stale session" error and its fresh retry are scripted).
+
+import 'dart:async';
+import 'dart:io';
+
+import 'package:test/test.dart';
+import 'package:tom_core_agentic/tom_core_agentic.dart';
+import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
+
+/// A transport double that emits a scripted message sequence for every started
+/// query. [script] maps the `startQuery` params (which carry the serialized
+/// `options`, including `resume`) to the raw `SDKMessage` JSON maps to stream
+/// back, in order, before a terminal `done`.
+class _ScriptedTransport implements AgentSdkTransport {
+  _ScriptedTransport(this.script);
+
+  final List<Map<String, dynamic>> Function(Map<String, dynamic> params)
+      script;
+
+  final _chunks = StreamController<Map<String, dynamic>>.broadcast();
+  final List<Map<String, dynamic>> started = [];
+
+  @override
+  Stream<Map<String, dynamic>> get chunks => _chunks.stream;
+
+  @override
+  Future<void> startQuery(Map<String, dynamic> params) async {
+    started.add(params);
+    final streamId = params['streamId'];
+    final messages = script(params);
+    // Emit after startQuery returns; the query's chunk subscription is already
+    // attached (AgentSdkClient subscribes in onListen before calling start).
+    unawaited(Future<void>(() async {
+      for (final message in messages) {
+        _chunks.add({'streamId': streamId, 'message': message});
+      }
+      _chunks.add({'streamId': streamId, 'done': true});
+    }));
+  }
+
+  @override
+  Future<void> cancelQuery(String streamId) async {}
+
+  @override
+  void registerTools(String streamId, AgentSdkToolRegistry registry) {}
+
+  @override
+  void unregisterTools(String streamId) {}
+
+  @override
+  void registerCanUseTool(String streamId, CanUseTool callback) {}
+
+  @override
+  void unregisterCanUseTool(String streamId) {}
+
+  Future<void> dispose() => _chunks.close();
+}
+
+Map<String, dynamic> _assistant(String text) => {
+      'type': 'assistant',
+      'message': {
+        'content': [
+          {'type': 'text', 'text': text},
+        ],
+      },
+    };
+
+Map<String, dynamic> _success(String sessionId) => {
+      'type': 'result',
+      'subtype': 'success',
+      'is_error': false,
+      'session_id': sessionId,
+      'result': 'ok',
+    };
+
+Map<String, dynamic> _errorResult(String text) => {
+      'type': 'result',
+      'subtype': 'error_during_execution',
+      'is_error': true,
+      'result': text,
+    };
+
+String? _resumeOf(Map<String, dynamic> params) =>
+    (params['options'] as Map?)?['resume'] as String?;
+
+SpecSessionStore _tempStore() {
+  final dir = Directory.systemTemp.createTempSync('tom_specs_session_test');
+  addTearDown(() {
+    if (dir.existsSync()) dir.deleteSync(recursive: true);
+  });
+  return SpecSessionStore(File('${dir.path}/agent_session.yaml'));
+}
+
+void main() {
+  group('specSessionLooksLikeError (§7.2 rule)', () {
+    test('matches session / message / msg, case-insensitively', () {
+      expect(specSessionLooksLikeError('Invalid SESSION id'), isTrue);
+      expect(specSessionLooksLikeError('bad message format'), isTrue);
+      expect(specSessionLooksLikeError('missing msg field'), isTrue);
+    });
+
+    test('does not match unrelated errors', () {
+      expect(specSessionLooksLikeError('rate limit exceeded'), isFalse);
+      expect(specSessionLooksLikeError('connection refused'), isFalse);
+    });
+  });
+
+  group('SpecSessionStore', () {
+    test('round-trips a session id and clears it', () {
+      final store = _tempStore();
+      expect(store.load(), isNull);
+
+      store.save('sess-123');
+      expect(store.load(), 'sess-123');
+
+      store.clear();
+      expect(store.load(), isNull);
+    });
+  });
+
+  group('AgentSendConfig.buildOptions', () {
+    test('maps profile system prompt and threads the resume id', () {
+      final config = AgentSendConfig.fromProfile(
+        const AgentProfile(id: 'p', name: 'P', systemPrompt: 'Be precise.'),
+        model: 'claude-x',
+      );
+      final options = config.buildOptions(resumeSessionId: 'sess-1');
+
+      expect(options.model, 'claude-x');
+      expect(options.resume, 'sess-1');
+      expect(options.systemPrompt, isA<SystemPromptText>());
+      expect((options.systemPrompt as SystemPromptText).text, 'Be precise.');
+    });
+
+    test('omits resume from the wire when no session id is supplied', () {
+      final options = const AgentSendConfig().buildOptions();
+      expect(options.toJson().containsKey('resume'), isFalse);
+    });
+  });
+
+  group('AgentSendEngine.send', () {
+    test('streams assistant text and persists the session id', () async {
+      final transport =
+          _ScriptedTransport((_) => [_assistant('hello'), _success('s-new')]);
+      addTearDown(transport.dispose);
+      final store = _tempStore();
+      final engine = AgentSendEngine(
+        client: AgentSdkClient(transport),
+        sessionStore: store,
+        config: const AgentSendConfig(),
+      );
+
+      final events = await engine.send('hi').toList();
+
+      expect(events.first, isA<AgentSendStarted>());
+      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+          'hello');
+      final completed =
+          events.whereType<AgentSendCompleted>().single;
+      expect(completed.sessionId, 's-new');
+      // The id is persisted so the next send resumes it.
+      expect(store.load(), 's-new');
+    });
+
+    test('refreshes the session id on a session error and retries fresh',
+        () async {
+      // First attempt resumes the stale id and fails with a session error; the
+      // retry (no resume) succeeds with a fresh id.
+      final transport = _ScriptedTransport((params) {
+        if (_resumeOf(params) == 'stale-id') {
+          return [_errorResult('Session not found: invalid session id')];
+        }
+        return [_assistant('recovered'), _success('s-fresh')];
+      });
+      addTearDown(transport.dispose);
+
+      final store = _tempStore()..save('stale-id');
+      final engine = AgentSendEngine(
+        client: AgentSdkClient(transport),
+        sessionStore: store,
+        config: const AgentSendConfig(),
+      );
+
+      final events = await engine.send('hi').toList();
+
+      // A refresh happened, then the fresh attempt streamed and completed.
+      expect(events.whereType<AgentSendSessionRefreshed>(), hasLength(1));
+      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+          'recovered');
+      expect(events.whereType<AgentSendCompleted>().single.sessionId,
+          's-fresh');
+      // The sidecar now holds the fresh id, not the stale one.
+      expect(store.load(), 's-fresh');
+
+      // Two queries: the first resumed the stale id, the second was fresh.
+      expect(transport.started, hasLength(2));
+      expect(_resumeOf(transport.started[0]), 'stale-id');
+      expect(_resumeOf(transport.started[1]), isNull);
+    });
+
+    test('a non-session error fails without refreshing or retrying', () async {
+      final transport = _ScriptedTransport(
+        (_) => [_errorResult('rate limit exceeded')],
+      );
+      addTearDown(transport.dispose);
+
+      final store = _tempStore()..save('keep-id');
+      final engine = AgentSendEngine(
+        client: AgentSdkClient(transport),
+        sessionStore: store,
+        config: const AgentSendConfig(),
+      );
+
+      final events = await engine.send('hi').toList();
+
+      expect(events.whereType<AgentSendSessionRefreshed>(), isEmpty);
+      expect(events.whereType<AgentSendFailed>().single.message,
+          contains('rate limit'));
+      // The stored id is untouched on a non-session failure.
+      expect(store.load(), 'keep-id');
+      expect(transport.started, hasLength(1));
+    });
+  });
+}

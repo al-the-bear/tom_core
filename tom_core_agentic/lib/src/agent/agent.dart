@@ -11,6 +11,7 @@
 library;
 
 export 'agent_profile.dart';
+export 'agent_send.dart';
 export 'agent_yaml.dart';
 export 'bridge_connection.dart';
 export 'chat_message.dart';
