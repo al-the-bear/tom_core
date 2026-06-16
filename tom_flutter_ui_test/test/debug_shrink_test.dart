@@ -63,6 +63,19 @@ void main() {
         'B=${b.width.toStringAsFixed(1)}  '
         'expand=${e.width.toStringAsFixed(1)}  '
         'total=${(cap.width + a.width + b.width + e.width + 18).toStringAsFixed(1)}');
+
+    // Why: below the components' summed minimumSize (cap 80 + A 60 + B 50 +
+    // expand 120 + 3×dist 18 = 328px) the row cannot shrink any further and
+    // overflows by design — that minimumSize floor is exactly the behaviour
+    // this diagnostic documents (see the 300px row: every component pins to
+    // its minimum, total 328 > 300). The overflow is recorded as a pending
+    // FlutterError that would otherwise fail the test at teardown; drain it
+    // so the measurement loop still completes, while re-surfacing anything
+    // that is not an expected overflow.
+    final pending = tester.takeException();
+    if (pending != null && !pending.toString().contains('overflowed')) {
+      fail('Unexpected exception at width=$w: $pending');
+    }
   }
 
   testWidgets('size_constraints panel 4 shrink at multiple widths',

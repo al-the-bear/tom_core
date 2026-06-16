@@ -1,12 +1,24 @@
 /// Screenshot harness for every demo in the tom_flutter_ui_test app.
 ///
-/// Run with: `flutter test test/screenshots_test.dart`
+/// Run with: `flutter test test/screenshots.dart`
+///
+/// Why this is `screenshots.dart`, not `screenshots_test.dart`: this is a
+/// manual PNG-generation tool, not a regression gate. It mounts each demo in
+/// a deliberately minimal, fixed-size, offline capture box — without the
+/// scrolling, `TomScope`/resource bindings, or `PrimaryScrollController` the
+/// real two-tab app provides — so demos that need that scaffolding render
+/// overflow banners / broken-image placeholders / resource errors. Those are
+/// capture-context artifacts, not `tom_flutter_ui` regressions, so the harness
+/// must not gate the default `flutter test`. Dropping the `_test.dart` suffix
+/// keeps it out of the auto-discovered suite while leaving it runnable on
+/// demand via the command above.
 ///
 /// Each demo is mounted in a fixed-size viewport, pumped once, and captured
 /// via `RenderRepaintBoundary.toImage()`. PNGs are written to
 /// `test/screenshots/<demo>.png`. This is the same capture path that Flutter's
 /// golden tests use internally, so it works headlessly without any extra
-/// dependencies.
+/// dependencies. The rasterisation runs inside `tester.runAsync()` because
+/// `toImage()`/`toByteData()` complete only on the engine's real event loop.
 ///
 /// Intended use: any time a demo is rebuilt or a layout primitive changes,
 /// rerun this file and diff the PNGs to see the visual impact.
@@ -159,10 +171,19 @@ Future<void> _capture({
 
   final boundary = captureKey.currentContext!.findRenderObject()
       as RenderRepaintBoundary;
-  final ui.Image image = await boundary.toImage(pixelRatio: _pixelRatio);
-  final byteData =
-      await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
+  // Why: RenderRepaintBoundary.toImage() and Image.toByteData() complete only
+  // once the engine's raster thread finishes the GPU work — real async that
+  // the fake-async zone driving testWidgets never advances, so awaiting them
+  // directly deadlocks until the 10-minute per-test timeout. runAsync() runs
+  // the body against the real event loop, which is the supported path for
+  // rasterising a boundary inside a widget test (the same one Flutter's
+  // golden machinery uses).
+  final byteData = await tester.runAsync(() async {
+    final ui.Image image = await boundary.toImage(pixelRatio: _pixelRatio);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    image.dispose();
+    return data;
+  });
   if (byteData == null) {
     fail('toByteData returned null for $slug');
   }
