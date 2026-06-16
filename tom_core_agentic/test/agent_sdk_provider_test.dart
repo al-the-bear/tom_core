@@ -1,0 +1,348 @@
+// AgentSdkLlmProvider (session mode `none`). Drives the provider over a fake
+// `AgentSdkTransport` that replays a scripted `SDKMessage` sequence, proving the
+// SdkMessage → LlmStreamEvent translation, the anchor / provenance stamp, the
+// usage/cost read-off, and the failure paths — without a live VS Code bridge.
+//
+// Migrated from `tom_brain_run/test/r42_agent_sdk_provider_test.dart` when the
+// provider layer moved into `tom_core_agentic`.
+
+import 'dart:async';
+
+import 'package:tom_core_agentic/tom_core_agentic.dart';
+import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
+import 'package:test/test.dart';
+
+/// A fake transport that replays [messages] (raw `SDKMessage` JSON maps) for the
+/// query, then emits either an `error` chunk (when [error] is set) or a `done`
+/// chunk. It records the [lastPrompt] / [lastOptions] the client started the
+/// query with so a test can assert the wire contract (body unmodified, no
+/// session id in mode `none`).
+class _FakeAgentSdkTransport extends AgentSdkTransport {
+  _FakeAgentSdkTransport({required this.messages, this.error});
+
+  final List<Map<String, dynamic>> messages;
+  final String? error;
+
+  String? lastPrompt;
+  Map<String, dynamic>? lastOptions;
+
+  final StreamController<Map<String, dynamic>> _controller =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  @override
+  Stream<Map<String, dynamic>> get chunks => _controller.stream;
+
+  @override
+  Future<void> startQuery(Map<String, dynamic> params) async {
+    final streamId = params['streamId'] as String;
+    lastPrompt = params['prompt'] as String?;
+    lastOptions = (params['options'] as Map?)?.cast<String, dynamic>();
+    // Emit after `onListen` has wired its subscription (the client subscribes
+    // before calling startQuery; the microtask runs after both complete).
+    scheduleMicrotask(() {
+      for (final message in messages) {
+        if (_controller.isClosed) return;
+        _controller.add({'streamId': streamId, 'message': message});
+      }
+      if (_controller.isClosed) return;
+      if (error != null) {
+        _controller.add({'streamId': streamId, 'error': error});
+      } else {
+        _controller.add({'streamId': streamId, 'done': true});
+      }
+    });
+  }
+
+  @override
+  Future<void> cancelQuery(String streamId) async {}
+}
+
+const _wire = WirePrompt(
+  system: 'ANCHOR\n\nWhat is the capital of France?',
+  anchorHash: 'anchor-hash-A1',
+  roleId: 'assistant_to_user',
+  templateSha: 'template-sha-T1',
+);
+
+AgentSdkLlmProvider _provider(_FakeAgentSdkTransport transport) =>
+    AgentSdkLlmProvider(
+      id: 'claude:sonnet:none',
+      defaultModel: 'claude-sonnet-4-6',
+      bridgePort: 19900,
+      clientFactory: (port) async => AgentSdkClient(transport),
+    );
+
+void main() {
+  group('AgentSdkLlmProvider — mode none, happy path', () {
+    final transport = _FakeAgentSdkTransport(messages: <Map<String, dynamic>>[
+      {
+        'type': 'system',
+        'subtype': 'init',
+        'model': 'claude-sonnet-4-6',
+        'session_id': 'sess-1',
+      },
+      {
+        'type': 'assistant',
+        'session_id': 'sess-1',
+        'message': {
+          'content': [
+            {'type': 'thinking', 'thinking': 'The user wants a capital.'},
+            {'type': 'text', 'text': 'The capital of France '},
+          ],
+        },
+      },
+      {
+        'type': 'assistant',
+        'session_id': 'sess-1',
+        'message': {
+          'content': [
+            {'type': 'text', 'text': 'is Paris.'},
+          ],
+        },
+      },
+      {
+        'type': 'result',
+        'subtype': 'success',
+        'is_error': false,
+        'result': 'The capital of France is Paris.',
+        'duration_ms': 1234,
+        'total_cost_usd': 0.0021,
+        'usage': {'input_tokens': 88, 'output_tokens': 40},
+        'session_id': 'sess-1',
+      },
+    ]);
+    final provider = _provider(transport);
+
+    test('emits Started → Chunk(s) → Completed in order', () async {
+      final events =
+          await provider.completeStream(_wire, LlmOptions.empty).toList();
+
+      expect(events.first, isA<LlmStreamStarted>());
+      expect(events.last, isA<LlmStreamCompleted>());
+      expect(events.whereType<LlmStreamFailed>(), isEmpty);
+    });
+
+    test('Started carries provider id + resolved model', () async {
+      final started = (await provider
+              .completeStream(_wire, LlmOptions.empty)
+              .toList())
+          .whereType<LlmStreamStarted>()
+          .single;
+      expect(started.providerId, 'claude:sonnet:none');
+      expect(started.modelId, 'claude-sonnet-4-6');
+    });
+
+    test('text blocks stream as chunks; thinking blocks are dropped', () async {
+      final chunks = (await provider
+              .completeStream(_wire, LlmOptions.empty)
+              .toList())
+          .whereType<LlmStreamChunk>()
+          .map((c) => c.text)
+          .toList();
+      expect(chunks, <String>['The capital of France ', 'is Paris.']);
+    });
+
+    test('terminal report stamps anchor, provenance, tokens, cost, wall-clock',
+        () async {
+      final completed = (await provider
+              .completeStream(_wire, LlmOptions.empty)
+              .toList())
+          .whereType<LlmStreamCompleted>()
+          .single;
+      final report = completed.report;
+      expect(report.anchorHash, 'anchor-hash-A1');
+      expect(report.providerId, 'claude:sonnet:none');
+      expect(report.modelId, 'claude-sonnet-4-6');
+      expect(report.promptHash, promptSha256(_wire.combined));
+      expect(report.templateSha, 'template-sha-T1');
+      expect(report.tokensIn, 88);
+      expect(report.tokensOut, 40);
+      expect(report.cost, 0.0021);
+      expect(report.wallClockMs, 1234);
+      expect(report.retries, 0);
+    });
+
+    test('options.model overrides the route default on report + Started',
+        () async {
+      final events = await provider
+          .completeStream(_wire, const LlmOptions(model: 'claude-opus-4-8'))
+          .toList();
+      final started = events.whereType<LlmStreamStarted>().single;
+      final completed = events.whereType<LlmStreamCompleted>().single;
+      expect(started.modelId, 'claude-opus-4-8');
+      expect(completed.report.modelId, 'claude-opus-4-8');
+    });
+
+    test('wire prompt is handed to the SDK unmodified, no session id set',
+        () async {
+      await provider.completeStream(_wire, LlmOptions.empty).toList();
+      expect(transport.lastPrompt, _wire.combined);
+      // Mode none: never a `resume` / `sessionId` on the SDK options.
+      expect(transport.lastOptions, isNotNull);
+      expect(transport.lastOptions!.containsKey('resume'), isFalse);
+      expect(transport.lastOptions!.containsKey('sessionId'), isFalse);
+    });
+  });
+
+  group('AgentSdkLlmProvider — complete() drains the stream', () {
+    test('returns the terminal report', () async {
+      final transport = _FakeAgentSdkTransport(messages: <Map<String, dynamic>>[
+        {
+          'type': 'result',
+          'subtype': 'success',
+          'is_error': false,
+          'result': 'ok',
+          'duration_ms': 50,
+          'usage': {'input_tokens': 3, 'output_tokens': 7},
+        },
+      ]);
+      final report = await _provider(transport).complete(_wire, LlmOptions.empty);
+      expect(report.tokensOut, 7);
+      expect(report.anchorHash, 'anchor-hash-A1');
+    });
+  });
+
+  group('AgentSdkLlmProvider — failure paths', () {
+    test('an SDK error chunk → LlmStreamFailed (report still anchored)',
+        () async {
+      final transport = _FakeAgentSdkTransport(
+        messages: const <Map<String, dynamic>>[],
+        error: 'bridge exploded',
+      );
+      final events =
+          await _provider(transport).completeStream(_wire, LlmOptions.empty)
+              .toList();
+      expect(events.first, isA<LlmStreamStarted>());
+      final failed = events.last as LlmStreamFailed;
+      expect(failed.failure.message, contains('bridge exploded'));
+      expect(failed.report.anchorHash, 'anchor-hash-A1');
+      expect(failed.report.providerId, 'claude:sonnet:none');
+    });
+
+    test('a result with is_error → LlmStreamFailed carrying the costed report',
+        () async {
+      final transport = _FakeAgentSdkTransport(messages: <Map<String, dynamic>>[
+        {
+          'type': 'result',
+          'subtype': 'error',
+          'is_error': true,
+          'result': 'turn limit exceeded',
+          'duration_ms': 90,
+          'total_cost_usd': 0.0005,
+          'usage': {'input_tokens': 10, 'output_tokens': 0},
+        },
+      ]);
+      final events =
+          await _provider(transport).completeStream(_wire, LlmOptions.empty)
+              .toList();
+      final failed = events.last as LlmStreamFailed;
+      expect(failed.failure.message, contains('turn limit exceeded'));
+      expect(failed.report.cost, 0.0005);
+      expect(failed.report.tokensIn, 10);
+    });
+
+    test('a stream that closes with no result message → format failure',
+        () async {
+      final transport = _FakeAgentSdkTransport(messages: <Map<String, dynamic>>[
+        {
+          'type': 'assistant',
+          'message': {
+            'content': [
+              {'type': 'text', 'text': 'partial...'},
+            ],
+          },
+        },
+      ]);
+      final events =
+          await _provider(transport).completeStream(_wire, LlmOptions.empty)
+              .toList();
+      final failed = events.last as LlmStreamFailed;
+      expect(failed.failure.classCode, 'format');
+    });
+
+    test('complete() throws on a failed stream', () async {
+      final transport = _FakeAgentSdkTransport(
+        messages: const <Map<String, dynamic>>[],
+        error: 'nope',
+      );
+      expect(
+        () => _provider(transport).complete(_wire, LlmOptions.empty),
+        throwsA(isA<AgentSdkQueryException>()),
+      );
+    });
+  });
+
+  group('AgentSdkLlmProvider — rebindBridgePort (/cli_server_port)', () {
+    // A success result so a completeStream call resolves the memoised client.
+    List<Map<String, dynamic>> successMessages() => <Map<String, dynamic>>[
+          {
+            'type': 'result',
+            'subtype': 'success',
+            'is_error': false,
+            'result': 'ok',
+            'duration_ms': 5,
+            'usage': {'input_tokens': 1, 'output_tokens': 1},
+          },
+        ];
+
+    test('rebuilds the client against the new port and disposes the old one',
+        () async {
+      final factoryPorts = <int>[];
+      final disposed = <AgentSdkClient>[];
+      final transport = _FakeAgentSdkTransport(messages: successMessages());
+      final provider = AgentSdkLlmProvider(
+        id: 'claude:sonnet:none',
+        defaultModel: 'claude-sonnet-4-6',
+        bridgePort: 19900,
+        clientFactory: (port) async {
+          factoryPorts.add(port);
+          return AgentSdkClient(transport);
+        },
+        clientDisposer: (client) async => disposed.add(client),
+      );
+
+      // First call memoises a client on the original port.
+      await provider.completeStream(_wire, LlmOptions.empty).toList();
+      expect(factoryPorts, <int>[19900]);
+
+      // Rebind to a new port: returns true, evicts + disposes the old client.
+      final changed = await provider.rebindBridgePort(20000);
+      expect(changed, isTrue);
+      expect(provider.bridgePort, 20000);
+      expect(disposed, hasLength(1));
+
+      // The next call reconnects on the new port.
+      await provider.completeStream(_wire, LlmOptions.empty).toList();
+      expect(factoryPorts, <int>[19900, 20000]);
+    });
+
+    test('rebinding to the same port is a no-op (returns false)', () async {
+      final transport = _FakeAgentSdkTransport(messages: successMessages());
+      final provider = AgentSdkLlmProvider(
+        id: 'claude:sonnet:none',
+        defaultModel: 'claude-sonnet-4-6',
+        bridgePort: 19900,
+        clientFactory: (port) async => AgentSdkClient(transport),
+      );
+      expect(await provider.rebindBridgePort(19900), isFalse);
+      expect(provider.bridgePort, 19900);
+    });
+
+    test('rebinding before any call records the port without disposing',
+        () async {
+      var disposeCalls = 0;
+      final transport = _FakeAgentSdkTransport(messages: successMessages());
+      final provider = AgentSdkLlmProvider(
+        id: 'claude:sonnet:none',
+        defaultModel: 'claude-sonnet-4-6',
+        bridgePort: 19900,
+        clientFactory: (port) async => AgentSdkClient(transport),
+        clientDisposer: (client) async => disposeCalls++,
+      );
+      expect(await provider.rebindBridgePort(20100), isTrue);
+      expect(provider.bridgePort, 20100);
+      // No client was memoised yet, so nothing to dispose.
+      expect(disposeCalls, 0);
+    });
+  });
+}

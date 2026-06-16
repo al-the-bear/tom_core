@@ -2,10 +2,11 @@ name: tom_core_agentic
 description: >-
   Generic building blocks for agentic systems in the TOM framework:
   cooperative cancellation, lifecycle close-guards, dedup-by-id, text
-  previews, HTTP-date parsing, typed YAML config reading, and the
-  sha256 content-hash convention. No domain dependencies beyond
-  tom_basics.
-version: 1.5.0
+  previews, HTTP-date parsing, typed YAML config reading, the sha256
+  content-hash convention, and the LLM provider contract with the
+  Anthropic Agent SDK provider. Domain-neutral, depends only on
+  tom_basics and tom_vscode_scripting_api (for the Agent SDK bridge).
+version: 1.6.0
 publish_to: none
 
 environment:
@@ -13,6 +14,7 @@ environment:
 
 dependencies:
   tom_basics: any
+  tom_vscode_scripting_api: ^1.1.0
   yaml: ^3.1.0
   yaml_edit: ^2.2.4
   crypto: ^3.0.0

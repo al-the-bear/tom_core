@@ -1,0 +1,245 @@
+// Agent-SDK session strategies — the three session modes of the
+// [AgentSdkLlmProvider].
+//
+// Migrated into `tom_core_agentic` from `tom_brain_run/lib/src/
+// agent_sdk_session.dart`. Claude Code owns its own conversation memory keyed by
+// a *session id*. The caller decides whether a given call continues a prior
+// Claude session or starts fresh. That decision is the only thing that differs
+// across the three modes, so it is isolated behind one tiny seam —
+// [AgentSdkSessionStrategy] — that the provider consults per call:
+//
+//   * `none`  — [NoSessionStrategy]: every call is a first call.
+//   * `brain` — [BrainSessionStrategy]: the Claude session id is persisted in a
+//      JSON store keyed by the caller's session id ([LlmOptions.brainSessionId]);
+//      successive calls of the same session resume the same Claude session. A
+//      session-shaped error evicts the stored id so the provider can retry once
+//      fresh.
+//   * `quest` — [QuestSessionStrategy]: the Claude session id is *read* from the
+//      VS Code window's quest history file
+//      (`{root}/{questId}/history/{sessionKey}.session.json`). Read-only.
+//
+// The provider never branches on the mode; it asks the strategy for a resume
+// id, streams, and reports the outcome back to the strategy. The store and the
+// quest reader degrade to "no session" on any I/O or parse error rather than
+// throwing, so a corrupt file can only ever cost one fresh call, never a crash.
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'llm_options.dart' show LlmOptions;
+
+/// Decides, per call, whether the provider resumes a stored Claude-Code session
+/// or starts fresh, and records the session id a successful call produced.
+///
+/// All three methods key off the call's [LlmOptions] so a single provider can be
+/// configured with any one strategy. Implementations must never throw for
+/// missing / unreadable session state — they return `null` (no resume) instead,
+/// so a degraded store costs at most one fresh call.
+abstract interface class AgentSdkSessionStrategy {
+  /// The Claude-Code session id to resume for this call, or `null` to start a
+  /// fresh session (every `none`-mode call, an unknown `brain` key, a missing
+  /// `quest` file).
+  Future<String?> resumeIdFor(LlmOptions options);
+
+  /// Records the Claude-Code session id a *successful* call produced, so a later
+  /// call of the same session can resume it. A no-op for read-only strategies
+  /// ([NoSessionStrategy], [QuestSessionStrategy]).
+  Future<void> record(LlmOptions options, String claudeSessionId);
+
+  /// Forgets the stored session id for this call after a session-shaped failure,
+  /// so the immediate retry starts fresh. A no-op for read-only strategies.
+  Future<void> evict(LlmOptions options);
+}
+
+/// Session mode `none`: every call is a first call. Resolves no id, records and
+/// evicts nothing.
+final class NoSessionStrategy implements AgentSdkSessionStrategy {
+  const NoSessionStrategy();
+
+  @override
+  Future<String?> resumeIdFor(LlmOptions options) async => null;
+
+  @override
+  Future<void> record(LlmOptions options, String claudeSessionId) async {}
+
+  @override
+  Future<void> evict(LlmOptions options) async {}
+}
+
+/// A small JSON-backed `session id → Claude-Code session id` map, persisted at
+/// [file].
+///
+/// Loaded lazily on first access and cached in memory; every mutation flushes
+/// the whole map back to disk (the map is tiny — one entry per live session). A
+/// missing file reads as empty; a corrupt / unreadable file also degrades to
+/// empty rather than throwing, so a damaged store can only cost fresh sessions,
+/// never a crash.
+final class AgentSdkSessionStore {
+  /// The on-disk JSON file backing this store.
+  final File file;
+
+  Map<String, String>? _cache;
+
+  AgentSdkSessionStore(this.file);
+
+  Future<Map<String, String>> _load() async {
+    final cached = _cache;
+    if (cached != null) return cached;
+    Map<String, String> loaded;
+    try {
+      if (await file.exists()) {
+        final decoded = jsonDecode(await file.readAsString());
+        loaded = decoded is Map
+            ? decoded.map(
+                (key, value) => MapEntry('$key', '$value'),
+              )
+            : <String, String>{};
+      } else {
+        loaded = <String, String>{};
+      }
+    } on FormatException {
+      // Corrupt JSON: start clean rather than fail the call.
+      loaded = <String, String>{};
+    } on FileSystemException {
+      loaded = <String, String>{};
+    }
+    return _cache = loaded;
+  }
+
+  Future<void> _flush() async {
+    final cache = _cache ?? <String, String>{};
+    await file.parent.create(recursive: true);
+    await file.writeAsString(jsonEncode(cache));
+  }
+
+  /// The Claude-Code session id stored for [brainSessionId], or `null`.
+  Future<String?> lookup(String brainSessionId) async =>
+      (await _load())[brainSessionId];
+
+  /// Stores [claudeSessionId] under [brainSessionId], flushing to disk.
+  Future<void> put(String brainSessionId, String claudeSessionId) async {
+    (await _load())[brainSessionId] = claudeSessionId;
+    await _flush();
+  }
+
+  /// Removes any id stored for [brainSessionId], flushing to disk.
+  Future<void> remove(String brainSessionId) async {
+    final cache = await _load();
+    if (cache.remove(brainSessionId) != null) {
+      await _flush();
+    }
+  }
+}
+
+/// Session mode `brain`: persists the Claude-Code session id keyed by the
+/// caller's session id ([LlmOptions.brainSessionId]).
+///
+/// A call with a null `brainSessionId` (a background / boot call that reached an
+/// agent-SDK route) is treated as session-less — it always starts fresh and is
+/// never recorded, so background work never pollutes a user session's Claude
+/// memory.
+final class BrainSessionStrategy implements AgentSdkSessionStrategy {
+  /// The store the session ids are persisted in.
+  final AgentSdkSessionStore store;
+
+  const BrainSessionStrategy(this.store);
+
+  @override
+  Future<String?> resumeIdFor(LlmOptions options) async {
+    final key = options.brainSessionId;
+    if (key == null) return null;
+    return store.lookup(key);
+  }
+
+  @override
+  Future<void> record(LlmOptions options, String claudeSessionId) async {
+    final key = options.brainSessionId;
+    if (key == null) return;
+    await store.put(key, claudeSessionId);
+  }
+
+  @override
+  Future<void> evict(LlmOptions options) async {
+    final key = options.brainSessionId;
+    if (key == null) return;
+    await store.remove(key);
+  }
+}
+
+/// Session mode `quest`: resumes the Claude-Code session recorded in the VS Code
+/// window's quest history file, read-only.
+///
+/// Reads `{questHistoryRoot}/{questId}/history/{sessionKey}.session.json` and
+/// pulls its `sessionId` field. The `sessionKey` selects which of the quest's
+/// sessions to reuse — typically `default` (the quest's default session) or
+/// `chat` (the chat session). A missing / empty file degrades to a fresh
+/// session, exactly like mode `none`. The caller never writes back into the
+/// quest's history, so [record] and [evict] are no-ops.
+final class QuestSessionStrategy implements AgentSdkSessionStrategy {
+  /// Root folder holding the per-quest history subfolders.
+  final String questHistoryRoot;
+
+  /// The quest id whose history is read.
+  final String questId;
+
+  /// Which session file to read (e.g. `default`, `chat`).
+  final String sessionKey;
+
+  const QuestSessionStrategy({
+    required this.questHistoryRoot,
+    required this.questId,
+    required this.sessionKey,
+  });
+
+  File get _sessionFile => File(
+        '$questHistoryRoot/$questId/history/$sessionKey.session.json',
+      );
+
+  @override
+  Future<String?> resumeIdFor(LlmOptions options) async {
+    final file = _sessionFile;
+    try {
+      if (!await file.exists()) return null;
+      final decoded = jsonDecode(await file.readAsString());
+      if (decoded is! Map) return null;
+      final sessionId = decoded['sessionId'];
+      if (sessionId is String && sessionId.isNotEmpty) return sessionId;
+      return null;
+    } on FormatException {
+      return null;
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  // Read-only: the caller never mutates the quest's history.
+  @override
+  Future<void> record(LlmOptions options, String claudeSessionId) async {}
+
+  @override
+  Future<void> evict(LlmOptions options) async {}
+}
+
+/// True when [message] looks like a Claude-Code rejection of a stale / unknown
+/// session id, so the `brain`-mode provider should evict the stored id and retry
+/// once with a fresh session.
+///
+/// Deliberately conservative: it requires the word `session` *and* a failure
+/// cue, so a generic error that merely mentions sessions does not trigger a
+/// (wasteful) fresh retry.
+bool agentSdkLooksLikeSessionError(String message) {
+  final lower = message.toLowerCase();
+  if (!lower.contains('session')) return false;
+  const cues = <String>[
+    'not found',
+    'invalid',
+    'no such',
+    'unknown',
+    'expired',
+    'does not exist',
+  ];
+  for (final cue in cues) {
+    if (lower.contains(cue)) return true;
+  }
+  return false;
+}

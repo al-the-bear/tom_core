@@ -20,6 +20,7 @@ export 'src/http_date.dart';
 export 'src/isolate_streaming/isolate_streaming.dart';
 export 'src/json_helpers.dart';
 export 'src/latency_summary.dart';
+export 'src/llm/llm.dart';
 export 'src/map_field_reader.dart';
 export 'src/mcp_auth/mcp_auth.dart';
 export 'src/path_scope.dart';
