@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: a complex multi-feature layout
+/// combining row alignment, min/preferred sizing, `expandY` fill regions, and
+/// container padding in a single [AclBuilder].
 class ComplexLayoutDemo extends StatelessWidget {
   const ComplexLayoutDemo({super.key});
 

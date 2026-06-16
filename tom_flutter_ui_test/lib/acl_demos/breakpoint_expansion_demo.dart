@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: multi-stage row breakpoints —
+/// `expandX` components that contract, then break into more rows at successive
+/// `addRowBreakpoint(atWidth:)` thresholds.
 class BreakpointExpansionDemo extends StatelessWidget {
   const BreakpointExpansionDemo({super.key});
 

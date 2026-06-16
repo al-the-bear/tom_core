@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: character-based width sizing
+/// (`setPWidthInChars` / `setMWidthInChars` / `setXWidthInChars`).
 class CharacterWidthSizingDemo extends StatelessWidget {
   const CharacterWidthSizingDemo({super.key});
 

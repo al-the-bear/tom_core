@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: a typical form layout — a fixed
+/// label column plus `expandX` fields with minimum widths, using
+/// `setAclPadding` and a default row vertical alignment.
 class FormLayoutDemo extends StatelessWidget {
   const FormLayoutDemo({super.key});
 

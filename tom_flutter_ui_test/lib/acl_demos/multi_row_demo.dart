@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: multi-row layout via
+/// [AclBuilder.newRow] to stack rows of differing component counts.
 class MultiRowDemo extends StatelessWidget {
   const MultiRowDemo({super.key});
 

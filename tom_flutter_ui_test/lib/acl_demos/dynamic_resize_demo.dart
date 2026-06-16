@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: dynamic resizing — an ACL
+/// layout adapting to the available width/height (driven by `LayoutBuilder`).
 class DynamicResizeDemo extends StatelessWidget {
   const DynamicResizeDemo({super.key});
 

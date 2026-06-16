@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: bordered groups with
+/// configurable title placement via [AclTitlePosition].
 class BorderedGroupsDemo extends StatelessWidget {
   const BorderedGroupsDemo({super.key});
 

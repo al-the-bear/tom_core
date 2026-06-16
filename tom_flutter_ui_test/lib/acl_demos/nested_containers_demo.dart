@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: nesting ACL containers — an
+/// `AclBuilder.build()` result used as a child widget inside another layout.
 class NestedContainersDemo extends StatelessWidget {
   const NestedContainersDemo({super.key});
 

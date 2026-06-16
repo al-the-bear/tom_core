@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: the base [AclBuilder] fluent
+/// API — laying out a single row of components with `append()` / `build()`.
 class BasicRowDemo extends StatelessWidget {
   const BasicRowDemo({super.key});
 

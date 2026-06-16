@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: responsive layout variants via
+/// `addVariant(atWidth:, builder:)` swapping the whole layout at breakpoints.
 class ResponsiveVariantsDemo extends StatelessWidget {
   const ResponsiveVariantsDemo({super.key});
 

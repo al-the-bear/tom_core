@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: inter-component and inter-row
+/// spacing via the `dist:` parameter on `append()` and `newRow()`.
 class SpacingDemo extends StatelessWidget {
   const SpacingDemo({super.key});
 

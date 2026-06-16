@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: per-row horizontal alignment
+/// via `setRowHorizontalAlignment(RowAlignment.left/center/right)`.
 class AlignmentDemo extends StatelessWidget {
   const AlignmentDemo({super.key});
 

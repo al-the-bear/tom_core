@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: combined placement — cross-row
+/// alignment, regular rows, and `sameSize()` mirroring together in one layout.
 class MixedPlacementPlaygroundDemo extends StatelessWidget {
   const MixedPlacementPlaygroundDemo({super.key});
 

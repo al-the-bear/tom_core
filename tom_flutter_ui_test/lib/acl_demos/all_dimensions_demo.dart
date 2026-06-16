@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: the `AclFlags.expandX`,
+/// `expandY`, and `expand` expansion flags combined in one full-window layout.
 class AllDimensionsDemo extends StatelessWidget {
   const AllDimensionsDemo({super.key});
 

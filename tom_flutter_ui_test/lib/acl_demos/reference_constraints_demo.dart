@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: reference constraints — linking
+/// a component's size and edges to an anchor component declared in another row.
 class ReferenceConstraintsDemo extends StatefulWidget {
   const ReferenceConstraintsDemo({super.key});
 

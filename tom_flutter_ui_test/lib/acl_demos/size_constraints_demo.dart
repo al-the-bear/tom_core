@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: min/preferred/max sizing
+/// (`setMSize` / `setPSize` / `setXSize`) and the proportional (P/M − 1)
+/// growth distribution of extra horizontal space.
 class SizeConstraintsDemo extends StatelessWidget {
   const SizeConstraintsDemo({super.key});
 

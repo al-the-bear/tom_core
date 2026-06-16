@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: container border styling via
+/// [AclBorderStyle] (none / solid / rounded / double) and [AclBorderKind].
 class BorderStylesDemo extends StatelessWidget {
   const BorderStylesDemo({super.key});
 

@@ -1,5 +1,7 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: titled, bordered groups —
+/// `AclBuilder(title:, borderStyle:)` wrapping fields in a captioned container.
 class GroupsDemo extends StatelessWidget {
   const GroupsDemo({super.key});
 

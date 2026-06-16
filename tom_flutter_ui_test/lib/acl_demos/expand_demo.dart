@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: horizontal and vertical
+/// expansion (`AclFlags.expandX` / `expandY` / `expand`), including equal
+/// distribution of free space among multiple expanding components.
 class ExpandDemo extends StatelessWidget {
   const ExpandDemo({super.key});
 

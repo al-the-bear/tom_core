@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: dynamic group visibility —
+/// [AclBinaryVisibilityController] and [AclCallbackVisibilityController]
+/// driving [AclGroupVisibilityMode] to show/hide groups reactively.
 class GroupVisibilityDemo extends StatefulWidget {
   const GroupVisibilityDemo({super.key});
 

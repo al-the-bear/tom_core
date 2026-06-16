@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: comprehensive form layout —
+/// 2-column alignment, horizontal `gap()` slots, vertical `gapRow()`
+/// separators, and cross-row right-edge alignment.
 class ComprehensiveFormDemo extends StatelessWidget {
   const ComprehensiveFormDemo({super.key});
 

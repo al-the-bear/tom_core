@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: responsive panels combining
+/// `expandX` with min/preferred sizing so components grow and shrink as the
+/// container width changes.
 class ResponsiveConvenienceDemo extends StatelessWidget {
   const ResponsiveConvenienceDemo({super.key});
 

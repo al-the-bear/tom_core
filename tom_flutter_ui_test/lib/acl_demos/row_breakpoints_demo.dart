@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: row breakpoints —
+/// `addRowBreakpoint(atWidth:, splitRowDist:)` splitting a single row into
+/// multiple rows at narrow widths.
 class RowBreakpointsDemo extends StatelessWidget {
   const RowBreakpointsDemo({super.key});
 

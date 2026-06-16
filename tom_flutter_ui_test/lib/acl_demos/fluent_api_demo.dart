@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: the convenience extension
+/// methods (`expandX()`, `setRowAlignCenter()`, `setAclScrollableY()`) as
+/// shorthand for the raw builder API.
 class FluentApiDemo extends StatelessWidget {
   const FluentApiDemo({super.key});
 

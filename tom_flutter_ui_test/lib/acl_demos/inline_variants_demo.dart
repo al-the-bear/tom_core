@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: inline variants —
+/// `startVariant()` / `addVariant()` swapping a subset of one row's components
+/// at width breakpoints.
 class InlineVariantsDemo extends StatelessWidget {
   const InlineVariantsDemo({super.key});
 

@@ -1,5 +1,8 @@
 part of 'acl_demos.dart';
 
+/// Exercises the `tom_flutter_ui` ACL feature: the cross-row alignment
+/// convenience methods (`alignTopToTop`, `alignBottomToBottom`, …) that align
+/// a component to an anchor component in another row.
 class ConveniencePlacementDemo extends StatelessWidget {
   const ConveniencePlacementDemo({super.key});
 
