@@ -58,7 +58,7 @@ excluded from the default gate (no `_test.dart` suffix). The remaining
 | `lib/widget_demos/` | Per-category widget demos (`demo_01…demo_28`). |
 | `lib/forms_demos/` | Form-framework demos. |
 | `lib/common/` | Shared `DemoTile` / `DemoScaffold`. |
-| `doc/` | Developer notes on widget resource parameters and discovery. |
+| `doc/` | `demo_catalogue.md` (navigation map of every demo) plus developer notes on widget resource parameters and discovery. |
 | `test/` | Automated widget suite plus the on-demand screenshot harness. |
 
 ## Dependencies
