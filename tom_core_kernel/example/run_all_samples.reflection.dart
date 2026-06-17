@@ -3,6 +3,22 @@
 import 'dart:core';
 import 'dart:async' as prefix31;
 import 'dart:math' as prefix39;
+import 'example/samples/beanlocator/05_annotation_based_beans_example.dart'
+    as prefix21;
+import 'example/samples/observable/03_tom_class.dart' as prefix18;
+import 'example/samples/observable/04_tom_list.dart' as prefix19;
+import 'example/samples/observable/05_tom_map.dart' as prefix20;
+import 'example/samples/reflection/01_basic_reflection_example.dart'
+    as prefix12;
+import 'example/samples/reflection/02_nested_objects_example.dart' as prefix13;
+import 'example/samples/reflection/03_collections_example.dart' as prefix14;
+import 'example/samples/reflection/04_datetime_types_example.dart' as prefix15;
+import 'example/samples/reflection/05_tomclass_integration_example.dart'
+    as prefix16;
+import 'example/samples/reflection/06_advanced_reflection_example.dart'
+    as prefix17;
+import 'example/samples/shutdown_cleanup/02_advanced_shutdown_example.dart'
+    as prefix1;
 import 'package:mysql_client/src/mysql_client/connection.dart' as prefix32;
 import 'package:shelf/src/handler.dart' as prefix51;
 import 'package:shelf/src/middleware.dart' as prefix48;
@@ -72,17 +88,6 @@ import 'package:tom_core_server/src/tomserver/object_persistence/persistence_ann
 import 'package:tom_core_server/src/tomserver/object_persistence/query_builder.dart'
     as prefix30;
 import 'package:tom_reflection/src/reflection/mirrors.dart' as prefix35;
-import 'samples/beanlocator/05_annotation_based_beans_example.dart' as prefix21;
-import 'samples/observable/03_tom_class.dart' as prefix18;
-import 'samples/observable/04_tom_list.dart' as prefix19;
-import 'samples/observable/05_tom_map.dart' as prefix20;
-import 'samples/reflection/01_basic_reflection_example.dart' as prefix12;
-import 'samples/reflection/02_nested_objects_example.dart' as prefix13;
-import 'samples/reflection/03_collections_example.dart' as prefix14;
-import 'samples/reflection/04_datetime_types_example.dart' as prefix15;
-import 'samples/reflection/05_tomclass_integration_example.dart' as prefix16;
-import 'samples/reflection/06_advanced_reflection_example.dart' as prefix17;
-import 'samples/shutdown_cleanup/02_advanced_shutdown_example.dart' as prefix1;
 
 // ignore_for_file: camel_case_types
 // ignore_for_file: implementation_imports
