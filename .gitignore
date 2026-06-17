@@ -35,6 +35,8 @@ desktop.ini
 # Logs and databases
 *.log
 *.sql
+# Reference DDL migrations shipped as example artifacts are tracked despite *.sql
+!**/example/**/migrations/**/*.sql
 *.sqlite
 *.sqlite3
 
