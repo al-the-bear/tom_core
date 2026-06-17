@@ -1,6 +1,6 @@
 // D4rt Bridge - Generated file, do not edit
 // Sources: 43 files
-// Generated: 2026-06-16T23:13:55.742727
+// Generated: 2026-06-17T15:34:27.183329
 
 // ignore_for_file: unused_import, deprecated_member_use, prefer_function_declarations_over_variables, implementation_imports, sort_child_properties_last, non_constant_identifier_names, avoid_function_literals_in_foreach_calls, invalid_use_of_protected_member, unnecessary_non_null_assertion, invalid_use_of_visible_for_testing_member, unnecessary_cast, unused_local_variable, no_leading_underscores_for_local_identifiers, prefer_is_empty, unnecessary_question_mark, unreachable_switch_case, unintended_html_in_doc_comment, empty_constructor_bodies, prefer_const_constructors_in_immutables, prefer_final_fields, unused_field, must_call_super, no_logic_in_create_state, use_key_in_widget_constructors, annotate_overrides, unnecessary_import
 
@@ -151,6 +151,7 @@ class TomCoreKernelBridge {
       _createTomScopeMixinBridge(),
       _createTomResourceKeyProtectionBridge(),
       _createTomAccessControlBridge(),
+      _createTomGradedAccessBridge(),
       _createTomNoAccessBridge(),
       _createTomPublicAccessBridge(),
       _createTomAuthenticatedAccessBridge(),
@@ -340,6 +341,7 @@ class TomCoreKernelBridge {
       'TomScopeMixin': 'package:tom_core_kernel/src/tombase/scope_ids/scope_ids.dart',
       'TomResourceKeyProtection': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
       'TomAccessControl': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
+      'TomGradedAccess': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
       'TomNoAccess': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
       'TomPublicAccess': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
       'TomAuthenticatedAccess': 'package:tom_core_kernel/src/tombase/security/access_controls.dart',
@@ -478,6 +480,7 @@ class TomCoreKernelBridge {
       'TomRemoteLogOutput': ['TomLogOutput'],
       'TomScopeBase': ['TomScopeMixin', 'TomScope'],
       'TomScopeMixin': ['TomScope'],
+      'TomGradedAccess': ['TomAccessControl'],
       'TomNoAccess': ['TomAccessControl'],
       'TomPublicAccess': ['TomAccessControl'],
       'TomAuthenticatedAccess': ['TomAccessControl'],
@@ -7086,9 +7089,68 @@ BridgedClass _createTomAccessControlBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomAccessControl>(target, 'TomAccessControl');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
+    },
+  );
+}
+
+// =============================================================================
+// TomGradedAccess Bridge
+// =============================================================================
+
+BridgedClass _createTomGradedAccessBridge() {
+  return BridgedClass(
+    nativeType: $tom_core_kernel_23.TomGradedAccess,
+    name: 'TomGradedAccess',
+    isAssignable: (v) => v is $tom_core_kernel_23.TomGradedAccess,
+    hierarchyDepth: 1,
+    constructors: {
+      '': (visitor, positional, named) {
+        final write = D4.getRequiredNamedArg<$tom_core_kernel_23.TomAccessControl>(named, 'write', 'TomGradedAccess');
+        final read = D4.getOptionalNamedArg<$tom_core_kernel_23.TomAccessControl?>(named, 'read');
+        final visible = D4.getOptionalNamedArg<$tom_core_kernel_23.TomAccessControl?>(named, 'visible');
+        return $tom_core_kernel_23.TomGradedAccess(write: write, read: read, visible: visible);
+      },
+    },
+    getters: {
+      'write': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').write,
+      'read': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').read,
+      'visible': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').visible,
+    },
+    methods: {
+      'checkAccessibility': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess');
+        D4.requireMinArgs(positional, 1, 'checkAccessibility');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
+        return t.checkAccessibility(principal);
+      },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
+    },
+    constructorSignatures: {
+      '': 'TomGradedAccess({required TomAccessControl write, TomAccessControl? read, TomAccessControl? visible})',
+    },
+    methodSignatures: {
+      'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
+    },
+    getterSignatures: {
+      'write': 'TomAccessControl get write',
+      'read': 'TomAccessControl get read',
+      'visible': 'TomAccessControl get visible',
     },
   );
 }
@@ -7115,12 +7177,19 @@ BridgedClass _createTomNoAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomNoAccess>(target, 'TomNoAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomNoAccess()',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
   );
 }
@@ -7147,12 +7216,19 @@ BridgedClass _createTomPublicAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomPublicAccess>(target, 'TomPublicAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomPublicAccess()',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
   );
 }
@@ -7179,12 +7255,19 @@ BridgedClass _createTomAuthenticatedAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomAuthenticatedAccess>(target, 'TomAuthenticatedAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomAuthenticatedAccess()',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
   );
 }
@@ -7211,12 +7294,19 @@ BridgedClass _createTomGuestAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomGuestAccess>(target, 'TomGuestAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomGuestAccess()',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
   );
 }
@@ -7248,6 +7338,12 @@ BridgedClass _createTomCustomAccessBridge() {
         D4.requireMinArgs(positional, 1, 'checkAccessibility');
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
+      },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomCustomAccess>(target, 'TomCustomAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
       },
       'verifyHandler': (visitor, target, positional, named, typeArgs) {
         final t = D4.validateTarget<$tom_core_kernel_23.TomCustomAccess>(target, 'TomCustomAccess');
@@ -7281,6 +7377,7 @@ BridgedClass _createTomCustomAccessBridge() {
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
       'verifyHandler': 'bool verifyHandler()',
     },
     getterSignatures: {
@@ -7325,12 +7422,19 @@ BridgedClass _createTomEntitlementAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomEntitlementAccess>(target, 'TomEntitlementAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomEntitlementAccess(List<String> patterns)',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
     getterSignatures: {
       'patterns': 'List<String> get patterns',
@@ -7368,12 +7472,19 @@ BridgedClass _createTomRoleAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomRoleAccess>(target, 'TomRoleAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomRoleAccess(List<String> roles)',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
     getterSignatures: {
       'roles': 'List<String> get roles',
@@ -7411,12 +7522,19 @@ BridgedClass _createTomGroupAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomGroupAccess>(target, 'TomGroupAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomGroupAccess(List<String> groups)',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
     getterSignatures: {
       'groups': 'List<String> get groups',
@@ -7451,12 +7569,19 @@ BridgedClass _createTomResourceKeyAccessBridge() {
         final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'checkAccessibility');
         return t.checkAccessibility(principal);
       },
+      'resolveAuthState': (visitor, target, positional, named, typeArgs) {
+        final t = D4.validateTarget<$tom_core_kernel_23.TomResourceKeyAccess>(target, 'TomResourceKeyAccess');
+        D4.requireMinArgs(positional, 1, 'resolveAuthState');
+        final principal = D4.getRequiredArg<$tom_core_kernel_27.TomPrincipal?>(positional, 0, 'principal', 'resolveAuthState');
+        return t.resolveAuthState(principal);
+      },
     },
     constructorSignatures: {
       '': 'const TomResourceKeyAccess(String key)',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
+      'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
     getterSignatures: {
       'key': 'String get key',
@@ -9497,6 +9622,7 @@ BridgedClass _createTomObjectBridge() {
           case $tom_core_kernel_23.TomEntitlementAccess _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_23.TomEntitlementAccess>(initialValue);
           case $tom_basics_4.TomFallbackPlatformUtils _: return $tom_core_kernel_19.TomObject<$tom_basics_4.TomFallbackPlatformUtils>(initialValue);
           case $tom_core_kernel_18.TomFunctionObserver _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_18.TomFunctionObserver>(initialValue);
+          case $tom_core_kernel_23.TomGradedAccess _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_23.TomGradedAccess>(initialValue);
           case $tom_core_kernel_23.TomGroupAccess _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_23.TomGroupAccess>(initialValue);
           case $tom_core_kernel_23.TomGuestAccess _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_23.TomGuestAccess>(initialValue);
           case $tom_core_kernel_8.TomHttpClientFactory _: return $tom_core_kernel_19.TomObject<$tom_core_kernel_8.TomHttpClientFactory>(initialValue);
