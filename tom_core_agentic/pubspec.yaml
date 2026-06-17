@@ -8,7 +8,7 @@ description: >-
   prompt queue, chat/trail, reminders, timed requests). Domain-neutral,
   depends only on tom_basics and tom_vscode_scripting_api (for the Agent
   SDK bridge).
-version: 1.7.0
+version: 1.8.0
 publish_to: none
 
 environment:
