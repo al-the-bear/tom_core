@@ -165,14 +165,27 @@ todo_domain/
   lib/
     todo_domain.dart               public barrel: entities + initializeReflection
     src/
-      entities.dart                generator entrypoint (exports the entity files)
-      entities.reflection.dart     generated — do not edit
+      entities.dart                entity barrel (exports the entity files)
+      reflection_entry.dart        generator entrypoint (has a main(); build target)
+      reflection_entry.reflection.dart  generated — do not edit
       enums.dart                   TodoPriority, TodoLabel (+ label extensions)
       user.dart                    User
       project.dart                 Project
       todo_list.dart               TodoList
       todo_item.dart               TodoItem
+  example/
+    build_hierarchy_example.dart   Project → TodoList → TodoItem nesting
+    enum_round_trip_example.dart   enum stored as name, read back typed
+    assign_and_complete_example.dart  User ↔ TodoItem link + completion
+    run_all_examples.dart          headless smoke test over the examples above
+    readme.md                      example index
   readme.md                        this document
+```
+
+Run the examples as a smoke test:
+
+```bash
+dart run example/run_all_examples.dart
 ```
 
 ---
