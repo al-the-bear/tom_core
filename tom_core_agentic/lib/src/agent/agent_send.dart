@@ -21,12 +21,14 @@
 // surface, and uses the broader §7.2 rule. The ~20-line stream loop they share
 // in shape will diverge in substance, so they are kept apart by design.
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 import 'package:yaml/yaml.dart';
 
+import '../cancellation.dart';
 import 'agent_profile.dart' show AgentProfile;
 
 /// True when [message] should be treated as an SDK **session error** under the
@@ -280,7 +282,20 @@ class AgentSendEngine {
   /// [AgentSendChunk]s (optionally with one [AgentSendSessionRefreshed] before
   /// the retried attempt's chunks); then exactly one of [AgentSendCompleted] or
   /// [AgentSendFailed].
-  Stream<AgentSendEvent> send(String prompt) async* {
+  ///
+  /// Pass a [cancelToken] to abort an in-flight turn: when it signals, the
+  /// active `query` is interrupted (`agentSdk.cancelVce`), which closes its
+  /// stream so the loop unwinds, and `send` then ends **silently** — no
+  /// terminal [AgentSendCompleted] or [AgentSendFailed] is emitted, because a
+  /// user-driven stop is neither a completion nor a failure. Relying on the
+  /// token (rather than cancelling the returned subscription) is deliberate:
+  /// cancelling an `async*` subscription parked on a stalled inner stream does
+  /// not resolve promptly, whereas [AgentQuery.interrupt] closes the query
+  /// stream eagerly.
+  Stream<AgentSendEvent> send(
+    String prompt, {
+    CancellationToken cancelToken = CancellationToken.none,
+  }) async* {
     yield const AgentSendStarted();
 
     String? resumeId = sessionStore.load();
@@ -292,9 +307,12 @@ class AgentSendEngine {
 
       SdkResultMessage? result;
       Object? caught;
+      final query = client.query(prompt: prompt, options: options);
+      // When cancellation is requested, interrupt the active query. That closes
+      // its stream, so the `await for` below terminates and we bail out below.
+      unawaited(cancelToken.whenCancelled.then((_) => query.interrupt()));
       try {
-        await for (final message
-            in client.query(prompt: prompt, options: options)) {
+        await for (final message in query) {
           if (message is SdkAssistantMessage) {
             for (final block in message.content) {
               if (block is TextBlock && block.text.isNotEmpty) {
@@ -310,6 +328,10 @@ class AgentSendEngine {
       } catch (e) {
         caught = e;
       }
+
+      // A user-driven stop: the query was interrupted, not completed or failed.
+      // End the stream without a terminal event.
+      if (cancelToken.isCancelled) return;
 
       // The error text to classify: a thrown bridge error, or a costed error
       // result. `null` when the turn succeeded.

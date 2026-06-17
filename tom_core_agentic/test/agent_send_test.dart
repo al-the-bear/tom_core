@@ -62,6 +62,49 @@ class _ScriptedTransport implements AgentSdkTransport {
   Future<void> dispose() => _chunks.close();
 }
 
+/// A transport double that streams one assistant chunk and then *stalls* — it
+/// never emits the terminal `done`, so the send stays in flight until a
+/// [CancellationToken] interrupts it. Records the stream ids passed to
+/// [cancelQuery] so a test can assert the remote query was aborted.
+class _StallingTransport implements AgentSdkTransport {
+  final _chunks = StreamController<Map<String, dynamic>>.broadcast();
+  final List<Map<String, dynamic>> started = [];
+  final List<String> cancelled = [];
+
+  @override
+  Stream<Map<String, dynamic>> get chunks => _chunks.stream;
+
+  @override
+  Future<void> startQuery(Map<String, dynamic> params) async {
+    started.add(params);
+    final streamId = params['streamId'];
+    // One chunk, then silence — no `done`, so the send never completes on its
+    // own; only a cancel ends it.
+    unawaited(Future<void>(() async {
+      _chunks.add({'streamId': streamId, 'message': _assistant('partial')});
+    }));
+  }
+
+  @override
+  Future<void> cancelQuery(String streamId) async {
+    cancelled.add(streamId);
+  }
+
+  @override
+  void registerTools(String streamId, AgentSdkToolRegistry registry) {}
+
+  @override
+  void unregisterTools(String streamId) {}
+
+  @override
+  void registerCanUseTool(String streamId, CanUseTool callback) {}
+
+  @override
+  void unregisterCanUseTool(String streamId) {}
+
+  Future<void> dispose() => _chunks.close();
+}
+
 Map<String, dynamic> _assistant(String text) => {
       'type': 'assistant',
       'message': {
@@ -202,6 +245,37 @@ void main() {
       expect(transport.started, hasLength(2));
       expect(_resumeOf(transport.started[0]), 'stale-id');
       expect(_resumeOf(transport.started[1]), isNull);
+    });
+
+    test('a cancel token interrupts the query and ends the stream silently',
+        () async {
+      final transport = _StallingTransport();
+      addTearDown(transport.dispose);
+      final engine = AgentSendEngine(
+        client: AgentSdkClient(transport),
+        sessionStore: _tempStore(),
+        config: const AgentSendConfig(),
+      );
+
+      final source = CancellationTokenSource();
+      final events = <AgentSendEvent>[];
+      // Drive the cold stream; cancel once the first chunk has streamed (the
+      // transport then stalls forever, so without the cancel this never ends).
+      final done = engine.send('hi', cancelToken: source.token).forEach((e) {
+        events.add(e);
+        if (e is AgentSendChunk) source.cancel();
+      });
+      await done.timeout(const Duration(seconds: 5));
+
+      // The partial text streamed, but a user-driven stop is neither a
+      // completion nor a failure — no terminal event is emitted.
+      expect(events.whereType<AgentSendChunk>().map((c) => c.text).join(),
+          'partial');
+      expect(events.whereType<AgentSendCompleted>(), isEmpty);
+      expect(events.whereType<AgentSendFailed>(), isEmpty);
+      // The remote query was aborted through the transport cancel path.
+      final streamId = transport.started.single['streamId'] as String;
+      expect(transport.cancelled, contains(streamId));
     });
 
     test('a non-session error fails without refreshing or retrying', () async {
