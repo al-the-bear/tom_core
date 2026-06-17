@@ -198,6 +198,64 @@ void main() {
     });
   });
 
+  group('ChatVariable', () {
+    test('round-trips through YAML', () {
+      const variable = ChatVariable(
+        name: 'project',
+        value: 'TomSpecs',
+        description: 'the active spec project',
+      );
+      final restored = ChatVariable.fromYaml(roundTrip(variable.toYaml()));
+      expect(restored.toYaml(), variable.toYaml());
+      expect(restored.name, 'project');
+      expect(restored.builtIn, isFalse);
+    });
+
+    test('bindingsOf folds variables into a name → value map (last wins)', () {
+      final bindings = ChatVariable.bindingsOf(const <ChatVariable>[
+        ChatVariable(name: 'a', value: '1'),
+        ChatVariable(name: 'b', value: '2'),
+        ChatVariable(name: 'a', value: '3'),
+      ]);
+      expect(bindings, <String, String>{'a': '3', 'b': '2'});
+    });
+  });
+
+  group('PromptTemplate', () {
+    test('round-trips through YAML', () {
+      const template = PromptTemplate(
+        id: 'pt1',
+        name: 'Bug report',
+        body: r'Investigate ${file-bug.md} for project ${project}.',
+        isUserMessage: true,
+      );
+      final restored = PromptTemplate.fromYaml(roundTrip(template.toYaml()));
+      expect(restored.toYaml(), template.toYaml());
+      expect(restored.isUserMessage, isTrue);
+    });
+  });
+
+  group('QueueTemplate', () {
+    test('round-trips an ordered prompt set through YAML', () {
+      const template = QueueTemplate(
+        id: 'qt1',
+        name: 'Nightly',
+        prompts: <String>['summarise the day', 'plan tomorrow'],
+      );
+      final restored = QueueTemplate.fromYaml(roundTrip(template.toYaml()));
+      expect(restored.toYaml(), template.toYaml());
+      expect(restored.prompts, <String>['summarise the day', 'plan tomorrow']);
+    });
+
+    test('a missing prompts key decodes to an empty list', () {
+      final restored = QueueTemplate.fromYaml(<String, dynamic>{
+        'id': 'qt2',
+        'name': 'Empty',
+      });
+      expect(restored.prompts, isEmpty);
+    });
+  });
+
   group('chat / trail', () {
     test('a ChatMessage round-trips', () {
       const message = ChatMessage(
