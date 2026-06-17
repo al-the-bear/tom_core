@@ -409,6 +409,50 @@ void main() {
       expect(opacity.opacity, 0.3);
     });
 
+    testWidgets('applies readOnly opacity when auth is read', (tester) async {
+      adapter.setRule('name', TomAuthState.read);
+      final field = _DecoratedTestField(
+        'name',
+        '',
+        labelText: 'Name',
+      );
+
+      await tester.pumpWidget(_wrap(field.widget));
+
+      // Read dims the content at readOnlyOpacity (0.8 default) — a lighter
+      // dim than the disabled treatment's 0.5, so the two states stay
+      // visually distinct.
+      final opacity = tester.widget<Opacity>(find.byType(Opacity));
+      expect(opacity.opacity, 0.8);
+    });
+
+    testWidgets(
+        'disabled and read render distinct opacities '
+        '(disabled is not conflated with read-only)', (tester) async {
+      // Item-18 regression: the four auth states must each render
+      // distinctly. Historically `disabled` was conflated with `read-only`;
+      // this pins the guarantee that the rendered dim differs between them.
+      adapter.setRule('name', TomAuthState.disabled);
+      await tester.pumpWidget(_wrap(
+        _DecoratedTestField('name', '', labelText: 'Name').widget,
+      ));
+      final disabledOpacity =
+          tester.widget<Opacity>(find.byType(Opacity)).opacity;
+
+      adapter.setRule('name', TomAuthState.read);
+      await tester.pumpWidget(_wrap(
+        _DecoratedTestField('name', '', labelText: 'Name').widget,
+      ));
+      final readOpacity =
+          tester.widget<Opacity>(find.byType(Opacity)).opacity;
+
+      expect(disabledOpacity, 0.5);
+      expect(readOpacity, 0.8);
+      expect(disabledOpacity, lessThan(readOpacity),
+          reason: 'disabled must dim more than read-only so the two states '
+              'are visually distinct (no conflation)');
+    });
+
     testWidgets('applies readOnlyBackground when auth is read',
         (tester) async {
       adapter.setRule('name', TomAuthState.read);
