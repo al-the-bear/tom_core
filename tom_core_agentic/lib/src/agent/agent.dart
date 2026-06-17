@@ -17,5 +17,6 @@ export 'bridge_connection.dart';
 export 'chat_message.dart';
 export 'editor_placeholder_bindings.dart';
 export 'prompt_queue.dart';
+export 'reconnect.dart';
 export 'reminder_template.dart';
 export 'timed_request.dart';
