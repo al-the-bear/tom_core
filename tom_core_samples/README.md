@@ -154,12 +154,12 @@ bootstrap) — see its `readme.md` for the one-command bring-up.
 ```
 tom_core_samples/
   README.md                      this map
-  todo_domain/                   shared reflected model (User, Project, TodoList, TodoItem)   (forthcoming)
+  todo_domain/                   shared reflected model (User, Project, TodoList, TodoItem)   (built)
   core_server_sample/            backend: API + persistence + auth + MySQL-in-Docker          (forthcoming)
   core_client_sample/            Flutter client: login + todo CRUD + ACL field states         (forthcoming)
-  core_flutter_ui_showcase/      widget gallery: component + instantiation code               (forthcoming)
-  core_flutter_form_showcase/    forms framework in depth                                     (forthcoming)
-  core_flutter_acl_sample/       Advanced Container Layout engine + four auth states          (forthcoming)
+  core_flutter_ui_showcase/      widget gallery: component + instantiation code               (built)
+  core_flutter_form_showcase/    forms framework in depth                                     (built)
+  core_flutter_acl_sample/       Advanced Container Layout engine + four auth states          (built)
   core_flutter_acl_responsive/   responsive layouts on the ACL engine                         (forthcoming)
 ```
 

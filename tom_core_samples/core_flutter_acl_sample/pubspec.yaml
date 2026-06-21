@@ -1,0 +1,30 @@
+name: core_flutter_acl_sample
+description: >-
+  Tom Core sample — a code-beside-layout tour of the ACL (Advanced Container
+  Layout) engine in tom_flutter_ui: per-component sizing, growth, alignment,
+  rows, nesting, borders/titles, reference constraints, variants/breakpoints,
+  group visibility and the four-state authorization model.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The Tom Flutter UI kit whose ACL engine this sample tours, plus the kernel
+  # it builds on (the four-state TomAuthState authorization model).
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
