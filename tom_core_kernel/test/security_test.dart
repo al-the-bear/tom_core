@@ -8,11 +8,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 // =============================================================================
 
 /// Creates a test principal with configurable options.
-/// 
-/// NOTE: Due to a bug in TomAccessControlInformation constructor where
-/// groups are populated from resourceKeys instead of groups parameter,
-/// this helper creates ACI with a workaround for groups - it passes
-/// the groups list as resourceKeys when groups should be set.
 TomPrincipal createTestPrincipal({
   bool authenticated = true,
   String username = 'testuser',
@@ -26,8 +21,7 @@ TomPrincipal createTestPrincipal({
   String application = 'testApp',
   String process = 'testProcess',
 }) {
-  // Create principal first
-  var principal = TomPrincipal(
+  return TomPrincipal(
     authenticated: authenticated,
     user: TomUser(
       id: 1,
@@ -38,10 +32,9 @@ TomPrincipal createTestPrincipal({
     ),
     aci: TomAccessControlInformation(
       roles: roles,
+      groups: groups,
       entitlements: entitlements,
       resourceKeys: resourceKeys,
-      // NOTE: Due to bug, groups won't populate correctly here
-      // We use the workaround below for testing group access
     ),
     requires2FA: requires2FA,
     twoFactorType: twoFactorType,
@@ -49,41 +42,9 @@ TomPrincipal createTestPrincipal({
     application: application,
     process: process,
   );
-  
-  // Workaround: If groups are specified, create a new ACI using the 
-  // bug behavior (groups param triggers resourceKeys to be added to groups)
-  if (groups.isNotEmpty) {
-    principal.aci = TomAccessControlInformation(
-      roles: roles,
-      entitlements: entitlements,
-      resourceKeys: resourceKeys,
-      groups: groups, // Due to bug, this doesn't work - need workaround
-    );
-    // The bug means we need to exploit it: pass groups as both groups and resourceKeys
-    // Actually, the bug is: if (groups.isNotEmpty) _groups.addAll(resourceKeys)
-    // So we need groups to be non-empty AND resourceKeys to contain what we want in groups
-    principal.aci = TomAccessControlInformation(
-      roles: roles,
-      entitlements: entitlements,
-      resourceKeys: resourceKeys,
-      groups: ['dummy'], // Make groups non-empty to trigger the buggy addAll
-    );
-    // This still won't work as expected. Let's just note the bug and test 
-    // TomGroupAccess with a direct workaround in those specific tests.
-    principal.aci = TomAccessControlInformation(
-      roles: roles,
-      entitlements: entitlements,
-      resourceKeys: resourceKeys,
-    );
-  }
-  
-  return principal;
 }
 
-/// Creates a test principal with groups working around the ACI bug.
-/// This uses the bug behavior: when groups is non-empty, resourceKeys 
-/// gets added to groups. So we pass the desired groups as resourceKeys
-/// and put a dummy value in groups.
+/// Creates a test principal with the given [groups] populated on its ACI.
 TomPrincipal createTestPrincipalWithGroups({
   bool authenticated = true,
   String username = 'testuser',
@@ -97,8 +58,6 @@ TomPrincipal createTestPrincipalWithGroups({
   String application = 'testApp',
   String process = 'testProcess',
 }) {
-  // Due to bug: if (groups.isNotEmpty) _groups.addAll(resourceKeys)
-  // So pass desired groups as resourceKeys, and a dummy non-empty groups list
   return TomPrincipal(
     authenticated: authenticated,
     user: TomUser(
@@ -110,9 +69,9 @@ TomPrincipal createTestPrincipalWithGroups({
     ),
     aci: TomAccessControlInformation(
       roles: roles,
+      groups: groups,
       entitlements: entitlements,
-      resourceKeys: groups, // Bug workaround: this gets added to _groups
-      groups: ['_trigger_'], // Non-empty to trigger the buggy line
+      resourceKeys: additionalResourceKeys,
     ),
     requires2FA: requires2FA,
     twoFactorType: twoFactorType,
@@ -273,6 +232,9 @@ void main() {
 
         // Assert
         expect(aci.roles, containsAll(['admin', 'user']));
+        // Regression: groups must reflect the `groups` argument, not a
+        // copy-paste of `resourceKeys` (former user_principal_aci.dart bug).
+        expect(aci.groups, containsAll(['engineering', 'qa']));
         expect(aci.entitlements, containsAll(['feature.read', 'feature.write']));
         expect(aci.resourceKeys, containsAll(['user.email', 'user.phone']));
       });
@@ -1202,10 +1164,6 @@ void main() {
   });
 
   group('TomGroupAccess', () {
-    // NOTE: There is a bug in TomAccessControlInformation constructor where
-    // line 118 does `_groups.addAll(resourceKeys)` instead of `_groups.addAll(groups)`.
-    // Tests use the workaround helper that exploits this bug.
-
     test('should deny access to null principal', () {
       var access = const TomGroupAccess(['engineering']);
       expect(access.checkAccessibility(null), isFalse);
@@ -1213,21 +1171,18 @@ void main() {
 
     test('should deny access when principal has no matching group', () {
       var access = const TomGroupAccess(['engineering']);
-      // Use workaround helper that populates groups via the bug
       var principal = createTestPrincipalWithGroups(groups: ['marketing']);
       expect(access.checkAccessibility(principal), isFalse);
     });
 
     test('should grant access when principal has matching group', () {
       var access = const TomGroupAccess(['engineering']);
-      // Use workaround helper that populates groups via the bug
       var principal = createTestPrincipalWithGroups(groups: ['engineering', 'qa']);
       expect(access.checkAccessibility(principal), isTrue);
     });
 
     test('should grant access if any group matches (OR logic)', () {
       var access = const TomGroupAccess(['hr', 'management']);
-      // Use workaround helper that populates groups via the bug
       var principal = createTestPrincipalWithGroups(groups: ['management']);
       expect(access.checkAccessibility(principal), isTrue);
     });

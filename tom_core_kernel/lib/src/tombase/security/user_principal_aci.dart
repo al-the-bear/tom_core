@@ -116,7 +116,7 @@ class TomAccessControlInformation {
     if (roles.isNotEmpty) _roles.addAll(roles);
     if (entitlements.isNotEmpty) _entitlements.addAll(entitlements);
     if (resourceKeys.isNotEmpty) _resourceKeys.addAll(resourceKeys);
-    if (groups.isNotEmpty) _groups.addAll(resourceKeys);
+    if (groups.isNotEmpty) _groups.addAll(groups);
   }
 
   @override
