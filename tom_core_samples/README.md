@@ -160,7 +160,7 @@ tom_core_samples/
   core_flutter_ui_showcase/      widget gallery: component + instantiation code               (built)
   core_flutter_form_showcase/    forms framework in depth                                     (built)
   core_flutter_acl_sample/       Advanced Container Layout engine + four auth states          (built)
-  core_flutter_acl_responsive/   responsive layouts on the ACL engine                         (forthcoming)
+  core_flutter_acl_responsive/   responsive layouts on the ACL engine                         (built)
 ```
 
 ## License
