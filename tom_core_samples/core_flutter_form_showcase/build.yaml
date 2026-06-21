@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          # Seed the generator from a kernel-only entry point so the reflected
+          # graph stays small: it carries the @tomReflector domain entities the
+          # forms bind, not the whole tom_flutter_ui widget tree.
+          - lib/reflection_seed.dart
+        options:
+          formatted: true
