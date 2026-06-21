@@ -246,7 +246,7 @@ apps get the full kernel API through one dependency. See the
 ## Status
 
 - **Version:** 1.1.0
-- **Tests:** 196 test cases across 14 module suites (run with `testkit :test`
+- **Tests:** 216 test cases across 15 module suites (run with `testkit :test`
   or `dart test`).
 - **License:** proprietary — see [LICENSE](LICENSE).
 </content>
