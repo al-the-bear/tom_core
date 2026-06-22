@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          # Seed the generator from one entry point so the reflected graph is
+          # exactly what the client binds: the shared todo_domain entities, the
+          # client-local LoginCredentials, and the TomForm subclasses over them.
+          - lib/reflection_seed.dart
+        options:
+          formatted: true

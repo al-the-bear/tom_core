@@ -1,0 +1,406 @@
+# Tom Core — Client Sample (Todo)
+
+A small but **complete Flutter application** built on the Tom Core client stack:
+`tom_core_kernel` for the observable/reflection/authorization model,
+`tom_core_flutter` for the client runtime, and `tom_flutter_ui` for bound forms.
+It is the *consumer* counterpart to [`core_server_sample`](../core_server_sample)
+— it shares the same domain ([`todo_domain`](../todo_domain)) and the **same
+four-state authorization matrix**, so the two tiers tell one consistent story.
+
+Where the sibling [`core_flutter_form_showcase`](../core_flutter_form_showcase)
+is a feature *tour* — one cell per API — this sample is the opposite: a single,
+ordinary app (sign in, browse a list, edit a record) that wires those features
+together the way a real screen does. The interesting parts are not the widgets;
+they are the **seams**: how a form binds a reflected entity, how a role's
+authorization matrix turns into per-field render states, and how the backend is
+kept behind one interface so the app runs identically offline or against the
+live server.
+
+> **TL;DR** — Run `flutter run`. Sign in as `alice`, `bob` or `val` (any
+> non-empty password). Browse the todo list, tap an item to edit it, and notice
+> how the *same* editor screen renders differently depending on who you are.
+
+---
+
+## Table of contents
+
+1. [What you are looking at](#1-what-you-are-looking-at)
+2. [Running the sample](#2-running-the-sample)
+3. [Architecture at a glance](#3-architecture-at-a-glance)
+4. [The backend seam: one interface, two implementations](#4-the-backend-seam-one-interface-two-implementations)
+5. [The mental model: forms bind reflected entities](#5-the-mental-model-forms-bind-reflected-entities)
+6. [Bootstrap: reflection must come first](#6-bootstrap-reflection-must-come-first)
+7. [Four-state authorization, end to end](#7-four-state-authorization-end-to-end)
+8. [The login flow](#8-the-login-flow)
+9. [The list and detail screens](#9-the-list-and-detail-screens)
+10. [The live read path](#10-the-live-read-path)
+11. [Project layout](#11-project-layout)
+12. [Reflection regeneration](#12-reflection-regeneration)
+13. [Tests](#13-tests)
+14. [Known limitations and the cross-tier work](#14-known-limitations-and-the-cross-tier-work)
+
+---
+
+## 1. What you are looking at
+
+The app has three screens and one job: edit todos under role-based field
+authorization.
+
+| Screen | File | Teaches |
+| ------ | ---- | ------- |
+| **Login** | `lib/screens/login_screen.dart` | A bound `TomForm<LoginCredentials>` driving an authentication call |
+| **List** | `lib/screens/todo_lists_screen.dart` | Listing entities, navigation, the live-refresh action, logout |
+| **Detail** | `lib/screens/todo_detail_screen.dart` | A bound `TomForm<TodoItem>` whose fields are gated by the session's `TomAuthState` matrix |
+
+The three demo accounts map onto the three roles the matrix grades:
+
+| Account | Role | What they can do |
+| ------- | ---- | ---------------- |
+| `alice` | `owner` | Edit every field |
+| `bob` | `member` | Cannot *see* `priority`; cannot change the assignee |
+| `val` | `viewer` | Read-only everywhere; the `done` toggle renders disabled |
+
+That matrix is not invented here — it is the **client-side twin of the grants
+`core_server_sample` seeds into `tom_resource_grant`** via its
+`[001]-todo_authz_grants.sql` migration. Keeping the two in lock-step is what
+makes the four states render identically whether the app runs offline or talks
+to the server.
+
+---
+
+## 2. Running the sample
+
+```bash
+flutter run
+```
+
+The app starts on the login screen against the in-memory backend (no server
+required). To exercise the live read path against a running `core_server_sample`:
+
+```bash
+# 1. start the server sample (in its own folder)
+dart run bin/server_start.dart        # serves http://localhost:8080
+
+# 2. run the client with the live URL wired in
+flutter run --dart-define=LIVE_SERVER_URL=http://localhost:8080
+```
+
+With `LIVE_SERVER_URL` set, the list screen gains a **cloud-download** action
+that pulls todos straight from the server's `GET /todos`. Without it, that
+action is hidden and everything runs in memory.
+
+---
+
+## 3. Architecture at a glance
+
+```
+                       ┌──────────────────────────┐
+   main.dart  ─────────►  initializeReflection()   │  (reflection first!)
+                       │  setCurrentPlatform(...)   │
+                       │  setAppResourceProvider()  │
+                       └────────────┬───────────────┘
+                                    │
+                          TodoApp (MaterialApp)
+                                    │  ListenableBuilder(session)
+                    ┌───────────────┴────────────────┐
+              not logged in                       logged in
+                    │                                  │
+              LoginScreen                       TodoListsScreen ──► TodoDetailScreen
+                    │                                  │                    │
+              LoginForm                          AppSession            TodoItemForm
+            (TomForm<LoginCredentials>)        (ChangeNotifier)   (TomForm<TodoItem> + authz)
+                    │                                  │                    │
+                    └──────────────► TodoApi ◄─────────┴────────────────────┘
+                                       │
+                    ┌──────────────────┴───────────────────┐
+            InMemoryTodoApi                       (HTTP write/login — item 28)
+          (default; tests)                   LiveTodoReadClient (live reads only)
+```
+
+Layers point downward only: screens depend on `AppSession` and the form classes;
+those depend on `TodoApi`; `TodoApi` depends on the domain. Nothing reaches back
+up.
+
+---
+
+## 4. The backend seam: one interface, two implementations
+
+The app is written against an **abstract** `TodoApi` (`lib/api/todo_api.dart`),
+never a concrete backend:
+
+```dart
+abstract class TodoApi {
+  Future<LoginResult> login(String username, String password);
+  Future<List<TodoItem>> listItems();
+  Future<TodoItem> saveItem(TodoItem item);
+  Future<void> deleteItem(String id);
+  Future<Map<String, TomAuthState>> fieldStates(String role);
+}
+```
+
+Two things implement (or partially implement) the read side of that contract:
+
+- **`InMemoryTodoApi`** — the default. A fully working, seeded backend: three
+  users, three todos, and the grant matrix copied verbatim from the server's
+  migration. It powers the offline app *and* every widget test, so the tests
+  never touch a socket.
+- **`LiveTodoReadClient`** — an honest thin HTTP client over the server's three
+  read-only endpoints (`GET /health`, `GET /todos`, `GET /todos/field-states`).
+  Its JSON→entity mapping is factored into the pure functions `parseTodos` /
+  `parseFieldStates` / `parseAuthState`, which are unit-tested against captured
+  server responses.
+
+**Why two, rather than one HTTP backend?** Because `core_server_sample` today
+exposes a *read-only* surface — it has no login or write endpoints. Pretending it
+did (by throwing `UnimplementedError` from a half-written HTTP `TodoApi`) would
+be dishonest and untestable. Instead the writes and login run in memory, the
+live reads run over the wire, and the gap between them is documented as the
+cross-tier [item-28 work](#14-known-limitations-and-the-cross-tier-work). Swap
+the backend in exactly one place — `main.dart` — and the whole app follows.
+
+---
+
+## 5. The mental model: forms bind reflected entities
+
+A Tom form is not a bag of controllers. It is a `TomForm<T extends TomClass>`
+whose field **member names match the bound entity's field names**, so binding is
+a reflection round-trip rather than hand-written copy code:
+
+```dart
+@tomReflector
+class TodoItemForm extends TomForm<TodoItem> {
+  late final title = TomFormStringInput('title', '', form: this, /* … */);
+  late final done  = TomFormBoolSwitch('done', false, form: this, /* … */);
+  // …priority, assigneeId, description — each id matches a TodoItem field.
+}
+```
+
+`form.bind(todoItem)` reads the entity's values into the fields through kernel
+reflection; `form.save()` writes them back the same way. No field-by-field
+plumbing, and adding a field to the entity is a one-line change to the form. The
+price is that **both the entity and the form must be in the reflected graph** —
+see the next section.
+
+---
+
+## 6. Bootstrap: reflection must come first
+
+Three things happen in `main.dart` before `runApp`, in order:
+
+```dart
+void main() {
+  initializeReflection();                                   // 1
+  TomPlatformUtils.setCurrentPlatform(clientPlatformUtils); // 2
+  TomTextResourceProvider.setAppResourceProvider(           // 3
+    TomTextResourceProvider.from(const <String, dynamic>{}),
+  );
+  runApp(TodoApp(session: AppSession(InMemoryTodoApi())));
+}
+```
+
+1. **Reflection.** The forms bind reflected `@tomReflector` entities, so the
+   field metadata must be registered before any form is constructed.
+2. **Platform.** `clientPlatformUtils` (from `tom_core_flutter`) selects the
+   Flutter platform implementation for kernel code that probes the runtime.
+3. **Resource provider.** An empty provider so any singleton probe resolves; the
+   app supplies its labels through `labelTextOverride`, so no resource file is
+   needed.
+
+**Why one reflection seed for everything.** The generated
+`initializeReflection()` *assigns* the reflection data (last writer wins), so
+exactly one seed's `initializeReflection()` may run per program. This app's seed
+(`lib/reflection_seed.dart`) is that one — and because the forms bind
+**cross-package** `todo_domain` entities (`TodoItem`, `User`) alongside the
+client-local `LoginCredentials`, the seed imports all of them so the generator
+emits one graph covering the lot. (`todo_domain` is imported for discovery but
+deliberately *not* re-exported, to avoid colliding with its own
+`initializeReflection`.)
+
+---
+
+## 7. Four-state authorization, end to end
+
+`TomAuthState` has four values, and each renders distinctly on a form field:
+
+| State | Render |
+| ----- | ------ |
+| `full` | Fully interactive and editable |
+| `read` | Shows its value but cannot be edited |
+| `disabled` | Visible but greyed out and non-interactive |
+| `none` | Hidden entirely — the field collapses to nothing |
+
+The flow is: **role → matrix → per-field authorizer → render**.
+
+1. On login, `AppSession.login` calls `api.fieldStates(role)` and stores the
+   resulting `Map<String, TomAuthState>` (keyed by the `TodoFieldKeys` resource
+   keys — `todo.item.title`, `todo.item.done`, …).
+2. The detail screen constructs `TodoItemForm(session.fieldStates)`.
+3. The form turns each entry into a `TomAuthorizer.fixed(state)` on the matching
+   field:
+
+   ```dart
+   TomAuthorizer _authFor(String key) =>
+       TomAuthorizer.fixed(fieldStates[key] ?? TomAuthState.none);
+
+   late final priority = TomFormStringDropdown(
+     'priority', TodoPriority.medium.name,
+     form: this, source: _prioritySource,
+     authorizer: _authFor(TodoFieldKeys.priority),
+   );
+   ```
+
+4. `tom_flutter_ui` resolves the authorizer at build time and renders the field
+   accordingly.
+
+The payoff is in `todo_detail_screen.dart`: **the same screen, with no
+conditionals**, shows `owner` a full editor, hides `priority` from `member`
+(because their grant is `none`), and gives `viewer` a read-only form with a
+disabled `done` toggle. A field absent from the matrix degrades to `none` — the
+closed-safe default, matching the server's resolver — so an unconfigured field
+hides rather than leaking an editable control.
+
+---
+
+## 8. The login flow
+
+`LoginScreen` owns a `LoginForm` bound to a fresh `LoginCredentials`. On submit:
+
+```dart
+if (!await _form.save()) return;   // validation failed; fields show errors
+await session.login(
+  _credentials.username.get(),
+  _credentials.password.get(),
+);
+```
+
+`save()` writes the typed form fields back into the bound credentials through the
+reflection round-trip, then the values are handed to the session. A rejected
+login throws a `TodoApiException`, which the screen catches and shows inline
+without leaving the page. A successful login flips `AppSession.isLoggedIn`, and
+the app shell's `ListenableBuilder` swaps in the list screen.
+
+---
+
+## 9. The list and detail screens
+
+`TodoListsScreen` loads items from `session.api.listItems()`, shows the role
+badge and logout, and opens the detail screen on tap (or via the **+** FAB for a
+new item). When it returns from a save it reloads.
+
+`TodoDetailScreen` is where the authorization model is visible. It builds the
+gated `TodoItemForm`, renders the field widgets (`_form.title.widget`, …), and on
+Save calls `_form.save()` then `session.api.saveItem(item)`. Because the form is
+constructed with the session's matrix, the screen needs **no role logic of its
+own** — the four states do the work.
+
+---
+
+## 10. The live read path
+
+`LiveTodoReadClient` is a deliberately small `dart:io HttpClient` over the
+server's read endpoints. The networking is trivial; the value is in keeping the
+**mapping pure**:
+
+```dart
+List<TodoItem> parseTodos(Map<String, dynamic> body) { … }
+Map<String, Map<String, TomAuthState>> parseFieldStates(Map<String, dynamic> body) { … }
+TomAuthState parseAuthState(String? token) =>
+    TomAuthState.values.asNameMap()[token] ?? TomAuthState.none;
+```
+
+Those functions are unit-tested against captured JSON with no socket in the
+test, which is why the live path is verifiable even though the server must be
+running to exercise it for real. The list screen's cloud-download action calls
+`fetchTodos()` and swaps the view to live data behind a "showing live server
+data (read-only)" banner — an honest demonstration of a real wire round-trip
+that never pretends the in-memory edits reach the server.
+
+---
+
+## 11. Project layout
+
+```
+core_client_sample/
+├── lib/
+│   ├── main.dart                       # bootstrap: reflection → platform → provider → runApp
+│   ├── reflection_seed.dart            # the one seed reflecting entities + forms
+│   ├── reflection_seed.reflection.dart # GENERATED — do not edit
+│   ├── api/
+│   │   ├── todo_api.dart               # abstract backend contract + LoginResult / TodoApiException
+│   │   ├── in_memory_todo_api.dart     # seeded offline backend + grant matrix
+│   │   ├── live_todo_read_client.dart  # HTTP read client + pure parsers
+│   │   └── field_keys.dart             # TodoFieldKeys resource-key constants
+│   ├── domain/
+│   │   └── login_credentials.dart      # client-local @tomReflector entity
+│   ├── forms/
+│   │   ├── login_form.dart             # TomForm<LoginCredentials>
+│   │   └── todo_item_form.dart         # TomForm<TodoItem> with per-field authorizers
+│   ├── app/
+│   │   ├── app_session.dart            # ChangeNotifier: user, token, field matrix
+│   │   └── todo_app.dart               # MaterialApp shell, login↔list switch
+│   └── screens/
+│       ├── login_screen.dart
+│       ├── todo_lists_screen.dart
+│       └── todo_detail_screen.dart
+└── test/
+    ├── in_memory_api_test.dart         # backend contract: login / CRUD / matrix
+    ├── live_read_client_test.dart      # pure JSON parsers
+    ├── login_flow_test.dart            # widget: sign in / out, inline error
+    └── todo_crud_test.dart             # widget: CRUD + per-role field states
+```
+
+---
+
+## 12. Reflection regeneration
+
+`reflection_seed.reflection.dart` is generated and **must not be hand-edited**.
+Regenerate it only when a reflected **signature changes** (a form field added or
+renamed, or a bound entity's shape changes):
+
+```bash
+./reflection_generation.sh
+```
+
+The script runs `dart run tom_reflection_generator --nested` over
+`lib/reflection_seed.dart` (configured in `build.yaml`). The generated file is
+large because reflecting a form necessarily reflects its field types — the same
+trade-off the verified `tom_flutter_form_test` accepts.
+
+---
+
+## 13. Tests
+
+```bash
+flutter test --concurrency=1
+```
+
+Flutter tests in this workspace are run **serially** (`--concurrency=1`).
+Twenty-six tests cover the four seams:
+
+| File | Covers |
+| ---- | ------ |
+| `in_memory_api_test.dart` | login validation, CRUD, the four-state matrix per role (CCS-API-01…13) |
+| `live_read_client_test.dart` | the pure `parse*` functions against captured JSON (CCS-LIVE-01…05) |
+| `login_flow_test.dart` | sign in / out, inline error, screen switching (CCS-LOGIN-01…04) |
+| `todo_crud_test.dart` | per-role field rendering + create/validate (CCS-CRUD-01…04) |
+
+The widget tests drive `InMemoryTodoApi`, so they are deterministic and
+socket-free.
+
+---
+
+## 14. Known limitations and the cross-tier work
+
+This sample is honest about the seam it cannot yet cross:
+
+- **Login and writes are in-memory.** `core_server_sample` exposes only read
+  endpoints today, so there is no live login or persistence over the wire. The
+  client models them with `InMemoryTodoApi` and isolates them behind `TodoApi`.
+- **The live path is read-only.** `LiveTodoReadClient` covers `GET /health`,
+  `GET /todos` and `GET /todos/field-states` — a genuine round-trip, but a read.
+
+Closing that gap — server-side login + write endpoints and a full HTTP
+`TodoApi` — is the cross-tier **item 28** work. When it lands, the single
+backend swap in `main.dart` is the only client change required: the screens,
+forms, session and authorization model are already written against the
+interface, not the transport.

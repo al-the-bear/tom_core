@@ -1,0 +1,53 @@
+name: core_client_sample
+description: >-
+  Tom Core sample client — a Flutter todo app on tom_core_flutter + tom_flutter_ui
+  that binds the shared todo_domain entities into TomForm CRUD screens, logs in as
+  a role, and renders the four-state authorization model (none/disabled/read/full)
+  delivered by core_server_sample.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The forms framework (TomForm, the field widgets, the four-state authorizer)
+  # the CRUD/login screens are built from.
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+
+  # tom_core_flutter supplies the client runtime-platform detection used at
+  # bootstrap (clientPlatformUtils); it also re-exports tom_core_kernel.
+  tom_core_flutter:
+    path: ../../tom_core_flutter
+
+  # The kernel: observable state, reflection, and the TomAuthState model the
+  # whole four-state story is built on.
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+  # The single source of truth for the domain entities (TodoItem, User, …) —
+  # the same classes core_server_sample persists. The client reflects and binds
+  # them into forms; one model across the tier.
+  todo_domain:
+    path: ../todo_domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Reflection codegen — the forms bind reflected @tomReflector entities, so this
+  # sample carries a build_runner step that emits lib/reflection_seed.reflection.dart.
+  # Regenerate via ./reflection_generation.sh only when reflected entity or form
+  # signatures change.
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator
+
+flutter:
+  uses-material-design: true
