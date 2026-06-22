@@ -492,3 +492,18 @@ gated.
 Everything that can be verified without a live database is unit-tested; the live
 boot is exercised by `docker compose up -d db && dart run bin/server_start.dart`
 and the three `curl`s in [§9](#9-the-live-server-boot).
+
+---
+
+## Where this sits
+
+- **Repo map:** [`tom_ai/core/README.md`](../../README.md)
+- **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
+- **The kits on display:** [`tom_core_server`](../../tom_core_server/README.md)
+  (the server stack) on top of [`tom_core_kernel`](../../tom_core_kernel/README.md)
+  (security, persistence, reflection)
+- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
+  entities this server persists and serves
+- **Sibling sample:** [`core_client_sample`](../core_client_sample/README.md) —
+  the Flutter client whose live read path consumes this server's three public
+  `GET` endpoints

@@ -149,9 +149,9 @@ dart run example/run_all_samples.dart
 ```
 
 > **Cross-package sample.** Beyond these per-module examples, the shared
-> `tom_core_samples/todo_domain` project (forthcoming) models one
-> todo-management domain on this kernel's reflection — the single entity set
-> every Tom Core sample reuses. See the
+> [`tom_core_samples/todo_domain`](../tom_core_samples/todo_domain/readme.md)
+> project models one todo-management domain on this kernel's reflection — the
+> single entity set every Tom Core sample reuses. See the
 > [samples map](../tom_core_samples/README.md) for the full learning path.
 
 ## Usage

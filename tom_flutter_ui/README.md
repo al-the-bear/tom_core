@@ -216,11 +216,13 @@ The companion demo/test apps [`tom_flutter_form_test`](../tom_flutter_form_test/
 and [`tom_flutter_ui_test`](../tom_flutter_ui_test/doc/demo_catalogue.md) exercise
 the whole library across dozens of interactive demos — see their demo catalogues.
 
-> **Cross-package samples.** The forthcoming `tom_core_samples` showcases —
-> `core_flutter_ui_showcase`, `core_flutter_form_showcase`,
-> `core_flutter_acl_sample`, and `core_flutter_acl_responsive` — teach this
-> library surface by surface against one todo-management domain. See the
-> [samples map](../tom_core_samples/README.md) for the full learning path.
+> **Cross-package samples.** The `tom_core_samples` showcases —
+> [`core_flutter_ui_showcase`](../tom_core_samples/core_flutter_ui_showcase/README.md),
+> [`core_flutter_form_showcase`](../tom_core_samples/core_flutter_form_showcase/README.md),
+> [`core_flutter_acl_sample`](../tom_core_samples/core_flutter_acl_sample/README.md),
+> and [`core_flutter_acl_responsive`](../tom_core_samples/core_flutter_acl_responsive/README.md)
+> — teach this library surface by surface against one todo-management domain. See
+> the [samples map](../tom_core_samples/README.md) for the full learning path.
 
 ## Usage
 

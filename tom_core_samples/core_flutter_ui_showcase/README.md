@@ -176,3 +176,19 @@ new group that throws at build time fails CI without any extra test wiring.
 | --- | --- |
 | `test/showcase_smoke_test.dart` | Every group screen builds and pumps without throwing; the home screen lists every group |
 | `test/showcase_cell_test.dart` | A cell always renders **both** the snippet and the child; no cell has an empty snippet |
+
+---
+
+## Where this sits
+
+- **Repo map:** [`tom_ai/core/README.md`](../../README.md)
+- **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
+- **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md) — the
+  widget library this gallery renders surface by surface
+- **Sibling samples:**
+  [`core_flutter_form_showcase`](../core_flutter_form_showcase/README.md) (the
+  forms framework in depth),
+  [`core_flutter_acl_sample`](../core_flutter_acl_sample/README.md) (the ACL
+  engine), and
+  [`core_flutter_acl_responsive`](../core_flutter_acl_responsive/README.md)
+  (responsive layouts)

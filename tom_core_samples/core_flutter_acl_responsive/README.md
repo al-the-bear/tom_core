@@ -404,9 +404,12 @@ To add a mechanism:
 
 ### See also
 
-- [`core_flutter_form_showcase`](../core_flutter_form_showcase) — the full forms
-  framework tour (binding, validation, theming, lists, master-detail).
-- [`core_flutter_acl_sample`](../core_flutter_acl_sample) — the raw ACL builder
-  chain in depth.
-- `tom_flutter_ui` package README — the `TomAclBuilder`, `TomFormStyle` and
-  `FormFieldFamily` API reference.
+- **Repo map:** [`tom_ai/core/README.md`](../../README.md)
+- **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
+- **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md) — the
+  `TomAclBuilder`, `TomFormStyle` and `FormFieldFamily` API reference.
+- **Sibling samples:**
+  [`core_flutter_form_showcase`](../core_flutter_form_showcase/README.md) (the
+  full forms framework tour) and
+  [`core_flutter_acl_sample`](../core_flutter_acl_sample/README.md) (the raw ACL
+  builder chain in depth).

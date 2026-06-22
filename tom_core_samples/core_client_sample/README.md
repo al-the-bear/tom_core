@@ -410,3 +410,19 @@ Closing that gap — server-side login + write endpoints and a full HTTP
 backend swap in `main.dart` is the only client change required: the screens,
 forms, session and authorization model are already written against the
 interface, not the transport.
+
+---
+
+## Where this sits
+
+- **Repo map:** [`tom_ai/core/README.md`](../../README.md)
+- **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
+- **The kits on display:** [`tom_core_flutter`](../../tom_core_flutter/README.md)
+  (platform + runtime) and [`tom_flutter_ui`](../../tom_flutter_ui/README.md)
+  (the bound `TomForm`s and four-state field rendering), on
+  [`tom_core_kernel`](../../tom_core_kernel/README.md) (reflection, `TomAuthState`)
+- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
+  `TodoItem`/`User` entities the forms bind
+- **Sibling sample:** [`core_server_sample`](../core_server_sample/README.md) —
+  the backend whose grant matrix this client mirrors and whose read endpoints the
+  live path consumes

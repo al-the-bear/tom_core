@@ -363,11 +363,13 @@ All green serial: `flutter test`.
 ## Where this sits
 
 - **Repo map:** [`tom_ai/core/README.md`](../../README.md)
-- **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui)
+- **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md)
 - **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
-- **Sibling samples:** [`core_flutter_ui_showcase`](../core_flutter_ui_showcase)
-  (the widget catalogue), `core_flutter_acl_responsive` (the width-reactive ACL
-  story)
+- **Sibling samples:**
+  [`core_flutter_ui_showcase`](../core_flutter_ui_showcase/README.md) (the widget
+  catalogue) and
+  [`core_flutter_acl_responsive`](../core_flutter_acl_responsive/README.md) (the
+  width-reactive ACL story)
 
 No reflection, no backend, no Docker — a pure, self-contained Flutter app you can
 run and read end to end.

@@ -19,13 +19,13 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 > from the server up through the responsive UI. The samples are designed to be
 > read in that order; each one assumes the one before it.
 
-> **Status: scaffold.** This folder currently holds only this map. The six
-> sample subprojects and the shared `todo_domain` package are **forthcoming**
-> (Tom Core quest, README & samples plan, Phase B). Until they land, the two
-> live demo apps in the repository root —
+> **Status: built.** All seven subprojects below are present and analyze-clean
+> with green test suites — the shared `todo_domain` package and the six samples.
+> Each links back here and to the package READMEs it exercises. The two live
+> demo apps in the repository root —
 > [`tom_flutter_form_test`](../tom_flutter_form_test/README.md) and
-> [`tom_flutter_ui_test`](../tom_flutter_ui_test/README.md) — are the runnable
-> reference for the UI layer.
+> [`tom_flutter_ui_test`](../tom_flutter_ui_test/README.md) — remain the broadest
+> runnable reference for the UI layer.
 
 ---
 
@@ -70,31 +70,30 @@ restarting from scratch each time.
 
 ## The samples
 
-Each row is a self-contained subproject with its own article-grade `readme.md`.
-Paths are rendered as plain `code` while the folder is a scaffold — they become
-links once each subproject lands.
+Each row is a self-contained subproject with its own article-grade `readme.md`,
+linked from its name.
 
 ### Shared domain
 
 | Project | What it is | Exercises |
 | --- | --- | --- |
-| `todo_domain` | The shared, reflected todo-management model (`User`, `Project`, `TodoList`, `TodoItem`, label/priority enums). Single source of truth depended on by both the server and the client samples. | [`tom_core_kernel`](../tom_core_kernel/README.md) reflection |
+| [`todo_domain`](todo_domain/readme.md) | The shared, reflected todo-management model (`User`, `Project`, `TodoList`, `TodoItem`, label/priority enums). Single source of truth depended on by both the server and the client samples. | [`tom_core_kernel`](../tom_core_kernel/README.md) reflection |
 
 ### Client & server
 
 | Project | What it is | Exercises |
 | --- | --- | --- |
-| `core_server_sample` | The backend: hosts the todo-management API and the security infrastructure, runs MySQL in Docker (compose + bootstrap), persists `todo_domain` entities, and enforces four-state authorization. | [`tom_core_server`](../tom_core_server/README.md) |
-| `core_client_sample` | The Flutter client: login/auth, todo lists, CRUD forms, and ACL-driven field states, talking to `core_server_sample`. | [`tom_core_flutter`](../tom_core_flutter/README.md) · [`tom_flutter_ui`](../tom_flutter_ui/README.md) |
+| [`core_server_sample`](core_server_sample/README.md) | The backend: hosts the todo-management API and the security infrastructure, runs MySQL in Docker (compose + bootstrap), persists `todo_domain` entities, and enforces four-state authorization. | [`tom_core_server`](../tom_core_server/README.md) |
+| [`core_client_sample`](core_client_sample/README.md) | The Flutter client: login/auth, todo lists, CRUD forms, and four-state field authorization. Runs against a seeded in-memory backend by default, with an honest live read path to `core_server_sample`. | [`tom_core_flutter`](../tom_core_flutter/README.md) · [`tom_flutter_ui`](../tom_flutter_ui/README.md) |
 
 ### `tom_flutter_ui` showcases
 
 | Project | What it is | Exercises |
 | --- | --- | --- |
-| `core_flutter_ui_showcase` | A component gallery: every `tom_flutter_ui` widget/component grouped by similarity, each cell pairing the **instantiation code** with the rendered widget. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) widgets |
-| `core_flutter_form_showcase` | The forms framework in depth — field types, validation, layout, theming, master-detail, and list forms. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) forms |
-| `core_flutter_acl_sample` | The Advanced Container Layout engine — sizing (M/P/X), growth, alignment, nesting, borders/titles, variants/breakpoints, and the four authorization states. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
-| `core_flutter_acl_responsive` | Responsive UIs on the ACL engine — breakpoints, family-swap, and adaptive layouts across phone / tablet / desktop widths. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
+| [`core_flutter_ui_showcase`](core_flutter_ui_showcase/README.md) | A component gallery: every `tom_flutter_ui` widget/component grouped by similarity, each cell pairing the **instantiation code** with the rendered widget. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) widgets |
+| [`core_flutter_form_showcase`](core_flutter_form_showcase/README.md) | The forms framework in depth — field types, validation, layout, theming, master-detail, and list forms. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) forms |
+| [`core_flutter_acl_sample`](core_flutter_acl_sample/README.md) | The Advanced Container Layout engine — sizing (M/P/X), growth, alignment, nesting, borders/titles, variants/breakpoints, and the four authorization states. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
+| [`core_flutter_acl_responsive`](core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine — breakpoints, family-swap, and adaptive layouts across phone / tablet / desktop widths. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
 
 ---
 
@@ -105,13 +104,13 @@ previous ones introduced.
 
 | Order | Sample | Introduces |
 | --- | --- | --- |
-| 0 | `todo_domain` | The shared reflected entities every other sample reuses. |
-| 1 | `core_server_sample` | The server stack against MySQL-in-Docker — endpoints, persistence, auth, healthcheck. |
-| 2 | `core_client_sample` | A Flutter todo app talking to the server, with ACL-driven field states. |
-| 3 | `core_flutter_ui_showcase` | Every `tom_flutter_ui` widget group, each shown with its instantiation code. |
-| 4 | `core_flutter_form_showcase` | The forms framework in depth. |
-| 5 | `core_flutter_acl_sample` | The Advanced Container Layout engine and the four authorization states. |
-| 6 | `core_flutter_acl_responsive` | Responsive UIs on the ACL engine. |
+| 0 | [`todo_domain`](todo_domain/readme.md) | The shared reflected entities every other sample reuses. |
+| 1 | [`core_server_sample`](core_server_sample/README.md) | The server stack against MySQL-in-Docker — endpoints, persistence, auth, healthcheck. |
+| 2 | [`core_client_sample`](core_client_sample/README.md) | A Flutter todo app with four-state field authorization — in-memory backend by default, live read path to the server. |
+| 3 | [`core_flutter_ui_showcase`](core_flutter_ui_showcase/README.md) | Every `tom_flutter_ui` widget group, each shown with its instantiation code. |
+| 4 | [`core_flutter_form_showcase`](core_flutter_form_showcase/README.md) | The forms framework in depth. |
+| 5 | [`core_flutter_acl_sample`](core_flutter_acl_sample/README.md) | The Advanced Container Layout engine and the four authorization states. |
+| 6 | [`core_flutter_acl_responsive`](core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine. |
 
 ---
 
@@ -155,8 +154,8 @@ bootstrap) — see its `readme.md` for the one-command bring-up.
 tom_core_samples/
   README.md                      this map
   todo_domain/                   shared reflected model (User, Project, TodoList, TodoItem)   (built)
-  core_server_sample/            backend: API + persistence + auth + MySQL-in-Docker          (forthcoming)
-  core_client_sample/            Flutter client: login + todo CRUD + ACL field states         (forthcoming)
+  core_server_sample/            backend: API + persistence + auth + MySQL-in-Docker          (built)
+  core_client_sample/            Flutter client: login + todo CRUD + ACL field states         (built)
   core_flutter_ui_showcase/      widget gallery: component + instantiation code               (built)
   core_flutter_form_showcase/    forms framework in depth                                     (built)
   core_flutter_acl_sample/       Advanced Container Layout engine + four auth states          (built)

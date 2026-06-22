@@ -145,10 +145,11 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/security/`](example/security/security_example.dart) | Applying the `TomClient2FAAdaptor` marker annotation and reading back its `type` |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
 
-> **Cross-package sample.** The `tom_core_samples/core_client_sample` project
-> (forthcoming) builds a login-gated todo client on this package — CRUD forms
-> whose fields render hidden / read-only / disabled / editable straight from the
-> server's authorization decisions. See the
+> **Cross-package sample.** The
+> [`tom_core_samples/core_client_sample`](../tom_core_samples/core_client_sample/README.md)
+> project builds a login-gated todo client on this package — CRUD forms whose
+> fields render hidden / read-only / disabled / editable straight from the
+> role's four-state authorization matrix. See the
 > [samples map](../tom_core_samples/README.md) for the full learning path.
 
 ## Usage

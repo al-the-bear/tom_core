@@ -14,10 +14,12 @@ holds the whole layer. This document is the **map**; each package has its own
 `README.md` and `doc/` folder for the detail. Nothing about a package's API is
 re-documented here — one phrase of "what it is" plus the link is the contract.
 
-> **New here?** The richest on-ramp is the upcoming `tom_core_samples/` learning
-> path (see [Sample learning path](#sample-learning-path)). Until it lands, read
-> [`tom_core_kernel`](tom_core_kernel/README.md) (the foundation) and run one of
-> the two live demo apps — [`tom_flutter_form_test`](tom_flutter_form_test/README.md)
+> **New here?** The richest on-ramp is the
+> [`tom_core_samples/`](tom_core_samples/README.md) learning path (see
+> [Sample learning path](#sample-learning-path)) — a shared todo app built up
+> from a server, a Flutter client and four UI showcases. For the foundation,
+> read [`tom_core_kernel`](tom_core_kernel/README.md); for the broadest live UI
+> reference, run [`tom_flutter_form_test`](tom_flutter_form_test/README.md)
 > (the form stack) or [`tom_flutter_ui_test`](tom_flutter_ui_test/README.md)
 > (the full widget set).
 
@@ -116,20 +118,21 @@ the layer end-to-end against the live Flutter engine.
 
 ## Sample learning path
 
-A dedicated `tom_core_samples/` folder is **forthcoming** (Tom Core quest,
-README & samples plan, Phase B). It will build one todo-management application
-across six subprojects, ordered as a learning path from a backend up through
-responsive UI. Until those land, the two demo apps above are the live,
-runnable reference.
+The [`tom_core_samples/`](tom_core_samples/README.md) folder builds one
+todo-management application across a shared domain plus six subprojects, ordered
+as a learning path from a backend up through responsive UI. Start with the
+[samples map](tom_core_samples/README.md); the two demo apps above remain the
+broadest live UI reference.
 
-| Order | Sample (planned, `tom_core_samples/…`) | Introduces |
+| Order | Sample | Introduces |
 | --- | --- | --- |
-| 1 | `core_server_sample` | The server stack against MySQL-in-Docker — endpoints, persistence, auth, healthcheck. |
-| 2 | `core_client_sample` | A Flutter todo app on `tom_core_flutter` + `tom_flutter_ui`, talking to the server, with ACL-driven field states. |
-| 3 | `core_flutter_ui_showcase` | Every `tom_flutter_ui` widget group, each shown with its instantiation code. |
-| 4 | `core_flutter_form_showcase` | The forms framework in depth — field types, validation, layout, theming, master-detail, lists. |
-| 5 | `core_flutter_acl_sample` | The Advanced Container Layout engine — sizing, growth, alignment, nesting, borders, variants, and the four authorization states. |
-| 6 | `core_flutter_acl_responsive` | Responsive UIs on the ACL engine — breakpoints, family-swap, adaptive layouts across phone/tablet/desktop. |
+| 0 | [`todo_domain`](tom_core_samples/todo_domain/readme.md) | The shared reflected entities (`User`, `Project`, `TodoList`, `TodoItem`) every other sample reuses. |
+| 1 | [`core_server_sample`](tom_core_samples/core_server_sample/README.md) | The server stack against MySQL-in-Docker — endpoints, persistence, auth, healthcheck. |
+| 2 | [`core_client_sample`](tom_core_samples/core_client_sample/README.md) | A Flutter todo app on `tom_core_flutter` + `tom_flutter_ui` with four-state field authorization — in-memory backend, live read path to the server. |
+| 3 | [`core_flutter_ui_showcase`](tom_core_samples/core_flutter_ui_showcase/README.md) | Every `tom_flutter_ui` widget group, each shown with its instantiation code. |
+| 4 | [`core_flutter_form_showcase`](tom_core_samples/core_flutter_form_showcase/README.md) | The forms framework in depth — field types, validation, layout, theming, master-detail, lists. |
+| 5 | [`core_flutter_acl_sample`](tom_core_samples/core_flutter_acl_sample/README.md) | The Advanced Container Layout engine — sizing, growth, alignment, nesting, borders, variants, and the four authorization states. |
+| 6 | [`core_flutter_acl_responsive`](tom_core_samples/core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine — breakpoints, family-swap, adaptive layouts across phone/tablet/desktop. |
 
 ---
 

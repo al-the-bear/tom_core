@@ -563,3 +563,21 @@ form, annotate it `@tomReflector`, add it to `reflection_seed.dart`, and run
 its `child` by hand — the article wants curated snippets, and the cell test
 guarantees neither half is empty.
 ```
+
+---
+
+## Where this sits
+
+- **Repo map:** [`tom_ai/core/README.md`](../../README.md)
+- **Sample suite index:** [`tom_core_samples/README.md`](../README.md)
+- **The kit on display:** [`tom_flutter_ui`](../../tom_flutter_ui/README.md) — the
+  forms framework (fields, validation, layout, theming, lists, master-detail)
+- **Shared model:** [`todo_domain`](../todo_domain/readme.md) — the reflected
+  entities the demo forms bind
+- **Sibling samples:**
+  [`core_flutter_ui_showcase`](../core_flutter_ui_showcase/README.md) (the widget
+  catalogue),
+  [`core_flutter_acl_sample`](../core_flutter_acl_sample/README.md) (the ACL
+  engine), and
+  [`core_flutter_acl_responsive`](../core_flutter_acl_responsive/README.md)
+  (responsive layouts)

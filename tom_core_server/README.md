@@ -155,10 +155,10 @@ await ds.connect(); // throws MariadbDatasourceException on failure
 ```
 
 > **MySQL-in-Docker.** The runnable end-to-end story — a Docker Compose MySQL
-> plus bootstrap and migrations — ships with the forthcoming
-> `tom_core_samples/core_server_sample` project (see the
-> [repository map](../README.md)). This package provides the abstract
-> contracts and the MariaDB driver it builds on.
+> plus bootstrap and migrations — ships with the
+> [`tom_core_samples/core_server_sample`](../tom_core_samples/core_server_sample/README.md)
+> project (see the [samples map](../tom_core_samples/README.md)). This package
+> provides the abstract contracts and the MariaDB driver it builds on.
 
 ### Repositories and type-safe queries
 
