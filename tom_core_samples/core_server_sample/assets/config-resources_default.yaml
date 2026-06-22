@@ -1,0 +1,7 @@
+# Base server configuration. Environment overlays (config-resources_dev.yaml,
+# _int.yaml, _prod.yaml) merge on top; OS env, .env, and CLI args win last.
+app:
+  title: "Tom Core — Todo API"
+# Single isolate keeps the sample readable (UAM defaults to a worker pool).
+isolateCount: 0
+logLevel: "production"

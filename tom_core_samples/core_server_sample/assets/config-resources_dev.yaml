@@ -1,0 +1,4 @@
+# Development overlay — merged on top of config-resources_default.yaml.
+app:
+  title: "Tom Core — Todo API (DEV)"
+logLevel: "development"
