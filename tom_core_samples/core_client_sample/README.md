@@ -387,6 +387,12 @@ Twenty-six tests cover the four seams:
 The widget tests drive `InMemoryTodoApi`, so they are deterministic and
 socket-free.
 
+Being a Flutter GUI app, this sample has no headless `example/` folder or
+`run_all_examples.dart` aggregator (those apply to pure-Dart samples like
+`todo_domain` and `core_server_sample`). The runnable entry point is the app
+itself — `lib/main.dart` — and this serial widget-test suite is its smoke
+test: it exercises every screen, form, and the four-state matrix end to end.
+
 ---
 
 ## 14. Known limitations and the cross-tier work
