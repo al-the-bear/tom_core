@@ -56,7 +56,7 @@ void main() {
     return captured;
   }
 
-  bool _isOverflow(FlutterErrorDetails d) =>
+  bool isOverflow(FlutterErrorDetails d) =>
       d.exception.toString().contains('overflowed');
 
   // One phone, one tablet, one desktop width — the three form-factor tiers.
@@ -77,7 +77,7 @@ void main() {
           expect(find.text(group.title), findsWidgets);
           // The only tolerated render errors are benign preview overflows; any
           // other exception means a cell failed to build.
-          final unexpected = errors.where((d) => !_isOverflow(d)).toList();
+          final unexpected = errors.where((d) => !isOverflow(d)).toList();
           expect(unexpected, isEmpty,
               reason: 'group ${group.id} threw a non-overflow error: '
                   '${unexpected.map((d) => d.exception).join("; ")}');
