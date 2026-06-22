@@ -2,10 +2,23 @@
 # (${VAR:default}). The map key MUST equal the migration folder name under
 # database_migrations/ — here `todo_db` — so TomDbMigrations matches schema to
 # datasource. The `mariadb` driver is auto-discovered by tom_core_server.
+#
+# `port` is a literal int, not a `${...}` substitution: the substitution always
+# yields a string, and the MariaDB datasource binds `port` to an int field, so a
+# substituted "3306" fails reflection. Host/credentials/name are strings, so
+# they substitute cleanly.
 todo_db:
   type: mariadb
   username: ${TODO_DB_USER:app}
   password: ${TODO_DB_PASSWORD:app}
   host: ${TODO_DB_HOST:localhost}
-  port: ${TODO_DB_PORT:3306}
+  port: 3306
   databaseName: ${TODO_DB_NAME:todo_db}
+
+# The framework's graded-authorization store (`TomResourceGrant`) is bound to
+# the `main` datasource. Rather than duplicate the connection block, `main`
+# delegates to `todo_db`, so one physical MariaDB database backs both the
+# application data and the authorization grants: the `tom_resource_grant` table
+# created by migration `[001]` lives there alongside the todo tables.
+main:
+  delegateTo: todo_db

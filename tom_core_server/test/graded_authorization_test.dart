@@ -56,6 +56,26 @@ void main() {
         expect(TomAuthStateCodec.fromDbColumn(column), state);
       }
     });
+
+    test('converters survive a generics-erased TomDbColumn read', () {
+      // The MariaDB datasource reads fromDbConverter/toDbConverter off a raw
+      // (generics-erased) TomDbColumn, which statically types them as
+      // `dynamic Function(TomDbType<dynamic>)?` / `TomDbType<dynamic> Function(
+      // dynamic)?`. A converter whose parameter is narrowed (e.g. TomDbString /
+      // TomAuthState) fails the runtime function-subtype check on that read —
+      // this reproduces the erased read without a live database.
+      final TomDbColumn erased = TomDbColumn<TomAuthState, TomDbString>(
+        columnName: 'access_level',
+        fromDbConverter: TomAuthStateCodec.fromDbColumn,
+        toDbConverter: TomAuthStateCodec.toDbColumn,
+      );
+      final read = erased.fromDbConverter; // must not throw a subtype error
+      final write = erased.toDbConverter;
+      expect(read, isNotNull);
+      expect(write, isNotNull);
+      expect(read!(TomDbString.of('full')), TomAuthState.full);
+      expect((write!(TomAuthState.read) as TomDbString).get(), 'read');
+    });
   });
 
   group('TomResourceGrant', () {
@@ -65,6 +85,18 @@ void main() {
       expect(grant.roleName, 'admin');
       expect(grant.resourceKey, 'orders');
       expect(grant.accessLevel, TomAuthState.none);
+    });
+
+    test('is no-arg constructible (the repository load contract)', () {
+      // TomSqlDatasourceRepository loads a row by instantiating a blank grant
+      // (newInstance('', [])) then setting each @TomDbColumn field. A `required`
+      // constructor parameter would make that throw, so the entity its own
+      // persistence layer reads back must construct with no arguments.
+      final blank = TomResourceGrant();
+      expect(blank.id, -1);
+      expect(blank.roleName, '');
+      expect(blank.resourceKey, '');
+      expect(blank.accessLevel, TomAuthState.none);
     });
 
     test('carries an explicit grade', () {

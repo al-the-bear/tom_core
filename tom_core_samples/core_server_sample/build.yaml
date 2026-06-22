@@ -3,6 +3,11 @@ targets:
     builders:
       tom_reflection_generator:reflection_generator:
         generate_for:
-          - lib/src/reflection_entry.dart
+          # The live-boot entrypoint is the reflection root: the generator
+          # follows its import graph to capture the config class, the endpoint
+          # service, the persistence records, and (transitively, via the
+          # tom_core_server barrel) the MariaDB driver, migration adaptor, and
+          # TomResourceGrant. Emits bin/server_start.reflection.dart.
+          - bin/server_start.dart
         options:
           formatted: true

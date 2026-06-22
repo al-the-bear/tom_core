@@ -57,12 +57,26 @@ class TomAuthStateCodec {
       granted ? TomAuthState.full : TomAuthState.none;
 
   /// [TomDbColumn] read converter: a stored [TomDbString] column → [TomAuthState].
-  static TomAuthState fromDbColumn(TomDbString column) =>
-      fromStored(column.get());
+  ///
+  /// The parameter is the widest boxed type ([TomDbType]) rather than the
+  /// narrower [TomDbString] on purpose: the persistence layer reads
+  /// `fromDbConverter` from a **generics-erased** [TomDbColumn], so the stored
+  /// function must accept a `TomDbType<dynamic>`. A narrowed parameter passes
+  /// the assignment into the typed annotation field but fails the runtime
+  /// function-subtype check on that erased read (parameter types are
+  /// contravariant). The `access_level` column is always a [TomDbString], so
+  /// the cast is total.
+  static TomAuthState fromDbColumn(TomDbType column) =>
+      fromStored((column as TomDbString).get());
 
   /// [TomDbColumn] write converter: a [TomAuthState] → the stored [TomDbString].
-  static TomDbString toDbColumn(TomAuthState state) =>
-      TomDbString(toStored(state));
+  ///
+  /// The parameter is `dynamic` for the same erased-read reason as
+  /// [fromDbColumn]: the layer reads `toDbConverter` from a generics-erased
+  /// column, which requires the widest parameter type. The value passed is
+  /// always a [TomAuthState], so the cast is total.
+  static TomDbString toDbColumn(dynamic state) =>
+      TomDbString(toStored(state as TomAuthState));
 }
 
 /// A persistable grant of a single [TomAuthState] to a `(roleName, resourceKey)`
@@ -107,10 +121,18 @@ class TomResourceGrant {
   TomAuthState accessLevel;
 
   /// Creates a grant. [accessLevel] defaults to [TomAuthState.none] (denied).
+  ///
+  /// [roleName] and [resourceKey] default to the empty string so the entity is
+  /// **no-arg constructible**: `TomSqlDatasourceRepository` loads a row by
+  /// instantiating a blank grant via reflection (`newInstance('', [])`) and
+  /// then populating each `@TomDbColumn` field from the result set. A `required`
+  /// constructor parameter would make that blank instantiation throw, so this
+  /// own-table entity could not be read back through its own repository.
+  /// Callers that build a fully-specified grant still pass the named arguments.
   TomResourceGrant({
     this.id = -1,
-    required this.roleName,
-    required this.resourceKey,
+    this.roleName = '',
+    this.resourceKey = '',
     this.accessLevel = TomAuthState.none,
   });
 

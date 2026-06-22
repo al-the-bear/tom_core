@@ -35,7 +35,7 @@ files on the wire.
 10. [Configuration and environment](#10-configuration-and-environment)
 11. [Reflection generation](#11-reflection-generation)
 12. [Testing](#12-testing)
-13. [What is built vs. what is gated](#13-what-is-built-vs-what-is-gated)
+13. [What is built](#13-what-is-built)
 
 ---
 
@@ -233,6 +233,9 @@ table above come out of the actual resolver.
 
 ```
 core_server_sample/
+├── bin/
+│   ├── server_start.dart                # TomServer boot + reflection root
+│   └── server_start.reflection.dart     # generated (committed)
 ├── lib/
 │   ├── core_server_sample.dart          # public barrel
 │   └── src/
@@ -241,7 +244,8 @@ core_server_sample/
 │       │   └── todo_mapping.dart        # domain <-> record (pure, tested)
 │       ├── auth/
 │       │   └── todo_authorization.dart  # four-state field authorizer
-│       └── reflection_entry.dart        # reflection-generation root (not runtime)
+│       └── endpoints/
+│           └── todo_endpoints.dart      # @tomService HTTP API (3 public GETs)
 ├── example/
 │   └── run_all_examples.dart            # DB-free mapping + authorization demo
 ├── test/
@@ -250,18 +254,17 @@ core_server_sample/
 │   ├── [000]-todo_core_schema.sql       # tables + seed rows
 │   └── [001]-todo_authz_grants.sql      # tom_resource_grant + seed grants
 ├── assets/
-│   ├── datasources_default.yaml         # todo_db datasource (env-substituted)
+│   ├── datasources_default.yaml         # todo_db + main datasources
 │   ├── config-resources_default.yaml
 │   └── config-resources_dev.yaml
 ├── docker-compose.yaml                  # bundled MariaDB
 ├── .env.example                         # copy to .env
-├── build.yaml                           # reflection generate_for
+├── build.yaml                           # reflection generate_for: bin/server_start.dart
 └── reflection_generation.sh
 ```
 
-The `bin/` server entrypoint that boots `TomServer` is described in
-[§9](#9-the-live-server-boot); see [§13](#13-what-is-built-vs-what-is-gated) for
-its status.
+The `bin/server_start.dart` entrypoint boots `TomServer` and doubles as the
+reflection-generation root; it is described in [§9](#9-the-live-server-boot).
 
 ---
 
@@ -313,34 +316,70 @@ docker compose up -d db
 
 ## 9. The live server boot
 
-The live server follows the established `tom_uam_server` boot sequence. In
-order, the entrypoint:
+`bin/server_start.dart` is the smallest single-isolate `TomServer` boot that
+serves the API against the bundled Docker MariaDB. It follows the
+`tom_uam_server` boot sequence, trimmed to what public (unauthenticated) JSON
+endpoints need. In order, `main()`:
 
 1. Sets the standalone platform: `TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils)`.
-2. Initialises the runtime: `initializeReflection()`, `initializeRuntime()`,
-   `initializeServerResources()`.
-3. Loads datasource config from `assets/datasources_default.yaml` and registers
+2. Initialises reflection (`initializeReflection()`), the environment runtime
+   (`initializeRuntime()`), and the config-resource provider
+   (`initializeServerResources()`).
+3. Builds the `ServerConfiguration` (plain HTTP, single isolate, bind any IP).
+4. Loads datasource config from `assets/datasources_default.yaml` and registers
    it via `TomDataSourceInfo.initializeDatasourceInfo(...)`. The `mariadb`
-   driver is auto-discovered.
-4. Configures JWT (`TomJwtConfiguration`) and the authentication server
-   (`TomAuthenticationServer`).
-5. Initialises the bean context (`initializeBeanContext`).
+   driver is auto-discovered through the `tom_core_server` barrel.
+5. Initialises the bean context (`initializeBeanContext`), which instantiates
+   the `@tomComponent` endpoint server.
 6. Runs migrations: `TomDbMigrations.migrateDatabases(...)`.
 7. Starts HTTP: `TomServer(config).start()`.
 
-Endpoints are declared with `@tomService` on a handler class and
-`@TomEndpoint(methods: [TomHttpMethod.post], uri: …, consumes: TomMimeType.json,
-produces: TomMimeType.json)` on each method, with access annotated by
-`@TomPublicAccess` / `@TomAuthenticatedAccess` / `@TomGuestAccess`. A handler
-receives the authenticated `TomPrincipal`, loads the item via
-`todoItemRepository`, builds a `TodoFieldAuthorizer` from the principal's role
-grants, and returns the item together with its per-field states — so the client
-knows which fields to render editable, read-only, greyed, or hidden.
+The JWT / auth-server / worker-pool machinery `tom_uam_server` also wires is
+intentionally omitted — the endpoints are `@TomPublicAccess`, so none of it is
+exercised. (Authenticated, per-principal field grading is the natural next step;
+the four-state resolver it would use is already built and tested.)
 
-Once the database is up (§8) the live server is started with:
+### The endpoints
+
+`lib/src/endpoints/todo_endpoints.dart` declares `@tomService TodoApiService`
+(the contract) and its `@tomComponent TodoApiServer` (the implementation). Each
+method carries `@TomPublicAccess()` and a `@TomEndpoint(methods: [TomHttpMethod.get],
+uri: …, produces: TomMimeType.json)`. Three no-parameter `GET`s, each proving one
+layer of the stack:
+
+| Endpoint              | Proves                                                        |
+| --------------------- | ------------------------------------------------------------ |
+| `/health`             | the server boots and routes                                  |
+| `/todos`              | the DB persistence round-trip (`todoItemRepository.findAll`) |
+| `/todos/field-states` | four-state authorization resolved **from DB grants**         |
+
+`/todos/field-states` loads every `TomResourceGrant` (via a
+`TomSqlDatasourceRepository<TomResourceGrant, int>`), folds the grants per role
+through `TodoFieldAuthorizer.fromGrants`, and returns each role's resolved
+per-field `TomAuthState` — so a client knows which fields to render editable,
+read-only, greyed, or hidden.
+
+### Running it
+
+Once the database is up (§8):
 
 ```sh
 dart run bin/server_start.dart
+# in another shell:
+curl -s localhost:8080/health
+curl -s localhost:8080/todos
+curl -s localhost:8080/todos/field-states
+```
+
+`/todos/field-states` returns the four-state table from [§5](#5-four-state-authorization)
+straight out of the database:
+
+```json
+{
+  "owner":  {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"full","todo.item.assigneeId":"full"},
+  "member": {"todo.item.title":"full","todo.item.done":"full","todo.item.priority":"none","todo.item.assigneeId":"read"},
+  "viewer": {"todo.item.title":"read","todo.item.done":"disabled","todo.item.priority":"read","todo.item.assigneeId":"read"}
+}
 ```
 
 ---
@@ -360,9 +399,22 @@ todo_db:
   username: ${TODO_DB_USER:app}
   password: ${TODO_DB_PASSWORD:app}
   host: ${TODO_DB_HOST:localhost}   # `db` inside the compose network
-  port: ${TODO_DB_PORT:3306}
+  port: 3306                        # literal int, not ${...} — see below
   databaseName: ${TODO_DB_NAME:todo_db}
+
+main:
+  delegateTo: todo_db               # the framework's grant store, same DB
 ```
+
+`port` is a **literal int**, not a `${...}` substitution: the substitution
+always yields a string, and the MariaDB datasource binds `port` to an `int`
+field, so a substituted `"3306"` fails reflection. The other keys are strings
+and substitute cleanly.
+
+The `main` datasource is where the framework binds its graded-authorization
+store (`TomResourceGrant`). Rather than duplicate the connection block it
+`delegateTo`s `todo_db`, so one physical database backs both the application
+tables and the `tom_resource_grant` grants.
 
 Copy `.env.example` to `.env` and adjust. It feeds both `docker-compose.yaml`
 and the runtime datasource loader.
@@ -371,19 +423,23 @@ and the runtime datasource loader.
 
 ## 11. Reflection generation
 
-The persistence records are reflected so the persistence layer can map them to
-SQL. `lib/src/reflection_entry.dart` exposes a `main()` that touches each record
-— the reflection generator follows the import graph from a file with a `main()`
-to discover every `@tomReflector` type. It is **not** used at runtime.
+The reflected types must be discovered so the persistence layer can map records
+to SQL and the endpoint pipeline can instantiate the service. The
+reflection-generation root is the live-boot entrypoint itself,
+`bin/server_start.dart` (configured in `build.yaml`): the generator follows its
+import graph to capture the config class, the endpoint service, the persistence
+records, and — transitively through the `tom_core_server` barrel — the MariaDB
+driver, the migration adaptor, and `TomResourceGrant`.
 
-Regenerate the reflection code after changing a record's fields:
+Regenerate the reflection code after changing any reflected shape (a record's
+fields, the config class, an endpoint signature):
 
 ```sh
 ./reflection_generation.sh   # dart run tom_reflection_generator --nested
 ```
 
-The generated `reflection_entry.reflection.dart` is what the live server imports
-at boot. The annotations are plain const metadata, so the package is
+The generated `bin/server_start.reflection.dart` is committed and imported by
+the boot entrypoint. The annotations are plain const metadata, so the package is
 `analyze`-clean **without** running the generator — you only need it for the
 live boot.
 
@@ -407,14 +463,15 @@ The domain entities are observable `TomClass`es, so the suite calls
 `initializeReflection()` in `setUpAll` before constructing any of them; the
 records themselves are plain DTOs and need no setup.
 
-The live endpoint + persistence round-trip against Docker MariaDB is the
-integration gate (see below).
+The live endpoint + persistence round-trip against Docker MariaDB is verified by
+booting the server and curling the three endpoints (§9) — it is built, not
+gated.
 
 ---
 
-## 13. What is built vs. what is gated
+## 13. What is built
 
-**Built, `analyze`-clean, and unit-tested now (no database required):**
+**Database-free, `analyze`-clean, and unit-tested (no database required):**
 
 - the relational persistence records and their repositories
   (`todo_records.dart`);
@@ -424,14 +481,14 @@ integration gate (see below).
 - the full infrastructure: Docker compose, migrations (schema + grants),
   datasource/config assets, `.env.example`, reflection wiring.
 
-**Documented here and gated on the workspace Docker integration step** (the live
-MariaDB round-trip, `readme_and_example_plan` item 28):
+**Live, verified against the bundled Docker MariaDB:**
 
-- the `bin/` `TomServer` boot entrypoint;
-- the HTTP endpoint handlers and their JSON request/response wiring;
-- the end-to-end persistence + authorization round-trip against the bundled
-  MariaDB.
+- the `bin/server_start.dart` `TomServer` boot entrypoint;
+- the `@tomService` HTTP endpoints and their JSON responses
+  (`todo_endpoints.dart`);
+- the end-to-end persistence round-trip (`/todos`) and four-state authorization
+  resolved from DB grants (`/todos/field-states`).
 
-The split is deliberate: everything that can be verified without a live database
-is built and proven, and the live boot is wired against the same documented
-`tom_uam_server` pattern, to be exercised when the Docker integration gate runs.
+Everything that can be verified without a live database is unit-tested; the live
+boot is exercised by `docker compose up -d db && dart run bin/server_start.dart`
+and the three `curl`s in [§9](#9-the-live-server-boot).
