@@ -339,4 +339,4 @@ Development guidelines live in [`_copilot_guidelines/`](_copilot_guidelines/inde
 ## Status
 
 - **Version:** 1.0.0 (`publish_to: none`)
-- **Tests:** 519 test cases across 33 suites
+- **Tests:** 521 test cases across 33 suites

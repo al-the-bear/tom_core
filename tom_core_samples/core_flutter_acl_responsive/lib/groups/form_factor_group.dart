@@ -1,0 +1,77 @@
+/// Form-factor variants — phone / tablet / desktop layouts via addVariant.
+///
+/// `AclDeviceContext.resolveFormFactor(width)` maps a width onto the canonical
+/// tiers (`phone` < 600, `tablet` < 1024, `desktop` ≥ 1024). `addVariant(name,
+/// atWidth:, builder:)` registers an alternative whole-row layout that the ACL
+/// engine selects below a width — so one builder chain carries a desktop default
+/// plus a stacked phone variant. Each cell pins a width and reads back the
+/// resolved form factor.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+import '../common/demo_box.dart';
+import '../common/showcase_cell.dart';
+import '../common/showcase_section.dart';
+
+/// Builds the same variant-carrying layout at a fixed [width], with a badge of
+/// the resolved [AclFormFactor].
+Widget _factorLayout(double width) {
+  final factor = AclDeviceContext.resolveFormFactor(width);
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('resolveFormFactor($width) → ${factor.name}'),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: width,
+        child: AclBuilder()
+            .setAclExpandXDefault(true)
+            .append(demoBox('Label', Colors.indigo))
+            .append(demoBox('Value', Colors.cyan), dist: 12)
+            .addVariant('phone', atWidth: 600, builder: (b) {
+              b
+                  .append(demoBox('Label', Colors.indigo))
+                  .newRow(dist: 6)
+                  .append(demoBox('Value', Colors.cyan));
+            })
+            .build(),
+      ),
+    ],
+  );
+}
+
+/// The form-factor-variants mechanism group.
+final ShowcaseGroup formFactorGroup = ShowcaseGroup(
+  id: 'form_factor',
+  title: 'Form-factor variants',
+  summary: 'resolveFormFactor maps width to phone/tablet/desktop tiers; '
+      'addVariant swaps in a stacked phone layout below 600px — one chain, two '
+      'shapes.',
+  icon: Icons.devices_outlined,
+  cells: (context) => [
+    ShowcaseCell(
+      title: 'Desktop (900px) — default row',
+      note: 'Above the 600px phone variant the default side-by-side row applies.',
+      code: 'AclBuilder()\n'
+          "    .append(demoBox('Label', indigo))\n"
+          "    .append(demoBox('Value', cyan), dist: 12)\n"
+          "    .addVariant('phone', atWidth: 600, builder: (b) {\n"
+          "      b.append(demoBox('Label', indigo))\n"
+          '          .newRow(dist: 6)\n'
+          "          .append(demoBox('Value', cyan));\n"
+          '    })\n'
+          '    .build()',
+      child: _factorLayout(900),
+    ),
+    ShowcaseCell(
+      title: 'Phone (400px) — stacked variant',
+      note: 'Below 600px the registered phone variant replaces the default row '
+          'with a stacked layout.',
+      code: '// Same chain as above — the ACL engine picks the phone variant\n'
+          '// because 400px < the 600px atWidth threshold.',
+      child: _factorLayout(400),
+    ),
+  ],
+);

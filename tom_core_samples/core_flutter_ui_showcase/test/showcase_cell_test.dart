@@ -1,0 +1,75 @@
+// Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
+// teaching pair — the verbatim code snippet and the rendered child.
+//
+// The whole point of the showcase over `tom_flutter_ui_test` is that the
+// source that produced a widget is displayed beside the widget. These tests
+// make that contract enforceable: an empty snippet, or a cell that silently
+// drops its child, fails here.
+
+import 'package:core_flutter_ui_showcase/common/showcase_cell.dart';
+import 'package:core_flutter_ui_showcase/showcase_app.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+void main() {
+  setUp(() {
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(const <String, dynamic>{}),
+    );
+  });
+
+  testWidgets('renders both the code snippet and the live child',
+      (tester) async {
+    const marker = Key('cell-child-marker');
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ShowcaseCell(
+              title: 'Demo',
+              code: 'TomElevatedButton(label: "Go")',
+              child: SizedBox(key: marker, width: 24, height: 24),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // The rendered child is present.
+    expect(find.byKey(marker), findsOneWidget);
+    // The code snippet text is present (SelectableText inside CodeBlock).
+    expect(
+      find.textContaining('TomElevatedButton(label: "Go")'),
+      findsOneWidget,
+    );
+    // The title is present.
+    expect(find.text('Demo'), findsOneWidget);
+  });
+
+  testWidgets('every showcase cell carries a non-empty snippet',
+      (tester) async {
+    // Some group builders read `Theme.of(context)` eagerly, so we need a real
+    // BuildContext from a pumped MaterialApp rather than a fake.
+    late BuildContext capturedContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    for (final group in showcaseGroups) {
+      for (final cell in group.cells(capturedContext)) {
+        expect(cell.code.trim(), isNotEmpty,
+            reason: 'group ${group.id}: a cell has an empty code snippet');
+      }
+    }
+  });
+}

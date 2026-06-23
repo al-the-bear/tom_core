@@ -1,0 +1,74 @@
+// Cell-contract tests: a [ShowcaseCell] always shows BOTH halves of the
+// teaching pair — the verbatim code snippet and the rendered child — and no
+// group ships a cell with an empty snippet.
+//
+// The whole point of the showcase is that the source that produced a live form
+// is displayed beside it; these tests make that contract enforceable.
+
+import 'package:core_flutter_form_showcase/common/showcase_cell.dart';
+import 'package:core_flutter_form_showcase/reflection_seed.dart';
+import 'package:core_flutter_form_showcase/showcase_app.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+void main() {
+  setUpAll(initializeReflection);
+
+  setUp(() {
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(const <String, dynamic>{}),
+    );
+  });
+
+  testWidgets('renders both the code snippet and the live child',
+      (tester) async {
+    const marker = Key('cell-child-marker');
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ShowcaseCell(
+              title: 'Demo',
+              code: 'TomFormStringInput("name", "")',
+              child: SizedBox(key: marker, width: 24, height: 24),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byKey(marker), findsOneWidget);
+    expect(
+      find.textContaining('TomFormStringInput("name", "")'),
+      findsOneWidget,
+    );
+    expect(find.text('Demo'), findsOneWidget);
+  });
+
+  testWidgets('every showcase cell carries a non-empty snippet',
+      (tester) async {
+    // Group builders read Theme.of(context), so a real pumped context is
+    // needed rather than a fake one.
+    late BuildContext capturedContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    for (final group in showcaseGroups) {
+      for (final cell in group.cells(capturedContext)) {
+        expect(cell.code.trim(), isNotEmpty,
+            reason: 'group ${group.id}: a cell has an empty code snippet');
+      }
+    }
+  });
+}

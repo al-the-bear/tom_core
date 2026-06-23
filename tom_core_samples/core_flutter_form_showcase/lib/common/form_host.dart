@@ -1,0 +1,121 @@
+/// Owns the lifecycle of a single live [TomForm] inside a showcase cell.
+///
+/// A form is stateful: it must be created inside a [TomScope] (so its fields
+/// resolve resources and ids consistently), bound to a fresh domain entity,
+/// and disposed when the cell leaves the tree. Doing that by hand in every
+/// group would be the kind of copy-paste this sample exists to discourage, so
+/// the binding ceremony lives here once and every `code | rendered` cell hands
+/// [FormHost] a `create`, an optional `bind`, and a `builder`.
+///
+/// The generic bound is `TomForm<TomClass>`; because Dart class generics are
+/// covariant, a concrete `CompanyForm extends TomForm<CompanyProfile>` is a
+/// valid `F`, so callers keep their concrete form type inside [builder].
+library;
+
+import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
+
+/// A stateful preview that creates [create] inside the [scopeId] scope, runs
+/// the optional [bind], renders [builder], and disposes the form on teardown.
+class FormHost<F extends TomForm<TomClass>> extends StatefulWidget {
+  const FormHost({
+    super.key,
+    required this.scopeId,
+    required this.create,
+    required this.builder,
+    this.bind,
+  });
+
+  /// The [TomScope] id the form is constructed in.
+  final String scopeId;
+
+  /// Builds the concrete form. Called exactly once, inside the scope.
+  final F Function() create;
+
+  /// Binds the freshly created form to a domain entity. Optional: a form can
+  /// render its own initial values unbound, but binding is what demonstrates
+  /// the reflection round-trip the sample is about.
+  final void Function(F form)? bind;
+
+  /// Renders the live form (typically a [TomAclBuilder] layout).
+  final Widget Function(BuildContext context, F form) builder;
+
+  @override
+  State<FormHost<F>> createState() => _FormHostState<F>();
+}
+
+class _FormHostState<F extends TomForm<TomClass>> extends State<FormHost<F>> {
+  late final F _form;
+
+  @override
+  void initState() {
+    super.initState();
+    _form = TomScope.withScope(widget.scopeId, widget.create);
+    widget.bind?.call(_form);
+  }
+
+  @override
+  void dispose() {
+    _form.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _form);
+}
+
+/// The list-form counterpart of [FormHost]. [TomListForm] extends
+/// [TomObservable] (not [TomForm]), so it needs its own lifecycle owner: this
+/// host creates the list form in [scopeId], binds it to a [TomList] of items,
+/// and renders [builder]. Used by the list and master-detail cells.
+class ListFormHost<TItem extends TomClass, TForm extends TomForm<TItem>>
+    extends StatefulWidget {
+  const ListFormHost({
+    super.key,
+    required this.scopeId,
+    required this.create,
+    required this.items,
+    required this.builder,
+  });
+
+  /// The [TomScope] id the list form is constructed in.
+  final String scopeId;
+
+  /// Builds the list form. Called exactly once, inside the scope.
+  final TomListForm<TItem, TForm> Function() create;
+
+  /// Supplies the backing list to bind to. Called once, alongside [create].
+  final TomList<TItem> Function() items;
+
+  /// Renders the live list form (inline list, toolbar, master-detail, …).
+  final Widget Function(
+    BuildContext context,
+    TomListForm<TItem, TForm> listForm,
+  ) builder;
+
+  @override
+  State<ListFormHost<TItem, TForm>> createState() =>
+      _ListFormHostState<TItem, TForm>();
+}
+
+class _ListFormHostState<TItem extends TomClass, TForm extends TomForm<TItem>>
+    extends State<ListFormHost<TItem, TForm>> {
+  late final TomListForm<TItem, TForm> _listForm;
+
+  @override
+  void initState() {
+    super.initState();
+    _listForm = TomScope.withScope(widget.scopeId, widget.create);
+    _listForm.bind(widget.items());
+  }
+
+  @override
+  void dispose() {
+    _listForm.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _listForm);
+}

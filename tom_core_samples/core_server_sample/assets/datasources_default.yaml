@@ -1,0 +1,11 @@
+# Datasource configuration with environment-variable substitution
+# (${VAR:default}). The map key MUST equal the migration folder name under
+# database_migrations/ — here `todo_db` — so TomDbMigrations matches schema to
+# datasource. The `mariadb` driver is auto-discovered by tom_core_server.
+todo_db:
+  type: mariadb
+  username: ${TODO_DB_USER:app}
+  password: ${TODO_DB_PASSWORD:app}
+  host: ${TODO_DB_HOST:localhost}
+  port: ${TODO_DB_PORT:3306}
+  databaseName: ${TODO_DB_NAME:todo_db}
