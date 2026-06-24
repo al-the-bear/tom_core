@@ -156,31 +156,30 @@ class TomStyleResolvers {
     if (map == null || map.isEmpty) return null;
 
     return InputDecoration(
-      labelText: map['labelText'] as String?,
-      hintText: map['hintText'] as String?,
-      helperText: map['helperText'] as String?,
-      errorText: map['errorText'] as String?,
-      counterText: map['counterText'] as String?,
-      prefixText: map['prefixText'] as String?,
-      suffixText: map['suffixText'] as String?,
+      labelText: _asString(map['labelText']),
+      hintText: _asString(map['hintText']),
+      helperText: _asString(map['helperText']),
+      errorText: _asString(map['errorText']),
+      counterText: _asString(map['counterText']),
+      prefixText: _asString(map['prefixText']),
+      suffixText: _asString(map['suffixText']),
       fillColor: _parseColor(map['fillColor']),
       focusColor: _parseColor(map['focusColor']),
       hoverColor: _parseColor(map['hoverColor']),
       iconColor: _parseColor(map['iconColor']),
       prefixIconColor: _parseColor(map['prefixIconColor']),
       suffixIconColor: _parseColor(map['suffixIconColor']),
-      filled: map['filled'] as bool?,
-      isDense: map['isDense'] as bool?,
-      isCollapsed: map['isCollapsed'] as bool? ?? false,
+      filled: _asBool(map['filled']),
+      isDense: _asBool(map['isDense']),
+      isCollapsed: _asBool(map['isCollapsed']) ?? false,
       contentPadding: _parseEdgeInsets(map['contentPadding']),
-      labelStyle: parseTextStyle(map['labelStyle'] as Map<String, dynamic>?),
-      hintStyle: parseTextStyle(map['hintStyle'] as Map<String, dynamic>?),
-      helperStyle: parseTextStyle(map['helperStyle'] as Map<String, dynamic>?),
-      errorStyle: parseTextStyle(map['errorStyle'] as Map<String, dynamic>?),
-      counterStyle:
-          parseTextStyle(map['counterStyle'] as Map<String, dynamic>?),
-      prefixStyle: parseTextStyle(map['prefixStyle'] as Map<String, dynamic>?),
-      suffixStyle: parseTextStyle(map['suffixStyle'] as Map<String, dynamic>?),
+      labelStyle: parseTextStyle(_asStringMap(map['labelStyle'])),
+      hintStyle: parseTextStyle(_asStringMap(map['hintStyle'])),
+      helperStyle: parseTextStyle(_asStringMap(map['helperStyle'])),
+      errorStyle: parseTextStyle(_asStringMap(map['errorStyle'])),
+      counterStyle: parseTextStyle(_asStringMap(map['counterStyle'])),
+      prefixStyle: parseTextStyle(_asStringMap(map['prefixStyle'])),
+      suffixStyle: parseTextStyle(_asStringMap(map['suffixStyle'])),
     );
   }
 
@@ -239,8 +238,8 @@ class TomStyleResolvers {
   static ShapeBorder? parseShapeBorder(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
-    final type = (map['type'] as String?)?.toLowerCase() ?? 'rounded';
-    final side = parseBorderSide(map['side'] as Map<String, dynamic>?) ??
+    final type = _asString(map['type'])?.toLowerCase() ?? 'rounded';
+    final side = parseBorderSide(_asStringMap(map['side'])) ??
         BorderSide.none;
 
     switch (type) {
@@ -326,19 +325,17 @@ class TomStyleResolvers {
     if (value is num) return BorderRadius.circular(value.toDouble());
 
     if (value is Map<String, dynamic>) {
-      if (value.containsKey('all')) {
-        return BorderRadius.circular(
-            (value['all'] as num).toDouble());
-      }
+      final all = _asNum(value['all']);
+      if (all != null) return BorderRadius.circular(all.toDouble());
       return BorderRadius.only(
         topLeft: Radius.circular(
-            (value['topLeft'] as num?)?.toDouble() ?? 0),
+            _asNum(value['topLeft'])?.toDouble() ?? 0),
         topRight: Radius.circular(
-            (value['topRight'] as num?)?.toDouble() ?? 0),
+            _asNum(value['topRight'])?.toDouble() ?? 0),
         bottomLeft: Radius.circular(
-            (value['bottomLeft'] as num?)?.toDouble() ?? 0),
+            _asNum(value['bottomLeft'])?.toDouble() ?? 0),
         bottomRight: Radius.circular(
-            (value['bottomRight'] as num?)?.toDouble() ?? 0),
+            _asNum(value['bottomRight'])?.toDouble() ?? 0),
       );
     }
 
@@ -374,7 +371,7 @@ class TomStyleResolvers {
   static Decoration? parseDecoration(Map<String, dynamic>? map) {
     if (map == null || map.isEmpty) return null;
 
-    final shapeStr = (map['shape'] as String?)?.toLowerCase() ?? 'rectangle';
+    final shapeStr = _asString(map['shape'])?.toLowerCase() ?? 'rectangle';
 
     return BoxDecoration(
       color: _parseColor(map['color']),
@@ -541,8 +538,7 @@ class TomStyleResolvers {
     // Shorthand: 'all' applies to every side
     if (map.containsKey('all')) {
       final side =
-          parseBorderSide(map['all'] as Map<String, dynamic>?) ??
-              BorderSide.none;
+          parseBorderSide(_asStringMap(map['all'])) ?? BorderSide.none;
       return TableBorder(
         top: side,
         right: side,
@@ -554,19 +550,14 @@ class TomStyleResolvers {
     }
 
     return TableBorder(
-      top: parseBorderSide(map['top'] as Map<String, dynamic>?) ??
-          BorderSide.none,
-      right: parseBorderSide(map['right'] as Map<String, dynamic>?) ??
-          BorderSide.none,
-      bottom: parseBorderSide(map['bottom'] as Map<String, dynamic>?) ??
-          BorderSide.none,
-      left: parseBorderSide(map['left'] as Map<String, dynamic>?) ??
-          BorderSide.none,
-      horizontalInside: parseBorderSide(
-              map['horizontalInside'] as Map<String, dynamic>?) ??
-          BorderSide.none,
-      verticalInside: parseBorderSide(
-              map['verticalInside'] as Map<String, dynamic>?) ??
+      top: parseBorderSide(_asStringMap(map['top'])) ?? BorderSide.none,
+      right: parseBorderSide(_asStringMap(map['right'])) ?? BorderSide.none,
+      bottom: parseBorderSide(_asStringMap(map['bottom'])) ?? BorderSide.none,
+      left: parseBorderSide(_asStringMap(map['left'])) ?? BorderSide.none,
+      horizontalInside:
+          parseBorderSide(_asStringMap(map['horizontalInside'])) ??
+              BorderSide.none,
+      verticalInside: parseBorderSide(_asStringMap(map['verticalInside'])) ??
           BorderSide.none,
     );
   }
@@ -681,15 +672,15 @@ class TomStyleResolvers {
     if (map == null || map.isEmpty) return null;
 
     return StrutStyle(
-      fontFamily: map['fontFamily'] as String?,
-      fontFamilyFallback: (map['fontFamilyFallback'] as List<dynamic>?)
-          ?.cast<String>(),
+      fontFamily: _asString(map['fontFamily']),
+      fontFamilyFallback:
+          _asList(map['fontFamilyFallback'])?.whereType<String>().toList(),
       fontSize: _parseDouble(map['fontSize']),
       height: _parseDouble(map['height']),
       leading: _parseDouble(map['leading']),
       fontWeight: _parseFontWeight(map['fontWeight']),
       fontStyle: _parseFontStyle(map['fontStyle']),
-      forceStrutHeight: map['forceStrutHeight'] as bool?,
+      forceStrutHeight: _asBool(map['forceStrutHeight']),
     );
   }
 
@@ -716,7 +707,7 @@ class TomStyleResolvers {
     if (map == null || map.isEmpty) return null;
 
     TextLeadingDistribution? leadingDistribution;
-    final ld = map['leadingDistribution'] as String?;
+    final ld = _asString(map['leadingDistribution']);
     if (ld != null) {
       switch (ld.toLowerCase()) {
         case 'proportional':
@@ -730,9 +721,9 @@ class TomStyleResolvers {
 
     return TextHeightBehavior(
       applyHeightToFirstAscent:
-          map['applyHeightToFirstAscent'] as bool? ?? true,
+          _asBool(map['applyHeightToFirstAscent']) ?? true,
       applyHeightToLastDescent:
-          map['applyHeightToLastDescent'] as bool? ?? true,
+          _asBool(map['applyHeightToLastDescent']) ?? true,
       leadingDistribution:
           leadingDistribution ?? TextLeadingDistribution.proportional,
     );
@@ -764,7 +755,7 @@ class TomStyleResolvers {
     if (value == null) return null;
 
     final name = (value is String) ? value : (value is Map<String, dynamic>)
-        ? value['type'] as String?
+        ? _asString(value['type'])
         : null;
     if (name == null) return null;
 
@@ -810,6 +801,29 @@ class TomStyleResolvers {
     if (value is String) return double.tryParse(value);
     return null;
   }
+
+  // ===========================================================================
+  // Tolerant type guards (bug §77)
+  // ===========================================================================
+  //
+  // The resolvers advertise a tolerant contract (doc/widget_base.md): a
+  // present-but-wrong-type config entry is skipped (treated as absent) rather
+  // than throwing a CastError. These guards return null for a wrong-type value
+  // instead of casting unchecked — the genuine mirror of the nullable `as num?`
+  // array path and the `_parseDouble` / `_parseColor` helpers above. Resource
+  // maps are typically loaded from config, so one mistyped entry must not take
+  // down the whole widget build.
+
+  static String? _asString(dynamic value) => value is String ? value : null;
+
+  static bool? _asBool(dynamic value) => value is bool ? value : null;
+
+  static num? _asNum(dynamic value) => value is num ? value : null;
+
+  static Map<String, dynamic>? _asStringMap(dynamic value) =>
+      value is Map<String, dynamic> ? value : null;
+
+  static List<dynamic>? _asList(dynamic value) => value is List ? value : null;
 
   static Color? _parseColor(dynamic value) {
     if (value == null) return null;
@@ -975,14 +989,12 @@ class TomStyleResolvers {
       }
       // Per-side borders
       return Border(
-        top: parseBorderSide(value['top'] as Map<String, dynamic>?) ??
-            BorderSide.none,
-        right: parseBorderSide(value['right'] as Map<String, dynamic>?) ??
-            BorderSide.none,
-        bottom: parseBorderSide(value['bottom'] as Map<String, dynamic>?) ??
-            BorderSide.none,
-        left: parseBorderSide(value['left'] as Map<String, dynamic>?) ??
-            BorderSide.none,
+        top: parseBorderSide(_asStringMap(value['top'])) ?? BorderSide.none,
+        right:
+            parseBorderSide(_asStringMap(value['right'])) ?? BorderSide.none,
+        bottom:
+            parseBorderSide(_asStringMap(value['bottom'])) ?? BorderSide.none,
+        left: parseBorderSide(_asStringMap(value['left'])) ?? BorderSide.none,
       );
     }
     return null;
@@ -1023,31 +1035,30 @@ class TomStyleResolvers {
       }
       if (value.length == 4) {
         return EdgeInsets.only(
-          left: (value[0] as num?)?.toDouble() ?? 0,
-          top: (value[1] as num?)?.toDouble() ?? 0,
-          right: (value[2] as num?)?.toDouble() ?? 0,
-          bottom: (value[3] as num?)?.toDouble() ?? 0,
+          left: _asNum(value[0])?.toDouble() ?? 0,
+          top: _asNum(value[1])?.toDouble() ?? 0,
+          right: _asNum(value[2])?.toDouble() ?? 0,
+          bottom: _asNum(value[3])?.toDouble() ?? 0,
         );
       }
     }
 
     // Map format
     if (value is Map<String, dynamic>) {
-      if (value.containsKey('all')) {
-        return EdgeInsets.all((value['all'] as num).toDouble());
-      }
+      final all = _asNum(value['all']);
+      if (all != null) return EdgeInsets.all(all.toDouble());
       return EdgeInsets.only(
-        left: (value['left'] as num?)?.toDouble() ??
-            (value['horizontal'] as num?)?.toDouble() ??
+        left: _asNum(value['left'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
             0,
-        top: (value['top'] as num?)?.toDouble() ??
-            (value['vertical'] as num?)?.toDouble() ??
+        top: _asNum(value['top'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
             0,
-        right: (value['right'] as num?)?.toDouble() ??
-            (value['horizontal'] as num?)?.toDouble() ??
+        right: _asNum(value['right'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
             0,
-        bottom: (value['bottom'] as num?)?.toDouble() ??
-            (value['vertical'] as num?)?.toDouble() ??
+        bottom: _asNum(value['bottom'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
             0,
       );
     }
@@ -1095,8 +1106,7 @@ class TomStyleResolvers {
   }
 
   static WidgetStateProperty<TextStyle?>? _wrapTextStyle(dynamic value) {
-    if (value == null) return null;
-    final style = parseTextStyle(value as Map<String, dynamic>);
+    final style = parseTextStyle(_asStringMap(value));
     if (style == null) return null;
     return WidgetStatePropertyAll<TextStyle?>(style);
   }

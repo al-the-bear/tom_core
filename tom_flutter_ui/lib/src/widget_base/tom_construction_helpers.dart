@@ -550,6 +550,12 @@ class TomCtr {
     };
   }
 
+  /// Tolerant num guard: returns null for a present-but-wrong-type value
+  /// instead of throwing a CastError (bug §77). Mirror of the same helper in
+  /// [TomStyleResolvers]; the [_parseEdgeInsets] body below is a verbatim copy
+  /// of that resolver's and must stay equally tolerant.
+  static num? _asNum(dynamic value) => value is num ? value : null;
+
   static EdgeInsets? _parseEdgeInsets(dynamic value) {
     if (value == null) return null;
 
@@ -569,31 +575,30 @@ class TomCtr {
       }
       if (value.length == 4) {
         return EdgeInsets.only(
-          left: (value[0] as num?)?.toDouble() ?? 0,
-          top: (value[1] as num?)?.toDouble() ?? 0,
-          right: (value[2] as num?)?.toDouble() ?? 0,
-          bottom: (value[3] as num?)?.toDouble() ?? 0,
+          left: _asNum(value[0])?.toDouble() ?? 0,
+          top: _asNum(value[1])?.toDouble() ?? 0,
+          right: _asNum(value[2])?.toDouble() ?? 0,
+          bottom: _asNum(value[3])?.toDouble() ?? 0,
         );
       }
     }
 
     // Map format
     if (value is Map<String, dynamic>) {
-      if (value.containsKey('all')) {
-        return EdgeInsets.all((value['all'] as num).toDouble());
-      }
+      final all = _asNum(value['all']);
+      if (all != null) return EdgeInsets.all(all.toDouble());
       return EdgeInsets.only(
-        left: (value['left'] as num?)?.toDouble() ??
-            (value['horizontal'] as num?)?.toDouble() ??
+        left: _asNum(value['left'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
             0,
-        top: (value['top'] as num?)?.toDouble() ??
-            (value['vertical'] as num?)?.toDouble() ??
+        top: _asNum(value['top'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
             0,
-        right: (value['right'] as num?)?.toDouble() ??
-            (value['horizontal'] as num?)?.toDouble() ??
+        right: _asNum(value['right'])?.toDouble() ??
+            _asNum(value['horizontal'])?.toDouble() ??
             0,
-        bottom: (value['bottom'] as num?)?.toDouble() ??
-            (value['vertical'] as num?)?.toDouble() ??
+        bottom: _asNum(value['bottom'])?.toDouble() ??
+            _asNum(value['vertical'])?.toDouble() ??
             0,
       );
     }
