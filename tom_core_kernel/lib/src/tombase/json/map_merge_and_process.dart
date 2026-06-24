@@ -91,9 +91,9 @@ void mergeMapsOneSided(
 ) {
   override.forEach((String oKey, dynamic oValue) {
     Object? baseObject = base[oKey];
-    if (oValue is Map<String, Object>) {
+    if (oValue is Map<String, dynamic>) {
       if (base.containsKey(oKey)) {
-        if (baseObject is Map<String, Object>) {
+        if (baseObject is Map<String, dynamic>) {
           mergeMapsOneSided(baseObject, oValue);
         } else {
           tomLog.error(
@@ -107,7 +107,14 @@ void mergeMapsOneSided(
       if (baseObject is List) {
         List<dynamic> overrideMapArray = oValue;
         List<dynamic> baseMapArray = baseObject;
-        for (int i = 0; i < baseMapArray.length; i++) {
+        // Only deep-merge the overlapping prefix. Extra base elements are left
+        // untouched; extra override elements are appended by the list merger
+        // below. Iterating to baseMapArray.length unconditionally caused a
+        // RangeError when the override array was shorter (bug §44).
+        final overlap = baseMapArray.length < overrideMapArray.length
+            ? baseMapArray.length
+            : overrideMapArray.length;
+        for (int i = 0; i < overlap; i++) {
           if (baseMapArray[i] is Map && overrideMapArray[i] is Map) {
             mergeMapsOneSided(baseMapArray[i], overrideMapArray[i]);
           } else {
@@ -161,25 +168,24 @@ void mergeMapsOneSided(
 /// // config['url'] is now 'https://api.example.com/api'
 /// ```
 void traverseAndProcess(
-  Map<String, Object> tree,
+  Map<String, dynamic> tree,
   bool Function(String) test,
   String Function(String) processor,
 ) {
-  tree.forEach((String oKey, Object oValue) {
-    if (oValue is Map<String, Object>) {
+  tree.forEach((String oKey, dynamic oValue) {
+    if (oValue is Map<String, dynamic>) {
       traverseAndProcess(oValue, test, processor);
     } else if (oValue is List) {
-      if (oValue is List<Map<String, Object>>) {
-        List<Map<String, Object>> mapArray = oValue;
-        for (int i = 0; i < mapArray.length; i++) {
-          traverseAndProcess(mapArray[i], test, processor);
-        }
-      } else if (oValue is List<String>) {
-        List<String> stringArray = oValue;
-        for (int i = 0; i < stringArray.length; i++) {
-          if (test(stringArray[i])) {
-            stringArray[i] = processor(stringArray[i]);
-          }
+      // Dispatch per element so mixed lists from jsonDecode (List<dynamic>
+      // holding both maps and strings) are handled. The previous typed checks
+      // (List<Map<String,Object>> / List<String>) never matched decoded JSON
+      // lists, silently skipping their contents (bug §45).
+      for (int i = 0; i < oValue.length; i++) {
+        final element = oValue[i];
+        if (element is Map<String, dynamic>) {
+          traverseAndProcess(element, test, processor);
+        } else if (element is String && test(element)) {
+          oValue[i] = processor(element);
         }
       }
     } else if (oValue is String) {
@@ -586,7 +592,7 @@ final RegExp _envVarPattern = RegExp(r'\$\{([^:}]+)(?::([^}]*))?\}');
 /// // config is now {'host': 'production.db.com', 'port': '5432'}
 /// ```
 void substituteEnvVars(
-  Map<String, Object> tree,
+  Map<String, dynamic> tree,
   Map<String, String> environment,
 ) {
   traverseAndProcess(

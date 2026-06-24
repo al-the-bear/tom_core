@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -375,6 +377,35 @@ void main() {
 
         expect(base['items'], equals([1, 2, 3]));
       });
+
+      test('should not throw when override array is shorter than base (§44)',
+          () {
+        // The base array has more map elements than the override — a normal
+        // "override only the first N" config-layering case. Before the fix the
+        // merge loop indexed overrideMapArray[i] past its end and threw
+        // RangeError.
+        final base = <String, dynamic>{
+          'servers': [
+            <String, Object>{'host': 'a', 'port': 1},
+            <String, Object>{'host': 'b', 'port': 2},
+            <String, Object>{'host': 'c', 'port': 3},
+          ],
+        };
+        final override = <String, dynamic>{
+          'servers': [
+            <String, Object>{'host': 'A'},
+          ],
+        };
+
+        expect(() => mergeMapsOneSided(base, override), returnsNormally);
+
+        final servers = base['servers'] as List;
+        expect(servers.length, equals(3));
+        expect(servers[0]['host'], equals('A')); // merged from override
+        expect(servers[0]['port'], equals(1)); // preserved from base
+        expect(servers[1]['host'], equals('b')); // untouched (no override)
+        expect(servers[2]['host'], equals('c')); // untouched (no override)
+      });
     });
 
     group('edge cases', () {
@@ -415,6 +446,52 @@ void main() {
         mergeMapsOneSided(base, override);
 
         expect(base['value'], isNull);
+      });
+    });
+
+    group('type-mismatch error branches', () {
+      test('keeps base scalar when override tries to merge a map over it', () {
+        final base = <String, dynamic>{'x': 5};
+        final override = <String, dynamic>{
+          'x': <String, dynamic>{'a': 1},
+        };
+
+        mergeMapsOneSided(base, override);
+
+        // Cannot merge a subtree into a scalar — base is left unchanged.
+        expect(base['x'], equals(5));
+      });
+
+      test('keeps base scalar when override tries to merge an array over it',
+          () {
+        final base = <String, dynamic>{'x': 5};
+        final override = <String, dynamic>{
+          'x': [1, 2],
+        };
+
+        mergeMapsOneSided(base, override);
+
+        // Cannot merge an array into a scalar — base is left unchanged.
+        expect(base['x'], equals(5));
+      });
+    });
+
+    group('decoded JSON inputs (§45)', () {
+      test('deep-merges nested maps coming from jsonDecode', () {
+        final base =
+            jsonDecode('{"db":{"host":"localhost","port":5432}}')
+                as Map<String, dynamic>;
+        final override =
+            jsonDecode('{"db":{"host":"prod"}}') as Map<String, dynamic>;
+
+        mergeMapsOneSided(base, override);
+
+        final db = base['db'] as Map;
+        expect(db['host'], equals('prod')); // overridden
+        // Before the fix the reified-type guard rejected the decoded
+        // Map<String, dynamic>, so the nested base map (and 'port') was
+        // discarded by the wholesale-replace fallback.
+        expect(db['port'], equals(5432));
       });
     });
   });
@@ -533,6 +610,97 @@ void main() {
         (((tree['a'] as Map)['b'] as Map)['c'] as Map)['d'],
         equals('resolved'),
       );
+    });
+
+    test('descends into maps and lists coming from jsonDecode (§45)', () {
+      final tree =
+          jsonDecode(r'{"a":{"b":"${X}"},"list":["${X}",{"c":"${X}"}]}')
+              as Map<String, dynamic>;
+
+      traverseAndProcess(
+        tree,
+        (s) => s.contains(r'${X}'),
+        (s) => s.replaceAll(r'${X}', 'Y'),
+      );
+
+      // Before the fix the reified-type guards rejected the decoded
+      // Map<String, dynamic> / List<dynamic>, so traversal never descended.
+      expect((tree['a'] as Map)['b'], equals('Y'));
+      expect((tree['list'] as List)[0], equals('Y'));
+      expect(((tree['list'] as List)[1] as Map)['c'], equals('Y'));
+    });
+  });
+
+  group('substituteEnvVars', () {
+    test('substitutes a present environment variable', () {
+      final tree = <String, dynamic>{'host': r'${DB_HOST}'};
+
+      substituteEnvVars(tree, {'DB_HOST': 'prod.db'});
+
+      expect(tree['host'], equals('prod.db'));
+    });
+
+    test('uses the default value when the variable is absent', () {
+      final tree = <String, dynamic>{'host': r'${DB_HOST:localhost}'};
+
+      substituteEnvVars(tree, {});
+
+      expect(tree['host'], equals('localhost'));
+    });
+
+    test('uses the default value when the variable is set but empty', () {
+      final tree = <String, dynamic>{'host': r'${DB_HOST:localhost}'};
+
+      substituteEnvVars(tree, {'DB_HOST': ''});
+
+      expect(tree['host'], equals('localhost'));
+    });
+
+    test('leaves the placeholder when absent with no default', () {
+      final tree = <String, dynamic>{'host': r'${DB_HOST}'};
+
+      substituteEnvVars(tree, {});
+
+      expect(tree['host'], equals(r'${DB_HOST}'));
+    });
+
+    test('resolves multiple placeholders within a single string', () {
+      final tree = <String, dynamic>{'pair': r'${A}-${B}'};
+
+      substituteEnvVars(tree, {'A': '1', 'B': '2'});
+
+      expect(tree['pair'], equals('1-2'));
+    });
+
+    test('substitutes within nested maps', () {
+      final tree = <String, dynamic>{
+        'db': <String, dynamic>{'host': r'${H}'},
+      };
+
+      substituteEnvVars(tree, {'H': 'x'});
+
+      expect((tree['db'] as Map)['host'], equals('x'));
+    });
+
+    test('substitutes within string lists', () {
+      final tree = <String, dynamic>{
+        'urls': <String>[r'${A}/1', r'${A}/2'],
+      };
+
+      substituteEnvVars(tree, {'A': 'host'});
+
+      expect(tree['urls'], equals(['host/1', 'host/2']));
+    });
+
+    test('substitutes inside decoded JSON config (§45)', () {
+      final tree =
+          jsonDecode(r'{"server":{"url":"${BASE}/api"},"tags":["${BASE}/x"]}')
+              as Map<String, dynamic>;
+
+      substituteEnvVars(tree, {'BASE': 'https://h'});
+
+      expect((tree['server'] as Map)['url'], equals('https://h/api'));
+      expect((tree['tags'] as List)[0], equals('https://h/x'));
     });
   });
 
