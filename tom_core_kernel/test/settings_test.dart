@@ -2,11 +2,18 @@ import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'settings_test.reflection.dart';
+
 // =============================================================================
 // TomGetSettingsMessage Tests
 // =============================================================================
 
 void main() {
+  // The settings DTOs are @tomReflector classes whose reason to exist is
+  // client<->server (de)serialization — register their mirrors so the JSON
+  // round-trip tests below can exercise it (tests §35a).
+  setUpAll(initializeReflection);
+
   group('TomGetSettingsMessage', () {
     group('constructor', () {
       test('should create message with default empty authorization token', () {
@@ -745,6 +752,112 @@ void main() {
         expect(result.clientCountry, equals('IT'));
         expect(result.clientLanguage, equals('it'));
         expect(result.clientTimeZone, equals('Europe/Rome'));
+      });
+    });
+
+    // Bug §51 / tests §35b: a default-constructed result documents its
+    // collections as "empty collections", and the idiomatic use is to mutate
+    // them in place. The defaults must therefore be fresh growable instances,
+    // not shared `const` immutables (which throw on add/[]=).
+    group('default-constructed in-place collection mutation', () {
+      test('texts is a mutable empty map by default', () {
+        final result = TomGetSettingsResult();
+        expect(result.texts, isEmpty);
+        result.texts['welcome'] = 'Hello';
+        expect(result.texts['welcome'], equals('Hello'));
+      });
+
+      test('config is a mutable empty map by default', () {
+        final result = TomGetSettingsResult();
+        expect(result.config, isEmpty);
+        result.config['theme'] = 'dark';
+        expect(result.config['theme'], equals('dark'));
+      });
+
+      test('groups/roles/entitlements/resourceKeys are mutable empty lists by default', () {
+        final result = TomGetSettingsResult();
+
+        result.groups.add('staff');
+        result.roles.add('admin');
+        result.entitlements.add('read');
+        result.resourceKeys.add('dashboard');
+
+        expect(result.groups, equals(['staff']));
+        expect(result.roles, equals(['admin']));
+        expect(result.entitlements, equals(['read']));
+        expect(result.resourceKeys, equals(['dashboard']));
+      });
+
+      test('two default-constructed results do not share collection state', () {
+        // A shared const (or any shared) default would leak mutations across
+        // instances; fresh literals must give each instance its own.
+        final a = TomGetSettingsResult();
+        final b = TomGetSettingsResult();
+
+        a.roles.add('admin');
+        a.texts['k'] = 'v';
+
+        expect(b.roles, isEmpty);
+        expect(b.texts, isEmpty);
+      });
+    });
+
+    // Tests §35a: the DTOs exist to be serialized; guard their reflection
+    // (de)serialization with full round-trips so a regression can't pass green.
+    group('JSON serialization round-trip', () {
+      test('TomGetSettingsResult survives serialize -> deserialize', () {
+        final original = TomGetSettingsResult(
+          texts: {'welcome': 'Hello, World!'},
+          config: {'theme': 'dark', 'maxItems': 50},
+          groups: ['staff'],
+          roles: ['admin', 'editor'],
+          entitlements: ['read', 'write'],
+          resourceKeys: ['dashboard', 'reports'],
+          organization: 'acme-corp',
+          process: 'checkout',
+          application: 'portal',
+          country: 'US',
+          language: 'en',
+          clientCountry: 'GB',
+          clientLanguage: 'en',
+          clientTimeZone: 'America/New_York',
+        );
+
+        final json = tomReflectionInfo.convertToJsonString(original);
+        final mirror =
+            tomReflector.reflectType(TomGetSettingsResult) as ClassMirror;
+        final restored = tomReflectionInfo
+            .createInstanceFromJsonString<TomGetSettingsResult>(mirror, json);
+
+        expect(restored, isNotNull);
+        expect(restored!.texts, equals({'welcome': 'Hello, World!'}));
+        expect(restored.config, equals({'theme': 'dark', 'maxItems': 50}));
+        expect(restored.groups, equals(['staff']));
+        expect(restored.roles, equals(['admin', 'editor']));
+        expect(restored.entitlements, equals(['read', 'write']));
+        expect(restored.resourceKeys, equals(['dashboard', 'reports']));
+        expect(restored.organization, equals('acme-corp'));
+        expect(restored.process, equals('checkout'));
+        expect(restored.application, equals('portal'));
+        expect(restored.country, equals('US'));
+        expect(restored.language, equals('en'));
+        expect(restored.clientCountry, equals('GB'));
+        expect(restored.clientLanguage, equals('en'));
+        expect(restored.clientTimeZone, equals('America/New_York'));
+      });
+
+      test('TomGetSettingsMessage survives serialize -> deserialize', () {
+        final original = TomGetSettingsMessage()
+          ..authorizationToken = 'Bearer xyz123';
+
+        final json = tomReflectionInfo.convertToJsonString(original);
+        final mirror =
+            tomReflector.reflectType(TomGetSettingsMessage) as ClassMirror;
+        final restored = tomReflectionInfo
+            .createInstanceFromJsonString<TomGetSettingsMessage>(mirror, json);
+
+        expect(restored, isNotNull);
+        expect(restored!.authorizationToken, equals('Bearer xyz123'));
       });
     });
 

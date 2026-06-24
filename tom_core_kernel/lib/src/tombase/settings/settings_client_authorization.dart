@@ -211,15 +211,17 @@ class TomGetSettingsResult {
 
   /// Creates a new [TomGetSettingsResult] instance.
   ///
-  /// All collection parameters default to empty collections, and
-  /// string parameters default to null or empty strings.
+  /// All collection parameters default to fresh, empty **mutable** collections
+  /// (a new instance per result), so callers can mutate them in place — e.g.
+  /// `result.roles.add(...)` or `result.config['k'] = v`. String parameters
+  /// default to null or empty strings.
   TomGetSettingsResult({
-    this.texts = const <String, Object?>{},
-    this.config = const <String, Object?>{},
-    this.groups = const <String>[],
-    this.roles = const <String>[],
-    this.entitlements = const <String>[],
-    this.resourceKeys = const <String>[],
+    Map<String, Object?>? texts,
+    Map<String, Object?>? config,
+    List<String>? groups,
+    List<String>? roles,
+    List<String>? entitlements,
+    List<String>? resourceKeys,
     this.organization,
     this.process,
     this.application,
@@ -228,5 +230,10 @@ class TomGetSettingsResult {
     this.clientLanguage,
     this.clientCountry,
     this.clientTimeZone,
-  });
+  })  : texts = texts ?? <String, Object?>{},
+        config = config ?? <String, Object?>{},
+        groups = groups ?? <String>[],
+        roles = roles ?? <String>[],
+        entitlements = entitlements ?? <String>[],
+        resourceKeys = resourceKeys ?? <String>[];
 }
