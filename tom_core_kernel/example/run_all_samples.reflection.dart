@@ -445,8 +445,8 @@ final _data = <r.Reflection, r.ReflectorData>{
           r'': (bool b) =>
               ({
                 id = -1,
-                roleName,
-                resourceKey,
+                roleName = '',
+                resourceKey = '',
                 accessLevel = prefix33.TomAuthState.none,
               }) => b
               ? prefix3.TomResourceGrant(
@@ -27319,7 +27319,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       ),
       r.ParameterMirrorImpl(
         r'roleName',
-        134358022,
+        134364166,
         477,
         const prefix0.TomReflector(),
         101,
@@ -27327,12 +27327,12 @@ final _data = <r.Reflection, r.ReflectorData>{
         101,
         const <int>[],
         const [],
-        null,
+        '',
         #roleName,
       ),
       r.ParameterMirrorImpl(
         r'resourceKey',
-        134358022,
+        134364166,
         477,
         const prefix0.TomReflector(),
         101,
@@ -27340,7 +27340,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         101,
         const <int>[],
         const [],
-        null,
+        '',
         #resourceKey,
       ),
       r.ParameterMirrorImpl(
