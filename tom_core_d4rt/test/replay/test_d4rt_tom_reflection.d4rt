@@ -76,6 +76,58 @@ verifyEquals(StringInvocationKind.constructor.name, 'constructor', 'StringInvoca
 verifyLength(StringInvocationKind.values, 4, 'StringInvocationKind has 4 values');
 
 # =============================================================================
+# Test: *MetaCapability constructors (take a Type metadataType)
+# These const value markers carry a metadata Type; construct each + assert the
+# metadataType getter is reachable (the Type round-trips through the bridge).
+# =============================================================================
+
+var iMeta = InstanceInvokeMetaCapability(String);
+verifyNotNull(iMeta, 'InstanceInvokeMetaCapability created');
+verifyNotNull(iMeta.metadataType, 'InstanceInvokeMetaCapability metadataType getter');
+
+var sMeta = StaticInvokeMetaCapability(int);
+verifyNotNull(sMeta, 'StaticInvokeMetaCapability created');
+verifyNotNull(sMeta.metadataType, 'StaticInvokeMetaCapability metadataType getter');
+
+var tMeta = TopLevelInvokeMetaCapability(bool);
+verifyNotNull(tMeta, 'TopLevelInvokeMetaCapability created');
+verifyNotNull(tMeta.metadataType, 'TopLevelInvokeMetaCapability metadataType getter');
+
+var nMeta = NewInstanceMetaCapability(double);
+verifyNotNull(nMeta, 'NewInstanceMetaCapability created');
+verifyNotNull(nMeta.metadataType, 'NewInstanceMetaCapability metadataType getter');
+
+# =============================================================================
+# Test: the 10 previously-unreferenced capability singletons
+# Const markers registered as global variables; pin each for existence so a
+# generator regression dropping any of them fails the replay.
+# =============================================================================
+
+verifyNotNull(typeRelationsCapability, 'typeRelationsCapability singleton exists');
+verifyNotNull(reflectedTypeCapability, 'reflectedTypeCapability singleton exists');
+verifyNotNull(libraryDependenciesCapability, 'libraryDependenciesCapability singleton exists');
+verifyNotNull(delegateCapability, 'delegateCapability singleton exists');
+verifyNotNull(subtypeQuantifyCapability, 'subtypeQuantifyCapability singleton exists');
+verifyNotNull(superclassQuantifyCapability, 'superclassQuantifyCapability singleton exists');
+verifyNotNull(typeAnnotationQuantifyCapability, 'typeAnnotationQuantifyCapability singleton exists');
+verifyNotNull(typeAnnotationDeepQuantifyCapability, 'typeAnnotationDeepQuantifyCapability singleton exists');
+verifyNotNull(correspondingSetterQuantifyCapability, 'correspondingSetterQuantifyCapability singleton exists');
+verifyNotNull(admitSubtypeCapability, 'admitSubtypeCapability singleton exists');
+
+# =============================================================================
+# Test: the 5 global error-constructor functions
+# These functions THROW their reflection error (they do not return it), so drive
+# each through verifyThrows. Named arguments passed as null (d4rt has no Symbol
+# literal), positional arguments as an empty list.
+# =============================================================================
+
+verifyThrows(() => reflectionNoSuchInvokableError('recv', 'doThing', [], null, StringInvocationKind.method), 'reflectionNoSuchInvokableError throws');
+verifyThrows(() => reflectionNoSuchMethodError('recv', 'doThing', [], null), 'reflectionNoSuchMethodError throws');
+verifyThrows(() => reflectionNoSuchGetterError('recv', 'value', [], null), 'reflectionNoSuchGetterError throws');
+verifyThrows(() => reflectionNoSuchSetterError('recv', 'value', [], null), 'reflectionNoSuchSetterError throws');
+verifyThrows(() => reflectionNoSuchConstructorError('recv', 'Widget', [], null), 'reflectionNoSuchConstructorError throws');
+
+# =============================================================================
 # Test: Error types
 # =============================================================================
 

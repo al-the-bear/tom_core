@@ -54,7 +54,76 @@ verifyEquals(ds.service, 'ledger', 'DiscoveredServer service getter');
 verifyEquals(ds.port, 8080, 'DiscoveredServer port getter');
 
 # =============================================================================
-# Test: Classes exist (4 tests)
+# Test: LedgerData (operation-state value carrier)
+# =============================================================================
+
+var ledgerData = LedgerData(operationId: 'op-1', initiatorId: 'init-1');
+verifyEquals(ledgerData.operationId, 'op-1', 'LedgerData operationId');
+verifyEquals(ledgerData.initiatorId, 'init-1', 'LedgerData initiatorId');
+verifyEquals(ledgerData.aborted, false, 'LedgerData default aborted');
+verifyNotNull(ledgerData.toJson(), 'LedgerData toJson');
+
+# =============================================================================
+# Test: TempResource (value carrier)
+# =============================================================================
+
+var tempRes = TempResource(path: '/tmp/x', owner: 1234, registeredAt: DateTime.now());
+verifyEquals(tempRes.path, '/tmp/x', 'TempResource path');
+verifyEquals(tempRes.owner, 1234, 'TempResource owner');
+
+# =============================================================================
+# Test: HeartbeatResult.noLedger factory + getters
+# =============================================================================
+
+var hbResult = HeartbeatResult.noLedger();
+verifyNotNull(hbResult, 'HeartbeatResult.noLedger created');
+verifyEquals(hbResult.ledgerExists, false, 'HeartbeatResult.noLedger ledgerExists false');
+
+# =============================================================================
+# Test: SyncResult (all-default value carrier + derived getters)
+# =============================================================================
+
+var syncResult = SyncResult();
+verifyEquals(syncResult.operationFailed, false, 'SyncResult default operationFailed');
+verifyEquals(syncResult.allSucceeded, true, 'SyncResult empty allSucceeded');
+verifyEquals(syncResult.successfulCalls.length, 0, 'SyncResult empty successfulCalls');
+
+# =============================================================================
+# Test: OperationFailedInfo + OperationFailedException
+# =============================================================================
+
+var failInfo = OperationFailedInfo(operationId: 'op-2', failedAt: DateTime.now(), reason: 'crash');
+verifyEquals(failInfo.operationId, 'op-2', 'OperationFailedInfo operationId');
+verifyEquals(failInfo.reason, 'crash', 'OperationFailedInfo reason');
+
+var failEx = OperationFailedException(failInfo);
+verifyNotNull(failEx, 'OperationFailedException created');
+verifyEquals(failEx.info.operationId, 'op-2', 'OperationFailedException holds its info');
+
+# =============================================================================
+# Test: Exceptions (RemoteLedgerException + tom_basics_network re-exports)
+# =============================================================================
+
+var remoteEx = RemoteLedgerException('upstream 500', statusCode: 500);
+verifyEquals(remoteEx.message, 'upstream 500', 'RemoteLedgerException message');
+verifyEquals(remoteEx.statusCode, 500, 'RemoteLedgerException statusCode');
+
+var retryExhausted = RetryExhaustedException(lastError: 'boom', attempts: 4);
+verifyEquals(retryExhausted.attempts, 4, 'RetryExhaustedException attempts');
+
+var discFailed = DiscoveryFailedException('no ledger server');
+verifyEquals(discFailed.message, 'no ledger server', 'DiscoveryFailedException message');
+
+# =============================================================================
+# Test: DiscoveryOptions (re-exported config value carrier)
+# =============================================================================
+
+var discOpts = DiscoveryOptions();
+verifyEquals(discOpts.port, 19880, 'DiscoveryOptions default port');
+verifyEquals(discOpts.scanSubnet, true, 'DiscoveryOptions default scanSubnet');
+
+# =============================================================================
+# Test: Runtime entry points exist (integration-only: server/socket/call model)
 # =============================================================================
 
 verifyNotNull(Ledger, 'Ledger class exists');

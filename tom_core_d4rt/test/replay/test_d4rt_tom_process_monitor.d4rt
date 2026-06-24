@@ -122,7 +122,95 @@ verifyEquals(ds.service, 'pm', 'DiscoveredServer service getter');
 verifyEquals(ds.port, 8080, 'DiscoveredServer port getter');
 
 # =============================================================================
-# Test: Classes exist
+# Test: ProcessStatus (status snapshot value carrier)
+# =============================================================================
+
+var status = ProcessStatus(id: 'p1', name: 'web', state: ProcessState.running, enabled: true, autostart: true, isRemote: false);
+verifyNotNull(status, 'ProcessStatus created');
+verifyEquals(status.id, 'p1', 'ProcessStatus id');
+verifyEquals(status.state, ProcessState.running, 'ProcessStatus state');
+verifyEquals(status.restartAttempts, 0, 'ProcessStatus default restartAttempts');
+verifyNotNull(status.toJson(), 'ProcessStatus toJson');
+
+# =============================================================================
+# Test: MonitorStatus (monitor snapshot value carrier)
+# =============================================================================
+
+var monStatus = MonitorStatus(instanceId: 'm1', pid: 4321, startedAt: DateTime.now(), uptime: 1000, state: 'running', standaloneMode: true, managedProcessCount: 3, runningProcessCount: 2);
+verifyNotNull(monStatus, 'MonitorStatus created');
+verifyEquals(monStatus.instanceId, 'm1', 'MonitorStatus instanceId');
+verifyEquals(monStatus.managedProcessCount, 3, 'MonitorStatus managedProcessCount');
+
+# =============================================================================
+# Test: RemoteAccessConfig (all-default config value carrier)
+# =============================================================================
+
+var remoteCfg = RemoteAccessConfig();
+verifyNotNull(remoteCfg, 'RemoteAccessConfig created with defaults');
+verifyEquals(remoteCfg.startRemoteAccess, false, 'RemoteAccessConfig default startRemoteAccess');
+verifyEquals(remoteCfg.remotePort, 19881, 'RemoteAccessConfig default remotePort');
+verifyEquals(remoteCfg.allowRemoteRegister, true, 'RemoteAccessConfig default allowRemoteRegister');
+verifyNotNull(RemoteAccessConfig.defaultConfig, 'RemoteAccessConfig.defaultConfig static');
+
+# =============================================================================
+# Test: PartnerDiscoveryConfig (config value carrier + static factory)
+# =============================================================================
+
+var partnerCfg = PartnerDiscoveryConfig();
+verifyNotNull(partnerCfg, 'PartnerDiscoveryConfig created with defaults');
+verifyEquals(partnerCfg.discoveryOnStartup, true, 'PartnerDiscoveryConfig default discoveryOnStartup');
+var partnerCfg2 = PartnerDiscoveryConfig.defaultForInstance('inst-1');
+verifyNotNull(partnerCfg2, 'PartnerDiscoveryConfig.defaultForInstance');
+
+# =============================================================================
+# Test: AlivenessServerConfig (config value carrier)
+# =============================================================================
+
+var aliveCfg = AlivenessServerConfig();
+verifyEquals(aliveCfg.enabled, true, 'AlivenessServerConfig default enabled');
+verifyEquals(aliveCfg.port, 19883, 'AlivenessServerConfig default port');
+
+# =============================================================================
+# Test: WatcherInfo (value carrier)
+# =============================================================================
+
+var watcher = WatcherInfo(watcherPid: 99, watcherInstanceId: 'w1', watcherAlivenessPort: 19884);
+verifyEquals(watcher.watcherPid, 99, 'WatcherInfo watcherPid');
+verifyEquals(watcher.watcherInstanceId, 'w1', 'WatcherInfo watcherInstanceId');
+
+# =============================================================================
+# Test: LockInfo (lock metadata value carrier)
+# =============================================================================
+
+var lockInfo = LockInfo(lockedBy: 'inst-1', lockedAt: DateTime.now(), pid: 1234, operation: 'register');
+verifyEquals(lockInfo.lockedBy, 'inst-1', 'LockInfo lockedBy');
+verifyEquals(lockInfo.operation, 'register', 'LockInfo operation');
+
+# =============================================================================
+# Test: RegistryLock (construct + getters; withLock is IO, not driven)
+# =============================================================================
+
+var regLock = RegistryLock(lockPath: '/tmp/reg.lock', instanceId: 'inst-1');
+verifyEquals(regLock.lockPath, '/tmp/reg.lock', 'RegistryLock lockPath');
+verifyEquals(regLock.instanceId, 'inst-1', 'RegistryLock instanceId');
+
+# =============================================================================
+# Test: DiscoveryOptions + exceptions (tom_basics_network re-exports)
+# =============================================================================
+
+var discOpts = DiscoveryOptions();
+verifyEquals(discOpts.port, 19880, 'DiscoveryOptions default port');
+verifyEquals(discOpts.scanSubnet, true, 'DiscoveryOptions default scanSubnet');
+
+var retryExhausted = RetryExhaustedException(lastError: 'boom', attempts: 3);
+verifyEquals(retryExhausted.attempts, 3, 'RetryExhaustedException attempts');
+verifyEquals(retryExhausted.lastError, 'boom', 'RetryExhaustedException lastError');
+
+var discFailed = DiscoveryFailedException('no server found');
+verifyEquals(discFailed.message, 'no server found', 'DiscoveryFailedException message');
+
+# =============================================================================
+# Test: Runtime entry points exist (integration-only: scan/serve/spawn IO)
 # =============================================================================
 
 verifyNotNull(ProcessRegistry, 'ProcessRegistry class exists');
