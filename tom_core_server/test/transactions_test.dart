@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
@@ -83,8 +81,7 @@ void main() {
         () async {
       final (txn, _) = TomTransactionManager.startTransaction();
       final p = _RecordingParticipant('a');
-      txn.registerParticipant(p);
-      await Future<void>.delayed(Duration.zero); // let startTransaction() run
+      await txn.registerParticipant(p);
       final ok = await txn.commitTransaction();
       expect(ok, isTrue);
       expect(p.calls, ['start', 'commit', 'end']);
@@ -95,8 +92,7 @@ void main() {
     test('a vetoing participant turns the commit into a rollback', () async {
       final (txn, _) = TomTransactionManager.startTransaction();
       final p = _RecordingParticipant('a', vetoCommit: true);
-      txn.registerParticipant(p);
-      await Future<void>.delayed(Duration.zero);
+      await txn.registerParticipant(p);
       await txn.commitTransaction();
       expect(p.calls, contains('rollback'));
       expect(TomTransactionManager.getCurrentTransaction(), isNull);
@@ -108,8 +104,7 @@ void main() {
         () async {
       final (txn, _) = TomTransactionManager.startTransaction();
       final p = _RecordingParticipant('a');
-      txn.registerParticipant(p);
-      await Future<void>.delayed(Duration.zero);
+      await txn.registerParticipant(p);
       final ok = await txn.rollbackTransaction();
       expect(ok, isTrue);
       expect(p.calls, ['start', 'rollback', 'end']);
@@ -122,9 +117,8 @@ void main() {
     test('deduplicates participants by id, enlisting only once', () async {
       final (txn, _) = TomTransactionManager.startTransaction();
       final p = _RecordingParticipant('same');
-      txn.registerParticipant(p);
-      txn.registerParticipant(p);
-      await Future<void>.delayed(Duration.zero);
+      await txn.registerParticipant(p);
+      await txn.registerParticipant(p);
       // startTransaction() called exactly once despite two registrations.
       expect(p.calls.where((c) => c == 'start').length, 1);
     });
@@ -132,17 +126,17 @@ void main() {
     test('rejects enlistment once the transaction has concluded', () async {
       final (txn, _) = TomTransactionManager.startTransaction();
       await txn.commitTransaction();
-      // registerParticipant is `void`/`async`, so its guard throws
-      // asynchronously; observe it through the zone's uncaught-error handler.
-      Object? captured;
-      await runZonedGuarded(() async {
-        txn.registerParticipant(_RecordingParticipant('late'));
-        await Future<void>.delayed(Duration.zero);
-      }, (error, stack) => captured = error);
-      expect(captured, isA<TomTransactionException>());
-      expect(
-        (captured as TomTransactionException).key,
-        'transaction_manager.register_participant.transaction_not_running',
+      // registerParticipant returns a Future, so the guard's exception surfaces
+      // to the awaiting caller and is directly catchable.
+      await expectLater(
+        txn.registerParticipant(_RecordingParticipant('late')),
+        throwsA(
+          isA<TomTransactionException>().having(
+            (e) => e.key,
+            'key',
+            'transaction_manager.register_participant.transaction_not_running',
+          ),
+        ),
       );
     });
   });

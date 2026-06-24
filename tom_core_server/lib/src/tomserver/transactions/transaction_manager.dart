@@ -69,11 +69,12 @@ class TomTransaction {
   ///
   /// Participants are deduplicated by [TomTransactionParticipant.getParticipantId];
   /// registering an already-enlisted id is a no-op, so callers may register
-  /// freely without tracking membership. Throws [TomTransactionException] if the
-  /// transaction is no longer running. (Declared `void`/`async`: the
-  /// participant's `startTransaction()` future is started but not surfaced to
-  /// the caller.)
-  void registerParticipant(TomTransactionParticipant ttp) async {
+  /// freely without tracking membership. The returned future completes once the
+  /// participant's `startTransaction()` has run, so callers can `await`
+  /// enlistment and observe its result. Throws [TomTransactionException] if the
+  /// transaction is no longer running; a failure thrown by `startTransaction()`
+  /// surfaces through the returned future.
+  Future<void> registerParticipant(TomTransactionParticipant ttp) async {
     if (!_isRunning) {
       throw TomTransactionException(
         "transaction_manager.register_participant.transaction_not_running",
