@@ -25,6 +25,7 @@ export 'src/llm/llm.dart';
 export 'src/map_field_reader.dart';
 export 'src/mcp_auth/mcp_auth.dart';
 export 'src/path_scope.dart';
+export 'src/path_scope_io.dart';
 export 'src/placeholders/placeholders.dart';
 export 'src/plan_ordering.dart';
 export 'src/procedure_rerank.dart';

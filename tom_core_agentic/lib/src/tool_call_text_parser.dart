@@ -181,14 +181,24 @@ List<ParsedToolCall> _jsonCalls(String text) {
 List<ParsedToolCall> _scanBareJsonCalls(String text) {
   final cleaned = _stripFence(text);
   final out = <ParsedToolCall>[];
+  // Bound the total scan work to keep this linear in the input length
+  // (security §5). A balanced span the loop matches is jumped past, so a
+  // well-formed input is scanned ~once and stays far under budget. The
+  // pathological case is a long run of *unbalanced* openers: each one makes
+  // `_matchBalanced` sweep to the end of the string and the outer loop then
+  // advances a single character and re-sweeps — Θ(n²), enough to peg the
+  // isolate on a few hundred KB of `{`. The budget caps that redundant work;
+  // once spent the scan bails with whatever it has found.
+  var budget = cleaned.length * 4 + 64;
   var i = 0;
-  while (i < cleaned.length) {
+  while (i < cleaned.length && budget > 0) {
     final c = cleaned[i];
     if (c == '{' || c == '[') {
-      final end = _matchBalanced(cleaned, i);
-      if (end != null) {
-        out.addAll(_interpretJsonPayload(cleaned.substring(i, end + 1)));
-        i = end + 1;
+      final span = _matchBalanced(cleaned, i, budget);
+      budget -= span.scanned;
+      if (span.end != null) {
+        out.addAll(_interpretJsonPayload(cleaned.substring(i, span.end! + 1)));
+        i = span.end! + 1;
         continue;
       }
     }
@@ -197,14 +207,20 @@ List<ParsedToolCall> _scanBareJsonCalls(String text) {
   return out;
 }
 
-/// Returns the index of the delimiter that closes the `{`/`[` at [start], or
-/// null when the span is unbalanced or its brackets mismatch. String contents
-/// (single or double quoted, with backslash escapes) are skipped so a `{`, `}`,
-/// `[` or `]` inside a value does not affect the depth.
-int? _matchBalanced(String s, int start) {
+/// Scans the `{`/`[` span opening at [start] for its matching close.
+///
+/// Returns `(end: i, scanned: n)` when the delimiter at index `i` balances the
+/// span, or `(end: null, scanned: n)` when the span is unbalanced, its brackets
+/// mismatch, or the [maxScan] character budget is exhausted before it balances.
+/// `scanned` is always how many characters were examined, so the caller can
+/// debit a shared work budget and keep the overall scan linear (security §5).
+/// String contents (single or double quoted, with backslash escapes) are
+/// skipped so a `{`, `}`, `[` or `]` inside a value does not affect the depth.
+({int? end, int scanned}) _matchBalanced(String s, int start, int maxScan) {
   final closers = <String>[];
   String? quote;
-  for (var i = start; i < s.length; i++) {
+  var i = start;
+  for (; i < s.length && (i - start) < maxScan; i++) {
     final c = s[i];
     if (quote != null) {
       if (c == r'\') {
@@ -221,11 +237,13 @@ int? _matchBalanced(String s, int start) {
     } else if (c == '[') {
       closers.add(']');
     } else if (c == '}' || c == ']') {
-      if (closers.isEmpty || closers.removeLast() != c) return null;
-      if (closers.isEmpty) return i;
+      if (closers.isEmpty || closers.removeLast() != c) {
+        return (end: null, scanned: i - start + 1);
+      }
+      if (closers.isEmpty) return (end: i, scanned: i - start + 1);
     }
   }
-  return null;
+  return (end: null, scanned: i - start);
 }
 
 List<ParsedToolCall> _interpretJsonPayload(String raw) {

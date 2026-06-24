@@ -83,4 +83,45 @@ void main() {
       expect(scope.admits('../outside.txt'), isFalse);
     });
   });
+
+  // Security §1 / tests §21: the lexical [PathScope.admits] cannot see a
+  // symlink whose path is contained but whose *target* escapes every root.
+  // `PathScopeIo.admitsCanonical` resolves symlinks before the containment
+  // check, so the escape is rejected. These tests stand up a real symlink to
+  // make the lexical/canonical distinction concrete.
+  group('PathScopeIo — symlink-aware containment (§21)', () {
+    test('a symlink inside the root pointing outside is rejected', () {
+      final base = Directory.systemTemp.createTempSync('path_scope_io_');
+      addTearDown(() => base.deleteSync(recursive: true));
+      final root = Directory(p.join(base.path, 'root'))..createSync();
+      final outside = Directory(p.join(base.path, 'outside'))..createSync();
+      File(p.join(outside.path, 'secret.txt')).writeAsStringSync('top secret');
+      // A symlink *inside* the root whose target is the sibling `outside` dir.
+      Link(p.join(root.path, 'escape')).createSync(outside.path);
+
+      final scope = PathScope([root.path]);
+      // Lexically the link's path is contained — the blind check admits it.
+      expect(scope.admits('escape/secret.txt'), isTrue);
+      // Following the link escapes the root — the canonical check rejects it.
+      expect(scope.admitsCanonical('escape/secret.txt'), isFalse);
+      expect(scope.resolveCanonical('escape/secret.txt'), isEmpty);
+    });
+
+    test('a real file genuinely inside the root is still admitted', () {
+      final root = Directory.systemTemp.createTempSync('path_scope_io_ok_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'inside.txt')).writeAsStringSync('x');
+      final scope = PathScope([root.path]);
+      expect(scope.admitsCanonical('inside.txt'), isTrue);
+      expect(scope.resolveCanonical('inside.txt'), hasLength(1));
+    });
+
+    test('a non-existent path under the root is admitted (create-ahead)', () {
+      // Canonicalisation must not reject a path that simply does not exist yet.
+      final root = Directory.systemTemp.createTempSync('path_scope_io_new_');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final scope = PathScope([root.path]);
+      expect(scope.admitsCanonical('subdir/new_file.txt'), isTrue);
+    });
+  });
 }

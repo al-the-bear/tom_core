@@ -24,6 +24,18 @@ typedef ScopedPath = ({String root, String path});
 /// roots form a union, not an intersection. A `..` segment, an absolute path,
 /// or any other escape simply drops out of the roots it leaves; only a path
 /// that escapes *every* root is fully out of scope.
+///
+/// ## Lexical only — symlinks are NOT followed
+///
+/// [resolve] and [admits] are **purely lexical**: they normalise `..` and
+/// absolute segments with `package:path` and never touch the filesystem. This
+/// keeps the type web-safe and its answer stable on paths that do not yet
+/// exist — but it means a **symlink inside a root whose target points outside
+/// every root is admitted** (lexically the link's path is contained; following
+/// it is not). When the scope guards real filesystem access against untrusted
+/// input, use the filesystem-aware `resolveCanonical` / `admitsCanonical`
+/// (extension `PathScopeIo` in `path_scope_io.dart`), which resolve symlinks
+/// before the containment check and reject such an escape (security §1).
 final class PathScope {
   /// The normalised, absolute roots, in their configured priority order.
   final List<String> roots;
@@ -47,6 +59,9 @@ final class PathScope {
   /// Hits keep the roots' configured order, so the first hit is the
   /// earliest-priority root that admits the path (the write target, the first
   /// read candidate). An empty result means the path escaped every root.
+  ///
+  /// **Lexical only** — does not follow symlinks; see the class doc and
+  /// `resolveCanonical` (extension `PathScopeIo`) for the symlink-safe variant.
   List<ScopedPath> resolve(String relative) {
     final hits = <ScopedPath>[];
     for (final root in roots) {
@@ -59,5 +74,8 @@ final class PathScope {
   }
 
   /// Whether [relative] stays within at least one root.
+  ///
+  /// **Lexical only** — does not follow symlinks; use `admitsCanonical`
+  /// (extension `PathScopeIo`) to reject a symlink that escapes its root.
   bool admits(String relative) => resolve(relative).isNotEmpty;
 }

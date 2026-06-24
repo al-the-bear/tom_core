@@ -58,14 +58,7 @@ class HttpDate {
     if (timeParts.length != 3) {
       throw FormatException('Invalid HTTP-date time: $input');
     }
-    return DateTime.utc(
-      year,
-      month,
-      day,
-      int.parse(timeParts[0]),
-      int.parse(timeParts[1]),
-      int.parse(timeParts[2]),
-    );
+    return _buildUtc(input, year, month, day, timeParts);
   }
 
   static DateTime _parseAsctime(String input) {
@@ -80,17 +73,46 @@ class HttpDate {
       throw FormatException('Invalid HTTP-date asctime time: $input');
     }
     final year = int.parse(tokens[4]);
-    return DateTime.utc(
-      year,
-      month,
-      day,
-      int.parse(timeParts[0]),
-      int.parse(timeParts[1]),
-      int.parse(timeParts[2]),
-    );
+    return _buildUtc(input, year, month, day, timeParts);
+  }
+
+  /// Range-validates the calendar/clock fields and assembles a UTC [DateTime].
+  ///
+  /// `DateTime.utc` *silently normalises* out-of-range components (e.g. day 32
+  /// rolls into the next month, hour 25 into the next day), so a malformed
+  /// header would otherwise parse to a plausible-but-wrong instant instead of
+  /// being rejected (bug §32). Each field is bounded here so an invalid header
+  /// throws [FormatException] rather than yielding a misleading date.
+  static DateTime _buildUtc(
+    String input,
+    int year,
+    int month,
+    int day,
+    List<String> timeParts,
+  ) {
+    final hour = int.parse(timeParts[0]);
+    final minute = int.parse(timeParts[1]);
+    final second = int.parse(timeParts[2]);
+    _checkRange(input, 'day', day, 1, 31);
+    _checkRange(input, 'hour', hour, 0, 23);
+    _checkRange(input, 'minute', minute, 0, 59);
+    // 60 admits a leap second, which RFC 7231 § 7.1.1.1 permits.
+    _checkRange(input, 'second', second, 0, 60);
+    return DateTime.utc(year, month, day, hour, minute, second);
+  }
+
+  static void _checkRange(String input, String field, int value, int lo, int hi) {
+    if (value < lo || value > hi) {
+      throw FormatException('Invalid HTTP-date $field ($value): $input');
+    }
   }
 
   static int _monthOrThrow(String token) {
+    // A short month token (e.g. truncated `Oc`) must be a FormatException, not
+    // a RangeError from `substring(0, 3)` on a <3-char string (bug §31).
+    if (token.length < 3) {
+      throw FormatException('Unknown HTTP-date month: $token');
+    }
     final m = _months[token.toLowerCase().substring(0, 3)];
     if (m == null) {
       throw FormatException('Unknown HTTP-date month: $token');

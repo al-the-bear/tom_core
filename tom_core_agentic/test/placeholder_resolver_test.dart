@@ -221,4 +221,57 @@ void main() {
       expect(r.resolveSync(r'price $5'), r'price $5');
     });
   });
+
+  // Characterization tests (tests §22). These pin behaviours the resolver and
+  // its failure types already implement so a future refactor cannot silently
+  // change them: the typed wire codes, the brace-balanced expression scan, and
+  // the unterminated-`${{` passthrough. No production change accompanies them.
+  group('PlaceholderResolver — typed failure wire codes (§22)', () {
+    test('recursion failure carries its code and a descriptive message', () {
+      const e = PlaceholderRecursionException(
+        maxRecursion: 3,
+        residue: r'${loop}',
+      );
+      expect(e.code, placeholderRecursionExceededCode);
+      expect(e.message, allOf(contains('3'), contains('residue')));
+      expect(e.toString(), contains(e.message));
+    });
+
+    test('unresolved failure carries its code and names the reference', () {
+      const e = PlaceholderUnresolvedException('topic');
+      expect(e.code, placeholderUnresolvedCode);
+      expect(e.message, contains('topic'));
+      expect(e.toString(), contains(e.message));
+    });
+
+    test('expression failure carries its code and names the expression', () {
+      final e = PlaceholderExpressionException(
+        expression: 'x + 1',
+        cause: StateError('boom'),
+      );
+      expect(e.code, placeholderExpressionFailedCode);
+      expect(e.message, allOf(contains('x + 1'), contains('boom')));
+      expect(e.toString(), contains(e.message));
+    });
+  });
+
+  group('PlaceholderResolver — expression brace balancing (§22)', () {
+    test(r'a ${{ … }} body with a nested { } is captured whole', () async {
+      // The scan must track the inner `{ }` of a map literal so the closing
+      // `}}` is the *outer* one, not the inner brace.
+      final r = PlaceholderResolver(
+        environment: const {},
+        expressions: _FakeExpressions(),
+      );
+      // The fake renders an unbound body as `<body>`; the body must arrive as
+      // the full `{'a': 1}`, proving the nested brace did not close early.
+      expect(await r.resolve(r"pre ${{ {'a': 1} }} post"),
+          r"pre <{'a': 1}> post");
+    });
+
+    test(r'an unterminated ${{ (no closing }}) is left verbatim', () {
+      final r = PlaceholderResolver(environment: const {});
+      expect(r.resolveSync(r'cost ${{ 1 + 1 here'), r'cost ${{ 1 + 1 here');
+    });
+  });
 }

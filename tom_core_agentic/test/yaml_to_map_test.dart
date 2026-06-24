@@ -165,6 +165,50 @@ list:
     });
   });
 
+  // Security §4 / tests §55: `package:yaml` resolves aliases by sharing the
+  // *same* node object, so a "billion-laughs" document (each anchor referencing
+  // the previous one a handful of times) is tiny on the wire but expands
+  // exponentially when `_toPlain` deep-copies every alias into a fresh
+  // collection. An untrusted YAML boundary (model- or user-supplied config)
+  // could exhaust memory before the load returns. The conversion now debits a
+  // bounded node budget (`maxNodes`) and throws via `errorFactory` when the
+  // materialised tree would exceed it — a located, deterministic rejection
+  // instead of an OOM.
+  group('loadYamlAsMap — expansion bound (§55)', () {
+    /// A classic alias-amplification document: each level references the prior
+    /// anchor several times, so the materialised node count grows
+    /// multiplicatively while the source stays small.
+    const aliasBomb = '''
+a: &a ["x", "x", "x", "x", "x"]
+b: &b [*a, *a, *a, *a, *a]
+c: &c [*b, *b, *b, *b, *b]
+d: &d [*c, *c, *c, *c, *c]
+e: [*d, *d, *d, *d, *d]
+''';
+
+    test('an aliased document past the node budget is rejected, not amplified',
+        () {
+      expect(
+        () => loadYamlAsMap(aliasBomb, maxNodes: 100),
+        throwsA(isA<FormatException>().having((e) => e.message, 'message',
+            allOf(contains('node'), contains('100')))),
+      );
+    });
+
+    test('a custom error factory wraps the expansion-bound message', () {
+      expect(
+        () => loadYamlAsMap(aliasBomb,
+            maxNodes: 100, errorFactory: _ConfigError.new),
+        throwsA(isA<_ConfigError>()),
+      );
+    });
+
+    test('a normal document well under the budget still loads', () {
+      final map = loadYamlAsMap('k: v\nn: 1\nlist: [1, 2, 3]', maxNodes: 1000);
+      expect(map['k'], 'v');
+      expect(map['list'], <Object?>[1, 2, 3]);
+    });
+  });
 }
 
 /// A loader-style domain exception used to prove the `errorFactory` seam.
