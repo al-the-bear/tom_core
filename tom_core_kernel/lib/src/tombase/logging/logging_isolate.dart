@@ -143,7 +143,7 @@ class TomInterIsolateLogMessage {
 
   @override
   String toString() {
-    return "TomRemoteLogMessage $isolateName $level $message";
+    return "TomInterIsolateLogMessage $isolateName $level $message";
   }
 }
 

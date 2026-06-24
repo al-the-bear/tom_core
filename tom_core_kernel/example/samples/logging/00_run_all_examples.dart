@@ -17,6 +17,7 @@ import '01_basic_logging_example.dart' as basic_logging;
 import '02_log_levels_example.dart' as log_levels;
 import '03_log_formatting_example.dart' as log_formatting;
 import '04_advanced_logging_example.dart' as advanced_logging;
+import '05_isolate_and_remote_logging_example.dart' as isolate_remote;
 
 /// Standalone entry point for running logging examples.
 void main() {
@@ -49,6 +50,14 @@ void run() {
   print('-' * 40);
   advanced_logging.run();
   print('✓ Advanced logging examples passed\n');
+
+  print('05: Isolate and Remote Logging Example');
+  print('-' * 40);
+  // Only the deterministic remote round-trip participates in the aggregate
+  // runner; the isolate demonstration spawns a real background isolate and is
+  // exposed through that example's standalone main() only.
+  isolate_remote.run();
+  print('✓ Remote logging round-trip examples passed\n');
 
   print('=' * 60);
   print('All logging examples completed successfully!');

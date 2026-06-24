@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:test/test.dart';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -1021,7 +1023,10 @@ void main() {
           null,
         );
 
-        expect(message.toString(), equals('TomRemoteLogMessage worker-2 INFO    log content'));
+        expect(
+          message.toString(),
+          equals('TomInterIsolateLogMessage worker-2 INFO    log content'),
+        );
       });
     });
   });
@@ -1144,6 +1149,96 @@ void main() {
 
         expect(fallbackOutput.lastMessage, equals('test message'));
       });
+
+      test('should send to the remote endpoint when one is configured', () async {
+        final endpoint = _MockLogEndpoint();
+        TomRemoteLogOutput.remoteEndpoint = endpoint;
+        addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+
+        final remoteOutput = TomRemoteLogOutput();
+        final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+
+        remoteOutput.output(
+          TomLogLevel.production,
+          TomLogLevel.info,
+          'INFO   ',
+          'hello remote',
+          'main',
+          fixedTime,
+          'Origin.method',
+        );
+
+        await endpoint.sent.future;
+
+        expect(endpoint.sendCount, equals(1));
+        expect(endpoint.lastMessage?.message, equals('hello remote'));
+        expect(endpoint.lastMessage?.isolateName, equals('main'));
+        expect(endpoint.lastMessage?.origin, equals('Origin.method'));
+        // The remote path must not touch the local fallback on success.
+        expect(fallbackOutput.outputCalled, isFalse);
+      });
+
+      test('should fall back locally when the remote send throws', () async {
+        final endpoint = _MockLogEndpoint(throwOnSend: true);
+        TomRemoteLogOutput.remoteEndpoint = endpoint;
+        addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+
+        fallbackOutput.completeOnOutput = Completer<void>();
+        final remoteOutput = TomRemoteLogOutput();
+        final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+
+        remoteOutput.output(
+          TomLogLevel.production,
+          TomLogLevel.info,
+          'INFO   ',
+          'will fail',
+          'main',
+          fixedTime,
+          null,
+        );
+
+        await endpoint.sent.future;
+        await fallbackOutput.completeOnOutput!.future;
+
+        expect(endpoint.sendCount, equals(1));
+        // The send failure must be surfaced through the local fallback so the
+        // record is not lost.
+        expect(fallbackOutput.outputCalled, isTrue);
+      });
+
+      test('re-entrancy guard sends to fallback without calling the endpoint',
+          () {
+        final endpoint = _MockLogEndpoint();
+        TomRemoteLogOutput.remoteEndpoint = endpoint;
+        addTearDown(() => TomRemoteLogOutput.remoteEndpoint = null);
+
+        final remoteOutput = TomRemoteLogOutput();
+        final fixedTime = DateTime(2026, 1, 2, 10, 0, 0);
+
+        // Simulate already being inside a remote-logging operation.
+        runZoned(
+          () {
+            remoteOutput.output(
+              TomLogLevel.production,
+              TomLogLevel.info,
+              'INFO   ',
+              'reentrant',
+              'main',
+              fixedTime,
+              null,
+            );
+          },
+          zoneValues: {
+            TomLoggingContext: TomLoggingContext(inRemoteLogging: true),
+          },
+        );
+
+        // The guard short-circuits to the fallback synchronously and never
+        // re-enters the endpoint.
+        expect(endpoint.sendCount, equals(0));
+        expect(fallbackOutput.outputCalled, isTrue);
+        expect(fallbackOutput.lastMessage, equals('reentrant'));
+      });
     });
   });
 
@@ -1153,10 +1248,35 @@ void main() {
 
   group('TomIsolateLogOutput', () {
     group('constructor', () {
-      test('should accept worker pool parameter', () {
-        // We can't easily test this without setting up isolates,
-        // but we can verify the class structure
-        expect(TomIsolateLogOutput, isNotNull);
+      test('should store the worker pool it is given', () async {
+        // A zero-size pool spawns no isolates, so it is safe to construct in a
+        // unit test while still exercising the real field wiring.
+        final pool = await TomWorkerPool.withSize(0, _emptyLoggingContext());
+        final output = TomIsolateLogOutput(pool);
+        expect(output.workerPool, same(pool));
+      });
+    });
+
+    group('output', () {
+      test('does not route to the pool when the level is gated out', () async {
+        // With a zero-size pool, routing to the pool would block forever; the
+        // level gate must short-circuit before touching the pool. trace does
+        // not match a production logger level, so output must return at once.
+        final pool = await TomWorkerPool.withSize(0, _emptyLoggingContext());
+        final output = TomIsolateLogOutput(pool);
+
+        expect(
+          () => output.output(
+            TomLogLevel.production,
+            TomLogLevel.trace,
+            'TRACE  ',
+            'gated out',
+            'main',
+            DateTime(2026, 1, 2),
+            null,
+          ),
+          returnsNormally,
+        );
       });
     });
   });
@@ -1171,7 +1291,85 @@ void main() {
         expect(TomCreatorLogOutput.fallbackOutput, isA<TomConsoleLogOutput>());
       });
     });
+
+    group('output', () {
+      late _MockConsoleLogOutput fallback;
+
+      setUp(() {
+        fallback = _MockConsoleLogOutput();
+        TomCreatorLogOutput.fallbackOutput = fallback;
+      });
+
+      tearDown(() {
+        TomCreatorLogOutput.fallbackOutput = TomConsoleLogOutput();
+      });
+
+      test('falls back to local output when not in a worker isolate', () {
+        // In the main isolate TomWorker.canSendToCreator() is false, so the
+        // creator output must route to its fallback.
+        final output = TomCreatorLogOutput();
+
+        output.output(
+          TomLogLevel.production,
+          TomLogLevel.info,
+          'INFO   ',
+          'creator message',
+          'main',
+          DateTime(2026, 1, 2),
+          null,
+        );
+
+        expect(fallback.outputCalled, isTrue);
+        expect(fallback.lastMessage, equals('creator message'));
+      });
+
+      test('does not output when the level is gated out', () {
+        final output = TomCreatorLogOutput();
+
+        output.output(
+          TomLogLevel.production,
+          TomLogLevel.trace,
+          'TRACE  ',
+          'gated out',
+          'main',
+          DateTime(2026, 1, 2),
+          null,
+        );
+
+        expect(fallback.outputCalled, isFalse);
+      });
+    });
   });
+
+  // =========================================================================
+  // TOM ISOLATE LOGGING
+  // =========================================================================
+
+  group('TomIsolateLogging', () {
+    test('startLoggingToCreator swaps tomLog.logOutput to TomCreatorLogOutput',
+        () {
+      final original = tomLog.logOutput;
+      addTearDown(() => tomLog.logOutput = original);
+
+      TomIsolateLogging.startLoggingToCreator();
+
+      expect(tomLog.logOutput, isA<TomCreatorLogOutput>());
+    });
+  });
+}
+
+/// Builds a logging worker context for zero-size pools (no isolates spawned).
+///
+/// Uses literal environment/platform values rather than [TomRuntime] so the
+/// test does not depend on the global runtime singleton being initialised. The
+/// context is never actually consumed: a zero-size pool spawns no workers.
+TomLoggingWorkerContext _emptyLoggingContext() {
+  return TomLoggingWorkerContext(
+    const TomEnvironment('test', isTest: true),
+    platformWeb,
+    const <String>[],
+    'L',
+  );
 }
 
 // =============================================================================
@@ -1188,6 +1386,11 @@ class _MockLogOutput extends TomLogOutput {
   TomLogLevel? lastLoggerLevel;
   TomLogLevel? lastLogLevel;
   bool outputCalled = false;
+
+  /// Optional completer signalled on the first `output` call. Lets async
+  /// fire-and-forget paths (e.g. [TomRemoteLogOutput.output]) be awaited
+  /// deterministically instead of relying on timers.
+  Completer<void>? completeOnOutput;
 
   @override
   void output(
@@ -1209,6 +1412,9 @@ class _MockLogOutput extends TomLogOutput {
       lastTimeStamp = timeStamp;
       lastOrigin = origin;
     }
+    if (completeOnOutput != null && !completeOnOutput!.isCompleted) {
+      completeOnOutput!.complete();
+    }
   }
 
   void reset() {
@@ -1220,6 +1426,64 @@ class _MockLogOutput extends TomLogOutput {
     lastLoggerLevel = null;
     lastLogLevel = null;
     outputCalled = false;
+  }
+}
+
+/// Console-typed mock used where the slot is statically typed
+/// [TomConsoleLogOutput] (e.g. [TomCreatorLogOutput.fallbackOutput]). Records
+/// the last call without writing to the real console.
+class _MockConsoleLogOutput extends TomConsoleLogOutput {
+  String? lastMessage;
+  bool outputCalled = false;
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    outputCalled = true;
+    if (logLevel.matches(loggerLevel)) {
+      lastMessage = convertToString(message);
+    }
+  }
+}
+
+/// Mock remote endpoint that records the message and either returns a result
+/// or throws, exercising [TomRemoteLogOutput]'s send and fallback paths without
+/// any real network. The channel/specs handed to `super` are never used because
+/// [send] is fully overridden.
+class _MockLogEndpoint
+    extends TomServerEndpoint<TomRemoteLogMessage, TomRemoteLogResult> {
+  _MockLogEndpoint({this.throwOnSend = false})
+      : super(
+          TomServerChannel('localhost', 80),
+          TomServerCallSpecs('POST', Uri.parse('http://localhost/remotelog')),
+        );
+
+  final bool throwOnSend;
+  int sendCount = 0;
+  TomRemoteLogMessage? lastMessage;
+  final Completer<void> sent = Completer<void>();
+
+  @override
+  Future<(TomRemoteLogResult, TomServerCallError?)> send(
+    TomRemoteLogMessage load, [
+    TomRemoteLogResult? responseObject,
+  ]) async {
+    sendCount++;
+    lastMessage = load;
+    if (!sent.isCompleted) {
+      sent.complete();
+    }
+    if (throwOnSend) {
+      throw Exception('network down');
+    }
+    return (responseObject ?? TomRemoteLogResult(), null);
   }
 }
 
