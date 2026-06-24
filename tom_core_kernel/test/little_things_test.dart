@@ -606,6 +606,191 @@ void main() {
         expect(exception.parameters!['chinese'], equals('中文'));
       });
     });
+
+    // -----------------------------------------------------------------------
+    // autoLog branch (tests §4c)
+    // -----------------------------------------------------------------------
+    group('autoLog', () {
+      late _CapturingLogOutput captured;
+      late TomLogOutput previousOutput;
+
+      setUp(() {
+        captured = _CapturingLogOutput();
+        previousOutput = tomLog.logOutput;
+        tomLog.logOutput = captured;
+      });
+
+      tearDown(() {
+        tomLog.logOutput = previousOutput;
+      });
+
+      test('should not log on construction when autoLog is false', () {
+        TomException('ERROR', 'message');
+        expect(captured.messages, isEmpty);
+      });
+
+      test('should log on construction when autoLog is true', () {
+        TomException('CRITICAL', 'boom', autoLog: true);
+        expect(captured.messages, isNotEmpty);
+        expect(
+          captured.messages.any((m) => m.contains('EXCEPTION:')),
+          isTrue,
+          reason: 'autoLog should emit an EXCEPTION log line',
+        );
+        expect(
+          captured.messages.any((m) => m.contains('EXCEPTION_STACKTRACE:')),
+          isTrue,
+          reason: 'autoLog should emit an EXCEPTION_STACKTRACE log line',
+        );
+      });
+
+      test('should include the exception details in the logged line', () {
+        TomException('CRITICAL', 'database down', autoLog: true);
+        expect(
+          captured.messages.any((m) => m.contains('database down')),
+          isTrue,
+        );
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // serverCallError (tests §4d)
+    // -----------------------------------------------------------------------
+    group('serverCallError', () {
+      test('should default to null', () {
+        final exception = TomException('ERROR', 'message');
+        expect(exception.serverCallError, isNull);
+      });
+
+      test('should store and expose a provided server call error', () {
+        final sce = TomServerCallError(
+          statusCode: 404,
+          reasonPhrase: 'Not Found',
+        );
+        final exception = TomException(
+          'HTTP_ERROR',
+          'request failed',
+          serverCallError: sce,
+        );
+        expect(exception.serverCallError, same(sce));
+        expect(exception.serverCallError!.statusCode, equals(404));
+        expect(exception.serverCallError!.reasonPhrase, equals('Not Found'));
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // printStackTrace (tests §4b)
+    // -----------------------------------------------------------------------
+    group('printStackTrace', () {
+      late _CapturingLogOutput captured;
+      late TomLogOutput previousOutput;
+
+      setUp(() {
+        captured = _CapturingLogOutput();
+        previousOutput = tomLog.logOutput;
+        tomLog.logOutput = captured;
+      });
+
+      tearDown(() {
+        tomLog.logOutput = previousOutput;
+      });
+
+      test('should log a stack trace prefixed with the exception identity', () {
+        final exception = TomException(
+          'ERROR',
+          'message',
+          uuid: 'uuid-123',
+          requestUuid: 'req-456',
+        );
+        exception.printStackTrace();
+        expect(captured.messages, isNotEmpty);
+        expect(
+          captured.messages.any(
+            (m) => m.contains('uuid-123-req-456 exception stacktrace'),
+          ),
+          isTrue,
+        );
+      });
+
+      test('should respect the depth argument', () {
+        final exception = TomException('ERROR', 'message');
+        exception.printStackTrace(0);
+        // With depth 0 the trace portion is empty, so only the prefix message
+        // remains — i.e. no stack-frame location lines are appended.
+        expect(captured.messages, isNotEmpty);
+        expect(
+          captured.messages.last.trim(),
+          endsWith('exception stacktrace'),
+        );
+      });
+    });
+  });
+
+  // =========================================================================
+  // tomPrintStackTrace (tests §4a)
+  // =========================================================================
+
+  group('tomPrintStackTrace', () {
+    late _CapturingLogOutput captured;
+    late TomLogOutput previousOutput;
+
+    setUp(() {
+      captured = _CapturingLogOutput();
+      previousOutput = tomLog.logOutput;
+      tomLog.logOutput = captured;
+    });
+
+    tearDown(() {
+      tomLog.logOutput = previousOutput;
+    });
+
+    test('should log the stack trace via tomLog.error', () {
+      tomPrintStackTrace(StackTrace.current);
+      expect(captured.messages, isNotEmpty);
+      expect(
+        captured.messages.any((m) => m.contains('little_things_test.dart')),
+        isTrue,
+      );
+    });
+
+    test('should prefix the log entry with the message when provided', () {
+      tomPrintStackTrace(StackTrace.current, message: 'CONTEXT_PREFIX');
+      expect(
+        captured.messages.any((m) => m.startsWith('CONTEXT_PREFIX')),
+        isTrue,
+      );
+    });
+
+    test('should pass the depth limit through to the trace', () {
+      tomPrintStackTrace(StackTrace.current, message: 'P', depth: 0);
+      // depth 0 yields an empty trace, so the logged entry is just the prefix
+      // (plus the joining space) — no frame location lines.
+      expect(captured.messages, isNotEmpty);
+      expect(captured.messages.last.trim(), equals('P'));
+    });
+  });
+
+  // =========================================================================
+  // depth == 0 boundary (tests §4e)
+  // =========================================================================
+
+  group('stack trace depth == 0', () {
+    test('tomGetStackTraceAsList returns empty for depth 0', () {
+      final list = tomGetStackTraceAsList(StackTrace.current, 0);
+      expect(list, isEmpty);
+    });
+
+    test('tomGetStackTrace returns empty string for depth 0', () {
+      final trace = tomGetStackTrace(StackTrace.current, 0);
+      expect(trace, isEmpty);
+    });
+
+    test('tomGetStackTraceAsTuple returns empty for depth 0', () {
+      final (traceString, traceList) =
+          tomGetStackTraceAsTuple(StackTrace.current, 0);
+      expect(traceString, isEmpty);
+      expect(traceList, isEmpty);
+    });
   });
 }
 
@@ -629,4 +814,25 @@ class _CustomException implements Exception {
 
   @override
   String toString() => 'CustomException: $message';
+}
+
+/// Log output that records every emitted message so log side-effects
+/// (autoLog, printStackTrace, tomPrintStackTrace) can be asserted.
+class _CapturingLogOutput extends TomLogOutput {
+  final List<String> messages = [];
+
+  @override
+  void output(
+    TomLogLevel loggerLevel,
+    TomLogLevel logLevel,
+    String level,
+    Object message,
+    String isolateName,
+    DateTime timeStamp, [
+    String? origin,
+  ]) {
+    if (logLevel.matches(loggerLevel)) {
+      messages.add(convertToString(message));
+    }
+  }
 }

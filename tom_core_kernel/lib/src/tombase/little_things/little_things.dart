@@ -205,13 +205,13 @@ List<String> _processStackFrames([Object? s, int depth = -1]) {
   var remaining = depth;
 
   for (final f in frames.reversed) {
+    // Enforce the limit before appending so depth == 0 yields no frames
+    // (and depth == n yields exactly n). Checking after appending caused an
+    // off-by-one where depth == 0 returned every frame.
+    if (depth > -1 && remaining-- == 0) break;
     final line =
         "${f.location} l:${f.line} c:${f.column} ${f.member} ${f.library}";
     resultList.add(line);
-    if (depth > -1) {
-      remaining--;
-      if (remaining == 0) break;
-    }
   }
 
   return resultList;
