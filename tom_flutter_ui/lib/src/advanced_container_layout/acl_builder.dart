@@ -76,6 +76,13 @@ class _ComponentData {
 class _RowData {
   List<_ComponentData> components = [];
   RowAlignment alignment = RowAlignment.left;
+
+  /// Whether [alignment] was set explicitly via `setRowHorizontalAlignment`
+  /// (as opposed to inherited from the builder-wide default at row creation).
+  /// Mirrors the vertical axis' `rowCrossAlignment == null` "not set yet"
+  /// signal so a later default change can apply retroactively without
+  /// clobbering explicit per-row overrides. See bug §74.
+  bool alignmentSet = false;
   double gapBefore = 0;
   bool isGapRow = false;
   double gapRowWeight = 1.0;
@@ -680,6 +687,7 @@ class AclBuilder {
   /// Horizontal main-axis placement for the **current row only**.
   AclBuilder setRowHorizontalAlignment(RowAlignment align) {
     _currentRow.alignment = align;
+    _currentRow.alignmentSet = true;
     return this;
   }
 
@@ -871,9 +879,14 @@ class AclBuilder {
   /// or the Left/Center/Right shortcuts.
   AclBuilder setAclDefaultRowHorizontalAlignment(RowAlignment alignment) {
     _defaultRowHorizontalAlignment = alignment;
-    // Retroactively apply to every row whose alignment still matches the
-    // previous default (i.e. no explicit override has been made).
+    // Retroactively apply to every row that hasn't set its own alignment —
+    // including the eagerly-created first row — so call order stays flexible.
     // Rows that called setRowHorizontalAlignment keep their own value.
+    for (final row in _rows) {
+      if (!row.alignmentSet) {
+        row.alignment = alignment;
+      }
+    }
     return this;
   }
 
