@@ -2,6 +2,8 @@
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'beanlocator_test.reflection.dart';
+
 // ============================================================================
 // Tests for the Tom Bean Locator System
 // ============================================================================
@@ -21,13 +23,46 @@ class AnotherService {
   AnotherService(this.value);
 }
 
+// ----------------------------------------------------------------------------
+// Ambiguous-type fixtures (bug §1): two beans assignable to one interface.
+// ----------------------------------------------------------------------------
+abstract class AmbiguousService {}
+
+class AmbiguousServiceA implements AmbiguousService {}
+
+class AmbiguousServiceB implements AmbiguousService {}
+
+// ----------------------------------------------------------------------------
+// Reflection-discovered fixture: a concrete (@tomComponent / TomNoInterface)
+// bean. This exercises initializeBeanContext -> _discoverAndInstantiateBeans
+// -> _instantiateConcreteBean, registered under its runtime type.
+//
+// Interface-based discovery and the four-tier env/platform selection are NOT
+// covered here: the reflection generator emits Type-valued @TomComponent(...)
+// arguments that point at an input-file-local interface unqualified (the same
+// limitation is visible in the committed example/run_all_samples.reflection.dart
+// at `const prefix1.TomComponent(EmailService)`), so such a generated file does
+// not compile. Fixing the generator is owned by the reflection/d4rt quest; see
+// completion_steps.tom_core.md.
+// ----------------------------------------------------------------------------
+
+@tomReflector
+@tomComponent
+class DiscoveredConcreteService {
+  String ping() => 'concrete';
+}
+
 void main() {
   // --------------------------------------------------------------------------
   // Setup
   // --------------------------------------------------------------------------
+  setUpAll(() {
+    initializeReflection();
+  });
+
   setUp(() {
-    // Reset runtime state between tests
-    // Note: In a real application, you'd have a reset method
+    // Isolate the process-global bean context between tests.
+    TomBean.resetBeanContext();
   });
 
   // ==========================================================================
@@ -82,6 +117,20 @@ void main() {
   });
 
   // ==========================================================================
+  // Context reset hook
+  // ==========================================================================
+  group('resetBeanContext', () {
+    test('clears registered beans so later lookups miss', () {
+      TomBean.withName('ephemeral', AnotherService('gone'));
+      expect(TomBean.getBeanByName('ephemeral'), isNotNull);
+
+      TomBean.resetBeanContext();
+
+      expect(TomBean.getBeanByName('ephemeral'), isNull);
+    });
+  });
+
+  // ==========================================================================
   // TomBean Tests
   // ==========================================================================
   group('TomBean', () {
@@ -113,6 +162,17 @@ void main() {
           throwsA(isA<TomBeanLocatorException>()),
         );
       });
+
+      test('fromName resolves lazily when the bean is registered later', () {
+        // Bug §2 regression: a handle created before registration must still
+        // resolve once the name is registered. The handle records the name
+        // unconditionally so get() routes through name resolution.
+        final bean = TomBean<AnotherService>.fromName('lazyBean');
+
+        TomBean.withName('lazyBean', AnotherService('lazy-value'));
+
+        expect(bean.get().value, equals('lazy-value'));
+      });
     });
 
     group('Static Accessors', () {
@@ -136,6 +196,19 @@ void main() {
       test('getBeanType should return the type parameter', () {
         final bean = TomBean<String>();
         expect(bean.getBeanType(), equals(String));
+      });
+
+      test('throws when more than one implementation matches the type', () {
+        // Bug §1 regression: two beans assignable to AmbiguousService are
+        // registered under distinct type keys; resolving by the shared
+        // interface must raise the ambiguous-implementation error.
+        TomBean.withType(AmbiguousServiceA, AmbiguousServiceA());
+        TomBean.withType(AmbiguousServiceB, AmbiguousServiceB());
+
+        expect(
+          () => TomBean<AmbiguousService>().get(),
+          throwsA(isA<TomBeanLocatorException>()),
+        );
       });
     });
 
@@ -161,7 +234,14 @@ void main() {
         expect(retrieved, same(service));
       });
 
-      // Note: duplicate type test removed because static context persists between tests
+      test('should throw for duplicate types', () {
+        TomBean.withType(TestService, AnotherService('first'));
+
+        expect(
+          () => TomBean.withType(TestService, AnotherService('second')),
+          throwsA(isA<TomBeanLocatorException>()),
+        );
+      });
     });
 
     group('get resolution', () {
@@ -174,18 +254,32 @@ void main() {
       });
 
       test('should throw when named bean type mismatch', () {
-        final uniqueName = 'typeMismatchBean_${DateTime.now().microsecondsSinceEpoch}';
         final service = TestServiceImpl();
-        TomBean.withName(uniqueName, service);
+        TomBean.withName('typeMismatchBean', service);
 
-        // Try to get it as wrong type
-        final bean = TomBean<int>.fromName(uniqueName);
+        // Try to get it as the wrong type.
+        final bean = TomBean<int>.fromName('typeMismatchBean');
 
         expect(
           () => bean.get(),
           throwsA(isA<TomBeanLocatorException>()),
         );
       });
+    });
+  });
+
+  // ==========================================================================
+  // Bean discovery via reflection (initializeBeanContext + four-tier selection)
+  // ==========================================================================
+  group('bean discovery', () {
+    setUp(() {
+      TomBean.resetBeanContext();
+      initializeBeanContext();
+    });
+
+    test('instantiates concrete @tomComponent beans by runtime type', () {
+      final bean = TomBean.getBeanByType(DiscoveredConcreteService);
+      expect(bean, isA<DiscoveredConcreteService>());
     });
   });
 

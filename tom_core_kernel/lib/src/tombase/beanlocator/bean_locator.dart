@@ -227,10 +227,14 @@ class TomBean<T> {
   /// ```
   factory TomBean.fromName(String name) {
     TomBean<T> result = TomBean();
+    // Record the name unconditionally so that get() always routes through
+    // _resolveByName, even when the bean is registered after this handle is
+    // created (lazy named resolution). Pre-caching the instance is only an
+    // optimisation for the already-registered case.
+    result._name = name;
     Object? bean = _tomBeanContext[name];
     if (bean != null && bean is T) {
       result._bean = bean as T;
-      result._name = name;
     }
     return result;
   }
@@ -310,6 +314,22 @@ class TomBean<T> {
     return _tomBeanContext[name];
   }
 
+  /// Clears all registered beans and resets the initialization flag.
+  ///
+  /// This empties the global bean context, drops every pending unresolved
+  /// handle, and marks the context as uninitialized so a subsequent
+  /// [initializeBeanContext] starts from a clean slate.
+  ///
+  /// The bean context is process-global static state. Without a way to clear
+  /// it, registrations leak between independent units of work — most visibly in
+  /// tests, where a bean registered by one test would otherwise still be
+  /// present in the next. Call this between such units to isolate them.
+  static void resetBeanContext() {
+    _tomBeanContext.clear();
+    _tomBeanList.clear();
+    _initialized = false;
+  }
+
   // ---------------------------------------------------------------------------
   // Instance Methods
   // ---------------------------------------------------------------------------
@@ -378,7 +398,7 @@ class TomBean<T> {
             if (_bean == null) {
               _bean = _tomBeanContext[serviceType]! as T;
             } else {
-              TomBeanLocatorException(
+              throw TomBeanLocatorException(
                 "beanlocator.bean_access.more_than_one_implementation_found",
                 "More than one bean for type $T found, found additional bean "
                     "of type $serviceType after having found ${_bean.runtimeType} "

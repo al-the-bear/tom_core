@@ -9,6 +9,7 @@ targets:
       # Reflection generator for test files
       tom_reflection_generator:reflection_generator:
         generate_for:
+          - test/beanlocator_test.dart
           - test/crypto_test.dart
           - test/http_connection_test.dart
           - test/little_things_test.dart
