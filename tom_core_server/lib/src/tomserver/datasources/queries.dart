@@ -117,6 +117,36 @@ abstract class TomGeneratedQuery extends TomQuery {
     return query.generate(t);
   }
 
+  /// Renders the `DISTINCT ` projection prefix (empty when not [distinct]).
+  static String distinctPrefix(bool distinct) => distinct ? 'DISTINCT ' : '';
+
+  /// Renders the trailing ` LIMIT n` row-cap clause (empty when [top] `<= 0`).
+  ///
+  /// MariaDB/MySQL cap rows with `LIMIT n`; the Informix-style `FIRST n` this
+  /// replaces is not valid MariaDB syntax (bug §67).
+  static String limitClause(int top) => top > 0 ? ' LIMIT $top' : '';
+
+  /// Renders the trailing ` ORDER BY <cols> ASC|DESC` clause (empty when
+  /// [orderColumns] is empty).
+  ///
+  /// The direction keywords are `ASC` / `DESC`; the spelled-out
+  /// `ASCENDING` / `DESCENDING` forms this replaces are not valid SQL (bug §67).
+  static String orderByClause(List<String> orderColumns, bool ascending) {
+    if (orderColumns.isEmpty) return '';
+    return ' ORDER BY ${orderColumns.join(',')} ${ascending ? 'ASC' : 'DESC'}';
+  }
+
+  /// Renders the `COUNT(*)` / `COUNT(DISTINCT <cols>)` projection.
+  ///
+  /// A distinct count is expressed as `COUNT(DISTINCT col1, col2, ...)`; the
+  /// previous `COUNT(DISTINCT(*))` is a MariaDB syntax error — `*` cannot follow
+  /// `DISTINCT` inside `COUNT`. Falls back to `COUNT(*)` when there are no
+  /// columns to distinguish on (bug §67).
+  static String countProjection(bool distinct, List<String> columnExprs) {
+    if (!distinct || columnExprs.isEmpty) return 'COUNT(*)';
+    return 'COUNT(DISTINCT ${columnExprs.join(', ')})';
+  }
+
   @override
   List<String> getParameters(TomStandardSqlDialect t) {
     return query.getParameters(t);
@@ -134,7 +164,7 @@ abstract class TomGeneratedQuery extends TomQuery {
 
 /// A `SELECT` over the entity [types]: emits the (non-reference) columns of all
 /// involved tables, the WHERE clause from the predicate, and optional
-/// `DISTINCT`, `FIRST n`, and `ORDER BY` clauses.
+/// `DISTINCT`, `ORDER BY … ASC|DESC`, and `LIMIT n` clauses.
 class TomSelect extends TomGeneratedQuery {
   /// Builds a `SELECT` from the predicate `query` and shaping options.
   TomSelect(
@@ -170,10 +200,11 @@ class TomSelect extends TomGeneratedQuery {
       var ci = determineColumn(ob);
       dbOrderBy.add("${ci.table.table}.${ci.getQueryFieldName()}");
     }
-    String sortOrder = ascending
-        ? ''
-        : (orderBy.isNotEmpty ? 'DESCENDING' : '');
-    return "SELECT ${distinct ? 'DISTINCT ' : ''}${top > 0 ? 'FIRST $top' : ''} $fieldList FROM ${tables.join(',')} WHERE ${query.generate(t)} ${orderBy.isNotEmpty ? 'ORDER BY ${dbOrderBy.join(',')}' : ''} $sortOrder";
+    return "SELECT ${TomGeneratedQuery.distinctPrefix(distinct)}$fieldList"
+        " FROM ${tables.join(',')}"
+        " WHERE ${query.generate(t)}"
+        "${TomGeneratedQuery.orderByClause(dbOrderBy, ascending)}"
+        "${TomGeneratedQuery.limitClause(top)}";
   }
 }
 
@@ -208,7 +239,7 @@ class TomLiteralSelect extends TomQuery {
   }
 }
 
-/// A `SELECT COUNT(*)` (or `COUNT(DISTINCT(*))`) over the entity [types],
+/// A `SELECT COUNT(*)` (or `COUNT(DISTINCT <cols>)`) over the entity [types],
 /// filtered by the predicate. Returns a single `count` column.
 class TomCount extends TomGeneratedQuery {
   /// Builds a count query from the predicate `query`.
@@ -227,10 +258,15 @@ class TomCount extends TomGeneratedQuery {
   String generateQuery(TomStandardSqlDialect t) {
     var columns = getColumnInformation();
     Set<String> tables = {};
+    List<String> columnExprs = [];
     for (var nextCol in columns) {
       tables.add(nextCol.table.table);
+      if (nextCol.reference == null) {
+        columnExprs.add("${nextCol.table.table}.${nextCol.getQueryFieldName()}");
+      }
     }
-    return "SELECT ${distinct ? 'COUNT(DISTINCT(*))' : 'COUNT(*)'} AS count FROM ${tables.join(',')} WHERE ${query.generate(t)}";
+    return "SELECT ${TomGeneratedQuery.countProjection(distinct, columnExprs)}"
+        " AS count FROM ${tables.join(',')} WHERE ${query.generate(t)}";
   }
 }
 
@@ -250,11 +286,12 @@ class TomDelete extends TomGeneratedQuery {
   String toString() => "TomDelete: ${super.toString()}";
   @override
   String generateQuery(TomStandardSqlDialect t) {
-    var columns = getColumnInformation();
-    Set<String> tables = {};
-    for (var nextCol in columns) {
-      tables.add(nextCol.table.table);
-    }
-    return "DELETE ${distinct ? 'DISTINCT ' : ''}${top > 0 ? 'FIRST $top' : ''} FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table} WHERE ${query.generate(t)} ${orderBy.isNotEmpty ? 'ORDER BY ${orderBy.join(',')}' : ''} ${ascending && orderBy.isNotEmpty ? 'ASCENDING' : ''}";
+    // MariaDB `DELETE` is single-table and supports neither `DISTINCT` nor a
+    // column projection — only an optional `ORDER BY … ASC|DESC` and `LIMIT n`
+    // (bug §67). The order-by names are unqualified (single table).
+    return "DELETE FROM ${TomAnnotationAnalyzer.findTable(types[0])!.table}"
+        " WHERE ${query.generate(t)}"
+        "${TomGeneratedQuery.orderByClause(orderBy, ascending)}"
+        "${TomGeneratedQuery.limitClause(top)}";
   }
 }

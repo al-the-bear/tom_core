@@ -175,4 +175,141 @@ void main() {
           {'col'});
     });
   });
+
+  // The query-generation clause renderers were extracted from
+  // TomSelect/TomCount/TomDelete's generateQuery into pure helpers so the
+  // keyword logic can be asserted without a reflected entity (this package's
+  // test suite does not bootstrap reflection). generateQuery delegates to these,
+  // so the integration behaviour is covered transitively (bug §67).
+  group('TomGeneratedQuery SQL clause rendering (bug §67)', () {
+    test('distinctPrefix renders "DISTINCT " only when distinct', () {
+      expect(TomGeneratedQuery.distinctPrefix(true), 'DISTINCT ');
+      expect(TomGeneratedQuery.distinctPrefix(false), '');
+    });
+
+    test('limitClause uses MariaDB "LIMIT n", not Informix "FIRST n"', () {
+      expect(TomGeneratedQuery.limitClause(5), ' LIMIT 5');
+      expect(TomGeneratedQuery.limitClause(0), '');
+      expect(TomGeneratedQuery.limitClause(-1), '');
+    });
+
+    test('orderByClause uses "ASC"/"DESC", not "ASCENDING"/"DESCENDING"', () {
+      expect(TomGeneratedQuery.orderByClause(['t.a', 't.b'], false),
+          ' ORDER BY t.a,t.b DESC');
+      expect(TomGeneratedQuery.orderByClause(['t.a'], true), ' ORDER BY t.a ASC');
+      expect(TomGeneratedQuery.orderByClause([], false), '');
+    });
+
+    test('countProjection emits a valid COUNT(DISTINCT ...), never DISTINCT(*)',
+        () {
+      expect(TomGeneratedQuery.countProjection(false, []), 'COUNT(*)');
+      expect(TomGeneratedQuery.countProjection(true, ['u.id', 'u.name']),
+          'COUNT(DISTINCT u.id, u.name)');
+      // No columns to distinguish on -> falls back to COUNT(*), not the invalid
+      // COUNT(DISTINCT(*)).
+      expect(TomGeneratedQuery.countProjection(true, []), 'COUNT(*)');
+    });
+  });
+
+  group('MariadbPreparedStatement.buildPositionalParameters (bug §65)', () {
+    test('binds values raw, in placeholder order', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['name', 'age', 'active'],
+        {'name': 'John', 'age': 42, 'active': true},
+      );
+      expect(bound, ['John', 42, true]);
+    });
+
+    test('a null param stays null (binds SQL NULL, not the string "NULL")', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['maybe'],
+        {'maybe': null},
+      );
+      expect(bound, [null]);
+      expect(bound.first, isNot('NULL'));
+    });
+
+    test('a string keeps its exact characters with no surrounding quotes', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['name'],
+        {'name': "O'Brien"},
+      );
+      // Raw, not the objectOp-rendered "'O''Brien'" SQL literal.
+      expect(bound, ["O'Brien"]);
+    });
+
+    test('null params yields an empty list', () {
+      expect(
+        MariadbPreparedStatement.buildPositionalParameters(['x'], null),
+        isEmpty,
+      );
+    });
+  });
+
+  // §42(c) driver discovery (createDatasourceOf resolving mariadb/mariadb_xa,
+  // the unknown-type and duplicate-driver guards) is deferred: it scans
+  // tomReflector.annotatedClasses, which raises "Reflection has not been
+  // initialized" in this suite (no generated reflection is bootstrapped here).
+  // That belongs to an integration-level test with reflection wired up.
+
+  group('TomDataSourceInfo.initializeDatasourceInfo config guard (bug §68)', () {
+    setUp(() => TomDataSourceInfo.datasources.clear());
+    tearDown(() => TomDataSourceInfo.datasources.clear());
+
+    test('a Map<String, Object?> entry is processed, not silently skipped', () async {
+      // delegateTo aliasing exercises the registration path without opening a
+      // real connection.
+      final base = TomDataSourceInfo('base', <String, dynamic>{});
+      TomDataSourceInfo.datasources['base'] = base;
+      final config = <String, dynamic>{
+        'alias': <String, Object?>{'delegateTo': 'base'},
+      };
+      final result = await TomDataSourceInfo.initializeDatasourceInfo(config);
+      expect(result, 1);
+      // Before §68 the Map<String,Object?> entry is not a Map<String,Object>, so
+      // it is skipped and 'alias' is never registered.
+      expect(TomDataSourceInfo.getDataSourceInfo('alias'), same(base));
+    });
+
+    test('a YamlMap-style Map<dynamic, dynamic> entry is also processed', () async {
+      final base = TomDataSourceInfo('base2', <String, dynamic>{});
+      TomDataSourceInfo.datasources['base2'] = base;
+      final config = <String, dynamic>{
+        'alias2': <dynamic, dynamic>{'delegateTo': 'base2'},
+      };
+      await TomDataSourceInfo.initializeDatasourceInfo(config);
+      expect(TomDataSourceInfo.getDataSourceInfo('alias2'), same(base));
+    });
+
+    test('a non-map entry is ignored', () async {
+      final result = await TomDataSourceInfo.initializeDatasourceInfo(
+        <String, dynamic>{'scalar': 'not-a-map'},
+      );
+      expect(result, 1);
+      expect(TomDataSourceInfo.getDataSourceInfo('scalar'), isNull);
+    });
+  });
+
+  group('MariaDbXADatasource transaction lifecycle (bug §66)', () {
+    test('rollback clears the branch id so the next startTransaction is allowed',
+        () async {
+      final ds = MariaDbXADatasource();
+      // No connection: executeCommand fails, startTransaction returns false, but
+      // the branch id is now set.
+      await ds.startTransaction();
+      // Before §66 rollback leaves the branch id set, so the next
+      // startTransaction throws "There is already an active transaction". After
+      // the fix it is cleared, so a second start is allowed (still returns false
+      // for the missing connection, but must not throw).
+      await ds.rollback();
+      await expectLater(ds.startTransaction(), completion(isFalse));
+    });
+
+    test('a failed endTransaction clears the branch id', () async {
+      final ds = MariaDbXADatasource();
+      await ds.startTransaction();
+      expect(await ds.endTransaction(), isFalse);
+      await expectLater(ds.startTransaction(), completion(isFalse));
+    });
+  });
 }

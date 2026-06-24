@@ -72,14 +72,30 @@ class MariadbPreparedStatement<T extends Object>
     this.command,
   );
 
+  /// Maps the named [params] onto the positional bind list its [parameterList]
+  /// expects, in placeholder order.
+  ///
+  /// Values are taken **raw** — a Dart `null` stays `null` (so it binds SQL
+  /// `NULL`), a `String` keeps its exact characters (no surrounding quotes), an
+  /// `int`/`double`/`DateTime` keeps its native value. They must **not** be
+  /// rendered through the SQL-literal renderer (`objectOp`), which would
+  /// double-encode them over the binary protocol — a `null` would bind the text
+  /// `"NULL"` and a string would carry literal quote characters (bug §65).
+  /// Returns an empty list when [params] is `null`.
+  static List<Object?> buildPositionalParameters(
+    List<String> parameterList,
+    Map<String, Object?>? params,
+  ) {
+    if (params == null) return const [];
+    return [for (final p in parameterList) params[p]];
+  }
+
   @override
   Future<List<T>> execute([Map<String, Object?>? params]) async {
-    List<Object?> parameters = [];
-    if (params != null) {
-      for (var p in parameterList) {
-        parameters.add(datasource.sqlDialect.objectOp(params[p]));
-      }
-    }
+    final List<Object?> parameters = buildPositionalParameters(
+      parameterList,
+      params,
+    );
     try {
       IResultSet result = await _execute(parameters, params);
       return datasource._processResult<T>(result, resultType);
@@ -963,6 +979,10 @@ class MariaDbXADatasource extends MariaDbDatasource {
       tomLog.error(
         "Ending XA database transaction of ${getParticipantId()} failed $error",
       );
+      // The branch can no longer be committed after a failed end/prepare; clear
+      // it so a new transaction can start instead of wedging the data source
+      // (bug §66). On success `_txId` is kept — `commit` still needs it.
+      _txId = null;
       return false;
     }
   }
@@ -988,8 +1008,13 @@ class MariaDbXADatasource extends MariaDbDatasource {
       await executeCommand("XA ROLLBACK $_txId;");
     } catch (error) {
       tomLog.error(
-        "Rolling back XX database transaction of ${getParticipantId()} failed $error",
+        "Rolling back XA database transaction of ${getParticipantId()} failed $error",
       );
+    } finally {
+      // Always clear the branch id — even on a failed rollback — so the next
+      // startTransaction is allowed. Leaving it set wedges the data source after
+      // its first rolled-back transaction (bug §66).
+      _txId = null;
     }
   }
 }

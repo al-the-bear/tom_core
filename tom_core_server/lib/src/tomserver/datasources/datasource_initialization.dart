@@ -186,8 +186,19 @@ class TomDataSourceInfo {
     Map<String, dynamic> datasourceConfiguration,
   ) async {
     for (var entry in datasourceConfiguration.entries) {
-      if (entry.value is Map<String, Object>) {
-        var dsi = TomDataSourceInfo(entry.key, entry.value);
+      if (entry.value is Map) {
+        // Read keys defensively. Config decoded from YAML/env arrives as a
+        // `YamlMap` (`Map<dynamic, dynamic>`) or `Map<String, dynamic>` /
+        // `Map<String, Object?>` — none of which is a `Map<String, Object>` for
+        // the runtime `is` check (`dynamic`/`Object?` ⊄ `Object`), so the old
+        // reified guard silently skipped every real config entry (bug §68).
+        // Normalise to `Map<String, dynamic>` with String keys before
+        // registering.
+        final raw = entry.value as Map;
+        final settings = <String, dynamic>{
+          for (final e in raw.entries) '${e.key}': e.value,
+        };
+        var dsi = TomDataSourceInfo(entry.key, settings);
         await dsi.initialize();
       }
     }
