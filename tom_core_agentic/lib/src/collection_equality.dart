@@ -76,11 +76,13 @@ bool deepValueEquals(Object? a, Object? b) {
 
 /// Hash companion to [deepValueEquals].
 ///
-/// `null` hashes to 0, a `List` hashes by its (ordered) elements, and every
-/// other value uses its own `hashCode`. Consistent with [deepValueEquals]:
-/// values that compare equal hash equal.
+/// `null` hashes to 0, a `List` hashes by its (ordered) elements **hashed
+/// recursively** (so a nested list contributes its contents' hash, not its
+/// identity), and every other value uses its own `hashCode`. Recursing mirrors
+/// [deepValueEquals], keeping the equals/hash contract: values that compare
+/// equal hash equal (bug §71).
 int deepValueHash(Object? v) {
   if (v == null) return 0;
-  if (v is List) return Object.hashAll(v);
+  if (v is List) return Object.hashAll(v.map(deepValueHash));
   return v.hashCode;
 }
