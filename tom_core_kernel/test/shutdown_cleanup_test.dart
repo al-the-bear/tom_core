@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import 'shutdown_cleanup_test.reflection.dart';
 
 // =============================================================================
 // Test Implementations
@@ -47,12 +50,90 @@ class ThrowingClosable implements TomClosable {
   }
 }
 
+// =============================================================================
+// Reflected targets for TomCloseAdaptor (own + inherited members)
+// =============================================================================
+
+/// Target whose `close()` is declared on the leaf type itself.
+@tomReflector
+class OwnCloseTarget {
+  bool closed = false;
+  void close() => closed = true;
+}
+
+/// Base declaring `close()`; the leaf [InheritsClose] does not redeclare it,
+/// so the adaptor must walk the superclass chain to find it (bug §52).
+@tomReflector
+class BaseWithClose {
+  bool closed = false;
+  void close() => closed = true;
+}
+
+@tomReflector
+class InheritsClose extends BaseWithClose {}
+
+/// Base declaring `dispose()`; the leaf [InheritsDispose] inherits it.
+@tomReflector
+class BaseWithDispose {
+  bool disposedFlag = false;
+  void dispose() => disposedFlag = true;
+}
+
+@tomReflector
+class InheritsDispose extends BaseWithDispose {}
+
+/// Base declaring a custom-named teardown method `shutdown()`; the leaf
+/// [InheritsShutdown] inherits it (exercises the custom-methodName path
+/// across the superclass chain).
+@tomReflector
+class BaseWithShutdown {
+  bool shutdownCalled = false;
+  void shutdown() => shutdownCalled = true;
+}
+
+@tomReflector
+class InheritsShutdown extends BaseWithShutdown {}
+
+/// Target whose close method requires a parameter (error path).
+@tomReflector
+class CloseWithParam {
+  void close(int code) {}
+}
+
+/// Target with neither close nor dispose (not-found error path).
+@tomReflector
+class NoCloseTarget {
+  void doStuff() {}
+}
+
+// =============================================================================
+// Order / counting recorders for performShutdown() behaviour tests
+// =============================================================================
+
+/// Records the cleanup category into a shared list on close.
+class RecordingClosable implements TomClosable {
+  RecordingClosable(this.log);
+  final List<String> log;
+  @override
+  void close() => log.add('closable');
+}
+
+/// Records the cleanup category into a shared list on dispose.
+class RecordingDisposable implements TomDisposable {
+  RecordingDisposable(this.log);
+  final List<String> log;
+  @override
+  void dispose() => log.add('disposable');
+}
+
 
 // =============================================================================
 // TomDisposable Tests
 // =============================================================================
 
 void main() {
+  setUpAll(initializeReflection);
+
   group('TomDisposable', () {
     group('interface implementation', () {
       test('should allow implementing dispose method', () {
@@ -646,4 +727,204 @@ void main() {
       }
     });
   });
+
+  // ===========================================================================
+  // TomCloseAdaptor Tests (bug §52 — inherited close/dispose resolution)
+  // ===========================================================================
+
+  group('TomCloseAdaptor', () {
+    test('resolves a close() declared on the leaf type itself', () {
+      final target = OwnCloseTarget();
+      final adaptor = TomCloseAdaptor(target);
+
+      adaptor.close();
+
+      expect(target.closed, isTrue);
+    });
+
+    test('resolves a close() inherited from a superclass (§52)', () {
+      final target = InheritsClose();
+
+      // Pre-fix: the constructor threw because `declarations` holds only the
+      // leaf type's own members, so the inherited close() was not found.
+      final adaptor = TomCloseAdaptor(target);
+      adaptor.close();
+
+      expect(target.closed, isTrue);
+    });
+
+    test('resolves a dispose() inherited from a superclass (§52)', () {
+      final target = InheritsDispose();
+
+      final adaptor = TomCloseAdaptor(target);
+      adaptor.close();
+
+      expect(target.disposedFlag, isTrue);
+    });
+
+    test('resolves a custom-named method inherited from a superclass (§52)', () {
+      final target = InheritsShutdown();
+
+      final adaptor = TomCloseAdaptor(target, 'shutdown');
+      adaptor.close();
+
+      expect(target.shutdownCalled, isTrue);
+    });
+
+    test('throws when the resolved method requires a parameter', () {
+      expect(
+        () => TomCloseAdaptor(CloseWithParam()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('needs parameter'),
+          ),
+        ),
+      );
+    });
+
+    test('throws when no close/dispose method exists anywhere in the chain', () {
+      expect(
+        () => TomCloseAdaptor(NoCloseTarget()),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains("didn't find a close method"),
+          ),
+        ),
+      );
+    });
+  });
+
+  // ===========================================================================
+  // performShutdown() & teardown behaviour (tests §36)
+  // ===========================================================================
+
+  group('performShutdown', () {
+    test('runs handlers, then closables, then disposables in order', () {
+      final log = <String>[];
+      final cleanup = TomShutdownCleanup();
+      cleanup.addDisposable(RecordingDisposable(log));
+      cleanup.addSignalHandler((signal) => log.add('handler'));
+      cleanup.addClosable(RecordingClosable(log));
+
+      cleanup.performShutdown();
+
+      expect(log, equals(['handler', 'closable', 'disposable']));
+    });
+
+    test('executes only once across repeated calls (_executed)', () {
+      final cleanup = TomShutdownCleanup();
+      final closable = TestClosable();
+      final disposable = TestDisposable();
+      cleanup.addClosable(closable);
+      cleanup.addDisposable(disposable);
+
+      cleanup.performShutdown();
+      cleanup.performShutdown();
+      cleanup.performShutdown();
+
+      expect(closable.closeCount, equals(1));
+      expect(disposable.disposeCount, equals(1));
+    });
+
+    test('isolates failures so later cleanups still run', () {
+      final log = <String>[];
+      final cleanup = TomShutdownCleanup();
+      // A throwing handler and a throwing closable must not prevent the
+      // remaining closable/disposable from running.
+      cleanup.addSignalHandler((signal) => throw Exception('handler boom'));
+      cleanup.addClosable(ThrowingClosable());
+      cleanup.addClosable(RecordingClosable(log));
+      cleanup.addDisposable(RecordingDisposable(log));
+
+      // silent: suppress the "Failed to call …" diagnostics during the test.
+      cleanup.silent = true;
+      cleanup.performShutdown();
+
+      expect(log, equals(['closable', 'disposable']));
+    });
+
+    group('signal-driven path (fromSignal)', () {
+      test('skips cleanup entirely while paused', () {
+        final cleanup = TomShutdownCleanup();
+        final closable = TestClosable();
+        cleanup.addClosable(closable);
+        cleanup.paused = true;
+
+        cleanup.performShutdown(fromSignal: true);
+
+        expect(closable.closed, isFalse);
+      });
+
+      test('runs cleanup when not paused', () {
+        final cleanup = TomShutdownCleanup();
+        final closable = TestClosable();
+        cleanup.addClosable(closable);
+        cleanup.silent = true;
+
+        cleanup.performShutdown(fromSignal: true);
+
+        expect(closable.closed, isTrue);
+      });
+
+      test('silent suppresses the status messages', () {
+        final lines = <String>[];
+        final cleanup = TomShutdownCleanup();
+        cleanup.addClosable(TestClosable());
+        cleanup.silent = true;
+
+        _capturePrints(lines, () => cleanup.performShutdown(fromSignal: true));
+
+        expect(lines, isEmpty);
+      });
+
+      test('non-silent emits the received + performed status messages', () {
+        final lines = <String>[];
+        final cleanup = TomShutdownCleanup();
+        cleanup.addClosable(TestClosable());
+
+        _capturePrints(lines, () => cleanup.performShutdown(fromSignal: true));
+
+        expect(lines, contains('Received SIGINT'));
+        expect(lines, contains('Shutdown performed'));
+      });
+    });
+  });
+
+  group('dispose / cancelAll (bug §53)', () {
+    test('dispose cancels signal subscriptions without throwing', () async {
+      final cleanup = TomShutdownCleanup();
+
+      await expectLater(cleanup.dispose(), completes);
+    });
+
+    test('cancelAll is safe to call repeatedly', () async {
+      final cleanup = TomShutdownCleanup();
+      cleanup.addSignal(ProcessSignal.sigterm);
+
+      await cleanup.cancelAll();
+      await expectLater(cleanup.cancelAll(), completes);
+    });
+
+    test('many instances can each be disposed', () async {
+      final instances = List.generate(10, (_) => TomShutdownCleanup());
+
+      for (final instance in instances) {
+        await expectLater(instance.dispose(), completes);
+      }
+    });
+  });
+}
+
+/// Runs [body] while collecting every `print` line into [sink].
+void _capturePrints(List<String> sink, void Function() body) {
+  runZoned(
+    body,
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) => sink.add(line),
+    ),
+  );
 }

@@ -28,6 +28,7 @@ library;
 // Imports
 // =============================================================================
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:tom_basics/tom_basics.dart';
@@ -166,12 +167,7 @@ class TomCloseAdaptor implements TomClosable {
   TomCloseAdaptor(this.closableObject, [String? methodName]) {
     var classMirror =
         tomReflector.reflectType(closableObject.runtimeType) as ClassMirror;
-    var declarations = classMirror.declarations;
-    MethodMirror? mm =
-        (methodName != null
-                ? declarations[methodName]
-                : (declarations['close'] ?? declarations['dispose']))
-            as MethodMirror?;
+    MethodMirror? mm = _resolveCloseMethod(classMirror, methodName);
     if (mm == null) {
       throw Exception(
         "TomCloseAdaptor: didn't find a close method in the object you provided.",
@@ -184,6 +180,32 @@ class TomCloseAdaptor implements TomClosable {
     }
     _mm = mm;
     _im = tomReflector.reflect(closableObject);
+  }
+
+  /// Resolves the close/dispose method to invoke, walking the superclass chain.
+  ///
+  /// `ClassMirror.declarations` holds only the type's **own** members, so a
+  /// `close()`/`dispose()` inherited from a superclass or mixin is invisible to
+  /// the leaf type alone (bug §52). This walks from the concrete type up its
+  /// superclass chain, so the most-derived class wins and, at each level, an
+  /// explicit [methodName] is honoured (otherwise `close` is preferred over
+  /// `dispose`). Returns `null` when no matching method exists anywhere.
+  static MethodMirror? _resolveCloseMethod(
+    ClassMirror classMirror,
+    String? methodName,
+  ) {
+    ClassMirror? current = classMirror;
+    while (current != null) {
+      final declarations = current.declarations;
+      final candidate = methodName != null
+          ? declarations[methodName]
+          : (declarations['close'] ?? declarations['dispose']);
+      if (candidate is MethodMirror) {
+        return candidate;
+      }
+      current = current.superclass;
+    }
+    return null;
   }
 
   /// Invokes the close/dispose method on the wrapped object.
@@ -266,78 +288,76 @@ class TomShutdownCleanup {
   /// Use [tomShutdownCleanup] for the default global instance, or create
   /// custom instances for specialized signal handling.
   TomShutdownCleanup() {
-    _signalHandler = (signal) {
-      // Skip if paused (e.g., in interactive REPL mode)
-      if (paused) return;
-      
-      if (!silent) print("Received $signal");
-      if (!_executed) {
-        for (var signalHandler in _signalHandlers) {
-          try {
-            signalHandler(signal);
-          } catch (exception) {
-            if (!silent) print("Failed to call signalHandler $signalHandler");
-          }
-        }
-        for (var closable in _closables) {
-          try {
-            closable.close();
-          } catch (exception) {
-            if (!silent) print("Failed to call closable $closable");
-          }
-        }
-        for (var disposable in _disposables) {
-          try {
-            disposable.dispose();
-          } catch (exception) {
-            if (!silent) print("Failed to call disposable $disposable");
-          }
-        }
-        _executed = true;
-        if (!silent) print("Shutdown performed");
-      } else {
-        if (!silent) print("Shutdown has already been performed");
-      }
-    };
-    ProcessSignal.sighup.watch().listen(_signalHandler);
-    ProcessSignal.sigint.watch().listen(_signalHandler);
+    _signalHandler = (signal) =>
+        performShutdown(signal: signal, fromSignal: true);
+    _signalSubscriptions.add(
+      ProcessSignal.sighup.watch().listen(_signalHandler),
+    );
+    _signalSubscriptions.add(
+      ProcessSignal.sigint.watch().listen(_signalHandler),
+    );
   }
-  
-  /// Manually trigger shutdown cleanup.
-  /// 
-  /// This allows external code to trigger the cleanup logic without a signal.
-  /// Useful when the calling code handles signals itself but still wants
-  /// to run the registered cleanup handlers.
-  void performShutdown() {
-    if (!_executed) {
-      for (var signalHandler in _signalHandlers) {
-        try {
-          signalHandler(ProcessSignal.sigint);
-        } catch (exception) {
-          if (!silent) print("Failed to call signalHandler $signalHandler");
-        }
+
+  /// Triggers shutdown cleanup, running registered signal handlers, then
+  /// closables, then disposables — exactly once across the instance's life.
+  ///
+  /// External code can call `performShutdown()` directly to run the cleanup
+  /// without an OS signal; that manual path always runs (it ignores [paused])
+  /// and stays quiet. The signal-driven path passes [fromSignal] `true`, which
+  /// honours [paused] (skip while paused) and gates the status messages on
+  /// [silent]. [signal] is forwarded to the registered signal handlers.
+  void performShutdown({
+    ProcessSignal signal = ProcessSignal.sigint,
+    bool fromSignal = false,
+  }) {
+    // The signal path is suppressed while paused (e.g. interactive REPL mode).
+    if (fromSignal && paused) return;
+
+    if (fromSignal && !silent) print("Received $signal");
+    if (_executed) {
+      if (fromSignal && !silent) print("Shutdown has already been performed");
+      return;
+    }
+    _executeCleanup(signal);
+    _executed = true;
+    if (fromSignal && !silent) print("Shutdown performed");
+  }
+
+  /// Runs the three cleanup phases in order — signal handlers, then closables,
+  /// then disposables — isolating each callout so a failing handler never
+  /// prevents the rest from running.
+  void _executeCleanup(ProcessSignal signal) {
+    for (var signalHandler in _signalHandlers) {
+      try {
+        signalHandler(signal);
+      } catch (exception) {
+        if (!silent) print("Failed to call signalHandler $signalHandler");
       }
-      for (var closable in _closables) {
-        try {
-          closable.close();
-        } catch (exception) {
-          if (!silent) print("Failed to call closable $closable");
-        }
+    }
+    for (var closable in _closables) {
+      try {
+        closable.close();
+      } catch (exception) {
+        if (!silent) print("Failed to call closable $closable");
       }
-      for (var disposable in _disposables) {
-        try {
-          disposable.dispose();
-        } catch (exception) {
-          if (!silent) print("Failed to call disposable $disposable");
-        }
+    }
+    for (var disposable in _disposables) {
+      try {
+        disposable.dispose();
+      } catch (exception) {
+        if (!silent) print("Failed to call disposable $disposable");
       }
-      _executed = true;
     }
   }
 
   final List<TomSignalHandler> _signalHandlers = [];
   final List<TomClosable> _closables = [];
   final List<TomDisposable> _disposables = [];
+
+  /// Active OS-signal watcher subscriptions, retained so they can be cancelled
+  /// by [dispose]/[cancelAll] (bug §53 — otherwise each watcher keeps the
+  /// process alive and leaks for the instance's whole life).
+  final List<StreamSubscription<ProcessSignal>> _signalSubscriptions = [];
 
   /// Adds a custom signal handler to be executed during shutdown.
   ///
@@ -381,8 +401,26 @@ class TomShutdownCleanup {
   /// tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
   /// ```
   void addSignal(ProcessSignal processSignal) {
-    processSignal.watch().listen(_signalHandler);
+    _signalSubscriptions.add(processSignal.watch().listen(_signalHandler));
   }
+
+  /// Cancels every registered OS-signal watcher subscription.
+  ///
+  /// After this completes the instance no longer keeps the process alive via
+  /// its SIGHUP/SIGINT (and any [addSignal]-registered) watchers. Safe to call
+  /// more than once; the subscription list is emptied.
+  Future<void> cancelAll() async {
+    for (final subscription in _signalSubscriptions) {
+      await subscription.cancel();
+    }
+    _signalSubscriptions.clear();
+  }
+
+  /// Tears the instance down by cancelling its signal watchers (see
+  /// [cancelAll]). Call this for any short-lived [TomShutdownCleanup] so its
+  /// watchers stop leaking (bug §53); the process-lifetime global
+  /// [tomShutdownCleanup] normally never needs it.
+  Future<void> dispose() => cancelAll();
 
   /// Initializes the cleanup listener and logs its status.
   ///
