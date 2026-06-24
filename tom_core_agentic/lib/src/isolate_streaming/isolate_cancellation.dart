@@ -110,9 +110,30 @@ final class IsolateCancellationTokenAllocator {
 /// natural race where the host sends a cancel immediately after the open
 /// envelope, but the cancel arrives first because the open envelope is
 /// still mid-dispatch.
+///
+/// **Pre-open vs. post-close discriminator (bug §73)**: an unknown-token
+/// `cancel` is ambiguous — it is either a *pre-open* cancel (the open
+/// envelope is still in flight) that must be remembered, or a *post-close*
+/// cancel (the request already registered, disposed, and unregistered)
+/// that must be dropped. Remembering the latter leaks: ids are never
+/// recycled, so a post-close cancel would sit in `_pendingCancellations`
+/// forever, never consumed by any future `register`. The two cases are
+/// distinguished by a monotonic high-water mark [_highestSeenId]: tokens
+/// are allocated with strictly increasing ids by a single host allocator,
+/// and the ordered host→executor transport delivers open envelopes in id
+/// order, so every id that has *ever* been registered is `<=` the highest
+/// seen. An unknown-token cancel whose id is `<= _highestSeenId` therefore
+/// belongs to a request that already passed through the registry (now
+/// closed) and is dropped; an id `> _highestSeenId` is a genuine pre-open
+/// cancel and is remembered. This keeps `_pendingCancellations` bounded by
+/// the number of genuinely in-flight-but-unopened requests.
 final class IsolateCancellationRegistry {
   final Map<int, _RegistryEntry> _entries = <int, _RegistryEntry>{};
   final Set<int> _pendingCancellations = <int>{};
+
+  /// Highest token id ever registered. Drives the pre-open vs. post-close
+  /// discriminator for unknown-token cancels (bug §73).
+  int _highestSeenId = 0;
 
   /// Registers [token] as in-flight. The returned [IsolateCancellationHandle]
   /// is the handle the executor uses to read [IsolateCancellationHandle.isCancelled]
@@ -121,6 +142,7 @@ final class IsolateCancellationRegistry {
   /// If the token has a pending cancel (a cancel arrived before
   /// `register`), the returned handle is already cancelled.
   IsolateCancellationHandle register(IsolateCancellationToken token) {
+    if (token.id > _highestSeenId) _highestSeenId = token.id;
     final wasPending = _pendingCancellations.remove(token.id);
     final entry = _RegistryEntry(cancelled: wasPending);
     _entries[token.id] = entry;
@@ -129,16 +151,21 @@ final class IsolateCancellationRegistry {
 
   /// Flips the cancelled-flag for [token].
   ///
-  /// If the token is not yet registered, the cancellation is remembered
-  /// so the eventual `register(token)` returns an already-cancelled
-  /// handle.
+  /// If the token is registered, its flag is raised immediately. If it is
+  /// not, the cancel is either remembered (pre-open, so the eventual
+  /// `register(token)` returns an already-cancelled handle) or dropped
+  /// (post-close), distinguished by the [_highestSeenId] high-water mark:
+  /// an id that has already been seen by `register` belongs to a closed
+  /// request and is dropped to keep `_pendingCancellations` bounded (bug
+  /// §73).
   void cancel(IsolateCancellationToken token) {
     final entry = _entries[token.id];
     if (entry != null) {
       entry.markCancelled();
-    } else {
+    } else if (token.id > _highestSeenId) {
       _pendingCancellations.add(token.id);
     }
+    // else: post-close cancel for an already-seen id — dropped (bug §73).
   }
 
   /// Whether [token] has been cancelled — independent of whether it is

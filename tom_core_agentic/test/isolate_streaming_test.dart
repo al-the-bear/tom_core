@@ -81,6 +81,38 @@ void main() {
       reg.register(const IsolateCancellationToken(10));
       expect(reg.pendingCancelCount, equals(1));
     });
+
+    // Bug §73: a cancel that arrives *after* the request closed (register →
+    // dispose → cancel) hit the same "unknown token" branch as a pre-open
+    // cancel and was remembered in _pendingCancellations forever — a token is
+    // never recycled, so that entry could never be consumed by a later
+    // register. The post-close cancel must be dropped instead of leaking.
+    test('cancel after dispose is dropped, not leaked (bug §73)', () {
+      final reg = IsolateCancellationRegistry();
+      final tok = const IsolateCancellationToken(1);
+      final h = reg.register(tok);
+      h.dispose();
+      expect(reg.inFlightCount, equals(0));
+      reg.cancel(tok); // late, post-close cancel for a completed request
+      expect(reg.pendingCancelCount, equals(0),
+          reason: 'a post-close cancel must not accumulate in pending');
+      // The completed request reports not-cancelled for the late signal.
+      expect(reg.isCancelled(tok), isFalse);
+    });
+
+    test('a pre-open cancel is still remembered after an earlier request closed'
+        ' (bug §73 discriminator)', () {
+      // Earlier request (id 1) completes; a genuine pre-open cancel for a newer
+      // token (id 2, never registered) must still be remembered — the drop only
+      // applies to ids that already passed through the registry.
+      final reg = IsolateCancellationRegistry();
+      reg.register(const IsolateCancellationToken(1)).dispose();
+      reg.cancel(const IsolateCancellationToken(2));
+      expect(reg.pendingCancelCount, equals(1));
+      final h = reg.register(const IsolateCancellationToken(2));
+      expect(h.isCancelled, isTrue);
+      expect(reg.pendingCancelCount, equals(0));
+    });
   });
 
   group('IsolateCancellationToken / allocator', () {
@@ -140,6 +172,32 @@ void main() {
       await Future.wait([f1, f2]);
       expect(order, equals(<int>[1, 2]));
       expect(t.waiterCount, equals(0));
+    });
+
+    // Bug §72: grant(n) looped `while (waiters.isNotEmpty && _credits > 0)`
+    // without decrementing per wake. Since waking does not consume a credit
+    // (the producer consumes after pushing), a single grant woke *every* parked
+    // waiter, so n+1 producers would push against only n credits and consume()
+    // would cascade StateErrors. grant(n) must release at most n waiters.
+    test('grant(1) wakes exactly one of three parked waiters (bug §72)',
+        () async {
+      final t = BackpressureTracker(initialCredits: 0);
+      var woken = 0;
+      final f1 = t.awaitCredit().then((_) => woken++);
+      final f2 = t.awaitCredit().then((_) => woken++);
+      final f3 = t.awaitCredit().then((_) => woken++);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(t.waiterCount, equals(3));
+      t.grant(1);
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      // Exactly one waiter wakes; the other two stay parked.
+      expect(woken, equals(1));
+      expect(t.waiterCount, equals(2));
+      // The leftover credit is one, claimable by the woken producer.
+      expect(t.credits, equals(1));
+      // Draining the rest so no future completes after the test ends.
+      t.grant(2);
+      await Future.wait([f1, f2, f3]);
     });
 
     test('consume rejects negative and over-consume', () {

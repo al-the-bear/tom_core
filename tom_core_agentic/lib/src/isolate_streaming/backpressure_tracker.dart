@@ -82,18 +82,30 @@ final class BackpressureTracker {
     _credits -= n;
   }
 
-  /// Grants [n] more credits. Wakes up to [n] parked waiters in FIFO
+  /// Grants [n] more credits. Wakes **at most [n]** parked waiters in FIFO
   /// order; remaining credits stay on the ledger.
+  ///
+  /// Waking a waiter does not itself consume a credit — the woken producer
+  /// pushes its chunk and then calls [consume]. So the release count is bounded
+  /// by an explicit per-grant budget (`n`), not by the credit balance: granting
+  /// `n` credits releases `n` producers, each of which will claim one of the
+  /// `n` credits. Releasing more than `n` would let `n + k` producers push
+  /// against only `n` credits, and the surplus [consume] calls would throw
+  /// (bug §72).
   void grant(int n) {
     if (_closed) return;
     if (n <= 0) {
       throw ArgumentError.value(n, 'n', 'must be positive');
     }
     _credits += n;
-    while (_waiters.isNotEmpty && _credits > 0) {
+    var releasable = n;
+    while (releasable > 0 && _waiters.isNotEmpty) {
       final w = _waiters.removeAt(0);
+      // An already-completed waiter (e.g. cancelled) claims no credit, so it
+      // does not draw down the release budget.
       if (!w.isCompleted) {
         w.complete();
+        releasable--;
       }
     }
   }
