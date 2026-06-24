@@ -48,9 +48,15 @@ class TomTimezoneException extends TomException {
 ///
 /// ## Initialization
 ///
-/// The timezone database is initialized automatically on first access.
-/// No manual initialization is required - the `_initialize()` method handles
-/// calling `initializeTimeZones()` internally.
+/// On native (Flutter / VM) platforms the timezone database is loaded
+/// **synchronously on first access** from the embedded IANA data, so no manual
+/// initialization is required.
+///
+/// On the **web** the database must be fetched over the network and therefore
+/// cannot be loaded synchronously: applications must call (and await)
+/// `tomSetupTimezones()` during startup **before** any timezone access. If the
+/// database is still empty on first access, lookups throw a clear error rather
+/// than returning empty results.
 ///
 /// ## Common Usage
 ///
@@ -128,33 +134,26 @@ class TomTimezone {
   }
 
   static bool _initialized = false;
-  static bool _initializing = false;
 
+  /// Lazily initializes the timezone database synchronously on first access.
+  ///
+  /// If the database has already been loaded (e.g. the application called
+  /// [tomSetupTimezones] during startup, which is mandatory on web), the
+  /// existing data is used. Otherwise the embedded database is loaded
+  /// synchronously via [tomSetupTimezonesSync]. On web there is no synchronous
+  /// load path, so [tomSetupTimezonesSync] throws to surface the missing
+  /// startup initialization instead of silently returning empty results.
   static void _initialize() {
-    if (_initializing) {
-      throw TomTimezoneException(
-        'timezone.initialization.reentry',
-        'Timezone initialization re-entry detected, initialization has not completed yet.',
-      );
-    }
-
     if (_initialized) return;
 
-    _initializing = true; // Prevent re-entry
-    
-    // Check if timezone database is already initialized (e.g., by tz_data.initializeTimeZones())
-    if (tz.timeZoneDatabase.locations.isNotEmpty) {
-      _populateTimezonesMap();
-      _initializing = false;
-      return;
+    // Load the embedded database synchronously when it has not been
+    // pre-populated. On native platforms this is a no-I/O in-memory load; on
+    // web it throws because the data must be fetched asynchronously first.
+    if (tz.timeZoneDatabase.locations.isEmpty) {
+      tomSetupTimezonesSync();
     }
-    
-    // Initialize the timezone database asynchronously
-    // ignore: discarded_futures
-    tomSetupTimezones().then((result) {
-      _populateTimezonesMap();
-      _initializing = false;
-    });
+
+    _populateTimezonesMap();
   }
 
   static void _populateTimezonesMap() {
@@ -293,9 +292,11 @@ class TomTimezone {
     _initialize();
     if (name != null) {
       var byName = _timezonesMap[name.toUpperCase()];
-      if (utcOffsetMinutes != null &&
-          byName != null &&
-          byName.timezoneOffsetMin == utcOffsetMinutes) {
+      // A name-only lookup (no offset given) returns the named zone; when an
+      // offset is supplied it must match the zone's current offset.
+      if (byName != null &&
+          (utcOffsetMinutes == null ||
+              byName.timezoneOffsetMin == utcOffsetMinutes)) {
         return byName;
       } else {
         throw TomTimezoneException(

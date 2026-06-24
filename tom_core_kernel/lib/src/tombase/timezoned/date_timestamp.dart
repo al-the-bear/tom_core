@@ -237,7 +237,11 @@ class TomTimezoned extends DateTime {
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    return TomTimezoned.fromDateTime(dt, TomTimezone.fromName(zone));
+    final timezone = TomTimezone.fromName(zone);
+    if (timezone == null) {
+      throw FormatException("Unknown timezone '$zone' in TomTimezoned string: $formattedString");
+    }
+    return TomTimezoned.fromDateTime(dt, timezone);
   }
 
   /// Returns the string representation of this datetime.
@@ -470,7 +474,11 @@ class TomZonedDate extends TomTimezoned {
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    return TomZonedDate.fromDateTime(dt, TomTimezone.fromName(zone));
+    final timezone = TomTimezone.fromName(zone);
+    if (timezone == null) {
+      throw FormatException("Unknown timezone '$zone' in TomZonedDate string: $formattedString");
+    }
+    return TomZonedDate.fromDateTime(dt, timezone);
   }
 
   /// Returns the serialized string representation of this date.
@@ -678,7 +686,11 @@ class TomZonedTime extends TomTimezoned {
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    return TomZonedTime.fromDateTime(dt, TomTimezone.fromName(zone));
+    final timezone = TomTimezone.fromName(zone);
+    if (timezone == null) {
+      throw FormatException("Unknown timezone '$zone' in TomZonedTime string: $formattedString");
+    }
+    return TomZonedTime.fromDateTime(dt, timezone);
   }
 
   /// Returns the serialized string representation of this time.
@@ -971,7 +983,11 @@ class TomZonedDateTime extends TomTimezoned {
     String dateTimeStr = match.group(1)!;
     String zone = match.group(3)!;
     DateTime dt = DateTime.parse(dateTimeStr).toUtc();
-    return TomZonedDateTime.fromDateTime(dt, TomTimezone.fromName(zone));
+    final timezone = TomTimezone.fromName(zone);
+    if (timezone == null) {
+      throw FormatException("Unknown timezone '$zone' in TomZonedDateTime string: $formattedString");
+    }
+    return TomZonedDateTime.fromDateTime(dt, timezone);
   }
 
   /// Checks if a string is in valid [TomZonedDateTime] format.

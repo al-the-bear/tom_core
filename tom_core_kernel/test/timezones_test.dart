@@ -164,6 +164,20 @@ void main() {
         final tzResult = TomTimezone.findTimezone(null, null);
         expect(tzResult, isNull);
       });
+
+      // Bug §55: name-only lookup (offset null) must return the named zone
+      // instead of throwing a name/offset-mismatch exception.
+      test('should return named zone when name is given and offset is null', () {
+        final tzResult = TomTimezone.findTimezone('Asia/Tokyo', null);
+        expect(tzResult, isNotNull);
+        expect(tzResult!.timezone, equals('Asia/Tokyo'));
+      });
+
+      test('should return UTC when name is "UTC" and offset is null', () {
+        final tzResult = TomTimezone.findTimezone('UTC', null);
+        expect(tzResult, isNotNull);
+        expect(tzResult!.timezone, equals('UTC'));
+      });
     });
 
     group('convertMinutesToUtcOffset', () {
@@ -1409,6 +1423,53 @@ void main() {
             equals(backToTokyo.toUtc().millisecondsSinceEpoch));
         expect(backToTokyo.localHour, equals(original.localHour));
       });
+    });
+  });
+
+  // Bug §56: parseFromString must throw a FormatException when the timezone
+  // name does not resolve, instead of silently downgrading to UTC.
+  group('parseFromString unknown timezone (§56)', () {
+    test('TomTimezoned.parseFromString throws for unknown zone', () {
+      expect(
+        () => TomTimezoned.parseFromString(
+          '2024-06-15T05:30:00.000Z_+09:00_Unknown/Zone',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('TomZonedDate.parseFromString throws for unknown zone', () {
+      expect(
+        () => TomZonedDate.parseFromString(
+          '@D@2024-06-15T00:00:00.000Z_+09:00_Unknown/Zone',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('TomZonedTime.parseFromString throws for unknown zone', () {
+      expect(
+        () => TomZonedTime.parseFromString(
+          '@T@1970-01-01T09:00:00.000Z_+09:00_Unknown/Zone',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('TomZonedDateTime.parseFromString throws for unknown zone', () {
+      expect(
+        () => TomZonedDateTime.parseFromString(
+          '@X@2024-06-15T14:30:00.000Z_+09:00_Unknown/Zone',
+        ),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('TomTimezoned.parseFromString still resolves a known zone', () {
+      final tt = TomTimezoned.parseFromString(
+        '2024-06-15T05:30:00.000Z_+09:00_Asia/Tokyo',
+      );
+      expect(tt.timezone.timezone, equals('Asia/Tokyo'));
     });
   });
 }
