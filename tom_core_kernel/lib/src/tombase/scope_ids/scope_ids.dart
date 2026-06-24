@@ -42,8 +42,11 @@ abstract class TomScope {
     final List<String> parts = [];
     TomScope? current = scope;
     while (current != null) {
-      // Skip the default scope in the path
-      if (current.id != 'default') {
+      // Elide only the actual root sentinel ([defaultScope]) — identified by
+      // identity, not by its 'default' id string. A legitimate domain scope
+      // whose local id happens to be 'default' is not the sentinel and must
+      // keep its segment in the path (bug §50).
+      if (!identical(current, TomScope.defaultScope)) {
         parts.add(current.id);
       }
       current = current.parent;

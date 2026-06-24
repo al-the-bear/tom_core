@@ -106,6 +106,36 @@ void main() {
           equals('app.checkout.orderForm'),
         );
       });
+
+      // Bug §50 / tests §34a: only the actual root sentinel (defaultScope) is
+      // elided from the path. A legitimate domain scope whose local id happens
+      // to be 'default' is NOT the root sentinel and must appear in its path.
+      test('keeps a non-root scope named "default" in the path', () {
+        final root = TomScopeBase(scopeId: 'app', parentScope: null);
+        final named = TomScopeBase(scopeId: 'default', parentScope: root);
+        final leaf = TomScopeBase(scopeId: 'child', parentScope: named);
+
+        expect(TomScope.buildScopePath(named), equals('app.default'));
+        expect(TomScope.buildScopePath(leaf), equals('app.default.child'));
+      });
+
+      test('a scope named "default" parented to defaultScope keeps its segment', () {
+        // Chain: named('default') -> defaultScope. The sentinel is skipped by
+        // identity; the same-named domain scope is not the sentinel, so it stays.
+        final named = TomScopeBase(
+          scopeId: 'default',
+          parentScope: TomScope.defaultScope,
+        );
+        expect(TomScope.buildScopePath(named), equals('default'));
+      });
+
+      test('withScope("default") yields a "default" path segment', () {
+        final path = TomScope.withScope(
+          'default',
+          () => TomScope.current.getScopePath(),
+        );
+        expect(path, equals('default'));
+      });
     });
   });
 
