@@ -43,6 +43,88 @@ void main() {
       expect(find.text('ON'), findsOneWidget);
       expect(find.text('OFF'), findsNothing);
     });
+
+    // tests §8(a) — disposal: once the widget leaves the tree it must
+    // deregister, so a later mutation neither calls setState on a dead State
+    // ("setState() called after dispose()") nor keeps the State alive. There
+    // is no public observer-count getter on TomObservable, so the still-
+    // registered dead observer surfaces only as the framework throw on the
+    // post-unmount notification — asserting no exception is the deregistration
+    // check. RED against the current (no-dispose) implementation.
+    testWidgets('deregisters on unmount — no setState after dispose',
+        (tester) async {
+      final flag = TomBool(false);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: TomObservingWidget<TomBool>(
+            subState: flag,
+            child: (state) => Text(~state ? 'ON' : 'OFF',
+                textDirection: TextDirection.ltr),
+          ),
+        ),
+      );
+      expect(find.text('OFF'), findsOneWidget);
+
+      // Remove the observing widget from the tree → State.dispose() runs.
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+
+      // Mutating the (now unobserved) observable must not reach the disposed
+      // State. A surviving registration would throw "setState() called after
+      // dispose()" on this notification.
+      flag | true;
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+    });
+
+    // tests §8(b) — observable swap: a parent rebuild with a different
+    // subState must make the widget observe and render from the NEW observable
+    // and ignore the OLD one. RED against the current implementation, which
+    // seeds its observer/`subState` once in the constructor and never migrates
+    // on didUpdateWidget.
+    testWidgets('swaps to a new subState — observes/renders new, ignores old',
+        (tester) async {
+      final first = TomBool(false);
+      final second = TomBool(false);
+      var current = first;
+      late void Function(void Function()) rebuildParent;
+      var builds = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, setState) {
+              rebuildParent = setState;
+              return TomObservingWidget<TomBool>(
+                subState: current,
+                child: (state) {
+                  builds++;
+                  return Text(~state ? 'ON' : 'OFF',
+                      textDirection: TextDirection.ltr);
+                },
+              );
+            },
+          ),
+        ),
+      );
+      expect(find.text('OFF'), findsOneWidget);
+
+      // Swap the parent to observe `second` (still false).
+      rebuildParent(() => current = second);
+      await tester.pump();
+
+      // It now renders from `second`.
+      second | true;
+      await tester.pump();
+      expect(find.text('ON'), findsOneWidget);
+
+      // The OLD observable must be ignored: mutating it triggers no rebuild.
+      final buildsBefore = builds;
+      first | true;
+      await tester.pump();
+      expect(builds, buildsBefore);
+      expect(find.text('ON'), findsOneWidget);
+    });
   });
 
   group('ValueListenableObserver', () {

@@ -82,12 +82,13 @@ notification. Use it to plug kernel state into `ValueListenableBuilder`,
 
 ## Lifecycle and Limitations
 
-- **No automatic deregistration.** `TomObservingWidgetState` registers its
-  observer in the constructor but does not remove it in `dispose()`. For
-  long-lived observables that outlive the widget this can retain the state
-  object. In practice consumers bind to observables scoped to the same screen,
-  so the observable and widget are discarded together. Treat this as a known
-  limitation rather than a guaranteed cleanup.
+- **Automatic registration and cleanup.** `TomObservingWidgetState` follows the
+  standard `State` lifecycle: it registers its observer in `initState`, migrates
+  the registration to the new observable in `didUpdateWidget` when the parent
+  rebuilds with a different `subState` (dropping the old one), and deregisters in
+  `dispose`. A long-lived observable that outlives the widget is therefore not
+  retained, and a mutation after the widget unmounts never triggers
+  `setState() called after dispose()`.
 - **`ValueListenableObserver` holds a single listener.** `addListener` replaces
   any prior callback rather than appending; it is not a multicast
   `ValueListenable`. This matches its intended use with a single
