@@ -1146,57 +1146,84 @@ void main() {
       expect(holder.teamMembers!['manager']!.name, 'Eve');
     });
 
-    // NOTE: The following tests verify that null values in list/map entries
-    // are SKIPPED during reflection, because the collection types are:
+    // NOTE: The following tests verify ATOMIC deserialization (bug §48): a null
+    // value destined for a non-nullable collection element MUST surface a
+    // TomReflectorException and leave the target field untouched, rather than
+    // silently truncating it to whatever was materialized before the failure.
+    // The collection types here are:
     // - List<TeamMember>? (elements are non-nullable TeamMember)
     // - Map<String, NestedInfo>? (values are non-nullable NestedInfo)
     // To support null elements/values, you would need List<TeamMember?>? or
-    // Map<String, NestedInfo?>? which requires different handling.
+    // Map<String, NestedInfo?>? which is exercised in the next group.
 
-    test('should stop processing list when null element encountered (List<TeamMember>? has non-nullable elements)', () {
-      // When null is encountered in a list of non-nullable elements,
-      // the code tries to add null to List<TeamMember> which throws an error.
-      // This causes the list processing to stop, leaving only elements
-      // that were added BEFORE the null was encountered.
-      // This is correct behavior - List<TeamMember> cannot hold null values.
+    test('should propagate failure and leave list untouched when null element hits non-nullable List<TeamMember>?', () {
+      // A null element cannot be added to List<TeamMember>. The deserialization
+      // must build the new list atomically and propagate a TomReflectorException
+      // on failure — never assigning a half-built list to the field.
       final holder = UninitializedListHolder();
-      
-      tomReflectionInfo.setValues(holder, {
-        'name': 'Mixed Elements Holder',
-        'members': [
-          {'name': 'Frank', 'role': 'Tester'},
-          null, // This will cause an error because List<TeamMember> can't hold null
-          {'name': 'Grace', 'role': 'QA'},
-        ]
-      });
-      
-      expect(holder.members, isNotNull);
-      // Due to the bug, only the first element is added before the error
-      expect(holder.members!.length, 1);
-      expect(holder.members![0].name, 'Frank');
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'name': 'Mixed Elements Holder',
+          'members': [
+            {'name': 'Frank', 'role': 'Tester'},
+            null, // Cannot be held by List<TeamMember>
+            {'name': 'Grace', 'role': 'QA'},
+          ]
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+
+      // Atomic: the field was never null-initialized nor partially filled.
+      expect(holder.members, isNull);
     });
 
-    test('should stop processing map when null value encountered (Map<String, NestedInfo>? has non-nullable values)', () {
-      // When null is encountered in a map of non-nullable values,
-      // the code tries to add null to Map<String, NestedInfo> which throws an error.
-      // This causes the map processing to stop, leaving only entries
-      // that were added BEFORE the null was encountered.
-      // This is correct behavior - Map<String, NestedInfo> cannot hold null values.
+    test('should propagate failure and leave map untouched when null value hits non-nullable Map<String, NestedInfo>?', () {
+      // A null value cannot be added to Map<String, NestedInfo>. The
+      // deserialization must build the new map atomically and propagate a
+      // TomReflectorException — never assigning a half-built map to the field.
       final holder = UninitializedMapHolder();
-      
-      tomReflectionInfo.setValues(holder, {
-        'name': 'Mixed Values Holder',
-        'infoMap': {
-          'valid': {'info': 'Valid Info', 'level': 3},
-          'empty': null, // This will cause an error because Map<String, NestedInfo> can't hold null
-          'another': {'info': 'Another Info', 'level': 5},
-        }
-      });
-      
-      expect(holder.infoMap, isNotNull);
-      // Due to the bug, only the first entry is added before the error
-      expect(holder.infoMap!.length, 1);
-      expect(holder.infoMap!['valid']!.info, 'Valid Info');
+
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'name': 'Mixed Values Holder',
+          'infoMap': {
+            'valid': {'info': 'Valid Info', 'level': 3},
+            'empty': null, // Cannot be held by Map<String, NestedInfo>
+            'another': {'info': 'Another Info', 'level': 5},
+          }
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+
+      // Atomic: the field was never null-initialized nor partially filled.
+      expect(holder.infoMap, isNull);
+    });
+
+    test('should preserve pre-populated list content when an update fails atomically', () {
+      // A pre-populated List<TeamMember> must keep its existing content if the
+      // incoming update cannot be materialized in full (bug §48 atomicity).
+      final team = Team()
+        ..teamName = 'Original'
+        ..members.add(TeamMember()
+          ..name = 'Old'
+          ..role = 'Veteran');
+
+      expect(
+        () => tomReflectionInfo.setValues(team, {
+          'teamName': 'Updated',
+          'members': [
+            {'name': 'New', 'role': 'Rookie'},
+            null, // Forces the whole members update to fail
+            {'name': 'Third', 'role': 'Junior'},
+          ]
+        }),
+        throwsA(isA<TomReflectorException>()),
+      );
+
+      // The original member list is intact — not cleared, not truncated.
+      expect(team.members.length, 1);
+      expect(team.members[0].name, 'Old');
     });
   });
 
@@ -1343,6 +1370,85 @@ void main() {
       expect(mapHolder.infoMap!.length, 2);
       expect(mapHolder.infoMap!['first']!.info, 'First');
       expect(mapHolder.infoMap!['second']!.info, 'Second');
+    });
+  });
+
+  // ==========================================================================
+  // Type Resolution — generic-argument validation (bug §49a)
+  // ==========================================================================
+  group('tomReflectionInfo type resolution validation', () {
+    test('mapValueElementType throws TomReflectorException on a non-generic value', () {
+      // 42.runtimeType.toString() == 'int' has no '<...>' — must not force-unwrap.
+      expect(
+        () => tomReflectionInfo.mapValueElementType(42),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('mapValueElementType throws TomReflectorException on a single-arg generic', () {
+      // List<int> only has one type argument — not a Map<K, V>; must not RangeError.
+      expect(
+        () => tomReflectionInfo.mapValueElementType(<int>[1, 2, 3]),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+
+    test('singleElementType throws TomReflectorException on a non-generic value', () {
+      expect(
+        () => tomReflectionInfo.singleElementType(42),
+        throwsA(isA<TomReflectorException>()),
+      );
+    });
+  });
+
+  // ==========================================================================
+  // Round-trip serialization (tests §33a)
+  // ==========================================================================
+  group('tomReflectionInfo round-trip serialization', () {
+    test('createInstanceFromJsonString reconstructs a Team with nested members', () {
+      final team = Team()
+        ..teamName = 'Alpha'
+        ..members.add(TeamMember()
+          ..name = 'Alice'
+          ..role = 'Lead')
+        ..members.add(TeamMember()
+          ..name = 'Bob'
+          ..role = 'Dev');
+
+      final json = tomReflectionInfo.convertToJsonString(team);
+      final mirror = tomReflector.reflectType(Team) as ClassMirror;
+      final restored =
+          tomReflectionInfo.createInstanceFromJsonString<Team>(mirror, json);
+
+      expect(restored, isNotNull);
+      expect(restored!.teamName, 'Alpha');
+      expect(restored.members.length, 2);
+      expect(restored.members[0].name, 'Alice');
+      expect(restored.members[0].role, 'Lead');
+      expect(restored.members[1].name, 'Bob');
+      expect(restored.members[1].role, 'Dev');
+    });
+
+    test('createInstanceFromJson round-trips a PersonWithAddress', () {
+      final person = PersonWithAddress()
+        ..name = 'Carol'
+        ..address = (Address()
+          ..street = '1 Main St'
+          ..city = 'Springfield'
+          ..zipCode = '12345');
+
+      final json = tomReflectionInfo.getValues(person);
+      final mirror =
+          tomReflector.reflectType(PersonWithAddress) as ClassMirror;
+      final restored =
+          tomReflectionInfo.createInstanceFromJson<PersonWithAddress>(mirror, json);
+
+      expect(restored, isNotNull);
+      expect(restored!.name, 'Carol');
+      expect(restored.address, isNotNull);
+      expect(restored.address!.street, '1 Main St');
+      expect(restored.address!.city, 'Springfield');
+      expect(restored.address!.zipCode, '12345');
     });
   });
 }

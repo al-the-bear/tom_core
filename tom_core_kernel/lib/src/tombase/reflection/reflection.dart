@@ -229,7 +229,23 @@ class TomReflectionInfo {
   /// among annotated classes.
   ClassMirror mapValueElementType(Object collection) {
     final match = _elementTypeExp.firstMatch(collection.runtimeType.toString());
-    final elementTypeNames = match!.group(1)!.split(',');
+    if (match == null) {
+      throw TomReflectorException(
+        "reflector.type_resolution.not_a_generic_type",
+        "TomReflectionInfo.mapValueElementType: '${collection.runtimeType}' "
+            "is not a generic Map type (no type arguments found)",
+        autoLog: true,
+      );
+    }
+    final elementTypeNames = match.group(1)!.split(',');
+    if (elementTypeNames.length < 2) {
+      throw TomReflectorException(
+        "reflector.type_resolution.not_a_map_type",
+        "TomReflectionInfo.mapValueElementType: '${collection.runtimeType}' "
+            "is not a Map<K, V> type (expected two type arguments)",
+        autoLog: true,
+      );
+    }
     final typeName = elementTypeNames[1].trim();
     return _findClassMirror(
       typeName,
@@ -255,9 +271,17 @@ class TomReflectionInfo {
   /// among annotated classes.
   ClassMirror singleElementType(Object collection) {
     final match = _elementTypeExp.firstMatch(collection.runtimeType.toString());
-    final elementTypeName = match!.group(1);
+    if (match == null) {
+      throw TomReflectorException(
+        "reflector.type_resolution.not_a_generic_type",
+        "TomReflectionInfo.singleElementType: '${collection.runtimeType}' "
+            "is not a generic collection type (no type argument found)",
+        autoLog: true,
+      );
+    }
+    final elementTypeName = match.group(1)!;
     return _findClassMirror(
-      elementTypeName!,
+      elementTypeName,
       "reflector.classmirror.not_found_for_iterable_value",
       "TomReflectionInfo:elementType: ClassMirror for type $elementTypeName could not be found",
     );
@@ -275,12 +299,28 @@ class TomReflectionInfo {
     String errorKey,
     String errorMessage,
   ) {
+    final matches = <ClassMirror>[];
     for (var t in reflector.annotatedClasses) {
       if (t.simpleName == typeName) {
-        return t;
+        matches.add(t);
       }
     }
-    throw TomReflectorException(errorKey, errorMessage, autoLog: true);
+    if (matches.isEmpty) {
+      throw TomReflectorException(errorKey, errorMessage, autoLog: true);
+    }
+    if (matches.length > 1) {
+      // Resolving a type by its simple name is ambiguous when two annotated
+      // classes share it across libraries: returning the first match risks
+      // materializing the wrong type. Reject the lookup and name the collision.
+      final qualifiedNames = matches.map((m) => m.qualifiedName).join(", ");
+      throw TomReflectorException(
+        "reflector.classmirror.ambiguous_simple_name",
+        "TomReflectionInfo._findClassMirror: simple name '$typeName' is "
+            "ambiguous; it matches multiple annotated classes: $qualifiedNames",
+        autoLog: true,
+      );
+    }
+    return matches.first;
   }
 
   // ---------------------------------------------------------------------------
@@ -820,37 +860,56 @@ class TomReflectionInfo {
     final typeString = imGet.reflectedReturnType.toString();
     if (!typeString.startsWith("Map<String,")) return false;
     final memberMirror = imGet.returnType.typeArguments[1] as ClassMirror;
+
+    Map<String, Map<String, dynamic>?>? jsonMap;
     try {
-      var value = (im.invokeGetter(entry.key) as Map?);
-      if( value == null ) { 
-        value = typeString.endsWith("?>") ? memberMirror.createNullableValuedMap<String>() : memberMirror.createValuedMap<String>(); 
-        im.invokeSetter(entry.key, value); 
+      jsonMap = (entry.value as Map).cast<String, Map<String, dynamic>?>();
+    } catch (e) {
+      if (debugSwitchLogReflectionDetailsValues) {
+        tomLog.trace(
+          "JSON value for map field ${entry.key} is not a Map<String, Map<String, dynamic>?>: ${entry.value.runtimeType}",
+        );
       }
+      return false;
+    }
 
-      Map<String, Map<String, dynamic>?>? jsonMap;
-      try {
-        jsonMap = (entry.value as Map)
-            .cast<String, Map<String, dynamic>?>();
-      } catch (e) {
-        if(debugSwitchLogReflectionDetailsValues) {
-          tomLog.trace(
-            "JSON value for map field ${entry.key} is not a Map<String, Map<String, dynamic>?>: ${entry.value.runtimeType}",
-          );
-        }
-        return false;
-      }
-
+    // Materialize every value into a fresh map first; only assign on full
+    // success so a mid-stream failure never leaves the field half-populated
+    // (bug §48). A value rejected by the (non-nullable) target type surfaces
+    // as a TomReflectorException instead of silently truncating the map.
+    final newMap = typeString.endsWith("?>")
+        ? memberMirror.createNullableValuedMap<String>()
+        : memberMirror.createValuedMap<String>();
+    try {
       for (var subEntry in jsonMap.entries) {
-        value[subEntry.key] = subEntry.value != null
+        newMap[subEntry.key] = subEntry.value != null
             ? createInstanceFromJson(memberMirror, subEntry.value!)
             : null;
       }
-      return true;
     } on TomReflectorException {
       rethrow;
-    } catch (error) {
-      return false;
+    } catch (error, stacktrace) {
+      throw TomReflectorException(
+        "reflection.set.map_value_materialization_failed",
+        "Failed to materialize value of map field '${entry.key}' "
+            "(Map<String, ${memberMirror.simpleName}>): $error",
+        parameters: {"key": entry.key},
+        rootException: error,
+        stack: stacktrace,
+        autoLog: true,
+      );
     }
+
+    // Atomic assignment: only now that the whole map is built do we touch the
+    // target field, preserving its prior content if anything above threw.
+    final existingMap = im.invokeGetter(entry.key) as Map?;
+    if (existingMap == null) {
+      im.invokeSetter(entry.key, newMap);
+    } else {
+      existingMap.clear();
+      existingMap.addAll(newMap);
+    }
+    return true;
   }
 
 
@@ -1036,46 +1095,58 @@ class TomReflectionInfo {
     final typeString = imGet.reflectedReturnType.toString();
     if (!typeString.startsWith("List<")) return false;
     final memberMirror = imGet.returnType.typeArguments[0] as ClassMirror;
-    try {
-      // Get the existing list - if it's null, we can't set a typed list
-      // The class should initialize the list in its constructor
-      var existingList = im.invokeGetter(entry.key) as List?;
-      if (existingList == null) {
-        existingList = typeString.endsWith("?>") ? memberMirror.createNullableList() : memberMirror.createList();
-        im.invokeSetter(entry.key, existingList); 
-      }
-      List<Map<String, dynamic>?>? jsonList;
-      try {
-        jsonList = (entry.value as List).cast<Map<String, dynamic>?>();
-      } catch (e) {
-        if(debugSwitchLogReflectionDetailsValues) {
-          tomLog.trace(
-            "Value for list field ${entry.key} is not a List<Map<String, dynamic>?>: ${entry.value.runtimeType}",
-          );
-        }
-        return false;
-      }
 
-      // Clear and populate the existing typed list
-      existingList.clear();
+    List<Map<String, dynamic>?>? jsonList;
+    try {
+      jsonList = (entry.value as List).cast<Map<String, dynamic>?>();
+    } catch (e) {
+      if (debugSwitchLogReflectionDetailsValues) {
+        tomLog.trace(
+          "Value for list field ${entry.key} is not a List<Map<String, dynamic>?>: ${entry.value.runtimeType}",
+        );
+      }
+      return false;
+    }
+
+    // Materialize every element into a fresh list first; only assign on full
+    // success so a mid-stream failure never leaves the field cleared-and-
+    // truncated (bug §48). An element rejected by the (non-nullable) target
+    // type surfaces as a TomReflectorException instead of silent truncation.
+    final newList = typeString.endsWith("?>")
+        ? memberMirror.createNullableList()
+        : memberMirror.createList();
+    try {
       for (var subEntry in jsonList) {
-        existingList.add(
+        newList.add(
           subEntry != null
               ? createInstanceFromJson(memberMirror, subEntry)
               : null,
         );
       }
-      return true;
     } on TomReflectorException {
       rethrow;
-    } catch (error) {
-      if(debugSwitchLogReflectionDetailsValues) {
-        tomLog.trace(
-          "Could not set annotated object list value for field ${entry.key} of type ${imGet.reflectedReturnType} error: $error",
-        );
-      }
-      return false;
+    } catch (error, stacktrace) {
+      throw TomReflectorException(
+        "reflection.set.list_element_materialization_failed",
+        "Failed to materialize element of list field '${entry.key}' "
+            "(List<${memberMirror.simpleName}>): $error",
+        parameters: {"key": entry.key},
+        rootException: error,
+        stack: stacktrace,
+        autoLog: true,
+      );
     }
+
+    // Atomic assignment: only now that the whole list is built do we touch the
+    // target field, preserving its prior content if anything above threw.
+    final existingList = im.invokeGetter(entry.key) as List?;
+    if (existingList == null) {
+      im.invokeSetter(entry.key, newList);
+    } else {
+      existingList.clear();
+      existingList.addAll(newList);
+    }
+    return true;
   }
 
   // ---------------------------------------------------------------------------
