@@ -91,8 +91,12 @@ class TomExecutionContext {
   ///
   /// [contextMap] A map of entry names to [TomContextEntry] objects.
   TomExecutionContext( Map<String, TomContextEntry> contextMap, { TomExecutionContext? parentContext }) {
+    // Merge into this context's own fresh map, never the caller's argument:
+    // the parent supplies the base entries and the child (`contextMap`)
+    // overwrites them on collision, so the inner context wins and the source
+    // map passed in is left unchanged (no aliasing mutation).
     if (parentContext != null) {
-      contextMap.addAll(parentContext.contextMap);
+      this.contextMap.addAll(parentContext.contextMap);
     }
     this.contextMap.addAll(contextMap);
   }

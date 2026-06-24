@@ -156,6 +156,47 @@ void main() {
         expect(outerVal, equals('outerValue'));
         expect(innerVal, equals('innerValue'));
       });
+
+      test('inner context wins on colliding key (precedence)', () {
+        // Bug §3b regression: when a key exists in both the parent (outer) and
+        // the child (inner) context, the inner — the one being run — must win.
+        final outerContext = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'outerValue'),
+        });
+        final innerContext = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'innerValue'),
+        });
+
+        String? sharedVal;
+
+        outerContext.runInContext(() {
+          innerContext.runInContext(() {
+            final ctx = getFromCurrentZone<TomExecutionContext>();
+            sharedVal = ctx?.contextMap['shared']?.contextFunction() as String?;
+          });
+        });
+
+        expect(sharedVal, equals('innerValue'));
+      });
+
+      test('does not mutate source context map (no aliasing)', () {
+        // Bug §3a regression: running the inner context inside a parent zone
+        // must not pollute the inner context's own contextMap with the
+        // parent's entries — the source object must be left unchanged.
+        final outerContext = TomExecutionContext({
+          'outer': TomContextEntry<String>(() => 'outerValue'),
+        });
+        final innerContext = TomExecutionContext({
+          'inner': TomContextEntry<String>(() => 'innerValue'),
+        });
+
+        outerContext.runInContext(() {
+          innerContext.runInContext(() {});
+        });
+
+        expect(innerContext.contextMap.keys, equals(['inner']));
+        expect(innerContext.contextMap.containsKey('outer'), isFalse);
+      });
     });
 
     group('runInContextAsync', () {
@@ -185,6 +226,69 @@ void main() {
         });
 
         expect(result, equals('async result'));
+      });
+
+      test('should merge with existing context in zone', () async {
+        final outerContext = TomExecutionContext({
+          'outer': TomContextEntry<String>(() => 'outerValue'),
+        });
+        final innerContext = TomExecutionContext({
+          'inner': TomContextEntry<String>(() => 'innerValue'),
+        });
+
+        String? outerVal;
+        String? innerVal;
+
+        await outerContext.runInContextAsync(() async {
+          await innerContext.runInContextAsync(() async {
+            await Future.delayed(Duration.zero);
+            final ctx = getFromCurrentZone<TomExecutionContext>();
+            outerVal = ctx?.contextMap['outer']?.contextFunction() as String?;
+            innerVal = ctx?.contextMap['inner']?.contextFunction() as String?;
+          });
+        });
+
+        expect(outerVal, equals('outerValue'));
+        expect(innerVal, equals('innerValue'));
+      });
+
+      test('inner context wins on colliding key (precedence)', () async {
+        // Bug §3b regression for the async path.
+        final outerContext = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'outerValue'),
+        });
+        final innerContext = TomExecutionContext({
+          'shared': TomContextEntry<String>(() => 'innerValue'),
+        });
+
+        String? sharedVal;
+
+        await outerContext.runInContextAsync(() async {
+          await innerContext.runInContextAsync(() async {
+            await Future.delayed(Duration.zero);
+            final ctx = getFromCurrentZone<TomExecutionContext>();
+            sharedVal = ctx?.contextMap['shared']?.contextFunction() as String?;
+          });
+        });
+
+        expect(sharedVal, equals('innerValue'));
+      });
+
+      test('does not mutate source context map (no aliasing)', () async {
+        // Bug §3a regression for the async path.
+        final outerContext = TomExecutionContext({
+          'outer': TomContextEntry<String>(() => 'outerValue'),
+        });
+        final innerContext = TomExecutionContext({
+          'inner': TomContextEntry<String>(() => 'innerValue'),
+        });
+
+        await outerContext.runInContextAsync(() async {
+          await innerContext.runInContextAsync(() async {});
+        });
+
+        expect(innerContext.contextMap.keys, equals(['inner']));
+        expect(innerContext.contextMap.containsKey('outer'), isFalse);
       });
     });
 
