@@ -89,14 +89,15 @@ class TomRemoteLogServer {
   /// Returns a [TomRemoteLogResult] indicating success or failure.
   TomRemoteLogResult receive(TomRemoteLogMessage m) {
     try {
+      final origin = m.origin;
       localOutput.output(
         TomLogLevel(m.loggerLevel),
         TomLogLevel(m.logLevel),
-        m.level,
-        m.message,
-        "${m.sender}_${m.isolateName}",
+        _sanitize(m.level),
+        _sanitize('${m.message}'),
+        _sanitize("${m.sender}_${m.isolateName}"),
         DateTime.parse(m.timeStamp),
-        m.origin,
+        origin == null ? null : _sanitize(origin),
       );
       return TomRemoteLogResult();
     } catch (error) {
@@ -104,5 +105,31 @@ class TomRemoteLogServer {
         "Failed to log message on server side",
       );
     }
+  }
+
+  /// Maximum length of any single sanitized remote-log field.
+  static const int _maxFieldLength = 8192;
+
+  /// Removes control characters from an untrusted remote-log field and bounds
+  /// its length.
+  ///
+  /// A remote log message arrives from another process and is reconstructed
+  /// into this server's local log stream. Without sanitization a client could
+  /// embed CR/LF to forge additional log lines (log spoofing) or ESC and other
+  /// terminal control codes to inject escape sequences into a console viewing
+  /// the log — CWE-117 (improper output neutralization for logs). This strips
+  /// the C0 controls (`0x00`–`0x1F`, including CR/LF/TAB/ESC) and the C1
+  /// controls (`0x7F`–`0x9F`), and caps the field at [_maxFieldLength] so a
+  /// single oversized field cannot exhaust the sink.
+  static String _sanitize(String value) {
+    final buffer = StringBuffer();
+    for (final rune in value.runes) {
+      if (rune < 0x20 || (rune >= 0x7F && rune <= 0x9F)) {
+        continue; // drop the control character
+      }
+      buffer.writeCharCode(rune);
+      if (buffer.length >= _maxFieldLength) break;
+    }
+    return buffer.toString();
   }
 }

@@ -966,6 +966,48 @@ void main() {
         expect(result.hasError, isTrue);
         expect(result.errorMessage, equals('Failed to log message on server side'));
       });
+
+      // Security §3 (CWE-117): a remote client controls every field of the
+      // message, which this server reconstructs into its own local log stream.
+      // Control characters in those fields let a client forge extra log lines
+      // (CR/LF spoofing) or inject terminal escape sequences (ESC) into a
+      // console reading the log. `receive` must strip control characters from
+      // the untrusted fields before they reach the output sink.
+      test('strips control characters from untrusted fields (CWE-117)', () {
+        final server = TomRemoteLogServer();
+        final message = TomRemoteLogMessage.of(
+          TomLogLevel.production.levelPattern,
+          TomLogLevel.info.levelPattern,
+          'IN\u001bFO',
+          'line one\r\nFORGED 2099 INFO injected line',
+          'work\ner-1',
+          '2026-01-02T12:00:00.000',
+          'Test\rClass.method',
+        );
+        message.sender = 'cli\nent-001';
+
+        final result = server.receive(message);
+
+        expect(result.hasError, isFalse);
+        // No CR/LF/ESC survives in any reconstructed field.
+        for (final field in <String?>[
+          mockOutput.lastMessage,
+          mockOutput.lastLevel,
+          mockOutput.lastIsolateName,
+          mockOutput.lastOrigin,
+        ]) {
+          expect(field, isNotNull);
+          expect(field, isNot(contains('\n')));
+          expect(field, isNot(contains('\r')));
+          expect(field, isNot(contains('\u001b')));
+        }
+        // The visible text is preserved, only the control chars are removed.
+        expect(mockOutput.lastMessage,
+            equals('line oneFORGED 2099 INFO injected line'));
+        expect(mockOutput.lastIsolateName, equals('client-001_worker-1'));
+        expect(mockOutput.lastLevel, equals('INFO'));
+        expect(mockOutput.lastOrigin, equals('TestClass.method'));
+      });
     });
   });
 
