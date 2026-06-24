@@ -129,7 +129,14 @@ class TomApiImplementation extends TomService {
 /// registry).
 abstract class TomEndpointBase<requestType extends Object, resultType extends Object> {
   /// Resolves this annotation to the concrete [TomEndpoint] to route.
-  TomEndpoint<requestType, resultType> convertToTomEndpoint();
+  ///
+  /// [apiImplementation] is the class-level `@TomApiImplementation` of the
+  /// service the annotated method belongs to (when there is one); registry-based
+  /// endpoints fall back to its API-wide `errorHandler` / `logRequestsDefault`
+  /// for any value the endpoint itself does not override.
+  TomEndpoint<requestType, resultType> convertToTomEndpoint([
+    TomApiImplementation? apiImplementation,
+  ]);
 }
 
 /// Method-level annotation binding a method to an endpoint declared in the
@@ -173,7 +180,9 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
   });
 
   @override
-  TomEndpoint<requestType, resultType> convertToTomEndpoint() {
+  TomEndpoint<requestType, resultType> convertToTomEndpoint([
+    TomApiImplementation? apiImplementation,
+  ]) {
     TomApiEndpoint<requestType, resultType> endpoint =
         tomRemoteApis[apiId][endpointId] as TomApiEndpoint<requestType, resultType>;
     return TomEndpoint<requestType, resultType>(
@@ -183,8 +192,9 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
       consumes: endpoint.consumes,
       produces: endpoint.produces,
       contentDisposition: endpoint.contentDisposition,
-      errorHandler: errorHandler ?? _tomDefaultErrorHandler,
-      logRequests: logRequests,
+      errorHandler:
+          errorHandler ?? apiImplementation?.errorHandler ?? _tomDefaultErrorHandler,
+      logRequests: logRequests ?? apiImplementation?.logRequestsDefault,
       headers: endpoint.requestHeaders,
       corsAllowedOrigins: corsAllowedOrigins,
       corsAllowedMethods: corsAllowedMethods,
@@ -267,10 +277,12 @@ class TomEndpoint<requestType extends Object, resultType extends Object> impleme
   });
 
   @override
-  TomEndpoint<requestType, resultType> convertToTomEndpoint() {
+  TomEndpoint<requestType, resultType> convertToTomEndpoint([
+    TomApiImplementation? apiImplementation,
+  ]) {
     return this;
   }
-  
+
   @override
   String toString() =>
       "$uri $methods $consumes $produces $contentDisposition $errorHandler $logRequests $formFields";

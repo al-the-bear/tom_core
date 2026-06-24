@@ -12,6 +12,20 @@ import 'package:test/test.dart';
 /// default error handler's response.
 Request _req() => Request('POST', Uri.parse('http://localhost/greet'));
 
+/// A distinguishable [TomErrorHandler] so tests can assert *which* handler an
+/// endpoint resolved to (by identity) rather than just its response.
+class _StubErrorHandler extends TomErrorHandler {
+  _StubErrorHandler();
+
+  @override
+  Response handleErrorDefault(
+    Object error,
+    Object stacktrace,
+    Request r,
+    Object? result,
+  ) => Response.internalServerError(body: 'stub');
+}
+
 void main() {
   group('TomEndpoint', () {
     test('uses JSON GET defaults', () {
@@ -53,6 +67,100 @@ void main() {
       expect(impl.corsAllowedOrigins, 'https://example.com');
     });
   });
+
+  // §43(a) / bug §69: a registry endpoint must inherit the class-level
+  // @TomApiImplementation's API-wide errorHandler / logRequestsDefault for any
+  // value it does not itself override. convertToTomEndpoint resolves the route
+  // from tomRemoteApis (no reflection needed), so the merge is unit-testable.
+  group('TomApiEndpointImplementation.convertToTomEndpoint merge (bug §69)', () {
+    late TomErrorHandler apiHandler;
+    late TomErrorHandler endpointHandler;
+
+    setUp(() {
+      apiHandler = _StubErrorHandler();
+      endpointHandler = _StubErrorHandler();
+      tomRemoteApis['orders'] = TomApi(
+        id: 'orders',
+        uri: '/api/orders',
+        endpoints: [
+          TomApiEndpoint<Object, Object>(
+            id: 'create',
+            uri: '/create',
+            method: TomHttpMethod.post,
+          ),
+        ],
+      );
+    });
+
+    tearDown(() => tomRemoteApis.apis.remove('orders'));
+
+    test('inherits the API-wide errorHandler and logRequestsDefault when the '
+        'endpoint overrides neither', () {
+      const impl = TomApiEndpointImplementation(
+        apiId: 'orders',
+        endpointId: 'create',
+      );
+      final api = TomApiImplementation(
+        apiId: 'orders',
+        errorHandler: apiHandler,
+        logRequestsDefault: false,
+      );
+      final endpoint = impl.convertToTomEndpoint(api);
+      // Before §69 the class-level values were inert: errorHandler fell straight
+      // through to TomDefaultErrorHandler and logRequests stayed null.
+      expect(identical(endpoint.errorHandler, apiHandler), isTrue);
+      expect(endpoint.logRequests, isFalse);
+    });
+
+    test('the endpoint-level override wins over the API-wide handler', () {
+      final impl = TomApiEndpointImplementation(
+        apiId: 'orders',
+        endpointId: 'create',
+        errorHandler: endpointHandler,
+        logRequests: true,
+      );
+      final api = TomApiImplementation(
+        apiId: 'orders',
+        errorHandler: apiHandler,
+        logRequestsDefault: false,
+      );
+      final endpoint = impl.convertToTomEndpoint(api);
+      expect(identical(endpoint.errorHandler, endpointHandler), isTrue);
+      expect(endpoint.logRequests, isTrue);
+    });
+
+    test('falls back to the default handler when neither level provides one', () {
+      const impl = TomApiEndpointImplementation(
+        apiId: 'orders',
+        endpointId: 'create',
+      );
+      final endpoint = impl.convertToTomEndpoint(null);
+      expect(endpoint.errorHandler, isA<TomDefaultErrorHandler>());
+      expect(endpoint.logRequests, isNull);
+    });
+
+    test('without an apiImplementation, logRequests stays null so the global '
+        'default applies', () {
+      const impl = TomApiEndpointImplementation(
+        apiId: 'orders',
+        endpointId: 'create',
+      );
+      final endpoint = impl.convertToTomEndpoint();
+      expect(endpoint.logRequests, isNull);
+    });
+  });
+
+  // §43(b) the per-request pipeline (TomEndpointHandler.handleMethodCall:
+  // parameter binding, access-control gating, transaction wrap/commit/rollback,
+  // invocation/conversion error routing) and §43(c) router assembly
+  // (TomEndpointRouting.initializeRouter / scanClasses / createRoutesForEndpoint
+  // and their TomEndpointPipelineException paths) are deferred: every entry
+  // point needs a TomEndpointHandler, which requires real InstanceMirror /
+  // MethodMirror / ClassMirror for an annotated fixture service. This suite does
+  // not bootstrap generated reflection (constructing those mirrors throws
+  // "Reflection has not been initialized"), so those paths belong to an
+  // integration test with a reflected fixture — as the suite header already
+  // documents.
 
   group('class-level annotations', () {
     test('TomApiImplementation defaults to logging requests', () {

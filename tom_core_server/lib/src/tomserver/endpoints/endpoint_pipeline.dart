@@ -736,7 +736,7 @@ class TomEndpointRouting {
       if (decl is MethodMirror) {
         for (var mde in decl.metadata) {
           if (mde is TomEndpointBase) {
-            TomEndpoint? tep;
+            TomEndpointBase? tepTag;
             TomAccessControl? tea;
             TomTransactional? ti;
             TomApiEndpointImplementation? aei;
@@ -763,13 +763,13 @@ class TomEndpointRouting {
                 ti = tag;
               }
               if (tag is TomEndpointBase) {
-                if (tep != null) {
+                if (tepTag != null) {
                   throw TomEndpointPipelineException(
                     "endpoint_pipeline.get_class_method_metadata.multiple_endpoint_base_tags",
                     "More than one tag of type TomEndpointBase specified for $decl",
                   );
                 }
-                tep = tag.convertToTomEndpoint();
+                tepTag = tag;
               }
               if (tag is TomApiEndpointImplementation) {
                 if (aei != null) {
@@ -800,10 +800,16 @@ class TomEndpointRouting {
                 }
               }
             }
+            // Convert only after the whole tag set is known, so a registry
+            // endpoint inherits the class-level @TomApiImplementation's API-wide
+            // errorHandler / logRequestsDefault for anything it does not override
+            // (bug §69). For an inline TomEndpoint, `ai` is null and the class
+            // annotation is ignored.
+            final TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
             methodMetadata.add(
               TomMethodMetadata(
                 methodMirror: decl,
-                endpoint: tep!,
+                endpoint: tep,
                 access: tea,
                 transactionInfo: ti,
                 apiEndpointImplementation: aei,
