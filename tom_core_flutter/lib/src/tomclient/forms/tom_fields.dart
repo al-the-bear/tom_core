@@ -33,14 +33,6 @@ class TomFieldOld<T> extends TomObject<T> {
   String? Function(String) get tOrNull =>
       TomTextResourceProvider.getAppResources().getTextOrNull;
 
-  /// Resolves a configuration value by key from the app config provider.
-  Object Function(String) get c =>
-      TomConfigResourceProvider.getAppConfig().getText;
-
-  /// Whether a configuration value exists at the given key.
-  bool Function(String) get configExists =>
-      TomConfigResourceProvider.getAppConfig().exists;
-
   /// Field identifier within the form; second segment of every resource key.
   String fieldName;
 
@@ -90,35 +82,52 @@ class TomFieldOld<T> extends TomObject<T> {
       _valueConverter = valueConverter;
     }
     _textEditingController.addListener(() {
-      var value = _textEditingController.value.text;
-      bool valid = true;
-      String? error;
-      for (var inputValidator in _inputValidators) {
-        error = inputValidator(value);
-        if (error != null && _errorText.value == null) {
-          _errorText.value = t(error);
-        }
-        if (error != null) {
-          valid = false;
-        }
-      }
-      if (valid) {
+      // The revert below re-assigns the controller text, which synchronously
+      // re-fires this listener. Without this guard the re-entrant (now-valid)
+      // pass cleared the error we just set, so input errors never surfaced
+      // (bug §57). Suppressing the re-entry keeps the error visible.
+      if (_suppressInputListener) return;
+      final value = _textEditingController.value.text;
+      final error = _firstInputError(value);
+      if (error == null) {
         currentRawValue = value;
         _errorText.value = null;
       } else {
-        _textEditingController.text = currentRawValue;
-        _textEditingController.selection = TextSelection.collapsed(
-          offset: currentRawValue.length,
-        );
-        if (_inputError != null) {
-          _errorText.value = _inputError;
-          _inputError = null;
-        }
+        _errorText.value = t(error);
+        _setControllerText(currentRawValue);
       }
     });
   }
 
-  String? _inputError;
+  /// Runs the input validators against [value] and returns the first failing
+  /// (resolved) message, or `null` when every validator passes.
+  String? _firstInputError(String value) {
+    for (var inputValidator in _inputValidators) {
+      final error = inputValidator(value);
+      if (error != null) {
+        return error;
+      }
+    }
+    return null;
+  }
+
+  /// Whether the controller-change listener should ignore the next change.
+  ///
+  /// Set while this class programmatically rewrites the controller text (a
+  /// revert, a [set], or a [reset]) so those internal writes do not re-trigger
+  /// input validation.
+  bool _suppressInputListener = false;
+
+  /// Replaces the editor text without re-triggering the input-validation
+  /// listener, placing the cursor at the end.
+  void _setControllerText(String text) {
+    _suppressInputListener = true;
+    _textEditingController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    _suppressInputListener = false;
+  }
 
   /// Runs every value validator against the current text.
   ///
@@ -192,28 +201,35 @@ class TomFieldOld<T> extends TomObject<T> {
   };
 
   /// Restores the field to [initialValue] and syncs the text editor to match.
+  ///
+  /// Restoration is unconditional — it bypasses input validation (an absent or
+  /// otherwise input-invalid initial value is still restored) and clears any
+  /// surfaced error.
   void reset() {
-    set(initialValue);
-    String textValue = _valueToTextConverter(initialValue);
-    _textEditingController.value = TextEditingValue(
-      text: textValue,
-      selection: TextSelection.fromPosition(
-        TextPosition(offset: _valueToTextConverter(initialValue).length),
-      ),
-    );
+    final textValue = _valueToTextConverter(initialValue);
+    super.set(initialValue);
+    _setControllerText(textValue);
+    currentRawValue = textValue;
+    _errorText.value = null;
   }
 
   /// Sets the field value and mirrors it into the text editor (cursor placed
-  /// at the end). Triggers the input-validation listener.
+  /// at the end).
+  ///
+  /// An input-invalid value is rejected the same way a keystroke is: the error
+  /// is surfaced and neither the stored value nor the editor text changes, so
+  /// the two never diverge (bug §58). A valid value updates both in lock-step.
   @override
   T set(T value) {
-    String textValue = _valueToTextConverter(value);
-    _textEditingController.value = TextEditingValue(
-      text: textValue,
-      selection: TextSelection.fromPosition(
-        TextPosition(offset: textValue.length),
-      ),
-    );
+    final textValue = _valueToTextConverter(value);
+    final error = _firstInputError(textValue);
+    if (error != null) {
+      _errorText.value = t(error);
+      return get();
+    }
+    _setControllerText(textValue);
+    currentRawValue = textValue;
+    _errorText.value = null;
     return super.set(value);
   }
 }

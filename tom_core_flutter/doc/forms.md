@@ -55,12 +55,15 @@ A field runs two distinct validation passes:
 
 | Pass | When it runs | On failure |
 | ---- | ------------ | ---------- |
-| **Input validators** | On every keystroke (controller listener) | The edit is **rejected** — text reverts to `currentRawValue` |
+| **Input validators** | On every keystroke (controller listener) | The edit is **rejected** — text reverts to `currentRawValue` **and** `errorText` is set to the failing message |
 | **Value validators** | On demand via `validate()` | `errorText` is set; the text is **not** reverted |
 
 `TomEmailField` and `TomPasswordField` add value validators. An input-pattern
 validator is added automatically when a `"$formName.$fieldName.pattern"`
-resource key resolves to a regular expression.
+resource key resolves to a regular expression. A programmatic `set(value)` is
+subject to the same input validators: an input-invalid value is rejected (the
+error surfaces and neither the stored value nor the editor text changes), so the
+field value and the editor never diverge.
 
 `validate()` returns `true` only when all value validators pass. `TomFormOld.validate()`
 runs **every** field (no short-circuit) so all error messages are populated in a
@@ -94,11 +97,11 @@ renders and surfaces a (developer-visible) placeholder message.
 | `validate()` | Runs value validators; sets `errorText`; returns validity |
 | `save()` | Converts the current text to `T`, stores and returns it |
 | `reset()` | Restores `initialValue` and syncs the editor |
-| `set(value)` | Sets the value and mirrors it into the editor |
+| `set(value)` | Sets the value and mirrors it into the editor; rejects input-invalid values |
 | `getField()` | Builds the Material `TextField` (rebuilds on error change) |
 | `errorText` | Current error message, or `null` |
 | `currentRawValue` | Last accepted raw text |
-| `t` / `tOrNull` / `c` / `configExists` | Resource/config lookup helpers |
+| `t` / `tOrNull` | Localized-string lookup helpers |
 
 ### `TomEmailField<T>` / `TomPasswordField<T>`
 
@@ -121,4 +124,4 @@ Add the email / password value validators described above.
 
 - **Flutter** (`material`): `TextField`, `TextEditingController`, `ValueNotifier`.
 - **`tom_core_kernel`**: `TomObject` / `TomMap` (observation), and
-  `TomTextResourceProvider` / `TomConfigResourceProvider` (resource lookup).
+  `TomTextResourceProvider` (label / helper / pattern / error-message lookup).

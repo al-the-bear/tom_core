@@ -147,4 +147,102 @@ void main() {
       expect(textField.obscureText, isTrue);
     });
   });
+
+  group('input-pattern validation (tests §38a)', () {
+    // A `.pattern` resource installs an input validator that runs on every
+    // keystroke. An invalid keystroke must (1) revert the editor to the last
+    // valid text AND (2) keep the surfaced error message — the re-entrant
+    // revert used to wipe its own error (bug §57). RED before the fix on the
+    // message assertion (the revert already worked).
+    void installPattern() {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({
+          'form.code.pattern': r'^[0-9]*$',
+          'form.code.errors.pattern': 'Digits only',
+        }),
+      );
+    }
+
+    testWidgets('an invalid keystroke reverts and keeps the error message',
+        (tester) async {
+      installPattern();
+      final field = TomFieldOld<String>('form', 'code', '');
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: field.getField())),
+      );
+
+      await tester.enterText(find.byType(TextField), '123');
+      await tester.pump();
+      expect(field.errorText, isNull);
+
+      await tester.enterText(find.byType(TextField), '12x');
+      await tester.pump();
+      // Reverted to the last valid text:
+      expect(find.text('123'), findsOneWidget);
+      expect(find.text('12x'), findsNothing);
+      // ...and the failing message survived the revert (bug §57):
+      expect(field.errorText, 'Digits only');
+    });
+  });
+
+  group('set() of an input-invalid value (tests §38b)', () {
+    // A programmatic set() of an input-invalid value must be rejected like a
+    // keystroke: the stored value and editor text stay in sync (both keep the
+    // previous valid state) and the error surfaces — the old set() stored the
+    // invalid value while the editor reverted, so `~field` and `save()`
+    // disagreed (bug §58). RED before the fix.
+    setUp(() {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from({
+          'form.code.pattern': r'^[0-9]*$',
+          'form.code.errors.pattern': 'Digits only',
+        }),
+      );
+    });
+
+    test('set() of an invalid value leaves value and text unchanged', () {
+      final field = TomFieldOld<String>('form', 'code', '0');
+      field.set('xx'); // violates the digits-only pattern
+      expect(~field, '0', reason: 'stored value must not change');
+      expect(field.save(), '0', reason: 'editor text must not change');
+      expect(field.errorText, 'Digits only');
+    });
+  });
+
+  group('TomFormOld.save() batch muting (tests §38c)', () {
+    // save() mutes the fields across the batch so a form-level observer sees a
+    // single consolidated notification rather than one per field. Edits go in
+    // via the editor (changing text only); save() converts each to the field
+    // value, which differs from the stored value and would notify per field if
+    // not muted. Characterization of existing behaviour.
+    testWidgets('a single form-level notification per save batch',
+        (tester) async {
+      final form = TomFormOld({
+        'email': TomEmailField<String>('form', 'email', 'a@b.com'),
+        'password': TomPasswordField<String>('form', 'password', 'old1'),
+      });
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: Column(children: form.getFields()))),
+      );
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'user@example.com');
+      await tester.enterText(fields.at(1), 'newpass');
+      await tester.pump();
+
+      final observer = _CountingObserver();
+      form.addObserver(observer); // strong ref keeps the weak observer alive
+
+      form.save();
+      expect(observer.count, 1);
+    });
+  });
+}
+
+/// Counts the notifications delivered to a registered observer.
+class _CountingObserver extends TomObserver<TomObservable> {
+  int count = 0;
+
+  @override
+  void onNotify(TomObservable observable) => count++;
 }
