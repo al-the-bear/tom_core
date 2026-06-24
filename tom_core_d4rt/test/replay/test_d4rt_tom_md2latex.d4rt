@@ -66,6 +66,41 @@ var parsed2 = Md2Latex.parse('# Hi');
 verifyEquals(parsed2.title, 'Hi', 'Md2Latex.parse title');
 
 # =============================================================================
+# Test: Inline/block element value carriers (construct + getters)
+# These leaf markdown elements carry no parser/IO state and are safe to build
+# directly. HorizontalRuleElement is a marker with no fields.
+# =============================================================================
+
+var inlineCode = InlineCodeElement(code: 'x = 1');
+verifyEquals(inlineCode.code, 'x = 1', 'InlineCodeElement code');
+
+var quote = BlockQuoteElement(text: 'a quote');
+verifyEquals(quote.text, 'a quote', 'BlockQuoteElement text');
+
+var rule = HorizontalRuleElement();
+verifyNotNull(rule, 'HorizontalRuleElement created');
+
+var raw = RawTextElement(text: 'rawtext');
+verifyEquals(raw.text, 'rawtext', 'RawTextElement text');
+
+# =============================================================================
+# Test: Converter result + converted-file carriers (construct + getters)
+# A fresh MdLatexConverterResult has no converted files and no errors, so it is
+# successful. ConvertedFile wraps a parsed document plus its source/output paths.
+# =============================================================================
+
+var conv = MdLatexConverterResult();
+verifyNotNull(conv, 'MdLatexConverterResult created');
+verifyEquals(conv.isSuccess, true, 'MdLatexConverterResult empty result is success');
+verifyEquals(conv.errors.length, 0, 'MdLatexConverterResult no errors by default');
+verifyEquals(conv.totalProcessed, 0, 'MdLatexConverterResult totalProcessed default');
+
+var cfile = ConvertedFile(sourcePath: 's.md', outputPath: 'o.tex', parsed: parsed);
+verifyEquals(cfile.sourcePath, 's.md', 'ConvertedFile sourcePath');
+verifyEquals(cfile.outputPath, 'o.tex', 'ConvertedFile outputPath');
+verifyNotNull(cfile.parsed, 'ConvertedFile parsed present');
+
+# =============================================================================
 # Test: Classes exist (4 tests)
 # =============================================================================
 

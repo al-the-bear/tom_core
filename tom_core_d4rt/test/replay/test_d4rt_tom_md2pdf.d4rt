@@ -52,6 +52,19 @@ var err = PdfConversionError(sourcePath: 'bad.md', message: 'boom');
 verifyEquals(err.message, 'boom', 'PdfConversionError message');
 
 # =============================================================================
+# Test: MdPdfConverterResult carrier (4 tests)
+# Connection-free: a freshly constructed result has no converted files and no
+# errors, so isSuccess is true. Constructing it directly self-resolves the doc
+# overstatement noted in refactoring_plan_decisions_2.md §S44.
+# =============================================================================
+
+var pdfResult = MdPdfConverterResult();
+verifyNotNull(pdfResult, 'MdPdfConverterResult created');
+verifyEquals(pdfResult.isSuccess, true, 'MdPdfConverterResult empty result is success');
+verifyEquals(pdfResult.errors.length, 0, 'MdPdfConverterResult no errors by default');
+verifyEquals(pdfResult.converted.length, 0, 'MdPdfConverterResult no converted files by default');
+
+# =============================================================================
 # Test: Classes exist (3 tests)
 # =============================================================================
 

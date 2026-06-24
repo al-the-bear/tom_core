@@ -41,13 +41,38 @@ verifyEquals(MarkdownParser.generateId('Hello World', null, 0), 'hello_world', '
 verifyEquals(MarkdownParser.extractText('# Title\nbody line\n## Sub', 0, 1), 'body line', 'extractText between headlines');
 
 # =============================================================================
-# Test: Classes exist (4 tests)
+# Test: Document value carrier (construct + getters)
+# A Document is a plain value object describing one scanned markdown file; it
+# carries no scanner/IO state and is safe to construct directly (sections omitted).
+# =============================================================================
+
+var doc = Document(index: 0, lineNumber: 1, name: 'Doc', id: 'doc', rawHeadline: '# Doc', fields: {'type': 'guide'}, text: 'body', filenameWithPath: 'a/b.md', loadTimestamp: '2026-01-01', filename: 'b.md', fullPath: '/ws/a/b.md', workspacePath: 'a/b.md', project: 'proj', projectPath: 'a', workspaceRoot: '/ws', projectRoot: '/ws/a', hierarchyDepth: 2);
+verifyNotNull(doc, 'Document created');
+verifyEquals(doc.filename, 'b.md', 'Document filename');
+verifyEquals(doc.project, 'proj', 'Document project');
+verifyEquals(doc.hierarchyDepth, 2, 'Document hierarchyDepth');
+verifyEquals(doc.fields['type'], 'guide', 'Document fields');
+
+# =============================================================================
+# Test: DocumentFolder value carrier (construct + derived getter)
+# Holds the documents/subfolders found in one folder; allDocuments aggregates the
+# tree. No filesystem access is required to build or inspect one.
+# =============================================================================
+
+var folder = DocumentFolder(foldername: 'docs', workspaceFolderPath: 'docs', absoluteFolderPath: '/ws/docs', documents: [doc], folders: []);
+verifyNotNull(folder, 'DocumentFolder created');
+verifyEquals(folder.foldername, 'docs', 'DocumentFolder foldername');
+verifyEquals(folder.documents.length, 1, 'DocumentFolder documents');
+verifyEquals(folder.folders.length, 0, 'DocumentFolder folders');
+verifyEquals(folder.allDocuments.length, 1, 'DocumentFolder allDocuments aggregates the tree');
+
+# =============================================================================
+# Test: Classes exist (2 tests)
+# DocScanner/DocScannerFactory walk the filesystem; they stay integration-only.
 # =============================================================================
 
 verifyNotNull(DocScanner, 'DocScanner class exists');
 verifyNotNull(DocScannerFactory, 'DocScannerFactory class exists');
-verifyNotNull(Document, 'Document class exists');
-verifyNotNull(DocumentFolder, 'DocumentFolder class exists');
 
 # =============================================================================
 # Summary

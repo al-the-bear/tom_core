@@ -50,16 +50,110 @@ verifyEquals(sst.isEmpty, true, 'SpecSectionType.empty isEmpty');
 verifyEquals(sst.length, 0, 'SpecSectionType.empty length');
 
 # =============================================================================
-# Test: Classes exist (8 tests)
+# Test: Schema definition value classes (connection-free const value objects)
+# These describe a DocSpecs schema's section/form/subsection structure. They are
+# plain const value objects with no IO and are safe to construct directly.
+# =============================================================================
+
+var patternCheck = PatternCheckDef(pattern: '^[a-z]+', errorMessage: 'must be lowercase');
+verifyEquals(patternCheck.pattern, '^[a-z]+', 'PatternCheckDef pattern');
+verifyEquals(patternCheck.errorMessage, 'must be lowercase', 'PatternCheckDef errorMessage');
+
+var subConstraint = SubsectionConstraint(typeName: 'note', maxCount: 3);
+verifyEquals(subConstraint.typeName, 'note', 'SubsectionConstraint typeName');
+verifyEquals(subConstraint.maxCount, 3, 'SubsectionConstraint maxCount');
+
+var sectionType = SectionTypeDef(name: 'requirement', prefix: 'REQ');
+verifyEquals(sectionType.name, 'requirement', 'SectionTypeDef name');
+verifyEquals(sectionType.prefix, 'REQ', 'SectionTypeDef prefix');
+
+var forEachDef = ForEachDef(sectionType: 'item', key: 'id');
+verifyEquals(forEachDef.sectionType, 'item', 'ForEachDef sectionType');
+verifyEquals(forEachDef.key, 'id', 'ForEachDef key');
+
+var sectionDef = SectionDef(sectionType: 'requirement', optional: true);
+verifyEquals(sectionDef.sectionType, 'requirement', 'SectionDef sectionType');
+verifyEquals(sectionDef.optional, true, 'SectionDef optional');
+
+var subsectionDef = SubsectionDef(sectionType: 'detail', required: true);
+verifyEquals(subsectionDef.sectionType, 'detail', 'SubsectionDef sectionType');
+verifyEquals(subsectionDef.required, true, 'SubsectionDef required');
+
+var docStruct = DocumentStructure(sections: {'requirement': sectionDef});
+verifyEquals(docStruct.sections.length, 1, 'DocumentStructure sections');
+
+var formField = FormFieldDef(fieldname: 'email', required: true);
+verifyEquals(formField.fieldname, 'email', 'FormFieldDef fieldname');
+verifyEquals(formField.required, true, 'FormFieldDef required');
+
+var formType = FormTypeDef(name: 'login', fields: [formField]);
+verifyEquals(formType.name, 'login', 'FormTypeDef name');
+verifyEquals(formType.fields.length, 1, 'FormTypeDef fields');
+
+# =============================================================================
+# Test: DocSpecSchema assembled from the value classes + derived getters
+# =============================================================================
+
+var schema = DocSpecSchema(id: 'quest-overview', version: '1.0', sectionTypes: {'requirement': sectionType}, document: docStruct);
+verifyEquals(schema.id, 'quest-overview', 'DocSpecSchema id');
+verifyEquals(schema.version, '1.0', 'DocSpecSchema version');
+verifyEquals(schema.fullId, 'quest-overview/1.0', 'DocSpecSchema fullId getter');
+verifyEquals(schema.sectionTypes.length, 1, 'DocSpecSchema sectionTypes');
+
+# =============================================================================
+# Test: SpecSection / SpecDoc document model carriers
+# =============================================================================
+
+var specSection = SpecSection(index: 0, lineNumber: 1, rawHeadline: '# Req', name: 'Req', id: 'req', text: 'body', type: 'requirement');
+verifyEquals(specSection.name, 'Req', 'SpecSection name');
+verifyEquals(specSection.type, 'requirement', 'SpecSection type');
+
+var specDoc = SpecDoc(index: 0, lineNumber: 1, rawHeadline: '# Doc', name: 'Doc', id: 'doc', text: 'body', filenameWithPath: 'a/b.md', loadTimestamp: '2026-01-01', filename: 'b.md', fullPath: '/ws/a/b.md', workspacePath: 'a/b.md', project: 'proj', projectPath: 'a', workspaceRoot: '/ws', projectRoot: '/ws/a', hierarchyDepth: 2, schemaId: 'quest-overview');
+verifyEquals(specDoc.filename, 'b.md', 'SpecDoc filename');
+verifyEquals(specDoc.schemaId, 'quest-overview', 'SpecDoc schemaId');
+
+# =============================================================================
+# Test: DocSpecsValidator / DocSpecsFactory wired over a schema (no IO)
+# =============================================================================
+
+var validator = DocSpecsValidator(schema: schema);
+verifyNotNull(validator, 'DocSpecsValidator created');
+verifyEquals(validator.schema.id, 'quest-overview', 'DocSpecsValidator holds its schema');
+
+var factory = DocSpecsFactory(schema: schema);
+verifyNotNull(factory, 'DocSpecsFactory created');
+verifyEquals(factory.schema.id, 'quest-overview', 'DocSpecsFactory holds its schema');
+
+# =============================================================================
+# Test: Insert markers (parse + process are pure string transforms)
+# =============================================================================
+
+var marker = InsertMarker(variable: 'chat.lastReply', startLine: 1, endLine: 3, content: 'old');
+verifyEquals(marker.variable, 'chat.lastReply', 'InsertMarker variable');
+verifyEquals(marker.startLine, 1, 'InsertMarker startLine');
+verifyEquals(marker.content, 'old', 'InsertMarker content');
+
+var markerParser = InsertMarkerParser();
+verifyEquals(markerParser.parse('plain text, no markers').length, 0, 'InsertMarkerParser finds no markers in plain text');
+
+var markerProcessor = InsertMarkerProcessor();
+verifyEquals(markerProcessor.process('plain text', {}), 'plain text', 'InsertMarkerProcessor leaves unmarked text unchanged');
+
+# =============================================================================
+# Test: SchemaFilenameParser static parse (pure filename parsing)
+# =============================================================================
+
+verifyNotNull(SchemaFilenameParser.parse('quest-overview-1.0.docspecs-schema.yaml'), 'SchemaFilenameParser parses a valid schema filename');
+verifyEquals(SchemaFilenameParser.parse('not-a-schema.txt'), null, 'SchemaFilenameParser returns null for a non-schema filename');
+
+# =============================================================================
+# Test: IO/scan entry points exist (integration-only)
+# DocSpecs/SchemaLoader/DocSpecsSkeletonGenerator scan or read from disk; only
+# their reachability is pinned here.
 # =============================================================================
 
 verifyNotNull(DocSpecs, 'DocSpecs class exists');
-verifyNotNull(DocSpecsFactory, 'DocSpecsFactory class exists');
-verifyNotNull(SpecSection, 'SpecSection class exists');
-verifyNotNull(SpecDoc, 'SpecDoc class exists');
-verifyNotNull(DocSpecSchema, 'DocSpecSchema class exists');
 verifyNotNull(SchemaLoader, 'SchemaLoader class exists');
-verifyNotNull(DocSpecsValidator, 'DocSpecsValidator class exists');
 verifyNotNull(DocSpecsSkeletonGenerator, 'DocSpecsSkeletonGenerator class exists');
 
 # =============================================================================
