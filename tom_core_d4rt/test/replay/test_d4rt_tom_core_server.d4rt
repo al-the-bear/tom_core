@@ -95,6 +95,101 @@ verifyNotNull(TomStringConfig, 'TomStringConfig class exists');
 verifyNotNull(TomIntConfig, 'TomIntConfig class exists');
 
 # =============================================================================
+# Test: Query-DSL operators + SQL dialect (connection-free)
+# Build a predicate tree from literals and render it through the standard SQL
+# dialect. Exercises the bridged operator constructors, their operand getters,
+# and the generate()/analyze() traversals — none of which touch a datasource.
+# =============================================================================
+
+var dialect = TomStandardSqlDialect();
+verifyNotNull(dialect, 'TomStandardSqlDialect created');
+
+# Literals render through the dialect and describe themselves via analyze()
+verifyContains(strLit.generate(dialect), 'ada', 'StringLiteral generate renders its value');
+verifyContains(strLit.analyze(0), 'StringLiteral', 'StringLiteral analyze names the operator');
+verifyContains(intLit.analyze(0), 'IntegerLiteral', 'IntegerLiteral analyze names the operator');
+
+# Equality comparison over two literals
+var eq = Eq(StringLiteral('name'), StringLiteral('ada'));
+verifyNotNull(eq.operant1, 'Eq left operand present');
+verifyNotNull(eq.operant2, 'Eq right operand present');
+verifyContains(eq.analyze(0), 'Eq', 'Eq analyze names the operator');
+verifyNotNull(eq.generate(dialect), 'Eq renders through the dialect');
+
+# Less-than / greater-than comparisons over integer literals
+var lt = Lt(IntegerLiteral(1), IntegerLiteral(2));
+verifyContains(lt.analyze(0), 'Lt', 'Lt analyze names the operator');
+var gt = Gt(IntegerLiteral(5), IntegerLiteral(3));
+verifyContains(gt.analyze(0), 'Gt', 'Gt analyze names the operator');
+
+# LIKE pattern match over string literals
+var like = Like(StringLiteral('name'), StringLiteral('%ada%'));
+verifyContains(like.analyze(0), 'Like', 'Like analyze names the operator');
+verifyNotNull(like.generate(dialect), 'Like renders through the dialect');
+
+# IN membership test with a list of choices
+var inOp = In(IntegerLiteral(1), [IntegerLiteral(1), IntegerLiteral(2)]);
+verifyNotNull(inOp.operant1, 'In left operand present');
+verifyContains(inOp.analyze(0), 'In', 'In analyze names the operator');
+
+# AND / OR conjunctions over predicate lists
+var andOp = And([eq, lt]);
+verifyContains(andOp.analyze(0), 'And', 'And analyze names the operator');
+verifyNotNull(andOp.generate(dialect), 'And renders through the dialect');
+var orOp = Or([gt, like]);
+verifyContains(orOp.analyze(0), 'Or', 'Or analyze names the operator');
+
+# NOT negation wrapping a predicate
+var notOp = Not(eq);
+verifyNotNull(notOp.operant1, 'Not wraps its operand');
+verifyContains(notOp.analyze(0), 'Not', 'Not analyze names the operator');
+
+# String-typed SQL dialect descriptor
+var sqlDialect = TomSqlDialect('mariadb');
+verifyEquals(sqlDialect.dataSourceType, 'mariadb', 'TomSqlDialect captures its datasource type');
+
+# =============================================================================
+# Test: Repository annotations (connection-free const value classes)
+# These annotations are plain value objects describing persistence mapping; they
+# carry no runtime connection and are safe to construct directly.
+# =============================================================================
+
+var dbTable = TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id');
+verifyEquals(dbTable.table, 'users', 'TomDbTable table name');
+verifyEquals(dbTable.datasource, 'main', 'TomDbTable datasource name');
+verifyEquals(dbTable.primaryKeyField, 'id', 'TomDbTable primary key field');
+
+var dbColumn = TomDbColumn(columnName: 'user_name', isReadOnly: true);
+verifyEquals(dbColumn.columnName, 'user_name', 'TomDbColumn column name');
+verifyEquals(dbColumn.isReadOnly, true, 'TomDbColumn read-only flag');
+verifyEquals(dbColumn.noLoad, false, 'TomDbColumn noLoad default');
+
+var entityId = TomEntityId();
+verifyNotNull(entityId, 'TomEntityId created');
+
+var repoType = TomRepositoryType('mariadb');
+verifyEquals(repoType.datasourceType, 'mariadb', 'TomRepositoryType datasource type');
+
+var txAnno = TomTransactional(isReadOnly: true);
+verifyEquals(txAnno.isReadOnly, true, 'TomTransactional read-only flag');
+verifyEquals(txAnno.isTransactional, true, 'TomTransactional transactional default');
+
+# =============================================================================
+# Test: Transaction coordinator (per-isolate static manager)
+# TomTransactionManager holds a single in-memory transaction per isolate; no
+# datasource is required to open or inspect one.
+# =============================================================================
+
+verify(!TomTransactionManager.transactional, 'no transaction active before start');
+verifyEquals(TomTransactionManager.getCurrentTransaction(), null, 'no current transaction before start');
+TomTransactionManager.startTransaction();
+verify(TomTransactionManager.transactional, 'transaction active after start');
+var currentTx = TomTransactionManager.getCurrentTransaction();
+verifyNotNull(currentTx, 'current transaction present after start');
+verify(currentTx.isRunning, 'current transaction is running');
+verifyEquals(currentTx.isReadOnly, false, 'transaction defaults to read-write');
+
+# =============================================================================
 # Summary
 # =============================================================================
 
