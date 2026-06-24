@@ -970,9 +970,9 @@ class TomClass extends TomObject<Map<String, TomObject>>
   /// serialized with their appropriate prefixes.
   Map<String, dynamic> getValues() {
     Map<String, Object?> result = {};
-    try {
-      for (var key in _value.keys) {
-        var value = _value[key]!;
+    for (var key in _value.keys) {
+      var value = _value[key]!;
+      try {
         // Check if it's a TomClass BEFORE calling .get() since TomClass.get() throws
         if (value is TomClass) {
           result[key] = (value).getValues();
@@ -996,11 +996,25 @@ class TomClass extends TomObject<Map<String, TomObject>>
             result[key] = valueValue;
           }
         }
+      } on TomObservableException {
+        // A nested TomClass member already wrapped and logged the failure
+        // (and named its own offending key); propagate it unchanged rather
+        // than double-wrapping.
+        rethrow;
+      } catch (exception, stacktrace) {
+        // Never swallow a member serialization failure into silent partial
+        // data: name the offending member, route diagnostics through tomLog
+        // (TomException autoLog), and rethrow so callers see the failure.
+        throw TomObservableException(
+          "TomClass.get_values_error.member_serialization_failed",
+          "Failed to serialize TomClass member '$key': $exception",
+          parameters: {"key": key},
+          rootException: exception,
+          stack: stacktrace,
+          autoLog: true,
+        );
       }
-    } catch (exception, stacktrace) {
-      print("Failed $exception at $stacktrace");
     }
-    //print("getValues: $result");
     return result;
   }
 
@@ -1078,7 +1092,7 @@ abstract class TomListLifecycleListener {
 /// ```
 @tomReflector
 class TomList<E extends TomObject> extends TomObject<List<E>>
-    implements TomObserver, Iterable {
+    implements TomObserver, Iterable<E> {
   // ignore: prefer_final_fields
   bool _serializing = false;
 
@@ -1303,29 +1317,27 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   Iterable<R> expand<R>(Iterable<R> Function(E e) toElements) =>
       _value.expand<R>(toElements);
   @override
-  E firstWhere(bool Function(E e) test, {dynamic Function()? orElse}) =>
-      _value.firstWhere(test, orElse: orElse as E Function()?);
+  E firstWhere(bool Function(E e) test, {E Function()? orElse}) =>
+      _value.firstWhere(test, orElse: orElse);
   @override
   T fold<T>(T initialValue, T Function(T previousValue, E element) combine) =>
       _value.fold(initialValue, combine);
   @override
-  Iterable<E> followedBy(Iterable<dynamic> other) =>
-      _value.followedBy(other as Iterable<E>);
+  Iterable<E> followedBy(Iterable<E> other) => _value.followedBy(other);
   @override
   void forEach(void Function(E element) action) => _value.forEach(action);
   @override
   String join([String separator = ""]) => _value.join(separator);
   @override
-  E lastWhere(bool Function(E e) test, {dynamic Function()? orElse}) =>
-      _value.lastWhere(test, orElse: orElse as E Function()?);
+  E lastWhere(bool Function(E e) test, {E Function()? orElse}) =>
+      _value.lastWhere(test, orElse: orElse);
   @override
   Iterable<T> map<T>(T Function(E e) toElement) => _value.map<T>(toElement);
   @override
-  E reduce(dynamic Function(E value, E element) combine) =>
-      _value.reduce(combine as E Function(E value, E combine));
+  E reduce(E Function(E value, E element) combine) => _value.reduce(combine);
   @override
-  E singleWhere(bool Function(E e) test, {dynamic Function()? orElse}) =>
-      _value.singleWhere(test, orElse: orElse as E Function()?);
+  E singleWhere(bool Function(E e) test, {E Function()? orElse}) =>
+      _value.singleWhere(test, orElse: orElse);
   @override
   Iterable<E> skip(int count) => _value.skip(count);
   @override
@@ -1464,14 +1476,19 @@ class TomList<E extends TomObject> extends TomObject<List<E>>
   }
 
   void replaceRange(int start, int end, Iterable<E> replacements) {
+    // Suppress only this list's own notifications (super.mute(), not the
+    // element-cascading override) so the composite remove+insert surfaces as
+    // a single consolidated notification instead of up to three.
+    super.mute();
     removeRange(start, end);
     insertAll(start, replacements);
-    notifyObservers();
+    super.unmute();
   }
 
   void retainWhere(bool Function(E element) test) {
+    super.mute();
     removeWhere((element) => !test(element));
-    notifyObservers();
+    super.unmute();
   }
 
   void setAll(int index, Iterable<E> iterable) {

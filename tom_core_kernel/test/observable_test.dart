@@ -54,6 +54,27 @@ class TestUserProfile extends TomClass {
   final followerCount = TomInt(0);
 }
 
+/// A [TomString] whose [get] always throws, used to verify that
+/// [TomClass.getValues] surfaces a serialization failure instead of silently
+/// swallowing it into partial data (bug §47 / tests §32b).
+///
+/// The field that holds it is statically typed [TomString] in
+/// [TestThrowingMember] so the reflection generator never references this
+/// private subtype; only the runtime instance throws.
+class _ThrowingString extends TomString {
+  _ThrowingString() : super("");
+
+  @override
+  String get() => throw StateError('member serialization boom');
+}
+
+/// Test class with one member whose serialization throws.
+@tomReflector
+class TestThrowingMember extends TomClass {
+  final TomString throwingField = _ThrowingString();
+  final ok = TomString("fine");
+}
+
 /// Custom observer implementation for testing
 class TestObserver<T extends TomObservable> implements TomObserver<T> {
   int notifyCount = 0;
@@ -1314,6 +1335,179 @@ void main() {
         expect(() => list.resetWith([TomInt(1)]), returnsNormally);
         expect(listener.beforeCalls, equals(1));
       });
+    });
+  });
+
+  // tests §32a — composite/single mutations must each notify observers exactly
+  // once, never leaking half-applied intermediate state through extra
+  // notifications. removeRange/insertAll/setAll/insert are regression guards
+  // (already single-notify); replaceRange/retainWhere pin the §40 refactor.
+  group('TomList mutation single-notification', () {
+    TomList<TomInt> seeded(List<int> values) {
+      final list = TomList<TomInt>();
+      for (final v in values) {
+        list.append(TomInt(v));
+      }
+      return list;
+    }
+
+    test('insert notifies exactly once', () {
+      final list = seeded([1, 2, 3]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.insert(1, TomInt(9));
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([1, 9, 2, 3]));
+    });
+
+    test('insertAll notifies exactly once', () {
+      final list = seeded([1, 2]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.insertAll(1, [TomInt(8), TomInt(9)]);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([1, 8, 9, 2]));
+    });
+
+    test('setAll notifies exactly once', () {
+      final list = seeded([1, 2, 3]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.setAll(1, [TomInt(20), TomInt(30)]);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([1, 20, 30]));
+    });
+
+    test('removeRange notifies exactly once', () {
+      final list = seeded([1, 2, 3, 4]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.removeRange(1, 3);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([1, 4]));
+    });
+
+    test('removeRange over an empty range does not notify', () {
+      final list = seeded([1, 2, 3]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.removeRange(1, 1);
+
+      expect(observer.notifyCount, equals(0));
+      expect(list.map((e) => e.get()), equals([1, 2, 3]));
+    });
+
+    test('replaceRange notifies exactly once', () {
+      final list = seeded([1, 2, 3, 4]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.replaceRange(1, 3, [TomInt(20), TomInt(30), TomInt(40)]);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([1, 20, 30, 40, 4]));
+    });
+
+    test('replaceRange observes the new elements and detaches removed ones', () {
+      final list = seeded([1, 2, 3]);
+      final removed = list[1];
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      final fresh = TomInt(99);
+      list.replaceRange(1, 2, [fresh]);
+      observer.reset();
+
+      // New element is observed → mutating it notifies the list once.
+      fresh.set(100);
+      expect(observer.notifyCount, equals(1));
+
+      // Removed element is detached → mutating it no longer notifies the list.
+      observer.reset();
+      removed.set(5);
+      expect(observer.notifyCount, equals(0));
+    });
+
+    test('retainWhere notifies exactly once', () {
+      final list = seeded([1, 2, 3, 4, 5]);
+      final observer = TestObserver<TomList<TomInt>>();
+      list.addObserver(observer);
+
+      list.retainWhere((e) => e.get().isEven);
+
+      expect(observer.notifyCount, equals(1));
+      expect(list.map((e) => e.get()), equals([2, 4]));
+    });
+  });
+
+  // tests §41 — strongly typed Iterable overrides must accept the natural
+  // element-typed callbacks (no unchecked casts), pinning the §41 refactor.
+  group('TomList typed Iterable overrides', () {
+    TomList<TomInt> seeded(List<int> values) {
+      final list = TomList<TomInt>();
+      for (final v in values) {
+        list.append(TomInt(v));
+      }
+      return list;
+    }
+
+    test('firstWhere returns the orElse element-typed fallback', () {
+      final list = seeded([1, 2, 3]);
+
+      final fallback = TomInt(-1);
+      final result = list.firstWhere((e) => e.get() > 10, orElse: () => fallback);
+
+      expect(identical(result, fallback), isTrue);
+    });
+
+    test('reduce combines element-typed values', () {
+      final list = seeded([1, 2, 3, 4]);
+
+      final result = list.reduce(
+        (value, element) => value.get() >= element.get() ? value : element,
+      );
+
+      expect(result.get(), equals(4));
+    });
+
+    test('followedBy chains another element-typed iterable', () {
+      final list = seeded([1, 2]);
+
+      final chained = list.followedBy([TomInt(3), TomInt(4)]);
+
+      expect(chained.map((e) => e.get()), equals([1, 2, 3, 4]));
+    });
+  });
+
+  // tests §32b — getValues/toJson must propagate a member serialization
+  // failure as a TomObservableException instead of swallowing it into silent
+  // partial data (bug §47).
+  group('TomClass.getValues serialization failure', () {
+    test('getValues throws TomObservableException when a member throws', () {
+      final subject = TestThrowingMember();
+
+      expect(
+        () => subject.getValues(),
+        throwsA(isA<TomObservableException>()),
+      );
+    });
+
+    test('toJson propagates the member serialization failure', () {
+      final subject = TestThrowingMember();
+
+      expect(
+        () => subject.toJson(),
+        throwsA(isA<TomObservableException>()),
+      );
     });
   });
 }
