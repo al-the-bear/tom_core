@@ -62,6 +62,21 @@ abstract class TomDbMigrator {
   void reset();
 }
 
+/// A migration file name parsed into its numeric [version] and [description].
+///
+/// Produced by [TomDbMigrations.parseMigrationFileName] from a basename matching
+/// the `[<numeric version>]-<description>` scheme.
+class TomMigrationFileName {
+  /// The numeric version from the `[<version>]` prefix.
+  final int version;
+
+  /// The `<description>` part (letters and underscores).
+  final String description;
+
+  /// Binds a parsed [version] / [description].
+  const TomMigrationFileName(this.version, this.description);
+}
+
 /// The migration orchestrator: discovers migrator adaptors by reflection and
 /// drives migrations from a directory tree.
 ///
@@ -119,6 +134,46 @@ class TomDbMigrations {
     }
   }
 
+  /// The anchored migration-filename pattern: a `[<numeric version>]` prefix
+  /// followed by `-<description>`, the description being letters and
+  /// underscores, spanning the *whole* basename (no surrounding text).
+  static final RegExp _migrationNamePattern = RegExp(r'^\[([0-9]+)]-([a-zA-Z_]+)$');
+
+  /// Parses a migration file's [basename] (without extension) into its version
+  /// and description.
+  ///
+  /// The basename must match `[<numeric version>]-<description>` in full;
+  /// anything else — surrounding text, a digit inside the description, an empty
+  /// description — is rejected with a [TomDbMigrationException]
+  /// (`…illegal_filename_in_migrations_directory`).
+  static TomMigrationFileName parseMigrationFileName(String basename) {
+    final match = _migrationNamePattern.firstMatch(basename);
+    if (match == null) {
+      throw TomDbMigrationException(
+        "db_migration.migration.illegal_filename_in_migrations_directory",
+        "Illegal filename in migrations directory: $basename. Filename must follow [<numeric version>]-<description>.<anyfileextension> pattern.",
+        autoLog: true,
+      );
+    }
+    return TomMigrationFileName(int.parse(match[1]!), match[2]!);
+  }
+
+  /// Parses [basenames] (file basenames without extension) and returns them
+  /// ordered by **ascending numeric version**, each paired with its parsed
+  /// [TomMigrationFileName].
+  ///
+  /// Ordering is by the parsed integer version — not lexicographic — so e.g.
+  /// `[2]-…` precedes `[10]-…`. Any malformed name reaches
+  /// [parseMigrationFileName] and throws.
+  static List<({String basename, TomMigrationFileName parsed})>
+      orderMigrationNames(Iterable<String> basenames) {
+    final parsed = basenames
+        .map((b) => (basename: b, parsed: parseMigrationFileName(b)))
+        .toList();
+    parsed.sort((a, b) => a.parsed.version.compareTo(b.parsed.version));
+    return parsed;
+  }
+
   /// Runs all pending migrations under [directory].
   ///
   /// Walks `<directory>/<datasourceName>/<schemaName>/` and, for each schema,
@@ -156,59 +211,23 @@ class TomDbMigrations {
           if (schema is Directory) {
             String schemaName = p.basename(schema.path);
             await migrator.initializeMigration(dsInfo, schemaName);
-            List<File> migrations = [];
+            Map<String, File> migrations = {};
             await for (var migration in schema.list()) {
               if (migration is File) {
-                migrations.add(migration);
+                migrations[p.basenameWithoutExtension(migration.path)] =
+                    migration;
               }
             }
-            migrations.sort(
-              (f1, f2) => p.basename(f1.path).compareTo(p.basename(f2.path)),
-            );
-            RegExp nameSplitter = RegExp(r'\[([0-9]+)]-([a-zA-Z_]+)');
-            for (var migration in migrations) {
-              RegExpMatch? match = nameSplitter.firstMatch(
-                p.basenameWithoutExtension(migration.path),
+            // Parse + validate the names and apply in ascending version order
+            // (numeric, so [2] precedes [10]); a malformed name throws.
+            for (final entry in orderMigrationNames(migrations.keys)) {
+              await migrator.applyMigration(
+                dsInfo,
+                schemaName,
+                entry.parsed.version,
+                entry.parsed.description,
+                migrations[entry.basename]!.readAsStringSync(),
               );
-              if (match != null && match.groupCount == 2) {
-                String description = "";
-                int version = -1;
-                try {
-                  version = int.parse(match[1]!);
-                } catch (error) {
-                  throw TomDbMigrationException(
-                    "db_migration.migration.version_parsing_failed",
-                    "Failed to parse version for file ${p.basenameWithoutExtension(migration.path)}",
-                    autoLog: true,
-                    rootException: error,
-                  );
-                }
-                try {
-                  description = match[2]!;
-                } catch (error) {
-                  throw TomDbMigrationException(
-                    "db_migration.migration.version_parsing_failed_description_parsing",
-                    "Failed to parse description for file ${p.basenameWithoutExtension(migration.path)}",
-                    autoLog: true,
-                    rootException: error,
-                  );
-                }
-                if (version >= 0 && description.isNotEmpty) {
-                  await migrator.applyMigration(
-                    dsInfo,
-                    schemaName,
-                    version,
-                    description,
-                    migration.readAsStringSync(),
-                  );
-                }
-              } else {
-                throw TomDbMigrationException(
-                  "db_migration.migration.illegal_filename_in_migrations_directory",
-                  "Illegal filename in migrations directory: ${p.basenameWithoutExtension(migration.path)}. Filename must follow [<numeric version>]-<description>.<anyfileextension> pattern.",
-                  autoLog: true,
-                );
-              }
             }
           }
         }

@@ -49,11 +49,11 @@ abstract class TomUnaryOperator<T, R> extends TomOperator<R> {
   Set<String> getFields(TomStandardSqlDialect t) {
     var r = <String>{};
     if (operant1 is TomOperator && operant1 != null) {
-      r.addAll((operant1 as TomOperator).getParameters(t));
+      r.addAll((operant1 as TomOperator).getFields(t));
     }
     if (operant1 is List<TomOperator>) {
       for (var op in (operant1 as List<TomOperator>)) {
-        r.addAll(op.getParameters(t));
+        r.addAll(op.getFields(t));
       }
     }
     return r;

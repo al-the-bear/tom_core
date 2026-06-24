@@ -119,7 +119,7 @@ mixin TomAnnotationAnalyzer {
   /// annotation on a non-variable declaration.
   static List<TomColumnInformation>? getPersistentColumns(Type dbType) {
     if (columnInfoCache.containsKey(dbType)) {
-      return columnInfoCache[dbType] as List<TomColumnInformation>;
+      return columnInfoCache[dbType];
     }
     ClassMirror? mirror = findMirror(dbType);
     if (mirror != null) {

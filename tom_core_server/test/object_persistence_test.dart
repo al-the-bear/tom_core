@@ -171,4 +171,52 @@ void main() {
       );
     });
   });
+
+  // Bug §28: a unary operator (Not / And / Or / Group / IsNull) must collect its
+  // operands' *fields* in getFields, not their parameter names. The bug had the
+  // override delegate to getParameters, so getFields over any tree containing a
+  // grouped/conjoined predicate leaked the parameter names and dropped the
+  // columns.
+  group('unary operator getFields (bug §28)', () {
+    test('Not collects the column field, not the parameter name', () {
+      final col = _column('users', 'age');
+      final pred = b.not(b.gte(b.intF('age', col), b.p<TomDbInt>('min')));
+      // Before §28 this returned {'min'} (the parameter) and dropped the column.
+      expect(pred.getFields(dialect), {'users.age'});
+    });
+
+    test('And collects every operand column and no parameter names', () {
+      final pred = b.and([
+        b.group(b.gte(b.intF('age', _column('users', 'age')),
+            b.p<TomDbInt>('min'))),
+        b.group(b.like(
+            b.textF('name', _column('users', 'name')), b.text('A%'))),
+      ]);
+      final fields = pred.getFields(dialect);
+      expect(fields, containsAll(['users.age', 'users.name']));
+      expect(fields, isNot(contains('min')));
+    });
+
+    test('IsNull collects the wrapped column field', () {
+      final col = _column('users', 'name');
+      final pred = b.isNull(b.textF('name', col));
+      expect(pred.getFields(dialect), {'users.name'});
+    });
+  });
+
+  // Bug §29: getPersistentColumns memoises `null` for a non-reflectable type,
+  // but the cache-hit fast path cast `null` to a non-nullable list. The first
+  // call returned null; the second threw a TypeError off the cache.
+  group('TomAnnotationAnalyzer.getPersistentColumns (bug §29)', () {
+    test('returns null on every call for a non-reflectable type', () {
+      // _NotAnEntity is not registered with tomReflector, so the analyzer caches
+      // null. A second call must read that cached null back as null, not throw.
+      expect(TomAnnotationAnalyzer.getPersistentColumns(_NotAnEntity), isNull);
+      expect(TomAnnotationAnalyzer.getPersistentColumns(_NotAnEntity), isNull);
+    });
+  });
 }
+
+/// A plain type with no persistence reflection, used to drive the analyzer's
+/// non-reflectable / null-memoisation path (bug §29).
+class _NotAnEntity {}
