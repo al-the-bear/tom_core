@@ -55,13 +55,55 @@ void main() {
     });
   });
 
+  group('type mismatch', () {
+    // tests §9(a): a present value that cannot be cast to T throws a
+    // descriptive Exception naming the key — the type-mismatch branch of
+    // `_getValue` had no coverage.
+    test('a present value of the wrong type throws a descriptive Exception',
+        () {
+      installConfig({'app.title': 'not-an-int'});
+      expect(
+        () => TomIntProperty('app.title'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('app.title'), contains('not-an-int')),
+          ),
+        ),
+      );
+    });
+  });
+
   group('missing obligatory key', () {
-    test('no-default constructor throws when the key is absent', () {
+    // tests §9(b): the no-default constructor must surface the intended
+    // "Obligatory resource not found" Exception — not the opaque
+    // LateInitializationError the unassigned `late` default field used to
+    // throw (status_bug.md §17). RED before the fix.
+    test('no-default constructor throws the descriptive obligatory-key error',
+        () {
       installConfig({});
-      // The construction fails (intended); the surfaced error is a
-      // LateInitializationError rather than the descriptive message — see the
-      // documented limitation in doc/resources.md.
-      expect(() => TomStringProperty('app.missing'), throwsA(anything));
+      expect(
+        () => TomStringProperty('app.missing'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            allOf(contains('Obligatory'), contains('app.missing')),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('explicit null default (nullable T)', () {
+    // tests §9 / status_bug.md §17 second defect: a `withDefault(key, null)`
+    // over a nullable T must use the explicitly-supplied null, not fall
+    // through the `_defaultValue != null` guard and throw. RED before the fix.
+    test('withDefault(key, null) returns null when the key is absent', () {
+      installConfig({});
+      final p = TomProperty<String?>.withDefault('app.missing', null);
+      expect(p.get(), isNull);
     });
   });
 }

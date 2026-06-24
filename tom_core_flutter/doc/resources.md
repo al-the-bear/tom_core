@@ -62,9 +62,9 @@ not reflected.
 ### `TomProperty<T>`
 
 The generic base. Reads `key` from config at construction and caches the typed
-result. Read it back with `get()` or the `~` operator. The `t`,
-`translationExists`, `c`, and `configExists` getters expose the underlying
-text/config providers.
+result. Read it back with `get()` or the `~` operator. The config-provider
+lookups it uses are private implementation detail, not part of the public
+surface.
 
 ### Typed subclasses
 
@@ -74,12 +74,11 @@ text/config providers.
 
 ## Limitations
 
-- **Absent key without default throws a `LateInitializationError`**, not the
-  intended "Obligatory resource not found" message: the no-default constructor
-  leaves the internal default field uninitialized, so the fallback branch
-  surfaces the framework error first. The construction still fails (the intended
-  outcome); only the error *type/message* differs. Treat this as a known
-  limitation rather than a guaranteed message.
+- **Absent key without default throws a descriptive `Exception`** naming the
+  obligatory key (`Obligatory resource <key> not found in configuration
+  resources`). Default *presence* is tracked separately from the default value,
+  so a `.withDefault(key, null)` over a nullable `T` honours the explicit `null`
+  rather than treating it as "no default".
 - **Eager and immutable** — the value is captured at construction and never
   re-read.
 

@@ -26,53 +26,61 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// re-read, so later config changes are not reflected. Construct the property
 /// after the config providers are populated.
 class TomProperty<T> {
-  /// Translation lookup from the application text resources.
-  String Function(String) get t =>
-      TomTextResourceProvider.getAppResources().getText;
-
-  /// Whether a translation exists for the given key.
-  bool Function(String) get translationExists =>
-      TomTextResourceProvider.getAppResources().exists;
-
   /// Config-value lookup from the application config resources.
-  Object Function(String) get c =>
+  Object Function(String) get _c =>
       TomConfigResourceProvider.getAppConfig().getText;
 
   /// Whether a config value exists for the given key.
-  bool Function(String) get configExists =>
+  bool Function(String) get _configExists =>
       TomConfigResourceProvider.getAppConfig().exists;
 
-  late T _value;
-  late String _propertyKey;
-  late T _defaultValue;
+  late final T _value;
+  final String _propertyKey;
+
+  /// The fallback value, assigned only by [TomProperty.withDefault]. Guarded by
+  /// [_hasDefault] — never read unless a default was actually supplied, so a
+  /// nullable `T` default of `null` is honoured rather than mistaken for
+  /// "no default".
+  late final T _defaultValue;
+
+  /// Whether a default was supplied. This — not `_defaultValue != null` —
+  /// drives the fallback branch, so a no-default construction reaches the
+  /// descriptive obligatory-key error instead of reading the unassigned
+  /// `late` default field (which threw `LateInitializationError`), and an
+  /// explicit `null` default over a nullable `T` is used as given.
+  final bool _hasDefault;
 
   /// Resolves [key] from config at construction; throws if absent.
-  TomProperty(String key) {
-    _propertyKey = key;
+  TomProperty(String key)
+      : _propertyKey = key,
+        _hasDefault = false {
     _getValue();
   }
 
   /// Resolves [key] from config at construction, falling back to [value] when
   /// the key is absent.
-  TomProperty.withDefault(String key, T value) {
-    _defaultValue = value;
-    _propertyKey = key;
+  TomProperty.withDefault(String key, T value)
+      : _propertyKey = key,
+        _defaultValue = value,
+        _hasDefault = true {
     _getValue();
   }
 
   void _getValue() {
-    if (configExists(_propertyKey)) {
+    if (_configExists(_propertyKey)) {
       try {
-        _value = c(_propertyKey) as T;
+        _value = _c(_propertyKey) as T;
       } catch (exception) {
         throw Exception(
-          "Could not set property of type $T from value of property $_propertyKey with value ${c(_propertyKey)}",
+          "Could not set property of type $T from value of property $_propertyKey with value ${_c(_propertyKey)}",
         );
       }
-    } else if (_defaultValue != null) {
+    } else if (_hasDefault) {
       _value = _defaultValue;
     } else {
-      throw ("Obligatory resource $_propertyKey not found in configuration resources");
+      throw Exception(
+        "Obligatory resource $_propertyKey not found in configuration resources",
+      );
     }
   }
 
