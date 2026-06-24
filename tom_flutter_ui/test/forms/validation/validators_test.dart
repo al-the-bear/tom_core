@@ -37,6 +37,24 @@ void main() {
         final result = await validator('');
         expect(result, isA<ValidationError>());
       });
+
+      // §76: the TLD must not be capped at 4 characters. Modern TLDs such as
+      // `.travel`, `.museum`, `.online`, `.technology` are valid and must pass.
+      test('returns success for long (>4 char) TLDs', () async {
+        for (final email in const [
+          'user@example.travel',
+          'user@example.museum',
+          'user@example.online',
+          'user@example.technology',
+        ]) {
+          final result = await validator(email);
+          expect(
+            result,
+            isA<ValidationSuccess>(),
+            reason: '$email should be a valid email (TLD > 4 chars)',
+          );
+        }
+      });
     });
 
     group('minLength()', () {

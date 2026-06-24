@@ -26,7 +26,7 @@ class Validators {
 
   /// Validates that a string matches the given email pattern.
   static Validator<String> email() => pattern(
-        RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'),
+        RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,}$'),
         errorKey: 'error.email',
       );
 

@@ -1036,7 +1036,11 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   late TextEditingController _textEditingController;
   String currentRawValue = "";
   final ValueNotifier<String?> _errorText = ValueNotifier(null);
-  String? _inputError;
+
+  /// Re-entrancy guard: set while we programmatically revert the controller
+  /// text so the listener does not re-validate (and wipe the error) on the
+  /// revert pass. See bug §75.
+  bool _suppressInputListener = false;
 
   final List<String? Function(String)> _valueValidators = [];
   final List<String? Function(String)> _inputValidators = [];
@@ -1109,33 +1113,35 @@ class TomTextFormFieldBase<T> extends TomField<T> {
     }
   }
 
+  /// Programmatically writes [text] into the controller without triggering an
+  /// input-validation pass (used to revert an invalid keystroke). The guard
+  /// keeps the just-set error message from being wiped by the re-entrant
+  /// listener call. See bug §75.
+  void _setControllerText(String text) {
+    _suppressInputListener = true;
+    _textEditingController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    _suppressInputListener = false;
+  }
+
   void _onTextChanged() {
+    if (_suppressInputListener) return;
     var value = _textEditingController.value.text;
-    bool valid = true;
     String? error;
     for (var inputValidator in _inputValidators) {
       error = inputValidator(value);
-      if (error != null && _errorText.value == null) {
-        _errorText.value = t(error);
-      }
-      if (error != null) {
-        valid = false;
-      }
+      if (error != null) break;
     }
-    if (valid) {
+    if (error == null) {
       currentRawValue = value;
       _errorText.value = null;
       // Sync text to TomObject value (bypass override to avoid controller loop)
       super.set(_valueConverter(value));
     } else {
-      _textEditingController.text = currentRawValue;
-      _textEditingController.selection = TextSelection.collapsed(
-        offset: currentRawValue.length,
-      );
-      if (_inputError != null) {
-        _errorText.value = _inputError;
-        _inputError = null;
-      }
+      _errorText.value = t(error);
+      _setControllerText(currentRawValue);
     }
   }
 
