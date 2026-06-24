@@ -237,7 +237,7 @@ class TomMimeType {
   /// TomMimeType.json.toHeaderValue(); // "application/json;charset=UTF-8"
   /// ```
   String toHeaderValue() =>
-      '$primaryType/$subType${charset != null ? ";charset=$charset" : ""}${codecs.length > 1 ? ";codecs=" : ""}${codecs.length == 1 ? codecs[0] : ""}${codecs.length > 1 ? codecs.join(",") : ""}';
+      '$primaryType/$subType${charset != null ? ";charset=$charset" : ""}${codecs.isNotEmpty ? ";codecs=${codecs.join(",")}" : ""}';
 
   @override
   String toString() =>

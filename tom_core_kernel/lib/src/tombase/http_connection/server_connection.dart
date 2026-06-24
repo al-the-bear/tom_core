@@ -296,8 +296,10 @@ class TomServerCallError {
 
   /// Whether this represents an error condition.
   ///
-  /// Returns `true` if status code is not 200 or there's an internal error.
-  bool get hasError => statusCode != 200 || internalError != 0;
+  /// Returns `true` if the status code is outside the 2xx success range
+  /// (so 201/202/204 are *not* errors) or there's an internal error.
+  bool get hasError =>
+      statusCode < 200 || statusCode >= 300 || internalError != 0;
 
   @override
   String toString() =>
@@ -433,6 +435,17 @@ class TomServerCall {
       abortTrigger: abortTrigger.future,
     );
     applySpecValues();
+    // Apply any new body supplied to reset(). TomServerCallLoad validates that
+    // at most one body type is set.
+    if (stringBody != null || byteBody != null || bodyFields != null) {
+      applyLoadValues(
+        TomServerCallLoad(
+          stringBody: stringBody,
+          byteBody: byteBody,
+          bodyFields: bodyFields,
+        ),
+      );
+    }
   }
 
   /// Sends the request with the given payload.
@@ -485,7 +498,7 @@ class TomServerCall {
     } on RequestAbortedException catch (e, s) {
       throw TomRequestAbortedException(
         "server.send.request_aborted",
-        "You need to send before you read.",
+        "The request was aborted before the response was fully read.",
         rootException: e,
         stack: s,
       );

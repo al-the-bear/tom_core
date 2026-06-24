@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:http/http.dart'
+    show BaseClient, BaseRequest, StreamedResponse, RequestAbortedException;
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -362,15 +365,18 @@ void main() {
         expect(TomMimeType.pdf.toHeaderValue(), equals('application/pdf'));
       });
 
-      test('should include single codec without prefix', () {
+      test('should include single codec with ;codecs= prefix', () {
         const mimeType = TomMimeType(
           'video',
           'mp4',
           charset: null,
           codecs: ['avc1.42E01E'],
         );
-        // Single codec is appended directly without ;codecs= prefix
-        expect(mimeType.toHeaderValue(), equals('video/mp4avc1.42E01E'));
+        // A single codec must still carry the ;codecs= prefix (RFC 6381).
+        expect(
+          mimeType.toHeaderValue(),
+          equals('video/mp4;codecs=avc1.42E01E'),
+        );
       });
 
       test('should include multiple codecs', () {
@@ -1560,14 +1566,30 @@ void main() {
       expect(error.statusCodeResponse, equals(responseObject));
     });
 
-    test('hasError returns true for non-200 status', () {
-      expect(TomServerCallError(statusCode: 201).hasError, isTrue);
+    test('hasError returns true for 4xx/5xx status', () {
       expect(TomServerCallError(statusCode: 400).hasError, isTrue);
+      expect(TomServerCallError(statusCode: 404).hasError, isTrue);
       expect(TomServerCallError(statusCode: 500).hasError, isTrue);
     });
 
-    test('hasError returns false only for 200 with no internal error', () {
-      expect(TomServerCallError(statusCode: 200, internalError: 0).hasError, isFalse);
+    test('hasError returns false for any 2xx success status', () {
+      // 2xx are successes, not errors (201 Created, 202 Accepted, 204 No Content).
+      expect(TomServerCallError(statusCode: 200).hasError, isFalse);
+      expect(TomServerCallError(statusCode: 201).hasError, isFalse);
+      expect(TomServerCallError(statusCode: 202).hasError, isFalse);
+      expect(TomServerCallError(statusCode: 204).hasError, isFalse);
+    });
+
+    test('hasError returns true for 3xx redirect status', () {
+      expect(TomServerCallError(statusCode: 301).hasError, isTrue);
+      expect(TomServerCallError(statusCode: 302).hasError, isTrue);
+    });
+
+    test('hasError returns true when internalError is set even on 2xx', () {
+      expect(
+        TomServerCallError(statusCode: 200, internalError: 1).hasError,
+        isTrue,
+      );
     });
 
     group('error constants', () {
@@ -1661,4 +1683,276 @@ void main() {
       );
     });
   });
+
+  // ==========================================================================
+  // TomServerCall request-lifecycle Tests (§29) — driven by an injected mock
+  // Client so no real network is required.
+  // ==========================================================================
+  group('TomServerCall lifecycle', () {
+    // Specs with bearer auth disabled so applySpecValues() never touches the
+    // TomBearerAuthentication singleton (it is not initialised in this suite).
+    TomServerCallSpecs specs([String method = 'POST']) => TomServerCallSpecs(
+          method,
+          Uri.parse('https://api.example.com/data'),
+          includeBearerAuthentication: false,
+        );
+
+    group('send', () {
+      test('sends the request through the client and stores the response', () {
+        final client = _MockClient((_) async => _streamed('hello'));
+        final call = TomServerCall(client, specs());
+
+        final result = call.send(TomServerCallLoad(stringBody: 'payload'));
+
+        expect(result, same(call));
+        expect(call.response, isNotNull);
+        expect(client.sendCount, equals(1));
+        expect(client.lastRequest, isNotNull);
+      });
+
+      test('throws when send is called twice without reset', () {
+        final client = _MockClient((_) async => _streamed('hello'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad(stringBody: 'a'));
+
+        expect(
+          () => call.send(TomServerCallLoad(stringBody: 'b')),
+          throwsA(isA<TomServerConnectionException>()),
+        );
+      });
+    });
+
+    group('read / readAsString', () {
+      test('read returns the response body as bytes', () async {
+        final client = _MockClient((_) async => _streamed('hello bytes'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        final bytes = await call.read();
+
+        expect(utf8.decode(bytes), equals('hello bytes'));
+        expect(call.serverResponse, isNotNull);
+      });
+
+      test('readAsString decodes the body with the given encoding', () async {
+        final client = _MockClient((_) async => _streamed('héllo'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        expect(await call.readAsString(utf8), equals('héllo'));
+      });
+
+      test('read before send throws a connection exception', () {
+        final client = _MockClient((_) async => _streamed('x'));
+        final call = TomServerCall(client, specs());
+
+        expect(call.read(), throwsA(isA<TomServerConnectionException>()));
+      });
+
+      test('reading twice throws a connection exception', () async {
+        final client = _MockClient((_) async => _streamed('once'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        await call.read();
+        expect(call.read(), throwsA(isA<TomServerConnectionException>()));
+      });
+    });
+
+    group('response accessors', () {
+      test('expose status, headers, redirect, reason and request', () async {
+        final client = _MockClient(
+          (req) async => _streamed(
+            'created',
+            statusCode: 201,
+            headers: {'x-tom': 'yes'},
+            reasonPhrase: 'Created',
+            isRedirect: false,
+            request: req,
+          ),
+        );
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        expect(await call.getResponseStatusCode(), equals(201));
+        expect(await call.getResponseHeaders(), containsPair('x-tom', 'yes'));
+        expect(await call.getResponseIsRedirect(), isFalse);
+        expect(await call.getResponseReasonPhrase(), equals('Created'));
+        expect(await call.getResponseContentLength(), equals(7));
+        expect(await call.getResponseRequest(), isNotNull);
+      });
+
+      test('accessors before send throw a connection exception', () {
+        final client = _MockClient((_) async => _streamed('x'));
+        final call = TomServerCall(client, specs());
+
+        expect(
+          call.getResponseStatusCode(),
+          throwsA(isA<TomServerConnectionException>()),
+        );
+      });
+    });
+
+    group('reset', () {
+      test('clears state so the call can be sent again', () async {
+        final client = _MockClient((_) async => _streamed('again'));
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+        await call.read();
+
+        call.reset();
+
+        expect(call.response, isNull);
+        expect(call.serverResponse, isNull);
+        // A fresh send must now succeed (no illegal-state exception).
+        expect(() => call.send(TomServerCallLoad()), returnsNormally);
+      });
+
+      test('applies a new string body passed to reset (§39)', () {
+        final client = _MockClient((_) async => _streamed('x'));
+        final call = TomServerCall(client, specs());
+
+        call.reset(stringBody: 'reset-body');
+
+        expect(call.abortableRequest.body, equals('reset-body'));
+      });
+
+      test('applies new body fields passed to reset (§39)', () {
+        final client = _MockClient((_) async => _streamed('x'));
+        final call = TomServerCall(client, specs());
+
+        call.reset(bodyFields: {'k': 'v'});
+
+        expect(call.abortableRequest.bodyFields, equals({'k': 'v'}));
+      });
+    });
+
+    group('abort', () {
+      test('abort() completes the abort trigger', () {
+        final client = _MockClient((_) async => _streamed('x'));
+        final call = TomServerCall(client, specs());
+
+        expect(call.abortTrigger.isCompleted, isFalse);
+        call.abort();
+        expect(call.abortTrigger.isCompleted, isTrue);
+      });
+
+      test('read() of an aborted stream throws TomRequestAbortedException '
+          'with the abort message (§40)', () async {
+        final client = _MockClient(
+          (_) async => StreamedResponse(
+            Stream<List<int>>.error(RequestAbortedException()),
+            200,
+          ),
+        );
+        final call = TomServerCall(client, specs())
+          ..send(TomServerCallLoad());
+
+        await expectLater(
+          call.read(),
+          throwsA(
+            isA<TomRequestAbortedException>().having(
+              (e) => e.defaultUserMessage,
+              'defaultUserMessage',
+              contains('aborted'),
+            ),
+          ),
+        );
+      });
+    });
+
+    group('via TomServerChannel.prepareCall', () {
+      test('a channel-prepared call round-trips through the mock client',
+          () async {
+        final client = _MockClient((_) async => _streamed('channel-body'));
+        final channel = TomServerChannel(
+          'api.example.com',
+          443,
+          clientFactory: _MockClientFactory(client),
+        );
+
+        final call = channel.prepareCall(specs());
+        final body = await call.send(TomServerCallLoad()).readAsString(utf8);
+
+        expect(body, equals('channel-body'));
+        expect(call.client, same(client));
+      });
+    });
+  });
+
+  // ==========================================================================
+  // TomServerEndpoint.send / createApiServerEndpoint Tests (§29)
+  // ==========================================================================
+  group('TomServerEndpoint.createApiServerEndpoint', () {
+    test('throws TomEndpointException on request/response type mismatch', () {
+      // The endpoint is declared <String, String>; we ask for <int, int>,
+      // so the runtime type check must reject it before any network work.
+      final endpoint = TomApiEndpoint<String, String>(
+        id: 'mismatch',
+        method: TomHttpMethod.post,
+        uri: '/mismatch',
+      );
+      expect(
+        () => TomServerEndpoint.createApiServerEndpoint<int, int>(endpoint),
+        throwsA(isA<TomEndpointException>()),
+      );
+    });
+  });
+}
+
+// ============================================================================
+// Test doubles for the request-lifecycle tests.
+// ============================================================================
+
+/// A minimal [BaseClient] whose [send] is driven by a supplied handler, so
+/// tests fully control the response (or stream error) a [TomServerCall] sees.
+class _MockClient extends BaseClient {
+  _MockClient(this.handler);
+
+  final Future<StreamedResponse> Function(BaseRequest request) handler;
+
+  /// Number of times [send] was invoked.
+  int sendCount = 0;
+
+  /// The last request passed to [send].
+  BaseRequest? lastRequest;
+
+  @override
+  Future<StreamedResponse> send(BaseRequest request) {
+    sendCount++;
+    lastRequest = request;
+    return handler(request);
+  }
+}
+
+/// A [TomHttpClientFactory] that always hands out the same mock client, so a
+/// [TomServerChannel] can be wired to a [_MockClient].
+class _MockClientFactory extends TomHttpClientFactory {
+  _MockClientFactory(this._client);
+
+  final _MockClient _client;
+
+  @override
+  _MockClient getClient() => _client;
+}
+
+/// Builds a [StreamedResponse] from a string body for the success cases.
+StreamedResponse _streamed(
+  String body, {
+  int statusCode = 200,
+  Map<String, String> headers = const {},
+  String? reasonPhrase,
+  bool isRedirect = false,
+  BaseRequest? request,
+}) {
+  final bytes = utf8.encode(body);
+  return StreamedResponse(
+    Stream<List<int>>.value(bytes),
+    statusCode,
+    contentLength: bytes.length,
+    headers: headers,
+    reasonPhrase: reasonPhrase,
+    isRedirect: isRedirect,
+    request: request,
+  );
 }
