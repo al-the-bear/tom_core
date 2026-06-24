@@ -41,6 +41,14 @@ generated reflection data. A runtime can enumerate classes annotated with it and
 dispatch to the right adaptor based on its `type` — without the framework
 hard-coding the set of supported 2FA mechanisms.
 
+For an adaptor class to be discoverable this way, the class must also be
+`@tomReflector`-registered (and public, so the generated reflection library can
+reference it): the generator then emits a mirror whose `metadata` carries the
+`TomClient2FAAdaptor` instance. A runtime reads it via
+`tomReflector.reflectType(AdaptorClass).metadata.whereType<TomClient2FAAdaptor>()`
+and recovers each adaptor's `type`. This round-trip is pinned by
+`test/security_test.dart` (reflection is wired through `build.yaml`).
+
 Because the class participates in reflection, its signature (name, the `type`
 field, the `const` constructor) is a contract: changing it requires
 regenerating reflection for consumers.

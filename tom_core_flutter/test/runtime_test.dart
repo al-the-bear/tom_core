@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
+import 'package:tom_core_flutter/src/tomclient/runtime/platform_detection_flutter_io.dart';
 
 /// Tests for the runtime module (`clientPlatformUtils`).
 ///
@@ -52,8 +55,50 @@ void main() {
     expect(p.isDesktop(), isFalse);
   });
 
+  test('reports Fuchsia via defaultTargetPlatform', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
+    final p = clientPlatformUtils;
+    expect(p.isFuchsia(), isTrue);
+    expect(p.isDesktop(), isFalse);
+    expect(p.isMobile(), isFalse);
+  });
+
+  test('reports Windows as a desktop platform', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    final p = clientPlatformUtils;
+    expect(p.isWindows(), isTrue);
+    expect(p.isDesktop(), isTrue);
+    expect(p.isMobile(), isFalse);
+  });
+
   test('provides an HTTP client on the native branch', () {
     expect(clientPlatformUtils.httpClient(), isA<Client>());
+  });
+
+  test('tolerates bad certificates only for loopback hosts', () {
+    // The HttpClient.badCertificateCallback delegates to this predicate; an
+    // X509Certificate has no public constructor and the callback is not
+    // readable back off the client, so the decision is tested directly.
+    expect(allowsBadCertificateForHost('localhost'), isTrue);
+    expect(allowsBadCertificateForHost('127.0.0.1'), isTrue);
+    expect(allowsBadCertificateForHost('0.0.0.0'), isTrue);
+    expect(allowsBadCertificateForHost('example.com'), isFalse);
+    expect(allowsBadCertificateForHost('10.0.0.5'), isFalse);
+  });
+
+  test('imports the process environment at construction', () {
+    // Constructing the native utils copies Platform.environment into the
+    // kernel env vars. Pick a key actually present to stay OS-agnostic.
+    expect(
+      Platform.environment,
+      isNotEmpty,
+      reason: 'test host is expected to expose some environment variables',
+    );
+    final key = Platform.environment.keys.first;
+    // Accessing the getter constructs TomFlutterPlatformUtils, whose
+    // constructor copies Platform.environment into the (static) env-var map.
+    final utils = clientPlatformUtils;
+    expect(utils.getTomEnvVars()[key], Platform.environment[key]);
   });
 
   test('reports a non-empty isolate name', () {

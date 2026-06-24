@@ -1,0 +1,22 @@
+# Build configuration for tom_core_flutter
+#
+# Reflection generator configuration for the security module test, which
+# verifies that @TomClient2FAAdaptor is reflection-discoverable. The generator
+# is restricted to the test files that need a generated *.reflection.dart
+# companion; without `generate_for` it would attempt to generate for every
+# Dart file in the package.
+
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - test/security_test.dart
+        options:
+          formatted: true
+      # The d4rt bridge builder (auto-applied via the tom_d4rt_generator dev
+      # dependency) currently fails to compile against the resolved analyzer,
+      # which would break the build script. tom_core_flutter generates no d4rt
+      # bridges, so it is disabled here.
+      tom_d4rt_generator:d4rt_bridge_builder:
+        enabled: false

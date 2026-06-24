@@ -74,6 +74,13 @@ current target. Platform predicates read Flutter's `defaultTargetPlatform` /
 - The neutral fallback cannot create an HTTP client — `httpClient()` throws.
   Register a concrete variant (which `clientPlatformUtils` does automatically on
   IO/web targets) before performing network calls.
+- The native `IOClient`'s `badCertificateCallback` tolerates a bad TLS
+  certificate **only** for loopback hosts (`0.0.0.0`, `localhost`,
+  `127.0.0.1`) and rejects every other host. The decision is the top-level
+  `allowsBadCertificateForHost(host)` in `platform_detection_flutter_io.dart`
+  — a testability hook (an `X509Certificate` has no public constructor and the
+  callback is not readable off the client), not part of the barrel's public
+  API.
 
 ---
 

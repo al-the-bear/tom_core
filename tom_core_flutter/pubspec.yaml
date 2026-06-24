@@ -25,5 +25,6 @@ dev_dependencies:
   test: ^1.25.6
   build_runner: ^2.10.4
   build: ^4.0.3
+  tom_reflection_generator: any
   tom_d4rt: ^1.10.1
   tom_d4rt_generator:
