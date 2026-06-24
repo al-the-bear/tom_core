@@ -26,6 +26,11 @@ class TomConfig<T> {
   late String _propertyKey;
   T? _defaultValue;
 
+  /// Whether a default was supplied via [TomConfig.withDefault]. Tracked
+  /// separately from `_defaultValue != null` so a *nullable* `null` default is
+  /// honoured rather than treated as "no default" (bug §64).
+  bool _hasDefault = false;
+
   /// Resolves an **obligatory** property [key] from the active provider.
   ///
   /// Throws if the key is absent (no default to fall back on) or if its value
@@ -38,6 +43,7 @@ class TomConfig<T> {
   /// Resolves property [key], falling back to [value] when the key is absent.
   TomConfig.withDefault(String key, T value) {
     _defaultValue = value;
+    _hasDefault = true;
     _propertyKey = key;
     _getValue();
   }
@@ -55,7 +61,7 @@ class TomConfig<T> {
           "Could not set property of type $T from value of property $_propertyKey with value ${TomServerConfigResourceProvider.getServerConfig().get(_propertyKey)}",
         );
       }
-    } else if (_defaultValue != null) {
+    } else if (_hasDefault) {
       _value = _defaultValue;
     } else {
       throw ("Obligatory resource $_propertyKey not found in configuration resources");

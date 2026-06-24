@@ -208,7 +208,10 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   // currently not in use...
   String? jwtSharedSecretKey = "config-secret-passphrase";
 
-  String host = Platform.isWindows ? "t" : "0";
+  /// The bind host. Empty (the default) makes [TomServer.start] listen on
+  /// [InternetAddress.anyIPv4]; set a concrete host to bind a specific address.
+  /// (The previous `"t"`/`"0"` defaults were invalid addresses — bug §63.)
+  String host = "";
 
   int isolateCount = 10;
 
@@ -239,16 +242,46 @@ utj3flRQDLaDAl91lySpAjUp9aM8
 
   /// Builds the merged value map used to populate a configuration instance.
   ///
-  /// Starts from the active provider's [TomServerConfigResourceProvider.resources]
-  /// and overlays, in increasing precedence: the OS environment, a `.env` file
-  /// (`./.env`), then the parsed [args]. Command-line arguments therefore win.
+  /// Starts from a **deep copy** of the active provider's
+  /// [TomServerConfigResourceProvider.resources] and overlays, in increasing
+  /// precedence: the OS environment, a `.env` file (`./.env`), then the parsed
+  /// [args]. Command-line arguments therefore win. The copy is essential: the
+  /// merges below mutate their first argument in place, so merging into the
+  /// provider's own `resources` would permanently inject the environment, the
+  /// `.env` file and the CLI args into the process-wide provider (bug §62).
   static Map<String, Object?> getDefaultValues(List<String> args) {
-    Map<String, Object?> values =
-        TomServerConfigResourceProvider.getServerConfig().resources;
+    Map<String, Object?> values = _deepCopyConfigTree(
+      TomServerConfigResourceProvider.getServerConfig().resources,
+    );
     mergeMapsOneSided(values, TomArgs.convertToObjectMap(Platform.environment));
     mergeMapsOneSided(values, TomEnvFile.read());
     mergeMapsOneSided(values, TomArgs.parseArgsToMap(args));
     return values;
+  }
+
+  /// Returns a deep copy of a configuration [source] tree so a subsequent
+  /// in-place merge cannot mutate any map or list shared with the original.
+  ///
+  /// Nested maps are normalised to `Map<String, dynamic>` (configuration keys
+  /// are always strings); lists are copied element-wise; scalar leaves are kept
+  /// as-is. See [getDefaultValues] (bug §62).
+  static Map<String, dynamic> _deepCopyConfigTree(Map<String, dynamic> source) {
+    final copy = <String, dynamic>{};
+    source.forEach((key, value) {
+      copy[key] = _deepCopyConfigValue(value);
+    });
+    return copy;
+  }
+
+  static dynamic _deepCopyConfigValue(dynamic value) {
+    if (value is Map) {
+      final copy = <String, dynamic>{};
+      value.forEach((k, v) => copy['$k'] = _deepCopyConfigValue(v));
+      return copy;
+    } else if (value is List) {
+      return value.map<dynamic>(_deepCopyConfigValue).toList();
+    }
+    return value;
   }
 
   /// Assigns the merged configuration [values] onto this instance.

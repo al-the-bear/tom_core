@@ -100,6 +100,19 @@ void main() {
       _install({'v': 2}); // swap the provider after construction
       expect(config.get(), 1); // still the originally-resolved value
     });
+
+    test('a nullable null default resolves to null, not a throw (bug §64)', () {
+      _install({});
+      // withDefault(key, null) over a nullable T must honour the supplied null
+      // default rather than treating it as "no default" and throwing.
+      expect(TomConfig<String?>.withDefault('absent', null).get(), isNull);
+    });
+
+    test('a non-null default still wins over an absent key', () {
+      _install({});
+      expect(TomConfig<String?>.withDefault('absent', 'fallback').get(),
+          'fallback');
+    });
   });
 
   group('TomBaseServerConfiguration.getDefaultValues', () {
@@ -115,6 +128,66 @@ void main() {
       final config = _CapturingConfig([]);
       // PATH is present on every supported platform's environment.
       expect(config.captured.containsKey('PATH'), isTrue);
+    });
+
+    test('constructing a configuration leaves the provider resources unchanged'
+        ' (bug §62)', () {
+      _install({'kept': 'resource'});
+      final provider = TomServerConfigResourceProvider.getServerConfig();
+      final before = provider.resources.keys.toSet();
+      _CapturingConfig([]); // merges env/.env/args into a copy, not the provider
+      // The OS environment (PATH et al.) must not have leaked into the provider.
+      expect(provider.resources.keys.toSet(), before);
+      expect(provider.resources.containsKey('PATH'), isFalse);
+    });
+
+    test('a nested provider subtree is not mutated by construction (bug §62)', () {
+      _install({
+        'server': {'port': 8080},
+      });
+      final provider = TomServerConfigResourceProvider.getServerConfig();
+      _CapturingConfig(['server.host=example']);
+      // The deep copy means the provider's nested map keeps only its own keys,
+      // regardless of how overrides are shaped.
+      expect((provider.resources['server'] as Map).keys.toSet(), {'port'});
+    });
+
+    test('the captured values are a copy, mutating them leaves the provider'
+        ' untouched (bug §62)', () {
+      _install({
+        'server': {'port': 8080},
+      });
+      final provider = TomServerConfigResourceProvider.getServerConfig();
+      final config = _CapturingConfig([]);
+      (config.captured['server'] as Map)['port'] = 9999;
+      expect((provider.resources['server'] as Map)['port'], 8080);
+    });
+
+    test('.env overlays between env and args (resources < env < .env < args)',
+        () async {
+      final prevCwd = Directory.current;
+      final dir = await Directory.systemTemp.createTemp('tom_cfg_env');
+      try {
+        await File('${dir.path}/.env').writeAsString(
+          'r_key=fromEnvFile\nPATH=SENTINEL_PATH\na_key=fromEnvFile\n',
+        );
+        Directory.current = dir;
+        _install({'r_key': 'fromResource'});
+        final config = _CapturingConfig(['a_key=fromArgs']);
+        expect(config.captured['r_key'], 'fromEnvFile'); // .env beats resources
+        expect(config.captured['PATH'], 'SENTINEL_PATH'); // .env beats env
+        expect(config.captured['a_key'], 'fromArgs'); // args beat .env
+      } finally {
+        Directory.current = prevCwd;
+        if (await dir.exists()) await dir.delete(recursive: true);
+      }
+    });
+
+    test('the default bind host is empty (anyIPv4-eligible) (bug §63)', () {
+      _install({});
+      // An empty host routes TomServer.start to InternetAddress.anyIPv4; the
+      // previous "t"/"0" defaults were invalid addresses.
+      expect(_CapturingConfig([]).host, '');
     });
   });
 
@@ -141,6 +214,17 @@ void main() {
       await f.writeAsString('host: \${TOM_CFG_TEST_HOST:fallback}\n');
       final map = TomYaml.loadYamlFile(f.path);
       expect(map['host'], 'fallback');
+    });
+
+    test('substitutes a real environment variable', () async {
+      // PATH is set in every supported platform's environment; the substitution
+      // must resolve ${PATH} to its actual value, not the literal placeholder.
+      final path = Platform.environment['PATH'];
+      expect(path, isNotNull, reason: 'PATH must be set for this test');
+      final f = File('${dir.path}/c.yaml');
+      await f.writeAsString('p: \${PATH}\n');
+      final map = TomYaml.loadYamlFile(f.path);
+      expect(map['p'], path);
     });
 
     test('mergeInYamlFile overlays a file onto an existing map', () async {
