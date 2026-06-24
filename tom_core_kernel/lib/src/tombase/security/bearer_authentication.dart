@@ -180,67 +180,92 @@ class TomBearerAuthentication {
     TomClientJwtToken? authorizationToken,
   ]) {
     var t = authorizationToken ?? authenticationToken;
+
+    // A token without a payload cannot produce a principal — surface a clean
+    // StateError rather than letting a null-check operator throw deep inside.
+    final payload = t.payload;
+    if (payload == null) {
+      throw StateError("Can't construct a principal from a token without payload");
+    }
+    final secret = t.secretData;
+
+    // Defensive readers: tokens come from outside this process, so individual
+    // claims may be missing or the wrong shape. Each reader falls back rather
+    // than crashing on malformed input.
+    String? str(String key) {
+      final v = payload[key];
+      return v is String ? v : null;
+    }
+
+    int intOr(String key, int fallback) {
+      final v = payload[key];
+      return v is int ? v : fallback;
+    }
+
+    List<String> strListFrom(Map<String, dynamic>? src, String key) {
+      final v = src?[key];
+      return v is List ? v.whereType<String>().toList() : <String>[];
+    }
+
+    Map<String, Object?> mapFrom(Map<String, dynamic>? src, String key) {
+      final v = src?[key];
+      return v is Map ? v.cast<String, Object?>() : <String, Object?>{};
+    }
+
+    Map<String, int> intMapFrom(Map<String, dynamic>? src, String key) {
+      final v = src?[key];
+      if (v is! Map) return <String, int>{};
+      final result = <String, int>{};
+      v.forEach((k, value) {
+        if (k is String && value is int) result[k] = value;
+      });
+      return result;
+    }
+
     return TomPrincipal(
-      authenticated: t.payload!["username"] != TomUser.guestUsername,
-      requires2FA: t.payload!["requires2FA"] == "true",
-      twoFactorType: t.payload!["twoFactorType"],
-      context: t.secretData == null
-          ? {}
-          : t.secretData!["context"] as Map<String, Object?>,
-      organization: t.payload!["organization"],
-      application: t.payload!["application"],
-      process: t.payload!["process"],
-      organizationId: t.payload!["organizationId"],
-      applicationId: t.payload!["applicationId"],
-      processId: t.payload!["processId"],
-      clientId: t.payload!["clientId"],
-      country: t.payload!["country"],
-      language: t.payload!["language"],
-      timezone: t.payload!["timeZone"],
-      clientCountry: t.payload!["clientCountry"],
-      clientLanguage: t.payload!["clientLanguage"],
-      clientTimezone: t.payload!["clientTimeZone"],
+      authenticated: (str("username") ?? TomUser.guestUsername) !=
+          TomUser.guestUsername,
+      requires2FA: payload["requires2FA"] == "true",
+      twoFactorType: str("twoFactorType"),
+      context: mapFrom(secret, "context"),
+      organization: str("organization"),
+      application: str("application"),
+      process: str("process"),
+      organizationId: intOr("organizationId", -1),
+      applicationId: intOr("applicationId", -1),
+      processId: intOr("processId", -1),
+      clientId: intOr("clientId", -1),
+      country: str("country"),
+      language: str("language"),
+      timezone: str("timeZone"),
+      clientCountry: str("clientCountry"),
+      clientLanguage: str("clientLanguage"),
+      clientTimezone: str("clientTimeZone"),
       user: TomUser(
-        id: t.payload!["userId"],
-        username: t.payload!["username"],
-        firstname: t.payload!["firstname"],
-        lastname: t.payload!["lastname"],
-        email: t.payload!["email"],
-        phone: t.payload!["phone"],
-        mobile: t.payload!["mobile"],
-        addressLine1: t.payload!["addressLine1"],
-        addressLine2: t.payload!["addressLine2"],
-        city: t.payload!["city"],
-        postcode: t.payload!["postcode"],
-        stateRegion: t.payload!["stateRegion"],
-        attributes: t.payload!["attributes"] as Map<String, Object?>,
-        timeZone: t.payload!["userTimeZone"],
+        id: intOr("userId", -1),
+        username: str("username") ?? TomUser.guestUsername,
+        firstname: str("firstname"),
+        lastname: str("lastname"),
+        email: str("email"),
+        phone: str("phone"),
+        mobile: str("mobile"),
+        addressLine1: str("addressLine1"),
+        addressLine2: str("addressLine2"),
+        city: str("city"),
+        postcode: str("postcode"),
+        stateRegion: str("stateRegion"),
+        attributes: mapFrom(payload, "attributes"),
+        timeZone: str("userTimeZone"),
       ),
       aci: TomAccessControlInformation(
-        groups: (t.secretData != null && t.secretData!["groups"] != null)
-            ? (t.secretData!["groups"] as List<dynamic>).cast<String>()
-            : [],
-        roles: (t.secretData != null && t.secretData!["roles"] != null)
-            ? (t.secretData!["roles"] as List<dynamic>).cast<String>()
-            : [],
-        entitlements:
-            (t.secretData != null && t.secretData!["entitlements"] != null)
-            ? (t.secretData!["entitlements"] as List<dynamic>).cast<String>()
-            : [],
-        resourceKeys:
-            (t.secretData != null && t.secretData!["resourceKeys"] != null)
-            ? (t.secretData!["resourceKeys"] as List<dynamic>).cast<String>()
-            : [],
+        groups: strListFrom(secret, "groups"),
+        roles: strListFrom(secret, "roles"),
+        entitlements: strListFrom(secret, "entitlements"),
+        resourceKeys: strListFrom(secret, "resourceKeys"),
       ),
       cli: TomClientLimitsInformation(
-        enabledModules: t.payload!["subscription_enabledModules"] != null
-            ? (t.payload!["subscription_enabledModules"] as List<dynamic>)
-                  .cast<String>()
-            : [],
-        quotas: t.payload!["subscription_quotas"] != null
-            ? (t.payload!["subscription_quotas"] as Map<dynamic, dynamic>)
-                  .cast<String, int>()
-            : {},
+        enabledModules: strListFrom(payload, "subscription_enabledModules"),
+        quotas: intMapFrom(payload, "subscription_quotas"),
       ),
     );
   }

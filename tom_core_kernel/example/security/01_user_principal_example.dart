@@ -353,9 +353,7 @@ void run() {
   // Example 3: TomAccessControlInformation
   assert(aciRolesCount == 3, 'Should have 3 roles');
   assert(aciHasAdminRole == true, 'Should have admin role');
-  // Note: Due to a bug in the library constructor, groups are populated
-  // from resourceKeys instead of the groups parameter (has 3, not 2)
-  assert(aciGroupsCount == 3, 'Groups populated from resourceKeys due to library bug');
+  assert(aciGroupsCount == 2, 'Should have 2 groups');
   assert(aciEntitlementsCount == 4, 'Should have 4 entitlements');
   assert(aciResourceKeysCount == 3, 'Should have 3 resource keys');
 

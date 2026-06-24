@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -696,10 +697,6 @@ void main() {
     });
 
     group('completeFromDefinition', () {
-      // NOTE: Some tests for completeFromDefinition are skipped due to a
-      // concurrent modification bug in the source code's _complete method
-      // when iterating over sets while adding to them.
-
       test('should handle empty input ACI', () {
         // Arrange
         var definition = TomAccessControlDefinition(
@@ -718,7 +715,7 @@ void main() {
       });
 
       test('should handle definition with single role without inheritance', () {
-        // Arrange - single role with no inheritance (no concurrent modification)
+        // Arrange - single role with no inheritance
         var definition = TomAccessControlDefinition(
           roles: [
             TomRole(
@@ -735,6 +732,199 @@ void main() {
 
         // Assert
         expect(result.roles, contains('user'));
+        expect(result.entitlements, contains('user.read'));
+        expect(result.resourceKeys, contains('user.profile'));
+      });
+
+      test('should resolve role→role inheritance (admin includes user)', () {
+        // Arrange — admin inherits user, which carries an entitlement.
+        var definition = TomAccessControlDefinition(
+          roles: [
+            TomRole(name: 'admin', rolesIncluded: ['user']),
+            TomRole(name: 'user', entitlements: ['feature.read']),
+          ],
+        );
+        var userAci = TomAccessControlInformation(roles: ['admin']);
+
+        // Act
+        var result = definition.completeFromDefinition(userAci);
+
+        // Assert
+        expect(result.roles, containsAll(['admin', 'user']));
+        expect(result.entitlements, contains('feature.read'));
+      });
+
+      test('should resolve role→group membership', () {
+        // Arrange — holding the role grants a group membership.
+        var definition = TomAccessControlDefinition(
+          roles: [
+            TomRole(name: 'admin', groupMemberShips: ['staff']),
+          ],
+          groups: [TomGroup(name: 'staff', entitlements: ['staff.badge'])],
+        );
+        var userAci = TomAccessControlInformation(roles: ['admin']);
+
+        // Act
+        var result = definition.completeFromDefinition(userAci);
+
+        // Assert
+        expect(result.groups, contains('staff'));
+        expect(result.entitlements, contains('staff.badge'));
+      });
+
+      test('should resolve group→group nesting', () {
+        // Arrange — staff is a member of employees.
+        var definition = TomAccessControlDefinition(
+          groups: [
+            TomGroup(name: 'staff', groupMemberShips: ['employees']),
+            TomGroup(name: 'employees', resourceKeys: ['cafeteria']),
+          ],
+        );
+        var userAci = TomAccessControlInformation(groups: ['staff']);
+
+        // Act
+        var result = definition.completeFromDefinition(userAci);
+
+        // Assert
+        expect(result.groups, containsAll(['staff', 'employees']));
+        expect(result.resourceKeys, contains('cafeteria'));
+      });
+
+      test('should resolve entitlement→entitlement inheritance', () {
+        // Arrange — admin.manage includes admin.read, which grants a key.
+        var definition = TomAccessControlDefinition(
+          entitlements: [
+            TomEntitlement(
+              name: 'admin.manage',
+              entitlements: ['admin.read'],
+            ),
+            TomEntitlement(name: 'admin.read', resourceKeys: ['admin.view']),
+          ],
+        );
+        var userAci =
+            TomAccessControlInformation(entitlements: ['admin.manage']);
+
+        // Act
+        var result = definition.completeFromDefinition(userAci);
+
+        // Assert
+        expect(
+          result.entitlements,
+          containsAll(['admin.manage', 'admin.read']),
+        );
+        expect(result.resourceKeys, contains('admin.view'));
+      });
+
+      test(
+        'should preserve the user\'s own resource keys (bug §10 regression)',
+        () {
+          // The user directly holds a resource key; resolution must keep it
+          // rather than dropping it in favour of entitlement names.
+          var definition = TomAccessControlDefinition(
+            roles: [
+              TomRole(name: 'user', resourceKeys: ['role.key']),
+            ],
+          );
+          var userAci = TomAccessControlInformation(
+            roles: ['user'],
+            entitlements: ['some.entitlement'],
+            resourceKeys: ['own.key'],
+          );
+
+          // Act
+          var result = definition.completeFromDefinition(userAci);
+
+          // Assert — both the user's key and the role-granted key are present,
+          // and the entitlement name has NOT leaked into the resource keys.
+          expect(result.resourceKeys, containsAll(['own.key', 'role.key']));
+          expect(result.resourceKeys, isNot(contains('some.entitlement')));
+        },
+      );
+
+      test(
+        'resolved entitlements are entitlements, not a copy of groups (bug §11)',
+        () {
+          // Distinct group and entitlement names so a groups/entitlements mixup
+          // is detectable.
+          var definition = TomAccessControlDefinition(
+            roles: [
+              TomRole(
+                name: 'manager',
+                groupMemberShips: ['leads'],
+                entitlements: ['reports.manage'],
+              ),
+            ],
+            groups: [TomGroup(name: 'leads')],
+          );
+          var userAci = TomAccessControlInformation(roles: ['manager']);
+
+          // Act
+          var result = definition.completeFromDefinition(userAci);
+
+          // Assert
+          expect(result.entitlements, contains('reports.manage'));
+          expect(result.entitlements, isNot(contains('leads')));
+          expect(result.groups, contains('leads'));
+        },
+      );
+
+      test('should resolve a multi-level definition end to end', () {
+        // role admin → role user, group staff; staff → group employees;
+        // entitlement admin.manage → admin.read.
+        var definition = TomAccessControlDefinition(
+          roles: [
+            TomRole(
+              name: 'admin',
+              rolesIncluded: ['user'],
+              groupMemberShips: ['staff'],
+              entitlements: ['admin.manage'],
+              resourceKeys: ['*'],
+            ),
+            TomRole(
+              name: 'user',
+              entitlements: ['feature.read'],
+              resourceKeys: ['user.profile'],
+            ),
+          ],
+          groups: [
+            TomGroup(name: 'staff', groupMemberShips: ['employees']),
+            TomGroup(name: 'employees', resourceKeys: ['cafeteria']),
+          ],
+          entitlements: [
+            TomEntitlement(
+              name: 'admin.manage',
+              entitlements: ['admin.read'],
+              resourceKeys: ['admin.panel'],
+            ),
+            TomEntitlement(name: 'admin.read', resourceKeys: ['admin.view']),
+          ],
+        );
+        var userAci = TomAccessControlInformation(roles: ['admin']);
+
+        // Act
+        var result = definition.completeFromDefinition(userAci);
+
+        // Assert
+        expect(result.roles, containsAll(['admin', 'user']));
+        expect(result.groups, containsAll(['staff', 'employees']));
+        expect(
+          result.entitlements,
+          containsAll([
+            'admin.manage',
+            'feature.read',
+            'admin.read',
+          ]),
+        );
+        expect(
+          result.resourceKeys,
+          containsAll([
+            '*',
+            'user.profile',
+            'cafeteria',
+            'admin.panel',
+            'admin.view',
+          ]),
+        );
       });
     });
 
@@ -1776,6 +1966,187 @@ void main() {
           equals(TomAuthState.none));
     });
   });
+
+  // ===========================================================================
+  // TomBearerAuthentication Tests (tests §7)
+  // ===========================================================================
+
+  group('TomBearerAuthentication', () {
+    setUp(() {
+      // ACI fields are stored verbatim (no protection redaction) so the
+      // round-trip is byte-for-byte comparable.
+      TomResourceKeyProtection.globalSettingProtectionDefault = false;
+      // Each test starts from a clean singleton; getPrincipal/setTokens mutate
+      // global state.
+      TomBearerAuthentication.bearerAuthentication = TomBearerAuthentication();
+    });
+
+    tearDown(() {
+      TomBearerAuthentication.bearerAuthentication = TomBearerAuthentication();
+    });
+
+    group('convertPrincipalToTokenPayload ↔ convertTokenPayloadToPrincipal', () {
+      test('round-trips identity and ACI through a single token', () {
+        final principal = createTestPrincipal(
+          username: 'alice',
+          roles: ['admin', 'user'],
+          groups: ['engineering'],
+          entitlements: ['reports.view'],
+          resourceKeys: ['user.email'],
+        );
+
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          principal,
+          null,
+          'US',
+          'en',
+        );
+
+        final token =
+            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+
+        expect(restored.username, equals('alice'));
+        expect(restored.authenticated, isTrue);
+        expect(restored.user.firstname, equals('Test'));
+        expect(restored.user.lastname, equals('User'));
+        expect(restored.user.email, equals('test@example.com'));
+        expect(restored.organization, equals('testOrg'));
+        expect(restored.application, equals('testApp'));
+        expect(restored.process, equals('testProcess'));
+        expect(restored.clientCountry, equals('US'));
+        expect(restored.clientLanguage, equals('en'));
+        expect(restored.aci.roles, containsAll(['admin', 'user']));
+        expect(restored.aci.groups, contains('engineering'));
+        expect(restored.aci.entitlements, contains('reports.view'));
+        expect(restored.aci.resourceKeys, contains('user.email'));
+      });
+
+      test('a guest username round-trips as not authenticated', () {
+        final guest = createTestPrincipal(
+          authenticated: false,
+          username: TomUser.guestUsername,
+        );
+
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          guest,
+          null,
+          null,
+          null,
+        );
+
+        final token =
+            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+
+        expect(restored.username, equals(TomUser.guestUsername));
+        expect(restored.authenticated, isFalse);
+      });
+    });
+
+    group('convertTokenPayloadToPrincipal malformed tokens (bug §14)', () {
+      test('throws a clean StateError when the payload is null', () {
+        final token = _FakeClientJwtToken(payload: null);
+
+        expect(
+          () => TomBearerAuthentication.convertTokenPayloadToPrincipal(token),
+          throwsA(isA<StateError>()),
+        );
+      });
+
+      test('tolerates a payload missing optional fields', () {
+        // Only a username is present; every other field — including the int
+        // ids, the attributes map, and the entire secretData — is absent.
+        final token = _FakeClientJwtToken(payload: {'username': 'bob'});
+
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+
+        expect(restored.username, equals('bob'));
+        expect(restored.authenticated, isTrue);
+        expect(restored.organizationId, equals(-1));
+        expect(restored.applicationId, equals(-1));
+        expect(restored.user.id, equals(-1));
+        expect(restored.user.attributes, isEmpty);
+        expect(restored.aci.roles, isEmpty);
+        expect(restored.aci.groups, isEmpty);
+        expect(restored.cli.enabledModules, isEmpty);
+        expect(restored.cli.quotas, isEmpty);
+      });
+
+      test('tolerates wrong-shaped collection fields', () {
+        // attributes is a String instead of a Map; subscription fields are the
+        // wrong shape; ACI lists are absent. None of this should crash.
+        final token = _FakeClientJwtToken(
+          payload: {
+            'username': 'carol',
+            'attributes': 'not-a-map',
+            'subscription_enabledModules': 'not-a-list',
+            'subscription_quotas': 'not-a-map',
+            'userId': 'not-an-int',
+          },
+        );
+
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+
+        expect(restored.username, equals('carol'));
+        expect(restored.user.attributes, isEmpty);
+        expect(restored.user.id, equals(-1));
+        expect(restored.cli.enabledModules, isEmpty);
+        expect(restored.cli.quotas, isEmpty);
+      });
+    });
+
+    group('getPrincipal', () {
+      test('throws StateError when no tokens have been set', () {
+        expect(
+          () => TomBearerAuthentication.getPrincipal(),
+          throwsA(isA<StateError>()),
+        );
+      });
+    });
+
+    group('setTokens / updatePrincipal', () {
+      test('setTokens parses the token and exposes a principal', () {
+        final jwt = _makeJwt({
+          'username': 'dave',
+          'userId': 7,
+          'firstname': 'Dave',
+        });
+
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        final principal = TomBearerAuthentication.getPrincipal();
+        expect(principal.username, equals('dave'));
+        expect(principal.user.id, equals(7));
+        expect(TomBearerAuthentication.token, equals(jwt));
+        expect(TomBearerAuthentication.authorizationToken, equals(jwt));
+      });
+
+      test('updatePrincipal replaces the ACI on the current principal', () {
+        final jwt = _makeJwt({'username': 'erin', 'userId': 8});
+        TomBearerAuthentication.setTokens(jwt, jwt, false);
+
+        TomBearerAuthentication.updatePrincipal(
+          ['team-a'],
+          ['lead'],
+          ['feature.x'],
+          ['key.y'],
+        );
+
+        final aci = TomBearerAuthentication.getPrincipal().aci;
+        expect(aci.groups, equals(['team-a']));
+        expect(aci.roles, equals(['lead']));
+        expect(aci.entitlements, equals(['feature.x']));
+        expect(aci.resourceKeys, equals(['key.y']));
+      });
+    });
+  });
 }
 
 /// Minimal concrete implementation of TomAccessControl for testing.
@@ -1814,4 +2185,39 @@ class _FakeAuthorizable implements TomAuthorizable {
 
   @override
   TomAuthState get effectiveAuthState => _auth;
+}
+
+/// A [TomClientJwtToken] whose [payload] and [secretData] are fully controlled,
+/// so token→principal conversion can be exercised without RSA/crypto setup.
+///
+/// The super-constructor still needs a syntactically valid JWT string to
+/// decode; `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig` is `{"alg":...}.{}.sig`.
+/// Decryption is disabled, so the real payload/secretData are never read — the
+/// overrides below supply the values the tests care about.
+class _FakeClientJwtToken extends TomClientJwtToken {
+  _FakeClientJwtToken({
+    Map<String, dynamic>? payload,
+    Map<String, dynamic>? secretData,
+  })  : _payload = payload,
+        super(
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.sig',
+          decrypt: false,
+        ) {
+    this.secretData = secretData;
+  }
+
+  final Map<String, dynamic>? _payload;
+
+  @override
+  Map<String, dynamic>? get payload => _payload;
+}
+
+/// Builds an unsigned, undecrypted JWT string whose middle segment carries
+/// [payload]. Suitable for [TomBearerAuthentication.setTokens] with
+/// `decrypt: false`.
+String _makeJwt(Map<String, dynamic> payload) {
+  String seg(Map<String, dynamic> m) =>
+      base64Url.encode(utf8.encode(jsonEncode(m))).replaceAll('=', '');
+  final header = {'alg': 'HS256', 'typ': 'JWT'};
+  return '${seg(header)}.${seg(payload)}.sig';
 }

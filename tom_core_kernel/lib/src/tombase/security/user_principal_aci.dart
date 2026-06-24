@@ -285,14 +285,18 @@ class TomAccessControlDefinition {
     return TomAccessControlInformation(
       roles: result.roles.toList(),
       groups: result.groups.toList(),
-      entitlements: result.groups.toList(),
+      entitlements: result.entitlements.toList(),
       resourceKeys: result.resourceKeys.toList(),
     );
   }
 
   _TomAci _complete(_TomAci current, _TomAci touched) {
     bool touchedRoles = false;
-    for (var role in current.roles) {
+    // Snapshot each subject set with `.toList()`: the loop body adds inherited
+    // members back into the same set, which would otherwise throw a
+    // ConcurrentModificationError. Newly-added members are picked up on the
+    // next recursion, guarded by `touched` to ensure termination.
+    for (var role in current.roles.toList()) {
       if (!touched.roles.contains(role)) {
         TomRole? r = _roleDefinitions[role];
         if (r != null) {
@@ -306,7 +310,7 @@ class TomAccessControlDefinition {
       }
     }
     bool touchedGroups = false;
-    for (var group in current.groups) {
+    for (var group in current.groups.toList()) {
       if (!touched.groups.contains(group)) {
         TomGroup? g = _groupDefinitions[group];
         if (g != null) {
@@ -320,7 +324,7 @@ class TomAccessControlDefinition {
       }
     }
     bool touchedEntitlements = false;
-    for (var entitlement in current.entitlements) {
+    for (var entitlement in current.entitlements.toList()) {
       if (!touched.entitlements.contains(entitlement)) {
         TomEntitlement? e = _entitlementDefinitions[entitlement];
         if (e != null) {
@@ -350,7 +354,7 @@ class _TomAci {
       roles.addAll(userProvided.roles);
       groups.addAll(userProvided.groups);
       entitlements.addAll(userProvided.entitlements);
-      resourceKeys.addAll(userProvided.entitlements);
+      resourceKeys.addAll(userProvided.resourceKeys);
     }
   }
   @override
