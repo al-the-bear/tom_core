@@ -105,6 +105,62 @@ verifyEquals(limited('ab', 4), 'ab', 'limited leaves short strings untouched');
 verifyEquals(limited(12345, 3), '123...', 'limited stringifies non-strings');
 
 # =============================================================================
+# Test: TomConsoleLogOutput (§46 zero-ref) (5 tests)
+# =============================================================================
+
+var consoleOut = TomConsoleLogOutput();
+verifyNotNull(consoleOut, 'TomConsoleLogOutput constructed');
+verifyNotNull(consoleOut.useExtendedFormat, 'useExtendedFormat getter returns a bool');
+verifyNotNull(consoleOut.convertToString('hello'), 'convertToString produces a string');
+consoleOut.useExtendedFormat = true;
+verifyEquals(consoleOut.useExtendedFormat, true, 'useExtendedFormat setter round-trips');
+# Static log-level settings round-trip through the bridge
+TomConsoleLogOutput.globalSettingStdoutLogLevel = TomLogLevel.warn;
+verifyEquals(TomConsoleLogOutput.globalSettingStdoutLogLevel.levelPattern, 16, 'stdout log level static round-trips');
+
+# =============================================================================
+# Test: TomLogOutput abstract statics (§46 zero-ref) (1 test)
+# =============================================================================
+
+# Abstract base: no constructor; exercise its static accessor pair.
+TomLogOutput.globalSettingRemoteLogEndpoint = 'https://logs.example/ingest';
+verifyEquals(TomLogOutput.globalSettingRemoteLogEndpoint, 'https://logs.example/ingest', 'remote log endpoint static round-trips');
+
+# =============================================================================
+# Test: TomPlatformUtils abstract statics (§46 zero-ref) (2 tests)
+# =============================================================================
+
+# Abstract base: no constructor; exercise its static accessors.
+var currentPlatform = TomPlatformUtils.current;
+verifyNotNull(currentPlatform, 'TomPlatformUtils.current resolves');
+verifyNotNull(TomPlatformUtils.envVars, 'TomPlatformUtils.envVars map resolves');
+
+# =============================================================================
+# Test: TomFallbackPlatformUtils (§46 zero-ref) (1 test)
+# =============================================================================
+
+# This is a deliberate stub: its platform predicates throw UnimplementedError
+# until a concrete platform is installed, so coverage is construction-only.
+var fallbackPlatform = TomFallbackPlatformUtils();
+verifyNotNull(fallbackPlatform, 'TomFallbackPlatformUtils constructed');
+
+# =============================================================================
+# Test: TomRuntime (§46 zero-ref) (4 tests)
+# =============================================================================
+
+var runtime = TomRuntime();
+verifyNotNull(runtime, 'TomRuntime constructed');
+verifyNotNull(TomRuntime.getEnvironments(), 'TomRuntime.getEnvironments returns a list');
+verifyNotNull(TomRuntime.getPlatforms(), 'TomRuntime.getPlatforms returns a list');
+verifyNotNull(TomRuntime.printReport(), 'TomRuntime.printReport returns a string');
+
+# Note: TomLoggable (§46) is an abstract mixin with no constructor and no
+# statics; its only member is the `logRepresentation` getter, which requires a
+# concrete TomLoggable instance not constructable connection-free here. Its
+# registration is still validated by bridge load; direct-member coverage is
+# deferred (see completion_steps.tom_core.md).
+
+# =============================================================================
 # Summary
 # =============================================================================
 

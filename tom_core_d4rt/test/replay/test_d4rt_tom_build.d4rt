@@ -68,6 +68,142 @@ var toolEx = ToolContextException('nope');
 verifyEquals(toolEx.message, 'nope', 'ToolContextException message');
 
 # =============================================================================
+# Test: Workspace analyzer model (§47 value classes) (8 tests)
+# =============================================================================
+
+var projectInfo = ProjectInfo(path: '/ws/svc', name: 'svc', displayName: 'Service', type: 'dart_package');
+verifyEquals(projectInfo.path, '/ws/svc', 'ProjectInfo.path');
+verifyEquals(projectInfo.name, 'svc', 'ProjectInfo.name');
+verifyEquals(projectInfo.displayName, 'Service', 'ProjectInfo.displayName');
+verifyEquals(projectInfo.type, 'dart_package', 'ProjectInfo.type');
+
+var partInfo = PartInfo(name: 'core', displayName: 'Core');
+verifyEquals(partInfo.name, 'core', 'PartInfo.name');
+
+var moduleInfo = ModuleInfo(name: 'logging', displayName: 'Logging');
+verifyEquals(moduleInfo.name, 'logging', 'ModuleInfo.name');
+
+var analyzerOptions = AnalyzerOptions(includeTestProjects: true);
+verifyEquals(analyzerOptions.includeTestProjects, true, 'AnalyzerOptions.includeTestProjects');
+
+# =============================================================================
+# Test: Reflection-generator runner options (§47) (1 test)
+# =============================================================================
+
+var runnerOptions = ReflectionGeneratorRunnerOptions(verbose: true);
+verifyEquals(runnerOptions.verbose, true, 'ReflectionGeneratorRunnerOptions.verbose');
+
+# =============================================================================
+# Test: tom_master metadata model (§47 value classes) (12 tests)
+# =============================================================================
+
+var workspaceInfo = WorkspaceInfo(name: 'my_ws');
+verifyEquals(workspaceInfo.name, 'my_ws', 'WorkspaceInfo.name');
+
+var metadataMode = MetadataMode(name: 'dev', implies: ['debug']);
+verifyEquals(metadataMode.name, 'dev', 'MetadataMode.name');
+verifyEquals(metadataMode.implies[0], 'debug', 'MetadataMode.implies');
+
+var workspaceGroup = WorkspaceGroup(name: 'core');
+verifyEquals(workspaceGroup.name, 'core', 'WorkspaceGroup.name');
+
+var workspaceProject = WorkspaceProject(name: 'svc', type: 'dart_package');
+verifyEquals(workspaceProject.name, 'svc', 'WorkspaceProject.name');
+verifyEquals(workspaceProject.type, 'dart_package', 'WorkspaceProject.type');
+
+var supportedMode = SupportedMode(name: 'prod', implies: ['release']);
+verifyEquals(supportedMode.name, 'prod', 'SupportedMode.name');
+verifyEquals(supportedMode.implies[0], 'release', 'SupportedMode.implies');
+
+var modeDef = ModeDef(name: 'dev');
+verifyEquals(modeDef.name, 'dev', 'ModeDef.name');
+
+var modeDefinitions = ModeDefinitions(definitions: {'dev': ModeDef(name: 'dev')});
+verifyNotNull(modeDefinitions.definitions, 'ModeDefinitions.definitions');
+
+var actionDef = ActionDef(name: 'build');
+verifyEquals(actionDef.name, 'build', 'ActionDef.name');
+
+var versionSettings = VersionSettings(prereleaseTag: 'beta');
+verifyEquals(versionSettings.prereleaseTag, 'beta', 'VersionSettings.prereleaseTag');
+
+# =============================================================================
+# Test: Features & cross-compilation (§47 value classes) (3 tests)
+# =============================================================================
+
+var features = Features(flags: {'reflection': true});
+verifyEquals(features.flags['reflection'], true, 'Features.flags');
+
+var crossCompilation = CrossCompilation(allTargets: ['linux_x64']);
+verifyEquals(crossCompilation.allTargets[0], 'linux_x64', 'CrossCompilation.allTargets');
+
+var buildOnTarget = BuildOnTarget(targets: ['macos_arm64']);
+verifyEquals(buildOnTarget.targets[0], 'macos_arm64', 'BuildOnTarget.targets');
+
+# =============================================================================
+# Test: Pipelines (§47 value classes) (3 tests)
+# =============================================================================
+
+var pipeline = Pipeline(name: 'release');
+verifyEquals(pipeline.name, 'release', 'Pipeline.name');
+
+var pipelineProject = PipelineProject(name: 'svc');
+verifyEquals(pipelineProject.name, 'svc', 'PipelineProject.name');
+
+var pipelineAction = PipelineAction(action: 'compile');
+verifyEquals(pipelineAction.action, 'compile', 'PipelineAction.action');
+
+# =============================================================================
+# Test: File object model (§47 value classes) (4 tests)
+# =============================================================================
+
+var packageModule = PackageModule(name: 'kernel');
+verifyEquals(packageModule.name, 'kernel', 'PackageModule.name');
+
+var part = Part(name: 'core');
+verifyEquals(part.name, 'core', 'Part.name');
+
+var module = Module(name: 'logging');
+verifyEquals(module.name, 'logging', 'Module.name');
+
+var executableDef = ExecutableDef(source: 'bin/main.dart', output: 'bin/app');
+verifyEquals(executableDef.source, 'bin/main.dart', 'ExecutableDef.source');
+verifyEquals(executableDef.output, 'bin/app', 'ExecutableDef.output');
+
+# =============================================================================
+# Test: Project entry + headline tom_master types (§47) (6 tests)
+# =============================================================================
+
+var projectEntry = ProjectEntry(name: 'svc');
+verifyEquals(projectEntry.name, 'svc', 'ProjectEntry.name');
+
+var tomProject = TomProject(name: 'svc', type: 'dart_package');
+verifyEquals(tomProject.name, 'svc', 'TomProject.name');
+verifyEquals(tomProject.type, 'dart_package', 'TomProject.type');
+
+var tomWorkspace = TomWorkspace(name: 'my_ws');
+verifyEquals(tomWorkspace.name, 'my_ws', 'TomWorkspace.name');
+
+var tomMaster = TomMaster(name: 'master', buildOrder: ['a', 'b']);
+verifyEquals(tomMaster.name, 'master', 'TomMaster.name');
+verifyEquals(tomMaster.buildOrder[0], 'a', 'TomMaster.buildOrder');
+
+# =============================================================================
+# Test: WorkspaceParser + TomContext (§47) (2 tests)
+# =============================================================================
+
+# WorkspaceParser only stores the path at construction (no IO until parse()).
+var workspaceParser = WorkspaceParser('/ws/root');
+verifyEquals(workspaceParser.workspacePath, '/ws/root', 'WorkspaceParser.workspacePath');
+
+var tomContext = TomContext(workspace: tomWorkspace, workspacePath: '/ws/root');
+verifyEquals(tomContext.workspacePath, '/ws/root', 'TomContext.workspacePath');
+
+# Note: IO drivers (WorkspaceAnalyzer, ReflectionGeneratorRunner, TomShell/
+# TomFs/TomGlob) and the exhaustive remainder are deferred — they require a
+# live filesystem/process. See completion_steps.tom_core.md.
+
+# =============================================================================
 # Summary
 # =============================================================================
 

@@ -176,6 +176,90 @@ verifyNotNull(group, 'TomGroup created');
 verifyEquals(group.name, 'staff', 'TomGroup name');
 
 # =============================================================================
+# Test: ACL access controls (§17 security) (12 tests)
+# =============================================================================
+
+var entAccess = TomEntitlementAccess(['orders:read', 'orders:write']);
+verifyNotNull(entAccess, 'TomEntitlementAccess constructed');
+verifyEquals(entAccess.patterns[0], 'orders:read', 'entitlement patterns preserved');
+verifyNotNull(entAccess.checkAccessibility(null), 'entitlement checkAccessibility(null) returns a bool');
+verifyNotNull(entAccess.resolveAuthState(null), 'entitlement resolveAuthState(null) returns an auth state');
+
+var roleAccess = TomRoleAccess(['admin', 'editor']);
+verifyNotNull(roleAccess, 'TomRoleAccess constructed');
+verifyEquals(roleAccess.roles[1], 'editor', 'role patterns preserved');
+verifyNotNull(roleAccess.checkAccessibility(null), 'role checkAccessibility(null) returns a bool');
+verifyNotNull(roleAccess.resolveAuthState(null), 'role resolveAuthState(null) returns an auth state');
+
+var groupAccess = TomGroupAccess(['staff']);
+verifyNotNull(groupAccess, 'TomGroupAccess constructed');
+verifyEquals(groupAccess.groups[0], 'staff', 'group patterns preserved');
+verifyNotNull(groupAccess.checkAccessibility(null), 'group checkAccessibility(null) returns a bool');
+verifyNotNull(groupAccess.resolveAuthState(null), 'group resolveAuthState(null) returns an auth state');
+
+# =============================================================================
+# Test: TomBearerAuthentication (§17 security) (3 tests)
+# =============================================================================
+
+var bearer = TomBearerAuthentication();
+verifyNotNull(bearer, 'TomBearerAuthentication constructed');
+verifyNotNull(TomBearerAuthentication.bearerAuthentication, 'bearerAuthentication singleton resolves');
+verifyEquals(TomBearerAuthentication.token, null, 'token unset before login');
+
+# =============================================================================
+# Test: Resource providers (§17 resources) (7 tests)
+# =============================================================================
+
+var textProvider = TomTextResourceProvider.from({'greeting': 'hello', 'farewell': 'bye'});
+verifyNotNull(textProvider, 'TomTextResourceProvider.from constructed');
+verifyEquals(textProvider.exists('greeting'), true, 'text resource exists');
+verifyEquals(textProvider.exists('missing'), false, 'absent text resource not found');
+verifyEquals(textProvider.getText('greeting'), 'hello', 'text resource value resolved');
+verifyEquals(textProvider.getTextOrNull('missing'), null, 'getTextOrNull returns null for absent key');
+
+var configProvider = TomConfigResourceProvider.from({'db.host': 'localhost'});
+verifyNotNull(configProvider, 'TomConfigResourceProvider.from constructed');
+verifyEquals(configProvider.exists('db.host'), true, 'config resource exists');
+
+# =============================================================================
+# Test: Scoping (§17 scoping) (5 tests)
+# =============================================================================
+
+var scope = TomScopeBase(scopeId: 'orders');
+verifyNotNull(scope, 'TomScopeBase constructed');
+verifyEquals(scope.id, 'orders', 'scope id preserved');
+verifyEquals(scope.parent, null, 'root scope has no parent');
+verifyNotNull(scope.getScopePath(), 'getScopePath returns a string');
+verifyNotNull(TomScope.buildScopePath(scope), 'TomScope.buildScopePath resolves for a scope');
+
+# =============================================================================
+# Test: TomLogger (§17 logging) (4 tests)
+# =============================================================================
+
+var logger = TomLogger();
+verifyNotNull(logger, 'TomLogger constructed');
+logger.setLogLevel(TomLogLevel.warn);
+verifyEquals(logger.logLevel.levelPattern, 16, 'setLogLevel updates the level');
+logger.setLogLevelByName('info');
+verifyEquals(logger.logLevel.levelPattern, 8, 'setLogLevelByName updates the level');
+logger.info('replay coverage log line');
+verify(true, 'logger.info executed without throwing');
+
+# =============================================================================
+# Test: TomShutdownCleanup (§17 shutdown) (4 tests)
+# =============================================================================
+
+var cleanup = TomShutdownCleanup();
+verifyNotNull(cleanup, 'TomShutdownCleanup constructed');
+verifyNotNull(cleanup.paused, 'paused getter returns a bool');
+cleanup.silent = true;
+verifyEquals(cleanup.silent, true, 'silent setter round-trips');
+
+# Note: isolate pooling (TomWorkerPool/TomExecutor/TomWorker) and timezone
+# (TomOTimezoned/TomOZonedTime, which require a TomZonedTime value) are deferred
+# — see completion_steps.tom_core.md.
+
+# =============================================================================
 # Summary
 # =============================================================================
 
