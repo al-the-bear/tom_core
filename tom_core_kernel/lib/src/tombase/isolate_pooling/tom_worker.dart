@@ -542,6 +542,12 @@ class TomWorker {
       } else {
         completer.complete(message.response);
       }
+      // If close() was requested while requests were still in flight, the
+      // response port could not be closed then; close it now that the last
+      // pending request has resolved so the ReceivePort does not leak (bug §5).
+      if (_closed && _activeRequests.isEmpty) {
+        _responses.close();
+      }
     } else if (message is _TomCreatorCommand) {
       TomExecutor? executor;
       Object? result;
@@ -931,7 +937,7 @@ class TomWorkerPool {
   /// ```dart
   /// final result = await pool.execute(MyCommand());
   /// ```
-  Object? execute(Object command) async {
+  Future<Object?> execute(Object command) async {
     while (_free.isEmpty) {
       await Future.delayed(Duration(milliseconds: 1));
     }
@@ -941,5 +947,20 @@ class TomWorkerPool {
     _busy.remove(tw);
     _free.add(tw);
     return result;
+  }
+
+  /// Shuts down every worker in this pool and releases their isolates.
+  ///
+  /// After calling this method the pool is empty and must not be reused.
+  /// Each worker is closed via [TomWorker.close]; workers still processing
+  /// in-flight commands close their response ports once those commands
+  /// resolve (see [TomWorker.close]).
+  void close() {
+    for (final TomWorker tw in _workers) {
+      tw.close();
+    }
+    _free.clear();
+    _busy.clear();
+    _workers.clear();
   }
 }

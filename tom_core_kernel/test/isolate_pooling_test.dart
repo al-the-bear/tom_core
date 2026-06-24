@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -86,6 +88,37 @@ class DelayedCommand extends TomCommand {
   Future<Object?> execute() async {
     await Future.delayed(Duration(milliseconds: delayMs));
     return result;
+  }
+}
+
+/// Command executed in the CREATOR isolate via the back-channel.
+///
+/// Used by [CreatorRoundTripCommand] to exercise the worker→creator
+/// round-trip (`_TomCreatorCommand` branch of `_handleResponsesFromIsolate`).
+class CreatorComputeCommand extends TomCommand {
+  final int value;
+
+  CreatorComputeCommand(this.value);
+
+  @override
+  Future<Object?> execute() async {
+    return value + 1000;
+  }
+}
+
+/// Command run in the WORKER isolate that delegates back to the creator.
+///
+/// When executed inside the worker it calls [TomWorker.executeInCreator],
+/// so the creator handles [CreatorComputeCommand] and the answer travels
+/// back through the worker to the original caller.
+class CreatorRoundTripCommand extends TomCommand {
+  final int value;
+
+  CreatorRoundTripCommand(this.value);
+
+  @override
+  Future<Object?> execute() async {
+    return await TomWorker.executeInCreator(CreatorComputeCommand(value));
   }
 }
 
@@ -608,6 +641,67 @@ void main() {
       });
     });
 
+    group('error propagation', () {
+      test('surfaces a thrown command as an error on the future', () async {
+        final context = TestWorkerContext(namePrefix: 'Throwing');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // The worker isolate catches the throw and sends back a RemoteError,
+        // which must complete the awaiting future with an error (tests §3c).
+        await expectLater(
+          worker.executeCommand(ThrowingCommand('boom')),
+          throwsA(isA<RemoteError>()),
+        );
+
+        worker.close();
+      });
+    });
+
+    group('creator round-trip', () {
+      test('worker can execute a command back in the creator', () async {
+        final context = TestWorkerContext(namePrefix: 'RoundTrip');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // The worker delegates to the creator via executeInCreator; the
+        // creator runs CreatorComputeCommand and the answer round-trips back
+        // to this caller (tests §3b).
+        final result = await worker.executeCommand(CreatorRoundTripCommand(5));
+
+        expect(result, equals(1005));
+
+        worker.close();
+      });
+    });
+
+    group('close while busy', () {
+      test('in-flight command still resolves after close-while-busy', () async {
+        final context = TestWorkerContext(namePrefix: 'CloseBusy');
+        final worker = await TomWorker.spawn(
+          TomWorker.startRemoteIsolate,
+          context,
+        );
+
+        // Start a command, then close the worker while it is still in flight.
+        // The response port can only be closed once this request resolves
+        // (bug §5); the awaiting caller must still receive the result.
+        final pending = worker.executeCommand(DelayedCommand(50, 'late'));
+        expect(worker.isBusy(), isTrue);
+
+        worker.close();
+        expect(worker.isClosed, isTrue);
+
+        final result = await pending;
+        expect(result, equals('late'));
+        expect(worker.isBusy(), isFalse);
+      });
+    });
+
     group('sendExecutorToIsolate', () {
       test('should send executor that can process commands', () async {
         final context = TestWorkerContext();
@@ -641,8 +735,10 @@ void main() {
         final pool = await TomWorkerPool.withSize(3, context);
 
         // Verify pool was created by executing commands
-        final result = pool.execute(FixedValueCommand('test'));
+        final result = await pool.execute(FixedValueCommand('test'));
         expect(result, equals('test'));
+
+        pool.close();
       });
 
       test('should create pool with single worker', () async {
@@ -650,8 +746,10 @@ void main() {
 
         final pool = await TomWorkerPool.withSize(1, context);
 
-        final result = pool.execute(ComputeCommand(5, 5));
+        final result = await pool.execute(ComputeCommand(5, 5));
         expect(result, equals(10));
+
+        pool.close();
       });
     });
 
@@ -663,16 +761,20 @@ void main() {
         pool = await TomWorkerPool.withSize(2, context);
       });
 
+      tearDown(() {
+        pool.close();
+      });
+
       test('should execute command and return result', () async {
-        final result = pool.execute(FixedValueCommand(42));
+        final result = await pool.execute(FixedValueCommand(42));
 
         expect(result, equals(42));
       });
 
       test('should execute multiple commands', () async {
-        final result1 = pool.execute(ComputeCommand(1, 1));
-        final result2 = pool.execute(ComputeCommand(2, 2));
-        final result3 = pool.execute(ComputeCommand(3, 3));
+        final result1 = await pool.execute(ComputeCommand(1, 1));
+        final result2 = await pool.execute(ComputeCommand(2, 2));
+        final result3 = await pool.execute(ComputeCommand(3, 3));
 
         expect(result1, equals(2));
         expect(result2, equals(4));
@@ -680,11 +782,13 @@ void main() {
       });
 
       test('should distribute commands across workers', () async {
-        // Execute multiple delayed commands in parallel
-        final results = <Object?>[];
+        // Execute multiple commands in parallel across the pool's workers.
+        final futures = <Future<Object?>>[];
         for (int i = 0; i < 4; i++) {
-          results.add(pool.execute(ComputeCommand(i, i)));
+          futures.add(pool.execute(ComputeCommand(i, i)));
         }
+
+        final results = await Future.wait(futures);
 
         expect(results, containsAll([0, 2, 4, 6]));
       });
@@ -694,12 +798,18 @@ void main() {
         final smallContext = TestWorkerContext(namePrefix: 'Small');
         final smallPool = await TomWorkerPool.withSize(1, smallContext);
 
-        // Queue multiple commands sequentially
-        final result1 = smallPool.execute(DelayedCommand(10, 'first'));
-        final result2 = smallPool.execute(DelayedCommand(10, 'second'));
-        final result3 = smallPool.execute(DelayedCommand(10, 'third'));
+        // Queue multiple commands; with one worker they run sequentially.
+        final futures = [
+          smallPool.execute(DelayedCommand(10, 'first')),
+          smallPool.execute(DelayedCommand(10, 'second')),
+          smallPool.execute(DelayedCommand(10, 'third')),
+        ];
 
-        expect([result1, result2, result3], containsAll(['first', 'second', 'third']));
+        final results = await Future.wait(futures);
+
+        expect(results, containsAll(['first', 'second', 'third']));
+
+        smallPool.close();
       });
     });
   });
@@ -762,15 +872,19 @@ void main() {
       final pool = await TomWorkerPool.withSize(4, context);
 
       // Execute commands that should be distributed across workers
-      final results = <Object?>[];
+      final futures = <Future<Object?>>[];
       for (int i = 0; i < 10; i++) {
-        results.add(pool.execute(ComputeCommand(i, i)));
+        futures.add(pool.execute(ComputeCommand(i, i)));
       }
+
+      final results = await Future.wait(futures);
 
       // Verify all results are correct
       for (int i = 0; i < 10; i++) {
         expect(results.contains(i * 2), isTrue);
       }
+
+      pool.close();
     });
   });
 }
