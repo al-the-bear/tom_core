@@ -28,7 +28,7 @@ The system is designed to be fault-tolerant—if one cleanup operation fails, it
 ## Quick Start
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   // Register resources for cleanup

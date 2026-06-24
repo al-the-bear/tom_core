@@ -130,13 +130,9 @@ run via the replay harness (`d4rt -run-replay <file> -test`, see
 > counts, `DiscoveryOptions` defaults, `DiscoveredServer` map-derived getters,
 > and `RetryConfig`/`kDefaultRetryDelaysMs`).
 >
-> The bridge could **not** be d4rt-verified in isolation because the generated
-> file has a **generation defect (B4)**: it emits a direct
-> `import 'package:tom_dist_ledger/src/ledger_api/call_callback.dart'`, but that
-> file is `part of 'ledger_api.dart'`, so the CFE rejects the import
-> ("Can't import … because it has a 'part of' declaration"). The generator must
-> import the *owning library* (`ledger_api.dart`) instead of the part; this is a
-> codegen fix in the "do not edit" generated file, deferred to the
-> analyze/replay gate (items 75-76) alongside B2/B3. `dart analyze
-> lib/src/tom_dist_ledger` does **not** surface B4 (the analyzer tolerates the
-> part import that the CFE rejects).
+> The former **generation defect (B4)** — where the generated file emitted a
+> direct `import` of `call_callback.dart` (a `part of 'ledger_api.dart'`),
+> which the CFE rejected — is now resolved. The regenerated bridge imports the
+> *owning libraries* (`ledger_api.dart`, `ledger_base.dart`, `ledger_types.dart`,
+> `cleanup_handler.dart`) and reaches `call_callback.dart` transitively, so the
+> part-import clash is gone. `dart analyze lib/src/tom_dist_ledger` is clean.

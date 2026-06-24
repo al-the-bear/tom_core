@@ -32,7 +32,7 @@ Both providers share similar patterns:
 ### 1. Set Up Text Resources
 
 ```dart
-import 'package:tom_core/src/tombase/resources/tom_resource_provider.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Option A: Define a loader function (recommended for JSON assets)
 TomTextResourceProvider.loader = () => {
@@ -110,7 +110,7 @@ if (config.exists('features.experimental')) {
 Use a simple extension like this to make text resources and configuration available anywhere
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../sample_app_state.dart';
 
 extension TomResourceExtension on Object {

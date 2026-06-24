@@ -46,12 +46,6 @@ import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.da
 /// The [onData] parameter contains the specific signal that was received.
 typedef TomSignalHandler = void Function(ProcessSignal onData);
 
-/// Error handler function type for signal processing errors.
-typedef TomSignalErrorHandler = Function;
-
-/// Handler function type called when signal stream completes.
-typedef TomSignalOnDoneHandler = void Function();
-
 // =============================================================================
 // Interfaces
 // =============================================================================
@@ -422,11 +416,12 @@ class TomShutdownCleanup {
   /// [tomShutdownCleanup] normally never needs it.
   Future<void> dispose() => cancelAll();
 
-  /// Initializes the cleanup listener and logs its status.
+  /// Emits a diagnostic log line confirming the cleanup system is in use.
   ///
-  /// Call this method after registering all cleanup handlers to confirm
-  /// the cleanup system is ready. This is optional but recommended for
-  /// debugging purposes.
+  /// This method does **not** perform any initialization: the SIGHUP/SIGINT
+  /// listeners are registered in the constructor, so calling — or not calling —
+  /// `start()` has no effect on shutdown behaviour. It only writes an
+  /// informational `tomLog` entry, which is handy as a startup breadcrumb.
   void start() {
     tomLog.info("Cleanup listener initialized");
   }
@@ -448,4 +443,4 @@ class TomShutdownCleanup {
 /// tomShutdownCleanup.addDisposable(myController);
 /// tomShutdownCleanup.start();
 /// ```
-TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();
+final TomShutdownCleanup tomShutdownCleanup = TomShutdownCleanup();

@@ -26,7 +26,7 @@ The settings system follows a request-response pattern where the client sends a 
 ### 1. Import the Module
 
 ```dart
-import 'package:tom_core/src/tombase/settings/settings_client_authorization.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```
 
 ### 2. Create a Settings Request

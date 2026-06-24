@@ -1336,4 +1336,4 @@ const TomReflector tomReflector = TomReflector();
 /// // Get values as JSON
 /// final json = tomReflectionInfo.getValues(person);
 /// ```
-TomReflectionInfo tomReflectionInfo = TomReflectionInfo(tomReflector);
+final TomReflectionInfo tomReflectionInfo = TomReflectionInfo(tomReflector);

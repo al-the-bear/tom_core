@@ -238,8 +238,8 @@ class TomApi {
 /// Represents a single API endpoint with type-safe request/response handling.
 ///
 /// Generic parameters:
-/// - [returnType]: The expected response type from the server
-/// - [requestType]: The request body type to send to the server
+/// - [ReturnType]: The expected response type from the server
+/// - [RequestType]: The request body type to send to the server
 ///
 /// ## Example
 ///
@@ -253,7 +253,7 @@ class TomApi {
 ///   description: 'Creates a new user account',
 /// );
 /// ```
-class TomApiEndpoint<returnType, requestType> {
+class TomApiEndpoint<ReturnType, RequestType> {
   /// Reference to the parent API (set when endpoint is added to an API).
   TomApi? _api;
 
@@ -285,7 +285,7 @@ class TomApiEndpoint<returnType, requestType> {
   late final List<Type> requestTypes;
 
   /// The response type for successful requests.
-  late Type responseType = returnType;
+  late Type responseType = ReturnType;
 
   /// Field names for form-encoded requests.
   final List<String> formFields;
@@ -339,8 +339,8 @@ class TomApiEndpoint<returnType, requestType> {
     this.responseEncoding,
     this.statusCodeResponseTypes,
   }) {
-    this.requestTypes = requestTypes ?? [requestType];
-    if (returnType == dynamic) {
+    this.requestTypes = requestTypes ?? [RequestType];
+    if (ReturnType == dynamic) {
       responseType = Map<String, Object?>;
     }
   }

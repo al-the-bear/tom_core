@@ -26,7 +26,7 @@ The JSON utilities module consists of two main files:
 ### Pretty Printing JSON
 
 ```dart
-import 'package:tom_core/src/tombase/json/pretty_json.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Format JSON for readability
 final compact = '{"name":"MyApp","config":{"port":8080,"debug":true}}';
@@ -48,7 +48,7 @@ print(prettyJsonLine(compact));
 ### Merging Configuration Maps
 
 ```dart
-import 'package:tom_core/src/tombase/json/map_merge_and_process.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Base configuration
 final base = {

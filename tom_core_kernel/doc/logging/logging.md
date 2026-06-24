@@ -29,7 +29,7 @@ The TomBase logging system provides:
 ### Basic Usage
 
 ```dart
-import 'package:tom_core/src/tombase/logging/logging.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   // Use the global logger instance
@@ -212,7 +212,7 @@ void main() async {
 ### Remote Logging
 
 ```dart
-import 'package:tom_core/src/tombase/logging/remote_logoutput.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void setupRemoteLogging() {
   // Configure sender identification
@@ -233,7 +233,7 @@ void setupRemoteLogging() {
 ### Multi-Isolate Logging
 
 ```dart
-import 'package:tom_core/src/tombase/logging/logging_isolate.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() async {
   // Main isolate: Start isolated logging

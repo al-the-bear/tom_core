@@ -175,12 +175,15 @@ class TomTextResourceProvider {
     return resources[s] != null && resources[s] is String;
   }
 
-  /// Checks if a configuration value exists at the given path.
+  /// Checks if an object resource exists at the given path.
   ///
-  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
-  /// using dot notation (e.g., 'api.timeout').
+  /// Unlike [exists], this accepts any resource type (TextStyles, Colors, and
+  /// other non-String UI values), not only String text resources.
   ///
-  /// [s] - The configuration key or path to check.
+  /// Supports both flat keys (e.g., 'title') and hierarchical paths
+  /// using dot notation (e.g., 'screens.home.style').
+  ///
+  /// [s] - The resource key or path to check.
   ///
   /// Returns `true` if any value exists at the path, `false` otherwise.
   bool existsObject(String s) {
@@ -193,15 +196,18 @@ class TomTextResourceProvider {
     return resources[s] != null;
   }
 
-  /// Retrieves the configuration value at the given path.
+  /// Retrieves the object resource at the given path.
   ///
-  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
-  /// using dot notation (e.g., 'api.timeout').
+  /// Returns non-String UI values (TextStyles, Colors, etc.) as well as text;
+  /// use [getText] when a String is required.
   ///
-  /// If the configuration is not found, returns the key itself as a fallback,
-  /// which helps identify missing configuration during development.
+  /// Supports both flat keys (e.g., 'title') and hierarchical paths
+  /// using dot notation (e.g., 'screens.home.style').
   ///
-  /// [s] - The configuration key or path to retrieve.
+  /// If the resource is not found, returns the key itself as a fallback,
+  /// which helps identify missing resources during development.
+  ///
+  /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or the key [s] if not found.
   Object getObject(String s) {
@@ -214,15 +220,18 @@ class TomTextResourceProvider {
     return resources[s] != null ? resources[s]! : s;
   }
 
-  /// Retrieves the configuration value at the given path.
+  /// Retrieves the object resource at the given path.
   ///
-  /// Supports both flat keys (e.g., 'timeout') and hierarchical paths
-  /// using dot notation (e.g., 'api.timeout').
+  /// Returns non-String UI values (TextStyles, Colors, etc.) as well as text;
+  /// use [getTextOrNull] when a String is required.
   ///
-  /// If the configuration is not found, returns null as a fallback,
-  /// which helps identify missing configuration during development.
+  /// Supports both flat keys (e.g., 'title') and hierarchical paths
+  /// using dot notation (e.g., 'screens.home.style').
   ///
-  /// [s] - The configuration key or path to retrieve.
+  /// If the resource is not found, returns null as a fallback,
+  /// which helps identify missing resources during development.
+  ///
+  /// [s] - The resource key or path to retrieve.
   ///
   /// Returns the value if found (can be any type), or null if not found.
   Object? getObjectOrNull(String s) {

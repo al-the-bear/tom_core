@@ -499,22 +499,6 @@ void main() {
       // Act & Assert - should not throw
       expect(() => tomShutdownCleanup.start(), returnsNormally);
     });
-
-    test('should be reassignable', () {
-      // Arrange
-      final originalInstance = tomShutdownCleanup;
-      final newInstance = TomShutdownCleanup();
-
-      // Act
-      tomShutdownCleanup = newInstance;
-
-      // Assert
-      expect(identical(tomShutdownCleanup, newInstance), isTrue);
-      expect(identical(tomShutdownCleanup, originalInstance), isFalse);
-
-      // Cleanup - restore original
-      tomShutdownCleanup = originalInstance;
-    });
   });
 
   // ===========================================================================

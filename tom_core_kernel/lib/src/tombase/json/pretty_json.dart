@@ -33,7 +33,7 @@ import 'dart:convert';
 /// JSON encoder configured with 2-space indentation for pretty printing.
 ///
 /// Reusable encoder instance to avoid creating new encoders repeatedly.
-JsonEncoder indentEncoder = JsonEncoder.withIndent("  ");
+final JsonEncoder indentEncoder = JsonEncoder.withIndent("  ");
 
 /// Converts a compact JSON string into a pretty-printed, indented format.
 ///

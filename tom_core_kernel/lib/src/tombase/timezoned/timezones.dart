@@ -1,6 +1,5 @@
 import 'package:timezone/timezone.dart' as tz;
 import 'package:tom_basics/tom_basics.dart';
-//import 'package:timezone_to_country/timezone_to_country.dart';
 
 import '../little_things/exception_base.dart';
 
@@ -375,10 +374,6 @@ class TomTimezone {
     return "$sign${twoDigits(hours)}:${twoDigits(minutes)}";
   }
 
-  // static Future<String> getLocalCountryCode() async {
-  //   return TimeZoneToCountry.getLocalCountryCode(onNotFound: () => 'XX');
-  // }
-
   /// Returns the UTC offset in minutes for this timezone at a specific date/time.
   ///
   /// This is useful for determining the offset at a historical or future date,
@@ -458,10 +453,6 @@ class TomTimezone {
   DateTime now() {
     return tz.TZDateTime.now(location);
   }
-
-  // String getCountryCode() {
-  //   return TimeZoneToCountry.getCountryCode(timezone, onNotFound: () => 'XX');
-  // }
 
   /// Converts a DateTime from another timezone to this timezone.
   ///

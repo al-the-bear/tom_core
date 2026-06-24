@@ -71,13 +71,13 @@ tom build tom_core_bridge
 dart compile exe bin/core_bs.dart -o core_bs
 ```
 
-> **Note:** `core_bs` links the generated `tom_core_d4rt` bridge set, so its
-> compilation currently shares the blockers tracked in the `tom_core_d4rt`
-> refactoring plan (the `tom_d4rt_generator` B3/B4 codegen defects in the
-> `tom_core_server` / `tom_dist_ledger` bridges, and a `tom_d4rt` version
-> alignment — run `dart pub get` here after upgrading `tom_core_d4rt`). The
-> source entry point itself is trivial; the binary builds once those upstream
-> issues are resolved. See `tom_core_d4rt/CHANGELOG.md` "Known issues".
+> **Note:** `core_bs` links the generated `tom_core_d4rt` bridge set. The
+> earlier codegen blockers (the `tom_d4rt_generator` defects in the
+> `tom_core_server` / `tom_dist_ledger` bridges and the `tom_d4rt` version
+> skew) are resolved: `tom_d4rt` resolves to 1.8.24, `dart analyze` is clean
+> across those generated bridges, and the binary now **builds**. Running
+> `dart run tool/smoke_test.dart` reports `[SMOKE] PASS`. See
+> `tom_core_d4rt/CHANGELOG.md` for the history.
 
 ## VS Code registration
 

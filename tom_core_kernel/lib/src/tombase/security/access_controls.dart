@@ -91,13 +91,16 @@ class TomResourceKeyProtection {
   /// When enabled, database queries automatically filter protected resources.
   static bool globalSettingUseAutomaticDatabaseProtection = false;
 
-  /// When enabled, database queries automatically filter protected resources.
+  /// When enabled, form fields are automatically protected based on their
+  /// resource keys.
   static bool globalSettingUseAutomaticFormFieldProtection = false;
 
-  /// When enabled, database queries automatically filter protected resources.
+  /// When enabled, actions are automatically protected based on their resource
+  /// keys.
   static bool globalSettingUseAutomaticActionProtection = false;
 
-    /// When enabled, database queries automatically filter protected resources.
+  /// When enabled, a protected action that the principal may not trigger is
+  /// automatically disabled rather than hidden.
   static bool globalSettingUseAutomaticActionProtectionForDisabling = false;
 
   /// Protects a value based on resource key access.

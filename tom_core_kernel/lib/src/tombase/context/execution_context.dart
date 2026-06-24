@@ -131,15 +131,26 @@ class TomExecutionContext {
 
   /// Runs synchronous code within this context.
   ///
-  /// Creates a new zone with this context's values merged with any existing
-  /// context from the current zone.
+  /// Creates a new zone whose typed context entries are this context's entries
+  /// merged with any [TomExecutionContext] already installed in the current
+  /// zone. On a colliding key **this context's entry wins** (the inner/child
+  /// context overrides the inherited one); the parent's map is never mutated.
+  ///
+  /// The optional [zoneValues] are arbitrary, untyped zone values threaded
+  /// through alongside the typed context: they are wrapped in a
+  /// [TomZoneValues] container that is merged with any [TomZoneValues] already
+  /// in the current zone (existing values are preserved unless overridden by a
+  /// matching key in [zoneValues]) and read back via
+  /// [getValueFromCurrentZone]. Use [zoneValues] for ad-hoc values that do not
+  /// warrant a typed [TomContextEntry]; use the context map for the structured,
+  /// type-keyed entries.
   ///
   /// Example:
   /// ```dart
   /// final result = context.runInContext(() {
-  ///   // Context values available here
+  ///   // Typed context entries and zone values available here
   ///   return computeResult();
-  /// });
+  /// }, zoneValues: {'requestId': id});
   /// ```
   T runInContext<T>(T Function() body, {Map<Object?, Object?> zoneValues = const {}, }) {
 
@@ -152,15 +163,26 @@ class TomExecutionContext {
 
   /// Runs asynchronous code within this context.
   ///
-  /// Creates a new zone with this context's values merged with any existing
-  /// context from the current zone.
+  /// Creates a new zone whose typed context entries are this context's entries
+  /// merged with any [TomExecutionContext] already installed in the current
+  /// zone. On a colliding key **this context's entry wins** (the inner/child
+  /// context overrides the inherited one); the parent's map is never mutated.
+  /// The merged context and zone values remain available across `await`
+  /// boundaries inside [body].
+  ///
+  /// The optional [zoneValues] are arbitrary, untyped zone values threaded
+  /// through alongside the typed context: they are wrapped in a
+  /// [TomZoneValues] container that is merged with any [TomZoneValues] already
+  /// in the current zone (existing values are preserved unless overridden by a
+  /// matching key in [zoneValues]) and read back via
+  /// [getValueFromCurrentZone]. See [runInContext] for the synchronous variant.
   ///
   /// Example:
   /// ```dart
   /// final result = await context.runInContextAsync(() async {
-  ///   // Context values available here and in awaited calls
+  ///   // Typed context entries and zone values available here and in awaited calls
   ///   return await fetchData();
-  /// });
+  /// }, zoneValues: {'requestId': id});
   /// ```
   Future<T> runInContextAsync<T>(Future<T> Function() body, {Map<Object?, Object?> zoneValues = const {}, }) async {
 

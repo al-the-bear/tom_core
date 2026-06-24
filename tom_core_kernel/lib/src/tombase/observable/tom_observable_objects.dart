@@ -36,7 +36,7 @@ class TomObservableException extends TomException {
 ///
 /// Used as a return value when [TomObject._createFrom] cannot determine
 /// the appropriate type for a given value.
-TomObject<String> tomNull = TomObject<String>("tomNull");
+final TomObject<String> tomNull = TomObject<String>("tomNull");
 
 /// A generic observable wrapper that holds a value of type [T].
 ///

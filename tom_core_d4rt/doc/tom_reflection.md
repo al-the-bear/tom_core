@@ -175,10 +175,12 @@ classes and their `namePattern`, the ready-made capability singletons, the
 
 > **Status (refactoring pass):** the generated bridges in this package target
 > `tom_d4rt`'s newer `BridgedClass` API (`isAssignable`/`hierarchyDepth`),
-> which requires `tom_d4rt >= 1.8.19`; the committed `pubspec.lock` still pins
-> `1.8.10`, so the binary/replay harness cannot be built until that pin is
-> raised (tracked by the project-wide registration-verify and analyze/replay
-> items), and the full registration additionally hits a cross-module
-> `MarkdownParser` duplicate-registration clash. The bridged `tom_reflection`
-> surface above was verified against `package:tom_reflection` 1.0.1 source and
-> exercised in isolation against `tom_d4rt` ≥ 1.8.19.
+> which requires `tom_d4rt >= 1.8.19`. The former lock-pin blocker (B1) is
+> resolved: `pubspec.lock` is gitignored (not a committed pin) and resolves
+> `tom_d4rt 1.8.24`, and `tom_d4rt: any` means the package builds against the
+> current resolution. The only remaining gate is the cross-module
+> `MarkdownParser` duplicate-registration clash (B2) on the full registration /
+> `d4rt -run-replay` path, tracked separately by the registration-verify and
+> analyze/replay items. The bridged `tom_reflection` surface above was verified
+> against `package:tom_reflection` 1.0.1 source and exercised in isolation
+> against `tom_d4rt` ≥ 1.8.19.

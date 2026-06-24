@@ -55,7 +55,7 @@ The observable system consists of two main components:
 ### 1. Basic Observable Value
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Create an observable string
 final name = TomString("John");

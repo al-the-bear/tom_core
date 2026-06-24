@@ -198,7 +198,7 @@ class TomMimeType {
 
     if (primaryType.isEmpty || subType.isEmpty) {
       throw TomMimeTypeException(
-        "mime_type.parse.invalid_mime_type,.empty_parts",
+        "mime_type.parse.invalid_mime_type.empty_parts",
         'Invalid mime type $type',
       );
     }

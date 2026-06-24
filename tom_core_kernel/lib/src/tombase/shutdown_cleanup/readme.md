@@ -16,7 +16,7 @@ signal handlers and runs them when the process shuts down, so resources
 | `TomClosable` | Contract for objects with a `close()` lifecycle. |
 | `TomCloseAdaptor` | Adapts an object with a close-style method into a `TomClosable`. |
 | `tomShutdownCleanup` | The shared global `TomShutdownCleanup` instance. |
-| `TomSignalHandler` / `TomSignalErrorHandler` / `TomSignalOnDoneHandler` | Typedefs for OS-signal callbacks. |
+| `TomSignalHandler` | Typedef for an OS-signal callback. |
 
 ## Quick start
 

@@ -33,7 +33,7 @@ This module consists of several interconnected components:
 First, set up where your application should send requests:
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   // Set the remote server context (do this once at app startup)

@@ -5,12 +5,12 @@ answers a bridge request**. It exercises the simplest request the server
 handles — `echo`, which round-trips a message — so a pass proves the transport
 (stdin/stdout JSON-RPC) and the server startup are wired correctly.
 
-> **Current status:** the binary cannot be compiled yet (the B3/B4
-> `tom_d4rt_generator` defects plus a `tom_d4rt` version skew, see
-> [`../CHANGELOG.md`](../CHANGELOG.md) "Known issues"). Until that clears, the
-> automated runner **SKIPs** (it is not a failure of this package) and the
-> manual procedure below cannot be completed past the build step. Both become
-> live the moment the upstream blocker is resolved.
+> **Current status:** the binary now **builds** and the smoke test **passes** —
+> `dart run tool/smoke_test.dart` reports `[SMOKE] PASS`. The earlier blockers
+> (the `tom_d4rt_generator` codegen defects plus a `tom_d4rt` version skew) are
+> resolved (`tom_d4rt` resolves to 1.8.24; `dart analyze` is clean across the
+> generated bridges). The automated runner and the manual procedure below are
+> both live.
 
 ## The minimal request
 

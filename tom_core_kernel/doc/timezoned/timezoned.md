@@ -44,10 +44,11 @@ All `TomTimezoned` values store the actual UTC moment internally:
 ## Quick Start
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
-  // Create timezones (no initialization needed)
+  // The timezone database must be initialized once at startup (await the
+  // platform-appropriate init_tz* entry point) before constructing zoned values.
   final tokyo = TomTimezone.fromName('Asia/Tokyo')!;
   final newYork = TomTimezone.fromName('America/New_York')!;
   

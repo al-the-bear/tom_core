@@ -1,3 +1,18 @@
+## Unreleased — 2026-06-24
+
+### Fixed
+
+- **Build/smoke-test blockers resolved.** The `core_bs` binary now **builds**
+  and the smoke test **passes** (`dart run tool/smoke_test.dart` →
+  `[SMOKE] PASS`). The upstream `tom_core_d4rt` codegen defects that previously
+  blocked compilation are fixed: the `tom_core_server` bridge no longer
+  registers a spurious top-level `main` global and its MariaDB
+  `withConnection`/`transactional` callbacks use a consistent
+  `FutureOr<Object?>`; the `tom_dist_ledger` bridge imports its owning libraries
+  instead of a `part of` file. `tom_d4rt` resolves to 1.8.24 (≥ the required
+  1.8.19) and `dart analyze` is clean across the generated bridges. The
+  "Known issues" block under 1.0.0 below is retained as history.
+
 ## 1.0.0
 
 - Initial release of `core_bs`, the extended VS Code bridge server: the

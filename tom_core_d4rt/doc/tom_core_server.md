@@ -194,21 +194,14 @@ query-DSL literals (`StringLiteral`/`IntegerLiteral`), and a typed config.
 > cache types all behave as documented (12/12 native assertions pass). One
 > finding: `TomStringConfig`/`TomIntConfig` resolve their value eagerly and
 > throw without a registered configuration resource, so the replay suite only
-> verifies their class symbols rather than constructing them. The replay test
-> could **not** be runtime-executed through the bridge (in isolation or as part
-> of the full registration) for three reasons that are all deferred to the
-> project-wide registration-verify and analyze/replay items:
->
-> 1. The committed `pubspec.lock` pins `tom_d4rt 1.8.10`, but the generated
->    bridges target the newer `BridgedClass` API (`isAssignable`/
->    `hierarchyDepth`), which requires `tom_d4rt >= 1.8.19`.
-> 2. The full registration hits a cross-module `MarkdownParser`
->    duplicate-registration clash.
-> 3. The committed `tom_core_server` bridge itself has **two generation
->    defects** that prevent it compiling even against `tom_d4rt 1.8.23`: a
->    spurious top-level `main` global is registered against
->    `cache/server_cache.dart` (which declares no `main`), and the MariaDB
->    `withConnection` callback is generated with a `FutureOr<Object?>` vs
->    `FutureOr<Object>` variance mismatch. Both must be fixed in the
->    generator/runtime and the bridge regenerated before the server replay
->    suite can run.
+> verifies their class symbols rather than constructing them. The bridge now
+> compiles clean: `dart analyze lib/src/tom_core_server/` is clean, the
+> spurious top-level `main` global (previously registered against
+> `cache/server_cache.dart`, which declares no `main`) is gone, and the MariaDB
+> `withConnection`/`transactional` callbacks now use a consistent
+> `FutureOr<Object?>`, resolving the earlier variance mismatch. The two former
+> generation defects are therefore fixed and `tom_d4rt` resolves to 1.8.24
+> (≥ the required 1.8.19). The only remaining gate is the project-wide
+> cross-module `MarkdownParser` duplicate-registration clash (B2) on the full
+> `d4rt -run-replay` path — tracked separately by the registration-verify and
+> analyze/replay items, not a per-package codegen defect.

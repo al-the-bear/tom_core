@@ -139,14 +139,23 @@ class TomObservable {
     }
   }
 
-  /// Stream operator to add an observer callback: `observable >> (obs) => print('changed')`
+  /// Operator to add an observer callback: `observable >> (obs) => print('changed')`.
   ///
-  /// The callback will be invoked whenever this observable notifies its observers.
-  /// Returns the observer wrapper so it can be stored and later removed using
+  /// The callback is invoked whenever this observable notifies its observers.
+  /// Returns the [TomFunctionObserver] wrapper, which can later be removed via
   /// [removeObserver].
+  ///
+  /// **You must retain the returned observer for as long as you want
+  /// notifications.** Observers are held by [WeakReference] (see [addObserver]),
+  /// so the returned wrapper is the *only* strong reference keeping the callback
+  /// alive. If you discard it — the fire-and-forget form
+  /// `myObservable >> (obs) => print('Changed!');` — the wrapper becomes eligible
+  /// for garbage collection and the callback **silently stops firing** at a
+  /// nondeterministic later time. Always capture the result:
   ///
   /// Example:
   /// ```dart
+  /// // Keep `observer` alive (e.g. in a field) for as long as you observe:
   /// final observer = myObservable >> (obs) => print('Changed!');
   /// // Later, to stop observing:
   /// myObservable.removeObserver(observer);
@@ -186,12 +195,15 @@ abstract class TomObserver<T extends TomObservable> {
 
 /// A wrapper that allows using a callback function as a [TomObserver].
 ///
-/// This enables the `>>` operator syntax for observing changes:
-/// ```dart
-/// myObservable >> (observable) => print('Changed!');
-/// ```
+/// This enables the `>>` operator syntax for observing changes.
 ///
-/// The observer can be stored and later removed using [TomObservable.removeObserver].
+/// **The returned wrapper must be retained for as long as notifications are
+/// wanted.** [TomObservable] holds its observers by [WeakReference], so this
+/// wrapper is the only strong reference keeping the callback alive; if it is
+/// not captured, it can be garbage-collected and the callback silently stops
+/// firing. Store it (e.g. in a field) and remove it explicitly via
+/// [TomObservable.removeObserver] when done — do not use the fire-and-forget
+/// form `myObservable >> (obs) => ...;`.
 ///
 /// Example:
 /// ```dart

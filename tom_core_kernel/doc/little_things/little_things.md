@@ -27,9 +27,7 @@ The `little_things` module provides a collection of small but essential utilitie
 ### Import the Module
 
 ```dart
-import 'package:tom_core/src/tombase/little_things/little_things.dart';
-import 'package:tom_core/src/tombase/little_things/exception_base.dart';
-import 'package:tom_core/src/tombase/little_things/formatting.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 ```
 
 ### Basic Exception Handling

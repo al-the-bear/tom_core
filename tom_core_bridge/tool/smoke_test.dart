@@ -11,9 +11,11 @@
 /// Exit codes: 0 = PASS or SKIP (build blocked / binary absent — see the
 /// `[SMOKE]` line); 1 = FAIL (started but no valid echo response in time).
 ///
-/// While the binary cannot be compiled (the upstream B3/B4 + tom_d4rt-skew
-/// blocker, see ../CHANGELOG.md "Known issues") this runner SKIPs cleanly — it
-/// becomes a real gate the moment that blocker clears. See doc/smoke_test.md.
+/// The binary now builds and this smoke test passes (`[SMOKE] PASS`); the
+/// earlier B3/B4 + tom_d4rt-skew blocker is resolved (tom_d4rt 1.8.24,
+/// `dart analyze` clean). The runner is a live gate. The SKIP path below
+/// remains only as a safety net for a genuine build failure (e.g. a future
+/// version skew). See doc/smoke_test.md.
 library;
 
 import 'dart:async';
@@ -44,8 +46,9 @@ Future<int> main(List<String> args) async {
       builtTemp,
     ]);
     if (build.exitCode != 0) {
-      // SKIP — a compile failure here is the known upstream blocker, not a
-      // defect in this package. See doc/operations.md / CHANGELOG "Known issues".
+      // SKIP — a compile failure here is treated as a build-environment issue
+      // (e.g. a tom_d4rt version skew needing `dart pub get`), not a smoke-test
+      // defect. The binary normally builds. See doc/operations.md / CHANGELOG.
       stdout.writeln(
         '[SMOKE] SKIP: core_bs could not be compiled (known upstream blocker). '
         'Build exit code ${build.exitCode}.',

@@ -48,7 +48,7 @@ The security module consists of these main files:
 ### 1. Set Up Authentication
 
 ```dart
-import 'package:tom_core/security.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Create authentication request
 var message = TomAuthenticationMessage()

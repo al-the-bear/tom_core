@@ -35,7 +35,7 @@ The context system consists of three main components:
 ## Quick Start
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
   // Create a context with custom values

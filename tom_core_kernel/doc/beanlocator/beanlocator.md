@@ -67,7 +67,7 @@ The bean locator integrates with the [Runtime Module](../runtime/runtime.md) for
 The bean context requires the runtime system to be initialized first. Here's the complete sequence:
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Define environments
 const environmentProd = TomEnvironment('prod');
@@ -116,7 +116,7 @@ void main() {
 ### Basic Bean Registration and Resolution
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // 1. Define a service interface
 abstract class UserService {
@@ -482,7 +482,7 @@ The bean locator uses lazy resolution, but circular dependencies during construc
 To avoid changes to the code for deployment it is most convenient to have separate files for each environment which prepares the environment setting and then call the main()-method of the actual main.dart-File:
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'main.dart' as app;
 
 

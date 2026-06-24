@@ -45,7 +45,7 @@ The reflection system consists of three main components:
 ### 1. Annotate Your Class
 
 ```dart
-import 'package:tom_core/tom_core.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 @tomReflector
 class Person {
