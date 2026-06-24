@@ -736,11 +736,31 @@ class TomReorderableList extends TomListBase {
 
   @override
   Widget buildContent(BuildContext context) {
+    // `childrenDelegate` is a `SliverChildDelegate` — both stock subtypes are
+    // valid. A builder delegate yields items lazily; a list delegate exposes a
+    // fixed `children` list. Pattern-match instead of force-casting so the
+    // common `SliverChildListDelegate([...])` form works as well (bug §34).
+    final delegate = childrenDelegate;
+    final Widget Function(BuildContext, int) resolvedItemBuilder;
+    final int resolvedItemCount;
+    if (delegate is SliverChildBuilderDelegate) {
+      resolvedItemBuilder =
+          (context, index) => delegate.builder(context, index)!;
+      resolvedItemCount = delegate.childCount ?? 0;
+    } else if (delegate is SliverChildListDelegate) {
+      final children = delegate.children;
+      resolvedItemBuilder = (context, index) => children[index];
+      resolvedItemCount = children.length;
+    } else {
+      throw ArgumentError(
+        'TomReorderableList.childrenDelegate must be a '
+        'SliverChildBuilderDelegate or SliverChildListDelegate, '
+        'got ${delegate.runtimeType}.',
+      );
+    }
     return ReorderableList(
-      itemBuilder: (context, index) {
-        return (childrenDelegate as SliverChildBuilderDelegate).builder(context, index)!;
-      },
-      itemCount: (childrenDelegate as SliverChildBuilderDelegate).childCount ?? 0,
+      itemBuilder: resolvedItemBuilder,
+      itemCount: resolvedItemCount,
       onReorder: onReorder,
       onReorderStart: onReorderStart,
       onReorderEnd: onReorderEnd,

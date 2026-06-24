@@ -152,7 +152,6 @@ class TomNavigationBar extends TomNavigationBase {
   final NavigationDestinationLabelBehavior? labelBehavior;
   final double? height;
   final WidgetStateProperty<TextStyle?>? labelTextStyle;
-  final WidgetStateProperty<IconThemeData?>? iconTheme;
   final WidgetStateProperty<Color?>? overlayColor;
 
   // Pre-resolved resource values
@@ -186,7 +185,6 @@ class TomNavigationBar extends TomNavigationBase {
     this.labelBehavior,
     this.height,
     this.labelTextStyle,
-    this.iconTheme,
     this.overlayColor,
   }) : onDestinationSelected = InScopeBuilder(scope: scope).wrap1n(onDestinationSelected) {
     _resolvedSelectedIndex = TomCtr.intVal(basePath, 'selectedIndex') ?? selectedIndex;
@@ -214,6 +212,9 @@ class TomNavigationBar extends TomNavigationBase {
       animationDuration: animationDuration,
       labelBehavior: labelBehavior,
       height: _resolvedHeight,
+      // Forward the per-state label styling that was previously dropped
+      // (gap §15c).
+      labelTextStyle: labelTextStyle,
       overlayColor: overlayColor,
     );
   }

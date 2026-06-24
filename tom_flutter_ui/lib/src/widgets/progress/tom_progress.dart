@@ -156,7 +156,7 @@ class TomRefreshIndicator extends TomProgressBase {
   final String? semanticsLabel;
   final String? semanticsValue;
   final double strokeWidth;
-  final double triggerMode;
+  final RefreshIndicatorTriggerMode triggerMode;
 
   // Pre-resolved resource values
   late final String? _resolvedLabel;
@@ -185,7 +185,7 @@ class TomRefreshIndicator extends TomProgressBase {
     this.semanticsLabel,
     this.semanticsValue,
     this.strokeWidth = RefreshProgressIndicator.defaultStrokeWidth,
-    this.triggerMode = 0,
+    this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
   }) : onRefresh = InScopeBuilder(scope: scope).wrap0(onRefresh) {
     _resolvedLabel = semanticsLabel ?? TomCtr.textOrNull(basePath, 'semanticsLabel') ?? (tomId != null ? TomCtr.textOrFail(basePath, 'label') : null);
     _resolvedSemanticsValue = semanticsValue ?? TomCtr.textOrNull(basePath, 'semanticsValue');
@@ -208,6 +208,8 @@ class TomRefreshIndicator extends TomProgressBase {
       semanticsLabel: _resolvedLabel,
       semanticsValue: _resolvedSemanticsValue,
       strokeWidth: _resolvedStrokeWidth,
+      // Forward the (previously inert, mistyped) trigger mode (gap §15d).
+      triggerMode: triggerMode,
       child: child,
     );
   }

@@ -180,6 +180,15 @@ class _AuthTreeNodeWidgetState extends State<_AuthTreeNodeWidget> {
     final indent = widget.depth * widget.indentation;
     final isInteractive = effective == TomAuthState.full;
 
+    // Per the class contract (lines 13-17): only a `disabled` parent caps its
+    // subtree (children inherit the cap, cannot be widened by their own keys).
+    // A `read`/`full` parent leaves descendants individually evaluated, so we
+    // pass `full` down and let each child resolve on its own key. (`none`
+    // already returned above, so the subtree never renders.)
+    final inheritedForChildren = effective == TomAuthState.disabled
+        ? TomAuthState.disabled
+        : TomAuthState.full;
+
     final row = InkWell(
       onTap: isInteractive
           ? () {
@@ -227,7 +236,7 @@ class _AuthTreeNodeWidgetState extends State<_AuthTreeNodeWidget> {
               initiallyExpandedDefault: widget.initiallyExpandedDefault,
               qualifyPath: widget.qualifyPath,
               disabledOpacity: widget.disabledOpacity,
-              inheritedAuth: effective,
+              inheritedAuth: inheritedForChildren,
             ),
       ],
     );

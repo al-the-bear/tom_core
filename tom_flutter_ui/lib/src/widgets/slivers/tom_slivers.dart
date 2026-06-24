@@ -476,8 +476,15 @@ class TomSliverPrototypeExtentList extends TomSliverBase {
 /// Resizing header in scroll. Auth on header content.
 class TomSliverResizingHeader extends TomSliverBase {
   final Widget? child;
-  final double minExtentPrototype;
-  final double maxExtentPrototype;
+
+  /// Prototype widget laid out once to define the header's minimum extent.
+  /// Mirrors [SliverResizingHeader.minExtentPrototype] — `null` ⇒ 0.
+  final Widget? minExtentPrototype;
+
+  /// Prototype widget laid out once to define the header's maximum extent.
+  /// Mirrors [SliverResizingHeader.maxExtentPrototype] — `null` ⇒ the child's
+  /// natural extent.
+  final Widget? maxExtentPrototype;
 
   TomSliverResizingHeader({
     super.key,
@@ -488,13 +495,15 @@ class TomSliverResizingHeader extends TomSliverBase {
     super.authorizerStrategy,
     super.uiStateController,
     this.child,
-    this.minExtentPrototype = 0.0,
-    this.maxExtentPrototype = double.infinity,
+    this.minExtentPrototype,
+    this.maxExtentPrototype,
   });
 
   @override
   Widget buildContent(BuildContext context) {
     return SliverResizingHeader(
+      minExtentPrototype: minExtentPrototype,
+      maxExtentPrototype: maxExtentPrototype,
       child: child,
     );
   }

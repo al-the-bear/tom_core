@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart' show AuthGroupMode;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../../example/actions/actions_example.dart' as example;
@@ -51,6 +52,32 @@ class ResetAction extends TomSimpleAction<CounterContext> {
   @override
   void executeSimple(CounterContext context, TomActionTransaction tx) =>
       context.counter.value = 0;
+}
+
+/// Increment action attached to an authorization group, used to exercise the
+/// `effectiveAuthState` group-mode branch (§58b).
+class _GroupedIncrement extends TomAction<CounterContext, IncrementUndo> {
+  _GroupedIncrement({
+    required super.controller,
+    required String id,
+    required TomAuthorizationGroup group,
+  }) : super(actionId: id, tomGroup: group);
+
+  @override
+  IncrementUndo execute(CounterContext context, TomActionTransaction tx) {
+    final previous = context.counter.value;
+    context.counter.value += 1;
+    return IncrementUndo(context.counter, previous);
+  }
+}
+
+/// Map-backed authorization adapter keyed on resource path.
+class _PathAuthAdapter implements TomAuthorizationAdapter {
+  _PathAuthAdapter(this.rules);
+  final Map<String, TomAuthState> rules;
+
+  @override
+  TomAuthState resolveAuth(String path) => rules[path] ?? TomAuthState.full;
 }
 
 void main() {
@@ -373,6 +400,147 @@ void main() {
         ],
       );
       expect(composite.canExecute(CounterContext(counter)), isTrue);
+    });
+  });
+
+  // tests §58a: TomDualAction (the two-action convenience specialization) had
+  // zero coverage. Pin the OR-of-guards `canExecute`, the ordered
+  // execute-and-record, and each guard-skip branch. `first` uses step 1,
+  // `second` uses step 10, so the counter value uniquely identifies which ran.
+  group('TomDualAction', () {
+    TomDualAction<CounterContext, CounterContext> dual(
+      Counter counter, {
+      bool Function()? firstGuard,
+      bool Function()? secondGuard,
+    }) {
+      final controller = TomActionController(controllerId: 'dual');
+      return TomDualAction<CounterContext, CounterContext>(
+        actionId: 'firstThenSecond',
+        controller: controller,
+        first: IncrementAction(controller: controller, step: 1, id: 'first'),
+        firstContextBuilder: () => CounterContext(counter),
+        firstGuard: firstGuard,
+        second: IncrementAction(controller: controller, step: 10, id: 'second'),
+        secondContextBuilder: () => CounterContext(counter),
+        secondGuard: secondGuard,
+      );
+    }
+
+    test('runs both actions in order and records both undos', () {
+      final counter = Counter();
+      final tx = TomActionTransaction(label: 'dual');
+      dual(counter).execute(CounterContext(counter), tx);
+      expect(counter.value, 11); // 1 + 10
+      expect(tx.entryCount, 2);
+    });
+
+    test('skips the first action when firstGuard is false', () {
+      final counter = Counter();
+      final tx = TomActionTransaction(label: 'dual');
+      dual(counter, firstGuard: () => false)
+          .execute(CounterContext(counter), tx);
+      expect(counter.value, 10); // only second
+      expect(tx.entryCount, 1);
+    });
+
+    test('skips the second action when secondGuard is false', () {
+      final counter = Counter();
+      final tx = TomActionTransaction(label: 'dual');
+      dual(counter, secondGuard: () => false)
+          .execute(CounterContext(counter), tx);
+      expect(counter.value, 1); // only first
+      expect(tx.entryCount, 1);
+    });
+
+    test('runs neither and canExecute is false when both guards fail', () {
+      final counter = Counter();
+      final action = dual(counter, firstGuard: () => false, secondGuard: () => false);
+      expect(action.canExecute(CounterContext(counter)), isFalse);
+      action.execute(CounterContext(counter), TomActionTransaction(label: 'x'));
+      expect(counter.value, 0);
+    });
+
+    test('canExecute is true when only one guard passes (OR semantics)', () {
+      final counter = Counter();
+      expect(
+        dual(counter, firstGuard: () => true, secondGuard: () => false)
+            .canExecute(CounterContext(counter)),
+        isTrue,
+      );
+      expect(
+        dual(counter, firstGuard: () => false, secondGuard: () => true)
+            .canExecute(CounterContext(counter)),
+        isTrue,
+      );
+    });
+  });
+
+  // tests §58b: TomAction's authorization surface (authState / effectiveAuthState
+  // group branch / authorizer) was untested. Drive it through a map-backed
+  // adapter keyed on the action's canonicalPath.
+  group('TomAction authorization surface', () {
+    tearDown(TomAuthorization.reset);
+
+    test('authState resolves from the adapter at canonicalPath', () {
+      TomAuthorization.adapter =
+          _PathAuthAdapter({'sec.edit': TomAuthState.read});
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(controller: controller, id: 'edit');
+      expect(action.canonicalPath, 'sec.edit');
+      expect(action.authState, TomAuthState.read);
+    });
+
+    test('effectiveAuthState equals authState without a group', () {
+      TomAuthorization.adapter =
+          _PathAuthAdapter({'sec.edit': TomAuthState.read});
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(controller: controller, id: 'edit');
+      expect(action.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('effectiveAuthState narrows under a controlsWidest group', () {
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.full,
+        'billing': TomAuthState.disabled,
+      });
+      final controller = TomActionController(controllerId: 'sec');
+      final grouped = _GroupedIncrement(
+        controller: controller,
+        id: 'edit',
+        group: TomAuthorizationGroup('billing',
+            mode: AuthGroupMode.controlsWidest),
+      );
+      // member full narrowed by group disabled → disabled.
+      expect(grouped.effectiveAuthState, TomAuthState.disabled);
+    });
+
+    test('effectiveAuthState is replaced under a controlsAll group', () {
+      TomAuthorization.adapter = _PathAuthAdapter({
+        'sec.edit': TomAuthState.full,
+        'billing': TomAuthState.read,
+      });
+      final controller = TomActionController(controllerId: 'sec');
+      final grouped = _GroupedIncrement(
+        controller: controller,
+        id: 'edit',
+        group:
+            TomAuthorizationGroup('billing', mode: AuthGroupMode.controlsAll),
+      );
+      // controlsAll → group state replaces member state.
+      expect(grouped.effectiveAuthState, TomAuthState.read);
+    });
+
+    test('authorizer applies the fromAction disabled pattern', () {
+      TomAuthorization.adapter =
+          _PathAuthAdapter({'sec.edit': TomAuthState.none});
+      final controller = TomActionController(controllerId: 'sec');
+      final action = IncrementAction(controller: controller, id: 'edit');
+      // action auth none + widget resource full → disabled.
+      expect(action.authorizer.effectiveAuth(TomAuthState.full),
+          TomAuthState.disabled);
+      // widget hidden stays hidden.
+      expect(action.authorizer.effectiveAuth(TomAuthState.none),
+          TomAuthState.none);
     });
   });
 
