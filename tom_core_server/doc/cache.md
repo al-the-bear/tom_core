@@ -65,11 +65,12 @@ await TomCache.removeFromTypeCache<User>('u-42');
 removed in passing). It throws [`TomCacheException`] if the stored value is not a
 `T`.
 
-> **A retrievable entry must carry a deletion time.** `fromNameCache` only
-> returns an entry whose `deletionTime` is set and still in the future. So give
-> the cache a `deleteEntriesAfterSeconds` (applied automatically on store) or
-> pass an explicit `deletionTime` to `toNameCache`; a value stored with neither
-> is held but will not be returned by a read.
+> **Entries without a deletion time are kept forever.** A value stored with
+> neither a `deleteEntriesAfterSeconds` default nor an explicit `deletionTime`
+> has `deletionTime == null`: it never expires on its own and is returned by
+> every read until it is removed or evicted by an LRU bound or a clear. Only an
+> entry whose `deletionTime` lies in the past is treated as expired (and dropped
+> in passing on read).
 
 ## Expiry and Bounds
 

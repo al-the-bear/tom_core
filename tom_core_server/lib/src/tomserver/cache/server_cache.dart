@@ -310,7 +310,10 @@ class TomCache {
           );
         }
         for (var key in entriesToDelete) {
-          _cache.remove(key);
+          // Evict via removeEntry so the MRU chain is unlinked too; a direct
+          // _cache.remove leaves dangling _next/_before/_first/_last pointers
+          // in a bounded cache (bug §61).
+          removeEntry(key);
         }
       },
     );
@@ -327,7 +330,12 @@ class TomCache {
         tomLog.debug(
           "Clearing cache $cacheName, deleting ${_cache.length} entries",
         );
+        // Reset the MRU chain along with the backing map so a bounded cache is
+        // left in a consistent empty state, not with dangling head/tail
+        // pointers (bug §61).
         _cache.clear();
+        _first = null;
+        _last = null;
       },
     );
   }
@@ -349,22 +357,24 @@ class TomCache {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       TomCacheEntry? entry = cache.getEntry(key);
-      if (entry != null && entry.deletionTime != null) {
-        if (entry.deletionTime!.isAfter(DateTime.now())) {
-          tomLog.trace(
-            "Found cache entry for $key ${entry.deletionTime} ${entry.value}",
-          );
-          try {
-            return entry.value as T;
-          } catch (e) {
-            throw TomCacheException(
-              "error.cache_retrieve.types_dont_match",
-              "Cached value ${entry.value} is not of type $T",
-            );
-          }
-        } else {
+      if (entry != null) {
+        // An entry with no deletionTime never expires ("cache forever"); one
+        // with a deletionTime is dropped once that instant has passed.
+        if (entry.deletionTime != null &&
+            !entry.deletionTime!.isAfter(DateTime.now())) {
           cache.removeEntry(key);
           return null;
+        }
+        tomLog.trace(
+          "Found cache entry for $key ${entry.deletionTime} ${entry.value}",
+        );
+        try {
+          return entry.value as T;
+        } catch (e) {
+          throw TomCacheException(
+            "error.cache_retrieve.types_dont_match",
+            "Cached value ${entry.value} is not of type $T",
+          );
         }
       }
     } else if (!TomCacheManager._current.useInThisIsolate) {
@@ -392,8 +402,10 @@ class TomCache {
   ///
   /// If [deletionTime] is omitted the entry expires after the cache's
   /// [deleteEntriesAfterSeconds] (or never, if that is also unset). Passing a
-  /// [TomCacheEntry] as [value] stores it verbatim. In a worker isolate that
-  /// does not hold the cache the store is forwarded to the main isolate;
+  /// [TomCacheEntry] as [value] stores that entry directly (its own
+  /// `deletionTime` is kept), linking it into the LRU chain like any other
+  /// entry. In a worker isolate that does not hold the cache the store is
+  /// forwarded to the main isolate;
   /// otherwise a missing cache throws [TomCacheException]. Always returns `0`.
   static Future<int> toNameCache(
     String cacheName,
@@ -404,7 +416,7 @@ class TomCache {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       if (value is TomCacheEntry) {
-        cache._cache[key] = value;
+        cache.putEntry(key, value);
       } else {
         var deleteAt =
             deletionTime ??
