@@ -178,9 +178,7 @@ void main() {
   group('TomFormStyleScope — named breakpoints', () {
     setUp(() {
       // Reset TomBreakpoint to defaults before each test.
-      TomBreakpoint.mobile = 600;
-      TomBreakpoint.tablet = 900;
-      TomBreakpoint.desktop = 1200;
+      TomBreakpoint.reset();
 
       TomTextResourceProvider.setAppResourceProvider(
         TomTextResourceProvider.from(<String, dynamic>{
@@ -236,7 +234,7 @@ void main() {
       // Push tablet up to 1500; width=1000 should no longer reach tablet
       // (falls back to mobile) — the cached entry's minWidth is
       // re-resolved at query time.
-      TomBreakpoint.tablet = 1500;
+      TomBreakpoint.configure(tablet: 1500);
 
       final atOneK = await _resolve(
         tester,
@@ -246,7 +244,7 @@ void main() {
       );
       expect(atOneK.defaults.labelFieldGap, 4); // mobile, not tablet
 
-      TomBreakpoint.tablet = 900;
+      TomBreakpoint.configure(tablet: 900);
     });
   });
 
