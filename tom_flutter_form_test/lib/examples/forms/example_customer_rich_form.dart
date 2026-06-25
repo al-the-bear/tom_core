@@ -123,7 +123,7 @@ class ExampleOrderForm extends TomForm<ExampleOrder> {
     'priority',
     'standard',
     form: this,
-    source: priorityOptions,
+    source: _priorityOptions,
     labelTextOverride: 'Priority',
   );
 
@@ -304,7 +304,7 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
     'tier',
     'standard',
     form: this,
-    source: tierOptions,
+    source: _tierOptions,
     labelTextOverride: 'Tier',
     validators: [Validators.required()],
   );
@@ -366,14 +366,14 @@ class ExampleCustomerRichForm extends TomForm<ExampleCustomerRich> {
 // ---------------------------------------------------------------------------
 // Static selectable sources — referenced by the form fields above
 // ---------------------------------------------------------------------------
-final tierOptions = StaticSelectableSource<String>(const [
+final _tierOptions = StaticSelectableSource<String>(const [
   SelectableItem(value: 'standard', label: 'Standard'),
   SelectableItem(value: 'silver', label: 'Silver'),
   SelectableItem(value: 'gold', label: 'Gold'),
   SelectableItem(value: 'platinum', label: 'Platinum'),
 ]);
 
-final priorityOptions = StaticSelectableSource<String>(const [
+final _priorityOptions = StaticSelectableSource<String>(const [
   SelectableItem(value: 'standard', label: 'Standard'),
   SelectableItem(value: 'priority', label: 'Priority'),
   SelectableItem(value: 'overnight', label: 'Overnight'),

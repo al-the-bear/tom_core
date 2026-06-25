@@ -2,6 +2,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../state/phase2a_state.dart';
+import 'form_validators.dart';
 
 // ---------------------------------------------------------------------------
 // OrderItemForm — single row of the order's items list.
@@ -43,7 +44,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Qty',
     autoValidate: true,
-    validators: [Validators.required(), _positiveIntegerValidator],
+    validators: [Validators.required(), positiveIntegerValidator],
   );
 
   late final unitPrice = TomFormStringInput(
@@ -52,7 +53,7 @@ class OrderItemForm extends TomForm<OrderItem> {
     form: this,
     labelTextOverride: 'Unit price',
     autoValidate: true,
-    validators: [Validators.required(), _decimalValidator],
+    validators: [Validators.required(), decimalValidator],
   );
 
   late final notes = TomFormStringInput(
@@ -92,18 +93,4 @@ class OrderItemForm extends TomForm<OrderItem> {
     final p = double.tryParse(~unitPrice) ?? 0.0;
     return q * p;
   }
-}
-
-ValidationResult _positiveIntegerValidator(String value) {
-  final n = int.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidInteger');
-  if (n <= 0) return const ValidationError('error.mustBePositive');
-  return const ValidationSuccess();
-}
-
-ValidationResult _decimalValidator(String value) {
-  final n = double.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidDecimal');
-  if (n < 0) return const ValidationError('error.mustBeNonNegative');
-  return const ValidationSuccess();
 }

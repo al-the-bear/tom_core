@@ -9,6 +9,7 @@ import '../panels/event_log_panel.dart';
 import '../panels/field_state_table.dart';
 import '../panels/info_panel.dart';
 import '../state/phase1_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo A — Lifecycle & Validation (Phase 1)
@@ -180,23 +181,23 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('bind() / save() / discard() roundtrip against '
+            const DemoBullet('bind() / save() / discard() roundtrip against '
                 'phase1ValidationState'),
-            const _Bullet('setValue(T) — "Clear" and "Populate" demonstrate '
+            const DemoBullet('setValue(T) — "Clear" and "Populate" demonstrate '
                 'programmatic entry alongside user typing'),
-            const _Bullet('Sync validators: required, email, minLength, '
+            const DemoBullet('Sync validators: required, email, minLength, '
                 'pattern (username)'),
-            const _Bullet(
+            const DemoBullet(
                 'Async validator: "admin*" usernames fail after ~800ms '
                 '(pending spinner visible)'),
-            const _Bullet(
+            const DemoBullet(
                 'Cross-field: password must equal confirmPassword — '
                 'surfaced by the TomFormErrorBanner above the form'),
-            const _Bullet(
+            const DemoBullet(
                 'Pristine: no errors on first bind — only after typing or '
                 'attempting Save. commit() after a successful Save resets '
                 'all fields to pristine again'),
-            const _Bullet('Resources: labels, hints, error messages all '
+            const DemoBullet('Resources: labels, hints, error messages all '
                 'resolve against demoA.validationForm.* in demo_resources.json'),
           ],
         ),
@@ -290,19 +291,6 @@ class _DemoALifecycleState extends State<DemoALifecycle> {
           ],
         ),
       ],
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

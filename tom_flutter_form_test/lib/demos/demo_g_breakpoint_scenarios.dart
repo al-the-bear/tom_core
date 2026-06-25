@@ -8,6 +8,7 @@ import '../common/demo_scaffold.dart';
 import '../forms/project_brief_form.dart';
 import '../panels/info_panel.dart';
 import '../state/project_brief_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo G — Complex Breakpoint & Theming Scenarios (Phase 2)
@@ -174,22 +175,22 @@ class _DemoGBreakpointScenariosState extends State<DemoGBreakpointScenarios> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('Four style presets swap at 400 / 800 / 1200 / '
+            const DemoBullet('Four style presets swap at 400 / 800 / 1200 / '
                 '1600 px via styleBpOverrides (compact+1px → smaller fonts '
                 '→ material3+3px → bordered).'),
-            const _Bullet('Four themes swap at the same widths via '
+            const DemoBullet('Four themes swap at the same widths via '
                 'themeBpOverrides — colour palette and font family both '
                 'change. withTheme() picks the new theme up automatically.'),
-            const _Bullet('ACL exercises every breakpoint API: '
+            const DemoBullet('ACL exercises every breakpoint API: '
                 'addRowBreakpoint splits the classification and identity '
                 'rows at 800 and 400; setAclDefaultAppendGap scales gaps '
                 'per band; setAclDefaultRowHeight drives section row '
                 'heights; nested subforms stack below 1000.'),
-            const _Bullet('The "priority" field is rendered as a '
+            const DemoBullet('The "priority" field is rendered as a '
                 'SegmentedButton above 1000 px and collapses to a '
                 'TomFormStringDropdown below — both write the same '
                 'observable, so type-swap is free of lost state.'),
-            const _Bullet('Drag the splitter to cross every breakpoint '
+            const DemoBullet('Drag the splitter to cross every breakpoint '
                 'without resizing the window.'),
           ],
         ),
@@ -769,19 +770,6 @@ class _ComplexFormBodyState extends State<_ComplexFormBody> {
         ),
         Text(label),
       ],
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

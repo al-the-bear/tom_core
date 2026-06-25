@@ -8,7 +8,7 @@ import '../state/company_state.dart';
 // Industry Selection Source
 // ---------------------------------------------------------------------------
 
-final industrySource = StaticSelectableSource<String>([
+final _industrySource = StaticSelectableSource<String>([
   const SelectableItem(value: 'tech', label: 'Technology'),
   const SelectableItem(value: 'finance', label: 'Finance'),
   const SelectableItem(value: 'healthcare', label: 'Healthcare'),
@@ -21,7 +21,7 @@ final industrySource = StaticSelectableSource<String>([
 // Country Selection Source
 // ---------------------------------------------------------------------------
 
-final countrySource = StaticSelectableSource<String>([
+final _countrySource = StaticSelectableSource<String>([
   const SelectableItem(value: 'US', label: 'United States'),
   const SelectableItem(value: 'CA', label: 'Canada'),
   const SelectableItem(value: 'GB', label: 'United Kingdom'),
@@ -35,7 +35,7 @@ final countrySource = StaticSelectableSource<String>([
 // Timezone Selection Source
 // ---------------------------------------------------------------------------
 
-final timezoneSource = StaticSelectableSource<String>([
+final _timezoneSource = StaticSelectableSource<String>([
   const SelectableItem(value: 'UTC', label: 'UTC'),
   const SelectableItem(
     value: 'America/New_York',
@@ -68,7 +68,7 @@ final timezoneSource = StaticSelectableSource<String>([
 // Notification Frequency Source
 // ---------------------------------------------------------------------------
 
-final notificationFrequencySource = StaticSelectableSource<String>([
+final _notificationFrequencySource = StaticSelectableSource<String>([
   const SelectableItem(value: 'realtime', label: 'Real-time'),
   const SelectableItem(value: 'hourly', label: 'Hourly digest'),
   const SelectableItem(value: 'daily', label: 'Daily digest'),
@@ -80,7 +80,7 @@ final notificationFrequencySource = StaticSelectableSource<String>([
 // ---------------------------------------------------------------------------
 
 /// Simulates server-side validation checking if a tax ID is already taken.
-final taxIdValidator = SlowValidator<String>((value) async {
+final _taxIdValidator = SlowValidator<String>((value) async {
   await Future<void>.delayed(const Duration(seconds: 1));
   // Simulate: tax IDs starting with 'X' are already taken
   if (value.startsWith('X')) {
@@ -90,7 +90,7 @@ final taxIdValidator = SlowValidator<String>((value) async {
 });
 
 /// Simulates checking if an email domain has valid MX records.
-final emailDomainValidator = SlowValidator<String>((value) async {
+final _emailDomainValidator = SlowValidator<String>((value) async {
   await Future<void>.delayed(const Duration(milliseconds: 800));
   // Simulate: test.invalid domain always fails
   if (value.endsWith('@test.invalid')) {
@@ -128,7 +128,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
   late final industry = TomFormStringDropdown(
     'industry',
     '',
-    source: industrySource,
+    source: _industrySource,
     validators: [Validators.required()],
   );
 
@@ -139,7 +139,7 @@ class CompanyBasicInfoForm extends TomForm<CompanyProfile> {
     validators: [
       Validators.required(),
       Validators.pattern(RegExp(r'^[A-Z0-9-]+$'), errorKey: 'taxIdFormat'),
-      taxIdValidator,
+      _taxIdValidator,
     ],
   );
 
@@ -223,7 +223,7 @@ class AddressForm extends TomForm<Address> {
   late final country = TomFormStringDropdown(
     'country',
     'US',
-    source: countrySource,
+    source: _countrySource,
     validators: [Validators.required()],
   );
 }
@@ -260,7 +260,7 @@ class PersonForm extends TomForm<Person> {
   late final email = TomFormStringInput(
     'email',
     '',
-    validators: [Validators.required(), Validators.email(), emailDomainValidator],
+    validators: [Validators.required(), Validators.email(), _emailDomainValidator],
     keyboardType: TextInputType.emailAddress,
   );
 
@@ -295,7 +295,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
   late final timezone = TomFormStringDropdown(
     'timezone',
     'UTC',
-    source: timezoneSource,
+    source: _timezoneSource,
   );
 
   late final locale = TomFormStringInput(
@@ -330,7 +330,7 @@ class CompanySettingsForm extends TomForm<CompanySettings> {
   late final notificationFrequency = TomFormStringDropdown(
     'notificationFrequency',
     'daily',
-    source: notificationFrequencySource,
+    source: _notificationFrequencySource,
   );
 }
 

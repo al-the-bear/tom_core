@@ -5,6 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
 import '../state/application_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 9: Preset Showcase
@@ -297,20 +298,20 @@ class _Demo9PresetShowcaseState extends State<Demo9PresetShowcase> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
               'material3 — the vanilla Material-3 defaults: label above, '
                   'standard gaps, no outline border.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'compact — floating labels and tighter vertical gaps. '
                   'Good for dense forms.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'bordered — floating labels on an outlined border with '
                   'error-border recolour and trailing error icon enabled.',
             ),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
               'withTheme(theme) snapshots the theme into the TomFormStyle. '
                   'Label/input: take bodyMedium as-is — the theme creator\'s '
                   'bodyMedium.color wins (null stays null so it inherits). '
@@ -318,20 +319,20 @@ class _Demo9PresetShowcaseState extends State<Demo9PresetShowcase> {
                   'Error: bodySmall + cs.error. Description: bodySmall + '
                   'cs.onSurfaceVariant. Backgrounds: surfaceContainer*.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'In this demo the picked themes set bodyMedium.color to '
                   'cs.primary so you can actually see the theme accent on '
                   'labels and typed text. That\'s a demo choice — real apps '
                   'usually leave bodyMedium.color null so labels adopt the '
                   'standard onSurface text colour.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'Border variant is preserved: null stays null, outlined stays '
                   'outlined — only the stroke color follows the theme. So '
                   'material3 and compact keep their underlined look; '
                   'bordered keeps its outlined look and only recolors.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'The grid below lives under a neutral grey Material theme, so '
                   'any color/font difference between OFF and ON is the work '
                   'of withTheme alone.',
@@ -388,17 +389,4 @@ ThemeData _buildTheme({
       ),
     ),
   );
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
-  }
 }

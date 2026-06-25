@@ -4,6 +4,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
 import '../panels/info_panel.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo E — Selection Variants (Phase 2)
@@ -327,20 +328,20 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
                 'Every single- and multi-select flavour renders against '
                 'one shared TomSelectableSource<String>.'),
-            const _Bullet(
+            const DemoBullet(
                 'Each variant is wired to the Phase 2 binding shape: '
                 'multi-select → TomList<TomString>, single-select → '
                 'TomString. The right-hand inspector shows every write '
                 'live and keeps a change log so the shape is obvious.'),
-            const _Bullet(
+            const DemoBullet(
                 'Switch "Filtered source" to swap the shared source '
                 'between the full catalogue and a 2-item subset at '
                 'runtime — demonstrates source observability and verifies '
                 'invalid selections are dropped on shrink.'),
-            const _Bullet(
+            const DemoBullet(
                 'Material widgets act as stand-ins; Phase 2 drops in '
                 'TomFormString{FilterChips,MultiCheckbox,Segmented,'
                 'RadioGroup,ChoiceChips} one line per block.'),
@@ -647,18 +648,5 @@ class _DemoESelectionVariantsState extends State<DemoESelectionVariants> {
   static String _stamp(DateTime t) {
     String p(int n, [int w = 2]) => n.toString().padLeft(w, '0');
     return '${p(t.hour)}:${p(t.minute)}:${p(t.second)}.${p(t.millisecond, 3)}';
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
   }
 }

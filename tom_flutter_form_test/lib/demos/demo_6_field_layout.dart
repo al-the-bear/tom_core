@@ -5,6 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
 import '../state/application_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 6: Field Layout Options
@@ -153,21 +154,21 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
-            const _Bullet('Style preset — picks the base TomFormStyle. material3 is the default. compact halves the gaps and floats labels. bordered adds an outlined border plus error-border and error-icon visuals.'),
-            const _Bullet('The per-field overrides below (placement, indicators) layer on top of the selected preset via copyWith.'),
+            const DemoBullet('Style preset — picks the base TomFormStyle. material3 is the default. compact halves the gaps and floats labels. bordered adds an outlined border plus error-border and error-icon visuals.'),
+            const DemoBullet('The per-field overrides below (placement, indicators) layer on top of the selected preset via copyWith.'),
             const SizedBox(height: 6),
-            const _Bullet('LabelPlacement.above — label sits on its own line above the input (default).'),
-            const _Bullet('LabelPlacement.below — label sits directly below the input, above any description.'),
-            const _Bullet('LabelPlacement.floating — Material floating label inside the input border.'),
-            const _Bullet('LabelPlacement.inline — label on the left, input on the right in one row.'),
-            const _Bullet('LabelPlacement.hidden — no label; use a hint or leave context to the form title.'),
+            const DemoBullet('LabelPlacement.above — label sits on its own line above the input (default).'),
+            const DemoBullet('LabelPlacement.below — label sits directly below the input, above any description.'),
+            const DemoBullet('LabelPlacement.floating — Material floating label inside the input border.'),
+            const DemoBullet('LabelPlacement.inline — label on the left, input on the right in one row.'),
+            const DemoBullet('LabelPlacement.hidden — no label; use a hint or leave context to the form title.'),
             const SizedBox(height: 6),
-            const _Bullet('RequiredIndicator (label) — red * / " (required)" / none. Controls the label decoration.'),
-            const _Bullet('RequiredIndicator — three text slots: (1) label (on top), (2) placeholder inside the input (code: hint, visible only while empty), (3) description below (code: description, helper text). Each has its own indicator setting.'),
-            const _Bullet('This demo starts with fields cleared so the placeholder (hint) slot is visible — type or click Populate to hide the placeholder.'),
+            const DemoBullet('RequiredIndicator (label) — red * / " (required)" / none. Controls the label decoration.'),
+            const DemoBullet('RequiredIndicator — three text slots: (1) label (on top), (2) placeholder inside the input (code: hint, visible only while empty), (3) description below (code: description, helper text). Each has its own indicator setting.'),
+            const DemoBullet('This demo starts with fields cleared so the placeholder (hint) slot is visible — type or click Populate to hide the placeholder.'),
             const SizedBox(height: 6),
-            const _Bullet('DescriptionPlacement.below — helper text under the field (default).'),
-            const _Bullet('DescriptionPlacement.above — helper text between label and input (when label is above).'),
+            const DemoBullet('DescriptionPlacement.below — helper text under the field (default).'),
+            const DemoBullet('DescriptionPlacement.above — helper text between label and input (when label is above).'),
           ],
         ),
       ),
@@ -260,19 +261,6 @@ class _Demo6FieldLayoutState extends State<Demo6FieldLayout> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

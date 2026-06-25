@@ -9,6 +9,7 @@ import '../panels/event_log_panel.dart';
 import '../panels/field_state_table.dart';
 import '../panels/info_panel.dart';
 import '../state/phase1_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo B — Authorization & Events (Phase 1)
@@ -394,16 +395,16 @@ class _DemoBAuthorizationState extends State<DemoBAuthorization>
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('Four auth states per field; form-level ceiling '
+            const DemoBullet('Four auth states per field; form-level ceiling '
                 'narrows everything at once.'),
-            const _Bullet('Billing and shipping live in dedicated '
+            const DemoBullet('Billing and shipping live in dedicated '
                 'TomAuthorizationGroups — pick a group on the right to '
                 'toggle its mode (controlsAll / controlsWidest / controlsNarrowest).'),
-            const _Bullet('TomAuthorizer: when on, customer tier "platinum" '
+            const DemoBullet('TomAuthorizer: when on, customer tier "platinum" '
                 'narrows both address sections to read.'),
-            const _Bullet('TomUIStateController: when on, email is disabled '
+            const DemoBullet('TomUIStateController: when on, email is disabled '
                 'until the phone field is non-empty.'),
-            const _Bullet('Every transition shows up in the event log — '
+            const DemoBullet('Every transition shows up in the event log — '
                 'value changes, validations, and synthetic '
                 'FieldAuthChangedEvent entries emitted on auth swaps.'),
           ],
@@ -502,17 +503,4 @@ class _DemoBAdapter extends TomAuthorizationAdapter {
 
   void setRule(String path, TomAuthState state) => _rules[path] = state;
   void removeRule(String path) => _rules.remove(path);
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
-  }
 }

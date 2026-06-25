@@ -5,6 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
 import '../state/application_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 10: Central JSON-Driven Form Style
@@ -318,23 +319,23 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
             Text('What this demo shows',
                 style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
               'style: TomFormStyle() is the fallback base — it supplies '
               'canonical defaults for any property absent from the JSON.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'tomId: "demo10Form" triggers the resource overlay, which reads '
               'every style property from demo_resources.json including '
               'cs.* colour tokens resolved against the active ColorScheme. '
               'labelPlacement is "floating" so labels live inside the box '
               'and visibly change colour (cs.primary) when you pick a theme.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'TomFormStyleScope has no explicit theme params. Its automatic '
               'withTheme(Theme.of(context)) fills in origin-default properties '
               'from the Flutter theme set by the selector above.',
             ),
-            const _Bullet(
+            const DemoBullet(
               '@bp.{name} blocks in JSON override specific properties when '
               'the pane crosses a breakpoint. @bp.tablet.theme and '
               '@bp.desktop.theme only carry typography changes (bodySize, '
@@ -342,7 +343,7 @@ class _Demo10CentralJsonStyleState extends State<Demo10CentralJsonStyle> {
               'controls the colour scheme. Add "seed": "#…" to an @bp theme '
               'if you want that breakpoint to override the selector too.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'No Dart-level style calls anywhere below the scope. Edit '
               'demo_resources.json and hot-reload to redesign the form.',
             ),
@@ -442,19 +443,6 @@ class _ThemeChip extends StatelessWidget {
 }
 
 // ── Bullet helper ──────────────────────────────────────────────────────────
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
-  }
-}
 
 // ── JSON excerpt ───────────────────────────────────────────────────────────
 

@@ -4,6 +4,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../state/phase_hd_state.dart';
 import '../state/phase2a_state.dart'; // for phase2aProductSource
+import 'form_validators.dart';
 
 // ---------------------------------------------------------------------------
 // Form classes for Demos H-D and H-E.
@@ -45,7 +46,7 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
     form: this,
     labelTextOverride: 'Qty',
     keyboardType: const TextInputType.numberWithOptions(),
-    validators: [Validators.required(), _integerValidator],
+    validators: [Validators.required(), integerValidator],
     autoValidate: true,
   );
 
@@ -55,7 +56,7 @@ class OrderItemHDForm extends TomForm<OrderItemHD> {
     form: this,
     labelTextOverride: 'Unit price',
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    validators: [Validators.required(), _decimalValidator],
+    validators: [Validators.required(), decimalValidator],
     autoValidate: true,
   );
 
@@ -447,21 +448,4 @@ class _ShippingLabelSource extends TomSelectableSource<String> {
     }
     return items;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Private validators reused by OrderItemHDForm
-// ---------------------------------------------------------------------------
-
-ValidationResult _integerValidator(String value) {
-  final n = int.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidInteger');
-  return const ValidationSuccess();
-}
-
-ValidationResult _decimalValidator(String value) {
-  final n = double.tryParse(value);
-  if (n == null) return const ValidationError('error.invalidDecimal');
-  if (n < 0) return const ValidationError('error.mustBeNonNegative');
-  return const ValidationSuccess();
 }

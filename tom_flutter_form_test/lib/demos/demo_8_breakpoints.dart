@@ -5,6 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
 import '../state/application_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 8: Breakpoints
@@ -269,16 +270,16 @@ class _Demo8BreakpointsState extends State<Demo8Breakpoints> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
               'Breakpointed properties ship as a plain value + a '
               '(minWidth, value) overrides list. Highest matching minWidth '
               'wins; below all breakpoints the plain value applies.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'TomFormStyleScope wraps its child in a LayoutBuilder and '
               'publishes the max width via widthOf — resolution is automatic.',
             ),
-            const _Bullet(
+            const DemoBullet(
               'Drag the splitter. Cross 400px: label moves floating → above, '
               'fonts bump up, gaps grow, error border turns on. Cross 500px: '
               'error icon appears. Cross 700px: label moves above → inline, '
@@ -318,19 +319,6 @@ class _Badge extends StatelessWidget {
         '$label: $value',
         style: Theme.of(context).textTheme.labelSmall,
       ),
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

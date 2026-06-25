@@ -4,6 +4,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../common/demo_scaffold.dart';
 import '../panels/info_panel.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo F — Boolean Variants (Phase 2 scaffold)
@@ -119,13 +120,13 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
                 'Three boolean renderings side-by-side — each tied to its '
                 'own TomBool so they can diverge.'),
-            const _Bullet('A second row where all three share a single '
+            const DemoBullet('A second row where all three share a single '
                 'TomBool — toggling any one flips the other two via the '
                 'observable channel, no setState required.'),
-            const _Bullet('Phase 2 will replace the Material placeholders '
+            const DemoBullet('Phase 2 will replace the Material placeholders '
                 'with TomFormBoolCheckbox / TomFormBoolSwitch / '
                 'TomFormBoolToggle; the bindings are already in place.'),
           ],
@@ -247,19 +248,6 @@ class _DemoFBooleanVariantsState extends State<DemoFBooleanVariants> {
           },
         ),
       ],
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

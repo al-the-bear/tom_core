@@ -8,6 +8,7 @@ import '../common/demo_scaffold.dart';
 import '../forms/customer_form.dart';
 import '../panels/info_panel.dart';
 import '../state/phase1_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo C — Nested Forms & Theming (Phase 1)
@@ -309,23 +310,23 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
                 'Nested tree — customer → billing, customer → shipping — '
                 'each nested form binds/saves/discards independently.'),
-            const _Bullet(
+            const DemoBullet(
                 'Live theming panel on the right drives the outer form; '
                 'the billing/shipping scopes override with their own presets '
                 'to demonstrate per-section styling.'),
-            const _Bullet('Shipping section adds styleBpOverrides — resize '
+            const DemoBullet('Shipping section adds styleBpOverrides — resize '
                 'the window (or narrow the right pane) to cross the tablet '
                 'and desktop breakpoints and watch the preset flip.'),
-            const _Bullet(
+            const DemoBullet(
                 'The notes field is a TomFormStringInputClassic — old API '
                 'rendering side-by-side with the spec-conforming fields.'),
-            const _Bullet('Form inspection card on the right prints the '
+            const DemoBullet('Form inspection card on the right prints the '
                 'live value map, the initial snapshot diff, and the dirty '
                 'field list.'),
-            const _Bullet('Hint styling (hintFontWeight / hintOpacity) is '
+            const DemoBullet('Hint styling (hintFontWeight / hintOpacity) is '
                 'only visible while a field is empty — press Clear to '
                 'observe the sliders.'),
           ],
@@ -643,16 +644,3 @@ class _DemoCNestedThemingState extends State<DemoCNestedTheming> {
 // ---------------------------------------------------------------------------
 
 enum _Preset { material3, compact, bordered }
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
-    );
-  }
-}

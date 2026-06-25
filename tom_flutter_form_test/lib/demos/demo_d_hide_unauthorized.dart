@@ -6,6 +6,7 @@ import '../common/demo_scaffold.dart';
 import '../forms/validation_form.dart';
 import '../panels/info_panel.dart';
 import '../state/phase1_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo D — Hide on Authorization (TomAuthState.none) + read/disabled states
@@ -208,21 +209,21 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
           children: [
             Text('What this demo covers', style: theme.textTheme.titleSmall),
             const SizedBox(height: 6),
-            const _Bullet('Both ACLs below call '
+            const DemoBullet('Both ACLs below call '
                 '`setAclDefaultHideUnauthorized(true)` — when a child '
                 'resolves to `TomAuthState.none` it is dropped from the '
                 'row entirely and the following gap collapses.'),
-            const _Bullet('Row elision: set every field in a row (e.g. '
+            const DemoBullet('Row elision: set every field in a row (e.g. '
                 'password + confirmPassword) to `none` and the whole row '
                 'disappears, with the next row\'s gap dropped so the '
                 'layout tightens up.'),
-            const _Bullet('`read` and `disabled` keep the element in place '
+            const DemoBullet('`read` and `disabled` keep the element in place '
                 'but change its visual treatment — readonly style from the '
                 'theme scope, vs. dimmed & ignoring input.'),
-            const _Bullet('Form-field widgets participate via '
+            const DemoBullet('Form-field widgets participate via '
                 'TomFieldWidgetAdapter; regular Tom widgets via '
                 'TomNodeBase / TomWidgetMixin. Same ACL filter for both.'),
-            const _Bullet('Two form sections show the rule with default '
+            const DemoBullet('Two form sections show the rule with default '
                 'gaps (no explicit `dist:` anywhere) and with non-default '
                 'gaps (explicit 32 / 48 px per append, 24 / 40 px between '
                 'rows). Toggling a field\'s auth on the right drives both '
@@ -609,19 +610,6 @@ class _DemoDHideUnauthorizedState extends State<DemoDHideUnauthorized> {
         icon: const Icon(Icons.restart_alt, size: 16),
         label: Text(label),
       ),
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

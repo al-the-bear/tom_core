@@ -5,6 +5,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import '../common/demo_scaffold.dart';
 import '../forms/company_forms.dart';
 import '../state/application_state.dart';
+import 'demo_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Demo 7: Error Placement Options
@@ -134,13 +135,13 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 6),
-            const _Bullet(
+            const DemoBullet(
                 'below (default) — error caption renders under the input; the row grows downward.'),
-            const _Bullet(
+            const DemoBullet(
                 'above — error caption renders above the input, between the label and the field.'),
-            const _Bullet(
+            const DemoBullet(
                 'both — caption is mirrored above and below. Useful when users may not see one side.'),
-            const _Bullet(
+            const DemoBullet(
                 'replaceDescription — error text takes over the description (helper-text) slot '
                 'below the field. If no description was set, the slot materialises for the error. '
                 'Compact layouts benefit: no extra error row, but the error stays visible while '
@@ -155,9 +156,9 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
               'Error text is resolved in three steps — whichever matches first wins:',
             ),
             const SizedBox(height: 4),
-            const _Bullet('1. basePath.errorKey         e.g. companyBasicInfo.name.error.required'),
-            const _Bullet('2. formScope.errorKey        e.g. companyBasicInfo.error.required'),
-            const _Bullet('3. errorKey (global)         e.g. error.required'),
+            const DemoBullet('1. basePath.errorKey         e.g. companyBasicInfo.name.error.required'),
+            const DemoBullet('2. formScope.errorKey        e.g. companyBasicInfo.error.required'),
+            const DemoBullet('3. errorKey (global)         e.g. error.required'),
             const SizedBox(height: 4),
             const Text(
                 'In real apps the field-scoped message ("Tax ID is required") is preferred '
@@ -196,19 +197,6 @@ class _Demo7ErrorPlacementState extends State<Demo7ErrorPlacement> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Bullet extends StatelessWidget {
-  final String text;
-  const _Bullet(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1),
-      child: Text('• $text'),
     );
   }
 }

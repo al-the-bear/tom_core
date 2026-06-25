@@ -55,7 +55,7 @@ class AddressForm extends TomForm<TomClass> {
     'country',
     'US',
     form: this,
-    source: countrySource,
+    source: _countrySource,
     validators: [Validators.required()],
   );
 }
@@ -64,7 +64,7 @@ class AddressForm extends TomForm<TomClass> {
 // Shared selection source for the address `country` field.
 // ---------------------------------------------------------------------------
 
-final countrySource = StaticSelectableSource<String>([
+final _countrySource = StaticSelectableSource<String>([
   const SelectableItem(value: 'US', label: 'United States'),
   const SelectableItem(value: 'CA', label: 'Canada'),
   const SelectableItem(value: 'GB', label: 'United Kingdom'),

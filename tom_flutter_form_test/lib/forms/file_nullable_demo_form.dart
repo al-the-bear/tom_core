@@ -15,7 +15,7 @@ import '../state/phase4_state.dart';
 /// Standalone source for the nullable enum dropdown demo so the field
 /// can sit on the form without a corresponding `TomObject<Priority?>`
 /// in the bound state (the kernel only ships nullable primitives).
-final TomSelectableSource<Priority> demoLPrioritySource = phase4PrioritySource;
+final TomSelectableSource<Priority> _demoLPrioritySource = phase4PrioritySource;
 
 @tomReflector
 class FileNullableDemoForm extends TomForm<FileNullableDemoState> {
@@ -122,7 +122,7 @@ TomFormNEnumDropdown<Priority> makeDemoLPriorityField() =>
     TomFormNEnumDropdown<Priority>(
       'priority',
       null,
-      source: demoLPrioritySource,
+      source: _demoLPrioritySource,
       labelTextOverride: 'Priority (nullable dropdown)',
       nullDisplayOverride: '— please select —',
       descriptionTextOverride:
