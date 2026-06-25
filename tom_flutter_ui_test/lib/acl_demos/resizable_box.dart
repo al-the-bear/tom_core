@@ -21,10 +21,10 @@ class ResizableBox extends StatefulWidget {
   });
 
   @override
-  State<ResizableBox> createState() => ResizableBoxState();
+  State<ResizableBox> createState() => _ResizableBoxState();
 }
 
-class ResizableBoxState extends State<ResizableBox> {
+class _ResizableBoxState extends State<ResizableBox> {
   double? _width; // seeded on first layout from available constraints
   // When null (and widget.initialHeight was null) the box uses
   // IntrinsicHeight on the child so the outer container fits the
@@ -161,7 +161,7 @@ class ResizableBoxState extends State<ResizableBox> {
                           (_panStartY ?? d.globalPosition.dy))
                       .clamp(_minH, double.infinity);
                 }),
-                child: CustomPaint(painter: GripPainter()),
+                child: CustomPaint(painter: _GripPainter()),
               ),
             ),
           ),
@@ -198,7 +198,7 @@ class ResizableBoxState extends State<ResizableBox> {
 }
 
 /// Paints a classic 3-line resize grip in the bottom-right corner.
-class GripPainter extends CustomPainter {
+class _GripPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()

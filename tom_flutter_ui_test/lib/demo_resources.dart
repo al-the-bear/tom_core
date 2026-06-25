@@ -3463,37 +3463,47 @@ const _demo28WidgetResources = <String, String>{
   'demo28.profile.save.label': 'Save Profile',
 };
 
+/// The single registry of every per-demo resource map.
+///
+/// Why a list folded in a loop rather than a hand-edited spread block: the
+/// merge in [initializeDemoResources] used to be ~20 inline `...map` entries,
+/// so a forgotten spread silently dropped a demo's resources with no compile
+/// error. Routing every map through this one list means the fold below can't
+/// skip an entry — adding a demo appends its map here in exactly one place.
+///
+/// The per-demo maps keep their own co-located declarations (each demo's keys
+/// stay reviewable next to that demo's code); this list is the authoring
+/// registry, not a runtime lookup boundary — `TomTextResourceProvider`
+/// resolves a single flat namespace by full `<basePath>.<suffix>` key.
+final List<Map<String, dynamic>> _allDemoResourceMaps = [
+  _DemoResources._resources,
+  _DemoResources._structuredResources,
+  _demo22SectionResources,
+  _demo22CardResources,
+  _demo23SectionResources,
+  _demo23CardResources,
+  _demo24SectionResources,
+  _demo24CardResources,
+  _demo25SectionResources,
+  _demo25CardResources,
+  _demo25PickerResources,
+  _demo26SectionResources,
+  _demo26CardResources,
+  _demo26WidgetResources,
+  _demo27SectionResources,
+  _demo27CardResources,
+  _demo27WidgetResources,
+  _demo28SectionResources,
+  _demo28CardResources,
+  _demo28WidgetResources,
+];
+
 /// Initializes the Tom UI resource and icon adapters for the demo app.
 ///
 /// Call this in `main()` before `runApp()`.
 void initializeDemoResources() {
-  // Why: the per-demo resource maps are kept as separate top-level
-  // declarations (one block per demo) so each demo's keys stay co-located
-  // with that demo's code and reviewable in isolation. They are merged into
-  // one flat map here because TomTextResourceProvider resolves a single
-  // namespace by full `<basePath>.<suffix>` key — the split is an authoring
-  // convenience, not a runtime lookup boundary.
   final Map<String, dynamic> allResources = {
-    ..._DemoResources._resources,
-    ..._DemoResources._structuredResources,
-    ..._demo22SectionResources,
-    ..._demo22CardResources,
-    ..._demo23SectionResources,
-    ..._demo23CardResources,
-    ..._demo24SectionResources,
-    ..._demo24CardResources,
-    ..._demo25SectionResources,
-    ..._demo25CardResources,
-    ..._demo25PickerResources,
-    ..._demo26SectionResources,
-    ..._demo26CardResources,
-    ..._demo26WidgetResources,
-    ..._demo27SectionResources,
-    ..._demo27CardResources,
-    ..._demo27WidgetResources,
-    ..._demo28SectionResources,
-    ..._demo28CardResources,
-    ..._demo28WidgetResources,
+    for (final map in _allDemoResourceMaps) ...map,
   };
   // Why: these three static adapters are the global seams tom_flutter_ui
   // widgets read at build time — text by tomId (resource provider), icon

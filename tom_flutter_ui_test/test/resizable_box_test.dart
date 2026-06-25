@@ -14,8 +14,8 @@
 ///
 /// Assertions read the widget's own live size chip (`'<w> × <h>'` /
 /// `'<w> × auto'`) — the direct render of the `_width`/`_height` state under
-/// test — so they stay decoupled from the `ResizableBoxState` type (which
-/// member_visibility §30 / plan step #13 will make private).
+/// test — so they stay decoupled from the now-private `_ResizableBoxState`
+/// type (privatised by member_visibility §30 / plan step #13).
 library;
 
 import 'package:flutter/material.dart';

@@ -138,8 +138,13 @@ class MainTabsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Why: `length`, the tab bar and the views are all derived from this one
+    // descriptor list so they can't drift out of sync — a hardcoded
+    // `length: 4` against separately-authored 4-entry `tabs`/`children` lists
+    // silently breaks if a demo tab is added to one list but not the others
+    // (code_quality §30b).
     return DefaultTabController(
-      length: 4,
+      length: _mainTabs.length,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Tom Flutter UI'),
@@ -147,28 +152,36 @@ class MainTabsPage extends StatelessWidget {
             LanguageSelectorButton(localeService: localeSettingsService),
             const SizedBox(width: 8),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             tabs: [
-              Tab(icon: Icon(Icons.grid_view), text: 'ACL Demos'),
-              Tab(icon: Icon(Icons.widgets), text: 'Widget Demos'),
-              Tab(icon: Icon(Icons.dynamic_form), text: 'Forms/Actions'),
-              Tab(icon: Icon(Icons.security), text: 'Authorization/Resources'),
+              for (final tab in _mainTabs)
+                Tab(icon: Icon(tab.icon), text: tab.label),
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [
-            AclDemosTab(),
-            WidgetDemosTab(),
-            FormsActionsTab(),
-            AuthorizationResourcesTab(),
-          ],
+        body: TabBarView(
+          children: [for (final tab in _mainTabs) tab.view],
         ),
       ),
     );
   }
 }
+
+/// The single source of truth for the top-level tab structure: each entry
+/// pairs a tab's icon + label with the view shown under it, so the
+/// `DefaultTabController` length, the `TabBar.tabs` and the `TabBarView.children`
+/// are all derived from one list and cannot fall out of sync (code_quality §30b).
+const List<({IconData icon, String label, Widget view})> _mainTabs = [
+  (icon: Icons.grid_view, label: 'ACL Demos', view: AclDemosTab()),
+  (icon: Icons.widgets, label: 'Widget Demos', view: WidgetDemosTab()),
+  (icon: Icons.dynamic_form, label: 'Forms/Actions', view: FormsActionsTab()),
+  (
+    icon: Icons.security,
+    label: 'Authorization/Resources',
+    view: AuthorizationResourcesTab(),
+  ),
+];
 
 // ---------------------------------------------------------------------------
 // ACL Demos Tab
