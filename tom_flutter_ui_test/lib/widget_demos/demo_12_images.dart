@@ -696,7 +696,7 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
           ),
           clipBehavior: Clip.hardEdge,
           child: TomFadeInImage(
-            placeholder: MemoryImage(_createPlaceholderBytes()),
+            placeholder: MemoryImage(createPlaceholderBytes()),
             image: NetworkImage(url),
             width: 200,
             height: 150,
@@ -937,7 +937,12 @@ class _ImagesDemoContentState extends TomState<_ImagesDemoContent>
 // =============================================================================
 
 /// Creates a simple placeholder image bytes for FadeInImage.
-Uint8List _createPlaceholderBytes() {
+///
+/// Public-for-testing only: the bytes are a fixed 1×1 transparent PNG, so the
+/// pure generator is unit-testable (review tests §69) without exposing it as
+/// part of the demo's real API.
+@visibleForTesting
+Uint8List createPlaceholderBytes() {
   // Simple 1x1 transparent PNG
   return Uint8List.fromList(const [
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
