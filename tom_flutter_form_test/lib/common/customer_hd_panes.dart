@@ -487,14 +487,29 @@ void _trackSelection(
   int? selectedIndex,
   Future<void> Function(int? index) selectIndex,
 ) {
-  if (selectedIndex == null) return;
-  if (selectedIndex == from) {
-    selectIndex(to);
-    return;
-  }
-  if (from < selectedIndex && selectedIndex <= to) {
-    selectIndex(selectedIndex - 1);
-  } else if (to <= selectedIndex && selectedIndex < from) {
-    selectIndex(selectedIndex + 1);
-  }
+  final next = reorderedSelectionIndex(from, to, selectedIndex);
+  if (next != null) selectIndex(next);
+}
+
+/// Pure index arithmetic behind [_trackSelection]: given a drag-reorder that
+/// moved a row from [from] to [to], returns the index the currently
+/// [selectedIndex] row should track to, or `null` when the reorder leaves the
+/// selection where it is (including when nothing is selected).
+///
+/// The three shifting cases:
+/// - the selected row *is* the dragged row (`selectedIndex == from`) → it
+///   follows the drag to [to];
+/// - a down-move (`from < to`) sliding past the selection
+///   (`from < selectedIndex <= to`) shifts it one step up (`selectedIndex - 1`);
+/// - an up-move (`from > to`) sliding past the selection
+///   (`to <= selectedIndex < from`) shifts it one step down (`selectedIndex + 1`).
+///
+/// Any other selection is unaffected by the reorder, hence `null`.
+@visibleForTesting
+int? reorderedSelectionIndex(int from, int to, int? selectedIndex) {
+  if (selectedIndex == null) return null;
+  if (selectedIndex == from) return to;
+  if (from < selectedIndex && selectedIndex <= to) return selectedIndex - 1;
+  if (to <= selectedIndex && selectedIndex < from) return selectedIndex + 1;
+  return null;
 }
