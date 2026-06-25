@@ -25,13 +25,21 @@ class SaveFormAction extends TomSimpleAction<TomActionContext> {
     status | (TomCtr.textOrNull(canonicalPath, 'validating') ?? 'Validating…');
     Future.wait(forms.map((f) => f.save())).then((results) {
       final allOk = results.every((r) => r);
-      final msg = allOk
+      status | (allOk
           ? TomCtr.textOrNull(canonicalPath, 'success') ?? 'Saved!'
-          : TomCtr.textOrNull(canonicalPath, 'error') ??
-              'Validation failed — check fields';
-      status | msg;
+          : _errorMessage);
+    }).catchError((Object _) {
+      // A save that *throws* (validator/back-write failure) must be reported
+      // exactly like a `false` result — otherwise the rejection escapes as an
+      // uncaught async error and `status` stays stuck on the transient
+      // "Validating…" message.
+      status | _errorMessage;
     });
   }
+
+  String get _errorMessage =>
+      TomCtr.textOrNull(canonicalPath, 'error') ??
+      'Validation failed — check fields';
 }
 
 // ---------------------------------------------------------------------------
