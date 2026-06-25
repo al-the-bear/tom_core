@@ -104,6 +104,14 @@ class _FormsOverviewDemoState extends State<FormsOverviewDemo> {
     _fields = [_email, _password, _username, _age, _rating];
   }
 
+  @override
+  void dispose() {
+    for (final field in _fields) {
+      field.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _validateAll() async {
     bool valid = true;
     for (final field in _fields) {

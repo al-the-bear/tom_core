@@ -26,8 +26,12 @@ Widget _sectionTitle(BuildContext context, String text) {
 /// Minimal mutable [TomSelectableSource] used by Demo E to toggle the
 /// item list at runtime. The default [StaticSelectableSource] is
 /// immutable so the demo rolls its own.
-class _SwappableSource<T> extends TomSelectableSource<T> {
-  _SwappableSource(List<SelectableItem<T>> initial) : _items = List.of(initial);
+///
+/// Public (rather than library-private) so that
+/// `test/forms_dispose_test.dart` can assert the owning demo state closes
+/// it on unmount — [isDisposed] is the observable signal for that.
+class SwappableSource<T> extends TomSelectableSource<T> {
+  SwappableSource(List<SelectableItem<T>> initial) : _items = List.of(initial);
 
   List<SelectableItem<T>> _items;
   final _controller = StreamController<List<SelectableItem<T>>>.broadcast();
@@ -43,6 +47,9 @@ class _SwappableSource<T> extends TomSelectableSource<T> {
 
   @override
   Stream<List<SelectableItem<T>>> get itemsStream => _controller.stream;
+
+  /// Whether [dispose] has closed the underlying broadcast controller.
+  bool get isDisposed => _controller.isClosed;
 
   void dispose() => _controller.close();
 }
@@ -76,18 +83,34 @@ class SelectionVariantsDemo extends StatefulWidget {
   const SelectionVariantsDemo({super.key});
 
   @override
-  State<SelectionVariantsDemo> createState() => _SelectionVariantsDemoState();
+  State<SelectionVariantsDemo> createState() => SelectionVariantsDemoState();
 }
 
-class _SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
+/// Public so `test/forms_dispose_test.dart` can type the `@visibleForTesting`
+/// disposal hooks ([debugSharedSource], [debugObserverCount]).
+class SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   // All three single-select concretes share a single source. Each writes
   // to its own field, so the inspector can show every binding side-by-side.
-  late final _SwappableSource<String> _sharedSource;
+  late final SwappableSource<String> _sharedSource;
   late final TomFormStringSegmented _segmented;
   late final TomFormStringRadioGroup _radio;
   late final TomFormStringChoiceChips _chips;
   late final TomFormStringFilterChips _filter;
   late final TomFormStringMultiCheckbox _multiCheck;
+
+  /// Every field this state owns, for batched disposal.
+  late final List<TomField> _fields = [
+    _segmented,
+    _radio,
+    _chips,
+    _filter,
+    _multiCheck,
+  ];
+
+  /// Cancellers for the `>>` observers registered in [initState]. Each
+  /// removes one observer from its field; retaining them keeps the
+  /// (weakly-held) observers alive and lets [dispose] unregister them.
+  final List<void Function()> _observerCancels = [];
 
   bool _filtered = false;
 
@@ -106,7 +129,7 @@ class _SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
   @override
   void initState() {
     super.initState();
-    _sharedSource = _SwappableSource<String>(_fullItems);
+    _sharedSource = SwappableSource<String>(_fullItems);
 
     _segmented = TomFormStringSegmented(
       'seg',
@@ -140,12 +163,33 @@ class _SelectionVariantsDemoState extends State<SelectionVariantsDemo> {
     );
 
     // Re-render the value-inspector panel whenever any field fires.
-    for (final field in [_segmented, _radio, _chips]) {
-      field >> (_) => setState(() {});
+    for (final field in _fields) {
+      final observer = field >> (_) => setState(() {});
+      _observerCancels.add(() => field.removeObserver(observer));
     }
-    for (final field in [_filter, _multiCheck]) {
-      field >> (_) => setState(() {});
+  }
+
+  /// Owned shared source — exposed for `forms_dispose_test.dart` to assert
+  /// it is closed on unmount.
+  @visibleForTesting
+  SwappableSource<String> get debugSharedSource => _sharedSource;
+
+  /// Number of live `>>` observer registrations — `0` once [dispose] has
+  /// unregistered them.
+  @visibleForTesting
+  int get debugObserverCount => _observerCancels.length;
+
+  @override
+  void dispose() {
+    for (final cancel in _observerCancels) {
+      cancel();
     }
+    _observerCancels.clear();
+    for (final field in _fields) {
+      field.dispose();
+    }
+    _sharedSource.dispose();
+    super.dispose();
   }
 
   void _toggleFilter() {
@@ -253,6 +297,23 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
   late final TomFormBoolCheckbox _darkMode;
   late final TomFormBoolSwitch _analytics;
 
+  /// Every field this state owns, for batched disposal.
+  late final List<TomField> _fields = [
+    _acceptTerms,
+    _notifications,
+    _mode,
+    _sharedCheckbox,
+    _sharedSwitch,
+    _sharedToggle,
+    _displayName,
+    _language,
+    _darkMode,
+    _analytics,
+  ];
+
+  /// Cancellers for the `>>` observers registered in [initState].
+  final List<void Function()> _observerCancels = [];
+
   @override
   void initState() {
     super.initState();
@@ -288,9 +349,14 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
       setState(() {});
     }
 
-    _sharedCheckbox >> (_) => sync(_sharedCheckbox.get());
-    _sharedSwitch >> (_) => sync(_sharedSwitch.get());
-    _sharedToggle >> (_) => sync(_sharedToggle.get());
+    for (final field in <TomField<bool>>[
+      _sharedCheckbox,
+      _sharedSwitch,
+      _sharedToggle,
+    ]) {
+      final observer = field >> (_) => sync(field.get());
+      _observerCancels.add(() => field.removeObserver(observer));
+    }
 
     _displayName = TomFormStringInput('displayName', 'Alexis',
         labelTextOverride: 'Display name');
@@ -308,6 +374,18 @@ class _BooleanVariantsDemoState extends State<BooleanVariantsDemo> {
         TomFormBoolCheckbox('darkMode', true, labelTextOverride: 'Dark mode');
     _analytics = TomFormBoolSwitch('analytics', false,
         labelTextOverride: 'Anonymous analytics');
+  }
+
+  @override
+  void dispose() {
+    for (final cancel in _observerCancels) {
+      cancel();
+    }
+    _observerCancels.clear();
+    for (final field in _fields) {
+      field.dispose();
+    }
+    super.dispose();
   }
 
   @override
@@ -371,6 +449,14 @@ class _ComplexBreakpointsDemoState extends State<ComplexBreakpointsDemo> {
     _email = TomFormStringInput('email', '', labelTextOverride: 'Email');
     _subscribed = TomFormBoolCheckbox('subscribed', false,
         labelTextOverride: 'Subscribe to newsletter');
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _email.dispose();
+    _subscribed.dispose();
+    super.dispose();
   }
 
   @override
@@ -505,6 +591,9 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
   late final TomFormStringInput _addrStreet;
   late final TomFormStringInput _addrCity;
 
+  /// Cancellers for the `>>` observers registered in [initState].
+  final List<void Function()> _observerCancels = [];
+
   @override
   void initState() {
     super.initState();
@@ -541,9 +630,10 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
       }),
     );
     // Rebuild when either field changes so the controller re-runs.
-    _emailLive >> (_) => setState(() {});
-    _phoneLive >> (_) => setState(() {});
-    _phoneVerified >> (_) => setState(() {});
+    for (final field in <TomField>[_emailLive, _phoneLive, _phoneVerified]) {
+      final observer = field >> (_) => setState(() {});
+      _observerCancels.add(() => field.removeObserver(observer));
+    }
 
     _groupAll = TomAuthorizationGroup('groupAll',
         mode: AuthGroupMode.controlsAll);
@@ -580,6 +670,26 @@ class _ComplexAuthDemoState extends State<ComplexAuthDemo> {
       labelTextOverride: 'City',
       authorizer: TomAuthorizer(resolve: (_) => _parentAuth),
     );
+  }
+
+  @override
+  void dispose() {
+    for (final cancel in _observerCancels) {
+      cancel();
+    }
+    _observerCancels.clear();
+    for (final field in <TomField>[
+      _search,
+      _emailLive,
+      _phoneLive,
+      _phoneVerified,
+      ..._groupFields,
+      _addrStreet,
+      _addrCity,
+    ]) {
+      field.dispose();
+    }
+    super.dispose();
   }
 
   @override
