@@ -92,7 +92,7 @@ class FieldStateTable extends StatelessWidget {
   TableRow _row(ThemeData theme, TomField field) {
     final auth = field.effectiveAuthState;
     final validation = field.validationState;
-    final color = _rowColour(theme, auth, validation);
+    final color = fieldRowColour(theme, auth, validation);
     final textStyle = theme.textTheme.bodySmall;
     // Show the actual value even for obscured fields — this table is for
     // debugging, so password/obscured fields are rendered in plaintext here
@@ -103,8 +103,8 @@ class FieldStateTable extends StatelessWidget {
       children: [
         _cell(field.tomId, textStyle),
         _cell(displayValue, textStyle),
-        _cell(_authLabel(auth), textStyle),
-        _cell(_validationLabel(validation), textStyle),
+        _cell(fieldAuthLabel(auth), textStyle),
+        _cell(fieldValidationLabel(validation), textStyle),
         _cell(
           field.isDirty ? '●' : '',
           textStyle?.copyWith(fontWeight: FontWeight.w600),
@@ -125,32 +125,49 @@ class FieldStateTable extends StatelessWidget {
         ),
       );
 
-  static String _authLabel(TomAuthState s) => switch (s) {
-        TomAuthState.full => 'full',
-        TomAuthState.read => 'read',
-        TomAuthState.disabled => 'disabled',
-        TomAuthState.none => 'none',
-      };
+}
 
-  static String _validationLabel(ValidationResult r) => switch (r) {
-        ValidationPristine() => 'pristine',
-        ValidationSuccess() => 'valid',
-        ValidationPending() => 'pending',
-        ValidationError(:final errorKey) => 'error: $errorKey',
-      };
+// ---------------------------------------------------------------------------
+// Pure auth/validation → label-and-colour mappings.
+//
+// Lifted to top-level `@visibleForTesting` functions (from the private statics
+// on `FieldStateTable`) so a swapped validation colour or a mislabelled auth
+// state — which every existing demo test would silently pass — can be pinned
+// directly. They carry no widget state, only the theme they read colours from.
+// ---------------------------------------------------------------------------
 
-  static Color _rowColour(
-    ThemeData theme,
-    TomAuthState auth,
-    ValidationResult v,
-  ) {
-    if (auth == TomAuthState.disabled) return theme.colorScheme.surfaceContainer;
-    if (auth == TomAuthState.none) return theme.colorScheme.surfaceContainerLow;
-    return switch (v) {
-      ValidationError() => theme.colorScheme.errorContainer.withValues(alpha: 0.4),
-      ValidationPending() => Colors.amber.withValues(alpha: 0.25),
-      ValidationSuccess() => Colors.green.withValues(alpha: 0.12),
-      ValidationPristine() => theme.colorScheme.surface,
+/// The short auth label shown in the table's Auth column.
+@visibleForTesting
+String fieldAuthLabel(TomAuthState s) => switch (s) {
+      TomAuthState.full => 'full',
+      TomAuthState.read => 'read',
+      TomAuthState.disabled => 'disabled',
+      TomAuthState.none => 'none',
     };
-  }
+
+/// The short validation label shown in the table's Validation column.
+@visibleForTesting
+String fieldValidationLabel(ValidationResult r) => switch (r) {
+      ValidationPristine() => 'pristine',
+      ValidationSuccess() => 'valid',
+      ValidationPending() => 'pending',
+      ValidationError(:final errorKey) => 'error: $errorKey',
+    };
+
+/// The row background colour: a disabled/none auth state dominates (greyed
+/// out); otherwise the validation state drives the colour.
+@visibleForTesting
+Color fieldRowColour(
+  ThemeData theme,
+  TomAuthState auth,
+  ValidationResult v,
+) {
+  if (auth == TomAuthState.disabled) return theme.colorScheme.surfaceContainer;
+  if (auth == TomAuthState.none) return theme.colorScheme.surfaceContainerLow;
+  return switch (v) {
+    ValidationError() => theme.colorScheme.errorContainer.withValues(alpha: 0.4),
+    ValidationPending() => Colors.amber.withValues(alpha: 0.25),
+    ValidationSuccess() => Colors.green.withValues(alpha: 0.12),
+    ValidationPristine() => theme.colorScheme.surface,
+  };
 }

@@ -11,6 +11,26 @@ enum EventCategory {
   lifecycle,
 }
 
+/// Maps a [TomFormEvent] to the [EventCategory] that drives the filter chips.
+///
+/// Value changes → [EventCategory.value]; field/form validation →
+/// [EventCategory.validation]; effective-auth changes → [EventCategory.auth];
+/// everything else (bind/commit/save/discard/list mutations) →
+/// [EventCategory.lifecycle].
+///
+/// Lifted to a top-level `@visibleForTesting` function (from the private
+/// `_EventLogPanelState._categoryOf`) so a misclassification — which every
+/// existing demo test would silently pass — can be pinned directly.
+@visibleForTesting
+EventCategory eventCategoryOf(TomFormEvent event) {
+  if (event is FieldValueChangedEvent) return EventCategory.value;
+  if (event is FieldValidatedEvent || event is FormValidatedEvent) {
+    return EventCategory.validation;
+  }
+  if (event is FieldAuthChangedEvent) return EventCategory.auth;
+  return EventCategory.lifecycle;
+}
+
 /// Scrollable list of every [TomFormEvent] collected by [TomFormInspector].
 ///
 /// Shows timestamp, event-type icon, source field, and description. Offers
@@ -54,15 +74,6 @@ class _EventLogPanelState extends State<EventLogPanel> {
     super.dispose();
   }
 
-  EventCategory _categoryOf(TomFormEvent event) {
-    if (event is FieldValueChangedEvent) return EventCategory.value;
-    if (event is FieldValidatedEvent || event is FormValidatedEvent) {
-      return EventCategory.validation;
-    }
-    if (event is FieldAuthChangedEvent) return EventCategory.auth;
-    return EventCategory.lifecycle;
-  }
-
   IconData _iconOf(EventCategory c) => switch (c) {
         EventCategory.value => Icons.edit,
         EventCategory.validation => Icons.rule,
@@ -84,7 +95,7 @@ class _EventLogPanelState extends State<EventLogPanel> {
       listenable: widget.rebuildOn,
       builder: (context, _) {
         final filtered = widget.inspector.events
-            .where((e) => _enabled.contains(_categoryOf(e)))
+            .where((e) => _enabled.contains(eventCategoryOf(e)))
             .toList();
 
         // Auto-scroll after the list renders so the latest event stays in
@@ -187,7 +198,7 @@ class _EventLogPanelState extends State<EventLogPanel> {
   }
 
   Widget _buildEventRow(ThemeData theme, TomFormEvent event) {
-    final category = _categoryOf(event);
+    final category = eventCategoryOf(event);
     final color = _colorOf(theme, category);
     final ts = event.timestamp;
     final timeLabel =
