@@ -1,7 +1,36 @@
-/// Reflection root for `advanced_todo_domain`.
+/// Reflection generation entrypoint for `advanced_todo_domain`.
 ///
-/// The reflection generator is seeded from this file (see `build.yaml`): it
-/// follows the imports added here to capture every `@tomReflector` entity and
-/// emit `reflection_entry.reflection.dart`. The entity imports + the
-/// `initializeReflection()` re-export are wired in step 2 of the plan.
+/// The reflection generator only processes files that expose a `main()` entry
+/// point and follows the import graph from there to discover every
+/// `@tomReflector` entity. This file exists solely to give the generator that
+/// root — it is **not** used at runtime. Consumers call [initializeReflection]
+/// (re-exported from `advanced_todo_domain.dart`, generated into
+/// `reflection_entry.reflection.dart`).
 library;
+
+import 'enums.dart';
+import 'project.dart';
+import 'share.dart';
+import 'subtask.dart';
+import 'todo_comment.dart';
+import 'todo_item.dart';
+import 'todo_list.dart';
+import 'user.dart';
+import 'workspace.dart';
+
+/// Touches each reflected type so the imports are retained and the generator
+/// can reach every entity. Never invoked in production.
+void main() {
+  User();
+  Workspace();
+  Project();
+  TodoList();
+  TodoItem();
+  TodoComment();
+  Subtask();
+  Share();
+  TodoStatus.values;
+  TodoPriority.values;
+  TodoLabel.values;
+  UserStatus.values;
+}
