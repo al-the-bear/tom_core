@@ -17,6 +17,8 @@ dependencies:
     path: ../../tom_core_kernel
   advanced_todo_contracts:
     path: ../advanced_todo_contracts
+  advanced_todo_domain:
+    path: ../advanced_todo_domain
   tom_reflection: any
 
 dev_dependencies:
