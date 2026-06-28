@@ -1,0 +1,33 @@
+# Bundled MariaDB for the advanced sample's app server. The migration tree is
+# mounted into the stock initdb hook for the first-boot bootstrap, and read again
+# at runtime by TomDbMigrations.migrateDatabases() for incremental migrations —
+# one SQL tree, two consumers (the tom_uam_server / core_server_sample pattern).
+#
+# The default published port is 3308 (not 3306, and not the auth server's 3307)
+# so this app_db, the advanced_auth_server's auth_db, and a host-local MariaDB
+# can all run side by side on one machine without colliding.
+#
+#   cp .env.example .env
+#   docker compose up -d app-db
+#   dart run bin/app_server_start.dart
+services:
+  app-db:
+    image: ${APP_DB_DOCKER_IMAGE:-mariadb:11}
+    container_name: advanced-app-db
+    ports:
+      - "${APP_DB_PORT:-3308}:3306"
+    volumes:
+      - app_db_data:/var/lib/mysql
+      - ./database_migrations/app_db/app_schema:/docker-entrypoint-initdb.d:ro
+    environment:
+      MARIADB_DATABASE: "${APP_DB_NAME:-app_db}"
+      MARIADB_ROOT_PASSWORD: "${APP_DB_ROOT_PASSWORD:-password}"
+      MARIADB_USER: "${APP_DB_USER:-app}"
+      MARIADB_PASSWORD: "${APP_DB_PASSWORD:-app}"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  app_db_data:
