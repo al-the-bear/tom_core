@@ -6,3 +6,6 @@ pubspec.lock
 
 # Reflection generator analyzer-summary cache
 .tom/
+
+# Testkit baselines / last run (machine-local)
+testlog/
