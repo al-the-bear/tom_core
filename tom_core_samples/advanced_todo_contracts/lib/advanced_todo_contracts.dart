@@ -5,6 +5,8 @@
 /// call. Importing this barrel gives both tiers the same, single definition of
 /// the wire surface.
 ///
-/// The interfaces, DTOs, and reflection seed are added in steps 4–5 of the
-/// implementation plan; this barrel is the stable public entry point.
+/// The DTOs are defined in step 4; the `@tomService` interfaces and reflection
+/// seed are added in step 5. This barrel is the stable public entry point.
 library;
+
+export 'src/dtos.dart';
