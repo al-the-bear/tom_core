@@ -1,5 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import 'enums.dart';
+
 /// A cross-user access record: grants a principal a role on a resource.
 ///
 /// The mechanism behind "Alice shares Project X with Bob as editor" — the app
@@ -7,9 +9,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// [granteeUserId] matches the principal and whose ([resourceType],
 /// [resourceId]) covers the requested object or one of its ancestors.
 ///
-/// [projectRole] is stored as a role name (`owner`/`editor`/`commenter`/
-/// `viewer`); the typed `projectRole` enum and its accessor are introduced with
-/// the role constants in step 3 of the plan.
+/// [projectRole] is stored as the [ProjectRole] name in a `TomString`; use
+/// [projectRoleValue] for the typed enum.
 @tomReflector
 class Share extends TomClass {
   /// Stable identifier (the server's primary key).
@@ -24,12 +25,20 @@ class Share extends TomClass {
   /// [User.id] the access is granted to.
   late final granteeUserId = TomString('');
 
-  /// Role name granted on the resource (`owner`/`editor`/`commenter`/`viewer`).
-  late final projectRole = TomString('viewer');
+  /// Role granted on the resource, stored as [ProjectRole.name]; use
+  /// [projectRoleValue] for the typed enum.
+  late final projectRole = TomString(ProjectRole.viewer.name);
 
   /// [User.id] of the principal who created the share.
   late final grantedById = TomString('');
 
   /// When the share was created; null until persisted.
   late final createdAt = TomNDateTime(null);
+
+  /// Typed view of [projectRole]; falls back to [ProjectRole.viewer] (the
+  /// least-privileged role) for an unknown stored value.
+  ProjectRole get projectRoleValue =>
+      ProjectRole.values.asNameMap()[projectRole.get()] ?? ProjectRole.viewer;
+
+  set projectRoleValue(ProjectRole value) => projectRole.set(value.name);
 }

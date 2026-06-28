@@ -33,4 +33,5 @@ void main() {
   TodoPriority.values;
   TodoLabel.values;
   UserStatus.values;
+  ProjectRole.values;
 }

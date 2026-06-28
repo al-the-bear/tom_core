@@ -9,9 +9,10 @@ authorization layer grades their fields.
 
 ## Status
 
-Entities defined (step 2). The eight observable `TomClass` entities and their
-enums are implemented, the reflection seed is generated, and a round-trip
-test per entity passes. The resource-key/role constants are added in step 3.
+Entities + constants defined (steps 2–3). The eight observable `TomClass`
+entities, their enums, the gradable resource-key constants, and the `ProjectRole`
+enum are implemented; the reflection seed is generated; and the test suite (a
+round-trip test per entity plus the gradable-key assertions) passes.
 
 ## Contents
 
@@ -20,14 +21,13 @@ test per entity passes. The resource-key/role constants are added in step 3.
   `Subtask`, `Share`. Relations are flat foreign keys, so each entity maps to
   its own SQL table in the app server's persistence layer.
 - Closed-set enums (`lib/src/enums.dart`): `TodoStatus`, `TodoPriority`,
-  `TodoLabel`, `UserStatus` — each stored as its `name` in a `TomString` with a
-  typed accessor on the owning entity.
+  `TodoLabel`, `UserStatus`, and `ProjectRole`
+  (`owner`/`editor`/`commenter`/`viewer`) — each stored as its `name` in a
+  `TomString` with a typed accessor on the owning entity.
+- Gradable resource-key constants (`lib/src/resource_keys.dart`):
+  `TodoItemResourceKeys` — the named, stable set of `todo.item.*` keys the
+  four-state field authorization model grades.
 - A reflection seed (`lib/src/reflection_entry.dart` →
   `reflection_entry.reflection.dart`); regenerate with
   `./reflection_generation.sh`. Call `initializeReflection()` once before
   constructing any entity.
-
-## Planned (later steps)
-
-- Resource-key constants (`TodoItemResourceKeys`) for the gradable fields and
-  the typed `projectRole` enum + accessor on `Share` (step 3).

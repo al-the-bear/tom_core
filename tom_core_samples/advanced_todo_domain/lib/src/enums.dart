@@ -66,3 +66,21 @@ extension UserStatusText on UserStatus {
         UserStatus.suspended => 'Suspended',
       };
 }
+
+/// The role a principal holds on a shared resource, most to least privileged.
+///
+/// The effective `ProjectRole` (from ownership or a `Share`) is what the
+/// auth server's grant matrix keys field-level `TomAuthState` grades on. Stored
+/// on a `Share` as the role's [Enum.name] in a `TomString`.
+enum ProjectRole { owner, editor, commenter, viewer }
+
+/// Human-facing labels for [ProjectRole].
+extension ProjectRoleText on ProjectRole {
+  /// Display text, e.g. `Commenter` for [ProjectRole.commenter].
+  String get label => switch (this) {
+        ProjectRole.owner => 'Owner',
+        ProjectRole.editor => 'Editor',
+        ProjectRole.commenter => 'Commenter',
+        ProjectRole.viewer => 'Viewer',
+      };
+}

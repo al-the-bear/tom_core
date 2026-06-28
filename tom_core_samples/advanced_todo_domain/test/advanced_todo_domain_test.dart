@@ -191,6 +191,7 @@ void main() {
   group('Share', () {
     test('defaults to the viewer role', () {
       expect(Share().projectRole.get(), 'viewer');
+      expect(Share().projectRoleValue, ProjectRole.viewer);
     });
 
     test('round-trips every field', () {
@@ -200,7 +201,7 @@ void main() {
         ..resourceType.set('project')
         ..resourceId.set('p1')
         ..granteeUserId.set('u2')
-        ..projectRole.set('editor')
+        ..projectRoleValue = ProjectRole.editor
         ..grantedById.set('u1')
         ..createdAt.set(created);
       expect(share.id.get(), 'sh1');
@@ -208,8 +209,48 @@ void main() {
       expect(share.resourceId.get(), 'p1');
       expect(share.granteeUserId.get(), 'u2');
       expect(share.projectRole.get(), 'editor');
+      expect(share.projectRoleValue, ProjectRole.editor);
       expect(share.grantedById.get(), 'u1');
       expect(share.createdAt.getOrNull(), created);
+    });
+
+    test('unknown stored role falls back to viewer', () {
+      final share = Share()..projectRole.set('bogus');
+      expect(share.projectRoleValue, ProjectRole.viewer);
+    });
+  });
+
+  group('TodoItemResourceKeys', () {
+    test('exposes the full, stable gradable-key set in display order', () {
+      expect(TodoItemResourceKeys.all, [
+        'todo.item.title',
+        'todo.item.status',
+        'todo.item.priority',
+        'todo.item.assigneeId',
+        'todo.item.dueDate',
+        'todo.item.estimate',
+        'todo.item.description',
+      ]);
+    });
+
+    test('every named key is included in `all` exactly once', () {
+      final named = [
+        TodoItemResourceKeys.title,
+        TodoItemResourceKeys.status,
+        TodoItemResourceKeys.priority,
+        TodoItemResourceKeys.assigneeId,
+        TodoItemResourceKeys.dueDate,
+        TodoItemResourceKeys.estimate,
+        TodoItemResourceKeys.description,
+      ];
+      expect(TodoItemResourceKeys.all, named);
+      expect(TodoItemResourceKeys.all.toSet(), hasLength(named.length));
+    });
+
+    test('every key is namespaced under `todo.item.`', () {
+      for (final key in TodoItemResourceKeys.all) {
+        expect(key, startsWith('todo.item.'));
+      }
     });
   });
 
@@ -232,6 +273,11 @@ void main() {
         final user = User()..statusValue = userStatus;
         expect(user.statusValue, userStatus);
       }
+      for (final role in ProjectRole.values) {
+        final share = Share()..projectRoleValue = role;
+        expect(share.projectRoleValue, role);
+        expect(share.projectRole.get(), role.name);
+      }
     });
 
     test('labels render human-facing text', () {
@@ -239,6 +285,7 @@ void main() {
       expect(TodoPriority.critical.label, 'Critical');
       expect(TodoLabel.docs.label, 'Docs');
       expect(UserStatus.suspended.label, 'Suspended');
+      expect(ProjectRole.commenter.label, 'Commenter');
     });
   });
 }
