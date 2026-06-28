@@ -1,0 +1,7 @@
+# Base auth-server configuration. Environment overlays (config-resources_dev.yaml)
+# merge on top; OS env, .env, and CLI args win last.
+app:
+  title: "Advanced Tom Core — Auth Server"
+# Single isolate keeps the sample readable.
+isolateCount: 0
+logLevel: "production"
