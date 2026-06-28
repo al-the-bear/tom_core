@@ -15,6 +15,13 @@ dependencies:
     path: ../../tom_core_kernel
   advanced_todo_contracts:
     path: ../advanced_todo_contracts
+  # The reflected domain entities (Workspace/Project/TodoList/TodoItem/
+  # TodoComment) the app-API parsers build from the wire JSON, plus
+  # initializeReflection(). The contracts package already pulls it transitively
+  # (its service interfaces are typed in these entities); declaring it directly
+  # lets the client name the types without an implicit-dependency lint.
+  advanced_todo_domain:
+    path: ../advanced_todo_domain
 
 dev_dependencies:
   lints: ^6.0.0
