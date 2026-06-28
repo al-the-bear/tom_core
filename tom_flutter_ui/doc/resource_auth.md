@@ -109,9 +109,8 @@ the canonical set from `tom_core_kernel`
 (`security/tom_authorization.dart`): `TomAuthState` (`none` < `disabled` <
 `read` < `full`), `TomAuthorizable`, `TomAuthorizationGroup`,
 `TomAuthorizationAdapter`, `TomAuthorization`, `TomAuthorizer`,
-`TomAuthorizerStrategy`, `TomUIStateController`. Two backward-compatible
-typedefs remain for the old names: `TomUIAuthorization` (→ `TomAuthorization`)
-and `TomUIAuthorizationAdapter` (→ `TomAuthorizationAdapter`). Consuming the
+`TomAuthorizerStrategy`, `TomUIStateController`. Widget code uses these
+canonical kernel names directly — there are no UI-specific aliases. Consuming the
 auth types through this barrel means widget code imports a single
 `tom_flutter_ui` surface rather than reaching into the kernel directly.
 

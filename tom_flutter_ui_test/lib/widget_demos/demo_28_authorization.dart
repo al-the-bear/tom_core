@@ -2,11 +2,11 @@
 ///
 /// Demonstrates the Tom UI authorization system. Shows how widgets can be
 /// hidden or made readonly based on authorization state, how [TomUIGroup]
-/// controls collective visibility, and how [TomUIAuthorization] resolves
+/// controls collective visibility, and how [TomAuthorization] resolves
 /// auth state from resource paths.
 ///
 /// Key concepts:
-/// - Per-widget visibility/readonly via [TomUIAuthorization]
+/// - Per-widget visibility/readonly via [TomAuthorization]
 /// - Group-based visibility via [TomUIGroup]
 /// - Authorization with scoped providers
 /// - Readonly styling applied by [TomThemeScope]
@@ -20,7 +20,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 // =============================================================================
 
 /// Demo adapter that allows toggling authorization state at runtime.
-class DemoAuthorizationAdapter implements TomUIAuthorizationAdapter {
+class DemoAuthorizationAdapter implements TomAuthorizationAdapter {
   final Map<String, TomAuthState> _rules = {};
 
   void setRule(String path, TomAuthState state) {
@@ -184,7 +184,7 @@ class _AuthorizationDemoContentState
   void initState() {
     super.initState();
     // Install our demo adapter
-    TomUIAuthorization.adapter = _authAdapter;
+    TomAuthorization.adapter = _authAdapter;
   }
 
   /// Recreates all providers and widgets from scratch.
@@ -444,7 +444,7 @@ class _AuthorizationDemoContentState
         children: [
           for (final path in paths) ...[
             Builder(builder: (context) {
-              final auth = TomUIAuthorization.resolveAuth(path);
+              final auth = TomAuthorization.resolveAuth(path);
               final stateLabel = !auth.isVisible
                   ? 'HIDDEN'
                   : auth == TomAuthState.read

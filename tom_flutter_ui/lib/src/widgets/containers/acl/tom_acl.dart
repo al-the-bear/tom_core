@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../../resource_auth/tom_auth_state.dart';
 import '../../../widget_base/tom_construction_helpers.dart';
 import '../../../theme/tom_theme.dart';
 import '../../../widget_base/tom_style_resolvers.dart';
@@ -15,7 +14,7 @@ import '../../../widget_base/tom_screen_elements_provider.dart';
 /// A delegating wrapper around [AclBuilder] that adds Tom UI concerns:
 ///
 /// - **Element provider** — typed access to screen elements via `(T p) => p.field`.
-/// - **Authorization** — container-level visibility check via [TomUIAuthorization].
+/// - **Authorization** — container-level visibility check via [TomAuthorization].
 /// - **Resources** — container title resolved from [TomCtr] if not explicit.
 /// - **Identity scope** — wraps the result in [TomScope] for descendant resolution.
 ///
@@ -726,7 +725,7 @@ class TomAclBuilder<T extends TomScreenElementsProvider> {
     final containerPath = scopePath.isNotEmpty ? '$scopePath.$id' : id;
 
     // Container-level authorization
-    final auth = TomUIAuthorization.resolveAuth(containerPath);
+    final auth = TomAuthorization.resolveAuth(containerPath);
     if (!auth.isVisible) return const SizedBox.shrink();
 
     // Resolve unset parameters from resources

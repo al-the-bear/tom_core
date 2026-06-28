@@ -132,7 +132,7 @@ The field catalogue spans a parallel Material/Cupertino set: **string**
 | ---- | -------------- |
 | `TomUIColors`, `TomUIIcons` | Resource-resolved colour / icon namespaces |
 | `TomUIColorAdapter`, `TomUIIconAdapter`, `AllColorsAdapter` | Pluggable resource adapters |
-| `TomUIAuthorization`, `TomUIAuthorizationAdapter` | The UI authorization bridge |
+| `TomAuthorization`, `TomAuthorizationAdapter` | The kernel four-state authorization, re-exported for UI code |
 | `TomConfigProvider`, `TomEnvironment`, `TomPlatform` | Config / environment inputs |
 
 ### Actions (`actions/`)
@@ -276,7 +276,7 @@ tom_flutter_ui
 ├── widget_base/                 # TomNodeBase / TomPolicyNodeBase / TomWidgetFamily,
 │                                #   scope widgets, screen-elements provider, resolvers
 ├── theme/                       # TomTheme + style-variant system
-├── resource_auth/               # TomUIColors / TomUIIcons / TomUIAuthorization adapters
+├── resource_auth/               # TomUIColors / TomUIIcons / TomAuthorization adapters
 ├── groups/                      # TomUIGroup collective visibility
 ├── actions/                     # TomAction system (transactions, undo/redo, triggers)
 ├── advanced_container_layout/   # AclBuilder fluent row engine + Acl render widgets

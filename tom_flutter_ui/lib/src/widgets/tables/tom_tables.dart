@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../../resource_auth/tom_auth_state.dart';
 import '../../theme/tom_theme.dart';
 import '../../widget_base/tom_construction_helpers.dart';
 import '../../widget_base/tom_family_base.dart';
@@ -577,7 +576,7 @@ class _TomAuthContent extends StatelessWidget {
   Widget build(BuildContext context) {
     if (basePath == null) return child;
 
-    final auth = TomUIAuthorization.resolveAuth(basePath!);
+    final auth = TomAuthorization.resolveAuth(basePath!);
 
     // Hidden: return empty
     if (!auth.isVisible) {
@@ -748,13 +747,13 @@ class TomDataColumn extends DataColumn {
   /// ```
   bool isVisible(BuildContext context) {
     if (basePath == null) return true;
-    return TomUIAuthorization.resolveAuth(basePath!).isVisible;
+    return TomAuthorization.resolveAuth(basePath!).isVisible;
   }
 
   /// Returns true if this column should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (basePath == null) return false;
-    return TomUIAuthorization.resolveAuth(basePath!) == TomAuthState.read;
+    return TomAuthorization.resolveAuth(basePath!) == TomAuthState.read;
   }
 }
 
@@ -814,12 +813,12 @@ class TomDataRow extends DataRow {
   /// ```
   bool isVisible(BuildContext context) {
     if (basePath == null) return true;
-    return TomUIAuthorization.resolveAuth(basePath!).isVisible;
+    return TomAuthorization.resolveAuth(basePath!).isVisible;
   }
 
   /// Returns true if this row should be readonly based on authorization.
   bool isReadonly(BuildContext context) {
     if (basePath == null) return false;
-    return TomUIAuthorization.resolveAuth(basePath!) == TomAuthState.read;
+    return TomAuthorization.resolveAuth(basePath!) == TomAuthState.read;
   }
 }

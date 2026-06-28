@@ -1,7 +1,6 @@
 // Re-export the canonical authorization types from tom_core_kernel.
-// The definitions are now in tom_core_kernel/security/tom_authorization.dart.
-//
-// Legacy names are provided as typedefs for backward compatibility.
+// The definitions are now in tom_core_kernel/security/tom_authorization.dart;
+// the UI layer uses those canonical names directly (no UI-specific aliases).
 export 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart'
     show
         TomAuthState,
@@ -12,14 +11,3 @@ export 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart'
         TomAuthorizer,
         TomAuthorizerStrategy,
         TomUIStateController;
-
-// ---------------------------------------------------------------------------
-// Backward-compatible typedefs for old names
-// ---------------------------------------------------------------------------
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
-/// @Deprecated('Use TomAuthorization instead')
-typedef TomUIAuthorization = TomAuthorization;
-
-/// @Deprecated('Use TomAuthorizationAdapter instead')
-typedef TomUIAuthorizationAdapter = TomAuthorizationAdapter;

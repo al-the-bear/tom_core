@@ -16,7 +16,7 @@ widget tree renders differently per theme, platform, or environment.
 | `TomUIColors` / `TomUIIcons` | Static colour / icon namespaces resolved through an adapter |
 | `AllColorsAdapter` / `AllIconsAdapter` | Default adapters; `registerColors` extends the colour set |
 | `TomUIColorAdapter` / `TomUIIconAdapter` | The pluggable adapter contracts |
-| `TomUIAuthorization` / `TomUIAuthorizationAdapter` | The UI bridge onto the kernel's four-state authorization |
+| `TomAuthorization` / `TomAuthorizationAdapter` | The kernel's four-state authorization, re-exported for UI code |
 | `TomConfigProvider` | Config / feature-flag provider (`create` + `initialize` + `current`) |
 | `TomEnvironment` / `TomPlatform` | Environment & platform enums feeding config + responsive layout |
 

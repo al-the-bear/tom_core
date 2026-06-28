@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../resource_auth/tom_auth_state.dart';
 import '../theme/tom_theme.dart';
 import 'acl_flags.dart';
 import 'acl_device_context.dart';
@@ -1625,7 +1624,7 @@ class _AclContainerState extends State<AclContainer> {
               rowId: row.id!,
               groupName: row.group,
             );
-            rowAuthState = TomUIAuthorization.resolveAuth(rowPath);
+            rowAuthState = TomAuthorization.resolveAuth(rowPath);
             if (!rowAuthState.isVisible) {
               contentRowIndex++;
               continue;
@@ -2351,7 +2350,7 @@ class _AclContainerState extends State<AclContainer> {
           groupName: compGroup,
           rowId: row.id,
         );
-        authState = TomUIAuthorization.resolveAuth(componentPolicyPath);
+        authState = TomAuthorization.resolveAuth(componentPolicyPath);
         if (!authState.isVisible) {
           children.add(const SizedBox.shrink());
           continue;

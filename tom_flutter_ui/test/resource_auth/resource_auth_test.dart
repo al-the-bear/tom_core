@@ -172,12 +172,5 @@ void main() {
       expect(TomAuthState.full.isInteractive, isTrue);
       expect(TomAuthState.read.showsContent, isTrue);
     });
-
-    test('legacy typedefs alias the kernel types', () {
-      // A typedef's type literal evaluates to the aliased type, so these
-      // Type objects must be identical.
-      expect(TomUIAuthorization, equals(TomAuthorization));
-      expect(TomUIAuthorizationAdapter, equals(TomAuthorizationAdapter));
-    });
   });
 }
