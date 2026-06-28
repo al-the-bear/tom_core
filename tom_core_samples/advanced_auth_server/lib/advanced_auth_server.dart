@@ -13,5 +13,6 @@ library;
 
 export 'src/auth/authentication_service.dart';
 export 'src/auth/password_hashing.dart';
+export 'src/endpoints/auth_endpoints.dart';
 export 'src/persistence/auth_mapping.dart';
 export 'src/persistence/auth_persistence_model.dart';

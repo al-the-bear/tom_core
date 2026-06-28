@@ -20,6 +20,9 @@ dependencies:
   advanced_todo_domain:
     path: ../advanced_todo_domain
   tom_reflection: any
+  # Endpoint error handlers return shelf Responses (the 401 login mapping), so
+  # shelf is a direct dependency, not merely transitive via tom_core_server.
+  shelf: ^1.4.2
 
 dev_dependencies:
   lints: ^6.0.0
