@@ -1,3 +1,6 @@
 # Dart / pub
 .dart_tool/
 pubspec.lock
+
+# Testkit baselines / last run (machine-local)
+testlog/
