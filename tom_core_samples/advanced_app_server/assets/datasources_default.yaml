@@ -1,0 +1,31 @@
+# Datasource configuration with environment-variable substitution
+# (${VAR:default}). The map key MUST equal the migration folder name under
+# database_migrations/ — here `app_db` — so TomDbMigrations matches schema to
+# datasource. The `mariadb` driver is auto-discovered by tom_core_server.
+#
+# `port` is a literal int, not a `${...}` substitution: the substitution always
+# yields a string, and the MariaDB datasource binds `port` to an int field, so a
+# substituted "3308" fails reflection. The compose service publishes 3308 on the
+# host (so app_db, the auth server's auth_db, and a host-local MariaDB do not
+# collide). Host/credentials/name are strings, so they substitute cleanly.
+app_db:
+  type: mariadb
+  username: ${APP_DB_USER:app}
+  password: ${APP_DB_PASSWORD:app}
+  host: ${APP_DB_HOST:localhost}
+  port: 3308
+  databaseName: ${APP_DB_NAME:app_db}
+
+# The framework's graded-authorization store (`TomResourceGrant`) is bound to the
+# `main` datasource. The grant matrix is OWNED by the auth server's `auth_db`
+# (the authadmin client edits it there), so the app server reads it by pointing
+# `main` at the SAME physical MariaDB the auth server runs — its `tom_resource_grant`
+# table on host port 3307. The app server never writes grants; it only resolves a
+# principal's per-field states from the rows the auth server seeded.
+main:
+  type: mariadb
+  username: ${AUTH_DB_USER:auth}
+  password: ${AUTH_DB_PASSWORD:auth}
+  host: ${AUTH_DB_HOST:localhost}
+  port: 3307
+  databaseName: ${AUTH_DB_NAME:auth_db}

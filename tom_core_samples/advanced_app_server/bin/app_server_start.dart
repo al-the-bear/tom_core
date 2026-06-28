@@ -1,13 +1,219 @@
-/// Live-boot entrypoint for the advanced app server, and the reflection root
-/// for the package (see `build.yaml`).
+/// Live-boot entrypoint for the advanced app server, and the reflection root for
+/// the package (see `build.yaml`).
 ///
-/// The full boot sequence (platform → reflection → runtime → config →
-/// datasource → beans → migrations → `TomServer.start()`, wired with
-/// `tomDefaultAuthenticationMiddleware`) is implemented in step 21. This stub
-/// keeps the package compilable and analyzable until then.
-void main(List<String> args) {
-  print(
-    'advanced_app_server: scaffold only — the secured boot sequence is wired '
-    'in step 21 of advanced_example_specification_plan.md.',
+/// The smallest single-isolate `TomServer` boot that serves the secured todo
+/// board against the bundled Docker MariaDB. It follows the same sequence as the
+/// auth server (`core_server_sample` / `tom_uam_server` lineage):
+///
+///   platform → registry → reflection → runtime → config → datasource →
+///   JWT signing → bean context → migrations → `TomServer.start()`
+///
+/// Every endpoint but `/health` is `@TomAuthenticatedAccess`, so the boot trusts
+/// the **same JWT signing key as the auth server**: [initializeJwtSigning] applies
+/// the identical framework sample keypair (`isDummy: false`), which is what lets a
+/// token minted by `advanced_auth_server` verify here — the standard "resource
+/// server trusts the authorization server" split. The authentication middleware
+/// itself is left null so `TomServer.start()` installs the framework default
+/// (`tomDefaultAuthenticationMiddleware`), which reads the bearer token into the
+/// request zone for `TomBearerAuthentication.getPrincipal()`. The server-level
+/// [appServerErrorHandler] maps the service layer's closed/safe denial keys to
+/// HTTP 403/404 (the mapping step 20 deferred to the boot).
+///
+/// Two datasources are wired (`assets/datasources_default.yaml`): `app_db` holds
+/// the app's own tables, and `main` points at the auth server's `auth_db` so the
+/// field-grade resolver reads the `tom_resource_grant` matrix the auth server
+/// owns. The app server only *reads* grants; it never writes them.
+///
+/// Run it from the package root (relative asset/migration paths resolve against
+/// the CWD), with the auth server (and its DB) already up so tokens verify and
+/// the grant matrix is reachable:
+///
+/// ```sh
+/// cp .env.example .env
+/// docker compose up -d app-db        # MariaDB on host port 3308
+/// dart run bin/app_server_start.dart # HTTP on port 8080
+/// ```
+///
+/// This file is also the reflection-generation root (`build.yaml`): the generator
+/// follows its import graph to discover every `@tomReflector` / `@tomComponent`
+/// type — this config class, the `AppApiService` implementation, the `app_db`
+/// records, and (transitively, through the `tom_core_server` barrel) the MariaDB
+/// driver, migration adaptor, and `TomResourceGrant`. Regenerate with
+/// `./reflection_generation.sh` after changing any reflected shape.
+library;
+
+import 'dart:io';
+
+import 'package:shelf/shelf.dart';
+import 'package:tom_core_server/tom_core_server.dart';
+
+// Imported for its reflection side effects and its production wiring: the barrel
+// re-exports the app API service implementation, the app_db records, the
+// repository singletons, and the `appForbiddenOrNotFound` handler this boot
+// installs below.
+import 'package:advanced_app_server/advanced_app_server.dart';
+
+// Registers the auth/admin/app endpoint definitions with the global
+// `tomRemoteApis` registry the endpoint router resolves URIs from.
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
+
+import 'app_server_start.reflection.dart';
+
+/// HTTP port the app server binds (overridable via the `port` config key / env /
+/// `--port=`). 8080 keeps it clear of the auth server's 8081.
+const int _defaultPort = 8080;
+
+/// The app-server configuration.
+///
+/// `@tomReflector` so `tomReflectionInfo.setValues<AppServerConfiguration>` can
+/// populate it from the merged config/env/args. The constructor runs after the
+/// base has applied the loaded values, so the fields set here are the sample's
+/// fixed choices: a single plain-HTTP isolate bound on all interfaces, plus the
+/// server-level error handler that yields the service layer's 403/404.
+@tomReflector
+class AppServerConfiguration extends TomBaseServerConfiguration {
+  /// Builds the configuration from the process [args].
+  AppServerConfiguration(super.args) {
+    appId = 'app';
+    if (port == 0) port = _defaultPort;
+    noSsl = true;
+    isolateLogging = false;
+    listenToAnyIP = true;
+    errorHandler = appServerErrorHandler;
+  }
+
+  @override
+  void setValues(Map<String, dynamic> values) {
+    tomReflectionInfo.setValues<AppServerConfiguration>(this, values);
+    tomAppId = appId;
+  }
+}
+
+/// The server-level error handler: the service layer's denial keys → 403/404,
+/// else the framework default JSON error.
+///
+/// The read/write/share services throw stable [TomEndpointHandlerException] keys
+/// (`app.access.forbidden`, `app.item.not_found`, …) rather than HTTP responses,
+/// and the endpoint pipeline's pre-invocation auth check throws its access-denied
+/// exception *outside* the per-endpoint try/catch — so only a server-level
+/// handler can map them. [appForbiddenOrNotFound] turns those keys into 403/404
+/// and returns null for everything else; the null is composed here onto
+/// [TomDefaultErrorHandler] so genuine faults still get the framework's standard
+/// JSON error response rather than an opaque shelf 500.
+Response? appServerErrorHandler(
+  Request request,
+  Object error,
+  StackTrace stack,
+) =>
+    appForbiddenOrNotFound(request, error, stack) ??
+    const TomDefaultErrorHandler()
+        .handleErrorDefault(error, stack, request, null);
+
+/// Production environment — the root of the (small) environment hierarchy.
+const TomEnvironment environmentProd = TomEnvironment('prod');
+
+/// Development overlay selected by `env=dev`.
+const TomEnvironment environmentDev = TomEnvironment(
+  'dev',
+  parent: environmentProd,
+  isDevelopment: true,
+  isTest: true,
+);
+
+/// Registers the environment hierarchy and resolves the current environment from
+/// the `env` variable (defaults to `prod`).
+void initializeRuntime() {
+  TomRuntime.addEnvironment(environmentProd);
+  TomRuntime.addEnvironment(environmentDev);
+  TomRuntime.setRootEnvironment(environmentProd);
+  TomRuntime.setCurrentEnvironment(Platform.environment['env'], 'prod');
+  TomRuntime.getCurrentEnvironment().initialize();
+  TomRuntime.initializePlatform();
+}
+
+/// Loads `assets/config-resources_default.yaml` plus the active environment
+/// overlay (`_<env>.yaml`); env/`.env`/args win on top inside the base config.
+Map<String, dynamic> configLoaderFunction() {
+  final result = <String, dynamic>{};
+  _mergeYamlIfPresent(result, 'assets/config-resources_default.yaml');
+  for (final env in TomRuntime.getEnvironmentHierarchy()) {
+    _mergeYamlIfPresent(result, 'assets/config-resources_${env.env}.yaml');
+  }
+  return result;
+}
+
+/// Loads `assets/datasources_default.yaml` (with `${VAR:default}` substitution).
+Map<String, dynamic> datasourceLoaderFunction() {
+  final result = <String, dynamic>{};
+  _mergeYamlIfPresent(result, 'assets/datasources_default.yaml');
+  return result;
+}
+
+void _mergeYamlIfPresent(Map<String, dynamic> into, String path) {
+  if (!File(path).existsSync()) return;
+  mergeMapsOneSided(into, TomYaml.loadYamlFile(path));
+}
+
+/// Installs the config-resource provider so the configuration can read the loaded
+/// `config-resources_*.yaml` keys.
+void initializeServerResources() {
+  TomServerConfigResourceProvider.setServerConfigProvider(
+    TomServerConfigResourceProvider.from(configLoaderFunction()),
   );
+}
+
+/// Configures JWT signing/encryption with the framework's bundled sample keypair,
+/// marked non-dummy so no development-key warning is logged.
+///
+/// This is the **identical** configuration the auth server applies in its own
+/// `initializeJwtSigning()`. Reusing the framework's standard sample keys — rather
+/// than minting per-server keys — is what lets this app server verify a token the
+/// auth server issued; the `false` flag only suppresses the dummy-key warning, it
+/// does not change the keys. Replace with real keys before any real deployment.
+void initializeJwtSigning() {
+  final base = TomJwtConfiguration.defaultSignConfiguration;
+  TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
+    TomJwtConfiguration.hmacKey,
+    base.algorithm,
+    TomJwtConfiguration.rsaPrivKey,
+    TomJwtConfiguration.rsaPubKey,
+    false,
+  );
+}
+
+/// Boots the HTTP server (fire-and-forget; the bound socket + open DB connection
+/// keep the isolate alive).
+void startServer(AppServerConfiguration configuration) {
+  TomServer(configuration).start();
+}
+
+Future<void> main(List<String> args) async {
+  TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
+
+  registerAdvancedTodoApis();
+  // The issuer the auth server signs with; the app server must match it to
+  // verify a minted token.
+  TomAuthenticationServer.globalSettingJwtOrganization = 'tom';
+
+  initializeReflection();
+  initializeRuntime();
+  initializeServerResources();
+
+  final configuration = AppServerConfiguration(args);
+
+  await TomDataSourceInfo.initializeDatasourceInfo(datasourceLoaderFunction());
+
+  initializeJwtSigning();
+
+  initializeBeanContext();
+
+  tomLog.setLogLevelByName(configuration.logLevel);
+
+  await TomDbMigrations.migrateDatabases(
+    configuration.databaseMigrationsDirectory,
+  );
+
+  startServer(configuration);
+
+  tomLog.info('Advanced app server started on port ${configuration.port}.');
 }

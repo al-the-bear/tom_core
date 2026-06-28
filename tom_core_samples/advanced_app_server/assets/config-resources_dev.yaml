@@ -1,0 +1,4 @@
+# Development overlay — merged on top of config-resources_default.yaml.
+app:
+  title: "Advanced Tom Core — App Server (DEV)"
+logLevel: "development"

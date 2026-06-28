@@ -20,23 +20,32 @@
 ///   (role minimums for create/delete/comment) and, for item writes, enforces
 ///   the four-state field grade — a change to any field the caller is not `full`
 ///   on rejects the write, and the persisted row overlays only permitted fields.
+/// - [AppShareStore] / [AppShareService] are the cross-user sharing counterpart
+///   (step 21): only an `owner` of the target resource may create a [ShareRecord]
+///   (which immediately grants the grantee access, since the resource-access
+///   resolver reads shares) or revoke one.
 /// - [AdvancedAppApiService] is the thin `@tomComponent` adapter the endpoint
 ///   pipeline routes to. It binds each [AppApiService] method to its registry
 ///   endpoint (`tomRemoteApis['app'][...]`), sources the caller's principal from
-///   the bearer token, and delegates reads to [AppReadService] and writes to
-///   [AppWriteService]. The share endpoints are wired in step 21; until then they
-///   throw a clear deferral so the contract stays fully implemented and analyzable.
+///   the bearer token, and delegates reads to [AppReadService], writes to
+///   [AppWriteService], and shares to [AppShareService].
 ///
-/// This file delivers steps 19 (reads) and 20 (writes). The component is
-/// exercised end-to-end only at boot (step 21), where its reflection is generated
-/// from the `bin/app_server_start.dart` import graph; the step-19/20 "Done" bars
-/// are the database-free [AppReadService]/[AppWriteService] integration tests (a
-/// shared user sees the owner's project; a `viewer` write to a read-only field is
-/// rejected while an `editor` write persists only the permitted fields).
+/// This file delivers steps 19 (reads), 20 (writes), and 21 (shares). The
+/// component is exercised end-to-end at boot (step 21), where its reflection is
+/// generated from the `bin/app_server_start.dart` import graph; the step-19/20/21
+/// "Done" bars are the database-free [AppReadService]/[AppWriteService]/
+/// [AppShareService] integration tests (a shared user sees the owner's project; a
+/// `viewer` write to a read-only field is rejected while an `editor` write
+/// persists only the permitted fields; a created share grants the grantee
+/// access). [appForbiddenOrNotFound] is the server-level handler the boot installs
+/// to map the services' closed/safe denial keys to HTTP 403/404.
 library;
+
+import 'dart:convert';
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
+import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../access/field_grade_resolver.dart';
@@ -704,6 +713,234 @@ class AppWriteService {
     ..updatedAt = record.updatedAt;
 }
 
+/// The persistence seam the [AppShareService] reads and mutates shares through.
+///
+/// Sharing needs to insert a new [ShareRecord], load one by id (to authorize a
+/// revoke against the share's target), and delete it. [RepositoryAppShareStore]
+/// is the live store over the step-14 [shareRepository] singleton;
+/// [InMemoryAppShareStore] is a seeded, database-free store the step-21 tests
+/// drive and introspect.
+abstract class AppShareStore {
+  /// Inserts (when `id` is `null`) or updates [record], returning the saved row
+  /// (an insert carries the assigned surrogate key).
+  Future<ShareRecord> saveShare(ShareRecord record);
+
+  /// Returns the share row for [id], or `null` when it does not exist.
+  Future<ShareRecord?> findShare(int id);
+
+  /// Deletes the share row with [id].
+  Future<void> deleteShare(int id);
+}
+
+/// The query-backed [AppShareStore] wired at boot.
+///
+/// Writes through the process-wide [shareRepository] singleton. Requires a live
+/// `app_db` connection and the reflection runtime, so it is exercised end-to-end
+/// (the unit tests use [InMemoryAppShareStore]).
+class RepositoryAppShareStore implements AppShareStore {
+  /// Creates the repository-backed store (stateless; reads the singleton).
+  const RepositoryAppShareStore();
+
+  @override
+  Future<ShareRecord> saveShare(ShareRecord record) =>
+      shareRepository.save(record);
+
+  @override
+  Future<ShareRecord?> findShare(int id) => shareRepository.findById(id);
+
+  @override
+  Future<void> deleteShare(int id) => shareRepository.deleteById(id);
+}
+
+/// A seeded, database-free [AppShareStore] for tests (and local scaffolding).
+///
+/// Holds the share rows directly and assigns a surrogate key on insert. The
+/// [shares] getter lets a test assert the persisted grant — and feed it into an
+/// [InMemoryAppResourceStore] to prove the new share *immediately grants the
+/// grantee access* (the step-21 "Done" bar), with no connection or reflection.
+class InMemoryAppShareStore implements AppShareStore {
+  final List<ShareRecord> _shares;
+
+  int _nextShareId = 1;
+
+  /// Seeds the store with the given rows (defaults to empty); the auto-increment
+  /// counter advances past any seeded ids.
+  InMemoryAppShareStore({List<ShareRecord> shares = const []})
+      : _shares = [...shares] {
+    _nextShareId =
+        _shares.fold<int>(0, (max, s) => (s.id != null && s.id! > max) ? s.id! : max) +
+            1;
+  }
+
+  /// The persisted share rows (test introspection).
+  List<ShareRecord> get shares => List.unmodifiable(_shares);
+
+  @override
+  Future<ShareRecord> saveShare(ShareRecord record) async {
+    if (record.id == null) {
+      record.id = _nextShareId++;
+      _shares.add(record);
+    } else {
+      final index = _shares.indexWhere((s) => s.id == record.id);
+      if (index >= 0) {
+        _shares[index] = record;
+      } else {
+        _shares.add(record);
+      }
+    }
+    return record;
+  }
+
+  @override
+  Future<ShareRecord?> findShare(int id) async {
+    for (final share in _shares) {
+      if (share.id == id) return share;
+    }
+    return null;
+  }
+
+  @override
+  Future<void> deleteShare(int id) async =>
+      _shares.removeWhere((s) => s.id == id);
+}
+
+/// Cross-user sharing — the `POST /share` / `DELETE /share/{id}` logic (step 21).
+///
+/// Both operations are **owner-only**: the principal must resolve to
+/// [ProjectRole.owner] on the shared resource (via the step-17
+/// [ResourceAccessResolver]). Creating a share writes a [ShareRecord], which the
+/// resolver reads on the grantee's next request — so the grant takes effect
+/// immediately, with no further wiring. Revoking deletes the row, authorized
+/// against the share's own target.
+///
+/// Like the read/write services it has no server/zone dependency (only the store
+/// and the resolver's seam), so the share path unit-tests against seeded stores.
+class AppShareService {
+  /// The persistence seam shares are read and written through.
+  final AppShareStore store;
+
+  /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  final ResourceAccessResolver accessResolver;
+
+  /// Builds the service over its collaborators (live stores at boot, seeded
+  /// stores under test).
+  const AppShareService(this.store, this.accessResolver);
+
+  /// The production wiring: every collaborator over its repository-backed store.
+  factory AppShareService.production() => AppShareService(
+        const RepositoryAppShareStore(),
+        const ResourceAccessResolver(RepositoryAppResourceStore()),
+      );
+
+  /// Grants [request.granteeUserId] the [request.projectRole] on the resource
+  /// `(request.resourceType, request.resourceId)`. Only the resource's `owner`
+  /// may share. The principal who creates the share is recorded as the grantor.
+  Future<void> share(int userId, ShareRequest request) async {
+    final resourceId = int.tryParse(request.resourceId);
+    final granteeId = int.tryParse(request.granteeUserId);
+    if (resourceId == null || granteeId == null) {
+      throw TomEndpointHandlerException(
+        'app.share.invalid',
+        'share requires a numeric resourceId and granteeUserId',
+      );
+    }
+    await _requireOwner(userId, request.resourceType, resourceId);
+    final record = ShareRecord()
+      ..id = null
+      ..resourceType = request.resourceType
+      ..resourceId = resourceId
+      ..granteeUserId = granteeId
+      ..projectRole = request.projectRole.name
+      ..grantedById = userId
+      ..createdAt = DateTime.now();
+    await store.saveShare(record);
+  }
+
+  /// Revokes the share [shareId]. Only an `owner` of the share's target resource
+  /// may revoke it; an unknown share is reported as not found (closed/safe).
+  Future<void> revokeShare(int userId, int shareId) async {
+    final share = await store.findShare(shareId);
+    final resourceType = share?.resourceType;
+    final resourceId = share?.resourceId;
+    if (share == null || resourceType == null || resourceId == null) {
+      throw TomEndpointHandlerException(
+        'app.share.not_found',
+        'No share with id $shareId',
+      );
+    }
+    await _requireOwner(userId, resourceType, resourceId);
+    await store.deleteShare(shareId);
+  }
+
+  /// Asserts the principal [userId] is the `owner` of `(resourceType,
+  /// resourceId)`. No access or a weaker role both throw `app.access.forbidden`
+  /// (sharing is an ownership-only act, so a non-owner is simply forbidden).
+  Future<void> _requireOwner(
+    int userId,
+    String resourceType,
+    int resourceId,
+  ) async {
+    final role = await accessResolver.resolveRole(
+      userId: userId,
+      resourceType: resourceType,
+      resourceId: resourceId,
+    );
+    if (role != ProjectRole.owner) {
+      throw TomEndpointHandlerException(
+        'app.access.forbidden',
+        'Only the resource owner may share or revoke access.',
+      );
+    }
+  }
+}
+
+/// The message key the endpoint pipeline throws when an access check (e.g.
+/// `@TomAuthenticatedAccess` on a missing token) fails *before* the method runs.
+///
+/// Coupled to `TomEndpointHandler`'s access-denied throw in `tom_core_server`,
+/// it surfaces *outside* the per-endpoint try/catch, so only a server-level
+/// handler ([appForbiddenOrNotFound]) can map it.
+const String appEndpointAccessDeniedKey =
+    'endpoint_handler.handle_method_call.access_denied';
+
+/// Server-level error handler mapping the app services' closed/safe denial keys
+/// to HTTP statuses; returns `null` for everything else so genuine faults fall
+/// through to the framework's default JSON 500.
+///
+/// The services throw stable [TomEndpointHandlerException] keys rather than shelf
+/// responses (so they stay server-free and unit-testable). The boot composes this
+/// over [TomDefaultErrorHandler] to turn those keys into the HTTP contract §A.6
+/// promises:
+///
+/// - `app.item.not_found` / `app.share.not_found` → **404** (a resource the
+///   caller cannot reach is reported missing, never leaking its existence).
+/// - `app.access.forbidden` / `app.item.field_forbidden` (and the pipeline's
+///   pre-invocation [appEndpointAccessDeniedKey]) → **403**.
+Response? appForbiddenOrNotFound(
+  Request request,
+  Object error,
+  StackTrace stack,
+) {
+  if (error is! TomException) return null;
+  switch (error.key) {
+    case 'app.item.not_found':
+    case 'app.share.not_found':
+      return Response.notFound(
+        jsonEncode({'error': error.key}),
+        headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+      );
+    case 'app.access.forbidden':
+    case 'app.item.field_forbidden':
+    case appEndpointAccessDeniedKey:
+      return Response.forbidden(
+        jsonEncode({'error': error.key}),
+        headers: {TomHeader.contentType: TomMimeType.json.toHeaderValue()},
+      );
+    default:
+      return null;
+  }
+}
+
 /// The `@tomComponent` implementing the registry's `app` API.
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
@@ -714,11 +951,10 @@ class AppWriteService {
 /// principal, which the pipeline reads from the bearer token; the resource- and
 /// field-level checks then run inside the handlers.
 ///
-/// The read endpoints delegate to [AppReadService] and the write endpoints
+/// The read endpoints delegate to [AppReadService], the write endpoints
 /// (`createProject`/`createItem`/`updateItem`/`deleteItem`/`addComment`) to
-/// [AppWriteService] (role gating + field-grade enforcement). The share
-/// endpoints (step 21) remain scaffolded with a deferral throw until that step
-/// replaces them.
+/// [AppWriteService] (role gating + field-grade enforcement), and the share
+/// endpoints (`share`/`revokeShare`) to [AppShareService] (owner-only).
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'app')
@@ -729,6 +965,9 @@ class AdvancedAppApiService implements AppApiService {
   /// Production write logic (role gating + field-grade enforcement) over the
   /// repository-backed stores.
   final AppWriteService _writes = AppWriteService.production();
+
+  /// Production share logic (owner-only) over the repository-backed stores.
+  final AppShareService _shares = AppShareService.production();
 
   /// The authenticated caller's auth-user id (the surrogate key the `app_db`
   /// rows reference cross-database). Resolved from the bearer-token principal.
@@ -808,19 +1047,12 @@ class AdvancedAppApiService implements AppApiService {
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appShare')
   @override
-  Future<void> share(ShareRequest request) => _deferred('appShare');
+  Future<void> share(ShareRequest request) =>
+      _shares.share(_principalId, request);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appRevokeShare')
   @override
-  Future<void> revokeShare(String id) => _deferred('appRevokeShare');
-
-  /// Marks an endpoint that this step does not yet implement. The share
-  /// endpoints land in step 21; until then a call surfaces a clear, stable
-  /// signal rather than a silent no-op.
-  Never _deferred(String endpointId) => throw TomEndpointHandlerException(
-        'app.endpoint.not_implemented',
-        'The "$endpointId" endpoint is wired in step 21 of '
-            'advanced_example_specification_plan.md.',
-      );
+  Future<void> revokeShare(String id) =>
+      _shares.revokeShare(_principalId, int.tryParse(id) ?? -1);
 }

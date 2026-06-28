@@ -6,21 +6,148 @@ App server for the **advanced Tom Core full-stack sample** (see
 A secured task-manager API on `tom_core_server`. It trusts the JWT signing key
 shared with `advanced_auth_server`, validates the bearer token on every request,
 resolves the principal's resource access (ownership + shares) and four-state
-field grades, and persists the `app_db`.
+field grades, persists the `app_db`, and lets an owner share a resource with
+another user so the grant takes effect on the grantee's next request.
 
-## Status
+## Architecture
 
-Scaffold (step 1). Compiles and analyzes clean; `bin/app_server_start.dart` is a
-placeholder. The persistence, resolvers, endpoints, migrations, and live boot
-are implemented in steps 14–21.
+The `AppApiService` implementation is split into pure, database-free logic
+classes — each over a store seam — and one thin `@tomComponent` adapter the
+endpoint router binds to. Every service is unit-tested against seeded in-memory
+stores with no server and no MariaDB; the adapter carries the production wiring
+(the repository-backed stores) and the per-endpoint access annotations.
 
-## Planned contents
+| Logic (unit-tested, no server) | Concern | Surface |
+| --- | --- | --- |
+| `AppReadService` over `AppReadStore` | List workspaces/projects/lists/items; per-field grade states | `GET /workspaces…/items/{id}/field-states` |
+| `AppWriteService` over `AppWriteStore` + the resolvers | Create/update/delete items, comments, projects with field-grade enforcement | `POST`/`PUT`/`DELETE /items…`, `POST /projects` |
+| `AppShareService` over `AppShareStore` + the resolver | Owner-only share / revoke | `POST /share`, `DELETE /share/{id}` |
 
-- Persistence records + repositories for `app_db`
-  (workspaces/projects/lists/items/comments/subtasks/shares) and a pure
-  domain↔record mapping layer.
-- Resource-access resolver (ownership-or-share → effective `projectRole`) and a
-  field-grade resolver (`projectRole` → per-field `TomAuthState`).
-- `AppApiService` implementation: read + write endpoints with server-side
-  field-grade enforcement, plus the share endpoints.
-- `bin/app_server_start.dart` boot trusting the auth server's JWT key.
+Two resolvers underpin authorization (both database-free over their own seam):
+
+- **`ResourceAccessResolver`** — ownership-or-share → the principal's effective
+  `ProjectRole` on a resource (strongest share wins; walks
+  `item → list → project → workspace`). `null` means no access.
+- **`FieldGradeResolver`** — `ProjectRole` → per-field `TomAuthState` (the §A.4
+  grant matrix the auth server owns), so a write touching a field the role is
+  not `full` on is rejected server-side.
+
+The adapter (`AdvancedAppApiService`) declares the access annotations
+explicitly: `appHealth` is `@TomPublicAccess`, every other endpoint is
+`@TomAuthenticatedAccess`. The pipeline reads the caller's principal from the
+bearer token via the default `tomDefaultAuthenticationMiddleware`; the
+resource- and field-level checks then run inside the handlers. The services
+throw stable `TomEndpointHandlerException` keys rather than HTTP responses, and
+`bin/app_server_start.dart` installs the server-level `appServerErrorHandler`
+that maps those keys (and the pipeline's pre-invocation access-denied) onto the
+HTTP contract (§A.6): denials → **403**, an unreachable resource → **404**
+(closed/safe, never leaking existence), everything else → the framework default.
+
+## Running it
+
+The boot resolves relative asset/migration paths against the CWD, so run it from
+the package root — with the **auth server already up** (its DB holds the grant
+matrix this server reads, and it mints the tokens this server verifies):
+
+```sh
+# 1. Auth server + its DB (separate package) — see ../advanced_auth_server.
+( cd ../advanced_auth_server && cp .env.example .env \
+    && docker compose up -d auth-db \
+    && dart run bin/auth_server_start.dart )   # HTTP 8081, auth_db on 3307
+
+# 2. This app server + its DB.
+cp .env.example .env
+docker compose up -d app-db                    # MariaDB on host port 3308
+dart run bin/app_server_start.dart             # HTTP on port 8080
+```
+
+Two datasources are wired (`assets/datasources_default.yaml`): `app_db` (port
+3308) holds the app's own tables; `main` points at the auth server's `auth_db`
+(port 3307) so the field-grade resolver reads the `tom_resource_grant` matrix.
+**The app server only reads grants; it never writes them.** On first boot it
+applies the `database_migrations/app_db` tree (the app schema and demo seed).
+
+The seeded users come from the auth server (sample only — never ship them):
+
+| Username | Password | Note |
+| --- | --- | --- |
+| `admin` | `admin-pass` | global `admin` |
+| `alice` | `alice-pass` | owns workspace 1 |
+| `bob` | `bob-pass` | shared `editor` on project 1 |
+| `carol` | `carol-pass` | shared `viewer` on project 1 |
+
+## Endpoints
+
+`POST` / `PUT` bodies are JSON; `Authorization: Bearer <authzToken>` carries the
+auth server login's `authzToken`. All but `/health` require an authenticated
+principal; resource ownership/share and per-field grade are enforced inside the
+handlers.
+
+| Method & path | Access | Purpose |
+| --- | --- | --- |
+| `GET /health` | public | Liveness probe |
+| `GET /workspaces` | authenticated | Workspaces the caller can reach |
+| `GET /projects` · `POST /projects` | authenticated | List / create a project (workspace owner/editor) |
+| `GET /lists` | authenticated | Lists the caller can reach |
+| `GET /items` · `POST /items` | authenticated | List / create items (create: editor+, field-graded) |
+| `PUT /items/{id}` · `DELETE /items/{id}` | authenticated | Update (field-graded) / delete (editor+) an item |
+| `POST /items/{id}/comments` | authenticated | Comment on an item (commenter+) |
+| `GET /items/{id}/field-states` | authenticated | The caller's per-field `TomAuthState` for the item |
+| `POST /share` | authenticated | **Owner-only** — grant a user a role on a resource |
+| `DELETE /share/{id}` | authenticated | **Owner-only** — revoke a share |
+
+## `curl` tour
+
+Get a token from the **auth server** and reach an app-server endpoint with it —
+the cross-server JWT trust in action:
+
+```sh
+ALICE=$(curl -s http://localhost:8081/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"alice","password":"alice-pass"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["authzToken"])')
+
+# A token minted by the auth server (8081) verifies at the app server (8080).
+curl -s http://localhost:8080/projects -H "Authorization: Bearer $ALICE"
+```
+
+A missing/invalid token is rejected with **403** before the handler runs:
+
+```sh
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/projects
+```
+
+Share a project with another user — only its **owner** may, and the grant is
+effective immediately (the grantee's very next request resolves the new role):
+
+```sh
+# Look up carol's user id (she is the grantee).
+curl -s http://localhost:8081/admin/users -H "Authorization: Bearer $ADMIN"
+
+# alice owns project 1; grant carol `editor` on it.
+curl -s -X POST http://localhost:8080/share \
+  -H "Authorization: Bearer $ALICE" -H 'Content-Type: application/json' \
+  -d '{"resourceType":"project","resourceId":"1","granteeUserId":"4","projectRole":"editor"}'
+
+# carol can now create an item in project 1's list — access she lacked a moment ago.
+CAROL=$(curl -s http://localhost:8081/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"carol","password":"carol-pass"}' \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["authzToken"])')
+
+curl -s -X POST http://localhost:8080/items \
+  -H "Authorization: Bearer $CAROL" -H 'Content-Type: application/json' \
+  -d '{"listId":"1","title":"Filed via a fresh share"}'
+```
+
+A non-owner sharing is rejected with **403**; revoking the share
+(`DELETE /share/{id}` as the owner) removes the access again.
+
+## JWT signing
+
+The app server applies the **identical** `initializeJwtSigning()` as the auth
+server — the framework's bundled sample keypair, configured non-dummy — so a
+token the auth server mints (HS256 + RSA-encrypted authorization payload)
+verifies here. It also sets the same `globalSettingJwtOrganization = 'tom'`
+issuer. This is the standard "resource server trusts the authorization server"
+split. **Replace the keys with real ones before any real deployment.**
