@@ -12,4 +12,5 @@
 library;
 
 export 'src/auth/auth_client.dart';
+export 'src/http/authorized_http.dart';
 export 'src/http/json_transport.dart';
