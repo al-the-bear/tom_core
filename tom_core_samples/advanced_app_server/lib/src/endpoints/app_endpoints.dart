@@ -15,18 +15,24 @@
 ///   It has no server/zone dependency (only the resolvers' own seams), so the
 ///   visibility filter and the field-state matrix are unit-tested directly
 ///   against seeded stores — no server, no MariaDB.
+/// - [AppWriteStore] / [AppWriteService] are the write counterpart (step 20):
+///   the service gates each mutation by the principal's resolved [ProjectRole]
+///   (role minimums for create/delete/comment) and, for item writes, enforces
+///   the four-state field grade — a change to any field the caller is not `full`
+///   on rejects the write, and the persisted row overlays only permitted fields.
 /// - [AdvancedAppApiService] is the thin `@tomComponent` adapter the endpoint
 ///   pipeline routes to. It binds each [AppApiService] method to its registry
 ///   endpoint (`tomRemoteApis['app'][...]`), sources the caller's principal from
-///   the bearer token, and (for the reads) delegates to [AppReadService]. The
-///   write and share endpoints are wired in steps 20–21; until then they throw a
-///   clear deferral so the contract stays fully implemented and analyzable.
+///   the bearer token, and delegates reads to [AppReadService] and writes to
+///   [AppWriteService]. The share endpoints are wired in step 21; until then they
+///   throw a clear deferral so the contract stays fully implemented and analyzable.
 ///
-/// This file delivers step 19 (the read endpoints). The component is exercised
-/// end-to-end only at boot (step 21), where its reflection is generated from the
-/// `bin/app_server_start.dart` import graph; the step-19 "Done" bar is the
-/// database-free [AppReadService] integration test (a shared user sees the
-/// owner's project, a stranger does not).
+/// This file delivers steps 19 (reads) and 20 (writes). The component is
+/// exercised end-to-end only at boot (step 21), where its reflection is generated
+/// from the `bin/app_server_start.dart` import graph; the step-19/20 "Done" bars
+/// are the database-free [AppReadService]/[AppWriteService] integration tests (a
+/// shared user sees the owner's project; a `viewer` write to a read-only field is
+/// rejected while an `editor` write persists only the permitted fields).
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -251,6 +257,453 @@ class AppReadService {
   }
 }
 
+/// The write-side persistence seam the [AppWriteService] mutates through.
+///
+/// Mirrors the [AppReadStore]/[AppResourceStore] split: the write service needs
+/// to load a single item (to diff a `PUT` against the stored row), insert/update
+/// items, projects and comments, and delete an item. [RepositoryAppWriteStore]
+/// is the live store over the step-14 repository singletons; [InMemoryAppWriteStore]
+/// is a seeded, database-free store the field-grade enforcement tests drive.
+abstract class AppWriteStore {
+  /// Returns the item row for [id], or `null` when it does not exist.
+  Future<ItemRecord?> findItem(int id);
+
+  /// Inserts (when `id` is `null`) or updates [record], returning the saved row
+  /// (an insert carries the assigned surrogate key).
+  Future<ItemRecord> saveItem(ItemRecord record);
+
+  /// Deletes the item row with [id].
+  Future<void> deleteItem(int id);
+
+  /// Inserts or updates [record], returning the saved project row.
+  Future<ProjectRecord> saveProject(ProjectRecord record);
+
+  /// Inserts or updates [record], returning the saved comment row.
+  Future<CommentRecord> saveComment(CommentRecord record);
+}
+
+/// The query-backed [AppWriteStore] wired at boot.
+///
+/// Writes through the process-wide singleton repositories. Requires a live
+/// `app_db` connection and the reflection runtime, so it is exercised end-to-end
+/// (the unit tests use [InMemoryAppWriteStore]).
+class RepositoryAppWriteStore implements AppWriteStore {
+  /// Creates the repository-backed store (stateless; reads the singletons).
+  const RepositoryAppWriteStore();
+
+  @override
+  Future<ItemRecord?> findItem(int id) => itemRepository.findById(id);
+
+  @override
+  Future<ItemRecord> saveItem(ItemRecord record) => itemRepository.save(record);
+
+  @override
+  Future<void> deleteItem(int id) => itemRepository.deleteById(id);
+
+  @override
+  Future<ProjectRecord> saveProject(ProjectRecord record) =>
+      projectRepository.save(record);
+
+  @override
+  Future<CommentRecord> saveComment(CommentRecord record) =>
+      commentRepository.save(record);
+}
+
+/// A seeded, database-free [AppWriteStore] for tests (and local scaffolding).
+///
+/// Holds the rows directly and assigns surrogate keys on insert, mirroring the
+/// auth server's `InMemoryAdminStore`. A test can seed an item, drive a write
+/// through [AppWriteService], and assert the persisted row reflects only the
+/// permitted fields — no connection or reflection.
+class InMemoryAppWriteStore implements AppWriteStore {
+  final List<ItemRecord> _items;
+  final List<ProjectRecord> _projects;
+  final List<CommentRecord> _comments;
+
+  int _nextItemId = 1;
+  int _nextProjectId = 1;
+  int _nextCommentId = 1;
+
+  /// Seeds the store with the given rows (each list defaults to empty); the
+  /// auto-increment counters advance past any seeded ids.
+  InMemoryAppWriteStore({
+    List<ItemRecord> items = const [],
+    List<ProjectRecord> projects = const [],
+    List<CommentRecord> comments = const [],
+  })  : _items = [...items],
+        _projects = [...projects],
+        _comments = [...comments] {
+    _nextItemId = _maxId(_items.map((i) => i.id)) + 1;
+    _nextProjectId = _maxId(_projects.map((p) => p.id)) + 1;
+    _nextCommentId = _maxId(_comments.map((c) => c.id)) + 1;
+  }
+
+  static int _maxId(Iterable<int?> ids) =>
+      ids.fold<int>(0, (max, id) => (id != null && id > max) ? id : max);
+
+  /// The persisted item rows (test introspection).
+  List<ItemRecord> get items => List.unmodifiable(_items);
+
+  /// The persisted project rows (test introspection).
+  List<ProjectRecord> get projects => List.unmodifiable(_projects);
+
+  /// The persisted comment rows (test introspection).
+  List<CommentRecord> get comments => List.unmodifiable(_comments);
+
+  @override
+  Future<ItemRecord?> findItem(int id) async {
+    for (final item in _items) {
+      if (item.id == id) return item;
+    }
+    return null;
+  }
+
+  @override
+  Future<ItemRecord> saveItem(ItemRecord record) async {
+    if (record.id == null) {
+      record.id = _nextItemId++;
+      _items.add(record);
+    } else {
+      _replaceById(_items, record, (i) => i.id == record.id);
+    }
+    return record;
+  }
+
+  @override
+  Future<void> deleteItem(int id) async => _items.removeWhere((i) => i.id == id);
+
+  @override
+  Future<ProjectRecord> saveProject(ProjectRecord record) async {
+    if (record.id == null) {
+      record.id = _nextProjectId++;
+      _projects.add(record);
+    } else {
+      _replaceById(_projects, record, (p) => p.id == record.id);
+    }
+    return record;
+  }
+
+  @override
+  Future<CommentRecord> saveComment(CommentRecord record) async {
+    if (record.id == null) {
+      record.id = _nextCommentId++;
+      _comments.add(record);
+    } else {
+      _replaceById(_comments, record, (c) => c.id == record.id);
+    }
+    return record;
+  }
+
+  static void _replaceById<T>(
+    List<T> rows,
+    T record,
+    bool Function(T) matches,
+  ) {
+    final index = rows.indexWhere(matches);
+    if (index >= 0) {
+      rows[index] = record;
+    } else {
+      rows.add(record);
+    }
+  }
+}
+
+/// One gradable [ItemRecord] field: its resource key plus how to read and copy
+/// the underlying column. Backs both halves of the write check — detecting that
+/// the caller changed a field (so its grade must be `full`) and overlaying the
+/// permitted fields onto the row that is persisted.
+class _GradableItemField {
+  /// The `todo.item.*` resource key the four-state grade is declared against.
+  final String resourceKey;
+
+  /// Reads the field's value from a record (for the changed/unchanged diff).
+  final Object? Function(ItemRecord) read;
+
+  /// Copies the field's value from [source] onto [target] (the permitted merge).
+  final void Function(ItemRecord target, ItemRecord source) copy;
+
+  const _GradableItemField(this.resourceKey, this.read, this.copy);
+}
+
+/// The seven field-graded [ItemRecord] columns, in display order — the same set
+/// the field-grade resolver answers and the matrix the auth server seeds. The
+/// remaining columns (`label`, `tags`) are not part of the field-grade demo;
+/// `updateItem` preserves them from the stored row, `createItem` takes them from
+/// the creator's payload.
+final List<_GradableItemField> _gradableItemFields = [
+  _GradableItemField(
+      TodoItemResourceKeys.title, (r) => r.title, (t, s) => t.title = s.title),
+  _GradableItemField(TodoItemResourceKeys.status, (r) => r.status,
+      (t, s) => t.status = s.status),
+  _GradableItemField(TodoItemResourceKeys.priority, (r) => r.priority,
+      (t, s) => t.priority = s.priority),
+  _GradableItemField(TodoItemResourceKeys.assigneeId, (r) => r.assigneeId,
+      (t, s) => t.assigneeId = s.assigneeId),
+  _GradableItemField(TodoItemResourceKeys.dueDate, (r) => r.dueDate,
+      (t, s) => t.dueDate = s.dueDate),
+  _GradableItemField(TodoItemResourceKeys.estimate, (r) => r.estimateHours,
+      (t, s) => t.estimateHours = s.estimateHours),
+  _GradableItemField(TodoItemResourceKeys.description, (r) => r.description,
+      (t, s) => t.description = s.description),
+];
+
+/// Pure write logic over an [AppWriteStore], gated by the same two authorization
+/// layers the reads use.
+///
+/// Every mutation first resolves the principal's effective [ProjectRole] on the
+/// target through the step-17 [ResourceAccessResolver] (no access → the resource
+/// is treated as not-found, closed/safe). It then enforces the §A.4 policy:
+///
+/// - **Role gating.** Structural mutations check a minimum role —
+///   `createProject`/`createItem` require `editor` or above on the parent,
+///   `deleteItem` requires `editor` or above on the item, `addComment` requires
+///   `commenter` or above.
+/// - **Field-grade enforcement.** For item writes every gradable field the
+///   caller *changes* must be graded [TomAuthState.full] for their role (the
+///   step-18 [FieldGradeResolver]); the first violation rejects the whole write.
+///   The persisted row overlays only the `full`-graded fields, so server-owned
+///   columns (`id`, `listId`, `reporterId`, `createdAt`) and non-`full` fields
+///   always keep their stored value — the persisted row reflects only permitted
+///   fields.
+///
+/// Like [AppReadService] it has no server/zone dependency (only the store and the
+/// two resolvers' seams), so the whole write path unit-tests against seeded
+/// stores — the step-20 "Done" bar with no MariaDB.
+class AppWriteService {
+  /// The persistence seam mutations are applied through.
+  final AppWriteStore store;
+
+  /// Resolves a principal's effective [ProjectRole] on a resource (step 17).
+  final ResourceAccessResolver accessResolver;
+
+  /// Resolves a [ProjectRole]'s per-field grades (step 18).
+  final FieldGradeResolver gradeResolver;
+
+  /// Builds the service over its three collaborators (live stores at boot,
+  /// seeded stores under test).
+  const AppWriteService(this.store, this.accessResolver, this.gradeResolver);
+
+  /// The production wiring: every collaborator over its repository-backed store.
+  factory AppWriteService.production() => AppWriteService(
+        const RepositoryAppWriteStore(),
+        const ResourceAccessResolver(RepositoryAppResourceStore()),
+        const FieldGradeResolver(RepositoryGrantStore()),
+      );
+
+  /// Creates [project] in its workspace; the principal must own or edit that
+  /// workspace (project ownership flows from the owning workspace, so the creator
+  /// "becomes the owner" by virtue of owning/editing it).
+  Future<Project> createProject(int userId, Project project) async {
+    final record = projectToRecord(project)..id = null;
+    final workspaceId = record.workspaceId;
+    if (workspaceId == null) {
+      throw TomEndpointHandlerException(
+        'app.project.invalid',
+        'createProject requires a workspaceId',
+      );
+    }
+    await _requireRole(
+      userId,
+      AppResourceTypes.workspace,
+      workspaceId,
+      ProjectRole.editor,
+      'create projects in this workspace',
+    );
+    return projectFromRecord(await store.saveProject(record));
+  }
+
+  /// Creates [item] in its list; the principal must edit (or own) the list and
+  /// be `full` on every gradable field they populate. The creator is recorded as
+  /// the reporter.
+  Future<TodoItem> createItem(int userId, TodoItem item) async {
+    final incoming = itemToRecord(item);
+    final listId = incoming.listId;
+    if (listId == null) {
+      throw TomEndpointHandlerException(
+        'app.item.invalid',
+        'createItem requires a listId',
+      );
+    }
+    final role = await _requireRole(
+      userId,
+      AppResourceTypes.list,
+      listId,
+      ProjectRole.editor,
+      'create items in this list',
+    );
+    final grades = await gradeResolver.resolveItemFieldStates(role);
+    final now = DateTime.now();
+    // A fresh, server-owned row: the creator is the reporter, and the
+    // non-gradable columns flow from the payload. The gradable columns are
+    // overlaid only where the creator is `full`, after the change check.
+    final baseline = ItemRecord()
+      ..listId = listId
+      ..reporterId = userId
+      ..label = incoming.label
+      ..tags = incoming.tags
+      ..createdAt = now
+      ..updatedAt = now;
+    final toPersist = _enforceFieldWrites(baseline, incoming, grades);
+    return itemFromRecord(await store.saveItem(toPersist));
+  }
+
+  /// Applies the caller's [item] payload to the stored item [itemId] under
+  /// field-level authorization: every gradable field the payload changes must be
+  /// graded `full` for the caller's role, or the whole write is rejected. The
+  /// persisted row overlays only the permitted fields onto the stored row.
+  Future<TodoItem> updateItem(int userId, int itemId, TodoItem item) async {
+    final role = await accessResolver.resolveRole(
+      userId: userId,
+      resourceType: AppResourceTypes.item,
+      resourceId: itemId,
+    );
+    if (role == null) throw _notFoundItem(itemId);
+    final stored = await store.findItem(itemId);
+    if (stored == null) throw _notFoundItem(itemId);
+    final grades = await gradeResolver.resolveItemFieldStates(role);
+    final merged = _enforceFieldWrites(stored, itemToRecord(item), grades)
+      ..updatedAt = DateTime.now();
+    return itemFromRecord(await store.saveItem(merged));
+  }
+
+  /// Deletes the item [itemId]; only an `owner` or `editor` may delete.
+  Future<void> deleteItem(int userId, int itemId) async {
+    await _requireRole(
+      userId,
+      AppResourceTypes.item,
+      itemId,
+      ProjectRole.editor,
+      'delete this item',
+      notFoundOnNoAccess: true,
+    );
+    await store.deleteItem(itemId);
+  }
+
+  /// Adds [comment] to the item [itemId]; `commenter` or above may comment. The
+  /// caller is recorded as the author.
+  Future<TodoComment> addComment(
+    int userId,
+    int itemId,
+    TodoComment comment,
+  ) async {
+    await _requireRole(
+      userId,
+      AppResourceTypes.item,
+      itemId,
+      ProjectRole.commenter,
+      'comment on this item',
+      notFoundOnNoAccess: true,
+    );
+    final record = commentToRecord(comment)
+      ..id = null
+      ..itemId = itemId
+      ..authorId = userId
+      ..createdAt = DateTime.now();
+    return commentFromRecord(await store.saveComment(record));
+  }
+
+  /// Resolves the principal's role on `(resourceType, resourceId)` and asserts it
+  /// is at least [minimum]. Returns the resolved role for callers that need it.
+  ///
+  /// No access throws `app.access.forbidden` — or, when [notFoundOnNoAccess] is
+  /// set, `app.item.not_found` (closed/safe: a resource the caller cannot reach
+  /// is reported as missing rather than as forbidden, avoiding an existence
+  /// leak). A role weaker than [minimum] always throws `app.access.forbidden`.
+  Future<ProjectRole> _requireRole(
+    int userId,
+    String resourceType,
+    int resourceId,
+    ProjectRole minimum,
+    String action, {
+    bool notFoundOnNoAccess = false,
+  }) async {
+    final role = await accessResolver.resolveRole(
+      userId: userId,
+      resourceType: resourceType,
+      resourceId: resourceId,
+    );
+    if (role == null) {
+      if (notFoundOnNoAccess && resourceType == AppResourceTypes.item) {
+        throw _notFoundItem(resourceId);
+      }
+      throw TomEndpointHandlerException(
+        'app.access.forbidden',
+        'You do not have access to $action.',
+      );
+    }
+    if (!_roleAtLeast(role, minimum)) {
+      throw TomEndpointHandlerException(
+        'app.access.forbidden',
+        'Your role (${role.name}) may not $action.',
+      );
+    }
+    return role;
+  }
+
+  /// Validates the caller's field-level writes and builds the row to persist.
+  ///
+  /// [baseline] is the row the write is measured against (the stored row for an
+  /// update, a fresh server-owned row for a create); [incoming] is the caller's
+  /// payload as a record; [grades] is the caller's per-field grade. Every
+  /// gradable field whose [incoming] value differs from [baseline] must be
+  /// graded `full`; the first violation throws `app.item.field_forbidden`. The
+  /// returned row is a copy of [baseline] with the `full`-graded fields overlaid
+  /// from [incoming], so non-`full` and server-owned columns keep their baseline
+  /// value.
+  ItemRecord _enforceFieldWrites(
+    ItemRecord baseline,
+    ItemRecord incoming,
+    Map<String, TomAuthState> grades,
+  ) {
+    for (final field in _gradableItemFields) {
+      final changed = field.read(incoming) != field.read(baseline);
+      if (changed && grades[field.resourceKey] != TomAuthState.full) {
+        throw TomEndpointHandlerException(
+          'app.item.field_forbidden',
+          'Field "${field.resourceKey}" is not writable at your access level.',
+        );
+      }
+    }
+    final merged = _cloneItem(baseline);
+    for (final field in _gradableItemFields) {
+      if (grades[field.resourceKey] == TomAuthState.full) {
+        field.copy(merged, incoming);
+      }
+    }
+    return merged;
+  }
+
+  /// Whether [role] is at least as privileged as [minimum]. [ProjectRole] is
+  /// declared strongest-first, so a *lower* index is the stronger role.
+  static bool _roleAtLeast(ProjectRole role, ProjectRole minimum) =>
+      role.index <= minimum.index;
+
+  /// The closed/safe "no such item" rejection shared by the item write paths.
+  static TomEndpointHandlerException _notFoundItem(int itemId) =>
+      TomEndpointHandlerException(
+        'app.item.not_found',
+        'No accessible item with id $itemId',
+      );
+
+  /// A field-by-field copy of [record] (the write paths never mutate the stored
+  /// row in place — a rejected write must leave storage untouched).
+  static ItemRecord _cloneItem(ItemRecord record) => ItemRecord()
+    ..id = record.id
+    ..listId = record.listId
+    ..title = record.title
+    ..description = record.description
+    ..status = record.status
+    ..priority = record.priority
+    ..label = record.label
+    ..assigneeId = record.assigneeId
+    ..reporterId = record.reporterId
+    ..dueDate = record.dueDate
+    ..estimateHours = record.estimateHours
+    ..tags = record.tags
+    ..createdAt = record.createdAt
+    ..updatedAt = record.updatedAt;
+}
+
 /// The `@tomComponent` implementing the registry's `app` API.
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
@@ -261,15 +714,21 @@ class AppReadService {
 /// principal, which the pipeline reads from the bearer token; the resource- and
 /// field-level checks then run inside the handlers.
 ///
-/// The read endpoints (this step) delegate to [AppReadService]. The write
-/// endpoints (step 20) and share endpoints (step 21) are scaffolded with a
-/// deferral throw until those steps replace them.
+/// The read endpoints delegate to [AppReadService] and the write endpoints
+/// (`createProject`/`createItem`/`updateItem`/`deleteItem`/`addComment`) to
+/// [AppWriteService] (role gating + field-grade enforcement). The share
+/// endpoints (step 21) remain scaffolded with a deferral throw until that step
+/// replaces them.
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'app')
 class AdvancedAppApiService implements AppApiService {
   /// Production read logic over the repository-backed stores.
   final AppReadService _reads = AppReadService.production();
+
+  /// Production write logic (role gating + field-grade enforcement) over the
+  /// repository-backed stores.
+  final AppWriteService _writes = AppWriteService.production();
 
   /// The authenticated caller's auth-user id (the surrogate key the `app_db`
   /// rows reference cross-database). Resolved from the bearer-token principal.
@@ -317,29 +776,32 @@ class AdvancedAppApiService implements AppApiService {
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateProject')
   @override
-  Future<Project> createProject(Project project) => _deferred('appCreateProject');
+  Future<Project> createProject(Project project) =>
+      _writes.createProject(_principalId, project);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateItem')
   @override
-  Future<TodoItem> createItem(TodoItem item) => _deferred('appCreateItem');
+  Future<TodoItem> createItem(TodoItem item) =>
+      _writes.createItem(_principalId, item);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateItem')
   @override
   Future<TodoItem> updateItem(String id, TodoItem item) =>
-      _deferred('appUpdateItem');
+      _writes.updateItem(_principalId, int.tryParse(id) ?? -1, item);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteItem')
   @override
-  Future<void> deleteItem(String id) => _deferred('appDeleteItem');
+  Future<void> deleteItem(String id) =>
+      _writes.deleteItem(_principalId, int.tryParse(id) ?? -1);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
   Future<TodoComment> addComment(String itemId, TodoComment comment) =>
-      _deferred('appAddComment');
+      _writes.addComment(_principalId, int.tryParse(itemId) ?? -1, comment);
 
   // ----- Share endpoints (step 21) -----------------------------------------
 
@@ -353,12 +815,12 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<void> revokeShare(String id) => _deferred('appRevokeShare');
 
-  /// Marks an endpoint that this step does not yet implement. The write
-  /// endpoints land in step 20 and the share endpoints in step 21; until then a
-  /// call surfaces a clear, stable signal rather than a silent no-op.
+  /// Marks an endpoint that this step does not yet implement. The share
+  /// endpoints land in step 21; until then a call surfaces a clear, stable
+  /// signal rather than a silent no-op.
   Never _deferred(String endpointId) => throw TomEndpointHandlerException(
         'app.endpoint.not_implemented',
-        'The "$endpointId" endpoint is wired in step 20/21 of '
+        'The "$endpointId" endpoint is wired in step 21 of '
             'advanced_example_specification_plan.md.',
       );
 }
