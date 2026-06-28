@@ -1,0 +1,12 @@
+# Reflection generator config. The reflected entity graph is seeded from one
+# entry point (lib/src/reflection_entry.dart); the entities + their reflection
+# seed are populated in step 2 of the implementation plan. Emits
+# lib/src/reflection_entry.reflection.dart.
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - lib/src/reflection_entry.dart
+        options:
+          formatted: true

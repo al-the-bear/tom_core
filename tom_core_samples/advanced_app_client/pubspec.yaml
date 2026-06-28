@@ -1,0 +1,54 @@
+name: advanced_app_client
+description: >-
+  End-user Flutter app for the advanced Tom Core full-stack sample — logs in,
+  presents a bearer token on every call, and renders a status-column task board
+  with per-field four-state authorization (none/disabled/read/full) delivered
+  live by advanced_app_server, plus cross-user sharing.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The forms framework (TomForm, the field widgets, the four-state authorizer)
+  # the login/board/detail screens are built from.
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+
+  # Client runtime-platform detection used at bootstrap; also re-exports
+  # tom_core_kernel.
+  tom_core_flutter:
+    path: ../../tom_core_flutter
+
+  # The kernel: observable state, reflection, and the TomAuthState model.
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+  # The authenticated HTTP layer (login, bearer injection, typed parsers).
+  advanced_client_core:
+    path: ../advanced_client_core
+
+  # The single source of truth for the domain entities the forms bind.
+  advanced_todo_domain:
+    path: ../advanced_todo_domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Reflection codegen — the forms bind reflected @tomReflector entities, so this
+  # sample carries a build_runner step that emits lib/reflection_seed.reflection.dart.
+  # Regenerate via ./reflection_generation.sh only when reflected entity or form
+  # signatures change.
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator
+
+flutter:
+  uses-material-design: true

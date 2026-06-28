@@ -1,0 +1,14 @@
+# Reflection generator config. The live-boot entrypoint (bin/auth_server_start.dart)
+# is the reflection root: the generator follows its import graph to capture the
+# config class, the AuthApiService + AdminApiService implementations, the auth_db
+# records, and (via the tom_core_server barrel) the MariaDB driver, migration
+# adaptor, and TomResourceGrant. The boot + reflected graph are wired in steps
+# 7–13. Emits bin/auth_server_start.reflection.dart.
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - bin/auth_server_start.dart
+        options:
+          formatted: true

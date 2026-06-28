@@ -1,0 +1,31 @@
+name: advanced_app_server
+description: >-
+  App server for the advanced Tom Core full-stack sample — a secured task-manager
+  API on tom_core_server. Validates bearer tokens minted by advanced_auth_server,
+  resolves the per-request principal's resource access (ownership + shares) and
+  four-state field grades, and persists the app_db (workspaces/projects/lists/
+  items/comments/subtasks/shares).
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  tom_core_server:
+    path: ../../tom_core_server
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+  advanced_todo_contracts:
+    path: ../advanced_todo_contracts
+  advanced_todo_domain:
+    path: ../advanced_todo_domain
+  tom_reflection: any
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator

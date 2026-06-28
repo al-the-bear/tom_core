@@ -1,0 +1,21 @@
+name: advanced_client_core
+description: >-
+  Flutter-free dart:io client core for the advanced Tom Core full-stack sample —
+  the authenticated HTTP layer (AuthClient login/refresh/logout, AuthorizedHttp
+  bearer injection + refresh-on-401, and the AppApiClient / AdminApiClient typed
+  parsers) shared by both Flutter clients.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+  advanced_todo_contracts:
+    path: ../advanced_todo_contracts
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0

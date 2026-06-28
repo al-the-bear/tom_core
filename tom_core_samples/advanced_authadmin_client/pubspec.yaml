@@ -1,0 +1,53 @@
+name: advanced_authadmin_client
+description: >-
+  Administrator Flutter console for the advanced Tom Core full-stack sample —
+  logs in with the admin role and manages users, roles, groups, role
+  assignments, and the projectRole × field grant matrix via the auth server's
+  /admin/* API.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The ACL/table + forms widgets the admin screens and grant-matrix grid reuse.
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+
+  # Client runtime-platform detection used at bootstrap; also re-exports
+  # tom_core_kernel.
+  tom_core_flutter:
+    path: ../../tom_core_flutter
+
+  # The kernel: observable state, reflection, and the TomAuthState model.
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+  # The authenticated HTTP layer (admin login, bearer injection, typed parsers).
+  advanced_client_core:
+    path: ../advanced_client_core
+
+  # The wire DTOs the admin screens edit (users/roles/groups/grant-matrix).
+  advanced_todo_contracts:
+    path: ../advanced_todo_contracts
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Reflection codegen — the admin forms bind reflected @tomReflector DTOs, so
+  # this sample carries a build_runner step that emits
+  # lib/reflection_seed.reflection.dart. Regenerate via ./reflection_generation.sh
+  # only when reflected signatures change.
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator
+
+flutter:
+  uses-material-design: true

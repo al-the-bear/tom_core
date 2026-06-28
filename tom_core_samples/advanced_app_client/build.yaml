@@ -1,0 +1,13 @@
+# Reflection generator config. Seed the generator from one entry point
+# (lib/reflection_seed.dart) so the reflected graph is exactly what the client
+# binds: the shared advanced_todo_domain entities and the TomForm subclasses
+# over them. The seed + forms are wired in steps 26–31 of the implementation
+# plan. Emits lib/reflection_seed.reflection.dart.
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - lib/reflection_seed.dart
+        options:
+          formatted: true
