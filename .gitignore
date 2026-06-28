@@ -37,6 +37,8 @@ desktop.ini
 *.sql
 # Reference DDL migrations shipped as example artifacts are tracked despite *.sql
 !**/example/**/migrations/**/*.sql
+# Server-sample migration trees are deliverables (schema + seed), not local DBs
+!**/database_migrations/**/*.sql
 *.sqlite
 *.sqlite3
 
