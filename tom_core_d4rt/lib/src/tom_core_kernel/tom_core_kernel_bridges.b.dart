@@ -7115,16 +7115,16 @@ BridgedClass _createTomGradedAccessBridge() {
     hierarchyDepth: 1,
     constructors: {
       '': (visitor, positional, named) {
-        final write = D4.getRequiredNamedArg<$tom_core_kernel_23.TomAccessControl>(named, 'write', 'TomGradedAccess');
+        final full = D4.getRequiredNamedArg<$tom_core_kernel_23.TomAccessControl>(named, 'full', 'TomGradedAccess');
         final read = D4.getOptionalNamedArg<$tom_core_kernel_23.TomAccessControl?>(named, 'read');
-        final visible = D4.getOptionalNamedArg<$tom_core_kernel_23.TomAccessControl?>(named, 'visible');
-        return $tom_core_kernel_23.TomGradedAccess(write: write, read: read, visible: visible);
+        final disabled = D4.getOptionalNamedArg<$tom_core_kernel_23.TomAccessControl?>(named, 'disabled');
+        return $tom_core_kernel_23.TomGradedAccess(full: full, read: read, disabled: disabled);
       },
     },
     getters: {
-      'write': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').write,
+      'full': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').full,
       'read': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').read,
-      'visible': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').visible,
+      'disabled': (visitor, target) => D4.validateTarget<$tom_core_kernel_23.TomGradedAccess>(target, 'TomGradedAccess').disabled,
     },
     methods: {
       'checkAccessibility': (visitor, target, positional, named, typeArgs) {
@@ -7141,16 +7141,16 @@ BridgedClass _createTomGradedAccessBridge() {
       },
     },
     constructorSignatures: {
-      '': 'TomGradedAccess({required TomAccessControl write, TomAccessControl? read, TomAccessControl? visible})',
+      '': 'TomGradedAccess({required TomAccessControl full, TomAccessControl? read, TomAccessControl? disabled})',
     },
     methodSignatures: {
       'checkAccessibility': 'bool checkAccessibility(TomPrincipal? principal)',
       'resolveAuthState': 'TomAuthState resolveAuthState(TomPrincipal? principal)',
     },
     getterSignatures: {
-      'write': 'TomAccessControl get write',
+      'full': 'TomAccessControl get full',
       'read': 'TomAccessControl get read',
-      'visible': 'TomAccessControl get visible',
+      'disabled': 'TomAccessControl get disabled',
     },
   );
 }

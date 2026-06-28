@@ -208,18 +208,19 @@ abstract class TomAccessControl {
 // =============================================================================
 
 /// Access control that resolves to **all four** [TomAuthState] values by
-/// composing three binary controls — one each for write, read, and visibility.
+/// composing three binary controls — one each named after the state it grants:
+/// [full], [read], and [disabled].
 ///
 /// Resolution, from most to least privileged:
 ///
-/// - [write] grants → [TomAuthState.full] (interactive/editable)
+/// - [full] grants → [TomAuthState.full] (interactive/editable)
 /// - else [read] grants → [TomAuthState.read] (value visible, not editable)
-/// - else [visible] grants → [TomAuthState.disabled] (rendered but locked)
+/// - else [disabled] grants → [TomAuthState.disabled] (rendered but locked)
 /// - else → [TomAuthState.none] (hidden)
 ///
-/// When [read] is omitted it defaults to [write]; when [visible] is omitted it
+/// When [read] is omitted it defaults to [full]; when [disabled] is omitted it
 /// defaults to [read]. This preserves the natural monotonicity that anyone who
-/// can write can also read and see, so the common case only needs a single
+/// can edit can also read and see, so the common case only needs a single
 /// control.
 ///
 /// For binary consumers, [checkAccessibility] collapses to "can see content"
@@ -229,41 +230,41 @@ abstract class TomAccessControl {
 ///
 /// ```dart
 /// final salary = TomGradedAccess(
-///   write: const TomRoleAccess(['payroll.admin']),
+///   full: const TomRoleAccess(['payroll.admin']),
 ///   read: const TomRoleAccess(['manager']),
-///   visible: const TomAuthenticatedAccess(),
+///   disabled: const TomAuthenticatedAccess(),
 /// );
 /// final state = salary.resolveAuthState(currentPrincipal);
 /// // payroll.admin → full, manager → read, other staff → disabled,
 /// // anonymous → none.
 /// ```
 class TomGradedAccess extends TomAccessControl {
-  /// Grants write access → resolves to [TomAuthState.full].
-  final TomAccessControl write;
+  /// Grants full access → resolves to [TomAuthState.full].
+  final TomAccessControl full;
 
-  /// Grants read access → resolves to [TomAuthState.read]. Defaults to [write].
+  /// Grants read access → resolves to [TomAuthState.read]. Defaults to [full].
   final TomAccessControl read;
 
   /// Grants visibility → resolves to [TomAuthState.disabled]. Defaults to
   /// [read].
-  final TomAccessControl visible;
+  final TomAccessControl disabled;
 
   /// Creates a graded access control.
   ///
-  /// Only [write] is required; [read] defaults to [write] and [visible]
+  /// Only [full] is required; [read] defaults to [full] and [disabled]
   /// defaults to [read].
   TomGradedAccess({
-    required this.write,
+    required this.full,
     TomAccessControl? read,
-    TomAccessControl? visible,
-  })  : read = read ?? write,
-        visible = visible ?? read ?? write;
+    TomAccessControl? disabled,
+  })  : read = read ?? full,
+        disabled = disabled ?? read ?? full;
 
   @override
   TomAuthState resolveAuthState(TomPrincipal? principal) {
-    if (write.checkAccessibility(principal)) return TomAuthState.full;
+    if (full.checkAccessibility(principal)) return TomAuthState.full;
     if (read.checkAccessibility(principal)) return TomAuthState.read;
-    if (visible.checkAccessibility(principal)) return TomAuthState.disabled;
+    if (disabled.checkAccessibility(principal)) return TomAuthState.disabled;
     return TomAuthState.none;
   }
 

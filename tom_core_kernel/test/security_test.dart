@@ -1909,53 +1909,53 @@ void main() {
     const granting = TomPublicAccess();
     const denying = TomNoAccess();
 
-    test('full when the write control grants', () {
+    test('full when the full control grants', () {
       final access =
-          TomGradedAccess(write: granting, read: granting, visible: granting);
+          TomGradedAccess(full: granting, read: granting, disabled: granting);
       expect(access.resolveAuthState(null), equals(TomAuthState.full));
     });
 
-    test('read when write denies but read grants', () {
+    test('read when full denies but read grants', () {
       final access =
-          TomGradedAccess(write: denying, read: granting, visible: granting);
+          TomGradedAccess(full: denying, read: granting, disabled: granting);
       expect(access.resolveAuthState(null), equals(TomAuthState.read));
     });
 
-    test('disabled when only the visible control grants', () {
+    test('disabled when only the disabled control grants', () {
       final access =
-          TomGradedAccess(write: denying, read: denying, visible: granting);
+          TomGradedAccess(full: denying, read: denying, disabled: granting);
       expect(access.resolveAuthState(null), equals(TomAuthState.disabled));
     });
 
     test('none when nothing grants', () {
       final access =
-          TomGradedAccess(write: denying, read: denying, visible: denying);
+          TomGradedAccess(full: denying, read: denying, disabled: denying);
       expect(access.resolveAuthState(null), equals(TomAuthState.none));
     });
 
-    test('read and visible default to write so a writer can read and see', () {
-      // Only the write control supplied: a granting writer is fully interactive.
-      expect(TomGradedAccess(write: granting).resolveAuthState(null),
+    test('read and disabled default to full so a full grant reads and sees', () {
+      // Only the full control supplied: a granting full grant is interactive.
+      expect(TomGradedAccess(full: granting).resolveAuthState(null),
           equals(TomAuthState.full));
-      // A denying write with no read/visible override collapses to none.
-      expect(TomGradedAccess(write: denying).resolveAuthState(null),
+      // A denying full with no read/disabled override collapses to none.
+      expect(TomGradedAccess(full: denying).resolveAuthState(null),
           equals(TomAuthState.none));
     });
 
     test('checkAccessibility collapses to "shows content" (read or full)', () {
       final readOnly =
-          TomGradedAccess(write: denying, read: granting, visible: granting);
+          TomGradedAccess(full: denying, read: granting, disabled: granting);
       expect(readOnly.checkAccessibility(null), isTrue,
           reason: 'a read state shows content');
       final disabledOnly =
-          TomGradedAccess(write: denying, read: denying, visible: granting);
+          TomGradedAccess(full: denying, read: denying, disabled: granting);
       expect(disabledOnly.checkAccessibility(null), isFalse,
           reason: 'a disabled state hides content');
     });
 
     test('grades role access against the principal', () {
       final access = TomGradedAccess(
-        write: const TomRoleAccess(['editor']),
+        full: const TomRoleAccess(['editor']),
         read: const TomRoleAccess(['viewer']),
       );
       expect(access.resolveAuthState(createTestPrincipal(roles: ['editor'])),
