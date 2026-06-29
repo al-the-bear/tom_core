@@ -20,8 +20,13 @@ void main() {
   setUpAll(initializeReflection);
 
   setUp(() {
+    // The screen chrome (title/intro/submit) is server-delivered (todo 8): install
+    // the same canned login bundle the in-memory backend serves so the rendered
+    // texts match what the live auth server would deliver.
     TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(const <String, dynamic>{}),
+      TomTextResourceProvider.from(
+        Map<String, dynamic>.from(InMemoryAppBackend.loginTexts),
+      ),
     );
   });
 
@@ -45,7 +50,7 @@ void main() {
 
   testWidgets('TC-28-01: the app starts on the sign-in screen', (tester) async {
     await pumpApp(tester);
-    expect(find.text('Advanced Todo — sign in'), findsOneWidget);
+    expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
     expect(boardFinder, findsNothing);
   });
 
@@ -65,7 +70,7 @@ void main() {
 
     expect(errorFinder, findsOneWidget);
     // Still on the login screen — the shell never swapped to the board.
-    expect(find.text('Advanced Todo — sign in'), findsOneWidget);
+    expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
     expect(boardFinder, findsNothing);
   });
 
@@ -78,7 +83,7 @@ void main() {
 
     // No backend call was made (no inline backend error) and we stay on login.
     expect(errorFinder, findsNothing);
-    expect(find.text('Advanced Todo — sign in'), findsOneWidget);
+    expect(find.text('Advanced Todo — Sign in'), findsOneWidget);
     expect(boardFinder, findsNothing);
   });
 }

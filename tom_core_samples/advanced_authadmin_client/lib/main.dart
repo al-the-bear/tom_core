@@ -1,15 +1,16 @@
 /// Entry point for `advanced_authadmin_client` — the administrator console for
 /// the advanced Tom Core full-stack sample (steps 33–34).
 ///
-/// Before the first frame three bootstraps run: [initializeReflection] (from
+/// Before the first frame these bootstraps run: [initializeReflection] (from
 /// this app's `reflection_seed.dart`) registers the reflected drafts and the
 /// user/role/group editor forms so the admin screens' `TomForm` bind/save
 /// round-trips resolve (step 34); the Flutter client platform is registered via
 /// `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code that
-/// probes the runtime gets the Flutter implementation; and an empty application
-/// resource provider is installed so any widget that probes the singleton finds
-/// a valid scope. The console then runs over an [AdminSession] wrapping the
-/// chosen [AdminBackend].
+/// probes the runtime gets the Flutter implementation; and the public login
+/// resource bundle is fetched through the backend seam and installed as the
+/// singleton [TomTextResourceProvider], so the admin sign-in screen renders
+/// server-delivered chrome rather than any hardcoded string. The console then
+/// runs over an [AdminSession] wrapping the chosen [AdminBackend].
 ///
 /// The console runs against the seeded [InMemoryAdminBackend] by default. Pass
 /// both `--dart-define=AUTH_SERVER_URL=http://localhost:8081` and
@@ -25,14 +26,16 @@ import 'app/admin_app.dart';
 import 'backend/backend.dart';
 import 'reflection_seed.dart';
 
-void main() {
+Future<void> main() async {
   initializeReflection();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
-  TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(const <String, dynamic>{}),
-  );
 
-  runApp(AdminConsoleApp(session: AdminSession(_buildBackend())));
+  final session = AdminSession(_buildBackend());
+
+  // Fetch + install the server-delivered login chrome before the first frame.
+  await session.loadLoginResources();
+
+  runApp(AdminConsoleApp(session: session));
 }
 
 /// Builds the backend the console drives: the seeded in-memory fake by default,

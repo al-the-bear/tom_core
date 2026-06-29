@@ -70,9 +70,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Screen chrome is server-delivered: the bundle the bootstrap installed
+    // supplies the title, intro and submit label (a missing key falls back to
+    // itself, which is what the bootstrap test asserts against).
+    final texts = TomTextResourceProvider.getAppResources();
     return Scaffold(
       key: const Key('login-screen'),
-      appBar: AppBar(title: const Text('Advanced Todo — sign in')),
+      appBar: AppBar(title: Text(texts.getText('login.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -81,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
             padding: const EdgeInsets.all(24),
             children: [
               Text(
-                'Try alice, bob or val (any non-empty password).',
+                texts.getText('login.intro'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -105,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Sign in'),
+                    : Text(texts.getText('login.submit')),
               ),
             ],
           ),

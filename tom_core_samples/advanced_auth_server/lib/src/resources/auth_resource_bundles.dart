@@ -27,6 +27,7 @@ class AuthResourceBundles {
   static const Map<String, String> _loginTexts = {
     // App client login form (`LoginForm`, formId 'login', no scope).
     'login.title': 'Advanced Todo — Sign in',
+    'login.intro': 'Try alice, bob or val (any non-empty password).',
     'login.username.label': 'Username',
     'login.username.hint': 'alice, bob or val',
     'login.password.label': 'Password',

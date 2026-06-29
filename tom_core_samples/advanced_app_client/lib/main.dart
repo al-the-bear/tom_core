@@ -12,11 +12,12 @@
 ///  2. The Flutter client platform is registered via
 ///     `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code
 ///     that probes the runtime gets the Flutter implementation.
-///  3. An (empty) application resource provider is installed so any widget that
-///     probes the singleton finds a valid scope.
-///  4. The session's [FieldStateAuthorizationAdapter] is installed once on the
+///  3. The session's [FieldStateAuthorizationAdapter] is installed once on the
 ///     [TomAuthorization] singleton, so every gradable item field resolves its
 ///     authorization implicitly through the matrix the session feeds it.
+///  4. The public login resource bundle is fetched through the backend seam and
+///     installed as the singleton [TomTextResourceProvider], so the sign-in
+///     screen renders server-delivered chrome rather than any hardcoded string.
 ///  5. The app runs over that [AppSession] wrapping the chosen [AppBackend].
 ///
 /// The app runs against the seeded [InMemoryAppBackend] by default. Pass both
@@ -33,15 +34,15 @@ import 'app/app.dart';
 import 'backend/backend.dart';
 import 'reflection_seed.dart';
 
-void main() {
+Future<void> main() async {
   initializeReflection();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
-  TomTextResourceProvider.setAppResourceProvider(
-    TomTextResourceProvider.from(const <String, dynamic>{}),
-  );
 
   final session = AppSession(_buildBackend());
   TomAuthorization.adapter = session.authorizationAdapter;
+
+  // Fetch + install the server-delivered login chrome before the first frame.
+  await session.loadLoginResources();
 
   runApp(AdvancedTodoApp(session: session));
 }

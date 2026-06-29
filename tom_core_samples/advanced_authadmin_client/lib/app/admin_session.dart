@@ -18,6 +18,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/foundation.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../backend/backend.dart';
 
@@ -50,6 +51,19 @@ class AdminSession extends ChangeNotifier {
 
   /// When the stored token pair expires (UTC), or null when logged out.
   DateTime? get expiresAt => _expiresAt;
+
+  /// Fetches the public login resource bundle through the backend seam and
+  /// installs it as the singleton [TomTextResourceProvider], so the admin
+  /// sign-in screen renders server-delivered chrome (title/intro/submit) instead
+  /// of any hardcoded string. The bootstrap awaits this before the first frame;
+  /// the `notifyListeners` lets a test force the install mid-pump.
+  Future<void> loadLoginResources() async {
+    final bundle = await backend.loginResources();
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(Map<String, dynamic>.from(bundle.texts)),
+    );
+    notifyListeners();
+  }
 
   /// Authenticates [request], then verifies the principal holds the `admin`
   /// role by probing an admin call.

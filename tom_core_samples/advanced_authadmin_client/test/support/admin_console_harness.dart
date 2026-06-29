@@ -11,6 +11,18 @@ import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+/// Installs the canned public login bundle so the sign-in screen renders its
+/// server-delivered chrome (todo 8) — without it the submit button shows the raw
+/// `adminLogin.submit` key and the sign-in helper's `'Sign in'` finder misses.
+void installLoginBundle() {
+  TomTextResourceProvider.setAppResourceProvider(
+    TomTextResourceProvider.from(
+      Map<String, dynamic>.from(InMemoryAdminBackend.loginTexts),
+    ),
+  );
+}
 
 /// A viewport tall enough that an editor dialog's fields and the Save action all
 /// fit (the default 800×600 window scrolls controls out of reach).
@@ -28,6 +40,7 @@ Future<void> pumpSignedInConsole(
   InMemoryAdminBackend backend,
 ) async {
   useTallViewport(tester);
+  installLoginBundle();
   await tester.pumpWidget(
     AdminConsoleApp(session: AdminSession(backend)),
   );

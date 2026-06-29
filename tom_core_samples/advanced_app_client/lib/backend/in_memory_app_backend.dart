@@ -40,6 +40,27 @@ class InMemoryAppBackend implements AppBackend {
   int _nextId = 100;
   String? _currentUserId;
 
+  /// The canned public login bundle, mirroring `advanced_auth_server`'s
+  /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline app installs the
+  /// exact same sign-in chrome the live auth server serves — the widget tests
+  /// stay socket-free while still proving the screen renders *server-delivered*
+  /// texts.
+  static const Map<String, Object?> loginTexts = {
+    'login.title': 'Advanced Todo — Sign in',
+    'login.intro': 'Try alice, bob or val (any non-empty password).',
+    'login.username.label': 'Username',
+    'login.username.hint': 'alice, bob or val',
+    'login.password.label': 'Password',
+    'login.submit': 'Sign in',
+    'adminLogin.title': 'Advanced Todo — Admin sign in',
+    'adminLogin.intro':
+        'Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.',
+    'adminLogin.username.label': 'Username',
+    'adminLogin.username.hint': 'admin',
+    'adminLogin.password.label': 'Password',
+    'adminLogin.submit': 'Sign in',
+  };
+
   /// The demo accounts, by username → user id. The password is not verified
   /// beyond being non-empty — this is a teaching backend, not a credential
   /// store.
@@ -203,6 +224,10 @@ class InMemoryAppBackend implements AppBackend {
   Future<void> logout() async {
     _currentUserId = null;
   }
+
+  @override
+  Future<ResourceBundleDto> loginResources() async =>
+      ResourceBundleDto(Map<String, Object?>.from(loginTexts));
 
   @override
   Future<List<Workspace>> listWorkspaces() async {

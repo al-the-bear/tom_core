@@ -43,6 +43,10 @@ class LiveAppBackend implements AppBackend {
   Future<void> logout() => _guard(() => _auth.logout());
 
   @override
+  Future<ResourceBundleDto> loginResources() =>
+      _guard(() => _auth.loginResources());
+
+  @override
   Future<List<Workspace>> listWorkspaces() =>
       _guard(() => _api.listWorkspaces());
 

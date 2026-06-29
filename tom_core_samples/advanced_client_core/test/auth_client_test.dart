@@ -138,6 +138,45 @@ void main() {
       });
     });
 
+    group('loginResources', () {
+      test('TC-22-11: GETs /auth/resources/login (no bearer) and parses the bundle',
+          () async {
+        final transport = _FakeTransport([
+          HttpJsonResponse(
+              200,
+              jsonEncode({
+                'texts': {
+                  'login.title': 'Advanced Todo — Sign in',
+                  'login.username.label': 'Username',
+                }
+              })),
+        ]);
+        final client = AuthClient(baseUri, transport: transport);
+
+        final bundle = await client.loginResources();
+
+        final call = transport.calls.single;
+        expect(call.method, equals('GET'));
+        expect(call.uri,
+            equals(Uri.parse('http://localhost:8081/auth/resources/login')));
+        // Public endpoint — never attaches an Authorization header.
+        expect(call.headers.containsKey('Authorization'), isFalse);
+        expect(bundle.texts['login.title'], equals('Advanced Todo — Sign in'));
+        expect(bundle.texts['login.username.label'], equals('Username'));
+      });
+
+      test('TC-22-12: a non-success throws AuthClientException', () async {
+        final transport = _FakeTransport([HttpJsonResponse(503, '')]);
+        final client = AuthClient(baseUri, transport: transport);
+
+        await expectLater(
+          client.loginResources(),
+          throwsA(isA<AuthClientException>()
+              .having((e) => e.statusCode, 'statusCode', 503)),
+        );
+      });
+    });
+
     group('logout', () {
       test('TC-22-07: tells the server then discards the local token pair', () async {
         final transport = _FakeTransport([

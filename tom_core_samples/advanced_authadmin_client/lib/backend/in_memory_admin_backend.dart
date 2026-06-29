@@ -48,6 +48,27 @@ class InMemoryAdminBackend implements AdminBackend {
   /// The shared demo password every seeded account accepts.
   static const String demoPassword = 'pw';
 
+  /// The canned public login bundle, mirroring `advanced_auth_server`'s
+  /// `AuthResourceBundles.loginBundle()` (D-A11) so the offline console installs
+  /// the exact same sign-in chrome the live auth server serves — the widget
+  /// tests stay socket-free while still proving the screen renders
+  /// *server-delivered* texts. The console reads the `adminLogin.*` keys.
+  static const Map<String, Object?> loginTexts = {
+    'login.title': 'Advanced Todo — Sign in',
+    'login.intro': 'Try alice, bob or val (any non-empty password).',
+    'login.username.label': 'Username',
+    'login.username.hint': 'alice, bob or val',
+    'login.password.label': 'Password',
+    'login.submit': 'Sign in',
+    'adminLogin.title': 'Advanced Todo — Admin sign in',
+    'adminLogin.intro':
+        'Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.',
+    'adminLogin.username.label': 'Username',
+    'adminLogin.username.hint': 'admin',
+    'adminLogin.password.label': 'Password',
+    'adminLogin.submit': 'Sign in',
+  };
+
   /// The four-state field resource keys, mirroring the server's wire keys
   /// (`TodoItemResourceKeys`). Held as plain strings because the admin console is
   /// domain-agnostic: it edits whatever resource keys the server reports.
@@ -166,6 +187,10 @@ class InMemoryAdminBackend implements AdminBackend {
   Future<void> logout() async {
     _currentUserId = null;
   }
+
+  @override
+  Future<ResourceBundleDto> loginResources() async =>
+      ResourceBundleDto(Map<String, Object?>.from(loginTexts));
 
   // ----- Users -------------------------------------------------------------
 

@@ -65,6 +65,10 @@ abstract class AdminBackend {
   /// Ends the session and discards the stored token pair.
   Future<void> logout();
 
+  /// Fetches the public login resource bundle (screen texts) the admin console
+  /// installs before the sign-in screen builds. Reachable unauthenticated.
+  Future<ResourceBundleDto> loginResources();
+
   // ----- Users -------------------------------------------------------------
 
   /// All accounts (`GET /admin/users`).

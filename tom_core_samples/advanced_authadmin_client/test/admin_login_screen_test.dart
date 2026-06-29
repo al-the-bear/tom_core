@@ -14,8 +14,20 @@ import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
+  setUp(() {
+    // The admin login chrome (title/intro/submit) is server-delivered (todo 8):
+    // install the same canned login bundle the in-memory backend serves so the
+    // rendered texts match what the live auth server would deliver.
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(
+        Map<String, dynamic>.from(InMemoryAdminBackend.loginTexts),
+      ),
+    );
+  });
+
   final loginFinder = find.byKey(const Key('admin-login-screen'));
   final shellFinder = find.byKey(const Key('admin-shell-screen'));
   final errorFinder = find.byKey(const Key('admin-login-error'));

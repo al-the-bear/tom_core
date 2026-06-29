@@ -76,6 +76,26 @@ class AuthClient {
     return result;
   }
 
+  /// Fetches the public login resource bundle (`GET /auth/resources/login`),
+  /// the screen texts both clients install before the sign-in screen builds.
+  ///
+  /// Public endpoint — no bearer is attached and no prior [login] is needed.
+  /// Throws [AuthClientException] on any non-success status.
+  Future<ResourceBundleDto> loginResources() async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri('/auth/resources/login'),
+    );
+    if (!response.isSuccess) {
+      throw AuthClientException(
+        _errorKey(response) ?? 'auth.resources.failed',
+        'Login resources request failed (HTTP ${response.statusCode}).',
+        statusCode: response.statusCode,
+      );
+    }
+    return ResourceBundleDto.fromJson(response.jsonObject);
+  }
+
   /// Re-issues a fresh token pair for the currently stored session and stores
   /// it. Requires a prior [login] (an authorization token must be present), else
   /// throws `auth.no_token`.

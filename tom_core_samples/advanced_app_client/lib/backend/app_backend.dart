@@ -59,6 +59,10 @@ abstract class AppBackend {
   /// Ends the session and discards the stored token pair.
   Future<void> logout();
 
+  /// Fetches the public login resource bundle (screen texts) the app installs
+  /// before the sign-in screen builds. Reachable unauthenticated.
+  Future<ResourceBundleDto> loginResources();
+
   /// Workspaces the current principal owns or is shared into.
   Future<List<Workspace>> listWorkspaces();
 

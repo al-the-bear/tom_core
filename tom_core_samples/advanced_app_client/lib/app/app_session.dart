@@ -72,6 +72,19 @@ class AppSession extends ChangeNotifier {
   /// for an item (and cleared on every login/logout).
   Map<String, TomAuthState> get currentFieldStates => _currentFieldStates;
 
+  /// Fetches the public login resource bundle through the backend seam and
+  /// installs it as the singleton [TomTextResourceProvider], so the sign-in
+  /// screen renders server-delivered chrome (title/intro/submit) instead of any
+  /// hardcoded string. The bootstrap awaits this before the first frame; the
+  /// `notifyListeners` lets a test force the install mid-pump.
+  Future<void> loadLoginResources() async {
+    final bundle = await backend.loginResources();
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(Map<String, dynamic>.from(bundle.texts)),
+    );
+    notifyListeners();
+  }
+
   /// Authenticates [request] and stores the resolved principal + token pair.
   ///
   /// Throws [AppBackendException] on a rejected login; the session stays logged

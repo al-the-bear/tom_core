@@ -43,6 +43,10 @@ class LiveAdminBackend implements AdminBackend {
   Future<void> logout() => _guard(() => _auth.logout());
 
   @override
+  Future<ResourceBundleDto> loginResources() =>
+      _guard(() => _auth.loginResources());
+
+  @override
   Future<List<UserDto>> listUsers() => _guard(() => _api.listUsers());
 
   @override

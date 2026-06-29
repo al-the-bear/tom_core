@@ -17,6 +17,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -68,9 +69,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Screen chrome is server-delivered: the bundle the bootstrap installed
+    // supplies the title, intro and submit label (a missing key falls back to
+    // itself, which is what the bootstrap test asserts against). The field
+    // labels stay plain for now — the reflected form lands in a later step.
+    final texts = TomTextResourceProvider.getAppResources();
     return Scaffold(
       key: const Key('admin-login-screen'),
-      appBar: AppBar(title: const Text('Advanced Todo — Admin sign in')),
+      appBar: AppBar(title: Text(texts.getText('adminLogin.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -81,8 +87,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
               padding: const EdgeInsets.all(24),
               children: [
                 Text(
-                  'Sign in as admin (password pw). A non-admin (alice, bob, '
-                  'val) is rejected.',
+                  texts.getText('adminLogin.intro'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
@@ -121,7 +126,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Sign in'),
+                      : Text(texts.getText('adminLogin.submit')),
                 ),
               ],
             ),
