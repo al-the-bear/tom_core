@@ -28,7 +28,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 // The app seed owns the authoritative `initializeReflection`; the domain library
 // carries its own (for use on its own), hidden here to avoid the collision.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole;
+    show ProjectRole, TodoItemResourceKeys;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -63,13 +63,20 @@ void main() {
 
   /// Signs [user] in over a fresh backend and pushes the detail screen for item
   /// [itemId] from a host route. Returns the live backend so a test can re-read
-  /// persisted state. [shareValAsViewer] grants `val` a viewer role first (val
-  /// has no access in the seed), so the viewer case can open the item.
+  /// persisted state.
+  ///
+  /// [shareValAs] grants `val` that project role first (val has no access in the
+  /// seed), so the viewer/commenter cases — neither seeded with access — can open
+  /// the item. [bundleOverride], if given, is installed over the
+  /// session-installed full bundle *after* login and *before* the screen builds,
+  /// so a test can prove the field labels come from the installed resource
+  /// provider (not a hard-coded override or the bare tomId fallback).
   Future<InMemoryAppBackend> openDetail(
     WidgetTester tester,
     String user, {
     String itemId = 'i-1',
-    bool shareValAsViewer = false,
+    ProjectRole? shareValAs,
+    Map<String, dynamic>? bundleOverride,
   }) async {
     useTallViewport(tester);
 
@@ -80,18 +87,25 @@ void main() {
     // `loadFieldStates` feeds the matrix in. Cleared in [tearDown].
     TomAuthorization.adapter = session.authorizationAdapter;
 
-    if (shareValAsViewer) {
+    if (shareValAs != null) {
       await session.login(login('alice'));
-      await backend.share(const ShareRequest(
+      await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
         granteeUserId: 'u-val',
-        projectRole: ProjectRole.viewer,
+        projectRole: shareValAs,
       ));
       await session.logout();
     }
 
     await session.login(login(user));
+    // Login installs the full server bundle (todo 9); a test may replace it with
+    // a sentinel bundle to prove labels are provider-driven end-to-end.
+    if (bundleOverride != null) {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(bundleOverride),
+      );
+    }
     final items = await backend.listItems('l-1');
     final item = items.firstWhere((i) => i.id.get() == itemId);
 
@@ -120,7 +134,11 @@ void main() {
 
     // All seven gradable field labels are present (Material renders a field's
     // floating label more than once during its animation, so assert presence,
-    // not an exact count).
+    // not an exact count). These strings are the *server bundle* values
+    // (`InMemoryAppBackend.fullTexts`) the session installs on login — with the
+    // form's `labelTextOverride`s gone (todo 10) they can only come from the
+    // installed provider, and each differs from the bare tomId fallback
+    // (`title`, `status`, …), so their presence is the bundle-sourced proof.
     expect(find.text('Title'), findsWidgets);
     expect(find.text('Status'), findsWidgets);
     expect(find.text('Priority'), findsWidgets);
@@ -139,12 +157,16 @@ void main() {
   testWidgets(
       'TC-30-02: viewer is read-only — status disabled, estimate hidden, no Save',
       (tester) async {
-    await openDetail(tester, 'val', shareValAsViewer: true);
+    await openDetail(tester, 'val', shareValAs: ProjectRole.viewer);
 
     // The ungranted field (estimate → none) collapses entirely…
     expect(find.text('Estimate (h)'), findsNothing);
     // …while the disabled status control is still visible.
     expect(find.text('Status'), findsOneWidget);
+    // Priority is `read` for a viewer (not `none`), so it stays visible — this is
+    // what separates the viewer matrix from the commenter's (TC-30-04), where
+    // priority is hidden.
+    expect(find.text('Priority'), findsWidgets);
 
     // Nothing is editable: both dropdowns are disabled (onChanged == null) and
     // there is no Save button at all.
@@ -174,5 +196,68 @@ void main() {
     final saved = after.firstWhere((i) => i.id.get() == 'i-1');
     expect(saved.title.get(), 'Reworked landing copy');
     expect(saved.assigneeId.get(), 'u-bob');
+  });
+
+  testWidgets(
+      'TC-30-04: commenter hides priority + estimate, reads the rest, no Save',
+      (tester) async {
+    await openDetail(tester, 'val', shareValAs: ProjectRole.commenter);
+
+    // The commenter matrix grades both priority and estimate `none`, so the
+    // closed-safe render hides *both* fields (D-A4 made visible end-to-end) —
+    // this is the only role that hides priority.
+    expect(find.text('Priority'), findsNothing);
+    expect(find.text('Estimate (h)'), findsNothing);
+
+    // The remaining five fields are `read`: present but never editable.
+    expect(find.text('Title'), findsWidgets);
+    expect(find.text('Status'), findsWidgets);
+    expect(find.text('Assignee id'), findsWidgets);
+    expect(find.text('Due date'), findsWidgets);
+    expect(find.text('Description'), findsWidgets);
+
+    // No field is `full`, so the screen offers no Save, and the status dropdown
+    // (graded `read`) is disabled like every other control.
+    expect(find.byKey(const Key('item-save-button')), findsNothing);
+    final dropdowns = tester
+        .widgetList<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>))
+        .toList();
+    expect(dropdowns, isNotEmpty);
+    for (final dropdown in dropdowns) {
+      expect(dropdown.onChanged, isNull);
+    }
+  });
+
+  testWidgets(
+      'TC-30-05: field labels are server-bundle-driven (sentinel proof)',
+      (tester) async {
+    // Sign in as the owner (every field `full`, so all seven render), but
+    // replace the installed full bundle with sentinel label values distinct from
+    // both the canned strings and the bare tomId fallback. With the form's
+    // overrides removed (todo 10) the only source of a field's label is this
+    // provider, so the sentinels rendering proves the labels are bundle-driven.
+    await openDetail(tester, 'alice', bundleOverride: {
+      '${TodoItemResourceKeys.title}.label': 'Title [srv]',
+      '${TodoItemResourceKeys.status}.label': 'Status [srv]',
+      '${TodoItemResourceKeys.priority}.label': 'Priority [srv]',
+      '${TodoItemResourceKeys.assigneeId}.label': 'Assignee [srv]',
+      '${TodoItemResourceKeys.dueDate}.label': 'Due date [srv]',
+      '${TodoItemResourceKeys.estimate}.label': 'Estimate [srv]',
+      '${TodoItemResourceKeys.description}.label': 'Description [srv]',
+    });
+
+    expect(find.textContaining('Title [srv]'), findsWidgets);
+    expect(find.textContaining('Status [srv]'), findsWidgets);
+    expect(find.textContaining('Priority [srv]'), findsWidgets);
+    expect(find.textContaining('Assignee [srv]'), findsWidgets);
+    expect(find.textContaining('Due date [srv]'), findsWidgets);
+    expect(find.textContaining('Estimate [srv]'), findsWidgets);
+    expect(find.textContaining('Description [srv]'), findsWidgets);
+
+    // Neither the canned bundle value nor the bare tomId fallback renders — the
+    // label resolves through the installed provider, nothing else.
+    expect(find.text('Title'), findsNothing);
+    expect(find.text('title'), findsNothing);
   });
 }
