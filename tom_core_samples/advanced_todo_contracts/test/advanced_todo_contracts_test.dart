@@ -273,6 +273,79 @@ void main() {
     });
   });
 
+  group('ResourceBundleDto', () {
+    ResourceBundleDto sampleBundle() => ResourceBundleDto(const {
+          'todo.item.title.label': 'Title',
+          'todo.item.status.label': 'Status',
+          'todo.item.estimate.error.required': 'An estimate is required',
+          'login.username.hint': 'Your username',
+        });
+
+    test('defaults to an empty bundle', () {
+      expect(ResourceBundleDto().texts, isEmpty);
+    });
+
+    test('exposes an unmodifiable texts view', () {
+      expect(() => ResourceBundleDto().texts['x'] = 'y',
+          throwsUnsupportedError);
+    });
+
+    test('equal bundles compare equal and share a hash', () {
+      expect(sampleBundle(), sampleBundle());
+      expect(sampleBundle().hashCode, sampleBundle().hashCode);
+    });
+
+    test('order-independent equality across keys', () {
+      final a = ResourceBundleDto(const {
+        'login.username.hint': 'Your username',
+        'todo.item.title.label': 'Title',
+      });
+      final b = ResourceBundleDto(const {
+        'todo.item.title.label': 'Title',
+        'login.username.hint': 'Your username',
+      });
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+    });
+
+    test('a single differing value breaks equality', () {
+      final changed = ResourceBundleDto(const {
+        'todo.item.title.label': 'Title',
+        'todo.item.status.label': 'State',
+        'todo.item.estimate.error.required': 'An estimate is required',
+        'login.username.hint': 'Your username',
+      });
+      expect(sampleBundle() == changed, isFalse);
+    });
+
+    test('round-trips through JSON', () {
+      expect(ResourceBundleDto.fromJson(sampleBundle().toJson()),
+          sampleBundle());
+    });
+
+    test('round-trips a nested-map bundle by value', () {
+      final nested = ResourceBundleDto(const {
+        'todo': {
+          'item': {
+            'title': {'label': 'Title'},
+          },
+        },
+        'login.username.hint': 'Your username',
+      });
+      expect(ResourceBundleDto.fromJson(nested.toJson()), nested);
+    });
+
+    test('a missing or non-map texts decodes to an empty bundle', () {
+      expect(ResourceBundleDto.fromJson(const {}).texts, isEmpty);
+      expect(
+          ResourceBundleDto.fromJson(const {'texts': 'oops'}).texts, isEmpty);
+    });
+
+    test('toString summarises the key count without dumping values', () {
+      expect(sampleBundle().toString(), 'ResourceBundleDto(4 keys)');
+    });
+  });
+
   group('admin CRUD DTOs', () {
     test('CreateUserRequest round-trips and hides the password', () {
       const request = CreateUserRequest(

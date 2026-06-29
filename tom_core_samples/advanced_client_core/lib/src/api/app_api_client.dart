@@ -253,6 +253,10 @@ class AppApiClient implements AppApiService {
   @override
   Future<void> revokeShare(String id) async => _send('DELETE', '/share/$id');
 
+  @override
+  Future<ResourceBundleDto> resources() async =>
+      ResourceBundleDto.fromJson((await _get('/resources')).jsonObject);
+
   Future<HttpJsonResponse> _get(String path,
           [Map<String, String> query = const {}]) =>
       _send('GET', path, query: query);

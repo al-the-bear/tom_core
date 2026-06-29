@@ -21,6 +21,7 @@ import 'admin_dtos.dart';
 import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
+import 'resource_bundle_dto.dart';
 import 'share_request.dart';
 
 /// Access policy shared by every `/admin/*` endpoint.
@@ -38,6 +39,13 @@ final TomApi authApi = TomApi(
       uri: '/login',
       method: TomHttpMethod.post,
       includeBearerAuthentication: false,
+    ),
+    TomApiEndpoint<ResourceBundleDto, Object?>(
+      id: 'authLoginResources',
+      uri: '/resources/login',
+      method: TomHttpMethod.get,
+      includeBearerAuthentication: false,
+      requestTypes: const [],
     ),
     TomApiEndpoint<LoginResult, Object?>(
       id: 'authRefresh',
@@ -60,9 +68,11 @@ final TomApi authApi = TomApi(
   ],
 );
 
-/// Per-endpoint access for [authApi]; only `authLogin` is public.
+/// Per-endpoint access for [authApi]; `authLogin` and `authLoginResources` are
+/// the two public endpoints (credential exchange and the pre-login texts).
 const Map<String, TomAccessControl> authApiAccess = {
   'authLogin': TomPublicAccess(),
+  'authLoginResources': TomPublicAccess(),
   'authRefresh': TomAuthenticatedAccess(),
   'authLogout': TomAuthenticatedAccess(),
   'authMe': TomAuthenticatedAccess(),
@@ -158,6 +168,12 @@ final TomApi adminApi = TomApi(
       uri: '/assignments',
       method: TomHttpMethod.post,
     ),
+    TomApiEndpoint<ResourceBundleDto, Object?>(
+      id: 'adminResources',
+      uri: '/resources',
+      method: TomHttpMethod.get,
+      requestTypes: const [],
+    ),
   ],
 );
 
@@ -178,6 +194,7 @@ const Map<String, TomAccessControl> adminApiAccess = {
   'adminGetGrants': _adminOnly,
   'adminPutGrants': _adminOnly,
   'adminAssign': _adminOnly,
+  'adminResources': _adminOnly,
 };
 
 /// Application API (the todo board) — authenticated except `appHealth`.
@@ -264,6 +281,12 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.delete,
       requestTypes: const [],
     ),
+    TomApiEndpoint<ResourceBundleDto, Object?>(
+      id: 'appResources',
+      uri: '/resources',
+      method: TomHttpMethod.get,
+      requestTypes: const [],
+    ),
   ],
 );
 
@@ -284,6 +307,7 @@ const Map<String, TomAccessControl> appApiAccess = {
   'appItemFieldStates': TomAuthenticatedAccess(),
   'appShare': TomAuthenticatedAccess(),
   'appRevokeShare': TomAuthenticatedAccess(),
+  'appResources': TomAuthenticatedAccess(),
 };
 
 /// Registers [authApi], [adminApi] and [appApi] with the global

@@ -13,4 +13,5 @@ export 'admin_dtos.dart';
 export 'graded_field_dto.dart';
 export 'grant_matrix_dto.dart';
 export 'login_dtos.dart';
+export 'resource_bundle_dto.dart';
 export 'share_request.dart';

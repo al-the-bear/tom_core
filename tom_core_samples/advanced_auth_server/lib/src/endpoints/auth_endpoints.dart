@@ -225,4 +225,12 @@ class AdvancedAuthApiService implements AuthApiService {
   // zone value is non-null here.
   Future<UserDto> me() async =>
       _tokens.userDtoOf(getFromCurrentZone<TomPrincipal>()!);
+
+  // `loginResources` (`authLoginResources`, public `GET /auth/resources/login`)
+  // satisfies the `AuthApiService` contract added in todo 6. The wire contract
+  // and an empty bundle exist now; the real login-screen text map and its
+  // `@TomPublicAccess`/`@TomApiEndpointImplementation` endpoint wiring land in
+  // todo 7 (server-side resource serving). Returns an empty bundle until then.
+  @override
+  Future<ResourceBundleDto> loginResources() async => ResourceBundleDto();
 }

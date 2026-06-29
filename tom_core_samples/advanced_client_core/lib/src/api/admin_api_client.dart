@@ -206,6 +206,10 @@ class AdminApiClient implements AdminApiService {
   Future<void> assign(AssignmentRequest request) async =>
       _send('POST', '/admin/assignments', body: jsonEncode(request.toJson()));
 
+  @override
+  Future<ResourceBundleDto> resources() async =>
+      ResourceBundleDto.fromJson((await _get('/admin/resources')).jsonObject);
+
   Future<HttpJsonResponse> _get(String path,
           [Map<String, String> query = const {}]) =>
       _send('GET', path, query: query);

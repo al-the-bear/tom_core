@@ -1064,4 +1064,12 @@ class AdvancedAppApiService implements AppApiService {
   @override
   Future<void> revokeShare(String id) =>
       _shares.revokeShare(_principalId, int.tryParse(id) ?? -1);
+
+  // `resources` (`appResources`, authenticated `GET /resources`) satisfies the
+  // `AppApiService` contract added in todo 6. The wire contract and an empty
+  // bundle exist now; the real app-client text map and its
+  // `@TomAuthenticatedAccess`/`@TomApiEndpointImplementation` endpoint wiring
+  // land in todo 7 (server-side resource serving). Empty bundle until then.
+  @override
+  Future<ResourceBundleDto> resources() async => ResourceBundleDto();
 }

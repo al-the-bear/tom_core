@@ -20,6 +20,7 @@ import 'admin_dtos.dart';
 import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
+import 'resource_bundle_dto.dart';
 import 'share_request.dart';
 
 /// Authentication surface of the auth server (`/auth/*`).
@@ -29,6 +30,13 @@ abstract class AuthApiService {
   /// `authLogin` — `POST /auth/login` (public). Exchanges credentials for the
   /// signed token pair and the resolved principal.
   Future<LoginResult> login(LoginRequest request);
+
+  /// `authLoginResources` — `GET /auth/resources/login` (public). The small,
+  /// genuinely-public set of login-screen texts (`login.*` / `adminLogin.*`
+  /// keys) a client installs *before* anyone signs in, so the login form needs
+  /// no bundled UI strings (D-A9: a public login-resources endpoint, chosen over
+  /// guest login).
+  Future<ResourceBundleDto> loginResources();
 
   /// `authRefresh` — `POST /auth/refresh` (authenticated). Issues a fresh token
   /// pair for the still-valid caller.
@@ -96,6 +104,12 @@ abstract class AdminApiService {
   /// `adminAssign` — `POST /admin/assignments`. Assigns a role and/or group to
   /// a user.
   Future<void> assign(AssignmentRequest request);
+
+  /// `adminResources` — `GET /admin/resources` (admin-gated). The admin
+  /// console's full text bundle (admin forms + grants texts), installed after
+  /// sign-in. Admin-gated because only administrators reach the console (D-A10:
+  /// the auth server serves the admin console's full bundle).
+  Future<ResourceBundleDto> resources();
 }
 
 /// Application surface of the app server (the todo board).
@@ -153,4 +167,11 @@ abstract class AppApiService {
 
   /// `appRevokeShare` — `DELETE /share/{id}` (owner only).
   Future<void> revokeShare(String id);
+
+  /// `appResources` — `GET /resources` (authenticated). The app client's full
+  /// text bundle (board + item-form texts: `todo.item.*`, `board.*`, …),
+  /// installed after sign-in. Any authenticated principal may read it; the texts
+  /// are display strings, not data (D-A10: the app server serves the app
+  /// client's full bundle).
+  Future<ResourceBundleDto> resources();
 }

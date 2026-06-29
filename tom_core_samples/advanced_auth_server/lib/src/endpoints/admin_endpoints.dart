@@ -718,4 +718,12 @@ class AdvancedAdminApiService implements AdminApiService {
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminAssign')
   @override
   Future<void> assign(AssignmentRequest request) => _admin.assign(request);
+
+  // `resources` (`adminResources`, admin-gated `GET /admin/resources`) satisfies
+  // the `AdminApiService` contract added in todo 6. The wire contract and an
+  // empty bundle exist now; the real admin-console text map and its
+  // `@TomRoleAccess`/`@TomApiEndpointImplementation` endpoint wiring land in
+  // todo 7 (server-side resource serving). Returns an empty bundle until then.
+  @override
+  Future<ResourceBundleDto> resources() async => ResourceBundleDto();
 }
