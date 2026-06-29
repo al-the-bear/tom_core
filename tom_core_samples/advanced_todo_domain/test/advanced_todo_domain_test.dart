@@ -252,6 +252,55 @@ void main() {
         expect(key, startsWith('todo.item.'));
       }
     });
+
+    test('pins the scope/form segments the item form must run under', () {
+      expect(TodoItemResourceKeys.scope, 'todo');
+      expect(TodoItemResourceKeys.formId, 'item');
+    });
+
+    test('every key equals `<scope>.<formId>.<field>` (the convention)', () {
+      // The contract todo 4 depends on: a field whose tomId is the token and
+      // whose form runs under scope/formId self-addresses as exactly this key.
+      expect(TodoItemResourceKeys.title,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.title');
+      expect(TodoItemResourceKeys.status,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.status');
+      expect(TodoItemResourceKeys.priority,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.priority');
+      expect(TodoItemResourceKeys.assigneeId,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.assigneeId');
+      expect(TodoItemResourceKeys.dueDate,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.dueDate');
+      expect(TodoItemResourceKeys.estimate,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.estimate');
+      expect(TodoItemResourceKeys.description,
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}.description');
+    });
+
+    test('keyFor builds each key from its field token', () {
+      for (var i = 0; i < TodoItemResourceKeys.all.length; i++) {
+        expect(TodoItemResourceKeys.keyFor(TodoItemResourceKeys.allFields[i]),
+            TodoItemResourceKeys.all[i]);
+      }
+    });
+
+    test('the estimate field token is `estimate`, not the member `estimateHours`',
+        () {
+      // D-A2: the resource key names the concept; the gradable estimate field's
+      // tomId is `estimate` while its reflected entity member stays
+      // `estimateHours`.
+      expect(TodoItemResourceKeys.estimateField, 'estimate');
+      expect(TodoItemResourceKeys.estimateField, isNot('estimateHours'));
+      expect(TodoItemResourceKeys.estimate, endsWith('.estimate'));
+    });
+
+    test('field tokens are the last segment of each key, in `all` order', () {
+      expect(TodoItemResourceKeys.allFields, hasLength(TodoItemResourceKeys.all.length));
+      for (var i = 0; i < TodoItemResourceKeys.all.length; i++) {
+        expect(TodoItemResourceKeys.all[i],
+            endsWith('.${TodoItemResourceKeys.allFields[i]}'));
+      }
+    });
   });
 
   group('enums', () {
