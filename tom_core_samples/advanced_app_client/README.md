@@ -9,10 +9,12 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 
 ## Status
 
-Backend seam landed (step 26). The transport-independent `AppBackend` and its
-two implementations are in `lib/backend/`; the session, bootstrap, and screens
-follow in steps 27–31. `lib/reflection_seed.dart` is still a placeholder (the
-`TomForm` subclasses it captures arrive with the screens).
+Bootstrap + session landed (step 27). On top of the `lib/backend/` seam, the app
+shell now boots (`lib/main.dart`) and swaps between the login and board screens
+on session state; the login/board/detail screens are filled in over steps 28–31.
+`lib/reflection_seed.dart` is still a placeholder — the app currently boots on
+`advanced_todo_domain`'s `initializeReflection()`; it switches to the app's own
+generated seed once the bound `TomForm` subclasses arrive with the screens.
 
 ## AppBackend seam
 
@@ -38,19 +40,39 @@ final workspaces = await backend.listWorkspaces();
 final states = await backend.itemFieldStates('i-1'); // resourceKey → TomAuthState
 ```
 
-## Planned contents (steps 27–31)
+## App shell (bootstrap + session)
 
-- Bootstrap + `AppSession` (user + tokens + current field matrix).
-- Screens: Login, Workspace/Project picker, Board, Item detail (bound
-  `TomForm<TodoItem>` with per-field `TomAuthorizer.fixed(state)`), Share dialog.
+`lib/main.dart` performs the four bootstrap steps — reflection → platform →
+resource provider → `runApp` — and injects an `AppSession` over the chosen
+backend (the seeded `InMemoryAppBackend` by default; pass
+`--dart-define=AUTH_SERVER_URL=… --dart-define=APP_SERVER_URL=…` to drive the
+live stack through `LiveAppBackend`).
+
+`AppSession` (`lib/app/app_session.dart`) is a `ChangeNotifier` holding the
+signed-in principal, the token pair, and the four-state matrix for the item in
+view. `AdvancedTodoApp` (`lib/app/app_root.dart`) rebuilds its home from
+`session.isLoggedIn`, so the login↔board switch is state-driven. Every screen
+reaches the backend through `AppSession.guard`, so a dropped session (the live
+stack's post-refresh `401`, keyed `auth.session_expired`) clears the principal
+and routes straight back to login.
+
+## Planned contents (steps 28–31)
+
+- Screens: Login (bound `TomForm` over credentials), Workspace/Project picker,
+  Board, Item detail (bound `TomForm<TodoItem>` with per-field
+  `TomAuthorizer.fixed(state)`), Share dialog.
 
 ## Tests
 
-`test/in_memory_app_backend_test.dart` — the `InMemoryAppBackend` contract
-(TC-26-01..15): login, the workspace→project→list→item reads, item save, the
-per-principal four-state field matrix, and cross-user sharing. The fake builds
-reflected entities, so run the suite serially:
+Run the suite serially (the fakes build reflected entities):
 
 ```sh
 flutter test --concurrency=1
 ```
+
+- `test/in_memory_app_backend_test.dart` — the `InMemoryAppBackend` contract
+  (TC-26-01..15): login, the workspace→project→list→item reads, item save, the
+  per-principal four-state field matrix, and cross-user sharing.
+- `test/app_bootstrap_test.dart` — the app shell (TC-27-01..04): boots to login
+  when logged out, a successful login flips onto the board (carrying principal +
+  tokens), a guarded `401` and a logout each route back to login.
