@@ -16,3 +16,4 @@ export 'src/access/resource_access_resolver.dart';
 export 'src/endpoints/app_endpoints.dart';
 export 'src/persistence/app_mapping.dart';
 export 'src/persistence/app_persistence_model.dart';
+export 'src/resources/app_resource_bundles.dart';

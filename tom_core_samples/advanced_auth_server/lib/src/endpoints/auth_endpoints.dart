@@ -28,6 +28,7 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import '../auth/authentication_service.dart';
+import '../resources/auth_resource_bundles.dart';
 
 /// Builds the signed token pair and the wire DTOs from a verified login.
 ///
@@ -227,10 +228,13 @@ class AdvancedAuthApiService implements AuthApiService {
       _tokens.userDtoOf(getFromCurrentZone<TomPrincipal>()!);
 
   // `loginResources` (`authLoginResources`, public `GET /auth/resources/login`)
-  // satisfies the `AuthApiService` contract added in todo 6. The wire contract
-  // and an empty bundle exist now; the real login-screen text map and its
-  // `@TomPublicAccess`/`@TomApiEndpointImplementation` endpoint wiring land in
-  // todo 7 (server-side resource serving). Returns an empty bundle until then.
+  // serves the genuinely-public login-screen texts a client installs *before*
+  // sign-in (`login.*` for the app client, `adminLogin.*` for the admin
+  // console). Public — no bearer — because the login form needs its strings to
+  // render the very screen on which a user obtains a token (D-A9).
+  @TomPublicAccess()
+  @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authLoginResources')
   @override
-  Future<ResourceBundleDto> loginResources() async => ResourceBundleDto();
+  Future<ResourceBundleDto> loginResources() async =>
+      AuthResourceBundles.loginBundle();
 }

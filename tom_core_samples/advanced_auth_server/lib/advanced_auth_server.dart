@@ -17,3 +17,4 @@ export 'src/endpoints/admin_endpoints.dart';
 export 'src/endpoints/auth_endpoints.dart';
 export 'src/persistence/auth_mapping.dart';
 export 'src/persistence/auth_persistence_model.dart';
+export 'src/resources/auth_resource_bundles.dart';

@@ -52,6 +52,7 @@ import '../access/field_grade_resolver.dart';
 import '../access/resource_access_resolver.dart';
 import '../persistence/app_mapping.dart';
 import '../persistence/app_persistence_model.dart';
+import '../resources/app_resource_bundles.dart';
 
 /// The listing seam the read operations enumerate candidate rows through.
 ///
@@ -1065,11 +1066,12 @@ class AdvancedAppApiService implements AppApiService {
   Future<void> revokeShare(String id) =>
       _shares.revokeShare(_principalId, int.tryParse(id) ?? -1);
 
-  // `resources` (`appResources`, authenticated `GET /resources`) satisfies the
-  // `AppApiService` contract added in todo 6. The wire contract and an empty
-  // bundle exist now; the real app-client text map and its
-  // `@TomAuthenticatedAccess`/`@TomApiEndpointImplementation` endpoint wiring
-  // land in todo 7 (server-side resource serving). Empty bundle until then.
+  // `resources` (`appResources`, authenticated `GET /resources`) serves the app
+  // client's full text bundle (board + item-form labels), installed after
+  // sign-in. Any authenticated principal may read it — the texts are display
+  // strings, not data (D-A10).
+  @TomAuthenticatedAccess()
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResources')
   @override
-  Future<ResourceBundleDto> resources() async => ResourceBundleDto();
+  Future<ResourceBundleDto> resources() async => AppResourceBundles.appBundle();
 }

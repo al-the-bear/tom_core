@@ -37,6 +37,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import '../auth/password_hashing.dart';
 import '../persistence/auth_mapping.dart';
 import '../persistence/auth_persistence_model.dart';
+import '../resources/auth_resource_bundles.dart';
 
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
@@ -719,11 +720,13 @@ class AdvancedAdminApiService implements AdminApiService {
   @override
   Future<void> assign(AssignmentRequest request) => _admin.assign(request);
 
-  // `resources` (`adminResources`, admin-gated `GET /admin/resources`) satisfies
-  // the `AdminApiService` contract added in todo 6. The wire contract and an
-  // empty bundle exist now; the real admin-console text map and its
-  // `@TomRoleAccess`/`@TomApiEndpointImplementation` endpoint wiring land in
-  // todo 7 (server-side resource serving). Returns an empty bundle until then.
+  // `resources` (`adminResources`, admin-gated `GET /admin/resources`) serves
+  // the admin console's full text bundle (the user/role/group editor labels and
+  // the grant-matrix screen texts), installed after an admin signs in.
+  // Admin-gated because only administrators reach the console (D-A10).
+  @TomRoleAccess(['admin'])
+  @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminResources')
   @override
-  Future<ResourceBundleDto> resources() async => ResourceBundleDto();
+  Future<ResourceBundleDto> resources() async =>
+      AuthResourceBundles.adminConsoleBundle();
 }
