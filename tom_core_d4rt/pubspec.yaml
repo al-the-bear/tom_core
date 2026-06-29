@@ -8,11 +8,11 @@ environment:
 
 dependencies:
   # D4rt runtime
-  tom_d4rt: any
+  tom_d4rt: ">=1.11.0"
   
   # D4rt base REPL with dcli bridges
   # >=1.1.6 carries the duplicate-export fix required for AOT compilation.
-  tom_d4rt_dcli: ^1.1.6
+  tom_d4rt_dcli: ">=1.1.6"
   
   # Projects to bridge
   tom_core_kernel:
@@ -47,4 +47,4 @@ dev_dependencies:
   test: ^1.25.6
   # >=1.9.5 carries the B3b (explicit method type args) + B4 (part-of via
   # package_config) AOT bridge-compile fixes for this project's corpus.
-  tom_d4rt_generator: ^1.9.5
+  tom_d4rt_generator: ">=1.12.1"
