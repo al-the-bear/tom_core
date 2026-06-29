@@ -337,7 +337,12 @@ endpoints need. In order, `main()`:
 The JWT / auth-server / worker-pool machinery `tom_uam_server` also wires is
 intentionally omitted — the endpoints are `@TomPublicAccess`, so none of it is
 exercised. (Authenticated, per-principal field grading is the natural next step;
-the four-state resolver it would use is already built and tested.)
+the four-state resolver it would use is already built and tested.) That next
+step is realized in full by the
+[**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md), which
+wires a JWT auth server, bearer-validated app endpoints, and per-principal
+four-state grading over the wire — this sample stays public and read-only for
+teaching.
 
 ### The endpoints
 
@@ -507,3 +512,7 @@ and the three `curl`s in [§9](#9-the-live-server-boot).
 - **Sibling sample:** [`core_client_sample`](../core_client_sample/README.md) —
   the Flutter client whose live read path consumes this server's three public
   `GET` endpoints
+- **Secured, full-stack successor:**
+  [`README_advanced_sample.md`](../README_advanced_sample.md) — the advanced
+  suite that takes this read-only public server to a JWT-secured, two-server
+  full stack with write endpoints and per-principal field grading

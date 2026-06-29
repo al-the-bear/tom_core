@@ -411,6 +411,17 @@ backend swap in `main.dart` is the only client change required: the screens,
 forms, session and authorization model are already written against the
 interface, not the transport.
 
+> **Item 28 is now realized — in a dedicated suite.** Rather than retrofit live
+> login and writes onto this read-only pair, the secured, full-stack version is
+> built as its own series: the
+> [**Advanced Tom Core Full-Stack Sample**](../README_advanced_sample.md) — two
+> servers (JWT auth/admin + secured app), two databases, and two Flutter clients,
+> with live login, write endpoints, an authenticated HTTP client that presents
+> and refreshes a bearer token, per-principal four-state field grading over the
+> wire, and cross-user sharing. This sample stays intentionally read-only and
+> in-memory for teaching; the advanced suite is where the full cross-tier loop
+> runs end-to-end (verified by its `run_cross_tier_integration.sh`).
+
 ---
 
 ## Where this sits
@@ -426,3 +437,7 @@ interface, not the transport.
 - **Sibling sample:** [`core_server_sample`](../core_server_sample/README.md) —
   the backend whose grant matrix this client mirrors and whose read endpoints the
   live path consumes
+- **Secured, full-stack successor:**
+  [`README_advanced_sample.md`](../README_advanced_sample.md) — the advanced
+  suite that closes the cross-tier [item 28](#14-known-limitations-and-the-cross-tier-work)
+  with live login, writes, bearer auth, and cross-user sharing
