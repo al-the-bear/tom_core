@@ -26,7 +26,7 @@ void main() {
   // Build the form the way the detail screen does: under the gradable scope.
   TodoItemForm buildForm() => TomScope.withScope(
         TodoItemResourceKeys.scope,
-        () => TodoItemForm(const {}),
+        TodoItemForm.new,
       );
 
   group('TodoItemForm scope realignment (todo 4)', () {

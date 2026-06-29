@@ -77,14 +77,17 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _error = null;
     });
     try {
-      final states = await _session.loadFieldStates(_item.id.get());
+      // Load the item's grade matrix; this pushes it into the session's
+      // installed [FieldStateAuthorizationAdapter], so the form's fields resolve
+      // their grades implicitly (the form itself holds no authorization state).
+      await _session.loadFieldStates(_item.id.get());
       if (!mounted) return;
       // Run the form under the gradable scope so each field's basePath equals
       // its wire resource key (`todo.item.<field>`) and the installed adapter
       // (todo 3) resolves its grade implicitly via layer-1.
       final form = TomScope.withScope(
         TodoItemResourceKeys.scope,
-        () => TodoItemForm(states),
+        TodoItemForm.new,
       );
       form.bind(_item);
       setState(() {

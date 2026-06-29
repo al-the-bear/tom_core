@@ -42,6 +42,14 @@ void main() {
     );
   });
 
+  // The role matrix is now driven *purely* through the implicit chain: each
+  // test installs its session's adapter on the [TomAuthorization] singleton (the
+  // same wiring `main` performs) and clears it afterwards, so the four-role
+  // render matrix is reproduced without the form holding any authorization
+  // state. This is the regression guard for the per-field-authorizer removal
+  // (todo 5).
+  tearDown(TomAuthorization.reset);
+
   /// A tall viewport so the detail form's fields and Save button all fit
   /// on-screen (the default 800×600 window scrolls controls out of reach).
   void useTallViewport(WidgetTester tester) {
@@ -67,6 +75,10 @@ void main() {
 
     final backend = InMemoryAppBackend();
     final session = AppSession(backend);
+    // Install the session's adapter on the singleton, exactly as `main` does, so
+    // each field resolves its grade implicitly through layer-1 once
+    // `loadFieldStates` feeds the matrix in. Cleared in [tearDown].
+    TomAuthorization.adapter = session.authorizationAdapter;
 
     if (shareValAsViewer) {
       await session.login(login('alice'));

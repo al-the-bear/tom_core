@@ -1,25 +1,20 @@
-/// The item editor — a `TomForm` bound to a [TodoItem], with each gradable
-/// field gated by the session's resolved [TomAuthState] for the current role
-/// (step 30).
+/// The item editor — a `TomForm` bound to a [TodoItem] (step 30), carrying **no**
+/// authorization knowledge of its own.
 ///
-/// This is where the four-state authorization model meets a real editing form:
-/// the [fieldStates] map (keyed by [TodoItemResourceKeys]) is turned into a
-/// per-field [TomAuthorizer.fixed], so the *same* form renders four ways
-/// depending on who is signed in — `owner` edits everything; `editor` cannot
-/// change the assignee or estimate (read); `commenter` cannot see priority or
-/// estimate (none); `viewer` toggles nothing and the status control renders
-/// disabled. A field absent from [fieldStates] degrades to [TomAuthState.none]
-/// (the closed-safe default — hidden, never a leaked editable control),
-/// matching the server's resolver.
-///
-/// The form runs under scope [TodoItemResourceKeys.scope] (`'todo'`) with
-/// `formId` [TodoItemResourceKeys.formId] (`'item'`), and each field's `tomId`
-/// is sourced from the matching `*Field` token, so every field's `basePath`
-/// equals its wire resource key (`todo.item.title`, …). That is what lets the
-/// installed [FieldStateAuthorizationAdapter] (todo 3) resolve each field's grade
-/// implicitly through layer-1 `TomAuthorization.resolveAuth(basePath)` — the keys
-/// and the `tomId`s share the one origin in [TodoItemResourceKeys], so they
-/// cannot drift.
+/// This is where the four-state authorization model meets a real editing form,
+/// but the gating is now entirely *implicit*: the form runs under scope
+/// [TodoItemResourceKeys.scope] (`'todo'`) with `formId`
+/// [TodoItemResourceKeys.formId] (`'item'`), and each field's `tomId` is sourced
+/// from the matching `*Field` token, so every field's `basePath` equals its wire
+/// resource key (`todo.item.title`, …). The installed
+/// [FieldStateAuthorizationAdapter] (todo 3) — fed the signed-in role's matrix by
+/// the session — then resolves each field's grade through layer-1
+/// `TomAuthorization.resolveAuth(basePath)`. So the *same* form renders four ways
+/// (owner edits everything; editor cannot change the assignee or estimate;
+/// commenter cannot see priority or estimate; viewer toggles nothing and the
+/// status control renders disabled) without the form holding any per-field
+/// authorizer or grade map — the keys and the `tomId`s share the one origin in
+/// [TodoItemResourceKeys], so they cannot drift.
 ///
 /// Reflected *member* names still match the entity's field names so the
 /// reflection round-trip `bind`/`save` writes straight into the bound [TodoItem]
@@ -30,22 +25,17 @@
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart' show tomReflector;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
-/// A bound, authorization-aware editor for a single [TodoItem].
+/// A bound editor for a single [TodoItem]; authorization is resolved implicitly
+/// through the installed adapter, not held on the form.
 @tomReflector
 class TodoItemForm extends TomForm<TodoItem> {
-  /// Creates the form, applying [fieldStates] (the session's resolved matrix
-  /// for the signed-in role) to each gradable field.
-  TodoItemForm(this.fieldStates)
-      : super(formId: TodoItemResourceKeys.formId);
-
-  /// The resolved [TomAuthState] per [TodoItemResourceKeys] resource key.
-  final Map<String, TomAuthState> fieldStates;
-
-  TomAuthorizer _authFor(String key) =>
-      TomAuthorizer.fixed(fieldStates[key] ?? TomAuthState.none);
+  /// Creates the form. It carries no grade matrix: each field self-addresses as
+  /// its resource key and the installed [FieldStateAuthorizationAdapter] grades
+  /// it through layer-1 implicit authorization.
+  TodoItemForm() : super(formId: TodoItemResourceKeys.formId);
 
   /// Title — required free text.
   late final title = TomFormStringInput(
@@ -53,7 +43,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     '',
     form: this,
     labelTextOverride: 'Title',
-    authorizer: _authFor(TodoItemResourceKeys.title),
     validators: [Validators.required()],
   );
 
@@ -64,7 +53,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     form: this,
     source: _statusSource,
     labelTextOverride: 'Status',
-    authorizer: _authFor(TodoItemResourceKeys.status),
   );
 
   /// Priority — a dropdown over the [TodoPriority] names.
@@ -74,7 +62,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     form: this,
     source: _prioritySource,
     labelTextOverride: 'Priority',
-    authorizer: _authFor(TodoItemResourceKeys.priority),
   );
 
   /// Assignee id — free text (gated; an editor sees this read-only).
@@ -83,7 +70,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     '',
     form: this,
     labelTextOverride: 'Assignee id',
-    authorizer: _authFor(TodoItemResourceKeys.assigneeId),
   );
 
   /// Optional due date.
@@ -94,7 +80,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     firstDate: DateTime(2000),
     lastDate: DateTime(2100),
     labelTextOverride: 'Due date',
-    authorizer: _authFor(TodoItemResourceKeys.dueDate),
   );
 
   /// Optional effort estimate in hours. The reflected member stays
@@ -107,7 +92,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     form: this,
     decimals: 1,
     labelTextOverride: 'Estimate (h)',
-    authorizer: _authFor(TodoItemResourceKeys.estimate),
   );
 
   /// Free-text description.
@@ -117,7 +101,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     form: this,
     labelTextOverride: 'Description',
     maxLines: 3,
-    authorizer: _authFor(TodoItemResourceKeys.description),
   );
 
   /// The gradable fields, in display order — the screen lays these out and the
