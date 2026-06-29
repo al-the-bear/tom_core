@@ -18,22 +18,21 @@ class LoginForm extends TomForm<LoginCredentials> {
   /// Creates the login form.
   LoginForm() : super(formId: 'login');
 
-  /// Account login name.
+  /// Account login name. Label/hint resolve from the installed login bundle
+  /// (`login.username.label` / `login.username.hint`).
   late final username = TomFormStringInput(
     'username',
     '',
     form: this,
-    labelTextOverride: 'Username',
-    hintTextOverride: 'alice, bob or val',
     validators: [Validators.required()],
   );
 
-  /// Account password (the demo backend accepts any non-empty value).
+  /// Account password (the demo backend accepts any non-empty value). Label
+  /// resolves from `login.password.label` in the installed login bundle.
   late final password = TomFormStringInput(
     'password',
     '',
     form: this,
-    labelTextOverride: 'Password',
     obscureText: true,
     validators: [Validators.required()],
   );

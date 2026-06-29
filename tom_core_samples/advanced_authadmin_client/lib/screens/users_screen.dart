@@ -10,7 +10,6 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -47,7 +46,7 @@ class UsersScreen extends StatelessWidget {
 
   /// Opens the create editor and posts a [CreateUserRequest] on save.
   Future<bool> _create(BuildContext context) async {
-    final form = TomScope.withScope('userCreate', () => UserForm());
+    final form = UserForm();
     final draft = UserDraft();
     form.bind(draft);
     try {
@@ -78,7 +77,7 @@ class UsersScreen extends StatelessWidget {
 
   /// Opens the edit editor for [user] and updates the profile + status on save.
   Future<bool> _edit(BuildContext context, UserDto user) async {
-    final form = TomScope.withScope('userEdit', () => UserForm(isCreate: false));
+    final form = UserForm(isCreate: false);
     final draft = UserDraft()
       ..username.set(user.username)
       ..displayName.set(user.displayName)

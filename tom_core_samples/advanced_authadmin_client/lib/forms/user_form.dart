@@ -25,12 +25,12 @@ class UserForm extends TomForm<UserDraft> {
   /// Whether the form is creating a new account (vs. editing an existing one).
   final bool isCreate;
 
-  /// Login name — editable on create, read-only (stable key) on edit.
+  /// Login name — editable on create, read-only (stable key) on edit. Label
+  /// resolves from `user.username.label` in the installed console bundle.
   late final username = TomFormStringInput(
     'username',
     '',
     form: this,
-    labelTextOverride: 'Username',
     authorizer: TomAuthorizer.fixed(
       isCreate ? TomAuthState.full : TomAuthState.read,
     ),
@@ -44,7 +44,6 @@ class UserForm extends TomForm<UserDraft> {
     'password',
     '',
     form: this,
-    labelTextOverride: 'Password',
     obscureText: true,
     validators: isCreate ? [Validators.required()] : const [],
   );
@@ -54,7 +53,6 @@ class UserForm extends TomForm<UserDraft> {
     'displayName',
     '',
     form: this,
-    labelTextOverride: 'Display name',
     validators: [Validators.required()],
   );
 
@@ -63,7 +61,6 @@ class UserForm extends TomForm<UserDraft> {
     'email',
     '',
     form: this,
-    labelTextOverride: 'Email',
     keyboardType: TextInputType.emailAddress,
   );
 
@@ -73,7 +70,6 @@ class UserForm extends TomForm<UserDraft> {
     'active',
     form: this,
     source: _statusSource,
-    labelTextOverride: 'Status',
   );
 
   /// The fields the screen renders, in order, for the current mode.

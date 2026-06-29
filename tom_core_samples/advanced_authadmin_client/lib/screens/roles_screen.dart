@@ -9,7 +9,6 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -45,7 +44,7 @@ class RolesScreen extends StatelessWidget {
 
   /// Opens the create editor and posts a new [RoleDto] on save.
   Future<bool> _create(BuildContext context) async {
-    final form = TomScope.withScope('roleCreate', () => RoleForm());
+    final form = RoleForm();
     final draft = RoleDraft();
     form.bind(draft);
     try {
@@ -71,7 +70,7 @@ class RolesScreen extends StatelessWidget {
 
   /// Opens the edit editor for [role] (key read-only) and renames it on save.
   Future<bool> _edit(BuildContext context, RoleDto role) async {
-    final form = TomScope.withScope('roleEdit', () => RoleForm(isCreate: false));
+    final form = RoleForm(isCreate: false);
     final draft = RoleDraft()
       ..key.set(role.key)
       ..name.set(role.name);

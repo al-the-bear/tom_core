@@ -20,23 +20,22 @@ class RoleForm extends TomForm<RoleDraft> {
   final bool isCreate;
 
   /// Stable role key — editable on create, read-only (stable key) on edit.
+  /// Label resolves from `role.key.label` in the installed console bundle.
   late final key = TomFormStringInput(
     'key',
     '',
     form: this,
-    labelTextOverride: 'Key',
     authorizer: TomAuthorizer.fixed(
       isCreate ? TomAuthState.full : TomAuthState.read,
     ),
     validators: [Validators.required()],
   );
 
-  /// Human-facing role name.
+  /// Human-facing role name. Label resolves from `role.name.label`.
   late final name = TomFormStringInput(
     'name',
     '',
     form: this,
-    labelTextOverride: 'Name',
     validators: [Validators.required()],
   );
 

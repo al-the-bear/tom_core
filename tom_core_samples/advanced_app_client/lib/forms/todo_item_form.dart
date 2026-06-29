@@ -37,12 +37,12 @@ class TodoItemForm extends TomForm<TodoItem> {
   /// it through layer-1 implicit authorization.
   TodoItemForm() : super(formId: TodoItemResourceKeys.formId);
 
-  /// Title — required free text.
+  /// Title — required free text. Label resolves from `todo.item.title.label` in
+  /// the installed full bundle.
   late final title = TomFormStringInput(
     TodoItemResourceKeys.titleField,
     '',
     form: this,
-    labelTextOverride: 'Title',
     validators: [Validators.required()],
   );
 
@@ -52,7 +52,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     TodoStatus.backlog.name,
     form: this,
     source: _statusSource,
-    labelTextOverride: 'Status',
   );
 
   /// Priority — a dropdown over the [TodoPriority] names.
@@ -61,7 +60,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     TodoPriority.medium.name,
     form: this,
     source: _prioritySource,
-    labelTextOverride: 'Priority',
   );
 
   /// Assignee id — free text (gated; an editor sees this read-only).
@@ -69,7 +67,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     TodoItemResourceKeys.assigneeIdField,
     '',
     form: this,
-    labelTextOverride: 'Assignee id',
   );
 
   /// Optional due date.
@@ -79,7 +76,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     form: this,
     firstDate: DateTime(2000),
     lastDate: DateTime(2100),
-    labelTextOverride: 'Due date',
   );
 
   /// Optional effort estimate in hours. The reflected member stays
@@ -91,7 +87,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     null,
     form: this,
     decimals: 1,
-    labelTextOverride: 'Estimate (h)',
   );
 
   /// Free-text description.
@@ -99,7 +94,6 @@ class TodoItemForm extends TomForm<TodoItem> {
     TodoItemResourceKeys.descriptionField,
     '',
     form: this,
-    labelTextOverride: 'Description',
     maxLines: 3,
   );
 

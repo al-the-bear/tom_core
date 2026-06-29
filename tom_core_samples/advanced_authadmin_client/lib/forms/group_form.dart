@@ -16,12 +16,12 @@ class GroupForm extends TomForm<GroupDraft> {
   /// Creates the group form.
   GroupForm() : super(formId: 'group');
 
-  /// Human-facing group name.
+  /// Human-facing group name. Label resolves from `group.name.label` in the
+  /// installed console bundle.
   late final name = TomFormStringInput(
     'name',
     '',
     form: this,
-    labelTextOverride: 'Name',
     validators: [Validators.required()],
   );
 

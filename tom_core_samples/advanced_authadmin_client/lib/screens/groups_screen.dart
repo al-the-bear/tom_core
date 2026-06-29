@@ -10,7 +10,6 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -50,7 +49,7 @@ class GroupsScreen extends StatelessWidget {
   Future<bool> _create(BuildContext context) async {
     final users = await _loadUsers(context);
     if (users == null || !context.mounted) return false;
-    final form = TomScope.withScope('groupCreate', () => GroupForm());
+    final form = GroupForm();
     final draft = GroupDraft();
     form.bind(draft);
     final selected = <String>{};
@@ -85,7 +84,7 @@ class GroupsScreen extends StatelessWidget {
   Future<bool> _edit(BuildContext context, GroupDto group) async {
     final users = await _loadUsers(context);
     if (users == null || !context.mounted) return false;
-    final form = TomScope.withScope('groupEdit', () => GroupForm());
+    final form = GroupForm();
     final draft = GroupDraft()..name.set(group.name);
     form.bind(draft);
     final selected = {...group.memberUserIds};

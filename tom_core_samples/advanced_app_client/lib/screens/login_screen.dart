@@ -1,12 +1,14 @@
 /// The login screen: a bound [LoginForm] over [LoginCredentials], driving
 /// [AppSession.login] (step 28).
 ///
-/// The form is created inside a [TomScope] (so its fields resolve ids/resources
-/// consistently) and bound to a fresh [LoginCredentials]. On submit we `save()`
-/// the form — which writes the typed fields back into the bound credentials via
-/// the reflection round-trip — then fold them into a wire [LoginRequest] for the
-/// session. A rejected login surfaces its [AppBackendException] message inline
-/// without leaving the screen (the shell only swaps to the board on success).
+/// The form is built unscoped, so its `formId: 'login'` *is* its base path and
+/// each field self-addresses as its resource key (`login.username`,
+/// `login.password`) — exactly the keys the installed login bundle serves. It is
+/// bound to a fresh [LoginCredentials]. On submit we `save()` the form — which
+/// writes the typed fields back into the bound credentials via the reflection
+/// round-trip — then fold them into a wire [LoginRequest] for the session. A
+/// rejected login surfaces its [AppBackendException] message inline without
+/// leaving the screen (the shell only swaps to the board on success).
 library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
@@ -40,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _form = TomScope.withScope('login', LoginForm.new);
+    _form = LoginForm();
     _form.bind(_credentials);
   }
 
