@@ -3,13 +3,12 @@
 ///
 /// Four things happen before the first frame:
 ///
-///  1. [initializeReflection] (from `advanced_todo_domain`) registers the
-///     reflected `@tomReflector` entities the backend constructs and the screens
-///     bind. It must run before any domain entity is built — the in-memory
-///     backend seeds its tree in its constructor, so this comes first. (When the
-///     bound `TomForm` subclasses arrive with the screens, this switches to the
-///     app's own generated `reflection_seed.dart`, which captures domain + forms
-///     in one init.)
+///  1. [initializeReflection] (from this app's `reflection_seed.dart`) registers
+///     the reflected `@tomReflector` entities the backend constructs and the
+///     forms bind — the shared `advanced_todo_domain` entities plus the
+///     client-local `LoginCredentials`/`LoginForm`, all captured by the one
+///     generated seed. It must run before any reflected type is built (the
+///     in-memory backend seeds its tree in its constructor), so it comes first.
 ///  2. The Flutter client platform is registered via
 ///     `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code
 ///     that probes the runtime gets the Flutter implementation.
@@ -24,12 +23,12 @@
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_flutter/tom_core_flutter.dart';
 
 import 'app/app.dart';
 import 'backend/backend.dart';
+import 'reflection_seed.dart';
 
 void main() {
   initializeReflection();

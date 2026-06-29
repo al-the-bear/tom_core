@@ -9,12 +9,12 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 
 ## Status
 
-Bootstrap + session landed (step 27). On top of the `lib/backend/` seam, the app
-shell now boots (`lib/main.dart`) and swaps between the login and board screens
-on session state; the login/board/detail screens are filled in over steps 28–31.
-`lib/reflection_seed.dart` is still a placeholder — the app currently boots on
-`advanced_todo_domain`'s `initializeReflection()`; it switches to the app's own
-generated seed once the bound `TomForm` subclasses arrive with the screens.
+Login screen landed (step 28). On top of the bootstrap + session, the real
+sign-in screen is a bound `TomForm` over client-local `LoginCredentials` that
+drives `AppSession.login` and shows a rejected login inline. The app now boots on
+its own generated `reflection_seed.dart` (capturing the shared domain entities +
+the client-local credentials/form in one init). The board/detail screens and the
+share dialog are filled in over steps 29–31.
 
 ## AppBackend seam
 
@@ -56,11 +56,22 @@ reaches the backend through `AppSession.guard`, so a dropped session (the live
 stack's post-refresh `401`, keyed `auth.session_expired`) clears the principal
 and routes straight back to login.
 
-## Planned contents (steps 28–31)
+## Login screen
 
-- Screens: Login (bound `TomForm` over credentials), Workspace/Project picker,
-  Board, Item detail (bound `TomForm<TodoItem>` with per-field
-  `TomAuthorizer.fixed(state)`), Share dialog.
+`lib/screens/login_screen.dart` is a bound `TomForm` (`lib/forms/login_form.dart`)
+over the client-local reflected `LoginCredentials` (`lib/domain/`). On submit it
+`save()`s the form (the reflection round-trip writes the typed fields back into
+the credentials), folds them into a wire `LoginRequest`, and calls
+`AppSession.login`. A rejected login surfaces its `AppBackendException` message
+inline (keyed `login-error`) without leaving the page; success lets the shell
+swap to the board. The app's reflected graph (domain entities + the
+credentials/form) is captured by `lib/reflection_seed.dart` — regenerate with
+`./reflection_generation.sh` only when a reflected signature changes.
+
+## Planned contents (steps 29–31)
+
+- Screens: Workspace/Project picker, Board, Item detail (bound
+  `TomForm<TodoItem>` with per-field `TomAuthorizer.fixed(state)`), Share dialog.
 
 ## Tests
 
@@ -76,3 +87,7 @@ flutter test --concurrency=1
 - `test/app_bootstrap_test.dart` — the app shell (TC-27-01..04): boots to login
   when logged out, a successful login flips onto the board (carrying principal +
   tokens), a guarded `401` and a logout each route back to login.
+- `test/login_screen_test.dart` — the bound login screen (TC-28-01..04): starts
+  on sign-in, a valid login proceeds to the board, a rejected login shows an
+  inline error without leaving the page, and empty credentials fail validation
+  without a backend call.

@@ -11,8 +11,8 @@ library;
 
 import 'package:advanced_app_client/app/app.dart';
 import 'package:advanced_app_client/backend/backend.dart';
+import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -37,6 +37,14 @@ class _ExpiringBackend extends InMemoryAppBackend {
 
 void main() {
   setUpAll(initializeReflection);
+
+  setUp(() {
+    // The real login screen builds a bound TomForm whose fields resolve labels
+    // through the app resource provider.
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(const <String, dynamic>{}),
+    );
+  });
 
   const aliceLogin = LoginRequest(username: 'alice', password: 'pw');
   final loginFinder = find.byKey(const Key('login-screen'));
