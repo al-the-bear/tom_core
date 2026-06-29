@@ -9,12 +9,13 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 
 ## Status
 
-Login screen landed (step 28). On top of the bootstrap + session, the real
-sign-in screen is a bound `TomForm` over client-local `LoginCredentials` that
-drives `AppSession.login` and shows a rejected login inline. The app now boots on
-its own generated `reflection_seed.dart` (capturing the shared domain entities +
-the client-local credentials/form in one init). The board/detail screens and the
-share dialog are filled in over steps 29–31.
+Board screen landed (step 29). On top of the login screen + session, the real
+signed-in home is a workspace/project picker and a status-column board of the
+selected project's items, grouped by `status` and read through
+`AppSession.guard`; tapping a card opens the item detail. The app boots on its
+own generated `reflection_seed.dart` (capturing the shared domain entities + the
+client-local credentials/form in one init). The bound item-detail editor and the
+share dialog are filled in over steps 30–31.
 
 ## AppBackend seam
 
@@ -68,10 +69,22 @@ swap to the board. The app's reflected graph (domain entities + the
 credentials/form) is captured by `lib/reflection_seed.dart` — regenerate with
 `./reflection_generation.sh` only when a reflected signature changes.
 
-## Planned contents (steps 29–31)
+## Board screen
 
-- Screens: Workspace/Project picker, Board, Item detail (bound
-  `TomForm<TodoItem>` with per-field `TomAuthorizer.fixed(state)`), Share dialog.
+`lib/screens/board_screen.dart` is the signed-in home. It cascades the reads in
+`initState` — workspaces → projects → lists → items — each hop guarded through
+`AppSession.guard`, and re-runs from the picker level when the
+workspace/project `DropdownButtonFormField` changes. Items group into one column
+per `TodoStatus` (keyed `status-column-<name>`, with a `(count)` header),
+rendered in a horizontally scrollable board. Tapping a card pushes
+`lib/screens/item_detail_screen.dart` — for now a read-only nav target keyed
+`item-detail-screen`; step 30 rewrites its body into the bound `TomForm<TodoItem>`
+whose per-field controls are driven by the session's four-state grade matrix.
+
+## Planned contents (steps 30–31)
+
+- Screens: Item detail (bound `TomForm<TodoItem>` with per-field
+  `TomAuthorizer.fixed(state)`, comments + subtasks), Share dialog.
 
 ## Tests
 
@@ -91,3 +104,7 @@ flutter test --concurrency=1
   on sign-in, a valid login proceeds to the board, a rejected login shows an
   inline error without leaving the page, and empty credentials fail validation
   without a backend call.
+- `test/board_screen_test.dart` — the status-column board (TC-29-01..03): items
+  render grouped by `status` (asserted per column with `find.descendant`),
+  tapping a card opens its detail, and the picker shows the seeded workspace +
+  project.
