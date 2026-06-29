@@ -18,6 +18,10 @@ library;
 // ignore: unused_import
 import 'domain/admin_drafts.dart';
 // ignore: unused_import
+import 'domain/admin_login_credentials.dart';
+// ignore: unused_import
+import 'forms/admin_login_form.dart';
+// ignore: unused_import
 import 'forms/user_form.dart';
 // ignore: unused_import
 import 'forms/role_form.dart';
@@ -30,6 +34,8 @@ import 'forms/group_form.dart';
 // `reflection_seed.reflection.dart` — do-not-edit, regenerate-only — an
 // implementation detail).
 export 'domain/admin_drafts.dart';
+export 'domain/admin_login_credentials.dart';
+export 'forms/admin_login_form.dart';
 export 'forms/user_form.dart';
 export 'forms/role_form.dart';
 export 'forms/group_form.dart';
