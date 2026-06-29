@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import '../app/app_session.dart';
 import '../backend/backend.dart';
 import 'item_detail_screen.dart';
+import 'share_dialog.dart';
 
 /// Shows the workspace/project picker and the status-column item board.
 class BoardScreen extends StatefulWidget {
@@ -151,6 +152,19 @@ class _BoardScreenState extends State<BoardScreen> {
     );
   }
 
+  /// Opens the share dialog for the selected project; on a granted share, a
+  /// snackbar confirms it (the grantee's next read now sees the project).
+  Future<void> _openShare() async {
+    final projectId = _projectId;
+    if (projectId == null) return;
+    final shared = await showShareDialog(context, _session, projectId);
+    if (shared == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Project shared')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final name =
@@ -160,6 +174,12 @@ class _BoardScreenState extends State<BoardScreen> {
       appBar: AppBar(
         title: const Text('Board'),
         actions: [
+          IconButton(
+            key: const Key('share-button'),
+            icon: const Icon(Icons.person_add_alt),
+            tooltip: 'Share project',
+            onPressed: _projectId == null ? null : _openShare,
+          ),
           IconButton(
             key: const Key('logout-button'),
             icon: const Icon(Icons.logout),

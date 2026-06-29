@@ -9,13 +9,15 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 
 ## Status
 
-Item-detail editor landed (step 30). On top of the login screen, session, and
-board, tapping a card now opens a bound `TomForm<TodoItem>` whose per-field
-controls are driven live by the session's four-state grade matrix — the *same*
-editor renders four ways depending on the signed-in role. The app boots on its
-own generated `reflection_seed.dart` (capturing the shared domain entities + the
-client-local credentials/forms in one init). The share dialog and the README
-guided tour are filled in over step 31.
+Cross-user sharing landed (step 31) — the app is feature-complete. On top of the
+login screen, session, board, and bound item-detail editor, the board's app-bar
+now carries a **Share** action: the owner of the selected project grants another
+user a `ProjectRole`, and the grantee's next read sees the project. A non-owner's
+share is refused inline (only the owner may share). The app boots on its own
+generated `reflection_seed.dart` (capturing the shared domain entities + the
+client-local credentials/forms in one init). The full run instructions — both
+servers plus this client — are in the [Running the full stack](#running-the-full-stack)
+guided tour below.
 
 ## AppBackend seam
 
@@ -104,9 +106,50 @@ until the backend seam exposes a comment-list read and subtask operations.
 `lib/reflection_seed.dart` — regenerate with `./reflection_generation.sh` only
 when a reflected signature changes.
 
-## Planned contents (step 31)
+## Share dialog
 
-- Screens: Share dialog (pick a user + `projectRole`, call `POST /share`).
+`lib/screens/share_dialog.dart` is the cross-user half of the four-state model:
+it grants another user a `ProjectRole` on the board's selected project. The
+board's app-bar **Share** action (keyed `share-button`, enabled once a project is
+selected) opens it; on a granted share a snackbar confirms it and the grantee's
+next read sees the project.
+
+The grantee is entered as a **user id** (keyed `share-grantee-input`, e.g.
+`u-val`), not picked from a list — the frozen step-26 `AppBackend` seam has no
+"list users" operation and `share` speaks `granteeUserId`, matching the live
+wire. A role drop-down (keyed `share-role-picker`, default `viewer`) and a
+**Share** button (keyed `share-submit-button`) submit a `ShareRequest` through
+`AppSession.guard`. Only the project owner may share: a denied share surfaces its
+`AppBackendException` message inline (keyed `share-error`) and keeps the dialog
+open rather than closing it; an empty grantee is blocked client-side before any
+backend call. The demo ids are `u-alice` / `u-bob` / `u-val`.
+
+## Running the full stack
+
+The app drives the seeded `InMemoryAppBackend` out of the box (no servers
+needed), which is how the widget and contract tests run. To exercise it live over
+the wire, start both servers first, then launch the client with their URLs:
+
+```sh
+# 1. Auth server (issues bearer tokens) — from advanced_auth_server/
+dart run bin/auth_server_start.dart      # binds http://localhost:8081
+
+# 2. App server (the board API; needs its MariaDB) — from advanced_app_server/
+docker compose up -d app-db              # MariaDB on host port 3308
+dart run bin/app_server_start.dart       # binds http://localhost:8080
+
+# 3. This client, pointed at both — from advanced_app_client/
+flutter run \
+  --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
+  --dart-define=APP_SERVER_URL=http://localhost:8080
+```
+
+Without the `--dart-define`s the client boots on the in-memory backend. Sign in
+with a demo account (`alice` / `bob` / `val`, password `pw`): `alice` owns the
+seeded project and can share it; `bob` is a seeded editor; `val` starts with no
+access until `alice` shares the project. Each principal's board, item-detail
+field grades, and share rights follow the same ownership + four-state model the
+in-memory fake mirrors.
 
 ## Tests
 
@@ -135,3 +178,7 @@ flutter test --concurrency=1
   is read-only with disabled dropdowns and the ungranted estimate hidden (and no
   Save), and an `editor` save persists the edited title while the read-only
   assignee stays put.
+- `test/share_dialog_test.dart` — the cross-user share dialog (TC-31-01..03): an
+  owner shares the project and the grantee (`val`, with no access before) then
+  sees it, a non-owner's share is rejected inline with the owner-only error, and
+  an empty grantee is blocked before any backend call.
