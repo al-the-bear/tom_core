@@ -19,6 +19,8 @@ import 'domain/login_credentials.dart';
 // ignore: unused_import
 import 'forms/login_form.dart';
 // ignore: unused_import
+import 'forms/todo_item_form.dart';
+// ignore: unused_import
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 
 // Re-export the client-local reflected types so they are discoverable through
@@ -28,6 +30,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 // implementation detail).
 export 'domain/login_credentials.dart';
 export 'forms/login_form.dart';
+export 'forms/todo_item_form.dart';
 // advanced_todo_domain is imported (above) for generator discovery but
 // intentionally NOT re-exported: its library carries its own
 // `initializeReflection`, which would collide with the one this seed exports

@@ -9,13 +9,13 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 
 ## Status
 
-Board screen landed (step 29). On top of the login screen + session, the real
-signed-in home is a workspace/project picker and a status-column board of the
-selected project's items, grouped by `status` and read through
-`AppSession.guard`; tapping a card opens the item detail. The app boots on its
+Item-detail editor landed (step 30). On top of the login screen, session, and
+board, tapping a card now opens a bound `TomForm<TodoItem>` whose per-field
+controls are driven live by the session's four-state grade matrix — the *same*
+editor renders four ways depending on the signed-in role. The app boots on its
 own generated `reflection_seed.dart` (capturing the shared domain entities + the
-client-local credentials/form in one init). The bound item-detail editor and the
-share dialog are filled in over steps 30–31.
+client-local credentials/forms in one init). The share dialog and the README
+guided tour are filled in over step 31.
 
 ## AppBackend seam
 
@@ -76,15 +76,37 @@ credentials/form) is captured by `lib/reflection_seed.dart` — regenerate with
 `AppSession.guard`, and re-runs from the picker level when the
 workspace/project `DropdownButtonFormField` changes. Items group into one column
 per `TodoStatus` (keyed `status-column-<name>`, with a `(count)` header),
-rendered in a horizontally scrollable board. Tapping a card pushes
-`lib/screens/item_detail_screen.dart` — for now a read-only nav target keyed
-`item-detail-screen`; step 30 rewrites its body into the bound `TomForm<TodoItem>`
-whose per-field controls are driven by the session's four-state grade matrix.
+rendered in a horizontally scrollable board. Tapping a card pushes the
+item-detail editor.
 
-## Planned contents (steps 30–31)
+## Item-detail screen
 
-- Screens: Item detail (bound `TomForm<TodoItem>` with per-field
-  `TomAuthorizer.fixed(state)`, comments + subtasks), Share dialog.
+`lib/screens/item_detail_screen.dart` is the bound editor (keyed
+`item-detail-screen`). On open it loads the item's `resourceKey → TomAuthState`
+matrix (`AppSession.loadFieldStates`) and builds a `TodoItemForm`
+(`lib/forms/todo_item_form.dart`) with it, so the four ACL states render
+distinctly per role: `owner` edits every field; `editor` sees the assignee and
+estimate read-only; `commenter` loses priority/estimate entirely; `viewer`
+toggles nothing — the status control renders disabled while the rest are
+read-only. A field absent from the matrix degrades to `TomAuthState.none`
+(hidden — the closed-safe default).
+
+Save (keyed `item-save-button`) is offered only when at least one gradable field
+is editable; it runs the form's reflection round-trip (`save()` writes the typed
+fields back into the bound `TodoItem`) and persists via `AppSession.guard`.
+Because non-`full` fields render non-editable, a write-back carries exactly the
+permitted fields — the server re-checks the same grade. A minimal add-only
+comment composer (keyed `comment-input` / `comment-submit-button`) posts through
+the `AppBackend.addComment` seam; the comment thread and subtasks are deferred
+until the backend seam exposes a comment-list read and subtask operations.
+
+`TodoItemForm` is a reflected `TomClass`, so it is captured by
+`lib/reflection_seed.dart` — regenerate with `./reflection_generation.sh` only
+when a reflected signature changes.
+
+## Planned contents (step 31)
+
+- Screens: Share dialog (pick a user + `projectRole`, call `POST /share`).
 
 ## Tests
 
@@ -108,3 +130,8 @@ flutter test --concurrency=1
   render grouped by `status` (asserted per column with `find.descendant`),
   tapping a card opens its detail, and the picker shows the seeded workspace +
   project.
+- `test/item_detail_screen_test.dart` — the bound item-detail editor
+  (TC-30-01..03): `owner` sees a full editor with every gradable field, `viewer`
+  is read-only with disabled dropdowns and the ungranted estimate hidden (and no
+  Save), and an `editor` save persists the edited title while the read-only
+  assignee stays put.
