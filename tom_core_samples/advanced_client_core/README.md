@@ -10,8 +10,8 @@ parsers are unit-testable headless (no sockets in tests).
 
 ## Status
 
-`AuthClient` (step 22), `AuthorizedHttp` (step 23) and `AppApiClient` (step 24)
-implemented. `AdminApiClient` follows in step 25.
+`AuthClient` (step 22), `AuthorizedHttp` (step 23), `AppApiClient` (step 24) and
+`AdminApiClient` (step 25) implemented — the client core is **complete**.
 
 ## The HTTP seam
 
@@ -116,6 +116,57 @@ final items = await api.listItems('3'); // bearer attached, parsed to TodoItems
 > to the intended contract but cannot round-trip a tagged item until the kernel
 > gap is fixed. See `step24_app_api_client_decisions.md`.
 
+## `AdminApiClient`
+
+`AdminApiClient` (`lib/src/api/admin_api_client.dart`) is the typed client over
+`advanced_auth_server`'s `/admin/*` endpoints (the `adminApi` registry — users,
+roles, groups, the grant matrix and role assignments). It implements the shared
+`AdminApiService` interface — so it is the live seam the authadmin client's
+backend plugs in (step 32), with an in-memory fake implementing the same
+interface for widget tests — and routes every call through `AuthorizedHttp`,
+carrying the `admin` principal's bearer.
+
+The JSON↔DTO mapping lives in **pure** top-level `parse*` functions
+(`parseUser(s)`, `parseRole(s)`, `parseGroup(s)`, `parseGrantMatrix`), unit-tested
+against captured server-shaped responses with no socket. The admin DTOs are
+plain value records that already own a `fromJson`, so the parsers are thin, total
+wrappers — and, unlike the app API's reflected entities, **no
+`initializeReflection` is needed**.
+
+- **Wire shape.** A *list* result (`listUsers`/`listRoles`/`listGroups`)
+  serializes as a *bare* JSON array of `toJson()` maps; a *void* result (the
+  deletes, `putGrants`, `assign`) is an empty `200` body; the grant matrix is the
+  `{role: {resourceKey: accessToken}}` object (unknown tokens degrade closed-safe
+  to `none`).
+- **Errors.** A denial the server maps to a non-success status (e.g. the
+  `admin`-role gate's `403` with body
+  `{"error": "endpoint_handler.handle_method_call.access_denied"}`) surfaces as a
+  typed `AdminApiException` carrying that stable key and the status; a persistent
+  `401` was already turned into an `AuthorizedHttpException` by the wrapper.
+
+```dart
+final transport = IoJsonTransport();
+final authBase = Uri.parse('http://localhost:8081');
+final auth = AuthClient(authBase, transport: transport);
+final admin = AdminApiClient(authBase, AuthorizedHttp(transport, auth));
+await auth.login(const LoginRequest(username: 'admin', password: 'admin-pass'));
+final users = await admin.listUsers(); // bearer attached, parsed to UserDtos
+```
+
+> **Known server gap (out of scope here).** A *single*-DTO admin result
+> (`createUser`/`updateUser`/`createRole`/`updateRole`/`createGroup`/
+> `updateGroup`/`getGrants`) is not a `TomClass`, `Map`, or `List`, so the
+> endpoint pipeline falls through to the reflection serializer — which reads
+> `getValues`, skips `final` fields and looks for a `jsonEncode` getter rather
+> than `toJson`. A plain all-`final` DTO therefore serializes to `{}` over the
+> live wire (the same pre-existing gap step 22 flagged for the `LoginResult`
+> login response). These client methods are implemented to the *intended*
+> contract — their parsers are correct against a correctly-shaped body, and the
+> in-memory admin fake (step 32) round-trips — but a single-DTO response cannot
+> round-trip against the live server until that kernel/server gap is fixed. The
+> integration smoke therefore exercises the *list* endpoint `listUsers`, which
+> serializes correctly today. See `step25_admin_api_client_decisions.md`.
+
 ## Tests
 
 - `test/auth_client_test.dart` — socket-free unit tests against a fake
@@ -136,7 +187,12 @@ final items = await api.listItems('3'); // bearer attached, parsed to TodoItems
 - `test/app_api_client_integration_test.dart` — a live `GET /health` then an
   authenticated `listWorkspaces()` against `advanced_app_server` on
   `localhost:8080`; **skips itself when a server is unreachable**.
-
-## Planned contents
-
-- `AdminApiClient` — typed methods over `/admin/*` with pure parsers (step 25).
+- `test/admin_api_client_test.dart` — socket-free unit tests: the pure `parse*`
+  functions against captured server-shaped responses (bare user/role/group
+  arrays, partial rows keeping DTO defaults, the role×field grant matrix with
+  unknown/unset cells degrading closed-safe) and the typed methods over a
+  path-routing fake transport (method/path/bearer assertions, a `403` raising a
+  typed `AdminApiException` carrying the server key).
+- `test/admin_api_client_integration_test.dart` — an authenticated `listUsers()`
+  as the seeded `admin` against `advanced_auth_server` on `localhost:8081`;
+  **skips itself when the server is unreachable**.

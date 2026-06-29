@@ -6,11 +6,12 @@
 /// parsers over the app and admin APIs. Nothing here imports Flutter, so the
 /// parsers are unit-testable headless.
 ///
-/// `AuthClient` (step 22), `AuthorizedHttp` (step 23) and `AppApiClient`
-/// (step 24) have landed; `AdminApiClient` follows in step 25. This barrel is
-/// their stable public entry point.
+/// `AuthClient` (step 22), `AuthorizedHttp` (step 23), `AppApiClient` (step 24)
+/// and `AdminApiClient` (step 25) have landed. This barrel is their stable
+/// public entry point — the client core is complete.
 library;
 
+export 'src/api/admin_api_client.dart';
 export 'src/api/app_api_client.dart';
 export 'src/auth/auth_client.dart';
 export 'src/http/authorized_http.dart';
