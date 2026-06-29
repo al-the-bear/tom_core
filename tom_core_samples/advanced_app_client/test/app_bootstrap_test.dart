@@ -10,9 +10,12 @@
 library;
 
 import 'package:advanced_app_client/app/app.dart';
+import 'package:advanced_app_client/app/field_state_authorization_adapter.dart';
 import 'package:advanced_app_client/backend/backend.dart';
 import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
+import 'package:advanced_todo_domain/advanced_todo_domain.dart'
+    show TodoItemResourceKeys;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -111,5 +114,52 @@ void main() {
     expect(session.isLoggedIn, isFalse);
     expect(loginFinder, findsOneWidget);
     expect(boardFinder, findsNothing);
+  });
+
+  // The realignment (todo 3) feeds the implicit-authorization adapter from the
+  // session: loading an item's matrix repoints the live adapter, and logout
+  // clears it. Because the bootstrap installs this same adapter on the
+  // TomAuthorization singleton, the forms see the matrix change with no
+  // reinstall.
+  group('session feeds the authorization adapter (todo 3)', () {
+    test('the session owns a default adapter when none is injected', () {
+      final session = AppSession(InMemoryAppBackend());
+      // Empty until an item loads: a gradable leaf is closed-safe, the form path
+      // ancestor stays permissive.
+      expect(session.authorizationAdapter.states, isEmpty);
+      expect(session.authorizationAdapter.resolveAuth(TodoItemResourceKeys.title),
+          TomAuthState.none);
+    });
+
+    test('loadFieldStates repoints the adapter; logout clears it', () async {
+      final session = AppSession(InMemoryAppBackend());
+      final adapter = session.authorizationAdapter;
+
+      await session.login(aliceLogin);
+      final states = await session.loadFieldStates('i-1');
+
+      // The adapter now resolves against exactly the loaded matrix.
+      expect(adapter.states, same(states));
+      expect(adapter.states, isNotEmpty);
+      for (final entry in states.entries) {
+        expect(adapter.resolveAuth(entry.key), entry.value);
+      }
+
+      await session.logout();
+      // Cleared: every gradable leaf returns to the closed-safe default.
+      expect(adapter.states, isEmpty);
+      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.none);
+    });
+
+    test('an injected adapter is the one the session feeds', () async {
+      final injected = FieldStateAuthorizationAdapter();
+      final session =
+          AppSession(InMemoryAppBackend(), authorizationAdapter: injected);
+      expect(session.authorizationAdapter, same(injected));
+
+      await session.login(aliceLogin);
+      final states = await session.loadFieldStates('i-1');
+      expect(injected.states, same(states));
+    });
   });
 }

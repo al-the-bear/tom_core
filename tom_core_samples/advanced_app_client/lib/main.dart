@@ -14,7 +14,10 @@
 ///     that probes the runtime gets the Flutter implementation.
 ///  3. An (empty) application resource provider is installed so any widget that
 ///     probes the singleton finds a valid scope.
-///  4. The app runs over an [AppSession] wrapping the chosen [AppBackend].
+///  4. The session's [FieldStateAuthorizationAdapter] is installed once on the
+///     [TomAuthorization] singleton, so every gradable item field resolves its
+///     authorization implicitly through the matrix the session feeds it.
+///  5. The app runs over that [AppSession] wrapping the chosen [AppBackend].
 ///
 /// The app runs against the seeded [InMemoryAppBackend] by default. Pass both
 /// `--dart-define=AUTH_SERVER_URL=http://localhost:8081` and
@@ -37,7 +40,10 @@ void main() {
     TomTextResourceProvider.from(const <String, dynamic>{}),
   );
 
-  runApp(AdvancedTodoApp(session: AppSession(_buildBackend())));
+  final session = AppSession(_buildBackend());
+  TomAuthorization.adapter = session.authorizationAdapter;
+
+  runApp(AdvancedTodoApp(session: session));
 }
 
 /// Builds the backend the app drives: the seeded in-memory fake by default, or

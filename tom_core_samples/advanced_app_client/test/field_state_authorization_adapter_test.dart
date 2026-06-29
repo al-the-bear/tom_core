@@ -33,16 +33,30 @@ void main() {
       expect(adapter.resolveAuth(TodoItemResourceKeys.estimate), TomAuthState.none);
     });
 
-    test('an unknown leaf key degrades to none (D-A4 closed-safe default)', () {
+    test('a known gradable key the matrix omits degrades to none (D-A4)', () {
       final adapter = FieldStateAuthorizationAdapter(ownerish());
-      // A gradable key the matrix omits, and an entirely unknown leaf.
+      // `priority` is a gradable key absent from the owner-ish matrix.
       expect(adapter.resolveAuth(TodoItemResourceKeys.priority), TomAuthState.none);
-      expect(adapter.resolveAuth('todo.item.bogus'), TomAuthState.none);
     });
 
-    test('an empty matrix resolves every leaf to none', () {
+    test('a path outside the gradable namespace stays permissive (full)', () {
+      // The adapter is installed on the singleton, so non-item fields (the login
+      // form, the board) route through it too — they must NOT be hidden.
+      final adapter = FieldStateAuthorizationAdapter(ownerish());
+      expect(adapter.resolveAuth('login.username'), TomAuthState.full);
+      expect(adapter.resolveAuth('login'), TomAuthState.full);
+      // An unknown leaf that is not a gradable key is likewise left alone.
+      expect(adapter.resolveAuth('todo.item.bogus'), TomAuthState.full);
+    });
+
+    test('an empty matrix resolves every gradable leaf to none', () {
       final adapter = FieldStateAuthorizationAdapter();
       expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.none);
+      // The form-path ancestor stays permissive even with no matrix loaded, so
+      // the layer-3 form narrow never hides the form before an item is opened.
+      final formPath =
+          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}';
+      expect(adapter.resolveAuth(formPath), TomAuthState.full);
     });
 
     test('a structural ancestor (the form path) resolves permissively to full',
