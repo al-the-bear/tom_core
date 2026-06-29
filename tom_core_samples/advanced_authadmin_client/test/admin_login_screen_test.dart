@@ -1,22 +1,27 @@
-/// Widget tests for the admin login + shell (step 33): the console's sign-in
-/// driving [AdminSession.login] through the seeded in-memory backend, and the
-/// shell it opens onto once an administrator is authenticated.
+/// Widget tests for the admin login + shell (step 33; login reflected in todo
+/// 13): the console's sign-in driving [AdminSession.login] through the seeded
+/// in-memory backend, and the shell it opens onto once an administrator is
+/// authenticated.
 ///
-/// Socket- and reflection-free — the console runs over [InMemoryAdminBackend]
-/// and the login is a plain Material form (no reflected `TomForm`), so unlike the
-/// app client's login test this one needs no `initializeReflection`. The
-/// contract is the step's done bar: an admin proceeds to the console shell; a
-/// signed-in non-admin is rejected at login with an access error and never
-/// leaves the page.
+/// Socket-free — the console runs over [InMemoryAdminBackend]. Since todo 13 the
+/// login is a bound `TomForm` ([AdminLoginForm]) over reflected credentials, so
+/// (like the app client's login test) the console's `initializeReflection()` runs
+/// once in [setUpAll]; the resource provider is installed per test. The contract
+/// is the step's done bar: an admin proceeds to the console shell; a signed-in
+/// non-admin is rejected at login with an access error and never leaves the page.
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
+import 'package:advanced_authadmin_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   setUp(() {
     // The admin login chrome (title/intro/submit) is server-delivered (todo 8):
     // install the same canned login bundle the in-memory backend serves so the

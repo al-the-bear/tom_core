@@ -7,13 +7,17 @@
 /// is the step's done bar: editing a cell and saving issues the expected matrix
 /// to the backend, and a reload reflects exactly what was persisted.
 ///
-/// Socket-free (no `TomForm`, so unlike the CRUD suites this one needs no
-/// `initializeReflection`) but driven through the same shared harness: sign in,
-/// then open the rail's Grants destination.
+/// Socket-free, but driven through the same shared harness: sign in, then open
+/// the rail's Grants destination. The grants screen itself carries no `TomForm`,
+/// but signing in renders the reflected [AdminLoginForm] (todo 13), so the
+/// console's `initializeReflection()` runs once in [setUpAll] like the CRUD
+/// suites.
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
+import 'package:advanced_authadmin_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,6 +26,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'support/admin_console_harness.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   const ownerTitle = Key('grant-cell-owner-todo.item.title');
 
   // The label the cell renders for each state (distinct per state).

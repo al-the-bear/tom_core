@@ -8,18 +8,23 @@
 /// lands in `listGroups().memberUserIds` and is reflected back in the user's row
 /// subtitle on reload.
 ///
-/// Socket- and reflection-free (the assign editor binds no `TomForm`), driven
-/// through the same shared harness: sign in, then open the rail's Assignments
-/// destination.
+/// Socket-free (the assign editor binds no `TomForm`), driven through the same
+/// shared harness: sign in, then open the rail's Assignments destination. Signing
+/// in renders the reflected [AdminLoginForm] (todo 13), so the console's
+/// `initializeReflection()` runs once in [setUpAll].
 library;
 
 import 'package:advanced_authadmin_client/backend/backend.dart';
+import 'package:advanced_authadmin_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/admin_console_harness.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   /// Opens the assign editor for [userId] and selects a role and/or a group by
   /// its menu label, then saves.
   Future<void> assignTo(

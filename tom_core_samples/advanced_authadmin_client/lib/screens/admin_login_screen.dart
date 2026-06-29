@@ -1,12 +1,13 @@
-/// The admin login screen: username/password entry driving [AdminSession.login]
-/// (step 33).
+/// The admin login screen: a bound [AdminLoginForm] over [AdminLoginCredentials]
+/// driving [AdminSession.login] (step 33; reflected in todo 13).
 ///
-/// Deliberately a plain Material [Form] — not a reflected `TomForm`. The login
-/// collects two strings and folds them into a wire [LoginRequest]; there is no
-/// domain entity to round-trip, so this screen stays reflection-free (the
-/// admin console's reflected forms are the user/role/group editors in step 34).
-/// That keeps the step-33 widget tests socket- and reflection-free, matching the
-/// step-32 seam.
+/// The form is built unscoped, so its `formId: 'adminLogin'` *is* its base path
+/// and each field self-addresses as its resource key (`adminLogin.username`,
+/// `adminLogin.password`) — exactly the keys the installed public login bundle
+/// serves. It is bound to a fresh [AdminLoginCredentials]. On submit we `save()`
+/// the form — which validates, then writes the typed fields back into the bound
+/// credentials via the reflection round-trip — then fold them into a wire
+/// [LoginRequest] for the session.
 ///
 /// A rejected sign-in surfaces its [AdminBackendException] message inline without
 /// leaving the page. Two refusals look the same to the user but mean different
@@ -21,6 +22,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
+import '../domain/admin_login_credentials.dart';
+import '../forms/admin_login_form.dart';
 
 /// Sign-in screen wired to [session].
 class AdminLoginScreen extends StatefulWidget {
@@ -36,29 +39,34 @@ class AdminLoginScreen extends StatefulWidget {
 }
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _username = TextEditingController();
-  final _password = TextEditingController();
+  late final AdminLoginForm _form;
+  final AdminLoginCredentials _credentials = AdminLoginCredentials();
   String? _error;
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _form = AdminLoginForm();
+    _form.bind(_credentials);
+  }
+
+  @override
   void dispose() {
-    _username.dispose();
-    _password.dispose();
+    _form.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (!await _form.save()) return; // validation failed; fields show errors
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       await widget.session.login(LoginRequest(
-        username: _username.text,
-        password: _password.text,
+        username: _credentials.username.get(),
+        password: _credentials.password.get(),
       ));
     } on AdminBackendException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -72,7 +80,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     // Screen chrome is server-delivered: the bundle the bootstrap installed
     // supplies the title, intro and submit label (a missing key falls back to
     // itself, which is what the bootstrap test asserts against). The field
-    // labels stay plain for now — the reflected form lands in a later step.
+    // labels/hints come from the same bundle, resolved by the form's fields.
     final texts = TomTextResourceProvider.getAppResources();
     return Scaffold(
       key: const Key('admin-login-screen'),
@@ -80,56 +88,38 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              shrinkWrap: true,
-              padding: const EdgeInsets.all(24),
-              children: [
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.all(24),
+            children: [
+              Text(
+                texts.getText('adminLogin.intro'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 16),
+              _form.username.widget,
+              const SizedBox(height: 12),
+              _form.password.widget,
+              const SizedBox(height: 16),
+              if (_error != null) ...[
                 Text(
-                  texts.getText('adminLogin.intro'),
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _username,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    hintText: 'admin',
-                  ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  _error!,
+                  key: const Key('admin-login-error'),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  validator: (v) =>
-                      (v == null || v.isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 16),
-                if (_error != null) ...[
-                  Text(
-                    _error!,
-                    key: const Key('admin-login-error'),
-                    style:
-                        TextStyle(color: Theme.of(context).colorScheme.error),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(texts.getText('adminLogin.submit')),
-                ),
               ],
-            ),
+              FilledButton(
+                onPressed: _busy ? null : _submit,
+                child: _busy
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(texts.getText('adminLogin.submit')),
+              ),
+            ],
           ),
         ),
       ),

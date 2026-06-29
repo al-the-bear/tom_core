@@ -1,21 +1,27 @@
 /// Bootstrap done-when for todo 8: the admin login screen renders
 /// **server-delivered** chrome, with no client-side string and no override.
 ///
-/// Socket- and reflection-free — the bundle is fetched through the backend seam
-/// against the seeded [InMemoryAdminBackend], whose canned login bundle mirrors
-/// what the live auth server serves (D-A11). The proof is the resource
-/// provider's key-fallback behaviour: with no bundle installed the screen
-/// renders the *raw keys* (`adminLogin.title`, …) — so there is no hardcoded
-/// label baked into the widget — and only after [AdminSession.loadLoginResources]
-/// installs the bundle do the server texts appear.
+/// Socket-free — the bundle is fetched through the backend seam against the
+/// seeded [InMemoryAdminBackend], whose canned login bundle mirrors what the live
+/// auth server serves (D-A11). The proof is the resource provider's key-fallback
+/// behaviour: with no bundle installed the screen's chrome renders the *raw keys*
+/// (`adminLogin.title`, …) — so there is no hardcoded chrome string baked into the
+/// widget — and only after [AdminSession.loadLoginResources] installs the bundle
+/// do the server texts appear. The login screen drives the reflected
+/// [AdminLoginForm] (todo 13), so the console's `initializeReflection()` runs once
+/// in [setUpAll].
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
+import 'package:advanced_authadmin_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   testWidgets(
       'TC-8-02: the admin login screen renders server-delivered chrome after the '
       'bootstrap fetch (no hardcoded string)', (tester) async {

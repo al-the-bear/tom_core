@@ -3,24 +3,30 @@
 /// post-login console chrome renders server-delivered texts; logout resets the
 /// provider to the login bundle.
 ///
-/// Socket- and reflection-free — the full bundle is fetched through the backend
-/// seam against the seeded [InMemoryAdminBackend], whose canned console bundle
-/// mirrors what `advanced_auth_server` serves (D-A11). The proof is the resource
-/// provider's key-fallback behaviour applied to the **post-login** chrome:
+/// Socket-free — the full bundle is fetched through the backend seam against the
+/// seeded [InMemoryAdminBackend], whose canned console bundle mirrors what
+/// `advanced_auth_server` serves (D-A11). The proof is the resource provider's
+/// key-fallback behaviour applied to the **post-login** chrome:
 /// `adminConsole.title` (no grade counterpart, no form override) falls back to
 /// its raw key while only the login bundle is installed, and resolves to the
 /// server text once [AdminSession.login] installs the full bundle. The login
 /// chrome stays resolvable underneath (the merge keeps it), and logout drops the
-/// full keys back to fallback while restoring the login bundle.
+/// full keys back to fallback while restoring the login bundle. The login screen
+/// drives the reflected [AdminLoginForm] (todo 13), so the console's
+/// `initializeReflection()` runs once in [setUpAll].
 library;
 
 import 'package:advanced_authadmin_client/app/admin_app.dart';
 import 'package:advanced_authadmin_client/backend/backend.dart';
+import 'package:advanced_authadmin_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   testWidgets(
       'TC-9-02: admin login installs the console bundle over the login bundle; '
       'logout resets to the login bundle', (tester) async {
