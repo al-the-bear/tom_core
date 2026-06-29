@@ -47,6 +47,9 @@ class LiveAppBackend implements AppBackend {
       _guard(() => _auth.loginResources());
 
   @override
+  Future<ResourceBundleDto> resources() => _guard(() => _api.resources());
+
+  @override
   Future<List<Workspace>> listWorkspaces() =>
       _guard(() => _api.listWorkspaces());
 

@@ -61,6 +61,28 @@ class InMemoryAppBackend implements AppBackend {
     'adminLogin.submit': 'Sign in',
   };
 
+  /// The canned authenticated full bundle, mirroring `advanced_app_server`'s
+  /// `AppResourceBundles.appBundle()` (D-A11) — the item-form field labels
+  /// (keyed `${TodoItemResourceKeys.<field>}.label` so the label key tracks the
+  /// grade key) plus the `board.*` chrome that has no grade counterpart. The
+  /// session installs this right after sign-in so every post-login screen
+  /// renders server-delivered texts while the widget tests stay socket-free.
+  static const Map<String, Object?> fullTexts = {
+    '${TodoItemResourceKeys.title}.label': 'Title',
+    '${TodoItemResourceKeys.status}.label': 'Status',
+    '${TodoItemResourceKeys.priority}.label': 'Priority',
+    '${TodoItemResourceKeys.assigneeId}.label': 'Assignee id',
+    '${TodoItemResourceKeys.dueDate}.label': 'Due date',
+    '${TodoItemResourceKeys.estimate}.label': 'Estimate (h)',
+    '${TodoItemResourceKeys.description}.label': 'Description',
+    'board.title': 'My Board',
+    'board.empty': 'No items yet',
+    'board.item.save': 'Save',
+    'board.item.delete': 'Delete',
+    'board.item.comment.add': 'Add comment',
+    'board.share': 'Share',
+  };
+
   /// The demo accounts, by username → user id. The password is not verified
   /// beyond being non-empty — this is a teaching backend, not a credential
   /// store.
@@ -228,6 +250,10 @@ class InMemoryAppBackend implements AppBackend {
   @override
   Future<ResourceBundleDto> loginResources() async =>
       ResourceBundleDto(Map<String, Object?>.from(loginTexts));
+
+  @override
+  Future<ResourceBundleDto> resources() async =>
+      ResourceBundleDto(Map<String, Object?>.from(fullTexts));
 
   @override
   Future<List<Workspace>> listWorkspaces() async {

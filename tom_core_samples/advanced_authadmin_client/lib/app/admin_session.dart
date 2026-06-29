@@ -35,6 +35,14 @@ class AdminSession extends ChangeNotifier {
   String _authzToken = '';
   DateTime? _expiresAt;
 
+  /// The provider contents captured just before [login] installed the full
+  /// bundle, restored on logout so a re-login starts from the same chrome.
+  ///
+  /// Null until a login installs the full bundle (and again after the restore),
+  /// so logout only undoes an install that actually happened — it never clobbers
+  /// a provider the session did not put in place.
+  Map<String, dynamic>? _preLoginTexts;
+
   /// The signed-in administrator, or null when logged out.
   UserDto? get user => _user;
 
@@ -59,10 +67,32 @@ class AdminSession extends ChangeNotifier {
   /// the `notifyListeners` lets a test force the install mid-pump.
   Future<void> loadLoginResources() async {
     final bundle = await backend.loginResources();
-    TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(Map<String, dynamic>.from(bundle.texts)),
-    );
+    _installResources(Map<String, dynamic>.from(bundle.texts));
     notifyListeners();
+  }
+
+  /// Installs [texts] as the singleton [TomTextResourceProvider]. The one place
+  /// the provider is swapped, so login/logout/post-login all route through it.
+  void _installResources(Map<String, dynamic> texts) {
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(texts),
+    );
+  }
+
+  /// Fetches the admin-gated console bundle through the seam and installs it
+  /// merged over the **current** provider (full-bundle keys win on overlap), so
+  /// every console screen — users, roles, groups, grants — renders
+  /// server-delivered strings while the login chrome installed before sign-in
+  /// stays resolvable. Reachable only once the `admin` role is confirmed (the
+  /// probe in [login] precedes it). The pre-install provider is captured so
+  /// logout can restore it exactly.
+  Future<void> _installFullResources() async {
+    final bundle = await backend.resources();
+    final current = Map<String, dynamic>.of(
+      TomTextResourceProvider.getAppResources().resources,
+    );
+    _preLoginTexts = current;
+    _installResources({...current, ...bundle.texts});
   }
 
   /// Authenticates [request], then verifies the principal holds the `admin`
@@ -89,6 +119,9 @@ class AdminSession extends ChangeNotifier {
     _authToken = result.authToken;
     _authzToken = result.authzToken;
     _expiresAt = result.expiresAt;
+    // Admin confirmed (the probe above passed): pull the admin-gated console
+    // bundle so every post-login screen renders server-delivered texts.
+    await _installFullResources();
     notifyListeners();
   }
 
@@ -139,6 +172,13 @@ class AdminSession extends ChangeNotifier {
     _authToken = '';
     _authzToken = '';
     _expiresAt = null;
+    // Reset the provider to the pre-login chrome so a re-login starts clean — no
+    // console keys linger. Only undo an install that actually happened.
+    final base = _preLoginTexts;
+    if (base != null) {
+      _installResources(base);
+      _preLoginTexts = null;
+    }
     notifyListeners();
   }
 }

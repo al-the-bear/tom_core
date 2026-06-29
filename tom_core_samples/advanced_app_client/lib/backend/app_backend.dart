@@ -63,6 +63,11 @@ abstract class AppBackend {
   /// before the sign-in screen builds. Reachable unauthenticated.
   Future<ResourceBundleDto> loginResources();
 
+  /// Fetches the authenticated full resource bundle (every screen's texts) the
+  /// app installs right after sign-in, so the board, item form, and sharing
+  /// chrome render server-delivered strings. Requires a session.
+  Future<ResourceBundleDto> resources();
+
   /// Workspaces the current principal owns or is shared into.
   Future<List<Workspace>> listWorkspaces();
 

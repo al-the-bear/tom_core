@@ -69,6 +69,12 @@ abstract class AdminBackend {
   /// installs before the sign-in screen builds. Reachable unauthenticated.
   Future<ResourceBundleDto> loginResources();
 
+  /// Fetches the authenticated full resource bundle (every console screen's
+  /// texts) the console installs right after an admin sign-in, so the user,
+  /// role, group, and grant screens render server-delivered strings. Requires an
+  /// `admin` session (the `/admin/resources` endpoint is role-gated).
+  Future<ResourceBundleDto> resources();
+
   // ----- Users -------------------------------------------------------------
 
   /// All accounts (`GET /admin/users`).

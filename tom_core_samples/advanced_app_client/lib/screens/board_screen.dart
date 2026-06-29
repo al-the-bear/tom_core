@@ -11,6 +11,7 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
@@ -169,10 +170,14 @@ class _BoardScreenState extends State<BoardScreen> {
   Widget build(BuildContext context) {
     final name =
         _session.user?.displayName ?? _session.user?.username ?? '';
+    // Board chrome comes from the post-login full bundle (installed by
+    // [AppSession.login]); `board.*` has no grade counterpart and no form
+    // override, so it renders the server text straight through.
+    final texts = TomTextResourceProvider.getAppResources();
     return Scaffold(
       key: const Key('board-screen'),
       appBar: AppBar(
-        title: const Text('Board'),
+        title: Text(texts.getText('board.title')),
         actions: [
           IconButton(
             key: const Key('share-button'),

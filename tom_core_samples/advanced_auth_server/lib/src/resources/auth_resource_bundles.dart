@@ -46,6 +46,9 @@ class AuthResourceBundles {
   /// `<formId>.<tomId>.label`, matching `UserForm`/`RoleForm`/`GroupForm`) plus
   /// the grant-matrix screen texts.
   static const Map<String, String> _adminConsoleTexts = {
+    // Console shell chrome (no grade counterpart, no form override — the AppBar
+    // title the console renders straight from this bundle after an admin login).
+    'adminConsole.title': 'Advanced Todo — Admin console',
     // UserForm (formId 'user').
     'user.username.label': 'Username',
     'user.password.label': 'Password',

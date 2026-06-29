@@ -51,6 +51,14 @@ class AppSession extends ChangeNotifier {
   DateTime? _expiresAt;
   Map<String, TomAuthState> _currentFieldStates = const {};
 
+  /// The provider contents captured just before [login] installed the full
+  /// bundle, restored on logout so a re-login starts from the same chrome.
+  ///
+  /// Null until a login installs the full bundle (and again after the restore),
+  /// so logout only undoes an install that actually happened — it never clobbers
+  /// a provider the session did not put in place.
+  Map<String, dynamic>? _preLoginTexts;
+
   /// The signed-in principal, or null when logged out.
   UserDto? get user => _user;
 
@@ -79,10 +87,31 @@ class AppSession extends ChangeNotifier {
   /// `notifyListeners` lets a test force the install mid-pump.
   Future<void> loadLoginResources() async {
     final bundle = await backend.loginResources();
-    TomTextResourceProvider.setAppResourceProvider(
-      TomTextResourceProvider.from(Map<String, dynamic>.from(bundle.texts)),
-    );
+    _installResources(Map<String, dynamic>.from(bundle.texts));
     notifyListeners();
+  }
+
+  /// Installs [texts] as the singleton [TomTextResourceProvider]. The one place
+  /// the provider is swapped, so login/logout/post-login all route through it.
+  void _installResources(Map<String, dynamic> texts) {
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(texts),
+    );
+  }
+
+  /// Fetches the authenticated full bundle through the seam and installs it
+  /// merged over the **current** provider (full-bundle keys win on overlap), so
+  /// every post-login screen — board, item form, sharing — renders
+  /// server-delivered strings while the login chrome installed before sign-in
+  /// stays resolvable. The pre-install provider is captured so logout can
+  /// restore it exactly.
+  Future<void> _installFullResources() async {
+    final bundle = await backend.resources();
+    final current = Map<String, dynamic>.of(
+      TomTextResourceProvider.getAppResources().resources,
+    );
+    _preLoginTexts = current;
+    _installResources({...current, ...bundle.texts});
   }
 
   /// Authenticates [request] and stores the resolved principal + token pair.
@@ -96,6 +125,9 @@ class AppSession extends ChangeNotifier {
     _authzToken = result.authzToken;
     _expiresAt = result.expiresAt;
     _setFieldStates(const {});
+    // Now authenticated: pull the full bundle so every post-login screen renders
+    // server-delivered texts. Reachable only with a session, hence after login.
+    await _installFullResources();
     notifyListeners();
   }
 
@@ -163,6 +195,13 @@ class AppSession extends ChangeNotifier {
     _authzToken = '';
     _expiresAt = null;
     _setFieldStates(const {});
+    // Reset the provider to the pre-login chrome so a re-login starts clean — no
+    // full-bundle keys linger. Only undo an install that actually happened.
+    final base = _preLoginTexts;
+    if (base != null) {
+      _installResources(base);
+      _preLoginTexts = null;
+    }
     notifyListeners();
   }
 }

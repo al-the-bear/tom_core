@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/admin_session.dart';
 import 'assignments_screen.dart';
@@ -53,10 +54,14 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       AssignmentsScreen(session: _session),
     ];
 
+    // Shell chrome comes from the post-login console bundle (installed by
+    // [AdminSession.login]); `adminConsole.title` has no grade counterpart and
+    // no form override, so it renders the server text straight through.
+    final texts = TomTextResourceProvider.getAppResources();
     return Scaffold(
       key: const Key('admin-shell-screen'),
       appBar: AppBar(
-        title: const Text('Advanced Todo — Admin console'),
+        title: Text(texts.getText('adminConsole.title')),
         actions: [
           IconButton(
             key: const Key('admin-sign-out'),

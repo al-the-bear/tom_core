@@ -44,6 +44,7 @@ void main() {
   group('admin console resource bundle (admin-gated, todo 7)', () {
     test('adminConsoleBundle carries the editor + grants texts', () {
       final texts = AuthResourceBundles.adminConsoleBundle().texts;
+      expect(texts['adminConsole.title'], 'Advanced Todo — Admin console');
       expect(texts['user.username.label'], 'Username');
       expect(texts['user.displayName.label'], 'Display name');
       expect(texts['role.key.label'], 'Key');

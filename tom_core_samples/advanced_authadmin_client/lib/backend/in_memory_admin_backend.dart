@@ -69,6 +69,30 @@ class InMemoryAdminBackend implements AdminBackend {
     'adminLogin.submit': 'Sign in',
   };
 
+  /// The canned authenticated console bundle, mirroring `advanced_auth_server`'s
+  /// `AuthResourceBundles.adminConsoleBundle()` (D-A11) — the reflected editors'
+  /// field labels (`user.*`/`role.*`/`group.*`, keyed `<formId>.<tomId>.label`)
+  /// and the grant-matrix screen texts, plus the `adminConsole.title` shell
+  /// chrome (no form override, no grade counterpart). The session installs this
+  /// right after an admin sign-in so every console screen renders
+  /// server-delivered texts while the widget tests stay socket-free.
+  static const Map<String, Object?> fullTexts = {
+    'adminConsole.title': 'Advanced Todo — Admin console',
+    'user.username.label': 'Username',
+    'user.password.label': 'Password',
+    'user.displayName.label': 'Display name',
+    'user.email.label': 'Email',
+    'user.status.label': 'Status',
+    'role.key.label': 'Key',
+    'role.name.label': 'Name',
+    'group.name.label': 'Name',
+    'grants.title': 'Grant matrix',
+    'grants.column.none': 'None',
+    'grants.column.read': 'Read',
+    'grants.column.full': 'Full',
+    'grants.save': 'Save grants',
+  };
+
   /// The four-state field resource keys, mirroring the server's wire keys
   /// (`TodoItemResourceKeys`). Held as plain strings because the admin console is
   /// domain-agnostic: it edits whatever resource keys the server reports.
@@ -191,6 +215,14 @@ class InMemoryAdminBackend implements AdminBackend {
   @override
   Future<ResourceBundleDto> loginResources() async =>
       ResourceBundleDto(Map<String, Object?>.from(loginTexts));
+
+  @override
+  Future<ResourceBundleDto> resources() async {
+    // The console bundle is admin-gated, exactly like the live
+    // `GET /admin/resources` endpoint's `@TomRoleAccess(['admin'])`.
+    _requireAdmin();
+    return ResourceBundleDto(Map<String, Object?>.from(fullTexts));
+  }
 
   // ----- Users -------------------------------------------------------------
 
