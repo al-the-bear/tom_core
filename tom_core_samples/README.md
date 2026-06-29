@@ -19,6 +19,12 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 > from the server up through the responsive UI. The samples are designed to be
 > read in that order; each one assumes the one before it.
 
+> **Looking for the secured, full-stack version?** The `advanced_*` packages in
+> this folder form a separate suite — **two servers, two databases, two Flutter
+> clients** with live four-state field authorization and cross-user sharing. It
+> is the secured successor to `core_server_sample` / `core_client_sample`. See
+> its own map: [**Advanced Tom Core Full-Stack Sample**](README_advanced_sample.md).
+
 > **Status: built.** All seven subprojects below are present and analyze-clean
 > with green test suites — the shared `todo_domain` package and the six samples.
 > Each links back here and to the package READMEs it exercises. The two live
