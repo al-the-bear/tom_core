@@ -9,18 +9,18 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 
 ## Status
 
-Users / Roles / Groups CRUD landed (step 34), over the step-33 login + shell and
-the step-32 backend seam. `lib/app/` defines the `AdminSession`
-(`ChangeNotifier`) and the `AdminConsoleApp` shell that swaps between the login
-screen and the console as a pure function of `session.isLoggedIn`;
-`lib/screens/` holds the login screen plus the console shell — a
-`NavigationRail` over an `IndexedStack` of the Users, Roles, and Groups
-destinations — and the generic `AdminCrudScreen<T>` they share. `lib/forms/`
-binds reflected drafts (`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart`
-calls `initializeReflection()` (from `lib/reflection_seed.dart`) before
-bootstrapping the console over the in-memory fake by default or the live stack
-when both server URLs are supplied. The grant-matrix editor and assignments
-screen are built in steps 35–36.
+The grant-matrix editor landed (step 35), over the step-34 Users / Roles /
+Groups CRUD, the step-33 login + shell, and the step-32 backend seam. `lib/app/`
+defines the `AdminSession` (`ChangeNotifier`) and the `AdminConsoleApp` shell
+that swaps between the login screen and the console as a pure function of
+`session.isLoggedIn`; `lib/screens/` holds the login screen plus the console
+shell — a `NavigationRail` over an `IndexedStack` of the Users, Roles, Groups,
+and Grants destinations — the generic `AdminCrudScreen<T>` the first three
+share, and the `GrantsScreen` matrix editor. `lib/forms/` binds reflected drafts
+(`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart` calls
+`initializeReflection()` (from `lib/reflection_seed.dart`) before bootstrapping
+the console over the in-memory fake by default or the live stack when both server
+URLs are supplied. The assignments screen is built in step 36.
 
 ## Admin login + shell
 
@@ -98,12 +98,26 @@ rendered or not). Group membership is a checklist over every account
 (`group-member-${userId}`), pre-checked from the group's current members and
 folded back into `GroupDto.memberUserIds` on save.
 
-## Planned contents (steps 35–36)
+## Grant matrix
 
-- Grant-matrix editor: a `projectRole` × fieldResourceKey grid whose cells cycle
-  `none→disabled→read→full`, saved via `PUT /admin/grants`, reusing the
-  `tom_flutter_ui` table/ACL widgets.
-- Assignments screen.
+The Grants destination (`lib/screens/grants_screen.dart`) is the four-state
+authorization editor: a `DataTable` of `projectRole` (rows) × field resource key
+(columns), each cell the resolved `TomAuthState` for that pair. Tapping a cell
+cycles it `none → disabled → read → full` (and wraps), building up an edited
+`GrantMatrixDto` locally via `withAccess`; **Save** writes the whole matrix back
+through `putGrants` (`PUT /admin/grants`) and then re-reads it, so the grid after
+a save shows exactly what the backend persisted. Save is offered only while the
+working copy differs from the loaded one.
+
+Like the rest of the console it stays domain-agnostic — it renders whatever role
+keys and resource keys the matrix reports (column headers show the trailing
+segment, e.g. `todo.item.title → title`, while each cell is keyed by the full
+resource key) and never the application's `TodoItemResourceKeys` / `UserStatus`
+enums. Every read and the save route through `AdminSession.guard`.
+
+## Planned contents (step 36)
+
+- Assignments screen — assign roles/groups to users via `POST /admin/assignments`.
 
 ## Tests
 
@@ -132,7 +146,13 @@ flutter test --concurrency=1
   the seeded group with its member count, creates a group with a member, the
   editor pre-checks current members, removing a member updates the saved
   membership, and deletes a row.
+- `test/grants_screen_test.dart` — the Grants destination (TC-35-01..05): renders
+  the seeded matrix, a cell cycles `none→disabled→read→full` on tap, Save is
+  disabled until a cell changes, saving issues the edited `GrantMatrixDto` to the
+  backend, and a reload reflects the persisted matrix.
 
 The Users/Roles/Groups suites bind reflected forms, so they share
 `test/support/admin_console_harness.dart` (sign in, open a destination, save an
 editor, confirm a delete) and run `initializeReflection()` once in `setUpAll`.
+The Grants suite is socket- and reflection-free (no `TomForm`), reusing only the
+harness's sign-in and destination helpers.

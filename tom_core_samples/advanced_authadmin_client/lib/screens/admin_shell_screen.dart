@@ -3,15 +3,16 @@
 ///
 /// Once an administrator is authenticated the [AdminConsoleApp] shows this
 /// shell. It owns the app bar (with sign-out, which clears the session and
-/// routes back to login) and a rail selecting between the Users, Roles, and
-/// Groups destinations, kept in an [IndexedStack] so each screen's list state
-/// survives a tab switch. The grant-matrix (step 35) and assignments (step 36)
-/// destinations are added to this same rail later.
+/// routes back to login) and a rail selecting between the Users, Roles, Groups,
+/// and Grants destinations, kept in an [IndexedStack] so each screen's state
+/// survives a tab switch. The assignments (step 36) destination is added to this
+/// same rail later.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../app/admin_session.dart';
+import 'grants_screen.dart';
 import 'groups_screen.dart';
 import 'roles_screen.dart';
 import 'users_screen.dart';
@@ -35,17 +36,19 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // The rail destinations and the matching bodies stay index-aligned. Grants
-    // (step 35) and assignments (step 36) append to both lists here later.
+    // The rail destinations and the matching bodies stay index-aligned.
+    // Assignments (step 36) appends to both lists here later.
     final destinations = <NavigationRailDestination>[
       _destination(Icons.people_outline, Icons.people, 'Users'),
       _destination(Icons.badge_outlined, Icons.badge, 'Roles'),
       _destination(Icons.groups_outlined, Icons.groups, 'Groups'),
+      _destination(Icons.grid_on_outlined, Icons.grid_on, 'Grants'),
     ];
     final bodies = <Widget>[
       UsersScreen(session: _session),
       RolesScreen(session: _session),
       GroupsScreen(session: _session),
+      GrantsScreen(session: _session),
     ];
 
     return Scaffold(
