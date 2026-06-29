@@ -189,7 +189,10 @@ final TomApi appApi = TomApi(
   endpoints: [
     TomApiEndpoint<Map<String, Object>, Object?>(
       id: 'appHealth',
-      uri: '/health',
+      // `/status`, not `/health`: the framework's built-in TomHealthService
+      // auto-mounts a plain-text `GET /health` liveness probe in every server,
+      // so an app `/health` would collide with (and be shadowed by) it.
+      uri: '/status',
       method: TomHttpMethod.get,
       includeBearerAuthentication: false,
       requestTypes: const [],

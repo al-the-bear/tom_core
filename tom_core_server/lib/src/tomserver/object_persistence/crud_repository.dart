@@ -203,7 +203,7 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
           as TomDelete,
     );
     Map<String, Object?> params = {"id": id};
-    await _deleteQuery!.execute(params);
+    await _deleteByIdQuery!.execute(params);
     return 1;
   }
 
@@ -304,88 +304,152 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     return TomDbInt(result[0].count);
   }
 
+  /// Whether [primaryKey] marks an entity that has **not** yet been persisted,
+  /// so [save] should `INSERT` rather than `UPDATE`.
+  ///
+  /// Two unsaved conventions are honoured: a nullable surrogate key is `null`
+  /// before its first persist, and a non-nullable `int` key uses a negative
+  /// sentinel (the `id >= 0` convention `TomResourceGrant` and friends rely on).
+  static bool isUnsavedKey(Object? primaryKey) =>
+      primaryKey == null || (primaryKey is num && primaryKey < 0);
+
+  /// Reads an entity's primary-key value as a *nullable* [K2].
+  ///
+  /// A not-yet-persisted entity with a nullable surrogate key (`int?`) carries
+  /// `null`, which [isUnsavedKey] is explicitly designed to accept. Casting
+  /// straight to a non-nullable `K` (e.g. `int`) threw
+  /// `Null is not a subtype of int` on every insert of such an entity,
+  /// defeating the very check that gates INSERT vs UPDATE — so the read must
+  /// tolerate null. Negative-sentinel `int` keys arrive non-null and are
+  /// handled by [isUnsavedKey] all the same.
+  static K2? readPrimaryKey<K2>(Object? raw) => raw as K2?;
+
+  /// Builds the `INSERT` statement and its ordered bind-parameter names for
+  /// [table] over the writable [columns] (the caller filters out read-only
+  /// columns such as an auto-increment primary key).
+  ///
+  /// Each value binds through a `:declaredName` placeholder, and the parameter
+  /// list is those declared names in column order — matching the
+  /// `:name -> ?` substitution and positional binding `prepareStatement`
+  /// performs from [TomLiteralSelect.getParameters].
+  static (String, List<String>) buildInsertStatement(
+    String table,
+    List<TomColumnInformation> columns,
+  ) {
+    final fields = [for (final c in columns) c.getQueryFieldName()];
+    final paramNames = [for (final c in columns) c.declaredName];
+    final placeholders = [for (final n in paramNames) ':$n'];
+    final sql = 'INSERT INTO $table ( ${fields.join(',')} )'
+        ' VALUES ( ${placeholders.join(',')} )';
+    return (sql, paramNames);
+  }
+
+  /// Builds the `UPDATE ... SET ... WHERE pk = :pk` statement and its ordered
+  /// bind-parameter names for [table] over the writable [columns], keyed on
+  /// [primaryKey].
+  ///
+  /// The `SET` clause assigns each column by its mapped column name; the
+  /// trailing `WHERE` scopes the update to the single row by the primary key
+  /// (its placeholder name and bind name is the pk's declared name, appended
+  /// last). Without that clause the statement would rewrite every row.
+  static (String, List<String>) buildUpdateStatement(
+    String table,
+    List<TomColumnInformation> columns,
+    TomColumnInformation primaryKey,
+  ) {
+    final assignments = [
+      for (final c in columns) '${c.getQueryFieldName()} = :${c.declaredName}',
+    ];
+    final paramNames = [for (final c in columns) c.declaredName];
+    final pkName = primaryKey.declaredName;
+    paramNames.add(pkName);
+    final sql = 'UPDATE $table SET ${assignments.join(',')}'
+        ' WHERE ${primaryKey.getQueryFieldName()} = :$pkName';
+    return (sql, paramNames);
+  }
+
   TomPreparedStatement<T>? _saveInsertQuery;
   TomPreparedStatement<T>? _saveUpdateQuery;
   @override
   Future<T> save(T toSave) async {
-    List<TomColumnInformation> persistentColumns =
-        TomAnnotationAnalyzer.getPersistentColumns(T)!;
-    var primaryKey = primaryKeyColumnInfo.getVariableValue(toSave) as K;
-    if (primaryKey == null) {
+    final persistentColumns = TomAnnotationAnalyzer.getPersistentColumns(T)!;
+    final primaryKey =
+        readPrimaryKey<K>(primaryKeyColumnInfo.getVariableValue(toSave));
+    // The columns the statement writes: everything except the read-only ones
+    // (the auto-increment primary key, audit-managed columns, …).
+    final writable = [
+      for (final col in persistentColumns)
+        if (!(col.column?.isReadOnly ?? false)) col,
+    ];
+    Object? dbValue(TomColumnInformation col) {
+      final raw = col.getVariableValue(toSave);
+      final convert = col.column?.toDbConverter;
+      return convert != null ? convert(raw) : raw;
+    }
+
+    if (isUnsavedKey(primaryKey)) {
       // INSERT
-      List<String> fields = [];
-      List<Object?> values = [];
-      List<String> paramList = [];
-      for (var col in persistentColumns) {
-        if (col.column != null && col.column!.isReadOnly) {
-          continue;
-        }
-        fields.add(col.getQueryFieldName());
-        if (col.column!.toDbConverter != null) {
-          values.add(col.column!.toDbConverter!(col.getVariableValue(toSave)));
-        } else {
-          values.add(col.getVariableValue(toSave));
-        }
-        paramList.add(":${col.declaredName}");
-      }
+      final (sql, paramNames) = buildInsertStatement(dbTable.table, writable);
       _saveInsertQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
-        TomLiteralSelect(
-          [T],
-          query:
-              '''
-      INSERT INTO ${dbTable.table} ( ${fields.join(',')} ) VALUES ( ${paramList.join(',')}
-''',
-        ),
+        TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
-      var params = <String, Object?>{};
-      for (int i = 0; i < values.length; i++) {
-        params[paramList[i]] = values[i];
-      }
+      final params = <String, Object?>{
+        for (final col in writable) col.declaredName: dbValue(col),
+      };
       await _saveInsertQuery!.execute(params);
-      var newRow = await findById(primaryKey);
+      // Resolve the row's key: an auto-increment surrogate is assigned by the
+      // database. Read it from the insert statement's *own* result
+      // (`lastGeneratedId`) — authoritative and connection-correct. Only fall
+      // back to a separate `SELECT LAST_INSERT_ID()` when the driver exposes no
+      // generated key, since that follow-up query is session-scoped and returns
+      // 0 if it runs on a different connection than the insert (bug §71). A
+      // caller-supplied key is used as-is.
+      // In the else branch `isUnsavedKey` is false, so the key is non-null.
+      final K rowKey = isUnsavedKey(primaryKey)
+          ? (_saveInsertQuery!.lastGeneratedId ?? await _lastInsertId()) as K
+          : primaryKey as K;
+      final newRow = await findById(rowKey);
       if (newRow != null) {
         return newRow;
-      } else {
-        throw Exception(
-          "Insert failed. When saving object with primary key $primaryKey no record was created.",
-        );
       }
+      throw Exception(
+        "Insert failed. When saving object with primary key $rowKey no "
+        "record was created.",
+      );
     } else {
       // UPDATE
-      List<String> fields = [];
-      List<Object?> values = [];
-      List<String> paramList = [];
-      for (var col in persistentColumns) {
-        if (col.column != null && col.column!.isReadOnly) {
-          continue;
-        }
-        fields.add("${col.field} = :${col.declaredName}");
-        values.add(col.getVariableValue(toSave));
-        paramList.add(":${col.declaredName}");
-      }
+      final (sql, paramNames) =
+          buildUpdateStatement(dbTable.table, writable, primaryKeyColumnInfo);
       _saveUpdateQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
-        TomLiteralSelect(
-          [T],
-          query:
-              '''
-      UPDATE ${dbTable.table} SET ${fields.join(',')}
-''',
-        ),
+        TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
-      var params = <String, Object?>{};
-      for (int i = 0; i < values.length; i++) {
-        params[paramList[i]] = values[i];
-      }
+      final params = <String, Object?>{
+        for (final col in writable) col.declaredName: dbValue(col),
+        primaryKeyColumnInfo.declaredName: primaryKey,
+      };
       await _saveUpdateQuery!.execute(params);
-      var newRow = await findById(primaryKey);
+      // Reached only when `isUnsavedKey` is false, so the key is non-null.
+      final newRow = await findById(primaryKey as K);
       if (newRow != null) {
         return newRow;
-      } else {
-        throw Exception(
-          "Update failed. When saving object with primary key $primaryKey the record could not be retrieved.",
-        );
       }
+      throw Exception(
+        "Update failed. When saving object with primary key $primaryKey the "
+        "record could not be retrieved.",
+      );
     }
+  }
+
+  /// Reads back the surrogate key the database assigned to the most recent
+  /// `INSERT` on this repository's connection (`LAST_INSERT_ID()`), so [save]
+  /// can return the freshly stored row.
+  Future<int?> _lastInsertId() async {
+    final rows = await datasourceInfo.datasource.executeQuery<TomCountResult>(
+      'SELECT LAST_INSERT_ID() AS count',
+      null,
+      TomCountResult,
+    );
+    return rows.isEmpty ? null : rows.first.count;
   }
 
   @override

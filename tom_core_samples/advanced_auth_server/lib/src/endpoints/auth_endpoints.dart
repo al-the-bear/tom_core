@@ -202,7 +202,7 @@ class AdvancedAuthApiService implements AuthApiService {
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authRefresh')
   @override
   Future<LoginResult> refresh() async =>
-      _tokens.refresh(TomBearerAuthentication.getPrincipal());
+      _tokens.refresh(getFromCurrentZone<TomPrincipal>()!);
 
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authLogout')
@@ -217,6 +217,12 @@ class AdvancedAuthApiService implements AuthApiService {
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authMe')
   @override
+  // The per-request principal is recovered from the Dart zone the server's
+  // authentication middleware populates (`getFromCurrentZone`), not from the
+  // `TomBearerAuthentication` static singleton (a client-side token store the
+  // server never fills). `@TomAuthenticatedAccess` guarantees the pipeline
+  // rejected the request before invocation if no principal was present, so the
+  // zone value is non-null here.
   Future<UserDto> me() async =>
-      _tokens.userDtoOf(TomBearerAuthentication.getPrincipal());
+      _tokens.userDtoOf(getFromCurrentZone<TomPrincipal>()!);
 }

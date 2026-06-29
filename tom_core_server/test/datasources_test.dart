@@ -214,10 +214,30 @@ void main() {
   group('MariadbPreparedStatement.buildPositionalParameters (bug §65)', () {
     test('binds values raw, in placeholder order', () {
       final bound = MariadbPreparedStatement.buildPositionalParameters(
-        ['name', 'age', 'active'],
-        {'name': 'John', 'age': 42, 'active': true},
+        ['name', 'age'],
+        {'name': 'John', 'age': 42},
       );
-      expect(bound, ['John', 42, true]);
+      expect(bound, ['John', 42]);
+    });
+
+    // Bug §72: MariaDB has no native boolean (`BOOLEAN` = `TINYINT(1)`); the
+    // driver serializes a bound Dart `bool` as the string 'true'/'false', which
+    // the server rejects for an integer column ("Incorrect integer value:
+    // 'false'", error 1366). The bind boundary translates bool -> 1/0.
+    test('binds a Dart bool as its MariaDB integer encoding (1/0)', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['active', 'archived'],
+        {'active': true, 'archived': false},
+      );
+      expect(bound, [1, 0]);
+    });
+
+    test('binds a TomDbType-boxed bool as 1/0 too', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['flag'],
+        {'flag': TomDbBool(false)},
+      );
+      expect(bound, [0]);
     });
 
     test('a null param stays null (binds SQL NULL, not the string "NULL")', () {
@@ -242,6 +262,48 @@ void main() {
       expect(
         MariadbPreparedStatement.buildPositionalParameters(['x'], null),
         isEmpty,
+      );
+    });
+
+    test('a TomDbType box binds its primitive, not its toString (bug §70)', () {
+      // A column's toDbConverter produces a boxed SQL value (e.g. an enum
+      // mapped to TomDbString); the driver only accepts primitives. Binding
+      // the box raw would marshal "TomDbType TomDbString full" and the server
+      // would truncate it against the ENUM column (error 1265).
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['access', 'count'],
+        {'access': TomDbString('full'), 'count': TomDbInt(3)},
+      );
+      expect(bound, ['full', 3]);
+      expect(bound.first, isA<String>());
+    });
+
+    test('a TomDbType box holding null binds SQL null', () {
+      final bound = MariadbPreparedStatement.buildPositionalParameters(
+        ['maybe'],
+        {'maybe': TomDbString(null)},
+      );
+      expect(bound, [null]);
+    });
+  });
+
+  group('MariadbPreparedStatement.normalizeGeneratedId (bug §71)', () {
+    // crud_repository.save reads a freshly inserted row's surrogate key from
+    // the insert's own result (lastInsertID), not a follow-up
+    // SELECT LAST_INSERT_ID() that can land on a different connection and
+    // return 0. The driver reports 0 for "no generated key", which must surface
+    // as null so save falls back rather than re-reading row id 0.
+    test('a real AUTO_INCREMENT value passes through as an int', () {
+      expect(
+        MariadbPreparedStatement.normalizeGeneratedId(BigInt.from(61)),
+        61,
+      );
+    });
+
+    test('the 0 sentinel (no generated key) maps to null', () {
+      expect(
+        MariadbPreparedStatement.normalizeGeneratedId(BigInt.zero),
+        isNull,
       );
     });
   });

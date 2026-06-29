@@ -40,6 +40,16 @@ abstract class TomPreparedStatement<T extends Object> {
 
   /// Releases the statement's server-side resources.
   Future<void> deallocate();
+
+  /// The database-assigned auto-increment / identity key produced by the most
+  /// recent [execute] that inserted a row, or `null` when the last execute
+  /// produced no generated key.
+  ///
+  /// Read from the insert's *own* result, this is the authoritative source for
+  /// a freshly inserted row's surrogate key — unlike a follow-up
+  /// `SELECT LAST_INSERT_ID()`, which is session-scoped and returns `0` if it
+  /// happens to run on a different connection than the insert (bug §71).
+  int? get lastGeneratedId => null;
 }
 
 /// A connection to one data source — the abstract contract a driver implements.

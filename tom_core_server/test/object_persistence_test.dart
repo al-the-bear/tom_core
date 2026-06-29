@@ -204,6 +204,97 @@ void main() {
     });
   });
 
+  // Bug §68: `TomSqlDatasourceRepository.save` produced broken SQL — the
+  // INSERT/UPDATE `TomLiteralSelect` was built without its `parameters`, so the
+  // `:name -> ?` substitution never ran and nothing bound; the UPDATE had no
+  // WHERE clause (it would update every row), used the field name instead of
+  // the column name in `SET`, and the insert/update decision misfired for a
+  // non-nullable sentinel int key. These tests pin the pure SQL builders the
+  // fixed `save` delegates to.
+  group('save SQL builders (bug §68)', () {
+    TomColumnInformation namedColumn(
+      String columnName,
+      String declaredName, {
+      bool readOnly = false,
+      bool isPk = false,
+    }) {
+      return TomColumnInformation(
+        TomDbTable(datasource: 'main', table: 'users', primaryKeyField: 'id'),
+        Object,
+        TomDbColumn(columnName: columnName, isReadOnly: readOnly),
+        isPk ? const TomEntityId() : null,
+        null,
+        null,
+        Object,
+        declaredName,
+        columnName,
+      );
+    }
+
+    test('buildInsertStatement uses column names and :declaredName placeholders',
+        () {
+      final cols = [
+        namedColumn('user_name', 'userName'),
+        namedColumn('password_hash', 'passwordHash'),
+      ];
+      final (sql, params) =
+          TomSqlDatasourceRepository.buildInsertStatement('users', cols);
+      expect(
+        sql,
+        'INSERT INTO users ( user_name,password_hash )'
+        ' VALUES ( :userName,:passwordHash )',
+      );
+      expect(params, ['userName', 'passwordHash']);
+    });
+
+    test('buildUpdateStatement sets columns and adds a WHERE on the pk', () {
+      final cols = [
+        namedColumn('user_name', 'userName'),
+        namedColumn('password_hash', 'passwordHash'),
+      ];
+      final pk = namedColumn('id', 'id', isPk: true, readOnly: true);
+      final (sql, params) =
+          TomSqlDatasourceRepository.buildUpdateStatement('users', cols, pk);
+      expect(
+        sql,
+        'UPDATE users SET user_name = :userName,password_hash = :passwordHash'
+        ' WHERE id = :id',
+      );
+      expect(params, ['userName', 'passwordHash', 'id']);
+    });
+
+    test('isUnsavedKey treats null and negative ints as unsaved', () {
+      // A nullable surrogate key is null before first persist; a non-nullable
+      // int key uses a negative sentinel (the `id >= 0` convention).
+      expect(TomSqlDatasourceRepository.isUnsavedKey(null), isTrue);
+      expect(TomSqlDatasourceRepository.isUnsavedKey(-1), isTrue);
+      expect(TomSqlDatasourceRepository.isUnsavedKey(0), isFalse);
+      expect(TomSqlDatasourceRepository.isUnsavedKey(7), isFalse);
+      expect(TomSqlDatasourceRepository.isUnsavedKey('abc'), isFalse);
+    });
+
+    // Bug §72: `save` read the primary key with `getVariableValue(toSave) as K`.
+    // For an entity with a *nullable* surrogate key (`int?`) left null on its
+    // first insert, that cast was `null as int`, which throws
+    // `Null is not a subtype of int` — before `isUnsavedKey` ever ran. Every
+    // INSERT of such an entity failed (the app sample's `createProject` 500'd).
+    // `readPrimaryKey` reads as nullable so the unsaved-null case survives to
+    // the INSERT/UPDATE decision.
+    test('readPrimaryKey reads a null nullable surrogate key without throwing',
+        () {
+      expect(TomSqlDatasourceRepository.readPrimaryKey<int>(null), isNull);
+    });
+
+    test('readPrimaryKey returns a present int key unchanged', () {
+      expect(TomSqlDatasourceRepository.readPrimaryKey<int>(7), 7);
+    });
+
+    test('readPrimaryKey returns a negative sentinel key unchanged', () {
+      // The sentinel still arrives non-null; isUnsavedKey classifies it.
+      expect(TomSqlDatasourceRepository.readPrimaryKey<int>(-1), -1);
+    });
+  });
+
   // Bug §29: getPersistentColumns memoises `null` for a non-reflectable type,
   // but the cache-hit fast path cast `null` to a non-nullable list. The first
   // call returned null; the second threw a TypeError off the cache.

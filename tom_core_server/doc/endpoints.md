@@ -85,11 +85,15 @@ For each scanned service class, `initializeRouter` finds the instance to invoke:
 
 For each declared parameter the handler tries, in order: a `TomPrincipal` or
 `TomClientJwtToken` from the zone, the `Request` object itself, a value in the
-request context keyed by type or by parameter name, a value from the
-`TomExecutionContext`, the JSON request body (deserialised onto the parameter
-type via reflection, merged with path/query params), and finally a
-`Map`-typed context entry. A parameter that cannot be filled is logged and
-left unset.
+request context keyed by type or by parameter name, a **primitive path
+variable** (a shelf-matched `<name>` capture from `Request.params`, coerced to
+the parameter's `String`/`num`/`bool` type by `coercePrimitiveParameter`), a
+**primitive query-string value** (`?name=` from `Request.requestedUri`, coerced
+the same way — this is how `GET /projects?workspaceId=` binds a bare
+`String workspaceId`), a value from the `TomExecutionContext`, the JSON request
+body (deserialised onto the parameter type via reflection, merged with path
+params), and finally a `Map`-typed context entry. A parameter that cannot be
+filled is logged and left unset.
 
 ## Access Control
 

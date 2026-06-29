@@ -110,7 +110,13 @@ abstract class TomBaseServerConfiguration {
 
   bool listenToAnyIP = false;
 
-  int port = 8080;
+  /// HTTP bind port. `0` is the "unconfigured" sentinel: [setValues] (config /
+  /// env / `--port=`) overwrites it when a port is supplied, otherwise a
+  /// subclass constructor — which runs *after* the base constructor's
+  /// [setValues] call — applies its own default via `if (port == 0) port = …`.
+  /// A literal default here (e.g. `8080`) would defeat that guard, since the
+  /// field would never be `0` for the subclass to detect "no port configured".
+  int port = 0;
 
   String certificateChain = '''
 -----BEGIN CERTIFICATE-----

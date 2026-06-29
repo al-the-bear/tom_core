@@ -79,13 +79,14 @@ The seeded users come from the auth server (sample only — never ship them):
 ## Endpoints
 
 `POST` / `PUT` bodies are JSON; `Authorization: Bearer <authzToken>` carries the
-auth server login's `authzToken`. All but `/health` require an authenticated
-principal; resource ownership/share and per-field grade are enforced inside the
-handlers.
+auth server login's `authzToken`. All but `/status` (and the framework's
+`/health` liveness probe) require an authenticated principal; resource
+ownership/share and per-field grade are enforced inside the handlers.
 
 | Method & path | Access | Purpose |
 | --- | --- | --- |
-| `GET /health` | public | Liveness probe |
+| `GET /status` | public | Typed JSON status (`{status, service}`) |
+| `GET /health` | public | Framework plain-text liveness probe (`OK`) — auto-mounted |
 | `GET /workspaces` | authenticated | Workspaces the caller can reach |
 | `GET /projects` · `POST /projects` | authenticated | List / create a project (workspace owner/editor) |
 | `GET /lists` | authenticated | Lists the caller can reach |

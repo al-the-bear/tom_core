@@ -62,6 +62,14 @@ class MariadbPreparedStatement<T extends Object>
   /// The compiled SQL command (kept so the statement can be re-prepared).
   final String command;
 
+  int? _lastGeneratedId;
+
+  /// The auto-increment key the most recent [execute] generated, taken from the
+  /// insert's own result set (`0` from the driver means "no generated key" and
+  /// surfaces here as `null`, since a real AUTO_INCREMENT value is never 0).
+  @override
+  int? get lastGeneratedId => _lastGeneratedId;
+
   /// Wraps the prepared [preparedStmt] with its [parameterList], owning
   /// [datasource], [resultType] and original [command].
   MariadbPreparedStatement(
@@ -72,6 +80,19 @@ class MariadbPreparedStatement<T extends Object>
     this.command,
   );
 
+  /// Records the generated key from an execute's [result].
+  void _captureGeneratedId(IResultSet result) {
+    _lastGeneratedId = normalizeGeneratedId(result.lastInsertID);
+  }
+
+  /// Normalises a driver-reported last-insert id into a generated key: the
+  /// driver reports `0` when a statement generated no AUTO_INCREMENT value
+  /// (e.g. an `UPDATE`, or an `INSERT` into a table without one), and a real
+  /// AUTO_INCREMENT value is never `0` — so `0` maps to `null` ("no generated
+  /// key") and every other value passes through as an `int`.
+  static int? normalizeGeneratedId(BigInt rawLastInsertId) =>
+      rawLastInsertId == BigInt.zero ? null : rawLastInsertId.toInt();
+
   /// Maps the named [params] onto the positional bind list its [parameterList]
   /// expects, in placeholder order.
   ///
@@ -81,13 +102,38 @@ class MariadbPreparedStatement<T extends Object>
   /// rendered through the SQL-literal renderer (`objectOp`), which would
   /// double-encode them over the binary protocol — a `null` would bind the text
   /// `"NULL"` and a string would carry literal quote characters (bug §65).
-  /// Returns an empty list when [params] is `null`.
+  ///
+  /// A [TomDbType] box is the one value that is *not* bound raw: it is the SQL
+  /// representation a column's `toDbConverter` produces (e.g. an enum mapped to
+  /// a `TomDbString`), and the driver only understands primitives. Binding the
+  /// box directly would marshal it through its `toString()` —
+  /// `"TomDbType TomDbString full"` — which the server rejects (an `ENUM`
+  /// column truncates it to `''`, error 1265; bug §70). Unwrapping the box to
+  /// its primitive here keeps that kernel→driver translation at the single
+  /// data-source boundary that owns it. Returns an empty list when [params] is
+  /// `null`.
   static List<Object?> buildPositionalParameters(
     List<String> parameterList,
     Map<String, Object?>? params,
   ) {
     if (params == null) return const [];
-    return [for (final p in parameterList) params[p]];
+    return [for (final p in parameterList) _toBindValue(params[p])];
+  }
+
+  /// Marshals one bind [value] into a driver primitive: a [TomDbType] box is
+  /// unwrapped to the Dart value it holds; a Dart `bool` becomes its MariaDB
+  /// integer encoding; every other value is bound as-is.
+  ///
+  /// MariaDB has no native boolean type — `BOOLEAN` is an alias for
+  /// `TINYINT(1)` stored as `1`/`0`. The driver serializes a bound Dart `bool`
+  /// as the *string* `'true'`/`'false'`, which the server rejects for an
+  /// integer column ("Incorrect integer value: 'false'", error 1366; bug §72).
+  /// Translating `bool`→`int` here keeps that kernel→driver mapping at the
+  /// single data-source boundary that already owns the [TomDbType] unwrap.
+  static Object? _toBindValue(Object? value) {
+    final unwrapped = value is TomDbType ? value.get() : value;
+    if (unwrapped is bool) return unwrapped ? 1 : 0;
+    return unwrapped;
   }
 
   @override
@@ -98,6 +144,7 @@ class MariadbPreparedStatement<T extends Object>
     );
     try {
       IResultSet result = await _execute(parameters, params);
+      _captureGeneratedId(result);
       return datasource._processResult<T>(result, resultType);
     } on MariadbPreparedStatementException {
       // One retry...
@@ -106,6 +153,7 @@ class MariadbPreparedStatement<T extends Object>
       }
       preparedStmt = await datasource.connection!.prepare(command);
       IResultSet result = await _execute(parameters, params);
+      _captureGeneratedId(result);
       return datasource._processResult<T>(result, resultType);
     }
   }

@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+#
+# Boots the whole advanced sample stack — both MariaDB databases (via each
+# server's docker-compose) and both Dart servers — then runs the cross-tier
+# integration test (step 37) against it and tears everything down again.
+#
+# One scripted command for the Phase-7 "scripted scenario passes end-to-end"
+# done bar: an admin grant edit reaching the end-user's field matrix, and a
+# share revealing a project to a second user.
+#
+#   tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh
+#
+# Requirements: docker (+ compose v2) and the Dart SDK on PATH. Host ports
+# 3307/3308 (databases) and 8080/8081 (servers) must be free. The databases
+# start from a *fresh* volume each run (`docker compose down -v`), so the
+# initdb seed re-applies and the scenario sees the known seeded state.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CLIENT_CORE="$(cd "$SCRIPT_DIR/.." && pwd)"
+SAMPLES="$(cd "$CLIENT_CORE/.." && pwd)"
+AUTH_DIR="$SAMPLES/advanced_auth_server"
+APP_DIR="$SAMPLES/advanced_app_server"
+
+SERVER_PIDS=()
+LOG_DIR="$(mktemp -d)"
+
+log() { printf '\n=== %s ===\n' "$*"; }
+
+cleanup() {
+  local exit_code=$?
+  set +e
+  # On any non-zero exit — including a `wait_*` health-check timeout that aborts
+  # the run long before the test step — dump whatever the servers logged so the
+  # failure is diagnosable. Without this a boot failure tears the stack down and
+  # discards the only evidence (the temp LOG_DIR is removed below).
+  if [ "$exit_code" -ne 0 ]; then
+    [ -s "$LOG_DIR/auth.log" ] && { echo "--- auth server log ---"; cat "$LOG_DIR/auth.log"; }
+    [ -s "$LOG_DIR/app.log" ] && { echo "--- app server log ---"; cat "$LOG_DIR/app.log"; }
+  fi
+  log "Tearing down"
+  for pid in "${SERVER_PIDS[@]:-}"; do
+    [ -n "$pid" ] && kill "$pid" 2>/dev/null
+  done
+  (cd "$AUTH_DIR" && docker compose down -v) >/dev/null 2>&1
+  (cd "$APP_DIR" && docker compose down -v) >/dev/null 2>&1
+  rm -rf "$LOG_DIR"
+}
+trap cleanup EXIT
+
+# Fails fast if a leftover *server* is already bound to a host port. Only the
+# server ports (8080/8081) are guarded: the database ports (3307/3308) are not,
+# because step 1 unconditionally recreates the databases with `down -v` (which
+# wipes any stale volume) — a previous run's databases still being up is the
+# normal, harmless case, not a hazard. A leftover *server* from an interrupted
+# run, by contrast, is never torn down here and would let the stack come up
+# against a stale process (or a half-bound socket), turning a real failure into
+# a confusing flake — so refuse to start until 8080/8081 are free.
+assert_ports_free() {
+  log "Checking required server ports (8080/8081) are free"
+  local busy=() port
+  for port in 8080 8081; do
+    if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+      exec 3>&- 3<&-
+      busy+=("$port")
+    fi
+  done
+  if [ "${#busy[@]}" -gt 0 ]; then
+    echo "Required server port(s) already in use: ${busy[*]}." >&2
+    echo "Stop the leftover server holding them (an orphaned dart process from" >&2
+    echo "an interrupted run) and re-run." >&2
+    return 1
+  fi
+}
+
+# Polls a container's docker health status until it reports `healthy`.
+wait_db_healthy() {
+  local name="$1" tries=60
+  log "Waiting for database '$name' to become healthy"
+  while [ "$tries" -gt 0 ]; do
+    local status
+    status="$(docker inspect -f '{{.State.Health.Status}}' "$name" 2>/dev/null || echo missing)"
+    [ "$status" = "healthy" ] && return 0
+    sleep 2
+    tries=$((tries - 1))
+  done
+  echo "Database '$name' did not become healthy in time." >&2
+  return 1
+}
+
+# Polls until the app server's public /health returns HTTP 200.
+#
+# The 180-try (~6 min) budget is deliberately generous: the servers boot with
+# `dart run`, which cold-compiles the whole reverse-dependency graph on a stale
+# cache (e.g. right after a `tom_core_server` edit) and can take several minutes
+# under load. A short budget turns that legitimate one-time compile into a
+# spurious "did not answer in time" failure. `precompile_servers` warms the
+# cache before the timed waits to keep the common case fast.
+wait_app_health() {
+  local tries=180
+  log "Waiting for app server /health (http://localhost:8080)"
+  while [ "$tries" -gt 0 ]; do
+    if [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/health 2>/dev/null)" = "200" ]; then
+      return 0
+    fi
+    sleep 2
+    tries=$((tries - 1))
+  done
+  echo "App server did not answer /health in time." >&2
+  return 1
+}
+
+# Polls until the auth server's port answers with a real HTTP status (it has no
+# public health endpoint, so any code other than the connection-refused
+# sentinel "000" means the socket is serving HTTP — the auth server binds last,
+# after migrations/seeding/route mounting, so a 404 on /auth proves it is up).
+#
+# The `|| true` is load-bearing under `set -e`: while the server is still
+# booting, curl gets connection-refused and *exits 7*. A bare
+# `code="$(curl …)"` is a simple command whose status is curl's, so `set -e`
+# would abort the whole run on the first poll — long before the "000"-means-down
+# check below. `|| true` (inside the substitution) swallows only curl's exit
+# code; curl has already written the "000" sentinel to stdout via `-w`, and
+# `true` prints nothing, so `$code` stays "000" (the down case the loop wants).
+#
+# Do NOT swap `|| true` for `|| echo 000`: echo would *append* a second "000" →
+# "000000", which `!= "000"` reports as up while the server is still booting,
+# making the test run against a not-yet-listening auth server and skip. Treat
+# both "000" and an empty result (some curl builds print nothing on a failed
+# connect) as still-down.
+wait_auth_up() {
+  local tries=180
+  log "Waiting for auth server (http://localhost:8081)"
+  while [ "$tries" -gt 0 ]; do
+    local code
+    code="$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/auth 2>/dev/null || true)"
+    [ -n "$code" ] && [ "$code" != "000" ] && return 0
+    sleep 2
+    tries=$((tries - 1))
+  done
+  echo "Auth server did not start in time." >&2
+  return 1
+}
+
+# 0. Preflight: refuse to start if a previous run left a port bound.
+assert_ports_free
+
+# 1. Fresh databases. `down -v` drops the old volume so the initdb seed re-runs.
+log "Starting databases (fresh volumes)"
+(cd "$AUTH_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d auth-db)
+(cd "$APP_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d app-db)
+wait_db_healthy advanced-auth-db
+wait_db_healthy advanced-app-db
+
+# 2. Resolve dependencies once for every package the run touches.
+log "Resolving Dart dependencies"
+(cd "$AUTH_DIR" && dart pub get)
+(cd "$APP_DIR" && dart pub get)
+(cd "$CLIENT_CORE" && dart pub get)
+
+# 3. Start the auth server first (it owns the grant matrix and mints tokens),
+#    then the app server (it reads grants from auth_db and verifies auth tokens).
+#    Each runs from its own package root so relative asset/migration paths
+#    resolve. `dart run` of the entrypoint source cold-compiles the dependency
+#    graph on first boot (covered by the generous `wait_*` budgets above);
+#    running a pre-built kernel snapshot instead is *not* viable here — these
+#    servers bootstrap generated reflection at startup, which a detached `.dill`
+#    fails to initialise. `exec` makes the subshell *become* the dart process,
+#    so the recorded PID is the server itself — killing it in cleanup actually
+#    stops the server instead of orphaning a dart child that keeps its port
+#    bound (and fails the next run's port preflight).
+log "Starting auth server"
+(cd "$AUTH_DIR" && exec dart run bin/auth_server_start.dart >"$LOG_DIR/auth.log" 2>&1) &
+SERVER_PIDS+=($!)
+wait_auth_up
+
+log "Starting app server"
+(cd "$APP_DIR" && exec dart run bin/app_server_start.dart >"$LOG_DIR/app.log" 2>&1) &
+SERVER_PIDS+=($!)
+wait_app_health
+
+# 4. Run the scripted cross-tier scenario against the live stack. The test
+#    *skips* (rather than fails) when it cannot reach the servers, so a unit run
+#    of the package stays green. Under this runner the servers are guaranteed
+#    up, so a skip means something died after the health checks — treat it as a
+#    failure and surface the server logs.
+log "Running the cross-tier integration test"
+set +e
+test_output="$(cd "$CLIENT_CORE" && dart test test/cross_tier_integration_test.dart 2>&1)"
+result=$?
+set -e
+printf '%s\n' "$test_output"
+
+if [ "$result" -eq 0 ] && printf '%s' "$test_output" | grep -q 'All tests skipped'; then
+  echo "Scenario was SKIPPED (servers unreachable at test time) — treating as failure." >&2
+  result=1
+fi
+
+# Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
+# non-zero, so a test failure here surfaces them without an explicit dump.
+
+exit "$result"

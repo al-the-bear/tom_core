@@ -237,6 +237,75 @@ void main() {
     });
   });
 
+  // §37 / cross-tier routing fix: shelf_router's RouterEntry parser recognises
+  // only `<param>` placeholders; a `{param}` template is RegExp.escaped to a
+  // literal path segment and never matches a real id, so the route 404s. The
+  // registry declares URIs with `{name}`, so the router builder translates them
+  // to `<name>` before handing them to shelf. `shelfRoutePath` owns that
+  // translation and is pure, so it is unit-testable without a live router.
+  group('TomEndpointRouting.shelfRoutePath', () {
+    test('translates a single {name} placeholder to <name>', () {
+      expect(
+        TomEndpointRouting.shelfRoutePath('/items/{id}/field-states'),
+        '/items/<id>/field-states',
+      );
+    });
+
+    test('translates every placeholder in a multi-variable route', () {
+      expect(
+        TomEndpointRouting.shelfRoutePath('/users/{userId}/items/{itemId}'),
+        '/users/<userId>/items/<itemId>',
+      );
+    });
+
+    test('passes a route with no placeholders through unchanged', () {
+      expect(TomEndpointRouting.shelfRoutePath('/health'), '/health');
+    });
+
+    test('leaves an already-shelf-style <name> route unchanged', () {
+      expect(TomEndpointRouting.shelfRoutePath('/items/<id>'), '/items/<id>');
+    });
+  });
+
+  // §37 / cross-tier routing fix: a method whose parameter is a bare primitive
+  // (e.g. `String id` / `int id`) is bound from the URL — either a shelf-matched
+  // `<name>` path capture (exposed as a String in Request.params) or, for a
+  // route like `GET /projects?workspaceId=`, a query-string value of the same
+  // name. coercePrimitiveParameter owns that String→primitive coercion and
+  // returns null for anything it cannot bind (so the pipeline falls through to
+  // its other binding strategies).
+  group('TomEndpointHandler.coercePrimitiveParameter', () {
+    test('returns the raw value for a String parameter', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(String, '42'), '42');
+    });
+
+    test('parses an int parameter', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(int, '42'), 42);
+    });
+
+    test('parses a double parameter', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(double, '3.5'), 3.5);
+    });
+
+    test('parses a num parameter', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(num, '7'), 7);
+    });
+
+    test('maps a bool parameter ("true" only)', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(bool, 'true'), isTrue);
+      expect(
+          TomEndpointHandler.coercePrimitiveParameter(bool, 'false'), isFalse);
+    });
+
+    test('returns null for an unparsable numeric value', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(int, 'abc'), isNull);
+    });
+
+    test('returns null for a non-primitive parameter type', () {
+      expect(TomEndpointHandler.coercePrimitiveParameter(Request, '1'), isNull);
+    });
+  });
+
   group('exception types', () {
     test('TomEndpointHandlerException is a TomServerException', () {
       final ex = TomEndpointHandlerException('key', 'message');

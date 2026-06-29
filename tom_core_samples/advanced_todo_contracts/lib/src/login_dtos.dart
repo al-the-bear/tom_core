@@ -1,4 +1,5 @@
 import 'package:advanced_todo_domain/advanced_todo_domain.dart' show UserStatus;
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomJsonSerializable;
 
 /// Credentials posted to `POST /auth/login`.
 ///
@@ -68,7 +69,11 @@ class LoginRequest {
 /// [status] travels as the [UserStatus.name] token (`active`/`suspended`); use
 /// [statusValue] for the typed enum. Deliberately a flat record (not the
 /// reflected `User` entity) so it carries clean value equality across the wire.
-class UserDto {
+///
+/// Implements [TomJsonSerializable] so the endpoint pipeline serializes a
+/// single-`UserDto` result (e.g. `createUser`/`updateUser`) through [toJson]
+/// rather than the reflection serializer, which would drop its `final` fields.
+class UserDto implements TomJsonSerializable {
   /// Stable identifier (the auth server's primary key).
   final String id;
 
@@ -109,6 +114,7 @@ class UserDto {
       UserStatus.values.asNameMap()[status] ?? UserStatus.active;
 
   /// JSON shape `{id, username, displayName, email, status}`.
+  @override
   Map<String, Object?> toJson() => {
         'id': id,
         'username': username,
@@ -141,7 +147,12 @@ class UserDto {
 /// authorization (the graded field matrix), and [expiresAt] is when the pair
 /// stops being accepted. Tokens are never rendered by [toString] (they are
 /// bearer secrets) but are part of [==]/[hashCode].
-class LoginResult {
+///
+/// Implements [TomJsonSerializable] so the endpoint pipeline serializes the
+/// `/auth/login` and `/auth/refresh` result through [toJson] rather than the
+/// reflection serializer, which would drop its `final` fields (the gap that
+/// previously made a live login return an empty `{}` body / 500).
+class LoginResult implements TomJsonSerializable {
   /// The authenticated principal, password-free.
   final UserDto user;
 
@@ -176,6 +187,7 @@ class LoginResult {
 
   /// JSON shape `{user, authToken, authzToken, expiresAt}` with [expiresAt] as
   /// an ISO-8601 UTC string.
+  @override
   Map<String, Object?> toJson() => {
         'user': user.toJson(),
         'authToken': authToken,

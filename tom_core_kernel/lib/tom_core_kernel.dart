@@ -14,6 +14,7 @@ export 'src/tombase/http_connection/httpmethods.dart';
 export 'src/tombase/http_connection/mimetypes.dart';
 export 'src/tombase/http_connection/headers.dart';
 export 'src/tombase/isolate_pooling/tom_worker.dart';
+export 'src/tombase/json/json_serializable.dart';
 export 'src/tombase/json/map_merge_and_process.dart';
 export 'src/tombase/json/pretty_json.dart';
 export 'src/tombase/little_things/little_things.dart';

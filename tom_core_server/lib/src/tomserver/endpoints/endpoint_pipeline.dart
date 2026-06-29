@@ -84,6 +84,24 @@ class TomEndpointHandler {
     required this.metadata,
   });
 
+  /// Coerces a raw URL string (a matched path variable *or* a query-string
+  /// value) into the method parameter's primitive [type], or returns `null`
+  /// when [type] is not a bindable primitive (so the caller falls through to
+  /// the other binding strategies).
+  ///
+  /// Such values always arrive as strings, so the numeric/bool forms are
+  /// parsed; an unparsable numeric value yields `null` (treated as "could not
+  /// bind"). `bool` follows the URL convention where only the literal `true` is
+  /// truthy.
+  static Object? coercePrimitiveParameter(Type type, String raw) {
+    if (type == String) return raw;
+    if (type == int) return int.tryParse(raw);
+    if (type == double) return double.tryParse(raw);
+    if (type == num) return num.tryParse(raw);
+    if (type == bool) return raw == 'true';
+    return null;
+  }
+
   /// Whether requests are logged when an endpoint does not specify
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
@@ -199,6 +217,42 @@ class TomEndpointHandler {
         );
         positionalArguments.add(req.context[pm.simpleName]!);
         continue;
+      }
+      // Primitive path variable (shelf_router capture, e.g. `/items/<id>`): bind
+      // a bare String/num/bool method parameter directly from the matched route
+      // value of the same name. A request DTO folds path variables in via
+      // `jsonBodyData.addAll(req.params)` below, but a primitive parameter has
+      // no DTO to carry it — without this branch it would never be bound and the
+      // invocation would fail with the wrong argument count.
+      final pathParam = req.params[pm.simpleName];
+      if (pathParam != null) {
+        final primitive =
+            coercePrimitiveParameter(pm.type.reflectedType, pathParam);
+        if (primitive != null) {
+          tomLog.trace(
+            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from path variable '$pathParam'.",
+          );
+          positionalArguments.add(primitive);
+          continue;
+        }
+      }
+      // Primitive query-string parameter (e.g. `GET /projects?workspaceId=`):
+      // bind a bare String/num/bool method parameter from the query value of
+      // the same name. Query parameters carry no shelf route capture (so they
+      // are absent from req.params) and a GET has no JSON body to fold them into
+      // — without this branch the parameter is never bound and the invocation
+      // fails with the wrong argument count.
+      final queryParam = req.requestedUri.queryParameters[pm.simpleName];
+      if (queryParam != null) {
+        final primitive =
+            coercePrimitiveParameter(pm.type.reflectedType, queryParam);
+        if (primitive != null) {
+          tomLog.trace(
+            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} from query parameter '$queryParam'.",
+          );
+          positionalArguments.add(primitive);
+          continue;
+        }
       }
       var ctx = getFromCurrentZone<TomExecutionContext>();
       if( ctx != null ) {
@@ -332,6 +386,14 @@ class TomEndpointHandler {
         await transaction.commitTransaction();
       }
     } catch (error, stacktrace) {
+      // Always record the *cause* of an endpoint failure server-side. Without
+      // this the only trace of a 500 was the response-summary line below, which
+      // names neither the exception nor its stack — when an errorHandler turns
+      // the throw into an opaque 500 the real cause was lost entirely, leaving
+      // an undiagnosable failure. Log it once here, before the handler runs.
+      tomLog.warn(
+        "$reqId-${req.url}: $callName on ${instance.type.simpleName} threw $error\n$stacktrace",
+      );
       if( transaction != null ) {
         tomLog.warn("$reqId-${req.url}: Rolling back transaction after exception $error");
         await transaction.rollbackTransaction();
@@ -379,6 +441,8 @@ class TomEndpointHandler {
           : result is String
           ? result
           : result is TomClass
+          ? jsonEncode(result.toJson())
+          : result is TomJsonSerializable
           ? jsonEncode(result.toJson())
           : result is Map<String, Object>
           ? jsonEncode(result)
@@ -545,6 +609,18 @@ class TomEndpointRouting {
   /// Mounted routes keyed by URI, for diagnostics.
   static Map<String, TomEndpointRoutingInfo> routingInfo = {};
 
+  /// Translates a Tom route template into the `shelf_router` path syntax.
+  ///
+  /// Tom (and OpenAPI) write path variables as `{name}`; `shelf_router` matches
+  /// them as `<name>` and treats `{name}` as a *literal* path segment. So a
+  /// route mounted with the raw template (`/items/{id}/field-states`) silently
+  /// never matches a real request (`/items/1/field-states`) — the only symptom
+  /// is a 404 "Route not found". Every `{name}` is rewritten to `<name>`; a
+  /// route with no variables is returned unchanged. The captured variable keeps
+  /// its name, so the pipeline binds it from `Request.params` by that name.
+  static String shelfRoutePath(String uri) =>
+      uri.replaceAllMapped(RegExp(r'\{([^{}]+)\}'), (m) => '<${m[1]}>');
+
   /// Reflects over the annotated classes and partitions them into service
   /// interfaces, API implementations, and components. Throws if a class carries
   /// both `@TomApiImplementation` and `@tomService`.
@@ -692,33 +768,38 @@ class TomEndpointRouting {
     TomMethodMetadata mmd,
     ClassMirror instanceClassMirror,
   ) {
+    // Tom (and OpenAPI) write path variables as `{name}`; shelf_router matches
+    // `<name>` and escapes `{name}` to a literal segment, so a route registered
+    // with the raw template silently never matches a real value. Translate once
+    // and register the shelf form.
+    final route = shelfRoutePath(tep.uri);
     for (var method in tep.methods) {
       switch (method) {
         case TomHttpMethod.get:
-          router.get(tep.uri, teph.handleMethodCall);
+          router.get(route, teph.handleMethodCall);
         case TomHttpMethod.post:
-          router.post(tep.uri, teph.handleMethodCall);
+          router.post(route, teph.handleMethodCall);
         case TomHttpMethod.put:
-          router.put(tep.uri, teph.handleMethodCall);
+          router.put(route, teph.handleMethodCall);
         case TomHttpMethod.patch:
-          router.patch(tep.uri, teph.handleMethodCall);
+          router.patch(route, teph.handleMethodCall);
         case TomHttpMethod.head:
-          router.head(tep.uri, teph.handleMethodCall);
+          router.head(route, teph.handleMethodCall);
         case TomHttpMethod.connect:
-          router.connect(tep.uri, teph.handleMethodCall);
+          router.connect(route, teph.handleMethodCall);
         case TomHttpMethod.delete:
-          router.delete(tep.uri, teph.handleMethodCall);
+          router.delete(route, teph.handleMethodCall);
         case TomHttpMethod.trace:
-          router.trace(tep.uri, teph.handleMethodCall);
+          router.trace(route, teph.handleMethodCall);
         case TomHttpMethod.all:
-          router.all(tep.uri, teph.handleMethodCall);
+          router.all(route, teph.handleMethodCall);
         default:
           throw TomEndpointPipelineException(
             "endpoint_pipeline.initialize_router.invalid_http_method",
             "Endpoint method $method invalid for ${mmd.methodMirror.simpleName}-${instanceClassMirror.simpleName}",
           );
       }
-      router.options(tep.uri, teph.handleMethodCall);
+      router.options(route, teph.handleMethodCall);
       routingInfo[tep.uri] = TomEndpointRoutingInfo(teph, tep);
     }
     tomLog.info("mounted endpoint ${teph.name} $tep");

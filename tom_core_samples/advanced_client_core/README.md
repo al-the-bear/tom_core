@@ -184,7 +184,7 @@ final users = await admin.listUsers(); // bearer attached, parsed to UserDtos
 - `test/auth_client_integration_test.dart` — a live login against a running
   `advanced_auth_server` on `localhost:8081`; **skips itself when the server is
   unreachable**.
-- `test/app_api_client_integration_test.dart` — a live `GET /health` then an
+- `test/app_api_client_integration_test.dart` — a live `GET /status` then an
   authenticated `listWorkspaces()` against `advanced_app_server` on
   `localhost:8080`; **skips itself when a server is unreachable**.
 - `test/admin_api_client_test.dart` — socket-free unit tests: the pure `parse*`

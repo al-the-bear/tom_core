@@ -2,8 +2,13 @@
 ///
 /// These back the authadmin client's Users/Roles/Groups/Assignments screens.
 /// All are flat value records with hand-written JSON mapping, matching the rest
-/// of the contract surface.
+/// of the contract surface. The DTOs that are returned as a *single* endpoint
+/// result ([RoleDto], [GroupDto]) implement [TomJsonSerializable] so the
+/// endpoint pipeline serializes them through [toJson] rather than the
+/// reflection serializer, which would drop their `final` fields.
 library;
+
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomJsonSerializable;
 
 /// Credentials + profile for `POST /admin/users` (account creation).
 ///
@@ -68,7 +73,7 @@ class CreateUserRequest {
 ///
 /// [key] is the stable identifier the grant matrix and `@TomRoleAccess` key on
 /// (e.g. `admin`); [name] is the human-facing label.
-class RoleDto {
+class RoleDto implements TomJsonSerializable {
   /// Stable role key (e.g. `admin`).
   final String key;
 
@@ -85,6 +90,7 @@ class RoleDto {
       );
 
   /// JSON shape `{key, name}`.
+  @override
   Map<String, Object?> toJson() => {'key': key, 'name': name};
 
   @override
@@ -103,7 +109,7 @@ class RoleDto {
 /// [memberUserIds] is copied defensively and exposed unmodifiable so a DTO
 /// never mutates under a caller; equality is order-sensitive over the member
 /// list (the admin UI preserves member order).
-class GroupDto {
+class GroupDto implements TomJsonSerializable {
   /// Stable group identifier.
   final String id;
 
@@ -132,6 +138,7 @@ class GroupDto {
       );
 
   /// JSON shape `{id, name, memberUserIds}`.
+  @override
   Map<String, Object?> toJson() => {
         'id': id,
         'name': name,

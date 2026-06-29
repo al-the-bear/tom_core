@@ -183,8 +183,16 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
   TomEndpoint<requestType, resultType> convertToTomEndpoint([
     TomApiImplementation? apiImplementation,
   ]) {
-    TomApiEndpoint<requestType, resultType> endpoint =
-        tomRemoteApis[apiId][endpointId] as TomApiEndpoint<requestType, resultType>;
+    // The registry entry is declared with its own precise `<ReturnType,
+    // RequestType>` (e.g. `TomApiEndpoint<Map<String, Object>, Object?>`), which
+    // need not match this implementation annotation's inferred `<requestType,
+    // resultType>` bounds (both default to `Object`). Dart generics are
+    // invariant, so an `as TomApiEndpoint<requestType, resultType>` downcast
+    // would fail at runtime for every endpoint whose registry types are more
+    // specific than `Object`. Read the entry through the raw base type instead —
+    // every field used below (methods, uri, consumes/produces, headers, …) is
+    // non-generic, so the entry's reified type arguments are irrelevant here.
+    final TomApiEndpoint endpoint = tomRemoteApis[apiId][endpointId];
     return TomEndpoint<requestType, resultType>(
       methods: endpoint.methods ?? [endpoint.method],
       formFields: endpoint.formFields,

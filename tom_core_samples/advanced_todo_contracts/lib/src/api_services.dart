@@ -104,7 +104,12 @@ abstract class AdminApiService {
 /// what the principal owns or is shared into, and writes are re-checked
 /// field-by-field server-side against the principal's four-state grade.
 abstract class AppApiService {
-  /// `appHealth` — `GET /health` (public). Liveness probe; no persistence.
+  /// `appHealth` — `GET /status` (public). Application status JSON; no
+  /// persistence. Served at `/status`, not `/health`: the framework's built-in
+  /// [TomHealthService] already owns the plain-text `GET /health` liveness probe
+  /// (auto-mounted in every server), so an app-defined `/health` would collide
+  /// with — and be shadowed by — it. `/health` = infra liveness, `/status` =
+  /// typed app status.
   Future<Map<String, Object>> health();
 
   /// `appListWorkspaces` — `GET /workspaces`. Workspaces the principal owns or
@@ -137,11 +142,11 @@ abstract class AppApiService {
   Future<void> deleteItem(String id);
 
   /// `appAddComment` — `POST /items/{id}/comments` (commenter and above).
-  Future<TodoComment> addComment(String itemId, TodoComment comment);
+  Future<TodoComment> addComment(String id, TodoComment comment);
 
   /// `appItemFieldStates` — `GET /items/{id}/field-states`. The four-state
   /// matrix for *this* principal, one [GradedFieldDto] per gradable field.
-  Future<List<GradedFieldDto>> itemFieldStates(String itemId);
+  Future<List<GradedFieldDto>> itemFieldStates(String id);
 
   /// `appShare` — `POST /share`. Owner shares a resource with a user at a role.
   Future<void> share(ShareRequest request);

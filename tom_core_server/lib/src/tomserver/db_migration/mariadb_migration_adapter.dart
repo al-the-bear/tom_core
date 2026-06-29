@@ -46,6 +46,73 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     versions = [];
   }
 
+  /// Splits a (possibly multi-statement) migration [sql] script into its
+  /// individual statements so each can be sent on its own command.
+  ///
+  /// Statements are separated on unquoted, uncommented semicolons. String
+  /// literals (`'…'`, `"…"`), quoted identifiers (`` `…` ``), line comments
+  /// (`-- …`, `# …`) and block comments (`/* … */`) are skipped so a semicolon
+  /// inside any of them does not split a statement. Trailing whitespace-only
+  /// fragments are dropped, so a script ending in `;` yields no empty tail
+  /// statement.
+  static List<String> splitSqlStatements(String sql) {
+    final statements = <String>[];
+    final buffer = StringBuffer();
+    final chars = sql.split('');
+    for (var i = 0; i < chars.length; i++) {
+      final ch = chars[i];
+      final next = i + 1 < chars.length ? chars[i + 1] : '';
+
+      // Line comment: '-- ' or '#' to end of line.
+      if ((ch == '-' && next == '-') || ch == '#') {
+        buffer.write(ch);
+        while (i + 1 < chars.length && chars[i + 1] != '\n') {
+          buffer.write(chars[++i]);
+        }
+        continue;
+      }
+      // Block comment: '/* … */'.
+      if (ch == '/' && next == '*') {
+        buffer.write(ch);
+        buffer.write(chars[++i]);
+        while (i + 1 < chars.length &&
+            !(chars[i] == '*' && chars[i + 1] == '/')) {
+          buffer.write(chars[++i]);
+        }
+        if (i + 1 < chars.length) buffer.write(chars[++i]);
+        continue;
+      }
+      // String literal or quoted identifier: copy verbatim until the matching
+      // unescaped closing quote (doubled quote = escaped quote, stays inside).
+      if (ch == "'" || ch == '"' || ch == '`') {
+        buffer.write(ch);
+        while (i + 1 < chars.length) {
+          final c = chars[++i];
+          buffer.write(c);
+          if (c == ch) {
+            if (i + 1 < chars.length && chars[i + 1] == ch) {
+              buffer.write(chars[++i]); // doubled quote -> escaped, continue
+            } else {
+              break;
+            }
+          }
+        }
+        continue;
+      }
+      // Statement terminator.
+      if (ch == ';') {
+        final statement = buffer.toString().trim();
+        if (statement.isNotEmpty) statements.add(statement);
+        buffer.clear();
+        continue;
+      }
+      buffer.write(ch);
+    }
+    final tail = buffer.toString().trim();
+    if (tail.isNotEmpty) statements.add(tail);
+    return statements;
+  }
+
   @override
   Future<void> applyMigration(
     TomDataSourceInfo dsi,
@@ -85,7 +152,15 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
     Object? exception;
     int timeElapsedMs = 0;
     try {
-      await dsi.datasource.executeCommand(sql);
+      // A migration script is typically a multi-statement DDL file. The
+      // underlying mysql_client `execute` reads only the first result set of a
+      // multi-statement command, leaving the rest unread and the (single,
+      // shared) connection desynced — so later reads on it return stale data.
+      // Send each statement on its own command instead, which keeps the
+      // connection in sync. See `splitSqlStatements`.
+      for (final statement in splitSqlStatements(sql)) {
+        await dsi.datasource.executeCommand(statement);
+      }
       timeElapsedMs = (timer..stop()).elapsedMilliseconds;
       failed = false;
     } catch (error) {
@@ -97,13 +172,26 @@ class MariadbMigrationAdaptor implements TomDbMigrator {
         rootException: error,
       );
     }
-    String insertMigration =
-        '''
-INSERT INTO ${schemaName}_versioning (version, description,script,checksum,executionTimeMs,success) VALUES
-("$version", "$description", "$sql", "${sql.hashCode}", $timeElapsedMs, ${failed ? "0" : "1"} );
-''';
+    // Record the outcome with bound parameters rather than interpolating the
+    // values into the SQL text. The script ([script]) routinely contains quote
+    // characters (e.g. a JSON seed value like `'["a","b"]'`), which would
+    // terminate an interpolated string literal early and produce a syntax
+    // error; a stray quote in the description would do the same. Binding sidesteps
+    // both — and the escaping/SQL-injection risk — entirely.
+    final insertMigration =
+        'INSERT INTO ${schemaName}_versioning '
+        '(version, description, script, checksum, executionTimeMs, success) '
+        'VALUES (:version, :description, :script, :checksum, '
+        ':executionTimeMs, :success)';
     try {
-      await dsi.datasource.executeCommand(insertMigration);
+      await dsi.datasource.executeCommand(insertMigration, {
+        'version': version,
+        'description': description,
+        'script': sql,
+        'checksum': '${sql.hashCode}',
+        'executionTimeMs': timeElapsedMs,
+        'success': failed ? 0 : 1,
+      });
     } catch (error) {
       throw MariadbMigrationException(
         "mariadb_migration.apply_migration.update_version_table_failed",

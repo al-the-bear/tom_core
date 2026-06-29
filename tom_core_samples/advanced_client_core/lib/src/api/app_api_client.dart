@@ -187,7 +187,9 @@ class AppApiClient implements AppApiService {
 
   @override
   Future<Map<String, Object>> health() async {
-    final response = await _get('/health');
+    // `/status`, not `/health`: `/health` is the framework's plain-text liveness
+    // probe (auto-mounted); the app's typed JSON status lives at `/status`.
+    final response = await _get('/status');
     return {
       for (final entry in response.jsonObject.entries)
         if (entry.value != null) entry.key: entry.value!,

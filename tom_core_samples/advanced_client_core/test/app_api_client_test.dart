@@ -183,9 +183,11 @@ void main() {
       expect((jsonDecode(call.body!) as Map)['title'], 'New task');
     });
 
-    test('TC-24-10: health() reads the public liveness object', () async {
+    test('TC-24-10: health() reads the public status object', () async {
       final transport = _RoutingTransport({
-        '/health': [
+        // `/status`, not `/health`: the app's typed status endpoint avoids the
+        // framework's plain-text `/health` liveness probe.
+        '/status': [
           HttpJsonResponse(
               200, jsonEncode({'status': 'ok', 'service': 'advanced_app_server'})),
         ],

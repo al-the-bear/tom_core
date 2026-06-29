@@ -14,7 +14,11 @@ import 'graded_field_dto.dart';
 /// a caller; edits produce a new instance via [withAccess]. Lookups are
 /// closed-safe: [accessFor] returns [TomAuthState.none] for an unset cell.
 /// Equality is structural over the nested map and order-independent.
-class GrantMatrixDto {
+///
+/// Implements [TomJsonSerializable] so the endpoint pipeline serializes a
+/// single-`GrantMatrixDto` result (`GET /admin/grants`) through [toJson] rather
+/// than the reflection serializer, which would drop its `final` field.
+class GrantMatrixDto implements TomJsonSerializable {
   // role name -> (resourceKey -> access); deep-unmodifiable.
   final Map<String, Map<String, TomAuthState>> _matrix;
 
@@ -93,6 +97,7 @@ class GrantMatrixDto {
 
   /// JSON shape `{role: {resourceKey: accessToken}}` with each access as its
   /// stable token.
+  @override
   Map<String, Object?> toJson() => {
         for (final entry in _matrix.entries)
           entry.key: {

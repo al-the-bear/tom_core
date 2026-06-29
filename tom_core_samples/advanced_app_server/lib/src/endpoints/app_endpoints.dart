@@ -970,10 +970,19 @@ class AdvancedAppApiService implements AppApiService {
   final AppShareService _shares = AppShareService.production();
 
   /// The authenticated caller's auth-user id (the surrogate key the `app_db`
-  /// rows reference cross-database). Resolved from the bearer-token principal.
+  /// rows reference cross-database). Resolved from the per-request principal the
+  /// server's authentication middleware places in the Dart zone
+  /// ([getFromCurrentZone]) — NOT from [TomBearerAuthentication], whose static
+  /// singleton is a client-side token store that the server middleware never
+  /// populates (and which is not request-scoped, so it is unsafe on a server
+  /// handling concurrent requests).
   int get _principalId =>
-      int.tryParse('${TomBearerAuthentication.getPrincipal().user.id}') ?? -1;
+      int.tryParse('${getFromCurrentZone<TomPrincipal>()?.user.id}') ?? -1;
 
+  // Mounted at `GET /status` (see the `appHealth` registry entry): the
+  // framework's TomHealthService already owns the plain-text `GET /health`
+  // liveness probe in every server, so the app's typed JSON status uses a
+  // distinct path to avoid being shadowed by it.
   @TomPublicAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appHealth')
   @override
@@ -1007,8 +1016,8 @@ class AdvancedAppApiService implements AppApiService {
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appItemFieldStates')
   @override
-  Future<List<GradedFieldDto>> itemFieldStates(String itemId) =>
-      _reads.itemFieldStates(_principalId, int.tryParse(itemId) ?? -1);
+  Future<List<GradedFieldDto>> itemFieldStates(String id) =>
+      _reads.itemFieldStates(_principalId, int.tryParse(id) ?? -1);
 
   // ----- Write endpoints (step 20) -----------------------------------------
 
@@ -1039,8 +1048,8 @@ class AdvancedAppApiService implements AppApiService {
   @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
-  Future<TodoComment> addComment(String itemId, TodoComment comment) =>
-      _writes.addComment(_principalId, int.tryParse(itemId) ?? -1, comment);
+  Future<TodoComment> addComment(String id, TodoComment comment) =>
+      _writes.addComment(_principalId, int.tryParse(id) ?? -1, comment);
 
   // ----- Share endpoints (step 21) -----------------------------------------
 
