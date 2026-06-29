@@ -27,4 +27,4 @@ dev_dependencies:
   build: ^4.0.3
   tom_reflection_generator: ">=1.2.1"
   tom_d4rt: ">=1.11.0"
-  tom_d4rt_generator:
+  tom_d4rt_generator: ">=1.12.1"

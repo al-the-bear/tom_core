@@ -10,7 +10,7 @@ environment:
 dependencies:
   tom_core_kernel:
     path: ../tom_core_kernel
-  tom_basics_console:
+  tom_basics_console: ">=1.0.0"
   shelf: ^1.4.2
   shelf_router: ^1.1.2
   shelf_multipart:
