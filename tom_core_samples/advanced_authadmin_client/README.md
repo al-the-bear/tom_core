@@ -9,18 +9,20 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 
 ## Status
 
-The grant-matrix editor landed (step 35), over the step-34 Users / Roles /
-Groups CRUD, the step-33 login + shell, and the step-32 backend seam. `lib/app/`
-defines the `AdminSession` (`ChangeNotifier`) and the `AdminConsoleApp` shell
-that swaps between the login screen and the console as a pure function of
+Phase 6 is complete: the assignments editor (step 36) closes the console over
+the step-35 grant matrix, the step-34 Users / Roles / Groups CRUD, the step-33
+login + shell, and the step-32 backend seam. `lib/app/` defines the
+`AdminSession` (`ChangeNotifier`) and the `AdminConsoleApp` shell that swaps
+between the login screen and the console as a pure function of
 `session.isLoggedIn`; `lib/screens/` holds the login screen plus the console
 shell — a `NavigationRail` over an `IndexedStack` of the Users, Roles, Groups,
-and Grants destinations — the generic `AdminCrudScreen<T>` the first three
-share, and the `GrantsScreen` matrix editor. `lib/forms/` binds reflected drafts
+Grants, and Assignments destinations — the generic `AdminCrudScreen<T>` the
+first three share, the `GrantsScreen` matrix editor, and the `AssignmentsScreen`
+role/group assigner. `lib/forms/` binds reflected drafts
 (`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart` calls
 `initializeReflection()` (from `lib/reflection_seed.dart`) before bootstrapping
 the console over the in-memory fake by default or the live stack when both server
-URLs are supplied. The assignments screen is built in step 36.
+URLs are supplied.
 
 ## Admin login + shell
 
@@ -115,9 +117,22 @@ segment, e.g. `todo.item.title → title`, while each cell is keyed by the full
 resource key) and never the application's `TodoItemResourceKeys` / `UserStatus`
 enums. Every read and the save route through `AdminSession.guard`.
 
-## Planned contents (step 36)
+## Assignments
 
-- Assignments screen — assign roles/groups to users via `POST /admin/assignments`.
+The Assignments destination (`lib/screens/assignments_screen.dart`) grants an
+account a role and/or a group membership via `assign` (`POST /admin/assignments`).
+It lists every account; tapping a row's **Assign** button opens an editor with a
+role picker and a group picker (each optional), and saving posts a single
+`AssignmentRequest(userId, roleKey, groupId)`. Choosing neither is refused
+inline.
+
+The two sides read back asymmetrically, and the screen is honest about it: a
+user's **group** memberships are shown in its row subtitle — the seam reads
+those back through `listGroups` — so a group assignment is visible after the
+post-save reload, whereas **roles** have no seam read-back (a `UserDto` carries
+no roles), so a role assignment is fire-and-forget from the UI's view and is
+asserted in tests through the seeded backend's `rolesOf` introspection. Every
+read and the assign route through `AdminSession.guard`.
 
 ## Tests
 
@@ -150,9 +165,14 @@ flutter test --concurrency=1
   the seeded matrix, a cell cycles `none→disabled→read→full` on tap, Save is
   disabled until a cell changes, saving issues the edited `GrantMatrixDto` to the
   backend, and a reload reflects the persisted matrix.
+- `test/assignments_screen_test.dart` — the Assignments destination
+  (TC-36-01..05): lists the seeded users (with their group memberships in the
+  subtitle), assigning a role persists into `rolesOf`, assigning a group persists
+  into `listGroups` and updates the row subtitle on reload, an empty selection is
+  refused inline, and a role and a group can be assigned together.
 
 The Users/Roles/Groups suites bind reflected forms, so they share
 `test/support/admin_console_harness.dart` (sign in, open a destination, save an
 editor, confirm a delete) and run `initializeReflection()` once in `setUpAll`.
-The Grants suite is socket- and reflection-free (no `TomForm`), reusing only the
-harness's sign-in and destination helpers.
+The Grants and Assignments suites are socket- and reflection-free (no `TomForm`),
+reusing only the harness's sign-in and destination helpers.
