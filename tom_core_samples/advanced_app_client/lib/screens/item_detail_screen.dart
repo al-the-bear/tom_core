@@ -79,8 +79,11 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     try {
       final states = await _session.loadFieldStates(_item.id.get());
       if (!mounted) return;
+      // Run the form under the gradable scope so each field's basePath equals
+      // its wire resource key (`todo.item.<field>`) and the installed adapter
+      // (todo 3) resolves its grade implicitly via layer-1.
       final form = TomScope.withScope(
-        'itemDetail',
+        TodoItemResourceKeys.scope,
         () => TodoItemForm(states),
       );
       form.bind(_item);

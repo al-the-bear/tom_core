@@ -12,11 +12,21 @@
 /// (the closed-safe default — hidden, never a leaked editable control),
 /// matching the server's resolver.
 ///
-/// Field member names (and `tomId`s) match the entity's field names so the
-/// reflection round-trip `bind`/`save` writes straight into the bound
-/// [TodoItem]. The estimate field is the entity's `estimateHours` but its grade
-/// key is [TodoItemResourceKeys.estimate] — the key names the concept, not the
-/// storage field.
+/// The form runs under scope [TodoItemResourceKeys.scope] (`'todo'`) with
+/// `formId` [TodoItemResourceKeys.formId] (`'item'`), and each field's `tomId`
+/// is sourced from the matching `*Field` token, so every field's `basePath`
+/// equals its wire resource key (`todo.item.title`, …). That is what lets the
+/// installed [FieldStateAuthorizationAdapter] (todo 3) resolve each field's grade
+/// implicitly through layer-1 `TomAuthorization.resolveAuth(basePath)` — the keys
+/// and the `tomId`s share the one origin in [TodoItemResourceKeys], so they
+/// cannot drift.
+///
+/// Reflected *member* names still match the entity's field names so the
+/// reflection round-trip `bind`/`save` writes straight into the bound [TodoItem]
+/// by member name (independent of `tomId`). The estimate field is the entity's
+/// `estimateHours` member, but its `tomId` (and thus grade key) is
+/// [TodoItemResourceKeys.estimateField] (`'estimate'`) — the key names the
+/// concept, not the storage field.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
@@ -28,7 +38,8 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 class TodoItemForm extends TomForm<TodoItem> {
   /// Creates the form, applying [fieldStates] (the session's resolved matrix
   /// for the signed-in role) to each gradable field.
-  TodoItemForm(this.fieldStates) : super(formId: 'todoItem');
+  TodoItemForm(this.fieldStates)
+      : super(formId: TodoItemResourceKeys.formId);
 
   /// The resolved [TomAuthState] per [TodoItemResourceKeys] resource key.
   final Map<String, TomAuthState> fieldStates;
@@ -38,7 +49,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Title — required free text.
   late final title = TomFormStringInput(
-    'title',
+    TodoItemResourceKeys.titleField,
     '',
     form: this,
     labelTextOverride: 'Title',
@@ -48,7 +59,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Workflow status — a dropdown over the [TodoStatus] names.
   late final status = TomFormStringDropdown(
-    'status',
+    TodoItemResourceKeys.statusField,
     TodoStatus.backlog.name,
     form: this,
     source: _statusSource,
@@ -58,7 +69,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Priority — a dropdown over the [TodoPriority] names.
   late final priority = TomFormStringDropdown(
-    'priority',
+    TodoItemResourceKeys.priorityField,
     TodoPriority.medium.name,
     form: this,
     source: _prioritySource,
@@ -68,7 +79,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Assignee id — free text (gated; an editor sees this read-only).
   late final assigneeId = TomFormStringInput(
-    'assigneeId',
+    TodoItemResourceKeys.assigneeIdField,
     '',
     form: this,
     labelTextOverride: 'Assignee id',
@@ -77,7 +88,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Optional due date.
   late final dueDate = TomFormNDateInput(
-    'dueDate',
+    TodoItemResourceKeys.dueDateField,
     null,
     form: this,
     firstDate: DateTime(2000),
@@ -86,9 +97,12 @@ class TodoItemForm extends TomForm<TodoItem> {
     authorizer: _authFor(TodoItemResourceKeys.dueDate),
   );
 
-  /// Optional effort estimate in hours (the entity's `estimateHours`).
+  /// Optional effort estimate in hours. The reflected member stays
+  /// `estimateHours` (so `bind`/`save` round-trips into the entity), but the
+  /// `tomId` is [TodoItemResourceKeys.estimateField] (`'estimate'`) so the
+  /// field self-addresses as the graded key `todo.item.estimate` (D-A2).
   late final estimateHours = TomFormNDoubleInput(
-    'estimateHours',
+    TodoItemResourceKeys.estimateField,
     null,
     form: this,
     decimals: 1,
@@ -98,7 +112,7 @@ class TodoItemForm extends TomForm<TodoItem> {
 
   /// Free-text description.
   late final description = TomFormStringInput(
-    'description',
+    TodoItemResourceKeys.descriptionField,
     '',
     form: this,
     labelTextOverride: 'Description',
