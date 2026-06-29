@@ -9,15 +9,18 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 
 ## Status
 
-Admin login + shell landed (step 33), over the step-32 backend seam.
-`lib/app/` defines the `AdminSession` (`ChangeNotifier`) and the
-`AdminConsoleApp` shell that swaps between the login screen and the console as a
-pure function of `session.isLoggedIn`; `lib/screens/` holds the login screen and
-the (placeholder) console shell; `lib/main.dart` bootstraps the console over the
-in-memory fake by default or the live stack when both server URLs are supplied.
-The Users/Roles/Groups, grant-matrix editor, and assignments screens are built
-in steps 34–36; `lib/reflection_seed.dart` stays a placeholder until those forms
-bind reflected DTOs (step 34).
+Users / Roles / Groups CRUD landed (step 34), over the step-33 login + shell and
+the step-32 backend seam. `lib/app/` defines the `AdminSession`
+(`ChangeNotifier`) and the `AdminConsoleApp` shell that swaps between the login
+screen and the console as a pure function of `session.isLoggedIn`;
+`lib/screens/` holds the login screen plus the console shell — a
+`NavigationRail` over an `IndexedStack` of the Users, Roles, and Groups
+destinations — and the generic `AdminCrudScreen<T>` they share. `lib/forms/`
+binds reflected drafts (`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart`
+calls `initializeReflection()` (from `lib/reflection_seed.dart`) before
+bootstrapping the console over the in-memory fake by default or the live stack
+when both server URLs are supplied. The grant-matrix editor and assignments
+screen are built in steps 35–36.
 
 ## Admin login + shell
 
@@ -74,9 +77,29 @@ final users = await backend.listUsers();
 final grants = await backend.getGrants(); // (role, resourceKey) → TomAuthState
 ```
 
-## Planned contents (steps 34–36)
+## Users / Roles / Groups
 
-- Users / Roles / Groups screens (CRUD + membership/assignment).
+Each rail destination is a thin `StatelessWidget` configuring the generic
+`AdminCrudScreen<T>` (`lib/screens/admin_crud_screen.dart`) — list, create,
+edit, delete — so the three flows share one list/dialog/confirm skeleton rather
+than triplicating it. Create and edit open a reflected editor
+(`showAdminEditor`) bound to a client-local **draft** (`UserDraft`/`RoleDraft`/
+`GroupDraft`, extending `TomClass`); on save the draft folds by hand into the
+plain wire DTO the backend takes, mirroring the app client's
+`LoginCredentials → LoginRequest` seam. The console stays domain-agnostic — it
+reads the raw `status` wire token (`'active'`/`'suspended'`), never the
+`UserStatus` enum.
+
+Stable keys are read-only on edit: a user's `username` and a role's `key` are
+the identifiers other tables key on, so the form renders them but disables the
+field (the `password` field exists only on create — and its required validator
+is conditional, because a reflected `TomForm` validates *every* declared field,
+rendered or not). Group membership is a checklist over every account
+(`group-member-${userId}`), pre-checked from the group's current members and
+folded back into `GroupDto.memberUserIds` on save.
+
+## Planned contents (steps 35–36)
+
 - Grant-matrix editor: a `projectRole` × fieldResourceKey grid whose cells cycle
   `none→disabled→read→full`, saved via `PUT /admin/grants`, reusing the
   `tom_flutter_ui` table/ACL widgets.
@@ -95,6 +118,21 @@ flutter test --concurrency=1
   forbidden, a call before login fails), Users/Roles/Groups CRUD, the four-state
   grant-matrix round-trip, and role/group assignments.
 - `test/admin_login_screen_test.dart` — the admin login + shell (TC-33-01..06):
-  the console starts on sign-in, an admin login opens the console shell, a
-  signed-in non-admin is rejected with an access error, bad credentials and
-  empty fields stay on the page, and sign-out routes back to login.
+  the console starts on sign-in, an admin login opens the console shell (onto the
+  Users destination), a signed-in non-admin is rejected with an access error, bad
+  credentials and empty fields stay on the page, and sign-out routes back to
+  login.
+- `test/users_screen_test.dart` — the Users destination (TC-34-U01..05): lists
+  the seeded accounts, creates one, blocks an empty username, edits a profile
+  (username stays the read-only key), and deletes a row.
+- `test/roles_screen_test.dart` — the Roles destination (TC-34-R01..05): lists
+  the seeded roles, creates one, refuses a duplicate key inline, renames a role
+  (its key is read-only), and deletes a row.
+- `test/groups_screen_test.dart` — the Groups destination (TC-34-G01..05): lists
+  the seeded group with its member count, creates a group with a member, the
+  editor pre-checks current members, removing a member updates the saved
+  membership, and deletes a row.
+
+The Users/Roles/Groups suites bind reflected forms, so they share
+`test/support/admin_console_harness.dart` (sign in, open a destination, save an
+editor, confirm a delete) and run `initializeReflection()` once in `setUpAll`.

@@ -48,8 +48,10 @@ void main() {
     await pumpConsole(tester);
     await signIn(tester, 'admin', InMemoryAdminBackend.demoPassword);
 
+    // The shell opens onto its default (Users) destination behind the rail.
     expect(shellFinder, findsOneWidget);
-    expect(find.text('Signed in as Administrator'), findsOneWidget);
+    expect(find.text('Advanced Todo — Admin console'), findsOneWidget);
+    expect(find.byKey(const Key('users-screen')), findsOneWidget);
     expect(loginFinder, findsNothing);
   });
 

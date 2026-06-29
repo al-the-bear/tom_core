@@ -85,6 +85,32 @@ class AdminSession extends ChangeNotifier {
     _clearSession();
   }
 
+  /// Runs [op] against the backend, logging out automatically when the failure
+  /// is a lost session (no session, or the live stack's post-refresh `401`).
+  ///
+  /// Every admin screen routes its backend calls through this, so "the session
+  /// died" is handled in one place: the [AdminBackendException] is still
+  /// rethrown for the caller to surface, but the principal is already cleared,
+  /// so the next frame shows the login screen.
+  Future<T> guard<T>(Future<T> Function(AdminBackend backend) op) async {
+    try {
+      return await op(backend);
+    } on AdminBackendException catch (e) {
+      if (_isSessionLost(e)) _clearSession();
+      rethrow;
+    }
+  }
+
+  /// The stable error keys that mean "re-authentication required": a call made
+  /// with no session, and the live stack's post-refresh `401`.
+  static const Set<String> _sessionLostKeys = {
+    'admin.no_session',
+    'auth.session_expired',
+  };
+
+  bool _isSessionLost(AdminBackendException e) =>
+      e.key != null && _sessionLostKeys.contains(e.key);
+
   Future<void> _safeLogout() async {
     try {
       await backend.logout();
