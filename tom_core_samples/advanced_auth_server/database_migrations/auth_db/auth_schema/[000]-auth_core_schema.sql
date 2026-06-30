@@ -1,11 +1,11 @@
 -- auth_db identity schema: the principals the auth server authenticates and the
 -- admin API manages. Column names match the @TomDbColumn mappings in
--- lib/src/persistence/auth_persistence_model.dart (step 7). Seed rows let the
--- admin API and a first login return non-empty without a write.
+-- lib/src/persistence/auth_persistence_model.dart (step 7).
 --
--- password_hash is left NULL on the seed rows: hashing is the step-9 kernel-crypto
--- helper's job, applied at boot/seed time, never in raw SQL (the auth server, not
--- the migration, owns the hash format).
+-- This migration is DDL only. The seed principals (one admin + three end-users,
+-- their roles, group, and group members) live in the separate sample-data
+-- migration [100]-auth_sample_data.sql, applied after this one and after the
+-- grant table is created in [001].
 
 CREATE TABLE IF NOT EXISTS auth_users (
   id            BIGINT       NOT NULL AUTO_INCREMENT,
@@ -55,40 +55,3 @@ CREATE TABLE IF NOT EXISTS auth_user_roles (
   KEY fk_auth_user_roles_user (user_id),
   KEY fk_auth_user_roles_role (role_id)
 );
-
--- Seed: one admin + three end-users. The admin gets the global `admin` role for
--- the /admin/* gating; the end-users carry no global role row — their per-project
--- access is granted at runtime through Share records in the app server, not here.
-INSERT INTO auth_users (id, username, display_name, email, status) VALUES
-  (1, 'admin', 'System Administrator', 'admin@example.com',  'active'),
-  (2, 'alice', 'Alice Lovelace',       'alice@example.com',  'active'),
-  (3, 'bob',   'Bob Turing',           'bob@example.com',    'active'),
-  (4, 'carol', 'Carol Hopper',         'carol@example.com',  'active')
-ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);
-
--- Roles: the global `admin` axis plus the four projectRoles the grant matrix
--- ([001]) keys on. The projectRoles exist as rows so the authadmin client can
--- list/manage them; they are *assigned* per-resource via Share, not globally.
-INSERT INTO auth_roles (id, role_key, name) VALUES
-  (1, 'admin',     'Administrator'),
-  (2, 'owner',     'Owner'),
-  (3, 'editor',    'Editor'),
-  (4, 'commenter', 'Commenter'),
-  (5, 'viewer',    'Viewer')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
-
--- Only the admin user holds a global role assignment (the admin axis).
-INSERT INTO auth_user_roles (id, user_id, role_id) VALUES
-  (1, 1, 1)
-ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
-
--- One demo group with two members, so the group admin API returns a non-empty
--- list out of the box.
-INSERT INTO auth_groups (id, name) VALUES
-  (1, 'Engineering')
-ON DUPLICATE KEY UPDATE name = VALUES(name);
-
-INSERT INTO auth_group_members (id, group_id, user_id) VALUES
-  (1, 1, 2),
-  (2, 1, 3)
-ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
