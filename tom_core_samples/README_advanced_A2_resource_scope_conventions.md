@@ -2,43 +2,192 @@
 
 *Appendix A2 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
-> **Status: skeleton.** Content to be written in **RC-17**. This file currently
-> provides the section structure and navigation only. Companion to
-> [08 · Resources & text externalization](README_advanced_08_resources_texts.md)
-> and [09 · Forms & UI](README_advanced_09_forms_ui.md).
-
-## What this appendix covers
-
-`basePath` = `<scopePath>.<formId>.<tomId>`; the one-path-two-uses fact (auth
-keys on `basePath`, resources on `basePath.suffix`); the
-`estimate`/`estimateHours` mismatch (D-A2); scoped vs unscoped form construction;
-and how the JSON resource tree mirrors scope/form/field.
+Parts [07](README_advanced_07_authorization.md), [08](README_advanced_08_resources_texts.md)
+and [09](README_advanced_09_forms_ui.md) each lean on one structural fact: a
+field's **`basePath`** is the single name it uses to look up *both* its grade
+*and* its text, and that name is `<scopePath>.<formId>.<tomId>`. This appendix is
+the consolidated reference for that convention — how `basePath` is derived, how
+one path serves two subsystems, the one deliberate member-name divergence
+(`estimate`/`estimateHours`), how scoping is decided at construction (and how it
+can silently break), and how the server's nested JSON resource tree is the same
+information as the flat wire keys. It is the convention the whole "one name, two
+uses" rule rests on, written down once.
 
 ## `basePath` = `<scopePath>.<formId>.<tomId>`
 
-_TODO(RC-17): cite `tom_form.dart:614-617`._
+`basePath` is built in two hops, each a single line in the Tom Flutter UI form
+layer:
+
+1. **The form's `basePath`** = enclosing scope path + `formId`
+   (`tom_flutter_ui/lib/src/forms/tom_form.dart:146`):
+   ```dart
+   basePath = parentPath.isNotEmpty ? '$parentPath.$formId' : formId;
+   ```
+2. **The field's `basePath`** = the form's `basePath` + the field's `tomId`
+   (`tom_form.dart:614-617`):
+   ```dart
+   scope    = form != null ? form!.basePath : TomScope.current.getScopePath();
+   basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId;
+   ```
+
+So a field's full path is `<enclosing-scope>.<formId>.<tomId>`. The `title` field
+of an item form run under scope `todo` with `formId: 'item'` self-addresses as
+`todo.item.title`; the `username` field of an unscoped `LoginForm` self-addresses
+as `login.username`. The derivation is **structural**, computed once at field
+construction from `form: this` — not a string the field carries — which is why a
+field "cannot drift" from its own key.
+
+The domain pins the three segments as constants so the form, the server grade
+matrix, and the JSON texts read them from one place
+(`advanced_todo_domain/lib/src/resource_keys.dart`):
+
+```dart
+static const String scope  = 'todo';   // the TomScope the item form runs under
+static const String formId = 'item';   // the form's formId
+static String keyFor(String field) => '$scope.$formId.$field';  // 'todo.item.<field>'
+```
+
+`TodoItemResourceKeys.title` is *derived* (`'$scope.$formId.$titleField'`,
+`resource_keys.dart:80`) rather than written as a free string — so the wire key,
+the grade key, and the field's `basePath` are the same token by construction, not
+by coincidence (D-A1).
 
 ## One path, two uses
 
-_TODO(RC-17): authorization keys on `basePath` alone; resources on `basePath.suffix` (`.label`/`.hint`/...)._
+The single `basePath` is consumed by **two** subsystems, and the suffix is the
+only thing that distinguishes them:
+
+| Use | Key form | Lookup | Cited at |
+| --- | --- | --- | --- |
+| **Authorization** | `basePath` (**no suffix**) | `TomAuthorization.resolveAuth(basePath)` | `tom_form.dart:809` (layer 1 of `resolveEffectiveAuth`) |
+| **Text resources** | `basePath.<suffix>` | `TomCtr.textOrNull(basePath, 'label')` → `<basePath>.<suffix>` | `tom_form.dart:855` (`resolvedLabel`) |
+
+The suffix-join is one helper (`TomCtr._key`,
+`tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart`): an empty
+suffix returns `basePath` verbatim, a non-empty suffix returns
+`'$basePath.$suffix'`. So `todo.item.title` is *both* the grade key (no suffix)
+*and* the stem of `todo.item.title.label`, `.hint`, `.error.required`. Granting a
+role `read` on `todo.item.title` and installing a text for
+`todo.item.title.label` therefore configure the *same field* from two servers,
+keyed by one name with no translation layer. This symmetry is the headline rule;
+A2 is just its specification.
+
+The common suffixes:
+
+| Suffix | Addresses | Example |
+| --- | --- | --- |
+| *(none)* | the field's authorization grade | `todo.item.title` |
+| `label` | the display label | `todo.item.title.label` |
+| `hint` | the input hint / placeholder | `login.username.hint` |
+| `error.<code>` | a scoped validation message (falls back to a global key, then the raw key) | `todo.item.title.error.required` |
+
+Screen chrome that is not a field uses the same flat-dotted shape with no field
+segment — `login.title`, `board.empty`, `grants.title` — resolved through the
+same provider.
 
 ## The `estimate` / `estimateHours` mismatch (D-A2)
 
-_TODO(RC-17): the `estimateHours` member maps to the `todo.item.estimate` key._
+There is exactly **one** deliberate divergence between a field's `tomId` and the
+entity member it binds, and it exists to demonstrate that the two are
+independent. The effort-estimate field:
 
-## Scoped vs unscoped form construction
+- binds the reflected entity member **`estimateHours`** — `bind`/`save`
+  round-trips on the *member name*, so the value lands in `TodoItem.estimateHours`
+  (`todo_item_form.dart:85`, `TomFormNDoubleInput(TodoItemResourceKeys.estimateField, …)`);
+- carries `tomId` = **`estimate`** (`TodoItemResourceKeys.estimateField`), so it
+  self-addresses as `todo.item.estimate` — the graded/resourced key.
 
-_TODO(RC-17): D-A1 — scope path == resource key._
+The resource key names the **concept** (`estimate`), not the **storage field**
+(`estimateHours`) — `resource_keys.dart:33-37`,`:71-74`. This works because the
+two keying systems read different names:
+
+| Mechanism | Keys on | Value for the estimate field |
+| --- | --- | --- |
+| grade / text lookup | `tomId` → `basePath` | `todo.item.estimate` |
+| `bind` / `save` round-trip | reflected **member** name | `estimateHours` |
+
+`TomField.tomId` and the Dart member name are free to differ precisely because
+the round-trip keys on the member while authorization/text key on the `tomId`.
+Every *other* item field keeps `tomId` == member name for simplicity; `estimate`
+is the worked counter-example that proves the decoupling is real (and the reason
+`TodoItemResourceKeys` exposes both an `estimateField` token and an `estimate`
+key).
+
+## Scoped vs unscoped construction
+
+Whether a form's fields land under a scope is decided **at construction**, by
+whether a `TomScope` is pushed around the constructor call — not by anything the
+form declares:
+
+- **Unscoped.** The login form and the three admin editors are constructed
+  plainly, so the form's `parentPath` is empty and its `basePath` *is* its
+  `formId`. `UserForm` (`formId: 'user'`) gives `user.username`, `user.email`, …;
+  `LoginForm` gives `login.username`, `login.password`.
+- **Scoped.** The item editor **must** run under scope `todo` so its field paths
+  equal the server's grade keys. The screen pushes the scope around the
+  constructor (`advanced_app_client/lib/screens/item_detail_screen.dart:88`):
+  ```dart
+  final form = TomScope.withScope(TodoItemResourceKeys.scope, TodoItemForm.new);
+  ```
+  `TodoItemForm` itself only declares `super(formId: TodoItemResourceKeys.formId)`
+  (`todo_item_form.dart:38`); the `todo` scope comes from the **call site**, so
+  the field at `tomId: 'title'` lands at `todo.item.title`.
+
+> **This is the one place the "one name, two uses" rule can silently break.** If
+> the item form were constructed *unscoped*, its fields would self-address as
+> `item.title` (not `todo.item.title`); every grade lookup would miss and degrade
+> closed-safe to `none`/hidden ([A1](README_advanced_A1_authorization_state_machine.md)),
+> and every label would fall back to the raw `tomId`. Nothing throws — the screen
+> just renders empty. The guard is that `scope`/`formId` are domain constants
+> shared by the form, the seeded grant matrix, and the JSON texts, so the three
+> cannot drift apart, and the scoped-construction widget tests (TC-30-*) assert
+> the scoped paths resolve.
 
 ## How the JSON resource tree mirrors scope/form/field
 
-_TODO(RC-17, ties to RC-24)._
+The server's text assets are **nested JSON** structured exactly along
+`scope → form → field → suffix`, so a resource file mirrors the screen it
+describes (`advanced_app_server/assets/resources_app.json`):
+
+```jsonc
+{
+  "todo":  { "item": { "title": { "label": "Title" }, "estimate": { "label": "Estimate (h)" }, … } },
+  "board": { "title": "My Board", "empty": "No items yet", "item": { "save": "Save" } }
+}
+```
+
+The nesting **is** the dotted key: `todo → item → title → label` *is*
+`todo.item.title.label`. The server loads the asset once and **flattens** it to
+the flat `<basePath>.<suffix>` map the wire bundle carries —
+`flattenResourceTree` (`advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110`)
+walks the tree, joining each segment with `.`, descending only *map* nodes and
+terminating a key at the first non-map value (so a scalar leaf like
+`"board.title": "My Board"` flattens as written, `:112-124`). The flattened
+bundle is byte-equivalent to the old in-code `const` map, which is why the
+resource-endpoint and sentinel tests were unchanged by the RC-24 externalization
+(part [08](README_advanced_08_resources_texts.md), D-A9).
+
+Note the JSON tree keys the estimate field under **`estimate`** (the resource-key
+segment), not `estimateHours` (the member) — the asset mirrors the *`tomId`*
+path, consistent with the mismatch above. The auth server follows the identical
+shape with `resources_login.json` and `resources_admin.json`.
+
+Two placement rules keep the flatten/load split web-safe (part 08):
+`flattenResourceTree` is a **pure** function in the web-targetable `contracts`
+package (no `dart:io`); the `File` read (`loadFlatResourceAsset`) lives in each
+**server** package, which never targets web. The nested tree could be installed
+directly (the `TomTextResourceProvider` supports nested dot-notation lookup), but
+the servers flatten first so the served bundle stays the flat shape the wire
+contract pins.
 
 ## Primary sources
 
-- `advanced_examples_alignment_plan.md` — Key anatomy, D-A1, D-A2
-- `advanced_todo_domain/.../resource_keys.dart`; `tom_form.dart:614-617`
-- `tom_construction_helpers.dart:29-32` (`TomCtr`)
+- `advanced_todo_domain/lib/src/resource_keys.dart` (the pinned `scope`/`formId`/key convention, D-A1, D-A2)
+- `tom_flutter_ui/lib/src/forms/tom_form.dart:146` (form `basePath`), `:614-617` (field `basePath`), `:809` (auth lookup), `:855` (`resolvedLabel`)
+- `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
+- `advanced_app_client/lib/forms/todo_item_form.dart:38`,`:85`; `advanced_app_client/lib/screens/item_detail_screen.dart:88`
+- `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
+- `advanced_examples_alignment_plan.md` — Key anatomy, D-A1, D-A2; companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
 
 ---
 
