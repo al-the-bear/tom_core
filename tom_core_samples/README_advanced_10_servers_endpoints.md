@@ -2,50 +2,244 @@
 
 *Part 10 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
-> **Status: skeleton.** Content to be written in **RC-13**. This file currently
-> provides the section structure and navigation only.
+[Part 06](README_advanced_06_authentication.md) showed how a login mints a signed
+token pair and [Part 07](README_advanced_07_authorization.md) how the four-state
+grade matrix is computed. This part is where those two meet the wire: how the two
+servers turn an HTTP request into an authenticated, authorized method call. We
+look at the endpoint pipeline and its access annotations, the bearer check that
+runs on every request, the resource/field authorization the handlers add on top,
+the health probe, and the boot order that has to be right for any of it to work.
+The blow-by-blow trace of a single request is deferred to
+[Appendix A3](README_advanced_A3_request_lifecycle.md); here we map the moving
+parts.
 
-## What this part covers
-
-The endpoint pipeline + annotations; per-endpoint access policies
-(`appApiAccess`); bearer validation on every request; ownership + share
-resolution; the health check; server boot order and why; and the secured request
-lifecycle (summary here; full trace in
-[A3](README_advanced_A3_request_lifecycle.md)).
+Two servers, one model. `advanced_auth_server` (port **8081**, `auth_db` on
+3307) serves `/auth/*` and `/admin/*`; `advanced_app_server` (port **8080**,
+`app_db` on 3308) serves the todo board. They are separate `TomServer` boots that
+trust each other only through a **shared JWT signing configuration** — neither
+calls the other, but a token minted by one verifies in the other because both
+install the identical keys (see [Boot order](#server-boot-order) below).
 
 ## The endpoint pipeline and annotations
 
-_TODO(RC-13)._
+The wire contract is declared once, in `advanced_todo_contracts`, as plain
+`TomApi`/`TomApiEndpoint` values — URI, HTTP method, request/response types — so
+it stays Flutter- and server-free and the client core can consume the very same
+definitions (`api_registry.dart:31`, `:83`, `:201`). Because `TomApiEndpoint`
+carries no server annotations, each server **re-declares** an implementing class
+against that registry. The implementation is a `@tomComponent` the bean container
+instantiates, and each method is bound to its registry endpoint by
+`@TomApiEndpointImplementation(apiId:, endpointId:)`:
+
+```dart
+@tomReflector
+@tomComponent
+@TomApiImplementation(apiId: 'app')
+class AdvancedAppApiService implements AppApiService {
+  @TomAuthenticatedAccess()
+  @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListItems')
+  @override
+  Future<List<TodoItem>> listItems(String listId) =>
+      _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
+}
+```
+*(`app_endpoints.dart:959`, `:1011`)*
+
+The pipeline routes an incoming URI to the endpoint, deserializes the request
+body/path parameters into the declared types, invokes the bound method, and
+serializes the result. The access annotation on the method is the gate it
+enforces **before** the method runs.
+
+The three access annotations the sample uses, all from the kernel's
+`TomAccessControl` family:
+
+| Annotation | Meaning | Where used |
+| ---------- | ------- | ---------- |
+| `@TomPublicAccess()` | No token required | `authLogin`, `authLoginResources`, `appHealth` |
+| `@TomAuthenticatedAccess()` | Any valid bearer principal | every other `/auth/*` and every `/app` endpoint |
+| `@TomRoleAccess(['admin'])` | A principal carrying the `admin` role | every `/admin/*` endpoint |
 
 ## Per-endpoint access policies
 
-_TODO(RC-13): `appApiAccess`; route-level role gating._
+The annotation on the method is the **authoritative** policy the pipeline
+enforces. The contract registry *also* carries a companion `*ApiAccess` map
+(`authApiAccess`, `adminApiAccess`, `appApiAccess`) keyed by endpoint id
+(`api_registry.dart:73`, `:181`, `:296`). Those maps are **informational** — a
+single readable place to see the whole surface's policy, and the source the
+client core reads to decide whether to attach a token — but they are *not*
+auto-applied to the server: the server enforces what its method annotations
+declare. The two are kept deliberately in lock-step; the `app_endpoints.dart:949`
+doc comment says it outright: "the registry's `appApiAccess` map is
+informational, not auto-applied."
+
+The three surfaces gate at different granularities:
+
+- **`/auth/*` — mostly public-then-authenticated.** `authLogin` and
+  `authLoginResources` are `@TomPublicAccess()` (you cannot require a token to
+  log in, or to fetch the pre-login screen texts); `authRefresh`, `authLogout`,
+  `authMe` are `@TomAuthenticatedAccess()` (`auth_endpoints.dart:193`, `:202`,
+  `:235`).
+- **`/admin/*` — uniformly role-gated.** Every one of the sixteen admin endpoints
+  is `@TomRoleAccess(['admin'])` (`admin_endpoints.dart:644`…`:727`). A
+  signed-in **non-admin** authenticates fine but is refused here — the pipeline
+  throws the access-denied exception before the method body runs. This is exactly
+  what the admin client's two-phase login probes against (see
+  [Part 11](README_advanced_11_clients_app_admin.md)).
+- **`/app` — authenticated blanket, then in-handler authorization.** Every board
+  endpoint but `appHealth` is `@TomAuthenticatedAccess()`. The blanket level only
+  proves *who* you are; **what** you may see and write is decided inside the
+  handler by the resource- and field-level checks below
+  (`api_registry.dart:293`).
+
+When the pre-invocation check denies, the pipeline throws a
+`TomEndpointHandlerException` keyed
+`endpoint_handler.handle_method_call.access_denied` — and it throws it **outside**
+the per-endpoint `try/catch`, so only a *server-level* error handler can see it.
+Both servers install one that maps exactly that key to **403 Forbidden** and
+returns `null` for everything else, composing it over the framework default so
+genuine faults still get the standard JSON error (`forbiddenOnAccessDenied`,
+`admin_endpoints.dart:615`; `authServerErrorHandler`, `auth_server_start.dart:113`;
+`appForbiddenOrNotFound`, `app_endpoints.dart:920`).
 
 ## Bearer validation on every request
 
-_TODO(RC-13)._
+Neither server sets `authenticationMiddleware` on its configuration, so
+`TomServer.start()` installs the framework default,
+`tomDefaultAuthenticationMiddleware`. It reads the request's bearer token, builds
+the `TomPrincipal`, and places it in the per-request **Dart zone** — which is what
+both the `@TomAuthenticatedAccess`/`@TomRoleAccess` checks and the handlers read
+from (`auth_server_start.dart:18`).
+
+A handler that needs the caller's id reads it from the zone, **not** from the
+`TomBearerAuthentication` static singleton:
+
+```dart
+int get _principalId =>
+    int.tryParse('${getFromCurrentZone<TomPrincipal>()?.user.id}') ?? -1;
+```
+*(`app_endpoints.dart:980`)*
+
+The comment there is load-bearing and worth repeating: `TomBearerAuthentication`'s
+static singleton is a **client-side** token store the server middleware never
+populates, and it is not request-scoped — using it on a server handling
+concurrent requests would be unsafe. The zone value is the correct, per-request
+source.
 
 ## Ownership + share resolution
 
-_TODO(RC-13)._
+The `/app` blanket `@TomAuthenticatedAccess` proves identity; the board's real
+authorization is two resolvers the handlers consult per call (introduced in
+[Part 07](README_advanced_07_authorization.md), here seen at the wire):
+
+- **`ResourceAccessResolver`** — maps `(userId, resourceType, resourceId)` to an
+  *effective* `ProjectRole`, or `null` for no access. It walks ownership and the
+  `ShareRecord` rows (strongest share wins), climbing item → list → project →
+  workspace. Every list endpoint filters each candidate row through it and drops
+  the invisible ones (`AppReadService._filterVisible`, `app_endpoints.dart:248`);
+  `null` means the resource is simply not in the response.
+- **`FieldGradeResolver`** — maps a resolved `ProjectRole` to the per-field
+  `TomAuthState` matrix from the `tom_resource_grant` table. `itemFieldStates`
+  projects it into `GradedFieldDto`s for the client to render
+  (`app_endpoints.dart:226`); the write path re-checks it.
+
+Writes enforce both layers. Structural mutations require a **minimum role**
+(`createProject`/`createItem` need `editor`, `deleteItem` `editor`, `addComment`
+`commenter`), and item writes enforce the **field grade**: every gradable field
+the payload *changes* must be graded `full` for the caller, or the whole write is
+rejected with `app.item.field_forbidden`; the persisted row overlays only the
+permitted fields, so server-owned columns and non-`full` fields keep their stored
+value (`_enforceFieldWrites`, `app_endpoints.dart:663`). Sharing is **owner-only**
+— only an `owner` of the target may create or revoke a `ShareRecord`, and a new
+share takes effect immediately because the resolver reads shares on the grantee's
+next request (`AppShareService`, `app_endpoints.dart:839`).
+
+The denials are **closed/safe**: a resource the caller cannot reach is reported as
+*not found* (404, `app.item.not_found` / `app.share.not_found`), never as
+forbidden — so existence is not leaked — while a genuine permission refusal is
+403 (`app.access.forbidden` / `app.item.field_forbidden`). The server-level
+`appForbiddenOrNotFound` maps those keys (`app_endpoints.dart:920`).
 
 ## Health check
 
-_TODO(RC-13)._
+Two distinct probes, deliberately on different paths:
+
+- **`GET /health`** — the framework's `TomHealthService` auto-mounts a plain-text
+  liveness probe in *every* server. Nothing in the sample declares it; it is
+  there for free.
+- **`GET /status`** — the app's own typed JSON status (`{status, service}`),
+  declared `appHealth` and annotated `@TomPublicAccess()` so an unauthenticated
+  load balancer can poll it (`app_endpoints.dart:987`, `api_registry.dart:207`).
+
+`appHealth` uses `/status` rather than `/health` *because* the framework already
+owns `/health` — an app `/health` would be shadowed by the auto-mounted probe.
+The registry comment records exactly this (`api_registry.dart:209`).
 
 ## Server boot order
 
-_TODO(RC-13): why the order matters._
+Both `bin/*_server_start.dart` follow the same sequence, and the order is not
+incidental — each step depends on the prior ones being in place:
+
+```
+platform → registry → reflection → runtime → config → datasource →
+JWT signing → bean context → migrations → [seed] → TomServer.start()
+```
+
+Reading `auth_server_start.dart:221` (the app server's `main` is identical bar the
+demo-password seed):
+
+| Step | Call | Why here |
+| ---- | ---- | -------- |
+| platform | `setCurrentPlatform(standalonePlatformUtils)` | establishes the standalone runtime before anything reads it |
+| registry | `registerAdvancedTodoApis()` | the endpoint router needs the API definitions to resolve URIs |
+| issuer | `globalSettingJwtOrganization = 'tom'` | the issuer the token is signed with; **the app server must set the same value** |
+| reflection | `initializeReflection()` | populates the reflected shapes the config, records and components use |
+| runtime | `initializeRuntime()` | resolves the active environment (`prod`/`dev`) |
+| config | `AuthServerConfiguration(args)` | merges YAML/env/args; sets port, error handler |
+| datasource | `initializeDatasourceInfo(...)` | opens the DB connections the repositories and migrations use |
+| JWT signing | `initializeJwtSigning()` | installs the shared keypair — **identical on both servers**, which is what lets the app server verify a token the auth server minted |
+| bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
+| migrations | `migrateDatabases(...)` | brings the schema + seed data up before serving |
+| seed | `seedDemoPasswords()` *(auth only)* | fills demo passwords onto the password-less seed rows so the README `curl`s can log in |
+| serve | `TomServer.start()` | binds the socket; installs the default auth middleware |
+
+The cross-server trust hinges on two of these matching exactly: the **issuer**
+(`globalSettingJwtOrganization = 'tom'`) and the **JWT signing configuration**
+(the same HMAC + RSA sample keypair). `initializeJwtSigning()` is byte-for-byte
+identical in both boots (`auth_server_start.dart:184`,
+`app_server_start.dart`) — reusing the framework's bundled sample keys rather than
+minting per-server keys is precisely what makes a token issued at 8081 verify at
+8080. Replace those keys before any real deployment.
 
 ## The secured request lifecycle (summary)
 
-_TODO(RC-13): summary; full trace in A3._
+Putting it together, a single authenticated board request flows:
+
+1. **Route** — the pipeline matches the URI/method to the endpoint and
+   deserializes the request.
+2. **Authenticate** — `tomDefaultAuthenticationMiddleware` reads the bearer token
+   and places the `TomPrincipal` in the request zone.
+3. **Gate** — the method's access annotation runs *before* the body:
+   `@TomAuthenticatedAccess` requires a principal, `@TomRoleAccess(['admin'])`
+   requires the role. A denial throws the access-denied key (→ server handler →
+   403).
+4. **Authorize** — inside the handler, `ResourceAccessResolver` filters
+   visibility and `FieldGradeResolver` (plus `_enforceFieldWrites` on writes)
+   enforce the four-state grade. Unreachable → 404; refused → 403.
+5. **Respond** — the result is serialized; service-thrown
+   `TomEndpointHandlerException` keys are mapped to HTTP by the server-level
+   handler, everything else by the framework default.
+
+The full step-by-step trace with the exact frames is in
+[Appendix A3](README_advanced_A3_request_lifecycle.md).
 
 ## Primary sources
 
 - [`advanced_app_server/README.md`](advanced_app_server/README.md), [`advanced_auth_server/README.md`](advanced_auth_server/README.md)
+- `advanced_app_server/lib/src/endpoints/app_endpoints.dart`; `advanced_auth_server/lib/src/endpoints/{auth,admin}_endpoints.dart`
+- `advanced_todo_contracts/lib/src/api_registry.dart`
+- `advanced_*_server/bin/*_server_start.dart`
 - `advanced_example_specification_plan.md` — A.6, A.7, Phase 3
-- `*/endpoints/`; `tom_core_server/doc/endpoints.md`; appendix [A3](README_advanced_A3_request_lifecycle.md)
+- `tom_core_server/doc/endpoints.md`; appendix [A3](README_advanced_A3_request_lifecycle.md)
 
 ---
 
