@@ -2,44 +2,191 @@
 
 *Part 02 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
-> **Status: skeleton.** Content to be written in **RC-5**. This file currently
-> provides the section structure and navigation only.
+This part is the practical companion to the [architecture](README_advanced_01_architecture.md):
+how the seven packages are laid out on disk, how their pubspecs wire together,
+why they are all `publish_to: none`, how reflection code is generated (and when a
+regen is actually required), and the exact steps to build and run the whole
+system locally.
 
-## What this part covers
+## The seven packages on disk
 
-The seven pubspecs and how they depend on one another; `publish_to: none`; the
-build order; reflection generation (and when a regen is required); running
-build_runner; and the local-run layout (`.env`, Docker compose, `flutter run`).
+All seven packages live side by side under `tom_core_samples/`:
 
-## The seven packages and their pubspecs
+```
+tom_core_samples/
+  README_advanced_sample.md      the hub: suite map + quickstart
+  advanced_todo_domain/          shared reflected model (User, Project, TodoList, TodoItem)
+  advanced_todo_contracts/       wire DTOs + typed service interfaces
+  advanced_client_core/          Flutter-free authenticated HTTP client core (+ e2e runner)
+  advanced_auth_server/          JWT auth issuer + /admin/* API   (HTTP 8081, auth_db 3307)
+  advanced_app_server/           secured task-manager API         (HTTP 8080, app_db 3308)
+  advanced_app_client/           end-user Flutter app (board + sharing + field grades)
+  advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
+```
 
-_TODO(RC-5)._
+Each package is an ordinary Dart/Flutter package with its own `pubspec.yaml`,
+`README.md`, and `LICENSE`. The two clients are Flutter packages (they depend on
+the Flutter SDK plus `tom_flutter_ui` / `tom_core_flutter`); the other five are
+plain Dart packages.
 
-## Dependency wiring and build order
+## Pubspec wiring
 
-_TODO(RC-5)._
+Every package targets **Dart SDK `^3.10.0`** and is marked
+**`publish_to: none`** (see below). The Tom dependencies are wired by **relative
+`path:`** within the monorepo — `tom_core_kernel` / `tom_core_server` /
+`tom_flutter_ui` resolve to `../../<pkg>` (two levels up out of
+`tom_core_samples/` into `tom_ai/core` and `tom_ai/reflection`), and the
+inter-sample dependencies resolve to sibling `../advanced_<pkg>` paths.
+
+The dependency arrows (verified against the real `dependencies:` blocks) are:
+
+| Package | Depends on (sample + Tom) |
+| --- | --- |
+| `advanced_todo_domain` | `tom_core_kernel`, `tom_reflection` |
+| `advanced_todo_contracts` | `advanced_todo_domain` (+ kernel, reflection) |
+| `advanced_client_core` | `advanced_todo_contracts`, `advanced_todo_domain` (+ kernel) |
+| `advanced_auth_server` | `advanced_todo_contracts`, `advanced_todo_domain`, `tom_core_server` (+ kernel) |
+| `advanced_app_server` | `advanced_todo_contracts`, `advanced_todo_domain`, `tom_core_server` (+ kernel) |
+| `advanced_app_client` | `advanced_client_core`, `advanced_todo_contracts`, `advanced_todo_domain`, `tom_flutter_ui`, `tom_core_flutter` (+ kernel) |
+| `advanced_authadmin_client` | `advanced_client_core`, `advanced_todo_contracts`, `tom_flutter_ui`, `tom_core_flutter` (+ kernel) |
+
+> **`path:` is the monorepo convention, not a workaround.** These are sibling
+> packages built and versioned together inside one repository, so a relative
+> `path:` is the correct wiring. This is distinct from the workspace rule that
+> forbids `path:`/`pubspec_overrides.yaml` to paper over a *missing published API*
+> in an external dependency — here the dependencies are co-developed, not
+> released artifacts.
+
+## Build order
+
+The build order follows the dependency arrows bottom-up — a package can only be
+built (and its reflection generated) after the packages it imports:
+
+1. `advanced_todo_domain` (nothing sample-local beneath it)
+2. `advanced_todo_contracts` (needs the domain)
+3. `advanced_client_core` (needs the contracts)
+4. `advanced_auth_server` and `advanced_app_server` (need contracts + domain; order between the two does not matter to the *build*, only at *runtime* — start auth first)
+5. `advanced_app_client` and `advanced_authadmin_client` (need `advanced_client_core` + contracts)
+
+`dart pub get` (or `flutter pub get` for the two clients) in each package resolves
+the relative paths; running it bottom-up avoids resolving against a
+not-yet-fetched sibling.
 
 ## `publish_to: none`
 
-_TODO(RC-5): why the samples are internal-only._
+Every sample pubspec declares `publish_to: none`. The samples are **teaching
+artifacts internal to the monorepo**, not pub.dev packages: they wire to Tom
+packages by relative `path:`, they ship seeded demo accounts and a
+`change-me-in-production` JWT secret, and they are meant to be read and run in
+place, never depended on as a release. `publish_to: none` makes that explicit and
+prevents an accidental `dart pub publish`.
 
 ## Reflection generation
 
-_TODO(RC-5): `reflection_generation.sh`; regen only on signature changes; the single seed._
+Five of the seven packages reflect types; each has **exactly one reflection entry
+point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`:
+
+| Package | Entry point | Generated output |
+| --- | --- | --- |
+| `advanced_todo_domain` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
+| `advanced_todo_contracts` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
+| `advanced_auth_server` | `bin/auth_server_start.dart` | `bin/auth_server_start.reflection.dart` |
+| `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` |
+| `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
+| `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
+
+(`advanced_client_core` reflects nothing — it has no `build.yaml`.)
+
+**The single-seed rule.** The generated `initializeReflection()` *assigns* the
+reflection data (last writer wins), so **exactly one seed's `initializeReflection()`
+may run per program**. That is why each runnable (each server `bin/` entry, each
+client) has *one* seed that must cover **every** reflected type the program
+touches — including types that live in another package. The client seeds, for
+example, import the shared `advanced_todo_domain` entities *and* the client-local
+forms, because a `TomForm` is itself a reflected `TomClass` and `bind`/`save`
+walk a form's fields through kernel reflection — so both the bound entities and
+the forms themselves must be in the reflected graph. (The client seed imports
+`advanced_todo_domain` for generator discovery but does **not** re-export it,
+since that library carries its own `initializeReflection` that would collide.)
+
+**Regenerate only on signature changes.** Each package ships a
+`reflection_generation.sh` that runs the generator in single-project mode:
+
+```sh
+# from the package root, e.g. advanced_todo_domain/
+./reflection_generation.sh
+# → dart run tom_reflection_generator --nested
+```
+
+`--nested` runs the generator standalone (it does not consult the workspace
+registry, so it works even before the sample is registered in
+`tom_master.yaml`). A regen is required **only when a reflected type's signature
+changes** — a field/method/annotation added, removed, or retyped on a
+`@tomReflector`/`@tomService` type, or a new reflected type added to a seed.
+Editing *bodies* or non-reflected code needs no regen. The
+`*.reflection.dart` outputs are **generated, do-not-edit** files; regenerate them,
+never hand-edit, and take them as a complete set from one generator run (never
+hand-merge them).
 
 ## Running build_runner
 
-_TODO(RC-5)._
+The reflection script above is the supported path and is preferred. If you build
+through `build_runner` directly instead (the two reflecting libraries declare
+`build_runner` + `tom_reflection_generator` as dev-deps), run it from the package
+root:
+
+```sh
+dart run build_runner build --delete-conflicting-outputs
+```
+
+Either path produces the same `<entry>.reflection.dart`. Use
+`reflection_generation.sh` unless you have a reason to drive `build_runner`
+yourself — it encodes the correct `--nested` invocation and target.
 
 ## Local run: env, Docker compose, flutter run
 
-_TODO(RC-5): the `.env.example` / compose layout; `--dart-define` server URLs._
+Each server owns its database via a `docker-compose.yaml` plus a `.env.example`
+you copy to `.env`. The two databases bind **distinct host ports (3307 / 3308)**
+so both servers — and a host-local MariaDB — coexist. The auth server's
+`.env.example` shows the shape (db image/host/port/name/credentials, the HTTP
+port, the **shared `AUTH_JWT_SECRET`** the app server must also trust, and an
+`env=dev|int|prod` selector that picks the matching
+`assets/config-resources_<env>.yaml` overlay).
+
+The end-to-end run is four moves (full commands in the hub's
+[Run the whole thing](README_advanced_sample.md#run-the-whole-thing)):
+
+1. **Databases** — `cp .env.example .env` then `docker compose up -d` the db
+   service in each server package; first boot seeds the schema (the auth server
+   also seeds the demo accounts and the grant matrix).
+2. **Auth server first** — `dart run bin/auth_server_start.dart` (HTTP `:8081`);
+   it mints tokens and owns the grant matrix.
+3. **App server next** — `dart run bin/app_server_start.dart` (HTTP `:8080`,
+   `GET /health → 200`); it verifies those tokens and reads grants. Each server
+   runs from its own package root so relative migration/asset paths resolve.
+4. **Clients** — `flutter run` each client, pointing it at the live servers with
+   `--dart-define`s:
+
+   ```sh
+   # end-user app — from advanced_app_client/
+   flutter run \
+     --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
+     --dart-define=APP_SERVER_URL=http://localhost:8080
+
+   # admin console — from advanced_authadmin_client/
+   flutter run --dart-define=AUTH_SERVER_URL=http://localhost:8081
+   ```
+
+Launched **without** the `--dart-define`s, both clients boot on a **seeded
+in-memory backend** — which is exactly how the socket-free widget tests run (part
+[12](README_advanced_12_testing_integration.md)). The seeded live accounts
+(`admin` / `alice` / `bob` / `carol`) are listed in the hub.
 
 ## Primary sources
 
-- `advanced_example_specification_plan.md` — A.2 Components, Phase 1 Shared foundations, Plan-completion notes
-- The seven `pubspec.yaml` files; `reflection_seed.dart` / `reflection_seed.reflection.dart`
-- Memory: reflection regen rules
+- `advanced_example_specification_plan.md` — A.2 Components, Phase 1 (shared foundations), Plan-completion notes.
+- The seven `pubspec.yaml` files; each package's `build.yaml`, `reflection_generation.sh`, and reflection entry/seed.
+- [`README_advanced_sample.md`](README_advanced_sample.md) — the Repository-layout tree and the [Run the whole thing](README_advanced_sample.md#run-the-whole-thing) quickstart.
 
 ---
 
