@@ -57,7 +57,7 @@ void main() {
 
     expect(find.byKey(const Key('assignments-screen')), findsOneWidget);
     expect(find.byKey(const Key('assignments-tile-u-alice')), findsOneWidget);
-    // Bob and Val seed into Engineering; the subtitle reads it back.
+    // Bob and Carol seed into Engineering; the subtitle reads it back.
     expect(find.text('Groups: Engineering'), findsNWidgets(2));
   });
 

@@ -47,14 +47,14 @@ class InMemoryAppBackend implements AppBackend {
   /// texts.
   static const Map<String, Object?> loginTexts = {
     'login.title': 'Advanced Todo — Sign in',
-    'login.intro': 'Try alice, bob or val (any non-empty password).',
+    'login.intro': 'Try alice, bob or carol (any non-empty password).',
     'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob or val',
+    'login.username.hint': 'alice, bob or carol',
     'login.password.label': 'Password',
     'login.submit': 'Sign in',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
-        'Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.',
+        'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',
     'adminLogin.username.label': 'Username',
     'adminLogin.username.hint': 'admin',
     'adminLogin.password.label': 'Password',
@@ -89,7 +89,7 @@ class InMemoryAppBackend implements AppBackend {
   static const Map<String, String> demoAccounts = {
     'alice': 'u-alice',
     'bob': 'u-bob',
-    'val': 'u-val',
+    'carol': 'u-carol',
   };
 
   /// The resolved per-field [TomAuthState] for each [ProjectRole].
@@ -158,7 +158,7 @@ class InMemoryAppBackend implements AppBackend {
         ));
     user('u-alice', 'alice', 'Alice (owner)');
     user('u-bob', 'bob', 'Bob (editor)');
-    user('u-val', 'val', 'Val (viewer)');
+    user('u-carol', 'carol', 'Carol (viewer)');
 
     _workspaces.add(Workspace()
       ..id.set('w-1')
@@ -197,7 +197,7 @@ class InMemoryAppBackend implements AppBackend {
       ..labelValue = TodoLabel.feature
       ..reporterId.set('u-alice'));
 
-    // Bob is shared into the project as an editor; Val starts with no access
+    // Bob is shared into the project as an editor; Carol starts with no access
     // (the share test grants it).
     _shares.add(const ShareRequest(
       resourceType: 'project',
@@ -222,7 +222,7 @@ class InMemoryAppBackend implements AppBackend {
     final id = demoAccounts[key];
     if (id == null) {
       throw const AppBackendException(
-        'Unknown account. Try alice, bob or val.',
+        'Unknown account. Try alice, bob or carol.',
         key: 'auth.login.failed',
       );
     }

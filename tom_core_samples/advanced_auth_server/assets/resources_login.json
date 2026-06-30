@@ -1,14 +1,14 @@
 {
   "login": {
     "title": "Advanced Todo — Sign in",
-    "intro": "Try alice, bob or val (any non-empty password).",
-    "username": { "label": "Username", "hint": "alice, bob or val" },
+    "intro": "Try alice, bob or carol (any non-empty password).",
+    "username": { "label": "Username", "hint": "alice, bob or carol" },
     "password": { "label": "Password" },
     "submit": "Sign in"
   },
   "adminLogin": {
     "title": "Advanced Todo — Admin sign in",
-    "intro": "Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.",
+    "intro": "Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.",
     "username": { "label": "Username", "hint": "admin" },
     "password": { "label": "Password" },
     "submit": "Sign in"

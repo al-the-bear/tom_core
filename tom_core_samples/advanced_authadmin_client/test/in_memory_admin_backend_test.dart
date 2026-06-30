@@ -80,7 +80,7 @@ void main() {
       final users = await backend.listUsers();
       expect(
         users.map((u) => u.username),
-        containsAll(<String>['admin', 'alice', 'bob', 'val']),
+        containsAll(<String>['admin', 'alice', 'bob', 'carol']),
       );
     });
 
@@ -170,24 +170,24 @@ void main() {
       final groups = await backend.listGroups();
       final eng = groups.firstWhere((g) => g.id == 'g-eng');
       expect(eng.name, 'Engineering');
-      expect(eng.memberUserIds, <String>['u-bob', 'u-val']);
+      expect(eng.memberUserIds, <String>['u-bob', 'u-carol']);
     });
 
     test('TC-32-14: createGroup assigns an id; updateGroup edits membership',
         () async {
       await loginAdmin();
       final created = await backend.createGroup(
-          GroupDto(name: 'QA', memberUserIds: const ['u-val']));
+          GroupDto(name: 'QA', memberUserIds: const ['u-carol']));
       expect(created.id, isNotEmpty);
       final edited = await backend.updateGroup(
         created.id,
         GroupDto(
             id: created.id,
             name: 'Quality',
-            memberUserIds: const ['u-val', 'u-bob']),
+            memberUserIds: const ['u-carol', 'u-bob']),
       );
       expect(edited.name, 'Quality');
-      expect(edited.memberUserIds, <String>['u-val', 'u-bob']);
+      expect(edited.memberUserIds, <String>['u-carol', 'u-bob']);
       await backend.deleteGroup(created.id);
       expect((await backend.listGroups()).map((g) => g.id),
           isNot(contains(created.id)));
@@ -227,8 +227,8 @@ void main() {
     test('TC-32-17: assign records a role and adds group membership', () async {
       await loginAdmin();
       await backend.assign(
-          const AssignmentRequest(userId: 'u-val', roleKey: 'editor'));
-      expect(backend.rolesOf('u-val'), contains('editor'));
+          const AssignmentRequest(userId: 'u-carol', roleKey: 'editor'));
+      expect(backend.rolesOf('u-carol'), contains('editor'));
 
       await backend.assign(
           const AssignmentRequest(userId: 'u-alice', groupId: 'g-eng'));

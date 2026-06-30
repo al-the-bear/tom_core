@@ -87,7 +87,7 @@ void main() {
     });
 
     test('TC-26-07: an unshared user sees nothing', () async {
-      await loginAs('val');
+      await loginAs('carol');
       expect(await backend.listWorkspaces(), isEmpty);
       expect(await backend.listProjects('w-1'), isEmpty);
       expect(await backend.listItems('l-1'), isEmpty);
@@ -123,15 +123,15 @@ void main() {
     });
 
     test('TC-26-10: a viewer cannot save (no write grade)', () async {
-      // Grant val a viewer share first, then attempt a write.
+      // Grant carol a viewer share first, then attempt a write.
       await loginAs('alice');
       await backend.share(const ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
-        granteeUserId: 'u-val',
+        granteeUserId: 'u-carol',
         projectRole: ProjectRole.viewer,
       ));
-      await loginAs('val');
+      await loginAs('carol');
       await expectLater(
         backend.saveItem(TodoItem()
           ..id.set('i-1')
@@ -164,7 +164,7 @@ void main() {
     test(
         'TC-26-13: an unshared user gets none on every field (closed-safe)',
         () async {
-      await loginAs('val');
+      await loginAs('carol');
       final states = await backend.itemFieldStates('i-1');
       expect(
           states.values.every((s) => s == TomAuthState.none), isTrue);
@@ -174,22 +174,22 @@ void main() {
   group('share (cross-user access)', () {
     test('TC-26-14: sharing a project grants the grantee visibility + grade',
         () async {
-      // Before: val sees nothing.
-      await loginAs('val');
+      // Before: carol sees nothing.
+      await loginAs('carol');
       expect(await backend.listWorkspaces(), isEmpty);
 
-      // The owner shares the project with val as a viewer.
+      // The owner shares the project with carol as a viewer.
       await loginAs('alice');
       await backend.share(const ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
-        granteeUserId: 'u-val',
+        granteeUserId: 'u-carol',
         projectRole: ProjectRole.viewer,
       ));
 
-      // After: val now sees the workspace and gets the viewer field matrix
+      // After: carol now sees the workspace and gets the viewer field matrix
       // (status renders disabled, the rest read-only).
-      await loginAs('val');
+      await loginAs('carol');
       expect((await backend.listWorkspaces()).map((w) => w.id.get()), ['w-1']);
       final states = await backend.itemFieldStates('i-1');
       expect(states[TodoItemResourceKeys.status], TomAuthState.disabled);
@@ -202,7 +202,7 @@ void main() {
         backend.share(const ShareRequest(
           resourceType: 'project',
           resourceId: 'p-1',
-          granteeUserId: 'u-val',
+          granteeUserId: 'u-carol',
           projectRole: ProjectRole.viewer,
         )),
         throwsA(isA<AppBackendException>()

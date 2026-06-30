@@ -120,14 +120,14 @@ selected) opens it; on a granted share a snackbar confirms it and the grantee's
 next read sees the project.
 
 The grantee is entered as a **user id** (keyed `share-grantee-input`, e.g.
-`u-val`), not picked from a list — the frozen step-26 `AppBackend` seam has no
+`u-carol`), not picked from a list — the frozen step-26 `AppBackend` seam has no
 "list users" operation and `share` speaks `granteeUserId`, matching the live
 wire. A role drop-down (keyed `share-role-picker`, default `viewer`) and a
 **Share** button (keyed `share-submit-button`) submit a `ShareRequest` through
 `AppSession.guard`. Only the project owner may share: a denied share surfaces its
 `AppBackendException` message inline (keyed `share-error`) and keeps the dialog
 open rather than closing it; an empty grantee is blocked client-side before any
-backend call. The demo ids are `u-alice` / `u-bob` / `u-val`.
+backend call. The demo ids are `u-alice` / `u-bob` / `u-carol`.
 
 ## Running the full stack
 
@@ -150,8 +150,8 @@ flutter run \
 ```
 
 Without the `--dart-define`s the client boots on the in-memory backend. Sign in
-with a demo account (`alice` / `bob` / `val`, password `pw`): `alice` owns the
-seeded project and can share it; `bob` is a seeded editor; `val` starts with no
+with a demo account (`alice` / `bob` / `carol`, password `pw`): `alice` owns the
+seeded project and can share it; `bob` is a seeded editor; `carol` starts with no
 access until `alice` shares the project. Each principal's board, item-detail
 field grades, and share rights follow the same ownership + four-state model the
 in-memory fake mirrors.
@@ -184,6 +184,6 @@ flutter test --concurrency=1
   Save), and an `editor` save persists the edited title while the read-only
   assignee stays put.
 - `test/share_dialog_test.dart` — the cross-user share dialog (TC-31-01..03): an
-  owner shares the project and the grantee (`val`, with no access before) then
+  owner shares the project and the grantee (`carol`, with no access before) then
   sees it, a non-owner's share is rejected inline with the owner-only error, and
   an empty grantee is blocked before any backend call.

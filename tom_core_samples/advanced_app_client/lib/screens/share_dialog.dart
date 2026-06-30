@@ -2,7 +2,7 @@
 /// (step 31).
 ///
 /// Sharing is the cross-user half of the four-state model — it is how `bob`
-/// becomes an editor and `val` a viewer on a project they do not own. The dialog
+/// becomes an editor and `carol` a viewer on a project they do not own. The dialog
 /// collects a grantee and a role and calls [AppBackend.share] through
 /// [AppSession.guard]; the in-memory fake records the share (so the grantee's
 /// next read sees the project), and the live stack `POST`s `/share`.
@@ -10,7 +10,7 @@
 /// **Grantee is entered as a user id, not picked from a list.** The frozen
 /// step-26 [AppBackend] seam has no "list users" operation (and [share] speaks
 /// `granteeUserId`, matching the live wire), so the dialog takes the id directly
-/// — the demo ids are `u-alice` / `u-bob` / `u-val`. A denied share (only the
+/// — the demo ids are `u-alice` / `u-bob` / `u-carol`. A denied share (only the
 /// project owner may share) surfaces inline rather than closing the dialog.
 library;
 
@@ -61,7 +61,7 @@ class _ShareDialogState extends State<_ShareDialog> {
   Future<void> _submit() async {
     final grantee = _granteeController.text.trim();
     if (grantee.isEmpty) {
-      setState(() => _error = 'Enter a grantee user id (e.g. u-val).');
+      setState(() => _error = 'Enter a grantee user id (e.g. u-carol).');
       return;
     }
     setState(() {
@@ -99,7 +99,7 @@ class _ShareDialogState extends State<_ShareDialog> {
             controller: _granteeController,
             decoration: const InputDecoration(
               labelText: 'Grantee user id',
-              hintText: 'u-val',
+              hintText: 'u-carol',
             ),
           ),
           const SizedBox(height: 12),

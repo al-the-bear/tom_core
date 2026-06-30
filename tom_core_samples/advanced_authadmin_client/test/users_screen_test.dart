@@ -34,7 +34,7 @@ void main() {
     expect(find.byKey(const Key('users-tile-u-admin')), findsOneWidget);
     expect(find.byKey(const Key('users-tile-u-alice')), findsOneWidget);
     expect(find.byKey(const Key('users-tile-u-bob')), findsOneWidget);
-    expect(find.byKey(const Key('users-tile-u-val')), findsOneWidget);
+    expect(find.byKey(const Key('users-tile-u-carol')), findsOneWidget);
   });
 
   testWidgets('TC-34-U02: creating an account adds it to the list',
@@ -100,12 +100,12 @@ void main() {
     final backend = InMemoryAdminBackend();
     await pumpSignedInConsole(tester, backend);
 
-    await tester.tap(find.byKey(const Key('users-delete-u-val')));
+    await tester.tap(find.byKey(const Key('users-delete-u-carol')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('admin-delete-confirm')), findsOneWidget);
     await confirmDelete(tester);
 
-    expect(find.byKey(const Key('users-tile-u-val')), findsNothing);
-    expect((await backend.listUsers()).any((u) => u.id == 'u-val'), isFalse);
+    expect(find.byKey(const Key('users-tile-u-carol')), findsNothing);
+    expect((await backend.listUsers()).any((u) => u.id == 'u-carol'), isFalse);
   });
 }

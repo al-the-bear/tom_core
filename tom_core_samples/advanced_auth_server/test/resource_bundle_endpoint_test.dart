@@ -24,7 +24,7 @@ void main() {
     test('loginBundle carries the public login + adminLogin texts', () {
       final texts = AuthResourceBundles.loginBundle().texts;
       expect(texts['login.username.label'], 'Username');
-      expect(texts['login.username.hint'], 'alice, bob or val');
+      expect(texts['login.username.hint'], 'alice, bob or carol');
       expect(texts['login.password.label'], 'Password');
       expect(texts['adminLogin.username.hint'], 'admin');
       expect(texts['adminLogin.password.label'], 'Password');

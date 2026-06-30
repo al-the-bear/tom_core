@@ -55,14 +55,14 @@ class InMemoryAdminBackend implements AdminBackend {
   /// *server-delivered* texts. The console reads the `adminLogin.*` keys.
   static const Map<String, Object?> loginTexts = {
     'login.title': 'Advanced Todo — Sign in',
-    'login.intro': 'Try alice, bob or val (any non-empty password).',
+    'login.intro': 'Try alice, bob or carol (any non-empty password).',
     'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob or val',
+    'login.username.hint': 'alice, bob or carol',
     'login.password.label': 'Password',
     'login.submit': 'Sign in',
     'adminLogin.title': 'Advanced Todo — Admin sign in',
     'adminLogin.intro':
-        'Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.',
+        'Sign in as admin (password pw). A non-admin (alice, bob, carol) is rejected.',
     'adminLogin.username.label': 'Username',
     'adminLogin.username.hint': 'admin',
     'adminLogin.password.label': 'Password',
@@ -105,7 +105,7 @@ class InMemoryAdminBackend implements AdminBackend {
   static const String _kDescription = 'todo.item.description';
 
   void _seed() {
-    // Demo accounts mirror the app client's (alice/bob/val) plus a dedicated
+    // Demo accounts mirror the app client's (alice/bob/carol) plus a dedicated
     // administrator. Only `admin` holds the `admin` role, so the others are the
     // non-admin path the shell rejects.
     void user(String id, String username, String name, List<String> roles) {
@@ -122,7 +122,7 @@ class InMemoryAdminBackend implements AdminBackend {
     user('u-admin', 'admin', 'Administrator', const ['admin']);
     user('u-alice', 'alice', 'Alice (owner)', const ['owner']);
     user('u-bob', 'bob', 'Bob (editor)', const ['editor']);
-    user('u-val', 'val', 'Val (viewer)', const ['viewer']);
+    user('u-carol', 'carol', 'Carol (viewer)', const ['viewer']);
 
     // The application roles: the `admin` console role plus the four project
     // roles the grant matrix grades.
@@ -137,7 +137,7 @@ class InMemoryAdminBackend implements AdminBackend {
     _groups.add(GroupDto(
       id: 'g-eng',
       name: 'Engineering',
-      memberUserIds: const ['u-bob', 'u-val'],
+      memberUserIds: const ['u-bob', 'u-carol'],
     ));
 
     // The four-state grant matrix, identical to the app client's twin so the two

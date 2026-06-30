@@ -63,7 +63,7 @@ void main() {
       'overrides', (tester) async {
     installBundle(const {
       'login.username.label': 'Username [srv]',
-      'login.username.hint': 'alice, bob or val [srv]',
+      'login.username.hint': 'alice, bob or carol [srv]',
       'login.password.label': 'Password [srv]',
     });
     // Built unscoped: formId 'login' *is* the base path, so fields self-address
@@ -76,7 +76,7 @@ void main() {
     await pumpFields(tester, [form.username, form.password]);
 
     expect(find.textContaining('Username [srv]'), findsWidgets);
-    expect(find.textContaining('alice, bob or val [srv]'), findsWidgets);
+    expect(find.textContaining('alice, bob or carol [srv]'), findsWidgets);
     expect(find.textContaining('Password [srv]'), findsWidgets);
     // A leftover override would have rendered the bare strings it carried.
     expect(find.text('Username'), findsNothing);

@@ -71,7 +71,7 @@ matrix, and role/group assignments — plus the two session operations
 
 - **`InMemoryAdminBackend`** — a seeded, socket-free fake the contract and widget
   tests bind. It seeds the same demo accounts as the app client (`admin` plus
-  `alice`/`bob`/`val`), the five application roles, an `Engineering` group, and
+  `alice`/`bob`/`carol`), the five application roles, an `Engineering` group, and
   the same four-state grant matrix the auth server seeds. Every administrative
   call requires the `admin` role: a signed-in non-admin is refused with
   `admin.access.forbidden`, mirroring the server's `@TomRoleAccess(['admin'])`

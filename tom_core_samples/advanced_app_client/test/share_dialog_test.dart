@@ -1,7 +1,7 @@
 /// Widget tests for the share dialog (step 31): granting another user a
 /// [ProjectRole] on the selected project, driven from the board.
 ///
-/// This is the cross-user half of the four-state model — sharing is how `val`
+/// This is the cross-user half of the four-state model — sharing is how `carol`
 /// gains viewer access to a project alice owns. Socket-free: the board and
 /// dialog read/write through [AppSession.guard] against the seeded
 /// [InMemoryAppBackend], which records the share, so the grantee's next read
@@ -53,14 +53,14 @@ void main() {
       (tester) async {
     final backend = await pumpBoard(tester, 'alice');
 
-    // Val has no access before the share.
-    await backend.login(login('val'));
+    // Carol has no access before the share.
+    await backend.login(login('carol'));
     expect(await backend.listProjects('w-1'), isEmpty);
     await backend.login(login('alice')); // restore the board's principal
 
     await openShareDialog(tester);
     await tester.enterText(
-        find.byKey(const Key('share-grantee-input')), 'u-val');
+        find.byKey(const Key('share-grantee-input')), 'u-carol');
     await tester.tap(find.byKey(const Key('share-submit-button')));
     await tester.pumpAndSettle();
 
@@ -68,8 +68,8 @@ void main() {
     expect(find.byKey(const Key('share-dialog')), findsNothing);
     expect(find.text('Project shared'), findsOneWidget);
 
-    // Val now sees the shared project (default role: viewer).
-    await backend.login(login('val'));
+    // Carol now sees the shared project (default role: viewer).
+    await backend.login(login('carol'));
     final projects = await backend.listProjects('w-1');
     expect(projects.map((p) => p.id.get()), contains('p-1'));
   });
@@ -81,7 +81,7 @@ void main() {
 
     await openShareDialog(tester);
     await tester.enterText(
-        find.byKey(const Key('share-grantee-input')), 'u-val');
+        find.byKey(const Key('share-grantee-input')), 'u-carol');
     await tester.tap(find.byKey(const Key('share-submit-button')));
     await tester.pumpAndSettle();
 

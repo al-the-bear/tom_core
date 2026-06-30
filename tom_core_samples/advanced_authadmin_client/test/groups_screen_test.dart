@@ -66,7 +66,7 @@ void main() {
     CheckboxListTile box(String id) =>
         tester.widget<CheckboxListTile>(find.byKey(Key('group-member-$id')));
     expect(box('u-bob').value, isTrue);
-    expect(box('u-val').value, isTrue);
+    expect(box('u-carol').value, isTrue);
     expect(box('u-alice').value, isFalse);
   });
 
@@ -83,7 +83,7 @@ void main() {
     await saveEditor(tester);
 
     final eng = (await backend.listGroups()).firstWhere((g) => g.id == 'g-eng');
-    expect(eng.memberUserIds, ['u-val']);
+    expect(eng.memberUserIds, ['u-carol']);
     expect(find.text('1 member'), findsOneWidget);
   });
 

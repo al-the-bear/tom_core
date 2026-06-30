@@ -14,7 +14,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 /// Username + password, bound into the login form.
 @tomReflector
 class LoginCredentials extends TomClass {
-  /// The account's login name (a seeded demo account: alice, bob or val).
+  /// The account's login name (a seeded demo account: alice, bob or carol).
   late final username = TomString('');
 
   /// The account's password (the in-memory demo accepts any non-empty value).

@@ -7,7 +7,7 @@
 /// constructed with the principal's resolved field matrix:
 ///
 /// - `owner` (alice) edits every gradable field — a full editor with a Save.
-/// - `viewer` (val, shared in for the test) sees read-only fields, a *disabled*
+/// - `viewer` (carol, shared in for the test) sees read-only fields, a *disabled*
 ///   status control, and no `estimate` at all (ungranted → [TomAuthState.none],
 ///   the field collapses); with nothing editable there is no Save.
 /// - `editor` (bob) can save, but `assigneeId` is read-only, so editing the
@@ -65,7 +65,7 @@ void main() {
   /// [itemId] from a host route. Returns the live backend so a test can re-read
   /// persisted state.
   ///
-  /// [shareValAs] grants `val` that project role first (val has no access in the
+  /// [shareCarolAs] grants `carol` that project role first (carol has no access in the
   /// seed), so the viewer/commenter cases — neither seeded with access — can open
   /// the item. [bundleOverride], if given, is installed over the
   /// session-installed full bundle *after* login and *before* the screen builds,
@@ -75,7 +75,7 @@ void main() {
     WidgetTester tester,
     String user, {
     String itemId = 'i-1',
-    ProjectRole? shareValAs,
+    ProjectRole? shareCarolAs,
     Map<String, dynamic>? bundleOverride,
   }) async {
     useTallViewport(tester);
@@ -87,13 +87,13 @@ void main() {
     // `loadFieldStates` feeds the matrix in. Cleared in [tearDown].
     TomAuthorization.adapter = session.authorizationAdapter;
 
-    if (shareValAs != null) {
+    if (shareCarolAs != null) {
       await session.login(login('alice'));
       await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
-        granteeUserId: 'u-val',
-        projectRole: shareValAs,
+        granteeUserId: 'u-carol',
+        projectRole: shareCarolAs,
       ));
       await session.logout();
     }
@@ -157,7 +157,7 @@ void main() {
   testWidgets(
       'TC-30-02: viewer is read-only — status disabled, estimate hidden, no Save',
       (tester) async {
-    await openDetail(tester, 'val', shareValAs: ProjectRole.viewer);
+    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.viewer);
 
     // The ungranted field (estimate → none) collapses entirely…
     expect(find.text('Estimate (h)'), findsNothing);
@@ -201,7 +201,7 @@ void main() {
   testWidgets(
       'TC-30-04: commenter hides priority + estimate, reads the rest, no Save',
       (tester) async {
-    await openDetail(tester, 'val', shareValAs: ProjectRole.commenter);
+    await openDetail(tester, 'carol', shareCarolAs: ProjectRole.commenter);
 
     // The commenter matrix grades both priority and estimate `none`, so the
     // closed-safe render hides *both* fields (D-A4 made visible end-to-end) —

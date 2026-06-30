@@ -49,7 +49,7 @@ void main() {
     expect(find.text('Advanced Todo — Admin sign in'), findsOneWidget);
     expect(
         find.text('Sign in as admin (password pw). A non-admin (alice, bob, '
-            'val) is rejected.'),
+            'carol) is rejected.'),
         findsOneWidget);
     expect(find.text('adminLogin.title'), findsNothing);
     expect(find.text('adminLogin.intro'), findsNothing);
