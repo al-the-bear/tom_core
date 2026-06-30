@@ -18,7 +18,7 @@ dependencies:
     path: ../../tom_core_kernel
   todo_domain:
     path: ../todo_domain
-  tom_reflection: any
+  tom_reflection: ">=1.0.1"
 
 dev_dependencies:
   lints: ^6.0.0
