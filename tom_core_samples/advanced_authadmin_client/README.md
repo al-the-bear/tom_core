@@ -40,9 +40,13 @@ with `@TomRoleAccess(['admin'])` rather than gating login itself:
    login is undone and the refusal is surfaced inline on the login screen.
 
 Only when both phases pass is the principal stored and the shell allowed to
-open. The login screen is a plain Material form (not a reflected `TomForm`) — the
-admin console's reflected forms are the user/role/group editors in step 34 — so
-the step-33 widget tests stay socket- and reflection-free.
+open. The login screen binds a reflected `AdminLoginForm` (`lib/forms/admin_login_form.dart`,
+todo 12) over the client-local `AdminLoginCredentials` — built unscoped with
+`formId: 'adminLogin'`, so its fields self-address as `adminLogin.username` /
+`adminLogin.password`, the keys the auth server serves on the public
+`/resources/login` bundle the console installs before sign-in. It renders the
+fields' own `field.widget`s and resolves labels/hints from that installed bundle,
+mirroring the app client's `LoginForm`.
 
 ```dart
 final session = AdminSession(InMemoryAdminBackend()); // or LiveAdminBackend(...)
