@@ -21,6 +21,45 @@ field authorization and cross-user sharing.
 
 ---
 
+## User guide
+
+This suite map is the **index**. The long-form **Tom Core user guide** below uses
+this sample as the worked example to teach how to build a full-scale, secured,
+full-stack application on `tom_core` — its architecture *and* the implementation
+rules the framework imposes (texts externalized into server-delivered resources;
+UI authorization driven by scope/form/field names). Read the parts top to
+bottom; each links to the next.
+
+### Main spine
+
+| Part | Document | Covers |
+| --- | --- | --- |
+| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the seven packages at a glance; reading order; conventions. |
+| 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
+| 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The seven pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
+| 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; `resource_keys.dart` as the scope/form/field source of truth. |
+| 04 | [Wire contracts & DTOs](README_advanced_04_wire_contracts_dtos.md) | The contracts package: DTOs, the typed service interfaces, the api registry, the domain↔wire boundary. |
+| 05 | [Persistence & the two databases](README_advanced_05_persistence_database.md) | Persistence mapping; CRUD repositories; the two-database design; datasources config; the schema vs sample-data migration split. |
+| 06 | [Authentication (JWT)](README_advanced_06_authentication.md) | Token issuance; password hashing; the bearer token and shared signing key; the client auth layer and token refresh. |
+| 07 | [Authorization](README_advanced_07_authorization.md) | The four-state field authorization model; scope/form/field → `basePath` → grade; the installed adapter; implicit vs override paths; route gating. |
+| 08 | [Resources & text externalization](README_advanced_08_resources_texts.md) | The no-hard-coded-labels rule; server-delivered resources; `<basePath>.<suffix>` keying; the scope/form/field JSON files; bundle bootstrap. |
+| 09 | [Forms & UI](README_advanced_09_forms_ui.md) | `TomForm`/`TomField`; `basePath` derivation; bound reflected forms; scoped vs unscoped; the `tom_flutter_ui` components and screens. |
+| 10 | [Servers & the secured endpoint pipeline](README_advanced_10_servers_endpoints.md) | The endpoint pipeline; per-endpoint access policies; bearer validation; ownership/share resolution; health; boot order. |
+| 11 | [The two Flutter clients](README_advanced_11_clients_app_admin.md) | App client vs admin console; sessions; the in-memory vs live backend seam; bootstrap; the share flow and grant-matrix editor. |
+| 12 | [Testing & cross-tier integration](README_advanced_12_testing_integration.md) | Test strategy; serial-Flutter rule; the sentinel render proof; the four-role matrix; the cross-tier runner; the green gate. |
+
+### Appendices (deep dives)
+
+| Part | Document | Covers |
+| --- | --- | --- |
+| A1 | [Four-state authorization deep dive](README_advanced_A1_authorization_state_machine.md) | The four states; resolution layers 1–4; the closed-safe default; the grant matrix → adapter → field path; the worked role matrix. |
+| A2 | [Scope, `basePath` & resource-key conventions](README_advanced_A2_resource_scope_conventions.md) | `basePath` derivation; one-path-two-uses; the estimate mismatch; scoped vs unscoped; the JSON-tree ↔ scope mirroring. |
+| A3 | [A secured request, end to end](README_advanced_A3_request_lifecycle.md) | One end-user request traced across both tiers, from login to graded field rendering. |
+| A4 | [Implementation-rules cheat-sheet](README_advanced_A4_implementation_rules_checklist.md) | The consolidated, copy-pasteable rule list for building a new tom_core app, each with its enforcement anchor. |
+| A5 | [Glossary & cross-reference](README_advanced_A5_glossary_crossref.md) | Term glossary; a map from each package README and planning doc to the guide section that summarizes it. |
+
+---
+
 ## The seven packages
 
 | # | Package | What it is | Runtime |
