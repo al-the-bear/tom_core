@@ -1,0 +1,22 @@
+{
+  "adminConsole": { "title": "Advanced Todo — Admin console" },
+  "user": {
+    "username": { "label": "Username" },
+    "password": { "label": "Password" },
+    "displayName": { "label": "Display name" },
+    "email": { "label": "Email" },
+    "status": { "label": "Status" }
+  },
+  "role": {
+    "key": { "label": "Key" },
+    "name": { "label": "Name" }
+  },
+  "group": {
+    "name": { "label": "Name" }
+  },
+  "grants": {
+    "title": "Grant matrix",
+    "column": { "none": "None", "read": "Read", "full": "Full" },
+    "save": "Save grants"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "todo": {
+    "item": {
+      "title": { "label": "Title" },
+      "status": { "label": "Status" },
+      "priority": { "label": "Priority" },
+      "assigneeId": { "label": "Assignee id" },
+      "dueDate": { "label": "Due date" },
+      "estimate": { "label": "Estimate (h)" },
+      "description": { "label": "Description" }
+    }
+  },
+  "board": {
+    "title": "My Board",
+    "empty": "No items yet",
+    "item": {
+      "save": "Save",
+      "delete": "Delete",
+      "comment": { "add": "Add comment" }
+    },
+    "share": "Share"
+  }
+}

@@ -1,78 +1,75 @@
-/// The auth server's text resource bundles (step / todo 7).
+/// The auth server's text resource bundles (step / todo 7; externalized in RC-24).
 ///
 /// Per D-A10 the auth server owns two text sets: the **public** login-screen
 /// texts (served before anyone signs in, by both clients) and the **admin
-/// console** texts (served after an admin signs in). Both are flat
-/// `<basePath>.<suffix>` maps the resource endpoints serve and the clients
+/// console** texts (served after an admin signs in). Both are served as the flat
+/// `<basePath>.<suffix>` maps the resource endpoints return and the clients
 /// install via `TomTextResourceProvider.from(dto.texts)` (todos 8–9).
 ///
-/// - [loginBundle] (public, `GET /auth/resources/login`) carries the `login.*`
-///   keys the app client's login form self-addresses (`formId: 'login'`, no
-///   scope → `login.username.label`, …) plus the `adminLogin.*` keys the admin
-///   console's plain login screen reads.
-/// - [adminConsoleBundle] (admin-gated, `GET /admin/resources`) carries the
-///   admin editors' form labels (`user.*`/`role.*`/`group.*`, matching each
-///   reflected form's `formId` and field `tomId`s) plus the `grants.*` texts of
-///   the grant-matrix screen.
+/// The texts no longer live as Dart `const` maps: each set is a **nested JSON
+/// asset** structured along the client's scope → form → field hierarchy, loaded
+/// once and [flattenResourceTree]-ed into the flat served shape (byte-equivalent
+/// to the pre-RC-24 bundles, so the wire contract and endpoint tests are
+/// unchanged):
+///
+/// - [loginBundle] (public, `GET /auth/resources/login`,
+///   `assets/resources_login.json`) carries the `login.*` keys the app client's
+///   login form self-addresses (`formId: 'login'`, no scope → `login.username.label`,
+///   …) plus the `adminLogin.*` keys the admin console's plain login screen reads.
+/// - [adminConsoleBundle] (admin-gated, `GET /admin/resources`,
+///   `assets/resources_admin.json`) carries the admin editors' form labels
+///   (`user.*`/`role.*`/`group.*`, matching each reflected form's `formId` and
+///   field `tomId`s) plus the `grants.*` texts of the grant-matrix screen.
 library;
+
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 
-/// Builds the auth server's text bundles. Pure and database-free, so each is
-/// unit-tested directly and the endpoints simply return the matching bundle.
+/// Builds the auth server's text bundles from their nested JSON resource assets.
 class AuthResourceBundles {
   const AuthResourceBundles._();
 
-  /// Public login-screen texts for both clients.
-  static const Map<String, String> _loginTexts = {
-    // App client login form (`LoginForm`, formId 'login', no scope).
-    'login.title': 'Advanced Todo — Sign in',
-    'login.intro': 'Try alice, bob or val (any non-empty password).',
-    'login.username.label': 'Username',
-    'login.username.hint': 'alice, bob or val',
-    'login.password.label': 'Password',
-    'login.submit': 'Sign in',
-    // Admin console login screen (plain Material form).
-    'adminLogin.title': 'Advanced Todo — Admin sign in',
-    'adminLogin.intro':
-        'Sign in as admin (password pw). A non-admin (alice, bob, val) is rejected.',
-    'adminLogin.username.label': 'Username',
-    'adminLogin.username.hint': 'admin',
-    'adminLogin.password.label': 'Password',
-    'adminLogin.submit': 'Sign in',
-  };
+  /// The public login-texts asset (working-directory-relative, as the YAML
+  /// config/datasource assets are).
+  static const String loginAssetPath = 'assets/resources_login.json';
 
-  /// Admin-console texts: the reflected editors' field labels (keyed
-  /// `<formId>.<tomId>.label`, matching `UserForm`/`RoleForm`/`GroupForm`) plus
-  /// the grant-matrix screen texts.
-  static const Map<String, String> _adminConsoleTexts = {
-    // Console shell chrome (no grade counterpart, no form override — the AppBar
-    // title the console renders straight from this bundle after an admin login).
-    'adminConsole.title': 'Advanced Todo — Admin console',
-    // UserForm (formId 'user').
-    'user.username.label': 'Username',
-    'user.password.label': 'Password',
-    'user.displayName.label': 'Display name',
-    'user.email.label': 'Email',
-    'user.status.label': 'Status',
-    // RoleForm (formId 'role').
-    'role.key.label': 'Key',
-    'role.name.label': 'Name',
-    // GroupForm (formId 'group').
-    'group.name.label': 'Name',
-    // Grant-matrix screen.
-    'grants.title': 'Grant matrix',
-    'grants.column.none': 'None',
-    'grants.column.read': 'Read',
-    'grants.column.full': 'Full',
-    'grants.save': 'Save grants',
-  };
+  /// The admin-console-texts asset.
+  static const String adminAssetPath = 'assets/resources_admin.json';
+
+  static Map<String, Object?>? _loginCache;
+  static Map<String, Object?>? _adminCache;
+
+  /// Public login + adminLogin texts, loaded and flattened once.
+  static Map<String, Object?> loginTexts() =>
+      _loginCache ??= loadFlatResourceAsset(loginAssetPath);
+
+  /// Admin-console texts (editor labels + grants), loaded and flattened once.
+  static Map<String, Object?> adminConsoleTexts() =>
+      _adminCache ??= loadFlatResourceAsset(adminAssetPath);
 
   /// The public login bundle (`login.*` + `adminLogin.*`).
-  static ResourceBundleDto loginBundle() =>
-      ResourceBundleDto(Map<String, Object?>.from(_loginTexts));
+  static ResourceBundleDto loginBundle() => ResourceBundleDto(loginTexts());
 
   /// The admin-gated console bundle (admin form labels + grants texts).
   static ResourceBundleDto adminConsoleBundle() =>
-      ResourceBundleDto(Map<String, Object?>.from(_adminConsoleTexts));
+      ResourceBundleDto(adminConsoleTexts());
+}
+
+/// Reads a nested JSON resource asset at [path] (working-directory-relative) and
+/// flattens it to the flat `<basePath>.<suffix>` map the wire bundle carries.
+///
+/// Throws a [StateError] when the asset is missing, rather than silently serving
+/// an empty bundle — an absent text asset would otherwise break the
+/// no-hard-coded-strings property invisibly.
+Map<String, Object?> loadFlatResourceAsset(String path) {
+  final file = File(path);
+  if (!file.existsSync()) {
+    throw StateError(
+      'Resource asset not found: $path (cwd: ${Directory.current.path})',
+    );
+  }
+  final tree = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+  return flattenResourceTree(tree);
 }

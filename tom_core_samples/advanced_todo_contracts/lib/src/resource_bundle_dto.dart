@@ -90,3 +90,36 @@ class ResourceBundleDto implements TomJsonSerializable {
     return value.hashCode;
   }
 }
+
+/// Flattens a nested resource [tree] (scope → form → field → suffix) into the
+/// flat `<basePath>.<suffix>` → value map a [ResourceBundleDto] carries on the
+/// wire.
+///
+/// The servers externalize their UI texts as nested JSON assets that mirror the
+/// clients' scope/form/field hierarchy — e.g.
+/// `{"todo": {"item": {"title": {"label": "Title"}}}}`. Flattening joins each
+/// path segment with `.`, so that tree yields `todo.item.title.label → "Title"`:
+/// exactly the key a field at `basePath` `todo.item.title` resolves its label
+/// from. Only *map* nodes are descended into; the first non-map value terminates
+/// a key, so scalar leaves (`"board.title": "My Board"`) flatten as written.
+///
+/// This is the inverse of the `TomTextResourceProvider` nested-map dot-notation
+/// lookup: a client could install the nested tree directly, but the servers
+/// flatten first so the served bundle stays the flat shape the wire contract and
+/// the resource-endpoint tests already pin.
+Map<String, Object?> flattenResourceTree(Map<String, dynamic> tree) {
+  final flat = <String, Object?>{};
+  void walk(String prefix, Map<dynamic, dynamic> node) {
+    node.forEach((key, value) {
+      final path = prefix.isEmpty ? '$key' : '$prefix.$key';
+      if (value is Map) {
+        walk(path, value);
+      } else {
+        flat[path] = value;
+      }
+    });
+  }
+
+  walk('', tree);
+  return flat;
+}
