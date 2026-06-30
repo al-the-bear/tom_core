@@ -7,6 +7,11 @@ Logs in with the `admin` role and manages users, roles, groups, role
 assignments, and the `projectRole` × field grant matrix via the auth server's
 `/admin/*` API (through `advanced_client_core`).
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[09 · Forms & UI](../README_advanced_09_forms_ui.md)** and
+> [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
+
 ## Status
 
 Phase 6 is complete: the assignments editor (step 36) closes the console over

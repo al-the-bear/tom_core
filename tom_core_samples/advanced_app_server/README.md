@@ -9,6 +9,11 @@ resolves the principal's resource access (ownership + shares) and four-state
 field grades, persists the `app_db`, and lets an owner share a resource with
 another user so the grant takes effect on the grantee's next request.
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[05 · Persistence & the two databases](../README_advanced_05_persistence_database.md)** and
+> [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
+
 ## Architecture
 
 The `AppApiService` implementation is split into pure, database-free logic

@@ -7,6 +7,11 @@ Logs in against `advanced_auth_server`, presents the bearer token on every call
 to `advanced_app_server`, and renders a status-column task board with per-field
 four-state authorization driven live over the wire, plus cross-user sharing.
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[09 · Forms & UI](../README_advanced_09_forms_ui.md)** and
+> [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
+
 ## Status
 
 Cross-user sharing landed (step 31) — the app is feature-complete. On top of the

@@ -8,6 +8,12 @@ The authenticated HTTP layer shared by `advanced_app_client` and
 `advanced_authadmin_client`. Nothing here imports Flutter, so the JSON↔DTO
 parsers are unit-testable headless (no sockets in tests).
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[06 · Authentication (JWT)](../README_advanced_06_authentication.md)**, with
+> its client-side usage in
+> [11 · The two Flutter clients](../README_advanced_11_clients_app_admin.md).
+
 ## Status
 
 `AuthClient` (step 22), `AuthorizedHttp` (step 23), `AppApiClient` (step 24) and

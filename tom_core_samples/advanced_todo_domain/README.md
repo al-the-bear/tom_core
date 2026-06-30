@@ -7,6 +7,10 @@ This is the single source of truth for the whole stack — the app server
 persists these entities, both Flutter clients edit them, and the four-state
 authorization layer grades their fields.
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[03 · Domain model & reflection](../README_advanced_03_domain_reflection.md)**.
+
 ## Status
 
 Entities + constants defined (steps 2–3). The eight observable `TomClass`

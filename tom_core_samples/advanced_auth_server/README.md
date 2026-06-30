@@ -9,6 +9,11 @@ Two surfaces in one boot on `tom_core_server`: a JWT **authentication** issuer
 admin endpoints that *mutate* roles and the grant matrix are a primary
 deliverable — they do not exist elsewhere in the framework yet.
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[06 · Authentication (JWT)](../README_advanced_06_authentication.md)** and
+> [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
+
 ## Architecture
 
 Each surface is split into a pure, database-free logic class and a thin

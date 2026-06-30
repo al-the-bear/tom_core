@@ -6,6 +6,10 @@ Shared wire contracts for the **advanced Tom Core full-stack sample**
 The single definition of the over-the-wire surface, depended on by both servers
 (which implement it) and the shared client core (which calls it).
 
+> **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
+> This package is documented in context by
+> **[04 · Wire contracts & DTOs](../README_advanced_04_wire_contracts_dtos.md)**.
+
 ## Status
 
 Contract complete (step 6). The package carries the step-4 DTOs, the step-5
