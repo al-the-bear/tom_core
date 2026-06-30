@@ -137,8 +137,13 @@ cp .env.example .env
 docker compose up -d app-db
 ```
 
-First boot seeds each schema from its `database_migrations/.../initdb` tree (the
-auth server also seeds the demo accounts and the grant matrix).
+Each `docker compose` above mounts the database's
+`database_migrations/<db>/<schema>/` tree into MariaDB's
+`docker-entrypoint-initdb.d`, so first boot runs that tree's `[<version>]-<desc>.sql`
+files in order — schema-creation (`[0NN]`) first, then the idempotent sample-data
+seed (`[1NN]`). The same tree is re-read at runtime by `TomDbMigrations`, so the
+seed is the demo cast on first run: the auth server lands the demo accounts and
+the grant matrix, the app server a starter workspace with shared projects.
 
 ### 2 — Start both servers
 
