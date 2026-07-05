@@ -103,7 +103,8 @@ class AuthServerConfiguration extends TomBaseServerConfiguration {
 /// The server-level error handler: pipeline access-denied → 403, else the
 /// framework default JSON error.
 ///
-/// The endpoint pipeline enforces `@TomRoleAccess` *before* the method runs and,
+/// The endpoint pipeline enforces the contract-declared `TomRoleAccess`
+/// (`TomApiEndpoint.access`) *before* the method runs and,
 /// on denial, throws the access-denied [TomEndpointHandlerException] *outside*
 /// the per-endpoint try/catch — so only a server-level handler can see it.
 /// [forbiddenOnAccessDenied] maps exactly that one key to `403 Forbidden` and

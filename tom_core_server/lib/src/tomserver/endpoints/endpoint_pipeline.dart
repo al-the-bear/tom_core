@@ -556,9 +556,10 @@ class TomEndpointHandler {
     }
   }
 
-  /// Decides whether [principal] may call this endpoint from its declared
-  /// [TomAccessControl], falling back to the global protection default when the
-  /// endpoint declares no access rule.
+  /// Decides whether [principal] may call this endpoint from its resolved
+  /// [TomAccessControl] — the handler-side override if present, otherwise the
+  /// contract-declared policy (G-API-3) — falling back to the global protection
+  /// default when neither declares an access rule.
   bool checkAccess(TomPrincipal? principal) {
     if (metadata.access != null) {
       return metadata.access!.checkAccessibility(principal);
@@ -840,6 +841,12 @@ class TomEndpointRouting {
   /// [TomMethodMetadata] (endpoint, access control, transaction, and remote-API
   /// tags). Throws on conflicting/duplicate tags or a missing
   /// `@TomApiImplementation` for an API-endpoint method.
+  ///
+  /// Access control follows G-API-3 (C-12): a handler-side `TomAccessControl`
+  /// annotation is a local override and wins; when the handler declares none,
+  /// the endpoint's **contract-declared** policy (`TomApiEndpoint.access` from
+  /// the registry) is extracted, so a registry-based handler is gated without
+  /// restating the policy inline.
   List<TomMethodMetadata> getClassMethodMetadata(ClassMirror classMirror) {
     List<TomMethodMetadata> methodMetadata = [];
     nextDeclaration:
@@ -917,11 +924,18 @@ class TomEndpointRouting {
             // (bug §69). For an inline TomEndpoint, `ai` is null and the class
             // annotation is ignored.
             final TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
+            // C-12 / G-API-3: a handler-side `TomAccessControl` annotation (`tea`)
+            // is a local override and wins; otherwise the endpoint's
+            // contract-declared policy (`ae.access`, from the registry entry) is
+            // extracted here — so a registry-based handler needs no inline
+            // annotation to be gated. An inline TomEndpoint has no `ae`, so it
+            // keeps whatever the handler declared (or nothing).
+            final TomAccessControl? resolvedAccess = tea ?? ae?.access;
             methodMetadata.add(
               TomMethodMetadata(
                 methodMirror: decl,
                 endpoint: tep,
-                access: tea,
+                access: resolvedAccess,
                 transactionInfo: ti,
                 apiEndpointImplementation: aei,
                 apiEndpoint: ae,

@@ -7,8 +7,9 @@
 /// [AdminBackend]; swap [InMemoryAdminBackend] for [LiveAdminBackend] in one
 /// place (and the widget tests inject their own).
 ///
-/// Login is two-phase because the server gates each `/admin/*` endpoint with
-/// `@TomRoleAccess(['admin'])` rather than gating login: a non-admin
+/// Login is two-phase because each `/admin/*` endpoint's contract declares
+/// `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login:
+/// a non-admin
 /// authenticates fine but is refused the moment they touch admin data. So
 /// [login] first authenticates, then **probes** an admin call; only when the
 /// probe succeeds is the principal stored and the shell allowed to open. A

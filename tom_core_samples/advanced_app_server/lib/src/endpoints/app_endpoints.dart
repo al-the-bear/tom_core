@@ -895,8 +895,9 @@ class AppShareService {
   }
 }
 
-/// The message key the endpoint pipeline throws when an access check (e.g.
-/// `@TomAuthenticatedAccess` on a missing token) fails *before* the method runs.
+/// The message key the endpoint pipeline throws when an access check (e.g. the
+/// contract-declared `TomAuthenticatedAccess` on a missing token) fails *before*
+/// the method runs.
 ///
 /// Coupled to `TomEndpointHandler`'s access-denied throw in `tom_core_server`,
 /// it surfaces *outside* the per-endpoint try/catch, so only a server-level
@@ -946,11 +947,12 @@ Response? appForbiddenOrNotFound(
 ///
 /// Bound to the `appApi` endpoints (`tomRemoteApis['app']`); the bean container
 /// instantiates it through the no-argument constructor, which wires the
-/// production [AppReadService]. The access annotations are declared explicitly
-/// (the registry's `appApiAccess` map is informational, not auto-applied):
-/// `appHealth` is public, every other endpoint requires an authenticated
-/// principal, which the pipeline reads from the bearer token; the resource- and
-/// field-level checks then run inside the handlers.
+/// production [AppReadService]. The per-endpoint access policy is **declared on
+/// the contract** (each `appApi` endpoint's `TomApiEndpoint.access`, G-API-3)
+/// and extracted by the pipeline on first call, so these handlers carry no
+/// inline access annotation: `appHealth` is public, every other endpoint
+/// requires an authenticated principal, which the pipeline reads from the bearer
+/// token; the resource- and field-level checks then run inside the handlers.
 ///
 /// The read endpoints delegate to [AppReadService], the write endpoints
 /// (`createProject`/`createItem`/`updateItem`/`deleteItem`/`addComment`) to
@@ -984,37 +986,31 @@ class AdvancedAppApiService implements AppApiService {
   // framework's TomHealthService already owns the plain-text `GET /health`
   // liveness probe in every server, so the app's typed JSON status uses a
   // distinct path to avoid being shadowed by it.
-  @TomPublicAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appHealth')
   @override
   Future<Map<String, Object>> health() async =>
       {'status': 'ok', 'service': 'advanced_app_server'};
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListWorkspaces')
   @override
   Future<List<Workspace>> listWorkspaces() =>
       _reads.listWorkspaces(_principalId);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListProjects')
   @override
   Future<List<Project>> listProjects(String workspaceId) =>
       _reads.listProjects(_principalId, int.tryParse(workspaceId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListLists')
   @override
   Future<List<TodoList>> listLists(String projectId) =>
       _reads.listLists(_principalId, int.tryParse(projectId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListItems')
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appItemFieldStates')
   @override
   Future<List<GradedFieldDto>> itemFieldStates(String id) =>
@@ -1022,31 +1018,26 @@ class AdvancedAppApiService implements AppApiService {
 
   // ----- Write endpoints (step 20) -----------------------------------------
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateProject')
   @override
   Future<Project> createProject(Project project) =>
       _writes.createProject(_principalId, project);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appCreateItem')
   @override
   Future<TodoItem> createItem(TodoItem item) =>
       _writes.createItem(_principalId, item);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateItem')
   @override
   Future<TodoItem> updateItem(String id, TodoItem item) =>
       _writes.updateItem(_principalId, int.tryParse(id) ?? -1, item);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteItem')
   @override
   Future<void> deleteItem(String id) =>
       _writes.deleteItem(_principalId, int.tryParse(id) ?? -1);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
   Future<TodoComment> addComment(String id, TodoComment comment) =>
@@ -1054,13 +1045,11 @@ class AdvancedAppApiService implements AppApiService {
 
   // ----- Share endpoints (step 21) -----------------------------------------
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appShare')
   @override
   Future<void> share(ShareRequest request) =>
       _shares.share(_principalId, request);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appRevokeShare')
   @override
   Future<void> revokeShare(String id) =>
@@ -1070,7 +1059,6 @@ class AdvancedAppApiService implements AppApiService {
   // client's full text bundle (board + item-form labels), installed after
   // sign-in. Any authenticated principal may read it — the texts are display
   // strings, not data (D-A10).
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appResources')
   @override
   Future<ResourceBundleDto> resources() async => AppResourceBundles.appBundle();

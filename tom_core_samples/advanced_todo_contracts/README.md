@@ -35,9 +35,11 @@ precedent. So the wire surface is expressed as:
   servers and the client core both implement (plain abstract classes).
 - **A wire registry** (`api_registry.dart`) — `authApi`/`adminApi`/`appApi`
   (`TomApi` + `TomApiEndpoint<Return, Request>`) holding URI, method, and types,
-  with the four-state access captured in companion `*ApiAccess` maps
-  (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess(['admin'])`).
-  `registerAdvancedTodoApis()` registers all three with `tomRemoteApis`.
+  with the four-state access declared directly on each endpoint's
+  `TomApiEndpoint.access`
+  (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess(['admin'])`,
+  G-API-3). `registerAdvancedTodoApis()` registers all three with
+  `tomRemoteApis`.
 
 The server-side `@tomService` endpoint classes are re-declared against this
 registry inside `tom_core_server` when the servers are built (steps 11+).
@@ -72,7 +74,8 @@ unknown role to `ProjectRole.viewer`.
 - **Auth** (`AuthApiService` / `authApi`, `/auth/*`): `login` (public) +
   `refresh`/`logout`/`me` (authenticated).
 - **Admin** (`AdminApiService` / `adminApi`, `/admin/*`): user, role, group,
-  grant-matrix and assignment management — every endpoint `@TomRoleAccess(['admin'])`.
+  grant-matrix and assignment management — every endpoint declares the shared
+  `adminAccess` (`TomRoleAccess(['admin'])`) policy.
 - **App** (`AppApiService` / `appApi`, the todo board): `health` (public) +
   workspaces, projects, lists, items, comments, field-state and sharing
   endpoints (authenticated; resource- and field-level checks are enforced inside
@@ -92,8 +95,9 @@ see/edit?"). Both are enforced **server-side**; the wire DTOs here only carry th
 
 ### Layer 1 — resource-level access (the cross-user share mechanism)
 
-Every app endpoint is gated at the wire by `TomAuthenticatedAccess()` (see
-`appApiAccess`), so only a logged-in principal reaches a handler. Inside the
+Every app endpoint is gated at the wire by `TomAuthenticatedAccess()` (declared
+on each `appApi` endpoint's `TomApiEndpoint.access`), so only a logged-in
+principal reaches a handler. Inside the
 handler, the app server resolves whether the principal may touch a specific
 `Workspace` / `Project` / `TodoList` / `TodoItem`. A principal has access when
 either:

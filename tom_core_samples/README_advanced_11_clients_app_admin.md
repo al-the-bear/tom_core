@@ -71,8 +71,8 @@ the principal + token pair; the shell rebuilds on every `notifyListeners`. They
 are near-identical (`app_session.dart:25`, `admin_session.dart:26`), with two
 differences worth calling out.
 
-**Two-phase admin login.** Because the auth server gates each `/admin/*` endpoint
-with `@TomRoleAccess(['admin'])` rather than gating login itself
+**Two-phase admin login.** Because each `/admin/*` endpoint's contract declares
+`TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) rather than gating login itself
 ([Part 10](README_advanced_10_servers_endpoints.md)), a signed-in non-admin
 authenticates fine but is refused the moment they touch admin data. `AdminSession.login`
 therefore authenticates and then **probes** an admin call (`listUsers`); only if

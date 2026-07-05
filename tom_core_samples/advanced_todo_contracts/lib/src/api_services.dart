@@ -5,10 +5,10 @@
 /// These are plain abstract Dart classes, not server-framework annotated types:
 /// the contracts package depends only on `tom_core_kernel` + the domain model so
 /// it can also be consumed by the Flutter-free client core. The wire details for
-/// each method — URI, HTTP method, and the four-state access level — live next
-/// to the registry in `api_registry.dart` (`authApi`/`adminApi`/`appApi` +
-/// `authApiAccess`/`adminApiAccess`/`appApiAccess`); each method's dartdoc names
-/// the endpoint id that ties the two together.
+/// each method — URI, HTTP method, and the four-state access level declared on
+/// the endpoint (`TomApiEndpoint.access`) — live next to the registry in
+/// `api_registry.dart` (`authApi`/`adminApi`/`appApi`); each method's dartdoc
+/// names the endpoint id that ties the two together.
 ///
 /// Methods return the reflected domain entities (the app's working currency,
 /// projected to/from JSON at the transport boundary) and the step-4 DTOs.

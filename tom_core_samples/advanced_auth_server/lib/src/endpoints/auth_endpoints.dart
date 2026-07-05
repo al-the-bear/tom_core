@@ -177,9 +177,11 @@ const LoginUnauthorizedErrorHandler _loginErrorHandler =
 /// Bound to the four `authApi` endpoints (`tomRemoteApis['auth']`); the bean
 /// container instantiates it through the no-argument constructor, which wires
 /// the production [AuthTokenService] over the repository-backed user store. The
-/// access annotations are declared explicitly (the registry's `authApiAccess`
-/// map is informational, not auto-applied): `login` is public, the rest require
-/// an authenticated principal, which the pipeline reads from the bearer token.
+/// per-endpoint access policy is **declared on the contract** (each `authApi`
+/// endpoint's `TomApiEndpoint.access`, G-API-3) and extracted by the pipeline on
+/// first call, so these handlers carry no inline access annotation: `authLogin`
+/// / `authLoginResources` are public, the rest require an authenticated
+/// principal, which the pipeline reads from the bearer token.
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'auth')
@@ -190,7 +192,6 @@ class AdvancedAuthApiService implements AuthApiService {
     AdvancedAuthenticationService(const RepositoryAuthUserStore()),
   );
 
-  @TomPublicAccess()
   @TomApiEndpointImplementation(
     apiId: 'auth',
     endpointId: 'authLogin',
@@ -199,13 +200,11 @@ class AdvancedAuthApiService implements AuthApiService {
   @override
   Future<LoginResult> login(LoginRequest request) => _tokens.login(request);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authRefresh')
   @override
   Future<LoginResult> refresh() async =>
       _tokens.refresh(getFromCurrentZone<TomPrincipal>()!);
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authLogout')
   @override
   Future<void> logout() async {
@@ -215,15 +214,14 @@ class AdvancedAuthApiService implements AuthApiService {
     // have a logout to call (and a future deny-list can hook in here).
   }
 
-  @TomAuthenticatedAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authMe')
   @override
   // The per-request principal is recovered from the Dart zone the server's
   // authentication middleware populates (`getFromCurrentZone`), not from the
   // `TomBearerAuthentication` static singleton (a client-side token store the
-  // server never fills). `@TomAuthenticatedAccess` guarantees the pipeline
-  // rejected the request before invocation if no principal was present, so the
-  // zone value is non-null here.
+  // server never fills). The contract's `authMe` endpoint declares
+  // `TomAuthenticatedAccess`, so the pipeline rejected the request before
+  // invocation if no principal was present — the zone value is non-null here.
   Future<UserDto> me() async =>
       _tokens.userDtoOf(getFromCurrentZone<TomPrincipal>()!);
 
@@ -232,7 +230,6 @@ class AdvancedAuthApiService implements AuthApiService {
   // sign-in (`login.*` for the app client, `adminLogin.*` for the admin
   // console). Public — no bearer — because the login form needs its strings to
   // render the very screen on which a user obtains a token (D-A9).
-  @TomPublicAccess()
   @TomApiEndpointImplementation(apiId: 'auth', endpointId: 'authLoginResources')
   @override
   Future<ResourceBundleDto> loginResources() async =>

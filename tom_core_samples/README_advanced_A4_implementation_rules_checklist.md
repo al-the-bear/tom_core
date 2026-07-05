@@ -44,7 +44,7 @@ is already "doing it the tom_core way":
 - [ ] **Per-field authorizers are a *narrowing override only*.** Composition can only *restrict* (`narrow`), never widen, what the adapter resolved. Use `TomAuthorizer.fixed` for the admin forms; the item form has **none** (implicit path). → [07](README_advanced_07_authorization.md) D-A5/D-A8, [A1](README_advanced_A1_authorization_state_machine.md).
 - [ ] **Default closed.** Unknown/absent grade ⇒ `TomAuthState.none` (hidden), enforced at three independent points: wire codec (`GradedFieldDto.fromJson`), server resolver (`field_grade_resolver.dart:73-80`), client adapter. → D-A4, [A1](README_advanced_A1_authorization_state_machine.md).
 - [ ] **Enforce writes on the server too.** Field grades are a UX convenience client-side; the server re-checks every changed field is `full` and rejects otherwise. → `app_endpoints.dart:663` (`_enforceFieldWrites`), [A3](README_advanced_A3_request_lifecycle.md).
-- [ ] **Role-gate admin routes** with `@TomRoleAccess([...])` — the pipeline enforces it *before* the method runs. → `tom_core_server`; sample `admin_endpoints.dart:644` (`@TomRoleAccess(['admin'])`).
+- [ ] **Role-gate admin routes** by declaring `TomRoleAccess([...])` on the contract endpoint (`TomApiEndpoint.access`) — the pipeline extracts and enforces it *before* the method runs. → `tom_core_server`; sample `api_registry.dart` (`adminApi`, shared `adminAccess`).
 - [ ] **Source the server principal from the request zone**, `getFromCurrentZone<TomPrincipal>()` — never the client-side `TomBearerAuthentication` singleton (not request-scoped). → sample `app_endpoints.dart:981`, `auth_endpoints.dart:206`.
 
 ## Domain & reflection
@@ -72,7 +72,7 @@ is already "doing it the tom_core way":
 
 ## Servers & endpoints
 
-- [ ] **The method annotation is authoritative** (`@TomPublicAccess` / `@TomAuthenticatedAccess` / `@TomRoleAccess`); the registry's `*ApiAccess` map is *informational*, not auto-applied. Declare the access on the method. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:987` (public) vs `:993` (authenticated).
+- [ ] **The contract declares the access; the server enforces it** — set each endpoint's `TomApiEndpoint.access` (`TomPublicAccess` / `TomAuthenticatedAccess` / `TomRoleAccess`) in the registry, and the pipeline extracts it on first call (G-API-3/C-12). A handler-side `TomAccessControl` annotation is only a *local override* (`tea ?? ae.access`); the advanced servers declare nothing inline. → [10](README_advanced_10_servers_endpoints.md); sample `api_registry.dart` (`authApi`/`adminApi`/`appApi`).
 - [ ] **Validate the bearer on every non-public request** — the pipeline rejects pre-invocation with `endpoint_handler.handle_method_call.access_denied` → 403. → [10](README_advanced_10_servers_endpoints.md); sample `app_endpoints.dart:904`/`:935-939` (`appForbiddenOrNotFound`).
 - [ ] **Fail closed/safe: 404 over 403 for unreachable resources.** A resource the caller cannot reach is reported *missing*, never leaking its existence. → [A1](README_advanced_A1_authorization_state_machine.md)/[A3](README_advanced_A3_request_lifecycle.md); sample `app_endpoints.dart:232-237` (`app.item.not_found`).
 - [ ] **Keep services server-/zone-free; map error keys at the boundary.** Services throw stable `TomEndpointHandlerException` keys; a server-level handler maps them to HTTP statuses. → sample `appForbiddenOrNotFound` (`app_endpoints.dart:920`), `LoginUnauthorizedErrorHandler` (`auth_endpoints.dart:148`).

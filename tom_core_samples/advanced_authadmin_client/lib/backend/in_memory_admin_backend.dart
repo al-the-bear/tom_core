@@ -10,7 +10,8 @@
 ///
 /// The principal is implicit in the session: [login] records the current user,
 /// and every administrative call requires that user to hold the `admin` role —
-/// exactly the `@TomRoleAccess(['admin'])` gate the live server enforces on each
+/// exactly the contract-declared `TomRoleAccess(['admin'])` gate
+/// (`TomApiEndpoint.access`) the live server's pipeline enforces on each
 /// endpoint. A signed-in non-admin is refused with `admin.access.forbidden`, the
 /// stable key the shell (step 33) rejects a non-admin login on.
 library;
@@ -219,7 +220,8 @@ class InMemoryAdminBackend implements AdminBackend {
   @override
   Future<ResourceBundleDto> resources() async {
     // The console bundle is admin-gated, exactly like the live
-    // `GET /admin/resources` endpoint's `@TomRoleAccess(['admin'])`.
+    // `GET /admin/resources` endpoint's contract-declared
+    // `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`).
     _requireAdmin();
     return ResourceBundleDto(Map<String, Object?>.from(fullTexts));
   }
@@ -429,7 +431,8 @@ class InMemoryAdminBackend implements AdminBackend {
   // ----- Access resolution -------------------------------------------------
 
   /// Asserts an active session that holds the `admin` role, mirroring the
-  /// server's `@TomRoleAccess(['admin'])` gate. Throws `admin.no_session` when no
+  /// server's contract-declared `TomRoleAccess(['admin'])` gate
+  /// (`TomApiEndpoint.access`). Throws `admin.no_session` when no
   /// one is logged in and `admin.access.forbidden` for a non-admin principal.
   void _requireAdmin() {
     final id = _currentUserId;

@@ -75,16 +75,18 @@ server `@tomService`): `authApi` / `adminApi` / `appApi` each hold the
 endpoints' URIs, HTTP methods, and request/response types, and
 `registerAdvancedTodoApis()` registers them.
 
-Crucially, **the per-endpoint four-state access policy lives here too**, in
-companion `*ApiAccess` maps keyed by endpoint id (because `TomApiEndpoint` has no
-access field). The values are the kernel `TomAccessControl` types:
+Crucially, **the per-endpoint four-state access policy lives here too**,
+declared directly on each endpoint's `TomApiEndpoint.access` value (G-API-3 —
+the endpoint carries an `access` field; there is no companion map). The values
+are the kernel `TomAccessControl` types:
 
 - `authLogin` / `authLoginResources` → `TomPublicAccess()` (reachable
   unauthenticated — you must be able to log in and fetch login texts before you
   have a token);
 - every other auth/app endpoint → `TomAuthenticatedAccess()`;
-- **every `/admin/*` endpoint → `TomRoleAccess(['admin'])`** — the single
-  `_adminOnly` policy gating the whole admin axis.
+- **every `/admin/*` endpoint → the shared `adminAccess`
+  (`TomRoleAccess(['admin'])`) constant** — the single policy gating the whole
+  admin axis.
 
 This is **layer-1 (resource-level) access** — the route gate. The finer
 **field-level** grading is a separate layer (part

@@ -11,12 +11,11 @@ import 'package:advanced_auth_server/src/endpoints/auth_endpoints.dart'
 import 'package:advanced_auth_server/src/persistence/auth_persistence_model.dart'
     as prefix4;
 import 'package:advanced_todo_contracts/src/admin_dtos.dart' as prefix33;
-import 'package:advanced_todo_contracts/src/api_registry.dart' as prefix52;
-import 'package:advanced_todo_contracts/src/graded_field_dto.dart' as prefix61;
+import 'package:advanced_todo_contracts/src/graded_field_dto.dart' as prefix60;
 import 'package:advanced_todo_contracts/src/grant_matrix_dto.dart' as prefix35;
 import 'package:advanced_todo_contracts/src/login_dtos.dart' as prefix34;
 import 'package:advanced_todo_contracts/src/resource_bundle_dto.dart'
-    as prefix60;
+    as prefix59;
 import 'package:advanced_todo_domain/src/enums.dart' as prefix37;
 import 'package:advanced_todo_domain/src/project.dart' as prefix5;
 import 'package:advanced_todo_domain/src/share.dart' as prefix6;
@@ -27,19 +26,19 @@ import 'package:advanced_todo_domain/src/todo_list.dart' as prefix10;
 import 'package:advanced_todo_domain/src/user.dart' as prefix11;
 import 'package:advanced_todo_domain/src/workspace.dart' as prefix12;
 import 'package:mysql_client/src/mysql_client/connection.dart' as prefix42;
-import 'package:shelf/src/handler.dart' as prefix59;
-import 'package:shelf/src/middleware.dart' as prefix56;
-import 'package:shelf/src/request.dart' as prefix58;
-import 'package:shelf/src/response.dart' as prefix57;
+import 'package:shelf/src/handler.dart' as prefix58;
+import 'package:shelf/src/middleware.dart' as prefix55;
+import 'package:shelf/src/request.dart' as prefix57;
+import 'package:shelf/src/response.dart' as prefix56;
 import 'package:timezone/src/date_time.dart' as prefix49;
 import 'package:timezone/src/location.dart' as prefix48;
 import 'package:tom_basics/src/logging/logging.dart' as prefix38;
 import 'package:tom_core_kernel/src/tombase/beanlocator/bean_locator.dart'
     as prefix13;
 import 'package:tom_core_kernel/src/tombase/http_connection/httpmethods.dart'
-    as prefix54;
+    as prefix53;
 import 'package:tom_core_kernel/src/tombase/http_connection/mimetypes.dart'
-    as prefix55;
+    as prefix54;
 import 'package:tom_core_kernel/src/tombase/logging/remote_logoutput.dart'
     as prefix14;
 import 'package:tom_core_kernel/src/tombase/logging/remote_logserver.dart'
@@ -51,7 +50,7 @@ import 'package:tom_core_kernel/src/tombase/observable/tom_observable_objects.da
 import 'package:tom_core_kernel/src/tombase/reflection/reflection.dart'
     as prefix0;
 import 'package:tom_core_kernel/src/tombase/security/access_controls.dart'
-    as prefix53;
+    as prefix52;
 import 'package:tom_core_kernel/src/tombase/security/authentication_authorization.dart'
     as prefix18;
 import 'package:tom_core_kernel/src/tombase/security/tom_authorization.dart'
@@ -12727,7 +12726,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminListUsers',
@@ -12746,7 +12744,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[29],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminCreateUser',
@@ -12765,7 +12762,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[30, 31],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminUpdateUser',
@@ -12784,7 +12780,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[32],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminDeleteUser',
@@ -12803,7 +12798,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminListRoles',
@@ -12822,7 +12816,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[33],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminCreateRole',
@@ -12841,7 +12834,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[34, 35],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminUpdateRole',
@@ -12860,7 +12852,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[36],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminDeleteRole',
@@ -12879,7 +12870,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminListGroups',
@@ -12898,7 +12888,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[37],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminCreateGroup',
@@ -12917,7 +12906,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[38, 39],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminUpdateGroup',
@@ -12936,7 +12924,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[40],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminDeleteGroup',
@@ -12955,7 +12942,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminGetGrants',
@@ -12974,7 +12960,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[41],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminPutGrants',
@@ -12993,7 +12978,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[42],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminAssign',
@@ -13012,7 +12996,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          prefix52.adminAccess,
           const prefix50.TomApiEndpointImplementation(
             apiId: 'admin',
             endpointId: 'adminResources',
@@ -13043,7 +13026,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[43],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomPublicAccess(),
           const prefix50.TomApiEndpointImplementation(
             apiId: 'auth',
             endpointId: 'authLogin',
@@ -13063,7 +13045,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomAuthenticatedAccess(),
           const prefix50.TomApiEndpointImplementation(
             apiId: 'auth',
             endpointId: 'authRefresh',
@@ -13082,7 +13063,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomAuthenticatedAccess(),
           const prefix50.TomApiEndpointImplementation(
             apiId: 'auth',
             endpointId: 'authLogout',
@@ -13101,7 +13081,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomAuthenticatedAccess(),
           const prefix50.TomApiEndpointImplementation(
             apiId: 'auth',
             endpointId: 'authMe',
@@ -13120,7 +13099,6 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomPublicAccess(),
           const prefix50.TomApiEndpointImplementation(
             apiId: 'auth',
             endpointId: 'authLoginResources',
@@ -17162,11 +17140,11 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[],
         const prefix0.TomReflector(),
         const <Object>[
-          const prefix53.TomPublicAccess(),
+          const prefix52.TomPublicAccess(),
           const prefix50.TomEndpoint(
-            methods: const [prefix54.TomHttpMethod.get],
+            methods: const [prefix53.TomHttpMethod.get],
             uri: "/health",
-            produces: prefix55.TomMimeType.plainText,
+            produces: prefix54.TomMimeType.plainText,
             logRequests: false,
           ),
         ],
@@ -44309,13 +44287,13 @@ final _data = <r.Reflection, r.ReflectorData>{
       prefix48.TimeZone,
       prefix39.TomTimezoned,
       const m.TypeValue<List<String>>().type,
-      prefix56.Middleware,
+      prefix55.Middleware,
       const m.TypeValue<
-            prefix57.Response? Function(prefix58.Request, Object, StackTrace)
+            prefix56.Response? Function(prefix57.Request, Object, StackTrace)
           >()
           .type,
-      prefix59.Handler,
-      prefix56.Middleware,
+      prefix58.Handler,
+      prefix55.Middleware,
       const m.TypeValue<prefix17.TomList<prefix17.TomString>>().type,
       const m.TypeValue<prefix17.TomOTimezoned<prefix39.TomTimezoned?>>().type,
       const m.TypeValue<prefix17.TomNOTimezoned<prefix39.TomTimezoned?>>().type,
@@ -44360,8 +44338,8 @@ final _data = <r.Reflection, r.ReflectorData>{
       const m.TypeValue<prefix36.Future<List<prefix33.GroupDto>>>().type,
       const m.TypeValue<prefix36.Future<prefix33.GroupDto>>().type,
       const m.TypeValue<prefix36.Future<prefix35.GrantMatrixDto>>().type,
-      prefix60.ResourceBundleDto,
-      const m.TypeValue<prefix36.Future<prefix60.ResourceBundleDto>>().type,
+      prefix59.ResourceBundleDto,
+      const m.TypeValue<prefix36.Future<prefix59.ResourceBundleDto>>().type,
       prefix34.LoginResult,
       const m.TypeValue<prefix36.Future<prefix34.LoginResult>>().type,
       const m.TypeValue<prefix16.TomFunctionObserver<prefix16.TomObservable>>()
@@ -44439,8 +44417,8 @@ final _data = <r.Reflection, r.ReflectorData>{
       const m.TypeValue<List<dynamic>>().type,
       const m.TypeValue<Map<Symbol, dynamic>>().type,
       Runes,
-      prefix61.GradedFieldDto,
-      const m.TypeValue<List<prefix61.GradedFieldDto>>().type,
+      prefix60.GradedFieldDto,
+      const m.TypeValue<List<prefix60.GradedFieldDto>>().type,
       const m.TypeValue<Iterable<String>>().type,
       const m.TypeValue<Map<String, Map<String, prefix41.TomAuthState>>>().type,
       const r.FakeType(r'dart.async.Future<List<T>>'),
@@ -44598,7 +44576,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       const m.TypeValue<String Function(String)>().type,
       const m.TypeValue<Iterable<int>>().type,
       const m.TypeValue<Map<String, Map<String, prefix41.TomAuthState>>>().type,
-      const m.TypeValue<Map<String, List<prefix61.GradedFieldDto>>>().type,
+      const m.TypeValue<Map<String, List<prefix60.GradedFieldDto>>>().type,
       const r.FakeType(r'dart.core.Iterable<Future<T>>'),
       const m.TypeValue<void Function(dynamic)>().type,
       const r.FakeType(r'dart.core.Iterable<Future<T>>'),

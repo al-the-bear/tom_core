@@ -1,12 +1,12 @@
-/// Locks the three-way alignment that makes the wire contract trustworthy: the
-/// registry's endpoints, their companion access maps, and the global
-/// `tomRemoteApis` registration must all agree. A drift here (an endpoint added
-/// without an access entry, or registered under the wrong id) is exactly the
-/// kind of silent wire mismatch this package exists to prevent.
+/// Locks the two-way alignment that makes the wire contract trustworthy: every
+/// endpoint declares its access policy directly (`TomApiEndpoint.access`,
+/// G-API-3), and the three APIs register under their expected ids. A drift here
+/// (an endpoint added without an access policy, or registered under the wrong
+/// id) is exactly the kind of silent wire mismatch this package exists to
+/// prevent.
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart'
     show
-        TomAccessControl,
         TomApi,
         TomAuthenticatedAccess,
         TomHttpMethod,
@@ -17,28 +17,28 @@ import 'package:test/test.dart';
 
 void main() {
   group('api registry', () {
-    test('every endpoint has exactly one access entry, and vice versa', () {
-      void checkCoverage(TomApi api, Map<String, TomAccessControl> access) {
-        expect(
-          access.keys.toSet(),
-          api.endpoints.keys.toSet(),
-          reason: '${api.id}: access map and endpoints must cover the same ids',
-        );
+    test('every endpoint declares an access policy', () {
+      void checkCoverage(TomApi api) {
+        for (final endpoint in api.endpoints.values) {
+          expect(
+            endpoint.access,
+            isNotNull,
+            reason: '${api.id}.${endpoint.id}: every endpoint must declare a '
+                'contract-side access policy (TomApiEndpoint.access)',
+          );
+        }
       }
 
-      checkCoverage(authApi, authApiAccess);
-      checkCoverage(adminApi, adminApiAccess);
-      checkCoverage(appApi, appApiAccess);
+      checkCoverage(authApi);
+      checkCoverage(adminApi);
+      checkCoverage(appApi);
     });
 
     test('only the documented endpoints are public', () {
       final public = <String>[
-        for (final entry in {
-          ...authApiAccess,
-          ...adminApiAccess,
-          ...appApiAccess,
-        }.entries)
-          if (entry.value is TomPublicAccess) entry.key,
+        for (final api in [authApi, adminApi, appApi])
+          for (final endpoint in api.endpoints.values)
+            if (endpoint.access is TomPublicAccess) endpoint.id,
       ];
       expect(public,
           unorderedEquals(['authLogin', 'authLoginResources', 'appHealth']));
@@ -54,26 +54,25 @@ void main() {
     });
 
     test('every admin endpoint requires the admin role', () {
-      for (final access in adminApiAccess.values) {
-        expect(access, isA<TomRoleAccess>());
-        expect((access as TomRoleAccess).roles, ['admin']);
+      for (final endpoint in adminApi.endpoints.values) {
+        expect(endpoint.access, isA<TomRoleAccess>());
+        expect((endpoint.access as TomRoleAccess).roles, ['admin']);
       }
     });
 
     test('the admin gate is the single centralized adminAccess constant', () {
-      // G-API-4 (light form of G-API-3): the `admin` role and its access policy
-      // are declared once (`adminRole`/`adminAccess`) and reused everywhere —
-      // both the registry's companion map and the server handlers' `@adminAccess`
-      // annotation point at this same constant, so there is no second definition
-      // to drift. Asserting *identity* (not just equality) locks that.
+      // G-API-4 / G-API-3: the `admin` role and its access policy are declared
+      // once (`adminRole`/`adminAccess`) and reused directly as every
+      // `/admin/*` endpoint's `access:`, so there is no second definition to
+      // drift. Asserting *identity* (not just equality) locks that.
       expect(adminRole, 'admin');
       expect(adminAccess.roles, [adminRole]);
-      for (final access in adminApiAccess.values) {
+      for (final endpoint in adminApi.endpoints.values) {
         expect(
-          identical(access, adminAccess),
+          identical(endpoint.access, adminAccess),
           isTrue,
-          reason: 'every adminApiAccess entry must be the shared adminAccess '
-              'constant, not a re-stated TomRoleAccess literal',
+          reason: 'every /admin/* endpoint must reference the shared '
+              'adminAccess constant, not a re-stated TomRoleAccess literal',
         );
       }
     });
@@ -82,15 +81,17 @@ void main() {
       // Login texts: public, on the auth API.
       expect(authApi.endpoints['authLoginResources']!.method,
           TomHttpMethod.get);
-      expect(authApiAccess['authLoginResources'], isA<TomPublicAccess>());
+      expect(authApi.endpoints['authLoginResources']!.access,
+          isA<TomPublicAccess>());
 
       // Admin console full bundle: admin-gated, on the admin API.
       expect(adminApi.endpoints['adminResources']!.method, TomHttpMethod.get);
-      expect(adminApiAccess['adminResources'], isA<TomRoleAccess>());
+      expect(adminApi.endpoints['adminResources']!.access, isA<TomRoleAccess>());
 
       // App client full bundle: authenticated, on the app API.
       expect(appApi.endpoints['appResources']!.method, TomHttpMethod.get);
-      expect(appApiAccess['appResources'], isA<TomAuthenticatedAccess>());
+      expect(appApi.endpoints['appResources']!.access,
+          isA<TomAuthenticatedAccess>());
     });
 
     test('registerAdvancedTodoApis is idempotent and registers all three', () {

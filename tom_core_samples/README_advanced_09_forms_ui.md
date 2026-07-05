@@ -185,7 +185,8 @@ The **admin console** (`advanced_authadmin_client`):
 
 - **Admin login + shell** — a bound `AdminLoginForm` (formId `adminLogin`) whose
   login is **two-phase** (authenticate, then *probe* an admin call, since
-  `/admin/*` is gated by `@TomRoleAccess(['admin'])` not the login itself), then a
+  `/admin/*` is gated by the contract-declared `TomRoleAccess(['admin'])` not the
+  login itself), then a
   `NavigationRail` over an `IndexedStack` of five destinations.
 - **Users / Roles / Groups** — three thin configurations of the **generic**
   `AdminCrudScreen<T>` (one list/dialog/confirm skeleton, not three), opening a

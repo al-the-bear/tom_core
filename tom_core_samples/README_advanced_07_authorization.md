@@ -170,15 +170,16 @@ form-path narrow, (4) per-field authorizer, (5) UI-state controller — each
 ## Route-level role gating for admin CRUD
 
 Field grades govern *content within* a form; whole **operations** are gated at
-the route. Every one of the auth server's fifteen `/admin/*` endpoints is
-annotated `@TomRoleAccess(['admin'])`
-(`advanced_auth_server/lib/src/endpoints/admin_endpoints.dart:644`), so the
-endpoint pipeline rejects a non-admin caller **before** the method runs — the
-role check happens in the pipeline, not in the handler. This is the coarse-grained
-companion to the fine-grained field grades: a viewer never reaches
-`adminCreateUser` at all, and even an admin's field-level edits to a graded item
-are still subject to the matrix above. (Contrast the app server's task endpoints,
-gated only by `@TomAuthenticatedAccess()` — any signed-in user may call them,
+the route. Every one of the auth server's `/admin/*` endpoints
+**declares on the contract** the shared `adminAccess` (`TomRoleAccess(['admin'])`)
+policy (`advanced_todo_contracts/lib/src/api_registry.dart`, `adminApi`), so the
+endpoint pipeline extracts it and rejects a non-admin caller **before** the
+method runs — the role check happens in the pipeline, not in the handler. This is
+the coarse-grained companion to the fine-grained field grades: a viewer never
+reaches `adminCreateUser` at all, and even an admin's field-level edits to a
+graded item are still subject to the matrix above. (Contrast the app server's
+task endpoints, whose contract declares only `TomAuthenticatedAccess()` — any
+signed-in user may call them,
 with per-resource role and per-field grade decided inside by the two resolvers.)
 The endpoint pipeline and annotations are part
 [10](README_advanced_10_servers_endpoints.md).

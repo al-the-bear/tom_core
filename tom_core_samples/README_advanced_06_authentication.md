@@ -42,8 +42,9 @@ two collaborators (the same seam philosophy as the persistence stores):
 zone** (`getFromCurrentZone<TomPrincipal>()`), which the server's authentication
 middleware populates from the bearer token — *not* from the
 `TomBearerAuthentication` client-side singleton, which the server never fills.
-`@TomAuthenticatedAccess` guarantees the pipeline already rejected any request
-without a principal, so the zone value is non-null inside those methods.
+The contract-declared `TomAuthenticatedAccess` (`TomApiEndpoint.access`)
+guarantees the pipeline already rejected any request without a principal, so the
+zone value is non-null inside those methods.
 
 A rejected login is the *expected* outcome of bad credentials, so the `login`
 endpoint declares a `LoginUnauthorizedErrorHandler` that maps `LoginException` to
@@ -161,7 +162,7 @@ Two request shapes coexist, divided by whether a bearer is present:
 - **Authenticated.** Every other endpoint goes through `AuthorizedHttp`, which
   injects `Authorization: Bearer <authzToken>` and applies the refresh-once policy.
   The server's middleware decodes the bearer into the request-zone principal that
-  `@TomAuthenticatedAccess` (and the role/field gates of part
+  the contract-declared `TomAuthenticatedAccess` (and the role/field gates of part
   [07](README_advanced_07_authorization.md)) check.
 
 ## Primary sources

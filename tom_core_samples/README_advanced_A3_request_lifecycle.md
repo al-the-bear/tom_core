@@ -67,9 +67,10 @@ final result = _requireLogin(response, 'auth.login.failed');
 _store(result);   // → TomBearerAuthentication.setTokens(authToken, authzToken, …)
 ```
 
-On the server, `login` is the one app/auth endpoint marked `@TomPublicAccess()` —
+On the server, `login` is one of the endpoints whose contract declares
+`TomPublicAccess()` (`TomApiEndpoint.access`) —
 it *must* be reachable without a bearer, because it is how a bearer is obtained
-(`advanced_auth_server/lib/src/endpoints/auth_endpoints.dart:193-200`). It
+(`advanced_todo_contracts/lib/src/api_registry.dart`, `authApi['authLogin']`). It
 delegates to `AuthTokenService.login` (`:59`), which verifies the password
 through `AdvancedAuthenticationService.authenticateUser` and then issues the
 **pair** of JWTs in `_issueFor` (`:95-121`): a public *authentication* token and
@@ -117,8 +118,8 @@ The kernel coordinator refreshes once and replays once; a single token expiry is
 therefore invisible to the caller, while a genuinely dead session surfaces as the
 kernel's typed `TomAuthExpiredException` rather than an infinite loop.
 
-On the server, the target endpoint carries `@TomAuthenticatedAccess()`
-(`advanced_app_server/lib/src/endpoints/app_endpoints.dart:1017-1021`). The
+On the server, the target endpoint's contract declares `TomAuthenticatedAccess()`
+(`advanced_todo_contracts/lib/src/api_registry.dart`, `appApi`). The
 pipeline ([Part 10](README_advanced_10_servers_endpoints.md)) validates the JWT
 signature against the shared key, decodes the principal, and places it in the
 **Dart request zone** *before* the handler runs. The component reads it from

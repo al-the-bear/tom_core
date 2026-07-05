@@ -166,8 +166,9 @@ Future<void> _installFullResources() async {
 ```
 
 The login bundle is unauthenticated by design (it is served *before* a token
-exists); the full and admin bundles sit behind `@TomAuthenticatedAccess()` /
-`@TomRoleAccess(['admin'])` — see part [07](README_advanced_07_authorization.md)
+exists); the full and admin bundles sit behind the contract-declared
+`TomAuthenticatedAccess()` / `TomRoleAccess(['admin'])`
+(`TomApiEndpoint.access`) — see part [07](README_advanced_07_authorization.md)
 and part [10](README_advanced_10_servers_endpoints.md).
 
 ## The sentinel-`[srv]` proof pattern

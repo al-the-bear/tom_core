@@ -5,8 +5,9 @@
 /// convention so a served label key cannot drift from the field's grade key, and
 /// the endpoint requires authentication (an anonymous caller is rejected). The
 /// bundle is pure text — no database — so this verifies directly against the
-/// [AppResourceBundles] source and the contract's `appApiAccess` policy, with no
-/// server or MariaDB.
+/// [AppResourceBundles] source and the endpoint's contract-declared access
+/// policy (`appApi.endpoints['appResources'].access`), with no server or
+/// MariaDB.
 library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
@@ -51,7 +52,7 @@ void main() {
 
     test('appResources requires authentication (rejects an anonymous caller)',
         () {
-      final access = appApiAccess['appResources']!;
+      final access = appApi.endpoints['appResources']!.access!;
       expect(access.checkAccessibility(null), isFalse);
       expect(access.checkAccessibility(_authenticated()), isTrue);
     });

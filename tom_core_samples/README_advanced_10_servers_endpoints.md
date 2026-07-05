@@ -36,60 +36,63 @@ instantiates, and each method is bound to its registry endpoint by
 @tomComponent
 @TomApiImplementation(apiId: 'app')
 class AdvancedAppApiService implements AppApiService {
-  @TomAuthenticatedAccess()
+  // No inline access annotation: the endpoint's access policy is declared on
+  // the contract (`appApi['appListItems'].access`) and extracted by the pipeline.
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appListItems')
   @override
   Future<List<TodoItem>> listItems(String listId) =>
       _reads.listItems(_principalId, int.tryParse(listId) ?? -1);
 }
 ```
-*(`app_endpoints.dart:959`, `:1011`)*
+*(`app_endpoints.dart`)*
 
 The pipeline routes an incoming URI to the endpoint, deserializes the request
 body/path parameters into the declared types, invokes the bound method, and
-serializes the result. The access annotation on the method is the gate it
-enforces **before** the method runs.
+serializes the result. The endpoint's **contract-declared** access policy
+(`TomApiEndpoint.access`, extracted by the pipeline on first call) is the gate it
+enforces **before** the method runs; a handler-side `TomAccessControl` annotation
+would be a local override, but the advanced servers declare none.
 
-The three access annotations the sample uses, all from the kernel's
+The three access policies the sample uses, all from the kernel's
 `TomAccessControl` family:
 
-| Annotation | Meaning | Where used |
-| ---------- | ------- | ---------- |
-| `@TomPublicAccess()` | No token required | `authLogin`, `authLoginResources`, `appHealth` |
-| `@TomAuthenticatedAccess()` | Any valid bearer principal | every other `/auth/*` and every `/app` endpoint |
-| `@TomRoleAccess(['admin'])` | A principal carrying the `admin` role | every `/admin/*` endpoint |
+| Access policy | Meaning | Where declared |
+| ------------- | ------- | -------------- |
+| `TomPublicAccess()` | No token required | `authLogin`, `authLoginResources`, `appHealth` |
+| `TomAuthenticatedAccess()` | Any valid bearer principal | every other `/auth/*` and every `/app` endpoint |
+| `TomRoleAccess(['admin'])` | A principal carrying the `admin` role | every `/admin/*` endpoint |
 
 ## Per-endpoint access policies
 
-The annotation on the method is the **authoritative** policy the pipeline
-enforces. The contract registry *also* carries a companion `*ApiAccess` map
-(`authApiAccess`, `adminApiAccess`, `appApiAccess`) keyed by endpoint id
-(`api_registry.dart:73`, `:181`, `:296`). Those maps are **informational** — a
-single readable place to see the whole surface's policy, and the source the
-client core reads to decide whether to attach a token — but they are *not*
-auto-applied to the server: the server enforces what its method annotations
-declare. The two are kept deliberately in lock-step; the `app_endpoints.dart:949`
-doc comment says it outright: "the registry's `appApiAccess` map is
-informational, not auto-applied."
+The access policy is **declared on the contract**, directly on each endpoint's
+`TomApiEndpoint.access` value (G-API-3). There is no separate policy source and
+no companion `*ApiAccess` map: each `TomApiEndpoint` in the registry names its
+own four-state access (`api_registry.dart`), the server pipeline **extracts that
+declaration on first call** and gates against it, and the client core reads the
+same `endpoint.access` to decide whether to attach a token. A handler *may*
+still carry an inline `TomAccessControl` annotation as a **local override**
+(`tea ?? ae.access` in the pipeline), but the advanced servers declare nothing
+inline — the contract is the single source of truth (C-12, the full form of
+G-API-3).
 
 The three surfaces gate at different granularities:
 
 - **`/auth/*` — mostly public-then-authenticated.** `authLogin` and
-  `authLoginResources` are `@TomPublicAccess()` (you cannot require a token to
+  `authLoginResources` declare `TomPublicAccess()` (you cannot require a token to
   log in, or to fetch the pre-login screen texts); `authRefresh`, `authLogout`,
-  `authMe` are `@TomAuthenticatedAccess()` (`auth_endpoints.dart:193`, `:202`,
-  `:235`).
+  `authMe` declare `TomAuthenticatedAccess()` (`api_registry.dart`, `authApi`).
 - **`/admin/*` — uniformly role-gated.** Every one of the sixteen admin endpoints
-  is `@TomRoleAccess(['admin'])` (`admin_endpoints.dart:644`…`:727`). A
+  declares the shared `adminAccess` (`TomRoleAccess(['admin'])`) constant
+  (`api_registry.dart`, `adminApi`). A
   signed-in **non-admin** authenticates fine but is refused here — the pipeline
   throws the access-denied exception before the method body runs. This is exactly
   what the admin client's two-phase login probes against (see
   [Part 11](README_advanced_11_clients_app_admin.md)).
 - **`/app` — authenticated blanket, then in-handler authorization.** Every board
-  endpoint but `appHealth` is `@TomAuthenticatedAccess()`. The blanket level only
-  proves *who* you are; **what** you may see and write is decided inside the
+  endpoint but `appHealth` declares `TomAuthenticatedAccess()`. The blanket level
+  only proves *who* you are; **what** you may see and write is decided inside the
   handler by the resource- and field-level checks below
-  (`api_registry.dart:293`).
+  (`api_registry.dart`, `appApi`).
 
 When the pre-invocation check denies, the pipeline throws a
 `TomEndpointHandlerException` keyed
@@ -107,8 +110,8 @@ Neither server sets `authenticationMiddleware` on its configuration, so
 `TomServer.start()` installs the framework default,
 `tomDefaultAuthenticationMiddleware`. It reads the request's bearer token, builds
 the `TomPrincipal`, and places it in the per-request **Dart zone** — which is what
-both the `@TomAuthenticatedAccess`/`@TomRoleAccess` checks and the handlers read
-from (`auth_server_start.dart:18`).
+both the contract-declared `TomAuthenticatedAccess`/`TomRoleAccess` checks and
+the handlers read from (`auth_server_start.dart:18`).
 
 A handler that needs the caller's id reads it from the zone, **not** from the
 `TomBearerAuthentication` static singleton:
@@ -127,7 +130,7 @@ source.
 
 ## Ownership + share resolution
 
-The `/app` blanket `@TomAuthenticatedAccess` proves identity; the board's real
+The `/app` blanket `TomAuthenticatedAccess` proves identity; the board's real
 authorization is two resolvers the handlers consult per call (introduced in
 [Part 07](README_advanced_07_authorization.md), here seen at the wire):
 
@@ -167,8 +170,9 @@ Two distinct probes, deliberately on different paths:
   liveness probe in *every* server. Nothing in the sample declares it; it is
   there for free.
 - **`GET /status`** — the app's own typed JSON status (`{status, service}`),
-  declared `appHealth` and annotated `@TomPublicAccess()` so an unauthenticated
-  load balancer can poll it (`app_endpoints.dart:987`, `api_registry.dart:207`).
+  declared `appHealth` with contract-declared `TomPublicAccess()`
+  (`TomApiEndpoint.access`) so an unauthenticated
+  load balancer can poll it (`api_registry.dart`, `appApi`).
 
 `appHealth` uses `/status` rather than `/health` *because* the framework already
 owns `/health` — an app `/health` would be shadowed by the auto-mounted probe.
@@ -218,8 +222,9 @@ Putting it together, a single authenticated board request flows:
    deserializes the request.
 2. **Authenticate** — `tomDefaultAuthenticationMiddleware` reads the bearer token
    and places the `TomPrincipal` in the request zone.
-3. **Gate** — the method's access annotation runs *before* the body:
-   `@TomAuthenticatedAccess` requires a principal, `@TomRoleAccess(['admin'])`
+3. **Gate** — the endpoint's contract-declared access policy
+   (`TomApiEndpoint.access`, extracted by the pipeline) runs *before* the body:
+   `TomAuthenticatedAccess` requires a principal, `TomRoleAccess(['admin'])`
    requires the role. A denial throws the access-denied key (→ server handler →
    403).
 4. **Authorize** — inside the handler, `ResourceAccessResolver` filters

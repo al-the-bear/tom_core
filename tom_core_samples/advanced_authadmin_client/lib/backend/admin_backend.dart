@@ -12,8 +12,9 @@
 /// the grant matrix, and assignments — plus the two **session** operations
 /// ([login]/[logout]) the admin API client does not own (the live wiring routes
 /// those through `AuthClient`). Every administrative operation requires the
-/// `admin` role: the live server gates each `/admin/*` endpoint with
-/// `@TomRoleAccess(['admin'])`, and the in-memory fake mirrors that gate so a
+/// `admin` role: each `/admin/*` endpoint's contract declares
+/// `TomRoleAccess(['admin'])` (`TomApiEndpoint.access`) and the live server's
+/// pipeline enforces it, and the in-memory fake mirrors that gate so a
 /// non-admin principal is refused identically either way.
 library;
 

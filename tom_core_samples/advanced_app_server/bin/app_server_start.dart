@@ -8,7 +8,8 @@
 ///   platform → registry → reflection → runtime → config → datasource →
 ///   JWT signing → bean context → migrations → `TomServer.start()`
 ///
-/// Every endpoint but `/health` is `@TomAuthenticatedAccess`, so the boot trusts
+/// Every endpoint but `/health` is contract-declared `TomAuthenticatedAccess`
+/// (`TomApiEndpoint.access`, extracted by the pipeline), so the boot trusts
 /// the **same JWT signing key as the auth server**: [initializeJwtSigning] applies
 /// the identical framework sample keypair (`isDummy: false`), which is what lets a
 /// token minted by `advanced_auth_server` verify here — the standard "resource

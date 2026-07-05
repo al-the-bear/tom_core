@@ -36,7 +36,9 @@ void main() {
     });
 
     test('login resources are reachable unauthenticated', () {
-      expect(authApiAccess['authLoginResources']!.checkAccessibility(null),
+      expect(
+          authApi.endpoints['authLoginResources']!.access!
+              .checkAccessibility(null),
           isTrue);
     });
   });
@@ -58,7 +60,7 @@ void main() {
     });
 
     test('admin resources require the admin role (reject anon + non-admin)', () {
-      final access = adminApiAccess['adminResources']!;
+      final access = adminApi.endpoints['adminResources']!.access!;
       expect(access.checkAccessibility(null), isFalse);
       expect(access.checkAccessibility(_principal(roles: ['editor'])), isFalse);
       expect(access.checkAccessibility(_principal(roles: ['admin'])), isTrue);

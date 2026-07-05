@@ -37,9 +37,11 @@ Two resolvers underpin authorization (both database-free over their own seam):
   grant matrix the auth server owns), so a write touching a field the role is
   not `full` on is rejected server-side.
 
-The adapter (`AdvancedAppApiService`) declares the access annotations
-explicitly: `appHealth` is `@TomPublicAccess`, every other endpoint is
-`@TomAuthenticatedAccess`. The pipeline reads the caller's principal from the
+The per-endpoint access policy is **declared on the contract**
+(`TomApiEndpoint.access`, G-API-3), not annotated on `AdvancedAppApiService`'s
+handlers: `appHealth` is `TomPublicAccess`, every other endpoint is
+`TomAuthenticatedAccess`. The pipeline extracts that declaration on first call
+and reads the caller's principal from the
 bearer token via the default `tomDefaultAuthenticationMiddleware`; the
 resource- and field-level checks then run inside the handlers. The services
 throw stable `TomEndpointHandlerException` keys rather than HTTP responses, and

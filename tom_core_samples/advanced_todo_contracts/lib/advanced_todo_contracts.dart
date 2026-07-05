@@ -9,9 +9,9 @@
 ///   `AuthApiService`, `AdminApiService`, `AppApiService`, the implementation
 ///   seam shared by the servers and the client core;
 /// - the wire registry (`src/api_registry.dart`) — each endpoint's URI, HTTP
-///   method, request/response types (`authApi`/`adminApi`/`appApi`) and
-///   per-endpoint four-state access policy (`authApiAccess`/`adminApiAccess`/
-///   `appApiAccess`), plus `registerAdvancedTodoApis()`.
+///   method, request/response types (`authApi`/`adminApi`/`appApi`) and its
+///   per-endpoint four-state access policy declared directly on the endpoint
+///   (`TomApiEndpoint.access`, G-API-3), plus `registerAdvancedTodoApis()`.
 ///
 /// Importing this barrel gives both tiers the same, single definition of the
 /// wire surface. The package depends only on `tom_core_kernel` + the domain

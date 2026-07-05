@@ -8,10 +8,12 @@
 /// `tom_core_server` and therefore cannot appear here — the servers re-declare
 /// their endpoint classes against this registry when they are built.
 ///
-/// Access is captured in the companion `*ApiAccess` maps (keyed by endpoint id)
-/// because `TomApiEndpoint` has no access field; the kernel `TomAccessControl`
-/// values (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess`) are the
-/// authoritative per-endpoint policy the servers enforce.
+/// Access is declared **directly on each endpoint** via `TomApiEndpoint.access`
+/// (G-API-3, full form / C-12): the kernel `TomAccessControl` values
+/// (`TomPublicAccess`/`TomAuthenticatedAccess`/`TomRoleAccess`) are the
+/// authoritative per-endpoint policy, and the server pipeline extracts them on
+/// first call unless an implementation handler overrides them locally. There is
+/// no companion access map — the endpoint declaration is the single source.
 library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
@@ -31,14 +33,16 @@ const String adminRole = 'admin';
 
 /// Access policy shared by every `/admin/*` endpoint: the `admin` role only.
 ///
-/// Declared once on the contract side and referenced directly as the
-/// `@adminAccess` annotation on each `/admin/*` implementation handler (G-API-3
-/// light form / G-API-4) — so no handler restates `TomRoleAccess(['admin'])`
-/// inline. It is also the value every [adminApiAccess] entry points at, keeping
-/// the companion map and the handler annotations a single source of truth.
+/// Declared once on the contract side and referenced directly as the `access:`
+/// of each `/admin/*` endpoint below (G-API-3 / G-API-4) — so neither the
+/// registry nor a handler restates `TomRoleAccess(['admin'])` inline. Being a
+/// single `const` value, every `/admin/*` endpoint shares the same instance.
 const TomRoleAccess adminAccess = TomRoleAccess([adminRole]);
 
 /// Authentication API (`/auth/*`) — credential exchange and session lifecycle.
+///
+/// `authLogin` and `authLoginResources` are the two public endpoints (credential
+/// exchange and the pre-login texts); the rest require authentication.
 final TomApi authApi = TomApi(
   id: 'auth',
   name: 'Authentication API',
@@ -50,6 +54,7 @@ final TomApi authApi = TomApi(
       uri: '/login',
       method: TomHttpMethod.post,
       includeBearerAuthentication: false,
+      access: TomPublicAccess(),
     ),
     TomApiEndpoint<ResourceBundleDto, Object?>(
       id: 'authLoginResources',
@@ -57,40 +62,34 @@ final TomApi authApi = TomApi(
       method: TomHttpMethod.get,
       includeBearerAuthentication: false,
       requestTypes: const [],
+      access: TomPublicAccess(),
     ),
     TomApiEndpoint<LoginResult, Object?>(
       id: 'authRefresh',
       uri: '/refresh',
       method: TomHttpMethod.post,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'authLogout',
       uri: '/logout',
       method: TomHttpMethod.post,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<UserDto, Object?>(
       id: 'authMe',
       uri: '/me',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
   ],
 );
 
-/// Per-endpoint access for [authApi]; `authLogin` and `authLoginResources` are
-/// the two public endpoints (credential exchange and the pre-login texts).
-const Map<String, TomAccessControl> authApiAccess = {
-  'authLogin': TomPublicAccess(),
-  'authLoginResources': TomPublicAccess(),
-  'authRefresh': TomAuthenticatedAccess(),
-  'authLogout': TomAuthenticatedAccess(),
-  'authMe': TomAuthenticatedAccess(),
-};
-
 /// Administration API (`/admin/*`) — accounts, roles, groups, the grant matrix,
-/// and assignments. Every endpoint is `admin`-gated.
+/// and assignments. Every endpoint is `admin`-gated via [adminAccess].
 final TomApi adminApi = TomApi(
   id: 'admin',
   name: 'Administration API',
@@ -102,113 +101,113 @@ final TomApi adminApi = TomApi(
       uri: '/users',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<UserDto, CreateUserRequest>(
       id: 'adminCreateUser',
       uri: '/users',
       method: TomHttpMethod.post,
+      access: adminAccess,
     ),
     TomApiEndpoint<UserDto, UserDto>(
       id: 'adminUpdateUser',
       uri: '/users/{id}',
       method: TomHttpMethod.put,
+      access: adminAccess,
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'adminDeleteUser',
       uri: '/users/{id}',
       method: TomHttpMethod.delete,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<List<RoleDto>, Object?>(
       id: 'adminListRoles',
       uri: '/roles',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<RoleDto, RoleDto>(
       id: 'adminCreateRole',
       uri: '/roles',
       method: TomHttpMethod.post,
+      access: adminAccess,
     ),
     TomApiEndpoint<RoleDto, RoleDto>(
       id: 'adminUpdateRole',
       uri: '/roles/{key}',
       method: TomHttpMethod.put,
+      access: adminAccess,
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'adminDeleteRole',
       uri: '/roles/{key}',
       method: TomHttpMethod.delete,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<List<GroupDto>, Object?>(
       id: 'adminListGroups',
       uri: '/groups',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<GroupDto, GroupDto>(
       id: 'adminCreateGroup',
       uri: '/groups',
       method: TomHttpMethod.post,
+      access: adminAccess,
     ),
     TomApiEndpoint<GroupDto, GroupDto>(
       id: 'adminUpdateGroup',
       uri: '/groups/{id}',
       method: TomHttpMethod.put,
+      access: adminAccess,
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'adminDeleteGroup',
       uri: '/groups/{id}',
       method: TomHttpMethod.delete,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<GrantMatrixDto, Object?>(
       id: 'adminGetGrants',
       uri: '/grants',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: adminAccess,
     ),
     TomApiEndpoint<Object?, GrantMatrixDto>(
       id: 'adminPutGrants',
       uri: '/grants',
       method: TomHttpMethod.put,
+      access: adminAccess,
     ),
     TomApiEndpoint<Object?, AssignmentRequest>(
       id: 'adminAssign',
       uri: '/assignments',
       method: TomHttpMethod.post,
+      access: adminAccess,
     ),
     TomApiEndpoint<ResourceBundleDto, Object?>(
       id: 'adminResources',
       uri: '/resources',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: adminAccess,
     ),
   ],
 );
 
-/// Per-endpoint access for [adminApi]; every endpoint requires the `admin` role.
-const Map<String, TomAccessControl> adminApiAccess = {
-  'adminListUsers': adminAccess,
-  'adminCreateUser': adminAccess,
-  'adminUpdateUser': adminAccess,
-  'adminDeleteUser': adminAccess,
-  'adminListRoles': adminAccess,
-  'adminCreateRole': adminAccess,
-  'adminUpdateRole': adminAccess,
-  'adminDeleteRole': adminAccess,
-  'adminListGroups': adminAccess,
-  'adminCreateGroup': adminAccess,
-  'adminUpdateGroup': adminAccess,
-  'adminDeleteGroup': adminAccess,
-  'adminGetGrants': adminAccess,
-  'adminPutGrants': adminAccess,
-  'adminAssign': adminAccess,
-  'adminResources': adminAccess,
-};
-
 /// Application API (the todo board) — authenticated except `appHealth`.
+///
+/// Everything but `appHealth` is authenticated; resource- and field-level
+/// authorization is enforced inside the handlers (shares + the four-state
+/// grade), not by these blanket per-endpoint levels.
 final TomApi appApi = TomApi(
   id: 'app',
   name: 'Todo Application API',
@@ -224,102 +223,96 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.get,
       includeBearerAuthentication: false,
       requestTypes: const [],
+      access: TomPublicAccess(),
     ),
     TomApiEndpoint<List<Workspace>, Object?>(
       id: 'appListWorkspaces',
       uri: '/workspaces',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<List<Project>, Object?>(
       id: 'appListProjects',
       uri: '/projects',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Project, Project>(
       id: 'appCreateProject',
       uri: '/projects',
       method: TomHttpMethod.post,
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<List<TodoList>, Object?>(
       id: 'appListLists',
       uri: '/lists',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<List<TodoItem>, Object?>(
       id: 'appListItems',
       uri: '/items',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<TodoItem, TodoItem>(
       id: 'appCreateItem',
       uri: '/items',
       method: TomHttpMethod.post,
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<TodoItem, TodoItem>(
       id: 'appUpdateItem',
       uri: '/items/{id}',
       method: TomHttpMethod.put,
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'appDeleteItem',
       uri: '/items/{id}',
       method: TomHttpMethod.delete,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<TodoComment, TodoComment>(
       id: 'appAddComment',
       uri: '/items/{id}/comments',
       method: TomHttpMethod.post,
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<List<GradedFieldDto>, Object?>(
       id: 'appItemFieldStates',
       uri: '/items/{id}/field-states',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, ShareRequest>(
       id: 'appShare',
       uri: '/share',
       method: TomHttpMethod.post,
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, Object?>(
       id: 'appRevokeShare',
       uri: '/share/{id}',
       method: TomHttpMethod.delete,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<ResourceBundleDto, Object?>(
       id: 'appResources',
       uri: '/resources',
       method: TomHttpMethod.get,
       requestTypes: const [],
+      access: TomAuthenticatedAccess(),
     ),
   ],
 );
-
-/// Per-endpoint access for [appApi]; everything but `appHealth` is
-/// authenticated. Resource- and field-level authorization is enforced inside
-/// the handlers (shares + the four-state grade), not by these blanket levels.
-const Map<String, TomAccessControl> appApiAccess = {
-  'appHealth': TomPublicAccess(),
-  'appListWorkspaces': TomAuthenticatedAccess(),
-  'appListProjects': TomAuthenticatedAccess(),
-  'appCreateProject': TomAuthenticatedAccess(),
-  'appListLists': TomAuthenticatedAccess(),
-  'appListItems': TomAuthenticatedAccess(),
-  'appCreateItem': TomAuthenticatedAccess(),
-  'appUpdateItem': TomAuthenticatedAccess(),
-  'appDeleteItem': TomAuthenticatedAccess(),
-  'appAddComment': TomAuthenticatedAccess(),
-  'appItemFieldStates': TomAuthenticatedAccess(),
-  'appShare': TomAuthenticatedAccess(),
-  'appRevokeShare': TomAuthenticatedAccess(),
-  'appResources': TomAuthenticatedAccess(),
-};
 
 /// Registers [authApi], [adminApi] and [appApi] with the global
 /// [tomRemoteApis] registry. Idempotent — registering an API replaces any prior
