@@ -3,19 +3,19 @@
 # database_migrations/ — here `auth_db` — so TomDbMigrations matches schema to
 # datasource. The `mariadb` driver is auto-discovered by tom_core_server.
 #
-# `port` is a literal int, not a `${...}` substitution: the substitution always
-# yields a string, and the MariaDB datasource binds `port` to an int field, so a
-# substituted "3307" fails reflection. The compose service publishes 3307 on the
-# host (so auth_db and the app server's app_db do not collide), but inside the
-# container the server still talks to MariaDB on 3306 — set AUTH_DB_HOST=auth-db
-# for the in-network case. Host/credentials/name are strings, so they substitute
-# cleanly.
+# `port` is expressed as a `${...}` substitution like every other field. The
+# substitution yields a string, and the MariaDB datasource parses a string port
+# to the int it binds (G-DB-3), so both an int literal and a substituted "3307"
+# work. The compose service publishes 3307 on the host (so auth_db and the app
+# server's app_db do not collide), but inside the container the server still
+# talks to MariaDB on 3306 — set AUTH_DB_HOST=auth-db for the in-network case.
+# Host/credentials/name are strings, so they substitute cleanly.
 auth_db:
   type: mariadb
   username: ${AUTH_DB_USER:auth}
   password: ${AUTH_DB_PASSWORD:auth}
   host: ${AUTH_DB_HOST:localhost}
-  port: 3307
+  port: ${AUTH_DB_PORT:3307}
   databaseName: ${AUTH_DB_NAME:auth_db}
 
 # The framework's graded-authorization store (`TomResourceGrant`) is bound to

@@ -3,16 +3,16 @@
 # database_migrations/ — here `todo_db` — so TomDbMigrations matches schema to
 # datasource. The `mariadb` driver is auto-discovered by tom_core_server.
 #
-# `port` is a literal int, not a `${...}` substitution: the substitution always
-# yields a string, and the MariaDB datasource binds `port` to an int field, so a
-# substituted "3306" fails reflection. Host/credentials/name are strings, so
-# they substitute cleanly.
+# `port` is expressed as a `${...}` substitution like every other field. The
+# substitution yields a string, and the MariaDB datasource parses a string port
+# to the int it binds (G-DB-3), so both an int literal and a substituted "3306"
+# work. Host/credentials/name are strings, so they substitute cleanly.
 todo_db:
   type: mariadb
   username: ${TODO_DB_USER:app}
   password: ${TODO_DB_PASSWORD:app}
   host: ${TODO_DB_HOST:localhost}
-  port: 3306
+  port: ${TODO_DB_PORT:3306}
   databaseName: ${TODO_DB_NAME:todo_db}
 
 # The framework's graded-authorization store (`TomResourceGrant`) is bound to
