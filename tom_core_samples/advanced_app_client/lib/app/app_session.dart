@@ -179,7 +179,7 @@ class AppSession extends ChangeNotifier {
   }
 
   /// The stable error keys that mean "re-authentication required": the live
-  /// stack's post-refresh `401` ([AuthorizedHttpException] →
+  /// stack's post-refresh `401` ([TomAuthExpiredException] →
   /// `auth.session_expired`) and a call made with no session at all.
   static const Set<String> _sessionLostKeys = {
     'auth.session_expired',

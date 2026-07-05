@@ -12,7 +12,7 @@
 /// client-core counterpart, folds the server's per-field grade list into the
 /// UI-shaped `resourceKey → TomAuthState` map, and normalises the client core's
 /// transport exceptions (`AuthClientException`/`AppApiException`/
-/// `AuthorizedHttpException`) into the single [AppBackendException] the screens
+/// `TomAuthExpiredException`) into the single [AppBackendException] the screens
 /// catch. The parsers it relies on build reflected entities, so the bootstrap
 /// must call `initializeReflection()` before the first call.
 library;
@@ -104,7 +104,7 @@ class LiveAppBackend implements AppBackend {
     try {
       return await op();
     } on TomException catch (e) {
-      // AuthClientException / AppApiException / AuthorizedHttpException all
+      // AuthClientException / AppApiException / TomAuthExpiredException all
       // extend TomException and carry the server's stable key + message.
       throw AppBackendException(e.defaultUserMessage, key: e.key);
     }

@@ -26,7 +26,7 @@
 ///
 /// A denial the server maps to `403`/`404` (an `{"error": key}` body, see plan
 /// §A.6) surfaces as a typed [AppApiException] carrying that stable key; a
-/// persistent `401` was already turned into an `AuthorizedHttpException` by the
+/// persistent `401` was already turned into an `TomAuthExpiredException` by the
 /// wrapper before it reaches here.
 ///
 /// Reflection must be initialized (`initializeReflection()` from
@@ -45,7 +45,7 @@ import '../http/authorized_http.dart';
 import '../http/json_transport.dart';
 
 /// Raised when an app-API call returns a non-success status the wrapper did not
-/// already handle (a 401 becomes an `AuthorizedHttpException` upstream).
+/// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
 ///
 /// Carries the HTTP [statusCode] and the server's stable error [key] from the
 /// `{"error": key}` body (e.g. `app.access.forbidden` → 403,

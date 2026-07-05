@@ -97,21 +97,25 @@ the singleton token store.
 
 The client now reads an item's field grades. Every app call goes through
 `AuthorizedHttp.send`, which injects the stored bearer **fresh on each attempt**
-and self-heals a single expiry (`advanced_client_core/lib/src/http/authorized_http.dart:56`):
+and delegates the self-heal decision to the framework's pluggable policy
+(`tom_core_kernel`'s `tomRunWithAuthRetry`, G-AUTH-3) — it no longer hand-codes
+the 401→refresh→retry sequence
+(`advanced_client_core/lib/src/http/authorized_http.dart`):
 
 ```dart
-final first = await _sendWithBearer(method, uri, headers, body);
-if (first.statusCode != 401) return first;
-await _authClient.refresh();                    // refresh ONCE
-final retry = await _sendWithBearer(method, uri, headers, body);
-if (retry.statusCode == 401) throw AuthorizedHttpException(…);   // genuinely dead
+return tomRunWithAuthRetry<HttpJsonResponse>(
+  send: () => _sendWithBearer(method, uri, headers, body), // bearer fresh each try
+  statusOf: (r) => r.statusCode,
+  errorKeyOf: _errorKey,
+  refresher: _refresher,        // AuthClient.refresh() re-mints the pair, ONCE
+);
 ```
 
 `_sendWithBearer` re-reads `TomBearerAuthentication.authorizationToken` on every
-call (`:82-99`), so the post-refresh retry automatically picks up the freshly
-minted token. A single token expiry is therefore invisible to the caller; a
-genuinely dead session surfaces as a typed `AuthorizedHttpException` rather than
-an infinite loop.
+call, so the post-refresh retry automatically picks up the freshly minted token.
+The kernel coordinator refreshes once and replays once; a single token expiry is
+therefore invisible to the caller, while a genuinely dead session surfaces as the
+kernel's typed `TomAuthExpiredException` rather than an infinite loop.
 
 On the server, the target endpoint carries `@TomAuthenticatedAccess()`
 (`advanced_app_server/lib/src/endpoints/app_endpoints.dart:1017-1021`). The

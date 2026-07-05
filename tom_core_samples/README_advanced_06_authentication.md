@@ -136,15 +136,17 @@ which is what makes the retry transparently pick up a just-refreshed token.
 
 ## Token refresh
 
-`AuthorizedHttp.send` implements **refresh-once-on-401**: it sends the request with
-the current bearer; a 2xx or any non-401 status (403/404/… the API client
+`AuthorizedHttp.send` attaches the current bearer and defers the recovery
+decision to the framework's pluggable policy (`tom_core_kernel`'s
+`tomRunWithAuthRetry`, G-AUTH-3) — **refresh-once-on-401**: it sends the request
+with the current bearer; a 2xx or any non-401 status (403/404/… the API client
 interprets itself) returns as-is; a **401** triggers a single `AuthClient.refresh`
 and *exactly one* retry with the freshly stored bearer. If the retry is still 401,
-the session is genuinely dead and it throws `AuthorizedHttpException` (never
-loops); a refresh that itself fails surfaces its own `AuthClientException`. So a
-single token expiry is invisible to the caller, while a dead session surfaces as a
-typed error. `refresh` itself requires a prior login — with no stored authorization
-token it throws `auth.no_token`.
+the session is genuinely dead and the kernel throws `TomAuthExpiredException`
+(never loops); a refresh that itself fails surfaces its own `AuthClientException`.
+So a single token expiry is invisible to the caller, while a dead session surfaces
+as a typed error. `refresh` itself requires a prior login — with no stored
+authorization token it throws `auth.no_token`.
 
 ## Pre-login vs authenticated request paths
 

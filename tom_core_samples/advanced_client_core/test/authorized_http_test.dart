@@ -106,7 +106,7 @@ void main() {
           equals('Bearer $authz0'));
     });
 
-    test('TC-23-04: a 401 that persists after refresh throws AuthorizedHttpException',
+    test('TC-23-04: a 401 that persists after refresh throws TomAuthExpiredException',
         () async {
       final authz0 = _makeJwt({'username': 'alice', 'userId': 2});
       TomBearerAuthentication.setTokens(authz0, authz0, false);
@@ -123,7 +123,7 @@ void main() {
 
       await expectLater(
         http.send(method: 'GET', uri: appUri),
-        throwsA(isA<AuthorizedHttpException>()
+        throwsA(isA<TomAuthExpiredException>()
             .having((e) => e.key, 'key', 'auth.token.invalid')
             .having((e) => e.statusCode, 'statusCode', 401)),
       );

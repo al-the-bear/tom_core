@@ -10,7 +10,7 @@
 ///
 /// The class is a thin adapter: it forwards each [AdminBackend] method to its
 /// client-core counterpart and normalises the client core's transport exceptions
-/// (`AuthClientException`/`AdminApiException`/`AuthorizedHttpException`) into the
+/// (`AuthClientException`/`AdminApiException`/`TomAuthExpiredException`) into the
 /// single [AdminBackendException] the screens catch — preserving the server's
 /// stable error key, so the shell can still reject a non-admin login by keying on
 /// the `admin`-role gate's denial. The admin DTOs are plain records, so this
@@ -109,7 +109,7 @@ class LiveAdminBackend implements AdminBackend {
     try {
       return await op();
     } on TomException catch (e) {
-      // AuthClientException / AdminApiException / AuthorizedHttpException all
+      // AuthClientException / AdminApiException / TomAuthExpiredException all
       // extend TomException and carry the server's stable key + message.
       throw AdminBackendException(e.defaultUserMessage, key: e.key);
     }

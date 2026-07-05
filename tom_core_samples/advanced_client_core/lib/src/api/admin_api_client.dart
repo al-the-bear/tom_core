@@ -39,7 +39,7 @@
 /// A denial the server maps to a non-success status (a `{"error": key}` body,
 /// e.g. the `admin`-role gate's `403`) surfaces as a typed [AdminApiException]
 /// carrying that stable key; a persistent `401` was already turned into an
-/// `AuthorizedHttpException` by the wrapper before it reaches here.
+/// `TomAuthExpiredException` by the wrapper before it reaches here.
 ///
 /// No reflection is required: the admin DTOs are plain records (unlike the app
 /// API's reflected entities), so this client needs neither `initializeReflection`
@@ -55,7 +55,7 @@ import '../http/authorized_http.dart';
 import '../http/json_transport.dart';
 
 /// Raised when an admin-API call returns a non-success status the wrapper did not
-/// already handle (a 401 becomes an `AuthorizedHttpException` upstream).
+/// already handle (a 401 becomes an `TomAuthExpiredException` upstream).
 ///
 /// Carries the HTTP [statusCode] and the server's stable error [key] from the
 /// `{"error": key}` body (e.g. `endpoint_handler.handle_method_call.access_denied`

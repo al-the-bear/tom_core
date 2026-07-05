@@ -58,17 +58,19 @@ and field grades from the app API, so no RSA key is configured client-side.
 
 `AuthorizedHttp` (`lib/src/http/authorized_http.dart`) is the decorator the app
 and admin API clients (steps 24–25) send every authenticated call through. It
-composes the two step-22 pieces — the `JsonTransport` for the call and
-`AuthClient.refresh` for recovery:
+supplies the two client-specific seams to the framework's pluggable refresh/retry
+policy (`tom_core_kernel`'s `tomRunWithAuthRetry`, G-AUTH-3) — the `JsonTransport`
+for the call and a `TomAuthRefresher` backed by `AuthClient.refresh` for recovery
+— rather than hand-coding the sequence:
 
 - Injects `Authorization: Bearer <authzToken>` from the stored session, merged
   with any caller-supplied headers, read **fresh on every attempt**.
-- On a `401` it refreshes the token pair **once** and retries the request
-  **exactly once** — so a single token expiry is invisible to the caller.
+- On a `401` the kernel policy refreshes the token pair **once** and retries the
+  request **exactly once** — so a single token expiry is invisible to the caller.
 - A `2xx` (or any non-401 status such as `403`/`404` the API client maps itself)
-  is returned as-is. A `401` that persists *after* the refresh+retry throws
-  `AuthorizedHttpException` (the session is dead — re-authenticate); a refresh
-  that itself fails surfaces its own `AuthClientException`.
+  is returned as-is. A `401` that persists *after* the refresh+retry throws the
+  kernel's `TomAuthExpiredException` (the session is dead — re-authenticate); a
+  refresh that itself fails surfaces its own `AuthClientException`.
 
 ```dart
 final transport = IoJsonTransport();
@@ -99,7 +101,7 @@ no socket — mirroring `core_client_sample`'s `LiveTodoReadClient` discipline.
   ISO string, and the field-state matrix as a bare array of `GradedFieldDto`.
 - **Errors.** A `403`/`404` (`{"error": key}` body) surfaces as a typed
   `AppApiException` carrying the server's stable key; a persistent `401` was
-  already turned into an `AuthorizedHttpException` by the wrapper.
+  already turned into an `TomAuthExpiredException` by the wrapper.
 - **Reflection.** The parsers build reflected entities, so
   `initializeReflection()` (from `advanced_todo_domain`) must run first — the app
   bootstrap does it once at startup; tests do it in `setUpAll`.
@@ -148,7 +150,7 @@ wrappers — and, unlike the app API's reflected entities, **no
   `admin`-role gate's `403` with body
   `{"error": "endpoint_handler.handle_method_call.access_denied"}`) surfaces as a
   typed `AdminApiException` carrying that stable key and the status; a persistent
-  `401` was already turned into an `AuthorizedHttpException` by the wrapper.
+  `401` was already turned into an `TomAuthExpiredException` by the wrapper.
 
 ```dart
 final transport = IoJsonTransport();

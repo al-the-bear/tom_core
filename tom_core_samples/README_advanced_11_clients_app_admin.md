@@ -112,7 +112,7 @@ never a concrete class. That single seam is what lets the widget tests run
   `AuthorizedHttp`, so the bearer the login stores is the one every subsequent
   call presents (`main.dart` `_buildBackend`). They normalise the client core's
   transport exceptions (`AuthClientException` / `AppApiException` /
-  `AuthorizedHttpException`) into the single typed `AppBackendException` /
+  `TomAuthExpiredException`) into the single typed `AppBackendException` /
   `AdminBackendException` the screens catch, carrying the server's stable error
   `key` so a caller can branch without parsing the message.
 
