@@ -296,9 +296,12 @@ The authorization model is **four-state** — `none < disabled < read < full`
 - **G-AUTHZ-4** — Server-side write enforcement is authoritative
   (`_enforceFieldWrites`); the client's `TomAuthState` only drives presentation.
   Never trust a client-side grant.
-- **G-AUTHZ-5** — Authorization changes take effect on **re-authentication**.
-  Document explicitly that a user must **re-login** for a role/grant change to
-  reach their session (the token carries the resolved grants). This is by design.
+- **G-AUTHZ-5** — Authorization changes take effect on the **next JWT token
+  refresh**. Because the token carries the resolved grants, a role/grant change
+  reaches a session only when a fresh token is issued — which happens **either**
+  on re-authentication (re-login) **or** on the automatic token refresh
+  (G-AUTH-3). It does not reach a live session mid-token. Document this
+  explicitly; it is by design.
 
 ---
 
@@ -418,7 +421,8 @@ Anchor: `TomAction`
   alongside, so the diagram is legible to both humans and tools. Diagrams
   required in `README_advanced_01_architecture.md`: layering/dependency arrows;
   shared JWT signing key; the end-to-end request + grant-propagation loop
-  (annotated that a user must re-login for an authorization change to apply); the
+  (annotated that an authorization change applies on the next JWT refresh —
+  re-login or automatic refresh); the
   overall architecture; the client-call ↔ API-definition ↔ service-impl ↔ routing
   relationship; the token refresh mechanism; the two round-trips of the request
   lifecycle.
