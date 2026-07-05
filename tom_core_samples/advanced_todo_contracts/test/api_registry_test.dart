@@ -60,6 +60,24 @@ void main() {
       }
     });
 
+    test('the admin gate is the single centralized adminAccess constant', () {
+      // G-API-4 (light form of G-API-3): the `admin` role and its access policy
+      // are declared once (`adminRole`/`adminAccess`) and reused everywhere —
+      // both the registry's companion map and the server handlers' `@adminAccess`
+      // annotation point at this same constant, so there is no second definition
+      // to drift. Asserting *identity* (not just equality) locks that.
+      expect(adminRole, 'admin');
+      expect(adminAccess.roles, [adminRole]);
+      for (final access in adminApiAccess.values) {
+        expect(
+          identical(access, adminAccess),
+          isTrue,
+          reason: 'every adminApiAccess entry must be the shared adminAccess '
+              'constant, not a re-stated TomRoleAccess literal',
+        );
+      }
+    });
+
     test('the resource endpoints are GETs with the documented access', () {
       // Login texts: public, on the auth API.
       expect(authApi.endpoints['authLoginResources']!.method,

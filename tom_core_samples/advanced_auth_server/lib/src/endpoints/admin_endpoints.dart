@@ -17,9 +17,11 @@
 ///   unit-tested directly against a seeded store.
 /// - [AdvancedAdminApiService] is the thin `@tomComponent` adapter the endpoint
 ///   pipeline routes to. It binds each [AdminApiService] method to its registry
-///   endpoint (`tomRemoteApis['admin'][...]`) and gates every one with
-///   `@TomRoleAccess(['admin'])`; it carries the production wiring and is
-///   exercised end-to-end at boot (step 13).
+///   endpoint (`tomRemoteApis['admin'][...]`) and gates every one with the
+///   contract-declared `@adminAccess` policy (the centralized `TomRoleAccess`
+///   constant from `advanced_todo_contracts`, G-API-3 light form / G-API-4 — no
+///   handler restates `TomRoleAccess(['admin'])` inline); it carries the
+///   production wiring and is exercised end-to-end at boot (step 13).
 ///
 /// A non-admin caller is rejected by the pipeline's access check *before* the
 /// method runs (it throws the access-denied [TomEndpointHandlerException]). The
@@ -606,8 +608,9 @@ const String endpointAccessDeniedKey =
 
 /// Server-level error handler that maps an access-control rejection to HTTP 403.
 ///
-/// The endpoint pipeline enforces `@TomRoleAccess` *before* the method runs and,
-/// on denial, throws the access-denied [TomEndpointHandlerException] — which the
+/// The endpoint pipeline enforces the handler's access policy (here the
+/// contract-declared `@adminAccess`) *before* the method runs and, on denial,
+/// throws the access-denied [TomEndpointHandlerException] — which the
 /// default server handler would mask behind an opaque 500. Installing this on the
 /// server configuration (step 13) turns that one exception into a `403 Forbidden`
 /// carrying the stable key; every other fault returns `null`, falling through to
@@ -631,9 +634,14 @@ Response? forbiddenOnAccessDenied(
 /// Bound to the fifteen `adminApi` endpoints (`tomRemoteApis['admin']`); the
 /// bean container instantiates it through the no-argument constructor, which
 /// wires the production [AdminService] over the repository-backed store. Every
-/// endpoint is gated with `@TomRoleAccess(['admin'])` (the registry's
-/// `adminApiAccess` map is informational, not auto-applied), so the pipeline
-/// rejects a non-admin caller before the method runs.
+/// endpoint is gated with the contract-declared `@adminAccess` policy — the
+/// centralized `TomRoleAccess` constant from `advanced_todo_contracts` (G-API-3
+/// light form / G-API-4), the same value the registry's `adminApiAccess` map
+/// points at, so the annotation and the map share a single source of truth. The
+/// pipeline reads the annotation and rejects a non-admin caller before the
+/// method runs. (Auto-extracting the policy from the registry when a handler
+/// carries no annotation is the full form, C-12 / step 6; here it is referenced
+/// explicitly.)
 @tomReflector
 @tomComponent
 @TomApiImplementation(apiId: 'admin')
@@ -641,81 +649,81 @@ class AdvancedAdminApiService implements AdminApiService {
   /// Production admin logic over the repository-backed store.
   final AdminService _admin = AdminService(const RepositoryAdminStore());
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminListUsers')
   @override
   Future<List<UserDto>> listUsers() => _admin.listUsers();
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminCreateUser')
   @override
   Future<UserDto> createUser(CreateUserRequest request) =>
       _admin.createUser(request);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateUser')
   @override
   Future<UserDto> updateUser(String id, UserDto user) =>
       _admin.updateUser(id, user);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteUser')
   @override
   Future<void> deleteUser(String id) => _admin.deleteUser(id);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminListRoles')
   @override
   Future<List<RoleDto>> listRoles() => _admin.listRoles();
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminCreateRole')
   @override
   Future<RoleDto> createRole(RoleDto role) => _admin.createRole(role);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateRole')
   @override
   Future<RoleDto> updateRole(String key, RoleDto role) =>
       _admin.updateRole(key, role);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteRole')
   @override
   Future<void> deleteRole(String key) => _admin.deleteRole(key);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminListGroups')
   @override
   Future<List<GroupDto>> listGroups() => _admin.listGroups();
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminCreateGroup')
   @override
   Future<GroupDto> createGroup(GroupDto group) => _admin.createGroup(group);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateGroup')
   @override
   Future<GroupDto> updateGroup(String id, GroupDto group) =>
       _admin.updateGroup(id, group);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteGroup')
   @override
   Future<void> deleteGroup(String id) => _admin.deleteGroup(id);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminGetGrants')
   @override
   Future<GrantMatrixDto> getGrants() => _admin.getGrants();
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminPutGrants')
   @override
   Future<void> putGrants(GrantMatrixDto matrix) => _admin.putGrants(matrix);
 
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminAssign')
   @override
   Future<void> assign(AssignmentRequest request) => _admin.assign(request);
@@ -724,7 +732,7 @@ class AdvancedAdminApiService implements AdminApiService {
   // the admin console's full text bundle (the user/role/group editor labels and
   // the grant-matrix screen texts), installed after an admin signs in.
   // Admin-gated because only administrators reach the console (D-A10).
-  @TomRoleAccess(['admin'])
+  @adminAccess
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminResources')
   @override
   Future<ResourceBundleDto> resources() async =>

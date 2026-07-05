@@ -24,8 +24,19 @@ import 'login_dtos.dart';
 import 'resource_bundle_dto.dart';
 import 'share_request.dart';
 
-/// Access policy shared by every `/admin/*` endpoint.
-const TomRoleAccess _adminOnly = TomRoleAccess(['admin']);
+/// The `admin` role key — defined **once** here in the contracts package and
+/// reused everywhere the admin gate is expressed (G-API-4), so the literal
+/// `'admin'` is never restated across the registry or the server handlers.
+const String adminRole = 'admin';
+
+/// Access policy shared by every `/admin/*` endpoint: the `admin` role only.
+///
+/// Declared once on the contract side and referenced directly as the
+/// `@adminAccess` annotation on each `/admin/*` implementation handler (G-API-3
+/// light form / G-API-4) — so no handler restates `TomRoleAccess(['admin'])`
+/// inline. It is also the value every [adminApiAccess] entry points at, keeping
+/// the companion map and the handler annotations a single source of truth.
+const TomRoleAccess adminAccess = TomRoleAccess([adminRole]);
 
 /// Authentication API (`/auth/*`) — credential exchange and session lifecycle.
 final TomApi authApi = TomApi(
@@ -179,22 +190,22 @@ final TomApi adminApi = TomApi(
 
 /// Per-endpoint access for [adminApi]; every endpoint requires the `admin` role.
 const Map<String, TomAccessControl> adminApiAccess = {
-  'adminListUsers': _adminOnly,
-  'adminCreateUser': _adminOnly,
-  'adminUpdateUser': _adminOnly,
-  'adminDeleteUser': _adminOnly,
-  'adminListRoles': _adminOnly,
-  'adminCreateRole': _adminOnly,
-  'adminUpdateRole': _adminOnly,
-  'adminDeleteRole': _adminOnly,
-  'adminListGroups': _adminOnly,
-  'adminCreateGroup': _adminOnly,
-  'adminUpdateGroup': _adminOnly,
-  'adminDeleteGroup': _adminOnly,
-  'adminGetGrants': _adminOnly,
-  'adminPutGrants': _adminOnly,
-  'adminAssign': _adminOnly,
-  'adminResources': _adminOnly,
+  'adminListUsers': adminAccess,
+  'adminCreateUser': adminAccess,
+  'adminUpdateUser': adminAccess,
+  'adminDeleteUser': adminAccess,
+  'adminListRoles': adminAccess,
+  'adminCreateRole': adminAccess,
+  'adminUpdateRole': adminAccess,
+  'adminDeleteRole': adminAccess,
+  'adminListGroups': adminAccess,
+  'adminCreateGroup': adminAccess,
+  'adminUpdateGroup': adminAccess,
+  'adminDeleteGroup': adminAccess,
+  'adminGetGrants': adminAccess,
+  'adminPutGrants': adminAccess,
+  'adminAssign': adminAccess,
+  'adminResources': adminAccess,
 };
 
 /// Application API (the todo board) — authenticated except `appHealth`.
