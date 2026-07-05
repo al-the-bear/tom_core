@@ -207,6 +207,7 @@ class TomApiEndpointImplementation<requestType extends Object, resultType extend
       corsAllowedOrigins: corsAllowedOrigins,
       corsAllowedMethods: corsAllowedMethods,
       corsAllowedHeaders: corsAllowedHeaders,
+      urlParameterMapping: endpoint.urlParameterMapping,
     );
   }
 
@@ -267,6 +268,15 @@ class TomEndpoint<requestType extends Object, resultType extends Object> impleme
   /// `Access-Control-Allow-Headers` override for this endpoint.
   final String? corsAllowedHeaders;
 
+  /// Binds URL path parameters to typed request-DTO fields.
+  ///
+  /// Keys are the route-capture names in [uri] (e.g. `id` in `/items/{id}`);
+  /// values are the request-DTO field names the captured value is injected
+  /// under before the DTO is instantiated. Path parameters not listed bind by
+  /// their capture name (identity), so an empty map binds every path parameter
+  /// by its own name. See `TomApiEndpoint.urlParameterMapping`.
+  final Map<String, String> urlParameterMapping;
+
   /// Declares an endpoint; every field has a sensible default so only the
   /// differing ones need to be supplied.
   const TomEndpoint({
@@ -282,6 +292,7 @@ class TomEndpoint<requestType extends Object, resultType extends Object> impleme
     this.corsAllowedOrigins,
     this.corsAllowedMethods,
     this.corsAllowedHeaders,
+    this.urlParameterMapping = const {},
   });
 
   @override

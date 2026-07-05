@@ -317,6 +317,17 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// Maps HTTP status codes to response types for error handling.
   final Map<int, Type>? statusCodeResponseTypes;
 
+  /// Binds URL path parameters to typed request-DTO fields.
+  ///
+  /// Keys are the route-capture names as they appear in [uri] (e.g. `id` in
+  /// `/items/{id}`); values are the request-DTO field names the captured value
+  /// is injected under before the DTO is instantiated. When a capture name and
+  /// the field name are identical, the entry is `{'id': 'id'}`; a differently
+  /// named field is `{'id': 'itemId'}`. Path parameters not listed are still
+  /// injected under their capture name (identity), so an empty map means every
+  /// path parameter binds by its own name.
+  final Map<String, String> urlParameterMapping;
+
   /// Creates a new API endpoint with the specified configuration.
   TomApiEndpoint({
     required this.id,
@@ -338,6 +349,7 @@ class TomApiEndpoint<ReturnType, RequestType> {
     this.requestEncoding,
     this.responseEncoding,
     this.statusCodeResponseTypes,
+    this.urlParameterMapping = const {},
   }) {
     this.requestTypes = requestTypes ?? [RequestType];
     if (ReturnType == dynamic) {

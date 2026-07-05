@@ -102,6 +102,30 @@ class TomEndpointHandler {
     return null;
   }
 
+  /// Folds the request's URL path parameters into [jsonBodyData] under the
+  /// request-DTO field names declared by [endpoint].`urlParameterMapping`.
+  ///
+  /// Each captured path parameter (shelf route capture, e.g. `id` from
+  /// `/items/{id}`) is written under its mapped field name — or, when the
+  /// mapping has no entry for it, under its own capture name (identity). This
+  /// is what lets a typed request DTO receive `/items/{id}` as `request.id`
+  /// (or `request.itemId` with a `{'id': 'itemId'}` mapping) without a
+  /// bare-`String` handler parameter (G-API-2). Called immediately before the
+  /// DTO is instantiated from the folded map.
+  ///
+  /// Pure and side-effect-free apart from mutating [jsonBodyData], so it is
+  /// unit-testable without a live router (like [coercePrimitiveParameter]).
+  static void injectPathParameters(
+    Map<String, dynamic> jsonBodyData,
+    Request req,
+    TomEndpoint endpoint,
+  ) {
+    final mapping = endpoint.urlParameterMapping;
+    req.params.forEach((captureName, value) {
+      jsonBodyData[mapping[captureName] ?? captureName] = value;
+    });
+  }
+
   /// Whether requests are logged when an endpoint does not specify
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
@@ -272,9 +296,15 @@ class TomEndpointHandler {
             req.method != TomHttpMethod.trace.name) {
           try {
             String body = await req.readAsString();
-            if (body.isNotEmpty) {
-              Map<String, dynamic> jsonBodyData = jsonDecode(body);
-              jsonBodyData.addAll(req.params);
+            // Fold the JSON body (when present) and the mapped URL path
+            // parameters into one map, then build the request DTO from it. Path
+            // parameters must reach the DTO even for a body-less GET
+            // (`GET /items/{id}` -> `request.id`), so the DTO is instantiated
+            // whenever there is a body *or* at least one path parameter.
+            final Map<String, dynamic> jsonBodyData =
+                body.isNotEmpty ? jsonDecode(body) as Map<String, dynamic> : {};
+            injectPathParameters(jsonBodyData, req, metadata.endpoint);
+            if (jsonBodyData.isNotEmpty) {
               try {
                 Object? parameterObject = tomReflectionInfo
                     .createInstanceFromJson(parameterMirror, jsonBodyData);
@@ -300,7 +330,7 @@ class TomEndpointHandler {
               }
             }else{
               tomLog.warn(
-                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty.",
+                "Was trying to set parameter ${pm.simpleName} ${pm.type.reflectedType} from json request to ${req.requestedUri} but body was empty and no path parameters were present.",
               );
             }
           } catch (ex) {
