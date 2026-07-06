@@ -136,10 +136,9 @@ restrictive: `none < disabled < read < full`):
 | `disabled` | shown, greyed | visible control, inoperative |
 | `none` | hidden | not shown |
 
-The **gradable fields** are the stable resource-key set
-[`TodoItemResourceKeys`](../advanced_todo_domain/lib/src/resource_keys.dart)
-(`todo.item.*`): `title`, `status`, `priority`, `assigneeId`, `dueDate`,
-`estimate`, `description`.
+The **gradable fields** are the stable `todo.item.*` resource-key set (addressed
+by scope + `tomId`, G-RES-6): `title`, `status`, `priority`, `assigneeId`,
+`dueDate`, `estimate`, `description`.
 
 The server projects the resolved per-field states to the client as
 [`GradedFieldDto`](lib/src/graded_field_dto.dart)s (`{resourceKey, access}`) via
@@ -156,7 +155,7 @@ The matrix is **data** owned by the auth server's `auth_db` and edited through
 the authadmin client (`adminGetGrants` / `adminPutGrants`, carrying
 [`GrantMatrixDto`](lib/src/grant_matrix_dto.dart) — the full
 `role → {resourceKey: TomAuthState}` map). The sample seeds it as follows
-(rows = `TodoItemResourceKeys`, columns = `projectRole`):
+(rows = the gradable `todo.item.*` keys, columns = `projectRole`):
 
 | Field (`todo.item.*`) | `owner` | `editor` | `commenter` | `viewer` |
 | --------------------- | ------- | -------- | ----------- | -------- |

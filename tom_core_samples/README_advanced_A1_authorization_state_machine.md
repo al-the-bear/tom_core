@@ -79,8 +79,8 @@ Layer 1 keys on `basePath`, and `basePath` is derived structurally when the fiel
 is constructed (`tom_form.dart:614-617`): `scope = form!.basePath`, then
 `basePath = scope.isNotEmpty ? '$scope.$tomId' : tomId`. Under
 `TomScope.withScope('todo', …)` with `formId: 'item'`, the `title` field
-self-addresses as `todo.item.title` — byte-identical to
-`TodoItemResourceKeys.title`, the key the server grades. One scope alignment
+self-addresses as `todo.item.title` — byte-identical to the `todo.item.title`
+key the server grades. One scope alignment
 makes the field's authorization key equal the wire grade key with no translation
 (this is doc 07's headline; the full `basePath` convention is
 [A2](README_advanced_A2_resource_scope_conventions.md)).
@@ -96,7 +96,7 @@ defaulting to `none`, so no single omission can leak an editable control:
    `TomAuthStateCodec.fromStored(null)` and `fromStored('bogus')` both return
    `none` (`tom_core_server/test/graded_authorization_test.dart:33`,`:37`).
 2. **Server resolver.** `FieldGradeResolver.resolveItemFieldStates` resolves
-   **every** key in `TodoItemResourceKeys.all`, and a field with no grant row
+   **every** gradable `todo.item.*` key, and a field with no grant row
    resolves to `none` via `graded.resolveState(key)`
    (`field_grade_resolver.dart:73-80`). The matrix sent to the client is total
    over the field set — there are no "missing" keys, only explicit `none`s.
@@ -167,7 +167,8 @@ resolved that ancestor to the closed-safe `none`, layer 3 would narrow *every*
 field to `none` and hide the whole form. Resolving a gradable-key ancestor
 permissively (`full`) makes the form narrow a no-op while a genuinely ungraded
 leaf still degrades to `none` at step 3. The `gradableKeys` namespace (defaulting
-to `TodoItemResourceKeys.all`, `:62`) is exactly the boundary between "this
+to the inline `_gradableItemKeys` set of `todo.item.*` keys) is exactly the
+boundary between "this
 adapter's concern" (closed-safe) and "everything else" (permissive).
 
 ## Worked role matrix

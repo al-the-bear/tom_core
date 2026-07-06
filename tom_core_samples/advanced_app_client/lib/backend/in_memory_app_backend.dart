@@ -63,18 +63,18 @@ class InMemoryAppBackend implements AppBackend {
 
   /// The canned authenticated full bundle, mirroring `advanced_app_server`'s
   /// `AppResourceBundles.appBundle()` (D-A11) — the item-form field labels
-  /// (keyed `${TodoItemResourceKeys.<field>}.label` so the label key tracks the
-  /// grade key) plus the `board.*` chrome that has no grade counterpart. The
-  /// session installs this right after sign-in so every post-login screen
-  /// renders server-delivered texts while the widget tests stay socket-free.
+  /// (keyed `todo.item.<field>.label` so the label key tracks the grade key)
+  /// plus the `board.*` chrome that has no grade counterpart. The session
+  /// installs this right after sign-in so every post-login screen renders
+  /// server-delivered texts while the widget tests stay socket-free.
   static const Map<String, Object?> fullTexts = {
-    '${TodoItemResourceKeys.title}.label': 'Title',
-    '${TodoItemResourceKeys.status}.label': 'Status',
-    '${TodoItemResourceKeys.priority}.label': 'Priority',
-    '${TodoItemResourceKeys.assigneeId}.label': 'Assignee id',
-    '${TodoItemResourceKeys.dueDate}.label': 'Due date',
-    '${TodoItemResourceKeys.estimate}.label': 'Estimate (h)',
-    '${TodoItemResourceKeys.description}.label': 'Description',
+    'todo.item.title.label': 'Title',
+    'todo.item.status.label': 'Status',
+    'todo.item.priority.label': 'Priority',
+    'todo.item.assigneeId.label': 'Assignee id',
+    'todo.item.dueDate.label': 'Due date',
+    'todo.item.estimate.label': 'Estimate (h)',
+    'todo.item.description.label': 'Description',
     'board.title': 'My Board',
     'board.empty': 'No items yet',
     'board.item.save': 'Save',
@@ -112,40 +112,40 @@ class InMemoryAppBackend implements AppBackend {
   /// toggle nothing — `status` renders disabled while the rest are read-only.
   static const Map<ProjectRole, Map<String, TomAuthState>> _grantMatrix = {
     ProjectRole.owner: {
-      TodoItemResourceKeys.title: TomAuthState.full,
-      TodoItemResourceKeys.status: TomAuthState.full,
-      TodoItemResourceKeys.priority: TomAuthState.full,
-      TodoItemResourceKeys.assigneeId: TomAuthState.full,
-      TodoItemResourceKeys.dueDate: TomAuthState.full,
-      TodoItemResourceKeys.estimate: TomAuthState.full,
-      TodoItemResourceKeys.description: TomAuthState.full,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.status': TomAuthState.full,
+      'todo.item.priority': TomAuthState.full,
+      'todo.item.assigneeId': TomAuthState.full,
+      'todo.item.dueDate': TomAuthState.full,
+      'todo.item.estimate': TomAuthState.full,
+      'todo.item.description': TomAuthState.full,
     },
     ProjectRole.editor: {
-      TodoItemResourceKeys.title: TomAuthState.full,
-      TodoItemResourceKeys.status: TomAuthState.full,
-      TodoItemResourceKeys.priority: TomAuthState.full,
-      TodoItemResourceKeys.assigneeId: TomAuthState.read,
-      TodoItemResourceKeys.dueDate: TomAuthState.full,
-      TodoItemResourceKeys.estimate: TomAuthState.read,
-      TodoItemResourceKeys.description: TomAuthState.full,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.status': TomAuthState.full,
+      'todo.item.priority': TomAuthState.full,
+      'todo.item.assigneeId': TomAuthState.read,
+      'todo.item.dueDate': TomAuthState.full,
+      'todo.item.estimate': TomAuthState.read,
+      'todo.item.description': TomAuthState.full,
     },
     ProjectRole.commenter: {
-      TodoItemResourceKeys.title: TomAuthState.read,
-      TodoItemResourceKeys.status: TomAuthState.read,
-      TodoItemResourceKeys.priority: TomAuthState.none,
-      TodoItemResourceKeys.assigneeId: TomAuthState.read,
-      TodoItemResourceKeys.dueDate: TomAuthState.read,
-      TodoItemResourceKeys.estimate: TomAuthState.none,
-      TodoItemResourceKeys.description: TomAuthState.read,
+      'todo.item.title': TomAuthState.read,
+      'todo.item.status': TomAuthState.read,
+      'todo.item.priority': TomAuthState.none,
+      'todo.item.assigneeId': TomAuthState.read,
+      'todo.item.dueDate': TomAuthState.read,
+      'todo.item.estimate': TomAuthState.none,
+      'todo.item.description': TomAuthState.read,
     },
     ProjectRole.viewer: {
-      TodoItemResourceKeys.title: TomAuthState.read,
-      TodoItemResourceKeys.status: TomAuthState.disabled,
-      TodoItemResourceKeys.priority: TomAuthState.read,
-      TodoItemResourceKeys.assigneeId: TomAuthState.read,
-      TodoItemResourceKeys.dueDate: TomAuthState.read,
-      TodoItemResourceKeys.estimate: TomAuthState.none,
-      TodoItemResourceKeys.description: TomAuthState.read,
+      'todo.item.title': TomAuthState.read,
+      'todo.item.status': TomAuthState.disabled,
+      'todo.item.priority': TomAuthState.read,
+      'todo.item.assigneeId': TomAuthState.read,
+      'todo.item.dueDate': TomAuthState.read,
+      'todo.item.estimate': TomAuthState.none,
+      'todo.item.description': TomAuthState.read,
     },
   };
 
@@ -382,8 +382,10 @@ class InMemoryAppBackend implements AppBackend {
     final project = _projectOfList(item.listId.get());
     final role = project == null ? null : _roleOnProject(project, principal);
     final granted = role == null ? const {} : _grantMatrix[role]!;
+    // The gradable keys are the grant-matrix columns (the owner map carries the
+    // full set); resolve each at use rather than from a key-catalogue class.
     return {
-      for (final key in TodoItemResourceKeys.all)
+      for (final key in _grantMatrix[ProjectRole.owner]!.keys)
         key: granted[key] ?? TomAuthState.none,
     };
   }

@@ -65,7 +65,7 @@ It is applied at both the login and the bound-form layer, in both clients:
 - `advanced_app_client/test/form_label_resolution_test.dart` installs
   `'login.username.label': 'Username [srv]'` (and the password/hint keys), pumps
   the login screen, and asserts the sentinels render (`:65`, `:78`); a second
-  group does the same for all seven `TodoItemResourceKeys` field labels (`:91`,
+  group does the same for all seven `todo.item.*` field labels (`:91`,
   `:107`).
 - `advanced_app_client/test/item_detail_screen_test.dart` folds the same proof
   into the bound detail form as **TC-30-05** (`:233`): the owner opens the
@@ -179,7 +179,7 @@ Current green-gate counts (runtime, the authoritative figure):
 > A static grep of `app_server` finds only ~74 `test()`/`testWidgets()` calls
 > against the runtime 77, because several suites emit tests from a loop (e.g.
 > `field_grade_resolver_test.dart` over `ProjectRole.values`,
-> `resource_bundle_endpoint_test.dart` over `TodoItemResourceKeys.allFields`,
+> `resource_bundle_endpoint_test.dart` over the gradable item field tokens,
 > `app_share_endpoints_test.dart` over the not-found keys). The **runtime** count
 > from the green gate is the one to trust.
 

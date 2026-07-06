@@ -76,8 +76,8 @@ class AppSession extends ChangeNotifier {
   DateTime? get expiresAt => _expiresAt;
 
   /// The four-state matrix for the item the detail screen is currently showing,
-  /// keyed by [TodoItemResourceKeys]. Empty until [loadFieldStates] is called
-  /// for an item (and cleared on every login/logout).
+  /// keyed by the gradable item resource keys (`todo.item.*`). Empty until
+  /// [loadFieldStates] is called for an item (and cleared on every login/logout).
   Map<String, TomAuthState> get currentFieldStates => _currentFieldStates;
 
   /// Fetches the public login resource bundle through the backend seam and

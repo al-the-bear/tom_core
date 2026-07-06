@@ -14,8 +14,6 @@ import 'package:advanced_app_client/app/field_state_authorization_adapter.dart';
 import 'package:advanced_app_client/backend/backend.dart';
 import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show TodoItemResourceKeys;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -127,7 +125,7 @@ void main() {
       // Empty until an item loads: a gradable leaf is closed-safe, the form path
       // ancestor stays permissive.
       expect(session.authorizationAdapter.states, isEmpty);
-      expect(session.authorizationAdapter.resolveAuth(TodoItemResourceKeys.title),
+      expect(session.authorizationAdapter.resolveAuth('todo.item.title'),
           TomAuthState.none);
     });
 
@@ -148,7 +146,7 @@ void main() {
       await session.logout();
       // Cleared: every gradable leaf returns to the closed-safe default.
       expect(adapter.states, isEmpty);
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.none);
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.none);
     });
 
     test('an injected adapter is the one the session feeds', () async {

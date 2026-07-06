@@ -28,7 +28,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 // The app seed owns the authoritative `initializeReflection`; the domain library
 // carries its own (for use on its own), hidden here to avoid the collision.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show ProjectRole, TodoItemResourceKeys;
+    show ProjectRole;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -238,13 +238,13 @@ void main() {
     // overrides removed (todo 10) the only source of a field's label is this
     // provider, so the sentinels rendering proves the labels are bundle-driven.
     await openDetail(tester, 'alice', bundleOverride: {
-      '${TodoItemResourceKeys.title}.label': 'Title [srv]',
-      '${TodoItemResourceKeys.status}.label': 'Status [srv]',
-      '${TodoItemResourceKeys.priority}.label': 'Priority [srv]',
-      '${TodoItemResourceKeys.assigneeId}.label': 'Assignee [srv]',
-      '${TodoItemResourceKeys.dueDate}.label': 'Due date [srv]',
-      '${TodoItemResourceKeys.estimate}.label': 'Estimate [srv]',
-      '${TodoItemResourceKeys.description}.label': 'Description [srv]',
+      'todo.item.title.label': 'Title [srv]',
+      'todo.item.status.label': 'Status [srv]',
+      'todo.item.priority.label': 'Priority [srv]',
+      'todo.item.assigneeId.label': 'Assignee [srv]',
+      'todo.item.dueDate.label': 'Due date [srv]',
+      'todo.item.estimate.label': 'Estimate [srv]',
+      'todo.item.description.label': 'Description [srv]',
     });
 
     expect(find.textContaining('Title [srv]'), findsWidgets);

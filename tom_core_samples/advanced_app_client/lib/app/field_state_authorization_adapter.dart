@@ -38,8 +38,23 @@
 /// *avoid clobbering* per-field grades that have no form-level row.
 library;
 
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+/// The gradable item leaf keys the adapter guards when no explicit set is given.
+///
+/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved here at the one
+/// use site rather than pulled from a key-catalogue class (G-RES-6). Steps 24–26
+/// derive this set from the item form's field `tomId`s once the form owns the
+/// gradable-field declaration; this inline set is the interim client source.
+const _gradableItemKeys = <String>{
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+};
 
 /// A [TomAuthorizationAdapter] that resolves an item field's authorization from
 /// a repointable `Map<String, TomAuthState>` grade matrix, while leaving every
@@ -55,11 +70,11 @@ class FieldStateAuthorizationAdapter extends TomAuthorizationAdapter {
   /// the session feeds a matrix; everything outside the namespace stays `full`).
   ///
   /// [gradableKeys] names the namespace the adapter guards; it defaults to the
-  /// full set of [TodoItemResourceKeys] leaf keys (`todo.item.*`).
+  /// full set of gradable item leaf keys (`todo.item.*`, [_gradableItemKeys]).
   FieldStateAuthorizationAdapter([
     this.states = const {},
     Set<String>? gradableKeys,
-  ]) : gradableKeys = gradableKeys ?? TodoItemResourceKeys.all.toSet();
+  ]) : gradableKeys = gradableKeys ?? _gradableItemKeys;
 
   /// The grade matrix this adapter resolves against, keyed by a field's
   /// scope-derived `basePath` (== the wire resource key, e.g. `todo.item.title`).

@@ -117,42 +117,39 @@ contract:
 (from ownership or a `Share`) is exactly what the auth server's grant matrix keys
 field grades on — `(ProjectRole, resourceKey) → TomAuthState`.
 
-## `resource_keys.dart` as the scope/form/field source of truth
+## Scope + `tomId` addressing (no key catalogue)
 
-`TodoItemResourceKeys` (in `lib/src/resource_keys.dart`) pins the **named, stable
-keys** for the gradable `TodoItem` fields, so the same key means the same field
-on the server, over the wire, and in the client. Every gradable key is exactly:
+Per **G-RES-6**, resource keys are **addressed by scope + `tomId`, resolved at
+the point of use** — there is *no* class cataloguing them as constants. The
+gradable `TodoItem` fields are named by the convention
 
 ```
 <scope>.<formId>.<field>   ==   todo.item.<field>
 ```
 
-This is the **one-path-two-uses** convention made concrete. The Flutter UI form
-layer derives each field's `basePath` as `<scopePath>.<formId>.<tomId>` and uses
-that single path two ways — as the **authorization** key (no suffix), and as the
-base for the field's **resource** keys (`<basePath>.label`, `.hint`, `.<errorKey>`,
-…). So the keys here are **derived** from `scope` / `formId` / field tokens
-rather than written as free strings, and the form must run under `scope = 'todo'`
-with `formId = 'item'` for each field to self-address as the key the server
-graded:
+so the same key means the same field on the server, over the wire, and in the
+client without any shared symbol to import. This is the **one-path-two-uses**
+convention made concrete. The Flutter UI form layer derives each field's
+`basePath` as `<scopePath>.<formId>.<tomId>` and uses that single path two ways —
+as the **authorization** key (no suffix), and as the base for the field's
+**resource** keys (`<basePath>.label`, `.hint`, `.<errorKey>`, …). The keys are
+therefore **derived** from `scope` / `formId` / the field's `tomId` at
+construction, and the form must run under `scope = 'todo'` with `formId = 'item'`
+for each field to self-address as the key the server graded:
 
 ```dart
-class TodoItemResourceKeys {
-  static const String scope = 'todo';
-  static const String formId = 'item';
-  static String keyFor(String field) => '$scope.$formId.$field';
-
-  static const String titleField = 'title';
-  static const String estimateField = 'estimate'; // NOT 'estimateHours'
-  static const String title = '$scope.$formId.$titleField'; // 'todo.item.title'
-  // …
-}
+// TodoItemForm declares scope-relative tomIds; the 'todo' scope is pushed at the
+// call site (item_detail_screen.dart), so `title` self-addresses as
+// `todo.item.title`.
+TomScope.withScope('todo', TodoItemForm.new); // form basePath == 'todo.item'
+// field tomId 'title'    -> basePath 'todo.item.title'
+// field tomId 'estimate' -> basePath 'todo.item.estimate' (member: estimateHours)
 ```
 
 One deliberate mismatch is worth flagging: the estimate key is `todo.item.estimate`
 even though the entity member is `estimateHours` — **the resource key names the
 *concept*, not the storage field**, so the gradable form field carries
-`tomId: estimateField` (`'estimate'`) while its reflected member stays
+`tomId: 'estimate'` while its reflected member stays
 `estimateHours`. Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 unpacks the full `basePath` convention and this mismatch; part
 [07](README_advanced_07_authorization.md) shows the grant matrix that keys on
@@ -162,7 +159,7 @@ resource bundles keyed on `<basePath>.<suffix>`.
 ## Primary sources
 
 - [`advanced_todo_domain/README.md`](advanced_todo_domain/README.md) — per-entity detail.
-- `advanced_todo_domain/lib/src/` — the entities, `enums.dart`, `resource_keys.dart`, and the `reflection_entry.dart` seed.
+- `advanced_todo_domain/lib/src/` — the entities, `enums.dart`, and the `reflection_entry.dart` seed.
 - `advanced_example_specification_plan.md` — A.3 Extended domain model, Phase 1 steps 1–4.
 
 ---

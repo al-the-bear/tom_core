@@ -442,18 +442,18 @@ class _GradableItemField {
 /// the creator's payload.
 final List<_GradableItemField> _gradableItemFields = [
   _GradableItemField(
-      TodoItemResourceKeys.title, (r) => r.title, (t, s) => t.title = s.title),
-  _GradableItemField(TodoItemResourceKeys.status, (r) => r.status,
+      'todo.item.title', (r) => r.title, (t, s) => t.title = s.title),
+  _GradableItemField('todo.item.status', (r) => r.status,
       (t, s) => t.status = s.status),
-  _GradableItemField(TodoItemResourceKeys.priority, (r) => r.priority,
+  _GradableItemField('todo.item.priority', (r) => r.priority,
       (t, s) => t.priority = s.priority),
-  _GradableItemField(TodoItemResourceKeys.assigneeId, (r) => r.assigneeId,
+  _GradableItemField('todo.item.assigneeId', (r) => r.assigneeId,
       (t, s) => t.assigneeId = s.assigneeId),
-  _GradableItemField(TodoItemResourceKeys.dueDate, (r) => r.dueDate,
+  _GradableItemField('todo.item.dueDate', (r) => r.dueDate,
       (t, s) => t.dueDate = s.dueDate),
-  _GradableItemField(TodoItemResourceKeys.estimate, (r) => r.estimateHours,
+  _GradableItemField('todo.item.estimate', (r) => r.estimateHours,
       (t, s) => t.estimateHours = s.estimateHours),
-  _GradableItemField(TodoItemResourceKeys.description, (r) => r.description,
+  _GradableItemField('todo.item.description', (r) => r.description,
       (t, s) => t.description = s.description),
 ];
 

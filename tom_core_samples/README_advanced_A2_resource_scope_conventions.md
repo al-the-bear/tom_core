@@ -37,20 +37,19 @@ as `login.username`. The derivation is **structural**, computed once at field
 construction from `form: this` — not a string the field carries — which is why a
 field "cannot drift" from its own key.
 
-The domain pins the three segments as constants so the form, the server grade
-matrix, and the JSON texts read them from one place
-(`advanced_todo_domain/lib/src/resource_keys.dart`):
+Per **G-RES-6** there is no catalogue class; the three segments are named by the
+convention, and the form, the server grade matrix, and the JSON texts all address
+the same `todo.item.<field>` keys:
 
-```dart
-static const String scope  = 'todo';   // the TomScope the item form runs under
-static const String formId = 'item';   // the form's formId
-static String keyFor(String field) => '$scope.$formId.$field';  // 'todo.item.<field>'
+```
+scope  = 'todo'   // the TomScope the item form runs under
+formId = 'item'   // the form's formId
+key    = '<scope>.<formId>.<field>'   // e.g. 'todo.item.title'
 ```
 
-`TodoItemResourceKeys.title` is *derived* (`'$scope.$formId.$titleField'`,
-`resource_keys.dart:80`) rather than written as a free string — so the wire key,
-the grade key, and the field's `basePath` are the same token by construction, not
-by coincidence (D-A1).
+`todo.item.title` is *derived* structurally (`scopePath.formId.tomId`) rather than
+written as a free string — so the wire key, the grade key, and the field's
+`basePath` are the same token by construction, not by coincidence (D-A1).
 
 ## One path, two uses
 
@@ -93,13 +92,13 @@ independent. The effort-estimate field:
 
 - binds the reflected entity member **`estimateHours`** — `bind`/`save`
   round-trips on the *member name*, so the value lands in `TodoItem.estimateHours`
-  (`todo_item_form.dart:85`, `TomFormNDoubleInput(TodoItemResourceKeys.estimateField, …)`);
-- carries `tomId` = **`estimate`** (`TodoItemResourceKeys.estimateField`), so it
-  self-addresses as `todo.item.estimate` — the graded/resourced key.
+  (`todo_item_form.dart:85`, `TomFormNDoubleInput('estimate', …)`);
+- carries `tomId` = **`estimate`**, so it self-addresses as `todo.item.estimate`
+  — the graded/resourced key.
 
 The resource key names the **concept** (`estimate`), not the **storage field**
-(`estimateHours`) — `resource_keys.dart:33-37`,`:71-74`. This works because the
-two keying systems read different names:
+(`estimateHours`). This works because the two keying systems read different
+names:
 
 | Mechanism | Keys on | Value for the estimate field |
 | --- | --- | --- |
@@ -109,9 +108,8 @@ two keying systems read different names:
 `TomField.tomId` and the Dart member name are free to differ precisely because
 the round-trip keys on the member while authorization/text key on the `tomId`.
 Every *other* item field keeps `tomId` == member name for simplicity; `estimate`
-is the worked counter-example that proves the decoupling is real (and the reason
-`TodoItemResourceKeys` exposes both an `estimateField` token and an `estimate`
-key).
+is the worked counter-example that proves the decoupling is real (the field's
+`tomId` `estimate` and its member `estimateHours` deliberately differ).
 
 ## Scoped vs unscoped construction
 
@@ -127,9 +125,9 @@ form declares:
   equal the server's grade keys. The screen pushes the scope around the
   constructor (`advanced_app_client/lib/screens/item_detail_screen.dart:88`):
   ```dart
-  final form = TomScope.withScope(TodoItemResourceKeys.scope, TodoItemForm.new);
+  final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
-  `TodoItemForm` itself only declares `super(formId: TodoItemResourceKeys.formId)`
+  `TodoItemForm` itself only declares `super(formId: 'item')`
   (`todo_item_form.dart:38`); the `todo` scope comes from the **call site**, so
   the field at `tomId: 'title'` lands at `todo.item.title`.
 

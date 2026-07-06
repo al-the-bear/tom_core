@@ -27,6 +27,22 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
+/// The gradable [TodoItem] field keys, in display order.
+///
+/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved at use rather
+/// than pulled from a key-catalogue class (G-RES-6). Step 21 replaces this
+/// inline set with keys derived from the reflected entity + the server resource
+/// bundle; it is the interim server-side source.
+const _gradableItemKeys = <String>[
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+];
+
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
 /// The grant table is owned by `tom_core_server` (datasource `main`). The app
@@ -66,7 +82,7 @@ class FieldGradeResolver {
   }
 
   /// Resolves the per-field [TomAuthState] for every gradable [TodoItem] field
-  /// ([TodoItemResourceKeys.all]) under [role], in display order.
+  /// ([_gradableItemKeys]) under [role], in display order.
   ///
   /// A field with no grant row degrades to [TomAuthState.none] (hidden) — the
   /// closed/safe default the framework codec falls back to.
@@ -75,7 +91,7 @@ class FieldGradeResolver {
   ) async {
     final graded = await gradesForRole(role);
     return {
-      for (final key in TodoItemResourceKeys.all) key: graded.resolveState(key),
+      for (final key in _gradableItemKeys) key: graded.resolveState(key),
     };
   }
 }

@@ -45,8 +45,8 @@ itself at `:809`).
 
 So when the item form runs under `TomScope.withScope('todo', …)` with
 `formId: 'item'`, the field `title` (tomId `title`) self-addresses as
-`todo.item.title` — *exactly* `TodoItemResourceKeys.title`, the same string the
-server's grade matrix is keyed by (D-A1). One alignment makes the field's
+`todo.item.title` — *exactly* the `todo.item.title` key the server's grade
+matrix is keyed by (D-A1). One alignment makes the field's
 authorization key equal the wire grade key with **zero translation layer**.
 
 The one deliberate exception is the estimate field (D-A2): its grade key is
@@ -97,8 +97,8 @@ live; `InMemory*` seeded for socket-free tests):
    items); with neither, the result is `null` (no access).
 2. **Field grades** — *"for that role, which fields, and how?"*
    `FieldGradeResolver` (`.../access/field_grade_resolver.dart`) loads the
-   role's grant rows and folds them, resolving **every** key in
-   `TodoItemResourceKeys.all` to its `TomAuthState`. A field with no grant row
+   role's grant rows and folds them, resolving **every** gradable `todo.item.*`
+   key to its `TomAuthState`. A field with no grant row
    degrades to `none` — closed-safe (D-A4).
 
 The result is sent to the client as a `List<GradedFieldDto>` from the
@@ -130,7 +130,8 @@ in the app routes its layer-1 lookup through it — the login form, the board, t
 dialogs, not just graded item fields. A naive flat map returning the closed-safe
 `none` for any unknown path would therefore hide the login screen. So the
 adapter guards a single explicit **namespace** (`gradableKeys`, defaulting to
-`TodoItemResourceKeys.all`) and resolves in four steps
+the inline `_gradableItemKeys` set of `todo.item.*` keys) and resolves in four
+steps
 (`field_state_authorization_adapter.dart:77-100`):
 
 1. an exact grade for the path wins;

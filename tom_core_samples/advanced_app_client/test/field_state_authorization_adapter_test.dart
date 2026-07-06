@@ -10,7 +10,6 @@
 library;
 
 import 'package:advanced_app_client/app/field_state_authorization_adapter.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,25 +17,25 @@ void main() {
   // An owner-style matrix: everything editable except a read-only assignee and
   // a hidden estimate, exercising three of the four states.
   Map<String, TomAuthState> ownerish() => {
-        TodoItemResourceKeys.title: TomAuthState.full,
-        TodoItemResourceKeys.status: TomAuthState.full,
-        TodoItemResourceKeys.assigneeId: TomAuthState.read,
-        TodoItemResourceKeys.estimate: TomAuthState.none,
+        'todo.item.title': TomAuthState.full,
+        'todo.item.status': TomAuthState.full,
+        'todo.item.assigneeId': TomAuthState.read,
+        'todo.item.estimate': TomAuthState.none,
       };
 
   group('FieldStateAuthorizationAdapter.resolveAuth', () {
     test('returns the matrix state for a present field key', () {
       final adapter = FieldStateAuthorizationAdapter(ownerish());
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.full);
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.full);
       expect(
-          adapter.resolveAuth(TodoItemResourceKeys.assigneeId), TomAuthState.read);
-      expect(adapter.resolveAuth(TodoItemResourceKeys.estimate), TomAuthState.none);
+          adapter.resolveAuth('todo.item.assigneeId'), TomAuthState.read);
+      expect(adapter.resolveAuth('todo.item.estimate'), TomAuthState.none);
     });
 
     test('a known gradable key the matrix omits degrades to none (D-A4)', () {
       final adapter = FieldStateAuthorizationAdapter(ownerish());
       // `priority` is a gradable key absent from the owner-ish matrix.
-      expect(adapter.resolveAuth(TodoItemResourceKeys.priority), TomAuthState.none);
+      expect(adapter.resolveAuth('todo.item.priority'), TomAuthState.none);
     });
 
     test('a path outside the gradable namespace stays permissive (full)', () {
@@ -51,11 +50,10 @@ void main() {
 
     test('an empty matrix resolves every gradable leaf to none', () {
       final adapter = FieldStateAuthorizationAdapter();
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.none);
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.none);
       // The form-path ancestor stays permissive even with no matrix loaded, so
       // the layer-3 form narrow never hides the form before an item is opened.
-      final formPath =
-          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}';
+      const formPath = 'todo.item';
       expect(adapter.resolveAuth(formPath), TomAuthState.full);
     });
 
@@ -64,34 +62,33 @@ void main() {
       final adapter = FieldStateAuthorizationAdapter(ownerish());
       // The layer-3 form narrow looks up `todo.item`; it must NOT clobber the
       // per-field grades, so an ungraded ancestor of graded fields → full.
-      final formPath =
-          '${TodoItemResourceKeys.scope}.${TodoItemResourceKeys.formId}';
+      const formPath = 'todo.item';
       expect(formPath, 'todo.item');
       expect(adapter.resolveAuth(formPath), TomAuthState.full);
       // The scope node is also an ancestor → permissive.
-      expect(adapter.resolveAuth(TodoItemResourceKeys.scope), TomAuthState.full);
+      expect(adapter.resolveAuth('todo'), TomAuthState.full);
     });
 
     test('an explicit grade for an ancestor still wins over the permissive rule',
         () {
       final adapter = FieldStateAuthorizationAdapter({
         'todo.item': TomAuthState.read,
-        TodoItemResourceKeys.title: TomAuthState.full,
+        'todo.item.title': TomAuthState.full,
       });
       expect(adapter.resolveAuth('todo.item'), TomAuthState.read);
     });
 
     test('repointing states changes resolution without a new instance', () {
       final adapter = FieldStateAuthorizationAdapter(ownerish());
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.full);
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.full);
 
-      adapter.states = {TodoItemResourceKeys.title: TomAuthState.read};
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.read);
+      adapter.states = {'todo.item.title': TomAuthState.read};
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.read);
       // A key dropped from the new matrix returns to the closed-safe default.
-      expect(adapter.resolveAuth(TodoItemResourceKeys.status), TomAuthState.none);
+      expect(adapter.resolveAuth('todo.item.status'), TomAuthState.none);
 
       adapter.states = const {};
-      expect(adapter.resolveAuth(TodoItemResourceKeys.title), TomAuthState.none);
+      expect(adapter.resolveAuth('todo.item.title'), TomAuthState.none);
     });
   });
 
@@ -103,9 +100,9 @@ void main() {
       TomAuthorization.adapter = adapter;
 
       // What a field's layer-1 resolution sees:
-      expect(TomAuthorization.resolveAuth(TodoItemResourceKeys.title),
+      expect(TomAuthorization.resolveAuth('todo.item.title'),
           TomAuthState.full);
-      expect(TomAuthorization.resolveAuth(TodoItemResourceKeys.priority),
+      expect(TomAuthorization.resolveAuth('todo.item.priority'),
           TomAuthState.none);
       // And the form-path narrow (layer 3) is a no-op:
       expect(TomAuthorization.resolveAuth('todo.item'), TomAuthState.full);

@@ -95,7 +95,7 @@ class InMemoryAdminBackend implements AdminBackend {
   };
 
   /// The four-state field resource keys, mirroring the server's wire keys
-  /// (`TodoItemResourceKeys`). Held as plain strings because the admin console is
+  /// (`todo.item.*`). Held as plain strings because the admin console is
   /// domain-agnostic: it edits whatever resource keys the server reports.
   static const String _kTitle = 'todo.item.title';
   static const String _kStatus = 'todo.item.status';

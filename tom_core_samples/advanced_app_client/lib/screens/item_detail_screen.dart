@@ -86,7 +86,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       // its wire resource key (`todo.item.<field>`) and the installed adapter
       // (todo 3) resolves its grade implicitly via layer-1.
       final form = TomScope.withScope(
-        TodoItemResourceKeys.scope,
+        'todo',
         TodoItemForm.new,
       );
       form.bind(_item);

@@ -16,6 +16,19 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// The gradable item resource keys the seeded matrix must cover. Steps 21/24/26
+/// derive this from reflection/the resource bundle; here it is the inline
+/// expectation.
+const _gradableItemKeys = <String>[
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+];
+
 void main() {
   setUpAll(initializeReflection);
 
@@ -147,7 +160,7 @@ void main() {
     test('TC-26-11: the owner gets full on every gradable field', () async {
       await loginAs('alice');
       final states = await backend.itemFieldStates('i-1');
-      expect(states.keys, containsAll(TodoItemResourceKeys.all));
+      expect(states.keys, containsAll(_gradableItemKeys));
       expect(
           states.values.every((s) => s == TomAuthState.full), isTrue);
     });
@@ -156,9 +169,9 @@ void main() {
         () async {
       await loginAs('bob');
       final states = await backend.itemFieldStates('i-1');
-      expect(states[TodoItemResourceKeys.title], TomAuthState.full);
-      expect(states[TodoItemResourceKeys.assigneeId], TomAuthState.read);
-      expect(states[TodoItemResourceKeys.estimate], TomAuthState.read);
+      expect(states['todo.item.title'], TomAuthState.full);
+      expect(states['todo.item.assigneeId'], TomAuthState.read);
+      expect(states['todo.item.estimate'], TomAuthState.read);
     });
 
     test(
@@ -192,8 +205,8 @@ void main() {
       await loginAs('carol');
       expect((await backend.listWorkspaces()).map((w) => w.id.get()), ['w-1']);
       final states = await backend.itemFieldStates('i-1');
-      expect(states[TodoItemResourceKeys.status], TomAuthState.disabled);
-      expect(states[TodoItemResourceKeys.title], TomAuthState.read);
+      expect(states['todo.item.status'], TomAuthState.disabled);
+      expect(states['todo.item.title'], TomAuthState.read);
     });
 
     test('TC-26-15: only the owner may share', () async {

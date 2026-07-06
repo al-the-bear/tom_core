@@ -124,8 +124,8 @@ working copy differs from the loaded one.
 Like the rest of the console it stays domain-agnostic — it renders whatever role
 keys and resource keys the matrix reports (column headers show the trailing
 segment, e.g. `todo.item.title → title`, while each cell is keyed by the full
-resource key) and never the application's `TodoItemResourceKeys` / `UserStatus`
-enums. Every read and the save route through `AdminSession.guard`.
+resource key) and never the application's `todo.item.*` gradable keys /
+`UserStatus` enums. Every read and the save route through `AdminSession.guard`.
 
 ## Assignments
 

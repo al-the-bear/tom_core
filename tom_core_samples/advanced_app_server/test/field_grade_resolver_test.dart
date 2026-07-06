@@ -26,40 +26,40 @@ import 'package:test/test.dart';
 //   description  full   full    read       read
 const Map<ProjectRole, Map<String, TomAuthState>> a4Matrix = {
   ProjectRole.owner: {
-    TodoItemResourceKeys.title: TomAuthState.full,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.full,
-    TodoItemResourceKeys.assigneeId: TomAuthState.full,
-    TodoItemResourceKeys.dueDate: TomAuthState.full,
-    TodoItemResourceKeys.estimate: TomAuthState.full,
-    TodoItemResourceKeys.description: TomAuthState.full,
+    'todo.item.title': TomAuthState.full,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.full,
+    'todo.item.assigneeId': TomAuthState.full,
+    'todo.item.dueDate': TomAuthState.full,
+    'todo.item.estimate': TomAuthState.full,
+    'todo.item.description': TomAuthState.full,
   },
   ProjectRole.editor: {
-    TodoItemResourceKeys.title: TomAuthState.full,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.full,
-    TodoItemResourceKeys.assigneeId: TomAuthState.full,
-    TodoItemResourceKeys.dueDate: TomAuthState.full,
-    TodoItemResourceKeys.estimate: TomAuthState.read,
-    TodoItemResourceKeys.description: TomAuthState.full,
+    'todo.item.title': TomAuthState.full,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.full,
+    'todo.item.assigneeId': TomAuthState.full,
+    'todo.item.dueDate': TomAuthState.full,
+    'todo.item.estimate': TomAuthState.read,
+    'todo.item.description': TomAuthState.full,
   },
   ProjectRole.commenter: {
-    TodoItemResourceKeys.title: TomAuthState.read,
-    TodoItemResourceKeys.status: TomAuthState.full,
-    TodoItemResourceKeys.priority: TomAuthState.read,
-    TodoItemResourceKeys.assigneeId: TomAuthState.read,
-    TodoItemResourceKeys.dueDate: TomAuthState.read,
-    TodoItemResourceKeys.estimate: TomAuthState.none,
-    TodoItemResourceKeys.description: TomAuthState.read,
+    'todo.item.title': TomAuthState.read,
+    'todo.item.status': TomAuthState.full,
+    'todo.item.priority': TomAuthState.read,
+    'todo.item.assigneeId': TomAuthState.read,
+    'todo.item.dueDate': TomAuthState.read,
+    'todo.item.estimate': TomAuthState.none,
+    'todo.item.description': TomAuthState.read,
   },
   ProjectRole.viewer: {
-    TodoItemResourceKeys.title: TomAuthState.read,
-    TodoItemResourceKeys.status: TomAuthState.read,
-    TodoItemResourceKeys.priority: TomAuthState.read,
-    TodoItemResourceKeys.assigneeId: TomAuthState.none,
-    TodoItemResourceKeys.dueDate: TomAuthState.read,
-    TodoItemResourceKeys.estimate: TomAuthState.none,
-    TodoItemResourceKeys.description: TomAuthState.read,
+    'todo.item.title': TomAuthState.read,
+    'todo.item.status': TomAuthState.read,
+    'todo.item.priority': TomAuthState.read,
+    'todo.item.assigneeId': TomAuthState.none,
+    'todo.item.dueDate': TomAuthState.read,
+    'todo.item.estimate': TomAuthState.none,
+    'todo.item.description': TomAuthState.read,
   },
 };
 
@@ -93,17 +93,17 @@ void main() {
       final resolver = FieldGradeResolver(InMemoryGrantStore([
         TomResourceGrant(
           roleName: ProjectRole.editor.name,
-          resourceKey: TodoItemResourceKeys.title,
+          resourceKey: 'todo.item.title',
           accessLevel: TomAuthState.read,
         ),
         TomResourceGrant(
           roleName: ProjectRole.editor.name,
-          resourceKey: TodoItemResourceKeys.title,
+          resourceKey: 'todo.item.title',
           accessLevel: TomAuthState.full,
         ),
       ]));
       final graded = await resolver.gradesForRole(ProjectRole.editor);
-      expect(graded.resolveState(TodoItemResourceKeys.title), TomAuthState.full);
+      expect(graded.resolveState('todo.item.title'), TomAuthState.full);
     });
 
     test('a field with no grant row degrades to none (closed/safe)', () async {
@@ -112,19 +112,19 @@ void main() {
       final resolver = FieldGradeResolver(InMemoryGrantStore([
         TomResourceGrant(
           roleName: ProjectRole.viewer.name,
-          resourceKey: TodoItemResourceKeys.title,
+          resourceKey: 'todo.item.title',
           accessLevel: TomAuthState.read,
         ),
       ]));
       final states = await resolver.resolveItemFieldStates(ProjectRole.viewer);
-      expect(states[TodoItemResourceKeys.title], TomAuthState.read);
-      expect(states[TodoItemResourceKeys.status], TomAuthState.none);
-      expect(states[TodoItemResourceKeys.estimate], TomAuthState.none);
+      expect(states['todo.item.title'], TomAuthState.read);
+      expect(states['todo.item.status'], TomAuthState.none);
+      expect(states['todo.item.estimate'], TomAuthState.none);
     });
 
     test('resolved states cover every gradable field, in display order', () async {
       final states = await resolver.resolveItemFieldStates(ProjectRole.owner);
-      expect(states.keys, orderedEquals(TodoItemResourceKeys.all));
+      expect(states.keys, orderedEquals(a4Matrix[ProjectRole.owner]!.keys));
     });
   });
 }

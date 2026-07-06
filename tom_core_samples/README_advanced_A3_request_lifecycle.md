@@ -176,7 +176,7 @@ authorization layer, `FieldGradeResolver.resolveItemFieldStates(role)`
 ```dart
 final graded = await gradesForRole(role);    // load the role's grant rows, fold them
 return {
-  for (final key in TodoItemResourceKeys.all) key: graded.resolveState(key),
+  for (final key in _gradableItemKeys) key: graded.resolveState(key),
 };
 ```
 
@@ -195,7 +195,7 @@ Three facts make this layer the load-bearing one:
   the auth server's admin API uses — so the two tiers agree on grade semantics
   (a key granted twice widens to the most permissive,
   [A1](README_advanced_A1_authorization_state_machine.md)).
-- **Absence is `none`.** Every key in `TodoItemResourceKeys.all` is resolved; a
+- **Absence is `none`.** Every gradable `todo.item.*` key is resolved; a
   field with **no** grant row degrades to `TomAuthState.none` (hidden) — the
   closed-safe default (`:73-80`).
 

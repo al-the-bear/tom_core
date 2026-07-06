@@ -94,9 +94,9 @@ abstract class AppBackend {
   Future<TodoComment> addComment(String itemId, TodoComment comment);
 
   /// The four-state grade for each gradable field of item [itemId], resolved for
-  /// the current principal and keyed by [TodoItemResourceKeys]. An ungranted
-  /// field resolves to [TomAuthState.none] (hidden — the closed-safe default),
-  /// matching the server's resolver.
+  /// the current principal and keyed by the gradable item resource keys
+  /// (`todo.item.*`). An ungranted field resolves to [TomAuthState.none] (hidden
+  /// — the closed-safe default), matching the server's resolver.
   Future<Map<String, TomAuthState>> itemFieldStates(String itemId);
 
   /// Shares the named resource with another user at a [ProjectRole].

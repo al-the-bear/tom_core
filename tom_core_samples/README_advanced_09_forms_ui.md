@@ -87,7 +87,7 @@ Whether a form is "scoped" is decided **at construction**, by whether a
   equal the server's grade keys (`todo.item.<field>`). The screen constructs it
   inside a pushed scope (`item_detail_screen.dart:88`):
   ```dart
-  final form = TomScope.withScope(TodoItemResourceKeys.scope, TodoItemForm.new);
+  final form = TomScope.withScope('todo', TodoItemForm.new);
   ```
   `TodoItemForm` only declares `super(formId: 'item')`; the `todo` scope comes
   from the call site, so the field at `tomId: 'title'` lands at `todo.item.title`.

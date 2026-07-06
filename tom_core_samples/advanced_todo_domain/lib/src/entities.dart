@@ -8,7 +8,6 @@ library;
 
 export 'enums.dart';
 export 'project.dart';
-export 'resource_keys.dart';
 export 'share.dart';
 export 'subtask.dart';
 export 'todo_comment.dart';

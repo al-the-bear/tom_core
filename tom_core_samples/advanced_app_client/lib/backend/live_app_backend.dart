@@ -24,6 +24,22 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'app_backend.dart';
 
+/// The gradable item leaf keys, in display order, used to fold the server's bare
+/// grade list into a closed-safe per-key map (an unsent key defaults to `none`).
+///
+/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved at use rather
+/// than pulled from a key-catalogue class (G-RES-6). Steps 24–26 derive this set
+/// from the item form's field `tomId`s; it is the interim client source.
+const _gradableItemKeys = <String>[
+  'todo.item.title',
+  'todo.item.status',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+  'todo.item.dueDate',
+  'todo.item.estimate',
+  'todo.item.description',
+];
+
 /// An [AppBackend] backed by the live auth + app servers through
 /// `advanced_client_core`.
 class LiveAppBackend implements AppBackend {
@@ -88,7 +104,7 @@ class LiveAppBackend implements AppBackend {
         // gradable key is present, an unsent one defaulting to none.
         final byKey = {for (final g in graded) g.resourceKey: g.accessState};
         return {
-          for (final key in TodoItemResourceKeys.all)
+          for (final key in _gradableItemKeys)
             key: byKey[key] ?? TomAuthState.none,
         };
       });

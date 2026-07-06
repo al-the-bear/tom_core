@@ -12,9 +12,20 @@ library;
 
 import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
+
+/// The gradable item field tokens (plain field names). Steps 21/24/26 derive
+/// this from reflection; here it is the inline expectation the bundle labels.
+const _gradableItemFields = <String>[
+  'title',
+  'status',
+  'priority',
+  'assigneeId',
+  'dueDate',
+  'estimate',
+  'description',
+];
 
 TomPrincipal _authenticated({List<String> roles = const []}) => TomPrincipal(
       authenticated: true,
@@ -27,8 +38,8 @@ void main() {
     test('appBundle labels every gradable item field, keyed off the domain '
         'convention', () {
       final texts = AppResourceBundles.appBundle().texts;
-      for (final field in TodoItemResourceKeys.allFields) {
-        final key = '${TodoItemResourceKeys.keyFor(field)}.label';
+      for (final field in _gradableItemFields) {
+        final key = 'todo.item.$field.label';
         expect(texts.containsKey(key), isTrue, reason: 'missing label key $key');
       }
       // The estimate label is keyed on the concept token (`estimate`), never the

@@ -18,8 +18,6 @@ import 'package:advanced_app_client/forms/login_form.dart';
 import 'package:advanced_app_client/forms/todo_item_form.dart';
 import 'package:advanced_app_client/reflection_seed.dart'
     show initializeReflection;
-import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    show TodoItemResourceKeys;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -88,18 +86,17 @@ void main() {
       'TC-10-02: TodoItemForm labels resolve from the todo.item.* bundle',
       (tester) async {
     installBundle({
-      '${TodoItemResourceKeys.title}.label': 'Title [srv]',
-      '${TodoItemResourceKeys.status}.label': 'Status [srv]',
-      '${TodoItemResourceKeys.priority}.label': 'Priority [srv]',
-      '${TodoItemResourceKeys.assigneeId}.label': 'Assignee [srv]',
-      '${TodoItemResourceKeys.dueDate}.label': 'Due date [srv]',
-      '${TodoItemResourceKeys.estimate}.label': 'Estimate [srv]',
-      '${TodoItemResourceKeys.description}.label': 'Description [srv]',
+      'todo.item.title.label': 'Title [srv]',
+      'todo.item.status.label': 'Status [srv]',
+      'todo.item.priority.label': 'Priority [srv]',
+      'todo.item.assigneeId.label': 'Assignee [srv]',
+      'todo.item.dueDate.label': 'Due date [srv]',
+      'todo.item.estimate.label': 'Estimate [srv]',
+      'todo.item.description.label': 'Description [srv]',
     });
     // Built under the gradable scope (todo 4), so basePath is todo.item and each
-    // field self-addresses as its TodoItemResourceKeys value.
-    final form =
-        TomScope.withScope(TodoItemResourceKeys.scope, TodoItemForm.new);
+    // field self-addresses as its `todo.item.<field>` key.
+    final form = TomScope.withScope('todo', TodoItemForm.new);
     expect(form.basePath, 'todo.item');
 
     await pumpFields(tester, form.gradableFields);

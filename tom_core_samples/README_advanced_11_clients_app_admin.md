@@ -60,9 +60,9 @@ a `ListenableBuilder` swapping `AdminLoginScreen` for `AdminShellScreen` on
   single `AssignmentRequest`.
 
 The console is domain-agnostic: it renders whatever role and resource keys the
-backend reports and never references the application's `TodoItemResourceKeys` or
-`UserStatus` enums — the same "the UI ships no policy" discipline the rest of the
-guide rests on.
+backend reports and never references the application's `todo.item.*` gradable
+keys or `UserStatus` enums — the same "the UI ships no policy" discipline the
+rest of the guide rests on.
 
 ## Sessions
 
