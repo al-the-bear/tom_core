@@ -129,7 +129,7 @@ AppReadService demoService() => AppReadService(
 /// Collapses a field-state list into the `resourceKey → state` map [a4Matrix]
 /// rows are expressed in.
 Map<String, TomAuthState> statesMap(List<GradedFieldDto> states) =>
-    {for (final state in states) state.resourceKey: state.access};
+    {for (final state in states) state.resourceKey: state.accessState};
 
 void main() {
   // The list endpoints build observable domain entities through the mapping

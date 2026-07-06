@@ -14,6 +14,7 @@ library;
 import 'dart:io';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
@@ -21,6 +22,8 @@ import 'package:test/test.dart';
 const _authBaseUri = 'http://localhost:8081';
 
 void main() {
+  setUpAll(initializeReflection);
+
   group('AuthClient (live auth server)', () {
     setUp(() => TomBearerAuthentication.bearerAuthentication =
         TomBearerAuthentication());
@@ -36,7 +39,7 @@ void main() {
       final LoginResult result;
       try {
         result = await client.login(
-            const LoginRequest(username: 'alice', password: 'alice-pass'));
+            LoginRequest(username: 'alice', password: 'alice-pass'));
       } on SocketException catch (e) {
         markTestSkipped(
             'auth server not reachable on $_authBaseUri — start '

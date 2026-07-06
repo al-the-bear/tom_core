@@ -127,7 +127,7 @@ class InMemoryAdminBackend implements AdminBackend {
 
     // The application roles: the `admin` console role plus the four project
     // roles the grant matrix grades.
-    _roles.addAll(const [
+    _roles.addAll([
       RoleDto(key: 'admin', name: 'Administrator'),
       RoleDto(key: 'owner', name: 'Owner'),
       RoleDto(key: 'editor', name: 'Editor'),
@@ -387,7 +387,7 @@ class InMemoryAdminBackend implements AdminBackend {
         for (final role in matrix.roles)
           role: {
             for (final grade in matrix.gradesFor(role))
-              grade.resourceKey: grade.access,
+              grade.resourceKey: grade.accessState,
           },
       });
   }

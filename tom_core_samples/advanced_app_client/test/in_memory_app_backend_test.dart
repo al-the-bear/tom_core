@@ -47,7 +47,7 @@ void main() {
 
     test('TC-26-03: an empty password is rejected', () async {
       await expectLater(
-        backend.login(const LoginRequest(username: 'alice', password: '')),
+        backend.login(LoginRequest(username: 'alice', password: '')),
         throwsA(isA<AppBackendException>()
             .having((e) => e.key, 'key', 'auth.login.failed')),
       );
@@ -125,7 +125,7 @@ void main() {
     test('TC-26-10: a viewer cannot save (no write grade)', () async {
       // Grant carol a viewer share first, then attempt a write.
       await loginAs('alice');
-      await backend.share(const ShareRequest(
+      await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
         granteeUserId: 'u-carol',
@@ -180,7 +180,7 @@ void main() {
 
       // The owner shares the project with carol as a viewer.
       await loginAs('alice');
-      await backend.share(const ShareRequest(
+      await backend.share(ShareRequest(
         resourceType: 'project',
         resourceId: 'p-1',
         granteeUserId: 'u-carol',
@@ -199,7 +199,7 @@ void main() {
     test('TC-26-15: only the owner may share', () async {
       await loginAs('bob'); // editor, not owner
       await expectLater(
-        backend.share(const ShareRequest(
+        backend.share(ShareRequest(
           resourceType: 'project',
           resourceId: 'p-1',
           granteeUserId: 'u-carol',

@@ -86,7 +86,7 @@ class LiveAppBackend implements AppBackend {
         final graded = await _api.itemFieldStates(itemId);
         // Fold the bare grade list into a closed-safe per-key map: every
         // gradable key is present, an unsent one defaulting to none.
-        final byKey = {for (final g in graded) g.resourceKey: g.access};
+        final byKey = {for (final g in graded) g.resourceKey: g.accessState};
         return {
           for (final key in TodoItemResourceKeys.all)
             key: byKey[key] ?? TomAuthState.none,

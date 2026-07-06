@@ -94,7 +94,7 @@ void main() {
       final store = InMemoryAdminStore();
       final admin = AdminService(store);
 
-      final created = await admin.createUser(const CreateUserRequest(
+      final created = await admin.createUser(CreateUserRequest(
         username: 'ada',
         password: 's3cret',
         displayName: 'Ada Lovelace',
@@ -165,12 +165,12 @@ void main() {
     test('create, rename and delete a role by its stable key', () async {
       final admin = AdminService(InMemoryAdminStore());
 
-      await admin.createRole(const RoleDto(key: 'editor', name: 'Editor'));
+      await admin.createRole(RoleDto(key: 'editor', name: 'Editor'));
       expect((await admin.listRoles()).map((r) => r.key), contains('editor'));
 
       final renamed = await admin.updateRole(
         'editor',
-        const RoleDto(key: 'editor', name: 'Content Editor'),
+        RoleDto(key: 'editor', name: 'Content Editor'),
       );
       expect(renamed.name, 'Content Editor');
 
@@ -215,7 +215,7 @@ void main() {
       );
       final admin = AdminService(store);
 
-      await admin.assign(const AssignmentRequest(
+      await admin.assign(AssignmentRequest(
         userId: '1',
         roleKey: 'admin',
         groupId: '9',

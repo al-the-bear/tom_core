@@ -52,7 +52,7 @@ void main() {
 
     // Sign in: the full bundle is fetched through the seam and merged over the
     // login bundle, then the shell rebuilds onto the board.
-    await session.login(const LoginRequest(username: 'alice', password: 'pw'));
+    await session.login(LoginRequest(username: 'alice', password: 'pw'));
     await tester.pumpAndSettle();
 
     // After login: the board AppBar renders the server-delivered title, and the

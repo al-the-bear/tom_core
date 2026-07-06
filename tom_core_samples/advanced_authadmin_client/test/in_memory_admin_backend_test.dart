@@ -48,7 +48,7 @@ void main() {
 
     test('TC-32-03: a wrong password is rejected', () async {
       await expectLater(
-        backend.login(const LoginRequest(username: 'admin', password: 'nope')),
+        backend.login(LoginRequest(username: 'admin', password: 'nope')),
         throwsA(isA<AdminBackendException>()
             .having((e) => e.key, 'key', 'auth.login.failed')),
       );
@@ -87,7 +87,7 @@ void main() {
     test('TC-32-07: createUser assigns an id and the account appears',
         () async {
       await loginAdmin();
-      final created = await backend.createUser(const CreateUserRequest(
+      final created = await backend.createUser(CreateUserRequest(
         username: 'carol',
         password: 'secret',
         displayName: 'Carol',
@@ -142,10 +142,10 @@ void main() {
     test('TC-32-11: createRole adds a role; a duplicate key is rejected',
         () async {
       await loginAdmin();
-      await backend.createRole(const RoleDto(key: 'auditor', name: 'Auditor'));
+      await backend.createRole(RoleDto(key: 'auditor', name: 'Auditor'));
       expect((await backend.listRoles()).map((r) => r.key), contains('auditor'));
       await expectLater(
-        backend.createRole(const RoleDto(key: 'auditor', name: 'Dup')),
+        backend.createRole(RoleDto(key: 'auditor', name: 'Dup')),
         throwsA(isA<AdminBackendException>()
             .having((e) => e.key, 'key', 'admin.role.duplicate')),
       );
@@ -154,7 +154,7 @@ void main() {
     test('TC-32-12: updateRole renames and deleteRole removes', () async {
       await loginAdmin();
       final updated =
-          await backend.updateRole('viewer', const RoleDto(name: 'Read-only'));
+          await backend.updateRole('viewer', RoleDto(name: 'Read-only'));
       expect(updated.key, 'viewer');
       expect(updated.name, 'Read-only');
       await backend.deleteRole('commenter');
@@ -227,11 +227,11 @@ void main() {
     test('TC-32-17: assign records a role and adds group membership', () async {
       await loginAdmin();
       await backend.assign(
-          const AssignmentRequest(userId: 'u-carol', roleKey: 'editor'));
+          AssignmentRequest(userId: 'u-carol', roleKey: 'editor'));
       expect(backend.rolesOf('u-carol'), contains('editor'));
 
       await backend.assign(
-          const AssignmentRequest(userId: 'u-alice', groupId: 'g-eng'));
+          AssignmentRequest(userId: 'u-alice', groupId: 'g-eng'));
       final eng =
           (await backend.listGroups()).firstWhere((g) => g.id == 'g-eng');
       expect(eng.memberUserIds, contains('u-alice'));
@@ -241,7 +241,7 @@ void main() {
       await loginAdmin();
       await expectLater(
         backend.assign(
-            const AssignmentRequest(userId: 'u-nobody', roleKey: 'editor')),
+            AssignmentRequest(userId: 'u-nobody', roleKey: 'editor')),
         throwsA(isA<AdminBackendException>()
             .having((e) => e.key, 'key', 'admin.user.not_found')),
       );

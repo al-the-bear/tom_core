@@ -4,49 +4,33 @@
 /// is attached and a single token expiry self-heals (refresh-once-on-401) — and
 /// the JSON↔DTO mapping is split into **pure** top-level `parse*` functions so it
 /// is unit-tested against captured server responses with no socket. The admin
-/// DTOs (`UserDto`/`RoleDto`/`GroupDto`/`GrantMatrixDto`) are plain value records
-/// that already own a `fromJson`, so the parsers are thin, total wrappers (the
-/// same discipline as `parseFieldStates` over `GradedFieldDto.fromJson`).
+/// DTOs (`UserDto`/`RoleDto`/`GroupDto`/`GrantMatrixDto`) are reflection-first
+/// value records, so the parsers are thin, total wrappers over `dtoFromJson<T>`
+/// (the same discipline as `parseFieldStates` over `dtoFromJson<GradedFieldDto>`).
 ///
 /// **Wire contract.** The auth server returns the framework serialization of the
-/// service method's result (`tom_core_server`'s endpoint pipeline, lines 377-387):
+/// service method's result (`tom_core_server`'s endpoint pipeline):
 ///
 /// - A **list** result (`adminListUsers`/`adminListRoles`/`adminListGroups`)
-///   matches the pipeline's `result is List<Object>` branch and is serialized as
-///   `jsonEncode(list)`, whose default encoder calls each element's `toJson()` —
-///   so a list arrives as a *bare* JSON array of correctly-shaped DTO maps (no
-///   `{items:[…]}` envelope). The parsers read `response.jsonArray`.
+///   matches the pipeline's `result is List<Object>` branch and is serialized
+///   element-by-element via the reflection encoder — so a list arrives as a
+///   *bare* JSON array of correctly-shaped DTO maps (no `{items:[…]}` envelope).
+///   The parsers read `response.jsonArray`.
+/// - A **single** DTO result (`adminCreateUser`/`adminUpdateUser`/…/
+///   `adminGetGrants`) falls to the pipeline's reflection serializer
+///   (`convertToJsonString`), which reads the reflected fields into a correctly
+///   shaped map. The parsers read `response.jsonObject`.
 /// - A **void** result (the deletes, `adminPutGrants`, `adminAssign`) is an empty
 ///   `200` body — nothing to parse.
-///
-/// > **Known server gap (out of scope here).** A *single* DTO result
-/// > (`adminCreateUser`/`adminUpdateUser`/`adminCreateRole`/`adminUpdateRole`/
-/// > `adminCreateGroup`/`adminUpdateGroup`/`adminGetGrants`) is **not** a
-/// > `TomClass`, a `Map`, or a `List`, so the pipeline falls through to
-/// > `tomReflectionInfo.convertToJsonString` — the reflection serializer that
-/// > reads `getValues`, skips final fields, and looks for a `jsonEncode` getter
-/// > rather than `toJson`. A plain all-`final` DTO therefore serializes to `{}`
-/// > over the live wire (the same pre-existing gap step 22 flagged for the
-/// > `LoginResult` login response — owned by the auth-server/kernel steps, not
-/// > this client step). These client methods are implemented to the *intended*
-/// > contract — their parsers are correct against a correctly-shaped body, and
-/// > the in-memory admin fake (step 32) and a fixed server both round-trip — but
-/// > a single-DTO response cannot round-trip against the live server until that
-/// > gap is fixed. The integration smoke therefore exercises a *list* endpoint
-/// > (`adminListUsers`), which serializes correctly today. See
-/// > `step25_admin_api_client_decisions.md`.
 ///
 /// A denial the server maps to a non-success status (a `{"error": key}` body,
 /// e.g. the `admin`-role gate's `403`) surfaces as a typed [AdminApiException]
 /// carrying that stable key; a persistent `401` was already turned into an
 /// `TomAuthExpiredException` by the wrapper before it reaches here.
 ///
-/// No reflection is required: the admin DTOs are plain records (unlike the app
-/// API's reflected entities), so this client needs neither `initializeReflection`
-/// nor a domain dependency.
+/// The reflection round-trip requires the DTO seed to be installed once
+/// (`initializeReflection`) — the same seed the app client and servers build.
 library;
-
-import 'dart:convert';
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -75,31 +59,31 @@ class AdminApiException extends TomException {
 }
 
 /// Parses one `UserDto` from its wire map.
-UserDto parseUser(Map<String, Object?> json) => UserDto.fromJson(json);
+UserDto parseUser(Map<String, Object?> json) => dtoFromJson<UserDto>(json);
 
 /// Parses a bare array of user maps into [UserDto]s.
 List<UserDto> parseUsers(List<Object?> body) =>
-    [for (final e in body) UserDto.fromJson(_asMap(e))];
+    [for (final e in body) dtoFromJson<UserDto>(_asMap(e))];
 
 /// Parses one `RoleDto` from its wire map.
-RoleDto parseRole(Map<String, Object?> json) => RoleDto.fromJson(json);
+RoleDto parseRole(Map<String, Object?> json) => dtoFromJson<RoleDto>(json);
 
 /// Parses a bare array of role maps into [RoleDto]s.
 List<RoleDto> parseRoles(List<Object?> body) =>
-    [for (final e in body) RoleDto.fromJson(_asMap(e))];
+    [for (final e in body) dtoFromJson<RoleDto>(_asMap(e))];
 
 /// Parses one `GroupDto` (with its membership) from its wire map.
-GroupDto parseGroup(Map<String, Object?> json) => GroupDto.fromJson(json);
+GroupDto parseGroup(Map<String, Object?> json) => dtoFromJson<GroupDto>(json);
 
 /// Parses a bare array of group maps into [GroupDto]s.
 List<GroupDto> parseGroups(List<Object?> body) =>
-    [for (final e in body) GroupDto.fromJson(_asMap(e))];
+    [for (final e in body) dtoFromJson<GroupDto>(_asMap(e))];
 
-/// Parses the `GET /admin/grants` body — the `{role: {resourceKey: accessToken}}`
-/// matrix — into a [GrantMatrixDto]. Unknown access tokens degrade to
-/// [TomAuthState.none] (closed-safe) via [GrantMatrixDto.fromJson].
+/// Parses the `GET /admin/grants` body — the `{matrix: {role: {resourceKey:
+/// accessToken}}}` map — into a [GrantMatrixDto]. Unknown access tokens degrade
+/// to [TomAuthState.none] (closed-safe) at read time via [GrantMatrixDto.accessFor].
 GrantMatrixDto parseGrantMatrix(Map<String, Object?> json) =>
-    GrantMatrixDto.fromJson(json);
+    dtoFromJson<GrantMatrixDto>(json);
 
 Map<String, Object?> _asMap(Object? element) =>
     (element as Map).cast<String, Object?>();
@@ -130,14 +114,14 @@ class AdminApiClient implements AdminApiService {
   @override
   Future<UserDto> createUser(CreateUserRequest request) async => parseUser(
         (await _send('POST', '/admin/users',
-                body: jsonEncode(request.toJson())))
+                body: dtoToJsonString(request)))
             .jsonObject,
       );
 
   @override
   Future<UserDto> updateUser(String id, UserDto user) async => parseUser(
         (await _send('PUT', '/admin/users/$id',
-                body: jsonEncode(user.toJson())))
+                body: dtoToJsonString(user)))
             .jsonObject,
       );
 
@@ -153,14 +137,14 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<RoleDto> createRole(RoleDto role) async => parseRole(
-        (await _send('POST', '/admin/roles', body: jsonEncode(role.toJson())))
+        (await _send('POST', '/admin/roles', body: dtoToJsonString(role)))
             .jsonObject,
       );
 
   @override
   Future<RoleDto> updateRole(String key, RoleDto role) async => parseRole(
         (await _send('PUT', '/admin/roles/$key',
-                body: jsonEncode(role.toJson())))
+                body: dtoToJsonString(role)))
             .jsonObject,
       );
 
@@ -177,14 +161,14 @@ class AdminApiClient implements AdminApiService {
   @override
   Future<GroupDto> createGroup(GroupDto group) async => parseGroup(
         (await _send('POST', '/admin/groups',
-                body: jsonEncode(group.toJson())))
+                body: dtoToJsonString(group)))
             .jsonObject,
       );
 
   @override
   Future<GroupDto> updateGroup(String id, GroupDto group) async => parseGroup(
         (await _send('PUT', '/admin/groups/$id',
-                body: jsonEncode(group.toJson())))
+                body: dtoToJsonString(group)))
             .jsonObject,
       );
 
@@ -200,15 +184,15 @@ class AdminApiClient implements AdminApiService {
 
   @override
   Future<void> putGrants(GrantMatrixDto matrix) async =>
-      _send('PUT', '/admin/grants', body: jsonEncode(matrix.toJson()));
+      _send('PUT', '/admin/grants', body: dtoToJsonString(matrix));
 
   @override
   Future<void> assign(AssignmentRequest request) async =>
-      _send('POST', '/admin/assignments', body: jsonEncode(request.toJson()));
+      _send('POST', '/admin/assignments', body: dtoToJsonString(request));
 
   @override
   Future<ResourceBundleDto> resources() async =>
-      ResourceBundleDto.fromJson((await _get('/admin/resources')).jsonObject);
+      dtoFromJson<ResourceBundleDto>((await _get('/admin/resources')).jsonObject);
 
   Future<HttpJsonResponse> _get(String path,
           [Map<String, String> query = const {}]) =>

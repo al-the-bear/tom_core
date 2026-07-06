@@ -22,6 +22,14 @@ import 'forms/login_form.dart';
 import 'forms/todo_item_form.dart';
 // ignore: unused_import
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
+// The reflection-first contract DTOs the live app backend round-trips through
+// the client core (LoginRequest/LoginResult/GradedFieldDto/ShareRequest/
+// ResourceBundleDto/…): they must be in this one combined seed so
+// `dtoFromJson`/`dtoToJsonString` resolve at runtime.
+// ignore: unused_import
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
+// `tomReflector` for the contract-DTO capture anchor below.
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 // Re-export the client-local reflected types so they are discoverable through
 // this one entry point, plus the generated output so `main.dart` and the tests
@@ -37,7 +45,35 @@ export 'forms/todo_item_form.dart';
 // below. Callers import advanced_todo_domain directly for its entities.
 export 'reflection_seed.reflection.dart';
 
+// Contract-DTO capture anchor. In a Flutter package the generator's closure
+// resolution partially fails (a Material/analyzer summary RangeError), so a bare
+// barrel import or a `main()` that merely *constructs* the DTOs does NOT get
+// them into the reflected graph — the domain entities only make it in because
+// the reflected forms reference them as field/type-argument types, and the
+// generator follows that type graph even through the crash. So we anchor each
+// contract DTO the same way the forms anchor the domain: as a *field type* on a
+// reflected holder. This holder is generator plumbing only — never constructed
+// or reflected at runtime; it exists solely so the type-graph walk reaches every
+// wire DTO the live app round-trips through advanced_client_core.
+@tomReflector
+class _ContractDtoAnchor {
+  CreateUserRequest? createUserRequest;
+  RoleDto? roleDto;
+  GroupDto? groupDto;
+  AssignmentRequest? assignmentRequest;
+  LoginRequest? loginRequest;
+  UserDto? userDto;
+  LoginResult? loginResult;
+  ShareRequest? shareRequest;
+  GrantMatrixDto? grantMatrixDto;
+  ResourceBundleDto? resourceBundleDto;
+  GradedFieldDto? gradedFieldDto;
+}
+
 // The reflection generator treats this file as a runnable program and requires a
-// `main`. It is never executed by the app (the entry point is `main.dart`); this
-// stub exists solely to satisfy that generator contract.
-void main() {}
+// `main`. It is never executed by the app (the entry point is `main.dart`). The
+// bare type reference marks the capture anchor as "used" without constructing or
+// reflecting it.
+void main() {
+  _ContractDtoAnchor;
+}

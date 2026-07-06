@@ -25,7 +25,7 @@ void main() {
     );
   });
 
-  const aliceLogin = LoginRequest(username: 'alice', password: 'pw');
+  final aliceLogin = LoginRequest(username: 'alice', password: 'pw');
   final boardFinder = find.byKey(const Key('board-screen'));
   final detailFinder = find.byKey(const Key('item-detail-screen'));
 

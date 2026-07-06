@@ -199,7 +199,7 @@ class InMemoryAppBackend implements AppBackend {
 
     // Bob is shared into the project as an editor; Carol starts with no access
     // (the share test grants it).
-    _shares.add(const ShareRequest(
+    _shares.add(ShareRequest(
       resourceType: 'project',
       resourceId: 'p-1',
       granteeUserId: 'u-bob',
@@ -425,7 +425,7 @@ class InMemoryAppBackend implements AppBackend {
       if (share.resourceType == 'project' &&
           share.resourceId == project.id.get() &&
           share.granteeUserId == principal) {
-        return share.projectRole;
+        return share.projectRoleValue;
       }
     }
     return null;

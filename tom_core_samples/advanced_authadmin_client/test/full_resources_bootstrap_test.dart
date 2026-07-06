@@ -55,7 +55,7 @@ void main() {
     // Sign in as the administrator: the admin-gated console bundle is fetched
     // through the seam (after the admin probe) and merged over the login bundle,
     // then the shell rebuilds onto the console.
-    await session.login(const LoginRequest(username: 'admin', password: 'pw'));
+    await session.login(LoginRequest(username: 'admin', password: 'pw'));
     await tester.pumpAndSettle();
 
     // After login: the shell AppBar renders the server-delivered title, and the

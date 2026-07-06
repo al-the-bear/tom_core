@@ -858,7 +858,7 @@ class AppShareService {
       ..resourceType = request.resourceType
       ..resourceId = resourceId
       ..granteeUserId = granteeId
-      ..projectRole = request.projectRole.name
+      ..projectRole = request.projectRole
       ..grantedById = userId
       ..createdAt = DateTime.now();
     await store.saveShare(record);

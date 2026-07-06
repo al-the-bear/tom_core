@@ -4,10 +4,10 @@
 ///
 /// The fixtures mirror the framework wire shape `advanced_auth_server` emits —
 /// `tom_core_server`'s endpoint pipeline serializes a list result as a *bare*
-/// JSON array of `toJson()` maps (no envelope) and a void result as an empty
-/// body. The admin DTOs are plain value records that own their `fromJson`, so
-/// the parsers are thin wrappers and need no reflection (unlike the app API's
-/// reflected entities).
+/// JSON array of reflected DTO maps (no envelope) and a void result as an empty
+/// body. The admin DTOs are reflection-first value records, so the parsers wrap
+/// `dtoFromJson<T>` and need the combined domain+contracts seed installed once
+/// (`initializeReflection`).
 ///
 /// Stored bearers are synthetic unsigned JWTs (see [_makeJwt]) so
 /// `setTokens(..., decrypt: false)` accepts them without RSA.
@@ -16,11 +16,14 @@ library;
 import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   group('AdminApiClient parsers', () {
     test('TC-25-01: parseUsers maps a bare array of user maps', () {
       final users = parseUsers([
@@ -83,11 +86,13 @@ void main() {
         'TC-25-05: parseGrantMatrix maps the role×field matrix (unknown → none)',
         () {
       final matrix = parseGrantMatrix({
-        'owner': {'todo.item.title': 'full', 'todo.item.status': 'full'},
-        'viewer': {
-          'todo.item.title': 'read',
-          // An unknown access token degrades closed-safe to none.
-          'todo.item.status': 'bogus',
+        'matrix': {
+          'owner': {'todo.item.title': 'full', 'todo.item.status': 'full'},
+          'viewer': {
+            'todo.item.title': 'read',
+            // An unknown access token degrades closed-safe to none.
+            'todo.item.status': 'bogus',
+          },
         },
       });
       expect(matrix.roles, containsAll(['owner', 'viewer']));
@@ -142,7 +147,7 @@ void main() {
       });
       final client = clientOver(transport);
 
-      final created = await client.createUser(const CreateUserRequest(
+      final created = await client.createUser(CreateUserRequest(
         username: 'dave',
         password: 'secret',
         displayName: 'Dave',
@@ -165,8 +170,10 @@ void main() {
           HttpJsonResponse(
               200,
               jsonEncode({
-                'owner': {'todo.item.title': 'full'},
-                'viewer': {'todo.item.title': 'read'},
+                'matrix': {
+                  'owner': {'todo.item.title': 'full'},
+                  'viewer': {'todo.item.title': 'read'},
+                },
               })),
         ],
       });
@@ -193,9 +200,11 @@ void main() {
 
       final call = transport.callsTo('/admin/grants').single;
       expect(call.method, 'PUT');
-      // The body round-trips back to an equal matrix (closed-safe wire shape).
-      expect(GrantMatrixDto.fromJson(jsonDecode(call.body!) as Map<String, Object?>),
-          matrix);
+      // The body round-trips back to a matrix with the same cell (closed-safe
+      // wire shape); GrantMatrixDto has no value equality, so assert on the cell.
+      final sent = dtoFromJson<GrantMatrixDto>(
+          jsonDecode(call.body!) as Map<String, Object?>);
+      expect(sent.accessFor('editor', 'todo.item.status'), TomAuthState.full);
     });
 
     test('TC-25-10: assign POSTs the AssignmentRequest to /admin/assignments',
@@ -207,7 +216,7 @@ void main() {
       final client = clientOver(transport);
 
       await client.assign(
-          const AssignmentRequest(userId: '2', roleKey: 'admin'));
+          AssignmentRequest(userId: '2', roleKey: 'admin'));
 
       final call = transport.callsTo('/admin/assignments').single;
       expect(call.method, 'POST');
@@ -263,7 +272,7 @@ void main() {
       final client = clientOver(transport);
 
       final role = await client.updateRole(
-          'editor', const RoleDto(key: 'editor', name: 'Editor (renamed)'));
+          'editor', RoleDto(key: 'editor', name: 'Editor (renamed)'));
 
       expect(role.name, 'Editor (renamed)');
       expect(transport.callsTo('/admin/roles/editor').single.method, 'PUT');

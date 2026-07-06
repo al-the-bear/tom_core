@@ -110,7 +110,12 @@ void main() {
       TomBearerAuthentication.setTokens(result.authToken, result.authzToken);
       final echoed = service.userDtoOf(TomBearerAuthentication.getPrincipal());
 
-      expect(echoed, result.user);
+      // Reflection-first DTOs carry no value `==`; compare the projected fields.
+      expect(echoed.id, result.user.id);
+      expect(echoed.username, result.user.username);
+      expect(echoed.displayName, result.user.displayName);
+      expect(echoed.email, result.user.email);
+      expect(echoed.statusValue, result.user.statusValue);
       expect(echoed.username, 'ada');
       expect(echoed.id, '1');
     });

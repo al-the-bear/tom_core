@@ -44,8 +44,10 @@ library;
 import 'dart:io';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart';
+import 'package:advanced_todo_domain/advanced_todo_domain.dart'
+    hide initializeReflection;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
@@ -54,10 +56,10 @@ const _authBaseUri = 'http://localhost:8081';
 
 // Seeded principals (auth_db `[000]` seed) and the workspace/item the scenario
 // touches (app_db `[000]` seed).
-const _adminLogin = LoginRequest(username: 'admin', password: 'admin-pass');
-const _aliceLogin = LoginRequest(username: 'alice', password: 'alice-pass');
-const _carolLogin = LoginRequest(username: 'carol', password: 'carol-pass');
-const _bobLogin = LoginRequest(username: 'bob', password: 'bob-pass');
+final _adminLogin = LoginRequest(username: 'admin', password: 'admin-pass');
+final _aliceLogin = LoginRequest(username: 'alice', password: 'alice-pass');
+final _carolLogin = LoginRequest(username: 'carol', password: 'carol-pass');
+final _bobLogin = LoginRequest(username: 'bob', password: 'bob-pass');
 const _bobUserId = '3';
 const _aliceWorkspaceId = '1';
 const _carolItemId = '1';
@@ -164,7 +166,7 @@ void main() {
 /// from the app server's field-state endpoint.
 Future<TomAuthState> _carolTitleState(AppApiClient app) async {
   final states = await app.itemFieldStates(_carolItemId);
-  return states.firstWhere((g) => g.resourceKey == _titleKey).access;
+  return states.firstWhere((g) => g.resourceKey == _titleKey).accessState;
 }
 
 /// The complete `viewer` row from the §A.4 seed with `title` set to [title].

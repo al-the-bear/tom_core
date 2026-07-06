@@ -47,7 +47,8 @@ void main() {
 
     test('the appResources handler returns the app bundle', () async {
       final dto = await AdvancedAppApiService().resources();
-      expect(dto, AppResourceBundles.appBundle());
+      // Reflection-first DTOs carry no value `==`; compare the wire payload.
+      expect(dto.texts, AppResourceBundles.appBundle().texts);
     });
 
     test('appResources requires authentication (rejects an anonymous caller)',

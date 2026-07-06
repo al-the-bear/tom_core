@@ -108,7 +108,7 @@ class _GrantsScreenState extends State<GrantsScreen> {
   List<String> get _resourceKeys {
     final keys = <String>{};
     for (final role in _working.roles) {
-      keys.addAll(_working.matrix[role]?.keys ?? const <String>[]);
+      keys.addAll(_working.gradesFor(role).map((g) => g.resourceKey));
     }
     final sorted = keys.toList()..sort();
     return sorted;

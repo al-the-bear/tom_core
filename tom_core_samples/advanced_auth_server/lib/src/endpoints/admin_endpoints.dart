@@ -594,7 +594,7 @@ class AdminService {
   Future<void> putGrants(GrantMatrixDto matrix) async {
     for (final role in matrix.roles) {
       final graded =
-          TomGradedAccessControlInformation(grades: matrix.matrix[role]);
+          TomGradedAccessControlInformation(grades: matrix.gradeMapFor(role));
       await store.replaceGrantsForRole(role, graded.toGrants(role));
     }
   }

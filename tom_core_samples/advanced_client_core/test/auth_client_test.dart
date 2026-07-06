@@ -1,22 +1,28 @@
 /// Database- and socket-free tests for [AuthClient] (step 22): the login /
 /// refresh / logout sequencing and token storage verify against a fake
 /// [JsonTransport], and the "pure JSON parsers" done-bar verifies by feeding a
-/// *captured* `/auth/login` response body straight through [LoginResult.fromJson].
+/// *captured* `/auth/login` response body straight through the reflection path
+/// (`dtoFromJson<LoginResult>`).
 ///
-/// Tokens are synthetic unsigned JWTs (see [_makeJwt]) so [AuthClient] stores
-/// them through `TomBearerAuthentication.setTokens(..., decrypt: false)` without
-/// any RSA key — matching the client's `decryptTokens: false` default, which
-/// treats the authorization token as an opaque bearer.
+/// Because the DTOs are reflection-first, the combined domain+contracts seed is
+/// installed once (`initializeReflection`). Tokens are synthetic unsigned JWTs
+/// (see [_makeJwt]) so [AuthClient] stores them through
+/// `TomBearerAuthentication.setTokens(..., decrypt: false)` without any RSA key —
+/// matching the client's `decryptTokens: false` default, which treats the
+/// authorization token as an opaque bearer.
 library;
 
 import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
+import 'package:advanced_client_core/reflection_seed.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 
 void main() {
+  setUpAll(initializeReflection);
+
   group('AuthClient', () {
     final baseUri = Uri.parse('http://localhost:8081');
 
@@ -36,7 +42,7 @@ void main() {
         final client = AuthClient(baseUri, transport: transport);
 
         final result = await client.login(
-            const LoginRequest(username: 'alice', password: 'alice-pass'));
+            LoginRequest(username: 'alice', password: 'alice-pass'));
 
         // The sequenced HTTP call.
         final call = transport.calls.single;
@@ -59,7 +65,7 @@ void main() {
         final client = AuthClient(baseUri, transport: transport);
 
         expect(TomBearerAuthentication.authorizationToken, isNull);
-        await client.login(const LoginRequest(username: 'alice'));
+        await client.login(LoginRequest(username: 'alice'));
 
         expect(TomBearerAuthentication.token, equals(response['authToken']));
         expect(TomBearerAuthentication.authorizationToken,
@@ -75,7 +81,7 @@ void main() {
         final client = AuthClient(baseUri, transport: transport);
 
         await expectLater(
-          client.login(const LoginRequest(username: 'alice', password: 'wrong')),
+          client.login(LoginRequest(username: 'alice', password: 'wrong')),
           throwsA(isA<AuthClientException>()
               .having((e) => e.key, 'key', 'auth.credentials.rejected')
               .having((e) => e.statusCode, 'statusCode', 401)),
@@ -90,7 +96,7 @@ void main() {
         final client = AuthClient(baseUri, transport: transport);
 
         await expectLater(
-          client.login(const LoginRequest(username: 'alice')),
+          client.login(LoginRequest(username: 'alice')),
           throwsA(isA<AuthClientException>()
               .having((e) => e.key, 'key', 'auth.login.failed')
               .having((e) => e.statusCode, 'statusCode', 500)),
@@ -109,7 +115,7 @@ void main() {
         ]);
         final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(const LoginRequest(username: 'alice'));
+        await client.login(LoginRequest(username: 'alice'));
         await client.refresh();
 
         final refreshCall = transport.calls[1];
@@ -185,7 +191,7 @@ void main() {
         ]);
         final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(const LoginRequest(username: 'alice'));
+        await client.login(LoginRequest(username: 'alice'));
         await client.logout();
 
         expect(transport.calls[1].uri,
@@ -202,7 +208,7 @@ void main() {
         ]);
         final client = AuthClient(baseUri, transport: transport);
 
-        await client.login(const LoginRequest(username: 'alice'));
+        await client.login(LoginRequest(username: 'alice'));
         await expectLater(client.logout(), throwsA(isA<Exception>()));
 
         expect(TomBearerAuthentication.authorizationToken, isNull);
@@ -238,7 +244,7 @@ void main() {
   "expiresAt": "2026-06-28T12:34:56.000Z"
 }''';
 
-      final result = LoginResult.fromJson(
+      final result = dtoFromJson<LoginResult>(
           jsonDecode(captured) as Map<String, Object?>);
 
       expect(result.user.id, equals('2'));

@@ -11,6 +11,21 @@ import '../transactions/transaction_manager.dart';
 
 import 'endpoint_annotation.dart';
 
+/// Serializes one element of a `List` endpoint result to a JSON-encodable value.
+///
+/// Used as the `toEncodable` for `jsonEncode` when a handler returns a
+/// `List<Object>`: `jsonEncode` handles primitives, maps and nested lists
+/// natively and only calls this for the remaining complex elements. An element
+/// that owns its wire shape ([TomClass]/[TomJsonSerializable]) is serialized
+/// through its `toJson`; every other object — notably the reflection-first wire
+/// DTOs, which carry no hand-written serializer — goes through the kernel
+/// reflection path, matching how a *single* such result is serialized below.
+Object? _encodeResultElement(Object? element) {
+  if (element is TomClass) return element.toJson();
+  if (element is TomJsonSerializable) return element.toJson();
+  return tomReflectionInfo.getValues(element!);
+}
+
 /// Thrown while *serving* a request: access denied, parameter instantiation
 /// failure, a failing error handler, or a result that cannot be converted.
 class TomEndpointHandlerException extends TomServerException {
@@ -477,7 +492,7 @@ class TomEndpointHandler {
           : result is Map<String, Object>
           ? jsonEncode(result)
           : result is List<Object>
-          ? jsonEncode(result)
+          ? jsonEncode(result, toEncodable: _encodeResultElement)
           : tomReflectionInfo.convertToJsonString(result);
 
       Response? response;
