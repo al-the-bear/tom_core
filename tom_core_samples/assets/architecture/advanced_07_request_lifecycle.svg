@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 440" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    Request lifecycle — a secured read is TWO round-trips against TWO servers, the
+    first producing the credential the second consumes:
+      ROUND-TRIP 1 (auth server :8081, PUBLIC):
+        ① POST /auth/login → AuthClient.login → AuthTokenService.login →
+           authenticateUser (verify password) → issue JWT pair (auth + authz, 2h)
+           → LoginResult;
+        ② client stores the token pair (TomBearerAuthentication).
+      ROUND-TRIP 2 (app server :8080, AUTHENTICATED, Authorization: Bearer):
+        ③ GET /items/{id}/field-states → pipeline verifies the JWT → principal into
+           the request zone;
+        ④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole);
+        ⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade),
+           grants read from the `main` datasource bound to auth_db → [GradedFieldDto];
+        ⑥ client installs them on the adapter; each field renders by its grade.
+    Hinge: the shared JWT signing key lets the app server validate the auth-minted
+    token offline, with no callback.
+  -->
+  <defs>
+    <marker id="arrow7" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .band{stroke:#90a4ae;stroke-width:1.2;fill:none;stroke-dasharray:4 3;}
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .user{fill:#fff3e0;}
+    .auth{fill:#e3f2fd;}
+    .app{fill:#e8f5e9;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow7);}
+    .step{fill:#1565c0;font-weight:700;font-size:12px;}
+    .note{fill:#546e7a;font-size:11px;}
+    .title{fill:#37474f;font-weight:700;font-size:12px;}
+  </style>
+
+  <!-- round-trip 1 band -->
+  <rect class="band" x="20" y="30" width="780" height="150" rx="6"/>
+  <text class="title" x="35" y="48">Round-trip 1 · advanced_auth_server (:8081) · PUBLIC</text>
+
+  <rect class="box user" x="40"  y="70" width="150" height="70" rx="8"/>
+  <text class="lbl" x="115" y="98" text-anchor="middle">user / client</text>
+  <text class="sub" x="115" y="116" text-anchor="middle">AuthClient.login</text>
+
+  <rect class="box auth" x="470" y="70" width="300" height="70" rx="8"/>
+  <text class="lbl" x="620" y="94" text-anchor="middle">AuthTokenService.login</text>
+  <text class="sub" x="620" y="112" text-anchor="middle">verify password → issue JWT pair</text>
+  <text class="sub" x="620" y="128" text-anchor="middle">(auth + authz, 2h)</text>
+
+  <path class="flow" d="M190,95 L470,95"/>
+  <text class="step" x="330" y="86" text-anchor="middle">①</text>
+  <text class="note" x="330" y="86" text-anchor="start" dx="12">POST /auth/login</text>
+  <path class="flow" d="M470,120 L190,120"/>
+  <text class="note" x="330" y="138" text-anchor="middle">LoginResult (token pair) — ② store (TomBearerAuthentication)</text>
+
+  <!-- round-trip 2 band -->
+  <rect class="band" x="20" y="200" width="780" height="210" rx="6"/>
+  <text class="title" x="35" y="218">Round-trip 2 · advanced_app_server (:8080) · AUTHENTICATED (Bearer)</text>
+
+  <rect class="box user" x="40"  y="240" width="150" height="70" rx="8"/>
+  <text class="lbl" x="115" y="268" text-anchor="middle">user / client</text>
+  <text class="sub" x="115" y="286" text-anchor="middle">Bearer authzToken</text>
+
+  <rect class="box app" x="410" y="240" width="360" height="120" rx="8"/>
+  <text class="lbl" x="590" y="264" text-anchor="middle">app server pipeline</text>
+  <text class="sub" x="590" y="284" text-anchor="middle">③ verify JWT → principal into request zone</text>
+  <text class="sub" x="590" y="302" text-anchor="middle">④ resolveRole (ownership-or-share → ProjectRole)</text>
+  <text class="sub" x="590" y="320" text-anchor="middle">⑤ resolveItemFieldStates (role → per-field grade)</text>
+  <text class="sub" x="590" y="338" text-anchor="middle">grants read from `main` datasource → auth_db</text>
+
+  <path class="flow" d="M190,265 L410,265"/>
+  <text class="note" x="300" y="256" text-anchor="middle">GET /items/{id}/field-states</text>
+  <path class="flow" d="M410,300 L190,300"/>
+  <text class="note" x="300" y="318" text-anchor="middle">[GradedFieldDto] — ⑥ render by grade</text>
+</svg>

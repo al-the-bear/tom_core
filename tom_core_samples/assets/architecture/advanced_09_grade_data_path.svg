@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 560" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5">
+  <!--
+    The grant matrix → adapter → field data path: the grade a field renders at,
+    traced from a database row to a widget.
+      1. auth_db.tom_resource_grant row (role_name, resource_key, access_level)
+         — RepositoryGrantStore.grantsForRole(role)  [field_grade_resolver.dart:93]
+      2. TomGradedAccessControlInformation.fromGrants(grants)  [field_grade_resolver.dart:65]
+         (folds duplicate keys by widen — most permissive wins)
+      3. resolveItemFieldStates(role) → Map<String,TomAuthState>  [field_grade_resolver.dart:73]
+         (itemFieldStates endpoint → List<GradedFieldDto> over the wire)
+      4. AppSession.loadFieldStates → adapter.states = matrix (repoint, no reinstall)
+         (installed once: TomAuthorization.adapter = …  [main.dart:42])
+      5. TomField.resolveEffectiveAuth() layer 1  [tom_form.dart:809]
+         (TomAuthorization.resolveAuth('todo.item.title'))
+      6. FieldStateAuthorizationAdapter.resolveAuth(path)  [field_state_authorization_adapter.dart:78]
+      7. TomAuthState → the field renders at its grade.
+  -->
+  <defs>
+    <marker id="arrow9" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .db{fill:#eceff1;}
+    .server{fill:#e8f5e9;}
+    .wire{fill:#fff3e0;}
+    .client{fill:#e3f2fd;}
+    .render{fill:#f3e5f5;}
+    .lbl{fill:#212121;}
+    .mono{fill:#37474f;font-family:monospace;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow9);}
+    .cite{fill:#90a4ae;font-size:10.5px;font-family:monospace;}
+    .side{fill:#546e7a;font-size:10.5px;}
+  </style>
+
+  <rect class="box db" x="120" y="20" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="46" text-anchor="middle">auth_db.tom_resource_grant row (role_name, resource_key, access_level)</text>
+
+  <path class="flow" d="M380,62 L380,92"/>
+  <text class="side" x="390" y="82">RepositoryGrantStore.grantsForRole(role)</text>
+  <text class="cite" x="630" y="82" text-anchor="end">field_grade_resolver.dart:93</text>
+
+  <rect class="box server" x="120" y="92" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="118" text-anchor="middle">TomGradedAccessControlInformation.fromGrants(grants)</text>
+
+  <path class="flow" d="M380,134 L380,164"/>
+  <text class="side" x="390" y="154">folds duplicate keys by widen — most permissive wins</text>
+  <text class="cite" x="630" y="154" text-anchor="end">field_grade_resolver.dart:65</text>
+
+  <rect class="box server" x="120" y="164" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="190" text-anchor="middle">resolveItemFieldStates(role) → Map&lt;String,TomAuthState&gt;</text>
+
+  <path class="flow" d="M380,206 L380,236"/>
+  <text class="side" x="390" y="226">itemFieldStates endpoint → List&lt;GradedFieldDto&gt; over the wire</text>
+  <text class="cite" x="630" y="226" text-anchor="end">field_grade_resolver.dart:73</text>
+
+  <rect class="box client" x="120" y="236" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="262" text-anchor="middle">AppSession.loadFieldStates → adapter.states = matrix</text>
+
+  <path class="flow" d="M380,278 L380,308"/>
+  <text class="side" x="390" y="298">installed once: TomAuthorization.adapter = … (repoint, no reinstall)</text>
+  <text class="cite" x="630" y="298" text-anchor="end">main.dart:42</text>
+
+  <rect class="box client" x="120" y="308" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="334" text-anchor="middle">TomField.resolveEffectiveAuth() layer 1</text>
+
+  <path class="flow" d="M380,350 L380,380"/>
+  <text class="side" x="390" y="370">TomAuthorization.resolveAuth('todo.item.title')</text>
+  <text class="cite" x="630" y="370" text-anchor="end">tom_form.dart:809</text>
+
+  <rect class="box client" x="120" y="380" width="520" height="42" rx="7"/>
+  <text class="mono" x="380" y="406" text-anchor="middle">FieldStateAuthorizationAdapter.resolveAuth(path)</text>
+
+  <path class="flow" d="M380,422 L380,452"/>
+  <text class="cite" x="630" y="442" text-anchor="end">field_state_authorization_adapter.dart:78</text>
+
+  <rect class="box render" x="120" y="452" width="520" height="42" rx="7"/>
+  <text class="lbl" x="380" y="478" text-anchor="middle" font-weight="600">TomAuthState → the field renders at its grade</text>
+</svg>

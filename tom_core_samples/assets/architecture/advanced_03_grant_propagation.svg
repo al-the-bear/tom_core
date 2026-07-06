@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 440" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13">
+  <!--
+    End-to-end request + grant-propagation loop.
+      (1) An administrator edits the grant matrix via /admin/* on the auth server
+          (e.g. raises a projectRole's grade on a field from read-only to editable).
+      (2) The auth tier now owns the changed authority; the app server reads the
+          grant matrix (sourced from the auth tier) on the next request.
+      (3) The end-user (alice) makes her next request with her bearer; the app
+          server grades each field hidden/read-only/disabled/editable for that
+          principal, so the admin's edit shows in alice's editor.
+      (4) An owner shares a project; on a SECOND user's next request the app
+          server resolves the new share and reveals the project on their board.
+    ANNOTATION: an authorization change applies on the NEXT JWT refresh — either
+    a re-login or the client's automatic token refresh — because the authz claims
+    ride in the bearer; the edit is not pushed to a live session.
+  -->
+  <defs>
+    <marker id="arrow3" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#37474f"/>
+    </marker>
+  </defs>
+  <style>
+    .box{stroke:#37474f;stroke-width:1.5;}
+    .admin{fill:#ede7f6;}
+    .auth{fill:#e3f2fd;}
+    .app{fill:#e8f5e9;}
+    .user{fill:#fff3e0;}
+    .lbl{fill:#212121;font-weight:600;}
+    .sub{fill:#546e7a;font-size:11px;}
+    .flow{stroke:#37474f;stroke-width:1.5;fill:none;marker-end:url(#arrow3);}
+    .step{fill:#1565c0;font-weight:700;font-size:12px;}
+    .note{fill:#546e7a;font-size:11px;}
+    .annot{fill:#c62828;font-size:11px;}
+  </style>
+
+  <rect class="box admin" x="40"  y="40" width="200" height="60" rx="8"/>
+  <text class="lbl" x="140" y="66" text-anchor="middle">administrator</text>
+  <text class="sub" x="140" y="84" text-anchor="middle">authadmin console</text>
+
+  <rect class="box auth" x="290" y="40" width="200" height="60" rx="8"/>
+  <text class="lbl" x="390" y="66" text-anchor="middle">advanced_auth_server</text>
+  <text class="sub" x="390" y="84" text-anchor="middle">owns the grant matrix</text>
+
+  <rect class="box app"  x="290" y="220" width="200" height="60" rx="8"/>
+  <text class="lbl" x="390" y="246" text-anchor="middle">advanced_app_server</text>
+  <text class="sub" x="390" y="264" text-anchor="middle">grades fields per request</text>
+
+  <rect class="box user" x="40"  y="220" width="200" height="60" rx="8"/>
+  <text class="lbl" x="140" y="240" text-anchor="middle">end-user (alice)</text>
+  <text class="sub" x="140" y="258" text-anchor="middle">item editor / board</text>
+
+  <rect class="box user" x="540" y="220" width="200" height="60" rx="8"/>
+  <text class="lbl" x="640" y="240" text-anchor="middle">second user (bob)</text>
+  <text class="sub" x="640" y="258" text-anchor="middle">sees shared project</text>
+
+  <!-- 1: admin edits grants -->
+  <path class="flow" d="M240,70 L290,70"/>
+  <text class="step" x="255" y="30" text-anchor="middle">1</text>
+  <text class="note" x="265" y="112" text-anchor="middle">PUT /admin/grants</text>
+
+  <!-- 2: app server reads matrix from auth tier -->
+  <path class="flow" d="M390,100 L390,220"/>
+  <text class="step" x="405" y="160" text-anchor="middle">2</text>
+  <text class="note" x="500" y="164" text-anchor="middle">grant matrix sourced</text>
+  <text class="note" x="500" y="178" text-anchor="middle">from the auth tier</text>
+
+  <!-- 3: alice next request -> graded fields -->
+  <path class="flow" d="M240,250 L290,250"/>
+  <text class="step" x="265" y="210" text-anchor="middle">3</text>
+  <text class="note" x="150" y="305" text-anchor="middle">next request → graded editor</text>
+
+  <!-- 4: share reveals to second user -->
+  <path class="flow" d="M490,250 L540,250"/>
+  <text class="step" x="515" y="210" text-anchor="middle">4</text>
+  <text class="note" x="640" y="305" text-anchor="middle">next request → share revealed</text>
+
+  <!-- annotation -->
+  <text class="annot" x="40" y="360">⚑ An authorization change applies on the NEXT JWT refresh —</text>
+  <text class="annot" x="40" y="376">   a re-login or the client's automatic token refresh — because the</text>
+  <text class="annot" x="40" y="392">   authz claims ride in the bearer; it is not pushed to a live session.</text>
+</svg>

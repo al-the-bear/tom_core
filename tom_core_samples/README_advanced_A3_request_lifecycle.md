@@ -28,24 +28,36 @@ client renders that, byte by byte.
 A secured read is really **two** requests against **two** servers, the first
 producing the credential the second consumes:
 
+<!-- Figure: request lifecycle — two round-trips. Round-trip 1 (auth server :8081,
+PUBLIC): ① POST /auth/login → AuthClient.login → AuthTokenService.login →
+authenticateUser (verify password) → issue JWT pair (auth + authz, 2h) →
+LoginResult; ② client stores the pair (TomBearerAuthentication). Round-trip 2
+(app server :8080, AUTHENTICATED, Authorization: Bearer): ③ GET
+/items/{id}/field-states → pipeline verifies the JWT → principal into the request
+zone; ④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole); ⑤
+FieldGradeResolver.resolveItemFieldStates (role → per-field grade), grants read
+from the `main` datasource bound to auth_db → [GradedFieldDto]; ⑥ client installs
+them on the adapter and each field renders by its grade. -->
+
+![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair; round-trip 2 sends a bearer-authenticated field-states request that the app server verifies, resolves the role for, grades per field, and returns.](assets/architecture/advanced_07_request_lifecycle.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  subgraph RT1["Round-trip 1 · auth server :8081 · PUBLIC"]
+    u1[user/client] -- "① POST /auth/login" --> at["AuthClient.login → AuthTokenService.login<br/>authenticateUser (verify password)<br/>issue JWT pair (auth + authz, 2h)"]
+    at -- "LoginResult (token pair)" --> u1
+    u1 -. "② store pair (TomBearerAuthentication)" .-> u1
+  end
+  subgraph RT2["Round-trip 2 · app server :8080 · AUTHENTICATED (Bearer)"]
+    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline verifies JWT → principal into zone<br/>④ ResourceAccessResolver.resolveRole (ownership-or-share → ProjectRole)<br/>⑤ FieldGradeResolver.resolveItemFieldStates (role → per-field grade)<br/>grants read from `main` datasource → auth_db"]
+    pipe -- "[GradedFieldDto] · ⑥ render by grade" --> u2
+  end
+  RT1 --> RT2
 ```
-        ┌────────────────────── advanced_auth_server (:8081) ──────────────────────┐
-  ①     │  POST /auth/login  (PUBLIC)                                                │
- user ──┼─▶ AuthClient.login ─▶ AuthTokenService.login ─▶ authenticateUser           │
-        │      └─ verify password ─▶ issue JWT pair (auth + authz, 2h) ──────────────┼─▶ LoginResult
-        └───────────────────────────────────────────────────────────────────────────┘     │
-                                                                            ② store token pair
-                                                                       (TomBearerAuthentication)
-        ┌────────────────────── advanced_app_server (:8080) ───────────────────────┐  │
-  ③     │  GET /items/{id}/field-states  (AUTHENTICATED)   Authorization: Bearer ◀──┼──┘
- user ──┼─▶ pipeline verifies JWT ─▶ principal into the request zone                 │
-        │   ④ ResourceAccessResolver.resolveRole  (ownership-or-share → ProjectRole) │
-        │   ⑤ FieldGradeResolver.resolveItemFieldStates  (role → per-field grade)    │
-        │      grants read from `main` datasource ── bound to auth_db ───────────────┼─▶ [GradedFieldDto]
-        └───────────────────────────────────────────────────────────────────────────┘     │
-                                                                       ⑥ install on adapter,
-                                                                          field renders by grade
-```
+
+</details>
 
 The hinge between the two servers is the **shared JWT signing key**
 ([Part 06](README_advanced_06_authentication.md)): the app server validates a

@@ -112,26 +112,36 @@ The grade a field renders at travels a fixed path from a database row to a
 widget. Tracing it once makes every other authorization claim in the guide
 concrete:
 
+<!-- Figure: the grant matrix → adapter → field data path, tracing the grade a
+field renders at from a database row to a widget:
+1. auth_db.tom_resource_grant row (role_name, resource_key, access_level) —
+   RepositoryGrantStore.grantsForRole(role) [field_grade_resolver.dart:93];
+2. TomGradedAccessControlInformation.fromGrants(grants) [field_grade_resolver.dart:65]
+   (folds duplicate keys by widen — most permissive wins);
+3. resolveItemFieldStates(role) → Map<String,TomAuthState> [field_grade_resolver.dart:73]
+   (itemFieldStates endpoint → List<GradedFieldDto> over the wire);
+4. AppSession.loadFieldStates → adapter.states = matrix (repoint, no reinstall;
+   installed once: TomAuthorization.adapter = … [main.dart:42]);
+5. TomField.resolveEffectiveAuth() layer 1 [tom_form.dart:809]
+   (TomAuthorization.resolveAuth('todo.item.title'));
+6. FieldStateAuthorizationAdapter.resolveAuth(path) [field_state_authorization_adapter.dart:78];
+7. TomAuthState → the field renders at its grade. -->
+
+![The grant matrix to field data path: a tom_resource_grant row is folded into graded access info, resolved to a per-field state map, sent over the wire as GradedFieldDto, repointed onto the installed adapter, and resolved by TomField into the TomAuthState the field renders at.](assets/architecture/advanced_09_grade_data_path.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  row["auth_db.tom_resource_grant row<br/>(role_name, resource_key, access_level)"] -- "grantsForRole(role) · field_grade_resolver.dart:93" --> fold["TomGradedAccessControlInformation.fromGrants(grants)<br/>field_grade_resolver.dart:65 · widen, most permissive wins"]
+  fold -- "field_grade_resolver.dart:73" --> map["resolveItemFieldStates(role) → Map&lt;String,TomAuthState&gt;<br/>itemFieldStates endpoint → List&lt;GradedFieldDto&gt; over the wire"]
+  map --> adapter["AppSession.loadFieldStates → adapter.states = matrix<br/>installed once: TomAuthorization.adapter = … · main.dart:42"]
+  adapter -- "tom_form.dart:809" --> field["TomField.resolveEffectiveAuth() layer 1<br/>TomAuthorization.resolveAuth('todo.item.title')"]
+  field --> fsaa["FieldStateAuthorizationAdapter.resolveAuth(path)<br/>field_state_authorization_adapter.dart:78"]
+  fsaa --> state["TomAuthState → the field renders at its grade"]
 ```
-auth_db.tom_resource_grant row  (role_name, resource_key, access_level)
-   │  RepositoryGrantStore.grantsForRole(role)         field_grade_resolver.dart:93
-   ▼
-TomGradedAccessControlInformation.fromGrants(grants)   field_grade_resolver.dart:65
-   │  (folds duplicate keys by widen — most permissive wins)
-   ▼
-resolveItemFieldStates(role) → Map<String,TomAuthState>  field_grade_resolver.dart:73
-   │  itemFieldStates endpoint → List<GradedFieldDto> over the wire
-   ▼
-AppSession.loadFieldStates → adapter.states = matrix     (repoint, no reinstall)
-   │  installed once: TomAuthorization.adapter = …       main.dart:42
-   ▼
-TomField.resolveEffectiveAuth() layer 1                  tom_form.dart:809
-   │  TomAuthorization.resolveAuth('todo.item.title')
-   ▼
-FieldStateAuthorizationAdapter.resolveAuth(path)         field_state_authorization_adapter.dart:78
-   ▼
-TomAuthState  →  the field renders at its grade
-```
+
+</details>
 
 Two server layers feed the matrix at the top. **Resource access**
 (`ResourceAccessResolver`) answers *"may this principal touch this object, and as

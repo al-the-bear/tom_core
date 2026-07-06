@@ -79,26 +79,33 @@ One reflected domain (`advanced_todo_domain`) flows into one wire contract
 call it through the shared `advanced_client_core`. The two servers share a JWT
 signing key, so a token minted by the auth server verifies at the app server.
 
+<!-- Figure: overall architecture as a wiring diagram. Two clients on the
+outside (advanced_authadmin_client, advanced_app_client), the shared
+advanced_client_core between them, the two servers in the middle
+(advanced_auth_server :8081 → auth_db :3307; advanced_app_server :8080 → app_db
+:3308), and the shared JWT signing key closing the loop underneath: an
+auth-minted token verifies at the app server. Full walk-through in
+[part 01](README_advanced_01_architecture.md). -->
+
+![Overall architecture: two Flutter clients share advanced_client_core; the auth server (:8081, auth_db :3307) issues tokens and owns /admin/*, the app server (:8080, app_db :3308) serves the task API; a shared JWT signing key lets an auth-minted token verify at the app server.](assets/architecture/advanced_04_overall_architecture.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  admin[advanced_authadmin_client<br/>admin console] --> core
+  appc[advanced_app_client<br/>end-user app] --> core
+  core[advanced_client_core<br/>shared authenticated HTTP]
+  core -- "login + /admin/*" --> auth[advanced_auth_server<br/>:8081]
+  core -- "login + board/share" --> app[advanced_app_server<br/>:8080]
+  auth --> authdb[(auth_db :3307)]
+  app --> appdb[(app_db :3308)]
+  key(["shared JWT signing key"])
+  key -. "signs" .-> auth
+  key -. "verifies" .-> app
 ```
-                         advanced_todo_domain
-               (shared reflected entities — the model)
-                                 │
-                         advanced_todo_contracts
-        (DTOs + AuthApiService / AdminApiService / AppApiService)
-            ┌────────────────────┼─────────────────────┐
-            │                    │                      │
-   advanced_auth_server   advanced_client_core   advanced_app_server
-   JWT issuer + /admin/*  ── authenticated   ──  secured task API
-   HTTP :8081                HTTP layer            HTTP :8080
-   auth_db  :3307           (Flutter-free)         app_db   :3308
-        │   ▲                  ╱        ╲                  ▲   │
-        │   │   advanced_authadmin_client    advanced_app_client│
-        │   │   admin console (Flutter)      end-user app (Flutter)
-        │   └────────── login + /admin/* ──────────┘           │
-        │                                  login + board/share  │
-        └──── shared JWT signing key: auth-minted token ────────┘
-                       verifies at the app server
-```
+
+</details>
 
 - The **admin console** logs in at the auth server and drives `/admin/*` to edit
   roles and the grant matrix.

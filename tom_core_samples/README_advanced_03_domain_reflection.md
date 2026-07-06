@@ -20,12 +20,29 @@ Eight entities live in [`advanced_todo_domain`](advanced_todo_domain/README.md),
 each a `@tomReflector class … extends TomClass`. They form a strict **ownership
 chain** plus two satellites:
 
+<!-- Figure: domain ownership chain of advanced_todo_domain (eight @tomReflector
+entities). Chain: Workspace → Project → TodoList → TodoItem; TodoItem owns
+Subtask and TodoComment. Satellites: User, and Share (User × Project →
+ProjectRole). Relations are flat foreign keys (e.g. workspaceId), not nested
+lists, so each entity persists as one row. -->
+
+![Domain ownership chain: Workspace owns Project owns TodoList owns TodoItem, which owns Subtask and TodoComment; User and Share (User × Project → ProjectRole) are satellites.](assets/architecture/advanced_08_domain_ownership.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph LR
+  Workspace --> Project --> TodoList --> TodoItem
+  TodoItem --> Subtask
+  TodoItem --> TodoComment
+  User
+  Share["Share (User × Project → ProjectRole)"]
 ```
-Workspace → Project → TodoList → TodoItem
-                                    ├── Subtask
-                                    └── TodoComment
-User                Share (User × Project → ProjectRole)
-```
+
+Relations are flat foreign keys (e.g. `workspaceId`), not nested lists, so each
+entity persists as one row.
+
+</details>
 
 | Entity | Role |
 | --- | --- |

@@ -36,23 +36,36 @@ depend on contracts, contracts depend on the domain, and nothing lower ever
 imports something higher. That is the rule from the architecture guidelines made
 literal: *core types don't import from transports; transports import from core.*
 
+<!-- Figure: layering & dependency arrows — four bands with the foundation
+(advanced_todo_domain) at the bottom; every arrow points DOWN meaning "depends
+on". The four runtimes are on top; the two clients depend on
+advanced_client_core (and on contracts), the two servers depend on contracts
+directly (and on the domain); advanced_client_core depends on
+advanced_todo_contracts; advanced_todo_contracts depends on
+advanced_todo_domain. Nothing lower imports anything higher. -->
+
+![Layering and dependency arrows: the four runtimes depend on advanced_client_core and/or advanced_todo_contracts; advanced_client_core depends on advanced_todo_contracts, which depends on advanced_todo_domain.](assets/architecture/advanced_01_layering.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TD
+  auth[advanced_auth_server] --> contracts
+  app[advanced_app_server] --> contracts
+  appc[advanced_app_client] --> core
+  admin[advanced_authadmin_client] --> core
+  appc --> contracts
+  admin --> contracts
+  auth --> domain
+  app --> domain
+  core[advanced_client_core] --> contracts
+  contracts[advanced_todo_contracts] --> domain[advanced_todo_domain]
 ```
-                       advanced_todo_domain
-             (shared reflected entities — the model)
-                                │
-                      advanced_todo_contracts
-        (DTOs + AuthApiService / AdminApiService / AppApiService)
-                                │
-                      advanced_client_core
-              (Flutter-free authenticated HTTP layer)
-        ┌───────────────┬───────────────┬───────────────┐
-        │               │               │               │
- advanced_auth_  advanced_app_   advanced_app_   advanced_authadmin_
-   server          server          client            client
- (depends on     (depends on     (depends on      (depends on
-  contracts +     contracts +     client_core +    client_core +
-  domain)         domain)         contracts)       contracts)
-```
+
+Every edge `A --> B` reads "A depends on B"; the domain is the single source of
+truth every layer above it agrees on.
+
+</details>
 
 Read top-to-bottom, the layers are:
 
@@ -86,6 +99,27 @@ the app server verifies the bearer it receives against the *same* key. So a toke
 minted at `:8081` is trusted at `:8080` without a back-channel — the signature is
 the proof.
 
+<!-- Figure: the shared JWT signing key. advanced_auth_server (:8081) mints and
+signs a token with a shared signing key; the client carries that bearer to
+advanced_app_server (:8080), which verifies it against the SAME key. No
+server-to-server call — the signature is the proof. -->
+
+![The shared JWT signing key: the auth server signs a token with the shared key, the client carries it, and the app server verifies it against the same key.](assets/architecture/advanced_02_jwt_shared_key.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph LR
+  auth["advanced_auth_server :8081<br/>issuer — signs the JWT"]
+  app["advanced_app_server :8080<br/>verifier — checks the signature"]
+  key(["shared JWT signing key"])
+  auth -- "auth-minted bearer (carried by the client)" --> app
+  key -. "signs with" .-> auth
+  key -. "verifies with" .-> app
+```
+
+</details>
+
 This is the spine of the authentication story (part
 [06](README_advanced_06_authentication.md)): the auth server is the only issuer,
 the app server is a pure verifier, and the shared key is the single fact that
@@ -108,6 +142,34 @@ Putting the pieces in motion, the headline scenario is a single loop that crosse
 3. An owner **shares** a project; on a *second* user's next request the app server
    resolves the new share and reveals the project on their board.
 
+<!-- Figure: end-to-end request + grant-propagation loop. (1) An administrator
+edits the grant matrix via /admin/* on the auth server. (2) The auth tier owns
+the changed authority; the app server reads the grant matrix (sourced from the
+auth tier). (3) alice's next request is graded per-field by the app server, so
+the edit shows in her editor. (4) An owner shares a project; on a second user's
+next request the app server reveals it. ANNOTATION: an authorization change
+applies on the NEXT JWT refresh — a re-login or the client's automatic refresh —
+because the authz claims ride in the bearer; it is not pushed to a live
+session. -->
+
+![End-to-end grant-propagation loop: an admin's grant edit at the auth server reaches an end-user's per-field grades on their next request, and a share reveals a project to a second user on theirs; authorization changes apply on the next JWT refresh.](assets/architecture/advanced_03_grant_propagation.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph LR
+  admin[administrator] -- "1 · PUT /admin/grants" --> auth[advanced_auth_server<br/>owns the grant matrix]
+  auth -- "2 · matrix sourced from auth tier" --> app[advanced_app_server<br/>grades fields per request]
+  alice[end-user alice] -- "3 · next request → graded editor" --> app
+  app -- "4 · next request → share revealed" --> bob[second user bob]
+```
+
+**⚑ Timing:** an authorization change applies on the **next JWT refresh** — a
+re-login or the client's automatic token refresh — because the authz claims ride
+in the bearer; the edit is not pushed to a live session.
+
+</details>
+
 That admin-edit → field-matrix → share → second-user-sees-it loop is exactly what
 the cross-tier integration test asserts live (part
 [12](README_advanced_12_testing_integration.md)). The four seeded accounts exist
@@ -123,26 +185,33 @@ The hub's diagram shows the same system as a wiring diagram rather than a
 dependency stack — the two clients on the outside, the two servers in the middle,
 and the shared signing key closing the loop underneath:
 
+<!-- Figure: overall architecture as a wiring diagram. Two clients on the
+outside (advanced_authadmin_client, advanced_app_client), the shared
+advanced_client_core between them, the two servers in the middle
+(advanced_auth_server :8081 → auth_db :3307; advanced_app_server :8080 → app_db
+:3308), and the shared JWT signing key closing the loop underneath: an
+auth-minted token verifies at the app server. The admin console drives /admin/*;
+the end-user app logs in then calls the app server with the bearer. -->
+
+![Overall architecture: two Flutter clients share advanced_client_core; the auth server (:8081, auth_db :3307) issues tokens and owns /admin/*, the app server (:8080, app_db :3308) serves the task API; a shared JWT signing key lets an auth-minted token verify at the app server.](assets/architecture/advanced_04_overall_architecture.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  admin[advanced_authadmin_client<br/>admin console] --> core
+  appc[advanced_app_client<br/>end-user app] --> core
+  core[advanced_client_core<br/>shared authenticated HTTP]
+  core -- "login + /admin/*" --> auth[advanced_auth_server<br/>:8081]
+  core -- "login + board/share" --> app[advanced_app_server<br/>:8080]
+  auth --> authdb[(auth_db :3307)]
+  app --> appdb[(app_db :3308)]
+  key(["shared JWT signing key"])
+  key -. "signs" .-> auth
+  key -. "verifies" .-> app
 ```
-                         advanced_todo_domain
-               (shared reflected entities — the model)
-                                 │
-                         advanced_todo_contracts
-        (DTOs + AuthApiService / AdminApiService / AppApiService)
-            ┌────────────────────┼─────────────────────┐
-            │                    │                      │
-   advanced_auth_server   advanced_client_core   advanced_app_server
-   JWT issuer + /admin/*  ── authenticated   ──  secured task API
-   HTTP :8081                HTTP layer            HTTP :8080
-   auth_db  :3307           (Flutter-free)         app_db   :3308
-        │   ▲                  ╱        ╲                  ▲   │
-        │   │   advanced_authadmin_client    advanced_app_client│
-        │   │   admin console (Flutter)      end-user app (Flutter)
-        │   └────────── login + /admin/* ──────────┘           │
-        │                                  login + board/share  │
-        └──── shared JWT signing key: auth-minted token ────────┘
-                       verifies at the app server
-```
+
+</details>
 
 - The **admin console** logs in at the auth server and drives `/admin/*` to edit
   roles and the grant matrix.
@@ -153,10 +222,111 @@ and the shared signing key closing the loop underneath:
   a project share reveals a project to a second user on theirs — the loop the
   cross-tier test asserts.
 
+## From a client call to a routed service method
+
+The layering pays off in *how a request is issued*: the client never writes a URL
+string. It calls a **typed method** on a service interface; the same interface,
+plus the API registry, is what the server implements and routes. Because both
+ends compile against that one definition, **a server cannot drift from a client**.
+
+<!-- Figure: client-call ↔ API-definition ↔ service-impl ↔ routing. The client
+calls a typed AppApiService method (no URL string); advanced_todo_contracts holds
+the interface AND the api_registry entry (URI, method, request/response types,
+per-endpoint TomAccessControl); the server pipeline matches the incoming HTTP
+request to the registered endpoint and enforces its access; the server implements
+the same AppApiService method and its return value is reflection-serialized back. -->
+
+![From a typed client call to a routed service method: the client calls a typed AppApiService method, the contracts package defines the interface and registry entry, the server pipeline routes and enforces access, and the server implementation returns a reflection-serialized result.](assets/architecture/advanced_05_call_api_service_routing.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph LR
+  call["client call<br/>appApi.itemFieldStates(id)"] --> def["API definition<br/>contracts interface + api_registry<br/>uri · method · types · access"]
+  def --> route["routing<br/>server pipeline: match + enforce access"]
+  route --> impl["service impl<br/>server implements AppApiService"]
+  impl -. "reflection-serialized result (List&lt;GradedFieldDto&gt;)" .-> call
+```
+
+The endpoint model and per-endpoint access policy are part
+[04](README_advanced_04_wire_contracts_dtos.md); the server side (implementation +
+pipeline) is part [10](README_advanced_10_servers_endpoints.md); the client side is
+part [11](README_advanced_11_clients_app_admin.md).
+
+## Token refresh (refresh-once-on-401)
+
+The authenticated HTTP layer keeps a request transparently authorized with a
+single-retry policy — it never loops.
+
+<!-- Figure: token refresh — the refresh-once-on-401 policy applied by
+authorized_http.dart. (1) The client sends the request with the current bearer to
+the app server. (2) A 2xx (or any non-401) returns as-is. (3) A 401 triggers
+exactly one AuthClient.refresh against the auth server, which re-mints and stores
+a fresh token pair. (4) The request is retried exactly once with the fresh bearer.
+(5) A still-401 retry surfaces a typed AuthClientException; it never loops. -->
+
+![Token refresh: the client sends a request with the current bearer; on a 401 it refreshes exactly once at the auth server and retries once with the fresh bearer, otherwise the response returns as-is.](assets/architecture/advanced_06_token_refresh.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+sequenceDiagram
+  participant C as client (authorized_http)
+  participant App as advanced_app_server
+  participant Auth as advanced_auth_server
+  C->>App: 1 · request + current bearer
+  App-->>C: 2xx / non-401 → return as-is
+  App-->>C: 3 · 401 (expired)
+  C->>Auth: AuthClient.refresh (once)
+  Auth-->>C: fresh token pair → stored
+  C->>App: 4 · retry once with fresh bearer
+  App-->>C: 2xx (done) — or still 401 → 5 · typed error, never loops
+```
+
+Full mechanism (the `tomRunWithAuthRetry` policy, G-AUTH-3) is part
+[06](README_advanced_06_authentication.md).
+
+## The request lifecycle: two round-trips
+
+A secured read is really **two** requests against **two** servers, the first
+producing the credential the second consumes.
+
+<!-- Figure: request lifecycle — two round-trips. Round-trip 1 (auth server :8081,
+PUBLIC): POST /auth/login verifies the password and issues a JWT pair
+(auth + authz, 2h) → LoginResult; the client stores the pair. Round-trip 2 (app
+server :8080, AUTHENTICATED, Bearer): GET /items/{id}/field-states → pipeline
+verifies the JWT and puts the principal in the request zone → resolveRole
+(ownership-or-share → ProjectRole) → resolveItemFieldStates (role → per-field
+grade), grants read from the `main` datasource bound to auth_db → [GradedFieldDto];
+the client installs them and renders each field by its grade. -->
+
+![The request lifecycle in two round-trips: round-trip 1 logs in at the auth server to obtain a stored token pair; round-trip 2 sends a bearer-authenticated field-states request that the app server verifies, resolves the role for, grades per field, and returns.](assets/architecture/advanced_07_request_lifecycle.svg)
+
+<details><summary>Text / mermaid equivalent</summary>
+
+```mermaid
+graph TB
+  subgraph RT1["Round-trip 1 · auth server :8081 · PUBLIC"]
+    u1[user/client] -- "① POST /auth/login" --> at[AuthTokenService.login<br/>verify password → issue JWT pair 2h]
+    at -- "LoginResult (token pair)" --> u1
+    u1 -. "② store pair (TomBearerAuthentication)" .-> u1
+  end
+  subgraph RT2["Round-trip 2 · app server :8080 · AUTHENTICATED (Bearer)"]
+    u2[user/client] -- "③ GET /items/{id}/field-states" --> pipe["pipeline: verify JWT → principal into zone<br/>④ resolveRole (ownership-or-share)<br/>⑤ resolveItemFieldStates (per-field grade) → auth_db"]
+    pipe -- "[GradedFieldDto] · ⑥ render by grade" --> u2
+  end
+  RT1 --> RT2
+```
+
+The full per-request trace is appendix
+[A3](README_advanced_A3_request_lifecycle.md); the hinge between the two servers
+is the shared JWT signing key above.
+
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — Architecture section + diagram, the suite map, and the quickstart.
 - The seven package READMEs, for per-node detail.
+- `assets/architecture/` — the seven SVG figures embedded above (`advanced_01_layering`, `advanced_02_jwt_shared_key`, `advanced_03_grant_propagation`, `advanced_04_overall_architecture`, `advanced_05_call_api_service_routing`, `advanced_06_token_refresh`, `advanced_07_request_lifecycle`), each carrying an HTML-comment description and a mermaid equivalent alongside.
 
 ---
 
