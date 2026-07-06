@@ -19,6 +19,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
 import 'admin_editor_dialog.dart';
@@ -103,16 +104,17 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         if (choice.roleKey == null && choice.groupId == null) {
           return TomCtr.text('admin.assignments.chooseError');
         }
-        try {
-          await _session.guard((b) => b.assign(AssignmentRequest(
-                userId: user.id,
-                roleKey: choice.roleKey ?? '',
-                groupId: choice.groupId ?? '',
-              )));
-          return null;
-        } on AdminBackendException catch (e) {
-          return e.message;
-        }
+        return runAdminAction(
+          adminActions.assign,
+          AssignContext(
+            _session,
+            AssignmentRequest(
+              userId: user.id,
+              roleKey: choice.roleKey ?? '',
+              groupId: choice.groupId ?? '',
+            ),
+          ),
+        );
       },
     );
     if (saved && mounted) {
@@ -198,6 +200,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
           ),
           trailing: TomOutlinedButton(
             key: Key('assignments-assign-${user.id}'),
+            authorizer: adminActions.assign.authorizer,
             onPressed: () => _assign(user),
             icon: const Icon(Icons.person_add_alt_1),
             child: TomText(text: TomCtr.text('admin.assignments.assign')),

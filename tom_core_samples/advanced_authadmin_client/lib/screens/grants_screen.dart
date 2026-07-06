@@ -19,6 +19,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
 
@@ -85,8 +86,18 @@ class _GrantsScreenState extends State<GrantsScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    // The write runs through the grant-matrix action (`admin.grants.save`).
+    final error = await runAdminAction(
+        adminActions.putGrants, PutGrantsContext(_session, _working));
+    if (!mounted) return;
+    if (error != null) {
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        TomSnackBar(content: TomText(text: error)),
+      );
+      return;
+    }
     try {
-      await _session.guard((b) => b.putGrants(_working));
       // Re-read so the grid shows the persisted matrix, not just the local edit.
       final matrix = await _session.guard((b) => b.getGrants());
       if (!mounted) return;
@@ -134,6 +145,7 @@ class _GrantsScreenState extends State<GrantsScreen> {
               ),
               TomFilledButton(
                 key: const Key('grants-save'),
+                authorizer: adminActions.putGrants.authorizer,
                 onPressed: (_dirty && !_saving) ? _save : null,
                 icon: _saving
                     ? SizedBox(

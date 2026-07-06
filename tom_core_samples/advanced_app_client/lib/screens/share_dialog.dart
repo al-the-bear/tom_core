@@ -14,13 +14,12 @@
 /// project owner may share) surfaces inline rather than closing the dialog.
 library;
 
-import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/app_actions.dart';
 import '../app/app_session.dart';
-import '../backend/backend.dart';
 import '../domain/enum_text.dart';
 
 /// Opens the share dialog for [projectId] over [session].
@@ -70,21 +69,21 @@ class _ShareDialogState extends State<_ShareDialog> {
       _busy = true;
       _error = null;
     });
-    try {
-      await widget.session.guard((b) => b.share(ShareRequest(
-            resourceType: 'project',
-            resourceId: widget.projectId,
-            granteeUserId: grantee,
-            projectRole: _role,
-          )));
-      if (mounted) Navigator.of(context).pop(true);
-    } on AppBackendException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _busy = false;
-      });
+    // The grant runs through the [ShareProjectAction] (`board.share`); this
+    // method keeps the busy/error/navigation chrome around it.
+    final error = await runAppAction(
+      boardActions.share,
+      ShareProjectContext(widget.session, widget.projectId, grantee, _role),
+    );
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
     }
+    setState(() {
+      _error = error;
+      _busy = false;
+    });
   }
 
   @override
@@ -139,6 +138,7 @@ class _ShareDialogState extends State<_ShareDialog> {
         ),
         TomFilledButton(
           key: const Key('share-submit-button'),
+          authorizer: boardActions.share.authorizer,
           onPressed: _busy ? null : _submit,
           child: _busy
               ? SizedBox(

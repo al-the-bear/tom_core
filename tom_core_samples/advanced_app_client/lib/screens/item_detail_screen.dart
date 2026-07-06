@@ -26,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/app_actions.dart';
 import '../app/app_session.dart';
 import '../backend/backend.dart';
 import '../forms/todo_item_form.dart';
@@ -107,9 +108,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
   }
 
-  /// Validates and persists the form, then pops with `true` so the board can
-  /// refresh. Only `full` fields are editable, so the write-back carries exactly
-  /// the permitted changes.
+  /// Validates the form and runs the [SaveItemAction], then pops with `true` so
+  /// the board can refresh. Only `full` fields are editable, so the write-back
+  /// carries exactly the permitted changes. The mutation runs through the action
+  /// (`todo.item.save`); this method keeps the busy/error/navigation chrome.
   Future<void> _save() async {
     final form = _form;
     if (form == null) return;
@@ -118,19 +120,21 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _busy = true;
       _error = null;
     });
-    try {
-      await _session.guard((b) => b.saveItem(_item));
-      if (mounted) Navigator.of(context).pop(true);
-    } on AppBackendException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.message;
-        _busy = false;
-      });
+    final error =
+        await runAppAction(itemActions.save, SaveItemContext(_session, _item));
+    if (!mounted) return;
+    if (error == null) {
+      Navigator.of(context).pop(true);
+      return;
     }
+    setState(() {
+      _error = error;
+      _busy = false;
+    });
   }
 
-  /// Posts the composer's text as a new comment on the item.
+  /// Posts the composer's text as a new comment via the [AddCommentAction]
+  /// (`todo.item.comment`); the screen keeps the busy/error/snackbar chrome.
   Future<void> _addComment() async {
     final body = _commentController.text.trim();
     if (body.isEmpty) return;
@@ -138,26 +142,24 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _postingComment = true;
       _commentError = null;
     });
-    try {
-      final comment = TodoComment()
-        ..itemId.set(_item.id.get())
-        ..authorId.set(_session.user?.id ?? '')
-        ..body.set(body);
-      await _session.guard((b) => b.addComment(_item.id.get(), comment));
-      if (!mounted) return;
+    final error = await runAppAction(
+      itemActions.comment,
+      AddCommentContext(_session, _item.id.get(), body),
+    );
+    if (!mounted) return;
+    if (error == null) {
       _commentController.clear();
       setState(() => _postingComment = false);
       ScaffoldMessenger.of(context).showSnackBar(
         TomSnackBar(
             content: TomText(text: TomCtr.text('board.item.comment.added'))),
       );
-    } on AppBackendException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _commentError = e.message;
-        _postingComment = false;
-      });
+      return;
     }
+    setState(() {
+      _commentError = error;
+      _postingComment = false;
+    });
   }
 
   @override
@@ -199,6 +201,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         if (canSave)
           TomFilledButton(
             key: const Key('item-save-button'),
+            authorizer: itemActions.save.authorizer,
             onPressed: _busy ? null : _save,
             child: _busy
                 ? SizedBox(
@@ -245,6 +248,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           alignment: Alignment.centerRight,
           child: TomOutlinedButton(
             key: const Key('comment-submit-button'),
+            authorizer: itemActions.comment.authorizer,
             onPressed: _postingComment ? null : _addComment,
             child: _postingComment
                 ? SizedBox(

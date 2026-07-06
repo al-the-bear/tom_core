@@ -12,6 +12,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
 import '../domain/admin_drafts.dart';
@@ -46,7 +47,10 @@ class GroupsScreen extends StatelessWidget {
       },
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (backend, group) => backend.deleteGroup(group.id),
+      onDelete: (group) =>
+          runAdminAction(adminActions.deleteGroup, DeleteGroupContext(session, group.id)),
+      createAuthorizer: adminActions.createGroup.authorizer,
+      deleteAuthorizer: adminActions.deleteGroup.authorizer,
     );
   }
 
@@ -72,12 +76,8 @@ class GroupsScreen extends StatelessWidget {
             name: draft.name.get(),
             memberUserIds: selected.toList(),
           );
-          try {
-            await session.guard((backend) => backend.createGroup(group));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(
+              adminActions.createGroup, CreateGroupContext(session, group));
         },
       );
     } finally {
@@ -108,12 +108,8 @@ class GroupsScreen extends StatelessWidget {
             name: draft.name.get(),
             memberUserIds: selected.toList(),
           );
-          try {
-            await session.guard((backend) => backend.updateGroup(group.id, updated));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(adminActions.updateGroup,
+              UpdateGroupContext(session, group.id, updated));
         },
       );
     } finally {

@@ -11,8 +11,8 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../actions/admin_actions.dart';
 import '../app/admin_session.dart';
-import '../backend/backend.dart';
 import '../domain/admin_drafts.dart';
 import '../forms/role_form.dart';
 import 'admin_crud_screen.dart';
@@ -39,7 +39,10 @@ class RolesScreen extends StatelessWidget {
       subtitleOf: (role) => role.key,
       onCreate: _create,
       onEdit: _edit,
-      onDelete: (backend, role) => backend.deleteRole(role.key),
+      onDelete: (role) =>
+          runAdminAction(adminActions.deleteRole, DeleteRoleContext(session, role.key)),
+      createAuthorizer: adminActions.createRole.authorizer,
+      deleteAuthorizer: adminActions.deleteRole.authorizer,
     );
   }
 
@@ -56,12 +59,8 @@ class RolesScreen extends StatelessWidget {
         submit: () async {
           if (!await form.save()) return '';
           final role = RoleDto(key: draft.key.get(), name: draft.name.get());
-          try {
-            await session.guard((backend) => backend.createRole(role));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(
+              adminActions.createRole, CreateRoleContext(session, role));
         },
       );
     } finally {
@@ -84,12 +83,8 @@ class RolesScreen extends StatelessWidget {
         submit: () async {
           if (!await form.save()) return '';
           final updated = RoleDto(key: role.key, name: draft.name.get());
-          try {
-            await session.guard((backend) => backend.updateRole(role.key, updated));
-            return null;
-          } on AdminBackendException catch (e) {
-            return e.message;
-          }
+          return runAdminAction(adminActions.updateRole,
+              UpdateRoleContext(session, role.key, updated));
         },
       );
     } finally {

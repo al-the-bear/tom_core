@@ -36,6 +36,8 @@ class AdminCrudScreen<T> extends StatefulWidget {
     required this.onCreate,
     required this.onEdit,
     required this.onDelete,
+    required this.createAuthorizer,
+    required this.deleteAuthorizer,
   });
 
   /// The session every backend call is guarded through.
@@ -69,8 +71,15 @@ class AdminCrudScreen<T> extends StatefulWidget {
   /// Opens the edit editor for [item]; returns `true` when the edit was saved.
   final Future<bool> Function(BuildContext context, T item) onEdit;
 
-  /// Deletes [item] (already guarded by the caller's session).
-  final Future<void> Function(AdminBackend backend, T item) onDelete;
+  /// Deletes [item] through its delete action, returning `null` on success or a
+  /// failure message to surface (the action owns the session guard).
+  final Future<String?> Function(T item) onDelete;
+
+  /// The authorizer for the create action, gating the "New …" button.
+  final TomAuthorizer createAuthorizer;
+
+  /// The authorizer for the delete action, gating every row's delete button.
+  final TomAuthorizer deleteAuthorizer;
 
   @override
   State<AdminCrudScreen<T>> createState() => _AdminCrudScreenState<T>();
@@ -125,15 +134,17 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
   Future<void> _delete(T item) async {
     final confirmed = await _confirmDelete(item);
     if (!confirmed || !mounted) return;
-    try {
-      await _session.guard((b) => widget.onDelete(b, item));
-      if (mounted) await _load();
-    } on AdminBackendException catch (e) {
-      if (!mounted) return;
+    // The removal runs through the entity's delete action (`admin.<entity>.
+    // delete`); a returned message is surfaced, success reloads the list.
+    final error = await widget.onDelete(item);
+    if (!mounted) return;
+    if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        TomSnackBar(content: TomText(text: e.message)),
+        TomSnackBar(content: TomText(text: error)),
       );
+      return;
     }
+    await _load();
   }
 
   Future<bool> _confirmDelete(T item) async {
@@ -172,6 +183,7 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
             alignment: Alignment.centerRight,
             child: TomFilledButton(
               key: Key('${widget.tilePrefix}-create'),
+              authorizer: widget.createAuthorizer,
               onPressed: _create,
               icon: const Icon(Icons.add),
               child: TomText(text: widget.createLabel),
@@ -215,6 +227,7 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
           onTap: () => _edit(item),
           trailing: TomIconButton(
             key: Key('${widget.tilePrefix}-delete-${widget.idOf(item)}'),
+            authorizer: widget.deleteAuthorizer,
             tooltip: TomCtr.text('admin.delete.label'),
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _delete(item),
