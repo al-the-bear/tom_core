@@ -13,6 +13,30 @@ import 'package:test/test.dart';
 /// version-ordering (bug §21) and anchored-name validation (bug §22) are
 /// unit-testable.
 void main() {
+  // C-16 production-safety default: with no environment initialized on
+  // TomRuntime, resolveActiveEnvironment falls back to the default environment
+  // — under which only untagged migrations apply. Declared first so it observes
+  // the pristine (uninitialized) TomRuntime before any later group sets it.
+  group('C-16 uninitialized-environment fallback', () {
+    test('falls back to the default environment when none is set', () {
+      expect(
+        TomDbMigrations.resolveActiveEnvironment(),
+        defaultTomEnvironment.env,
+      );
+      final ordered = TomDbMigrations.orderMigrationNames(
+        ['[0]-schema', '[1]-demo_seed@dev'],
+      );
+      // Under the default fallback, the @dev seed is skipped — production-safe.
+      expect(
+        TomDbMigrations.selectForEnvironment(
+          ordered,
+          TomDbMigrations.resolveActiveEnvironment(),
+        ).map((e) => e.parsed.version),
+        [0],
+      );
+    });
+  });
+
   group('TomDbMigrationAdaptor', () {
     test('binds a migrator to a data-source type', () {
       const adaptor = TomDbMigrationAdaptor('mariadb');
@@ -191,6 +215,136 @@ void main() {
 
     test('returns an empty list for a whitespace-only script', () {
       expect(MariadbMigrationAdaptor.splitSqlStatements('  \n\t '), isEmpty);
+    });
+  });
+
+  // C-16: an optional `@<env>[,<env>…]` tag on the description selects the
+  // environment(s) a migration belongs to; untagged migrations apply
+  // everywhere. These pin the tag parse, the per-environment predicate, and the
+  // pure selection that the engine drives from TomRuntime.
+  group('C-16 environment tag parsing', () {
+    test('an untagged name parses to an empty (all-environments) tag', () {
+      final parsed = TomDbMigrations.parseMigrationFileName('[0]-app_core');
+      expect(parsed.version, 0);
+      expect(parsed.description, 'app_core');
+      expect(parsed.environments, isEmpty);
+    });
+
+    test('a single @env tag parses to a one-element list', () {
+      final parsed = TomDbMigrations.parseMigrationFileName('[3]-demo_seed@dev');
+      expect(parsed.version, 3);
+      expect(parsed.description, 'demo_seed');
+      expect(parsed.environments, ['dev']);
+    });
+
+    test('a comma list parses to each environment in file order', () {
+      final parsed =
+          TomDbMigrations.parseMigrationFileName('[4]-perf_probe@dev,test');
+      expect(parsed.description, 'perf_probe');
+      expect(parsed.environments, ['dev', 'test']);
+    });
+
+    test('rejects a trailing comma in the tag', () {
+      expect(
+        () => TomDbMigrations.parseMigrationFileName('[1]-seed@dev,'),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('rejects a digit inside an environment name', () {
+      expect(
+        () => TomDbMigrations.parseMigrationFileName('[1]-seed@dev,env2'),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+
+    test('rejects an empty tag (bare @)', () {
+      expect(
+        () => TomDbMigrations.parseMigrationFileName('[1]-seed@'),
+        throwsA(isA<TomDbMigrationException>()),
+      );
+    });
+  });
+
+  group('TomMigrationFileName.appliesInEnvironment', () {
+    test('an untagged migration applies in every environment', () {
+      const untagged = TomMigrationFileName(0, 'schema');
+      expect(untagged.appliesInEnvironment('prod'), isTrue);
+      expect(untagged.appliesInEnvironment('dev'), isTrue);
+      expect(untagged.appliesInEnvironment('anything'), isTrue);
+    });
+
+    test('a tagged migration applies only for a listed environment', () {
+      const tagged = TomMigrationFileName(3, 'demo_seed', ['dev', 'test']);
+      expect(tagged.appliesInEnvironment('dev'), isTrue);
+      expect(tagged.appliesInEnvironment('test'), isTrue);
+      expect(tagged.appliesInEnvironment('prod'), isFalse);
+    });
+  });
+
+  // The C-16 done-bar: the same demo-seed migration applies under `dev` and is
+  // skipped under `prod`, while every untagged (schema) migration applies in
+  // both. Proven here at the pure-selection level (the actual applyMigration DB
+  // write is the live-DB follow-up) so it is verified "at two environment
+  // values" without a connection.
+  group('TomDbMigrations.selectForEnvironment (C-16 done-bar)', () {
+    final ordered = TomDbMigrations.orderMigrationNames([
+      '[0]-app_core_schema',
+      '[1]-authz_grants',
+      '[2]-admin_seed@prod,dev,test',
+      '[3]-demo_seed@dev,test',
+      '[4]-perf_probe@dev',
+    ]);
+
+    test('under dev the demo seed and probe are included', () {
+      final selected = TomDbMigrations.selectForEnvironment(ordered, 'dev');
+      expect(selected.map((e) => e.parsed.version), [0, 1, 2, 3, 4]);
+    });
+
+    test('under prod the @dev/@test-only migrations are skipped', () {
+      final selected = TomDbMigrations.selectForEnvironment(ordered, 'prod');
+      // Untagged schema (0,1) and the @prod-tagged admin seed (2) survive; the
+      // demo seed (3, @dev,test) and probe (4, @dev) are dropped — no rows.
+      expect(selected.map((e) => e.parsed.version), [0, 1, 2]);
+      expect(
+        selected.every((e) => e.parsed.appliesInEnvironment('prod')),
+        isTrue,
+      );
+    });
+  });
+
+  // The engine resolves the active environment via TomRuntime (never a raw
+  // Platform read, G-ENV-1). TomRuntime is global static state; dart test runs
+  // this file in its own isolate, so setting the environment here does not leak
+  // to other files.
+  group('TomDbMigrations.resolveActiveEnvironment', () {
+    test('reads the environment set on TomRuntime and drives selection', () {
+      final ordered = TomDbMigrations.orderMigrationNames(
+        ['[0]-schema', '[1]-demo_seed@dev'],
+      );
+
+      TomRuntime.addEnvironment(const TomEnvironment('dev', isDevelopment: true));
+      TomRuntime.addEnvironment(const TomEnvironment('prod'));
+
+      TomRuntime.setCurrentEnvironment('dev');
+      expect(TomDbMigrations.resolveActiveEnvironment(), 'dev');
+      expect(
+        TomDbMigrations.selectForEnvironment(
+          ordered,
+          TomDbMigrations.resolveActiveEnvironment(),
+        ).map((e) => e.parsed.version),
+        [0, 1],
+      );
+
+      TomRuntime.setCurrentEnvironment('prod');
+      expect(TomDbMigrations.resolveActiveEnvironment(), 'prod');
+      expect(
+        TomDbMigrations.selectForEnvironment(
+          ordered,
+          TomDbMigrations.resolveActiveEnvironment(),
+        ).map((e) => e.parsed.version),
+        [0],
+      );
     });
   });
 

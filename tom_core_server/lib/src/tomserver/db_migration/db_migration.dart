@@ -62,10 +62,16 @@ abstract class TomDbMigrator {
   void reset();
 }
 
-/// A migration file name parsed into its numeric [version] and [description].
+/// A migration file name parsed into its numeric [version], [description] and
+/// optional [environments] tag (C-16).
 ///
 /// Produced by [TomDbMigrations.parseMigrationFileName] from a basename matching
-/// the `[<numeric version>]-<description>` scheme.
+/// the `[<numeric version>]-<description>[@<env>[,<env>…]]` scheme.
+///
+/// An **untagged** migration ([environments] empty) applies in **every**
+/// environment — the safe default, so schema is never accidentally
+/// environment-scoped. A **tagged** migration applies only when the active
+/// environment name is one of [environments] (see [appliesInEnvironment]).
 class TomMigrationFileName {
   /// The numeric version from the `[<version>]` prefix.
   final int version;
@@ -73,8 +79,29 @@ class TomMigrationFileName {
   /// The `<description>` part (letters and underscores).
   final String description;
 
-  /// Binds a parsed [version] / [description].
-  const TomMigrationFileName(this.version, this.description);
+  /// The environment names this migration is tagged for, in file order.
+  ///
+  /// Empty means **untagged** — the migration applies in every environment.
+  /// A non-empty list restricts the migration to exactly those environments
+  /// (e.g. `@dev` → `['dev']`, `@dev,test` → `['dev', 'test']`).
+  final List<String> environments;
+
+  /// Binds a parsed [version] / [description] / [environments] tag.
+  const TomMigrationFileName(
+    this.version,
+    this.description, [
+    this.environments = const [],
+  ]);
+
+  /// Whether this migration applies when the active environment is
+  /// [environmentName].
+  ///
+  /// An untagged migration ([environments] empty) applies everywhere; a tagged
+  /// one applies only when [environmentName] is in its tag list. The match is
+  /// on the environment *name* directly (no hierarchy walk): a `@dev` migration
+  /// is skipped under `prod`, applied under `dev`.
+  bool appliesInEnvironment(String environmentName) =>
+      environments.isEmpty || environments.contains(environmentName);
 }
 
 /// The migration orchestrator: discovers migrator adaptors by reflection and
@@ -135,27 +162,38 @@ class TomDbMigrations {
   }
 
   /// The anchored migration-filename pattern: a `[<numeric version>]` prefix
-  /// followed by `-<description>`, the description being letters and
-  /// underscores, spanning the *whole* basename (no surrounding text).
-  static final RegExp _migrationNamePattern = RegExp(r'^\[([0-9]+)]-([a-zA-Z_]+)$');
+  /// followed by `-<description>` (letters and underscores) and an **optional**
+  /// environment tag `@<env>[,<env>…]` (C-16), spanning the *whole* basename
+  /// (no surrounding text).
+  static final RegExp _migrationNamePattern =
+      RegExp(r'^\[([0-9]+)]-([a-zA-Z_]+)(?:@([a-zA-Z_]+(?:,[a-zA-Z_]+)*))?$');
 
-  /// Parses a migration file's [basename] (without extension) into its version
-  /// and description.
+  /// Parses a migration file's [basename] (without extension) into its version,
+  /// description and optional environment tag.
   ///
-  /// The basename must match `[<numeric version>]-<description>` in full;
-  /// anything else — surrounding text, a digit inside the description, an empty
-  /// description — is rejected with a [TomDbMigrationException]
-  /// (`…illegal_filename_in_migrations_directory`).
+  /// The basename must match `[<numeric version>]-<description>[@<env>[,<env>…]]`
+  /// in full; anything else — surrounding text, a digit inside the description,
+  /// an empty description, a malformed tag — is rejected with a
+  /// [TomDbMigrationException] (`…illegal_filename_in_migrations_directory`).
+  ///
+  /// The `@<env>` tag is optional: `[003]-demo_seed@dev` parses with
+  /// `environments == ['dev']`, `[000]-app_core_schema` with an empty
+  /// (all-environments) tag.
   static TomMigrationFileName parseMigrationFileName(String basename) {
     final match = _migrationNamePattern.firstMatch(basename);
     if (match == null) {
       throw TomDbMigrationException(
         "db_migration.migration.illegal_filename_in_migrations_directory",
-        "Illegal filename in migrations directory: $basename. Filename must follow [<numeric version>]-<description>.<anyfileextension> pattern.",
+        "Illegal filename in migrations directory: $basename. Filename must follow [<numeric version>]-<description>[@<env>[,<env>...]].<anyfileextension> pattern.",
         autoLog: true,
       );
     }
-    return TomMigrationFileName(int.parse(match[1]!), match[2]!);
+    final tag = match[3];
+    return TomMigrationFileName(
+      int.parse(match[1]!),
+      match[2]!,
+      tag == null ? const [] : tag.split(','),
+    );
   }
 
   /// Parses [basenames] (file basenames without extension) and returns them
@@ -174,17 +212,54 @@ class TomDbMigrations {
     return parsed;
   }
 
+  /// The environment name migrations are filtered against (C-16).
+  ///
+  /// Resolved via [TomRuntime] — never a raw `Platform`/env-var read (G-ENV-1).
+  /// When no environment has been initialized the engine falls back to
+  /// [defaultTomEnvironment]: the production-safe default, under which only
+  /// untagged migrations apply and every `@dev`/`@test`-tagged migration is
+  /// skipped.
+  static String resolveActiveEnvironment() {
+    // TomRuntime.getCurrentEnvironment throws when nothing has been
+    // initialized; that documented state maps to the production-safe default.
+    try {
+      return TomRuntime.getCurrentEnvironment().env;
+    } on Exception {
+      return defaultTomEnvironment.env;
+    }
+  }
+
+  /// Filters an [ordered] migration list to those applying in [environmentName]
+  /// (C-16), preserving order.
+  ///
+  /// A migration whose parsed tag does not include [environmentName] is skipped;
+  /// untagged (schema) migrations always pass. Skipping is a pure omission — the
+  /// applied-version bookkeeping is unchanged, so a re-run in the same
+  /// environment stays idempotent.
+  static List<({String basename, TomMigrationFileName parsed})>
+      selectForEnvironment(
+    Iterable<({String basename, TomMigrationFileName parsed})> ordered,
+    String environmentName,
+  ) =>
+          [
+            for (final entry in ordered)
+              if (entry.parsed.appliesInEnvironment(environmentName)) entry,
+          ];
+
   /// Runs all pending migrations under [directory].
   ///
   /// Walks `<directory>/<datasourceName>/<schemaName>/` and, for each schema,
   /// initialises the data source's migrator and applies every
-  /// `[<version>]-<description>.<ext>` file in ascending name order. Throws a
-  /// [TomDbMigrationException] if a data source or migrator is missing, a file
-  /// name is malformed, or a script fails.
+  /// `[<version>]-<description>[@<env>…].<ext>` file in ascending version order.
+  /// Migrations tagged for an environment other than the active one
+  /// ([resolveActiveEnvironment]) are skipped (C-16); untagged migrations always
+  /// apply. Throws a [TomDbMigrationException] if a data source or migrator is
+  /// missing, a file name is malformed, or a script fails.
   static Future<void> migrateDatabases(String directory) async {
     if (_migrationAdaptorTypes.isEmpty) {
       _initializeMigrationAdaptorTypes();
     }
+    final environmentName = resolveActiveEnvironment();
     Directory dir = Directory(directory);
     await for (var database in dir.list()) {
       if (database is Directory) {
@@ -218,9 +293,12 @@ class TomDbMigrations {
                     migration;
               }
             }
-            // Parse + validate the names and apply in ascending version order
-            // (numeric, so [2] precedes [10]); a malformed name throws.
-            for (final entry in orderMigrationNames(migrations.keys)) {
+            // Parse + validate the names, apply in ascending version order
+            // (numeric, so [2] precedes [10]) and skip any migration tagged for
+            // a non-active environment (C-16); a malformed name throws.
+            final ordered = orderMigrationNames(migrations.keys);
+            for (final entry
+                in selectForEnvironment(ordered, environmentName)) {
               await migrator.applyMigration(
                 dsInfo,
                 schemaName,
