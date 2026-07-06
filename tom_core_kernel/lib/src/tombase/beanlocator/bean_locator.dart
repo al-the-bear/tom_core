@@ -300,6 +300,45 @@ class TomBean<T> {
     return result;
   }
 
+  /// Selects and installs exactly one implementation of [T] by the current
+  /// runtime environment.
+  ///
+  /// [factories] maps an environment name to the factory that builds the
+  /// implementation for that environment. The active environment name — taken
+  /// from [environment] when given, otherwise
+  /// [TomRuntime.getCurrentEnvironment] — selects which single factory runs;
+  /// the built instance is registered by type via [TomBean.withType], so a
+  /// later `TomBean<T>().get()` resolves it.
+  ///
+  /// This is the environment-selector form of dependency injection: the caller
+  /// picks the environment *name* (e.g. from a launch flag), and the locator
+  /// picks the collaborator from that name. Exactly one factory runs and
+  /// exactly one bean is registered — there is no runtime dispatcher choosing
+  /// between two installed implementations.
+  ///
+  /// Throws [TomBeanLocatorException] if no factory is registered for the
+  /// active environment. A missing mapping is a wiring bug, not a silent
+  /// fallback.
+  static TomBean<T> installByEnvironment<T>(
+    Map<String, T Function()> factories, {
+    String? environment,
+  }) {
+    final env = environment ?? TomRuntime.getCurrentEnvironment().env;
+    final factory = factories[env];
+    if (factory == null) {
+      throw TomBeanLocatorException(
+        "beanlocator.environment.no_factory_for_environment",
+        "No bean factory registered for environment '$env'.",
+        parameters: {
+          "environment": env,
+          "available": factories.keys.toList(),
+        },
+        autoLog: true,
+      );
+    }
+    return TomBean<T>.withType(T, factory() as Object);
+  }
+
   // ---------------------------------------------------------------------------
   // Static Accessors
   // ---------------------------------------------------------------------------
