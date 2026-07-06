@@ -21,27 +21,31 @@ class RoleForm extends TomForm<RoleDraft> {
 
   /// Stable role key — editable on create, read-only (stable key) on edit.
   /// Label resolves from `role.key.label` in the installed console bundle.
-  late final key = TomFormStringInput(
-    'key',
-    '',
-    form: this,
-    authorizer: TomAuthorizer.fixed(
-      isCreate ? TomAuthState.full : TomAuthState.read,
-    ),
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput key;
 
   /// Human-facing role name. Label resolves from `role.name.label`.
-  late final name = TomFormStringInput(
-    'name',
-    '',
-    form: this,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput name;
 
   /// The fields the screen renders, in order.
   List<TomField<dynamic>> get editableFields => [key, name];
 
+  /// Creates the fields (implementation half of the three-part split, G-UI-5).
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    key = TomFormStringInput(
+      'key',
+      '',
+      form: this,
+      authorizer: TomAuthorizer.fixed(
+        isCreate ? TomAuthState.full : TomAuthState.read,
+      ),
+      validators: [Validators.required()],
+    );
+    name = TomFormStringInput(
+      'name',
+      '',
+      form: this,
+      validators: [Validators.required()],
+    );
+  }
 }

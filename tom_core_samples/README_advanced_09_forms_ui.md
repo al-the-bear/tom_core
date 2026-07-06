@@ -15,20 +15,26 @@ appendix [A2](README_advanced_A2_resource_scope_conventions.md).
 ## `TomForm` and `TomField`
 
 A screen's editable surface is a `TomForm<T>` — a reflected container
-(`T extends TomClass`) whose fields are declared as `late final` members:
+(`T extends TomClass`) that separates **definition** (the fields, declared as
+members typed by their base field type), **implementation** (the fields, created
+in `createFormElements()`), and **layout** (the screen, which drops each
+`field.widget` into place) — G-UI-5:
 
 ```dart
 @tomReflector
 class LoginForm extends TomForm<LoginCredentials> {
   LoginForm() : super(formId: 'login');
 
-  late final username = TomFormStringInput('username', '', form: this,
-      validators: [Validators.required()]);
-  late final password = TomFormStringInput('password', '', form: this,
-      obscureText: true, validators: [Validators.required()]);
+  late final TomFormStringInput username;
+  late final TomFormStringInput password;
 
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    username = TomFormStringInput('username', '', form: this,
+        validators: [Validators.required()]);
+    password = TomFormStringInput('password', '', form: this,
+        obscureText: true, validators: [Validators.required()]);
+  }
 }
 ```
 
@@ -41,11 +47,15 @@ Two things are doing the work here:
   (a `ValueListenableBuilder` wrapped in a `TomFieldWidgetAdapter`,
   `tom_form.dart:1163`) that the screen drops straight into its layout. The
   screen never builds a `TextField` for the form's fields by hand.
-- **`createFormElements()` is empty on purpose.** The fields are declared as
-  `late final` initializers rather than created inside that hook, so each field
-  can capture `form: this` at its declaration site and derive its path from the
-  form — independent of whatever scope happens to be current when reflection
-  enumerates the members (see the next section).
+- **Fields are created in `createFormElements()`** (G-UI-5). The hook runs
+  inside the form's own scope, *after* the form's `basePath` is set (it is
+  called from `prepareForSelfObservation`, before the constructor body
+  enumerates members). So each field captures `form: this` and derives its path
+  from the form — independent of whatever scope happens to be current when
+  reflection enumerates the members (see the next section). The members are
+  declared `late final` and typed by their **base field type**
+  (`TomFormStringInput`, `TomFormStringDropdown`, …); they need not be
+  initialised at their declaration site.
 
 The form's lifecycle — `bind`, `save`, `validate`, `discard` — fans out across
 its fields (and any nested forms) through reflection; the screens drive only

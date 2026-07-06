@@ -59,7 +59,11 @@
     "password": { "label": "Password" },
     "displayName": { "label": "Display name" },
     "email": { "label": "Email" },
-    "status": { "label": "Status" }
+    "status": {
+      "label": "Status",
+      "active": "Active",
+      "suspended": "Suspended"
+    }
   },
   "role": {
     "key": { "label": "Key" },

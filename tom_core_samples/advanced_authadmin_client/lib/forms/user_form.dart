@@ -27,50 +27,21 @@ class UserForm extends TomForm<UserDraft> {
 
   /// Login name — editable on create, read-only (stable key) on edit. Label
   /// resolves from `user.username.label` in the installed console bundle.
-  late final username = TomFormStringInput(
-    'username',
-    '',
-    form: this,
-    authorizer: TomAuthorizer.fixed(
-      isCreate ? TomAuthState.full : TomAuthState.read,
-    ),
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput username;
 
   /// Initial password — shown on create only. The form reflects over *all*
   /// declared fields when it validates, so the required rule is applied only in
   /// create mode; on edit the field is unrendered and must not block the save.
-  late final password = TomFormStringInput(
-    'password',
-    '',
-    form: this,
-    obscureText: true,
-    validators: isCreate ? [Validators.required()] : const [],
-  );
+  late final TomFormStringInput password;
 
   /// Human-facing name.
-  late final displayName = TomFormStringInput(
-    'displayName',
-    '',
-    form: this,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput displayName;
 
   /// Contact email.
-  late final email = TomFormStringInput(
-    'email',
-    '',
-    form: this,
-    keyboardType: TextInputType.emailAddress,
-  );
+  late final TomFormStringInput email;
 
   /// Account status — a dropdown over the wire tokens; edit only.
-  late final status = TomFormStringDropdown(
-    'status',
-    'active',
-    form: this,
-    source: _statusSource,
-  );
+  late final TomFormStringDropdown status;
 
   /// The fields the screen renders, in order, for the current mode.
   List<TomField<dynamic>> get editableFields => [
@@ -81,12 +52,57 @@ class UserForm extends TomForm<UserDraft> {
         if (!isCreate) status,
       ];
 
+  /// Creates the fields (implementation half of the three-part split, G-UI-5).
+  /// The status source is built here — after login installs the console bundle
+  /// — so its option labels render the server-delivered `user.status.<token>`
+  /// text (G-RES-5) rather than any hardcoded string.
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    username = TomFormStringInput(
+      'username',
+      '',
+      form: this,
+      authorizer: TomAuthorizer.fixed(
+        isCreate ? TomAuthState.full : TomAuthState.read,
+      ),
+      validators: [Validators.required()],
+    );
+    password = TomFormStringInput(
+      'password',
+      '',
+      form: this,
+      obscureText: true,
+      validators: isCreate ? [Validators.required()] : const [],
+    );
+    displayName = TomFormStringInput(
+      'displayName',
+      '',
+      form: this,
+      validators: [Validators.required()],
+    );
+    email = TomFormStringInput(
+      'email',
+      '',
+      form: this,
+      keyboardType: TextInputType.emailAddress,
+    );
+    status = TomFormStringDropdown(
+      'status',
+      'active',
+      form: this,
+      source: _statusSource(),
+    );
+  }
 }
 
-/// The two account-status options, valued by the wire token the DTO stores.
-final TomSelectableSource<String> _statusSource = StaticSelectableSource([
-  const SelectableItem<String>(value: 'active', label: 'Active'),
-  const SelectableItem<String>(value: 'suspended', label: 'Suspended'),
-]);
+/// The two account-status options, valued by the wire token the DTO stores and
+/// labelled from the installed console bundle (`user.status.active` /
+/// `user.status.suspended`, G-RES-5). Built when the form's field is created —
+/// i.e. after the session installs the server-sent bundle — so the options
+/// render server-delivered text rather than any hardcoded string.
+TomSelectableSource<String> _statusSource() => StaticSelectableSource([
+      SelectableItem<String>(
+          value: 'active', label: TomCtr.text('user.status.active')),
+      SelectableItem<String>(
+          value: 'suspended', label: TomCtr.text('user.status.suspended')),
+    ]);

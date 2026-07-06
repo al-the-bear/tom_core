@@ -90,6 +90,8 @@ class InMemoryAdminBackend implements AdminBackend {
     'user.displayName.label': 'Display name',
     'user.email.label': 'Email',
     'user.status.label': 'Status',
+    'user.status.active': 'Active',
+    'user.status.suspended': 'Suspended',
     'role.key.label': 'Key',
     'role.name.label': 'Name',
     'group.name.label': 'Name',

@@ -29,24 +29,28 @@ class AdminLoginForm extends TomForm<AdminLoginCredentials> {
 
   /// Administrator login name. Label/hint resolve from the installed login
   /// bundle (`adminLogin.username.label` / `adminLogin.username.hint`).
-  late final username = TomFormStringInput(
-    'username',
-    '',
-    form: this,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput username;
 
   /// Administrator password (the demo backend accepts any non-empty value for a
   /// seeded account). Label resolves from `adminLogin.password.label` in the
   /// installed login bundle.
-  late final password = TomFormStringInput(
-    'password',
-    '',
-    form: this,
-    obscureText: true,
-    validators: [Validators.required()],
-  );
+  late final TomFormStringInput password;
 
+  /// Creates the fields (implementation half of the three-part split, G-UI-5).
   @override
-  void createFormElements() {}
+  void createFormElements() {
+    username = TomFormStringInput(
+      'username',
+      '',
+      form: this,
+      validators: [Validators.required()],
+    );
+    password = TomFormStringInput(
+      'password',
+      '',
+      form: this,
+      obscureText: true,
+      validators: [Validators.required()],
+    );
+  }
 }
