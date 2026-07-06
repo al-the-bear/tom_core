@@ -52,7 +52,7 @@ is already "doing it the tom_core way":
 - [ ] **Reflect every entity and every form-bound class** with `@tomReflector` so `bind`/`save` and wire serialization work. → [03](README_advanced_03_domain_reflection.md); sample `advanced_todo_domain/`.
 - [ ] **One reflection seed per package, last-writer-wins.** A single `reflection_seed.dart` whose `main()` touch-imports the reflected types; the generated `reflection_seed.reflection.dart` is the build output. → [02](README_advanced_02_project_layout_build.md); sample `advanced_app_server/`, `advanced_authadmin_client/lib/reflection_seed.dart`.
 - [ ] **Regenerate reflection only on signature changes**, via the package's `reflection_generation.sh` (copy from a sibling if missing) — not on every edit. → memory: reflection-regen rules; sample `*/reflection_generation.sh`.
-- [ ] **Pin scope/form/field keys in a domain constants file** so the form, the grade matrix, and the JSON texts read one source of truth. → [A2](README_advanced_A2_resource_scope_conventions.md) D-A1; sample `resource_keys.dart` (`scope`/`formId`/`keyFor`).
+- [ ] **Address scope/form/field keys by convention, not a catalogue.** Declare `scope`/`formId`/`tomId` as plain string literals at use (`super(formId: 'item')`, `TomScope.withScope('todo', …)`, `tomId: 'title'`); the form, the grade matrix, and the JSON texts stay aligned by naming the same `<scope>.<formId>.<field>` keys — never a constants class (G-RES-2/6). → [A2](README_advanced_A2_resource_scope_conventions.md) D-A1; sample `todo_item_form.dart`, `item_detail_screen.dart`.
 - [ ] **Enums carry a stored-name vs label split** — the stored `name` token is the wire/DB value; the label is a resource. → [03](README_advanced_03_domain_reflection.md).
 
 ## Forms & UI

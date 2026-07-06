@@ -105,9 +105,12 @@ Whether a form is "scoped" is decided **at construction**, by whether a
 This is the one place the sample's "one name, two uses" rule could silently break
 — if the item form were constructed unscoped, its fields would self-address as
 `item.title` and every grade lookup would miss (degrading closed-safe to
-`none`/hidden). The scope keys (`scope = 'todo'`, `formId = 'item'`) live as
-constants in the shared domain's `resource_keys.dart`, so the form, the server
-grade matrix, and the JSON texts cannot drift apart.
+`none`/hidden). The scope segments (`scope = 'todo'`, `formId = 'item'`) are
+**plain string literals** declared where they are used — the `formId` in the
+form's `super(formId: 'item')`, the scope in the screen's
+`TomScope.withScope('todo', …)` (G-RES-2/6, no key-catalogue class). The form,
+the server grade matrix, and the JSON texts stay aligned by naming the same
+`todo.item.<field>` keys by convention, not by importing a shared constants file.
 
 ## Bound reflected forms
 
@@ -238,7 +241,7 @@ The sample's reactivity has two layers, both pull-based:
 - `advanced_app_client/lib/forms/{login_form,todo_item_form}.dart`; `advanced_authadmin_client/lib/forms/{user_form,role_form,group_form}.dart`
 - `advanced_app_client/lib/screens/item_detail_screen.dart:88` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
 - `tom_flutter_ui/.../tom_form.dart:24` (`TomForm`), `:146` (form `basePath`), `:592`/`:614-617` (`TomField` / field `basePath`), `:196` (`bind`), `:315`/`:335` (`save`), `:838` (`isEditable`), `:1163` (`field.widget`)
-- `advanced_todo_domain/lib/src/resource_keys.dart` (`scope`/`formId` constants)
+- `advanced_app_client/lib/forms/todo_item_form.dart:37` (`super(formId: 'item')`), `advanced_app_client/lib/screens/item_detail_screen.dart:89` (`TomScope.withScope('todo', …)`) — the `formId`/scope literals, declared at use (no key catalogue)
 - Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---

@@ -180,7 +180,7 @@ contract pins.
 
 ## Primary sources
 
-- `advanced_todo_domain/lib/src/resource_keys.dart` (the pinned `scope`/`formId`/key convention, D-A1, D-A2)
+- The `scope`/`formId`/`tomId` convention (D-A1, D-A2): segments are plain string literals declared at use — `formId` in `super(formId: 'item')`, scope in `TomScope.withScope('todo', …)` — resolved by naming, not catalogued as constants (G-RES-2/6)
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:146` (form `basePath`), `:614-617` (field `basePath`), `:809` (auth lookup), `:855` (`resolvedLabel`)
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
 - `advanced_app_client/lib/forms/todo_item_form.dart:38`,`:85`; `advanced_app_client/lib/screens/item_detail_screen.dart:88`
