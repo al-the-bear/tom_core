@@ -105,9 +105,44 @@ server's key" pattern: reusing one keypair rather than minting per-server keys i
 exactly what makes a minted token verify on the other side. Both boots also set
 the same issuer (`'tom'`), which the app server must match to accept a token.
 
-> **Sample keys only.** The bundled keypair is a development convenience; the
-> `false` flag on the config merely suppresses the dummy-key warning — it does not
-> change the keys. Replace with real keys before any real deployment.
+### Sample keys and the development-key warning (G-AUTH-2)
+
+The bundled keypair (`TomJwtConfiguration.hmacKey` / `rsaPrivKey` / `rsaPubKey`)
+is a **development convenience, not a certificate**: it is the same
+non-fresh key shipped with the framework and shared by every sample, so it is
+public knowledge and useless for real trust. To make that impossible to miss,
+each server leaves its `TomJwtConfiguration` marked as a *dummy* configuration
+(`isDummy == true`, the constructor default), and the framework prints a
+development-key warning **every time it signs or verifies a token** — the sample
+does **not** suppress it. On boot you also see the one-line reminder emitted by
+`warnIfDevelopmentSigningKey()`:
+
+```
+WARN  JWT signing uses the bundled development certificate (non-fresh,
+      non-production). Install a real certificate before any real deployment;
+      see README_advanced_06_authentication.md.
+```
+
+**Why it is left on.** The warning is the signal that no production certificate
+has been installed. Silencing it (the old `false` flag) hid a real deployment
+hazard behind a convenience, so it is gone.
+
+**Installing a production certificate.** Mint your own HMAC/RSA keys, build a
+`TomJwtConfiguration` from them, and pass `isDummy: false` (the last positional
+argument) so the framework treats them as a real cert and stops warning:
+
+```dart
+TomJwtConfiguration.defaultSignConfiguration = TomJwtConfiguration(
+  jwt.SecretKey(myHmacSecret),   // your signing secret
+  base.algorithm,
+  myRsaPrivateKeyPem,            // your RSA private key
+  myRsaPublicKeyPem,             // your RSA public key
+  false,                         // isDummy: false → real certificate, no warning
+);
+```
+
+Both servers must install the **same** keys and issuer (`'tom'`) for the app
+server to keep verifying tokens the auth server minted.
 
 ## The client auth layer
 
