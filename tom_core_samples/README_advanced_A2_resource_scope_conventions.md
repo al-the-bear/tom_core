@@ -161,9 +161,9 @@ the flat `<basePath>.<suffix>` map the wire bundle carries —
 walks the tree, joining each segment with `.`, descending only *map* nodes and
 terminating a key at the first non-map value (so a scalar leaf like
 `"board.title": "My Board"` flattens as written, `:112-124`). The flattened
-bundle is byte-equivalent to the old in-code `const` map, which is why the
-resource-endpoint and sentinel tests were unchanged by the RC-24 externalization
-(part [08](README_advanced_08_resources_texts.md), D-A9).
+bundle is exactly the flat `<basePath>.<suffix>` map the wire contract
+specifies, so the resource-endpoint and sentinel tests assert against it
+directly (part [08](README_advanced_08_resources_texts.md), D-A9).
 
 Note the JSON tree keys the estimate field under **`estimate`** (the resource-key
 segment), not `estimateHours` (the member) — the asset mirrors the *`tomId`*

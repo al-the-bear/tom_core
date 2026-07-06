@@ -118,8 +118,8 @@ the singleton token store.
 The client now reads an item's field grades. Every app call goes through
 `AuthorizedHttp.send`, which injects the stored bearer **fresh on each attempt**
 and delegates the self-heal decision to the framework's pluggable policy
-(`tom_core_kernel`'s `tomRunWithAuthRetry`, G-AUTH-3) — it no longer hand-codes
-the 401→refresh→retry sequence
+(`tom_core_kernel`'s `tomRunWithAuthRetry`, G-AUTH-3) — the endpoint carries no
+hand-written 401→refresh→retry sequence of its own
 (`advanced_client_core/lib/src/http/authorized_http.dart`):
 
 ```dart

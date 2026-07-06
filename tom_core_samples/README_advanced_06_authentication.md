@@ -123,9 +123,10 @@ WARN  JWT signing uses the bundled development certificate (non-fresh,
       see README_advanced_06_authentication.md.
 ```
 
-**Why it is left on.** The warning is the signal that no production certificate
-has been installed. Silencing it (the old `false` flag) hid a real deployment
-hazard behind a convenience, so it is gone.
+**Why it is always on.** The warning is the signal that no production
+certificate has been installed. There is no flag to silence it — hiding this
+deployment hazard behind a convenience toggle is exactly the failure mode the
+warning exists to prevent.
 
 **Installing a production certificate.** Mint your own HMAC/RSA keys, build a
 `TomJwtConfiguration` from them, and pass `isDummy: false` (the last positional

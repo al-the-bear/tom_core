@@ -32,8 +32,8 @@ This sample closes that gap end-to-end: real login, JWT issuance,
 bearer-token-secured endpoints, a per-request principal, and per-resource and
 per-field authorization.
 
-Two pieces in this sample **did not previously exist anywhere in the framework's
-samples**, and they are the headline deliverables:
+Two pieces in this sample are its **headline deliverables** — capabilities no
+other framework sample demonstrates:
 
 1. **HTTP admin endpoints that *mutate* roles and the grant matrix** — the
    authorization-administration surface (`/admin/*`).

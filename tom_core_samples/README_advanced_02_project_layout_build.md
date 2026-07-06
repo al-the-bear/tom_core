@@ -114,8 +114,8 @@ the forms themselves must be in the reflected graph. (The client seed imports
 domain is a library and ships no runtime seed, so the one authoritative
 `initializeReflection()` a client runs is its own combined seed. The server tests
 follow the same rule from the other direction — they bootstrap through the
-server's own `bin/` seed, not a library seed, since the domain no longer exports
-one.)
+server's own `bin/` seed, not a library seed, since the domain library ships no
+seed of its own.)
 
 **Regenerate only on signature changes.** Each package ships a
 `reflection_generation.sh` that runs the generator flag-free:
