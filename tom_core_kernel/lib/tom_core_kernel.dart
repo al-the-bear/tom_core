@@ -29,6 +29,7 @@ export 'src/tombase/scope_ids/scope_ids.dart';
 export 'src/tombase/security/access_controls.dart';
 export 'src/tombase/security/authentication_authorization.dart';
 export 'src/tombase/security/bearer_authentication.dart';
+export 'src/tombase/security/resource_role_authorization.dart';
 export 'src/tombase/security/tom_authorization.dart';
 export 'src/tombase/security/user_principal_aci.dart';
 export 'src/tombase/settings/settings_client_authorization.dart';

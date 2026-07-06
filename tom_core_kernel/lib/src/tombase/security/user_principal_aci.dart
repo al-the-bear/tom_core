@@ -104,24 +104,38 @@ class TomAccessControlInformation {
   /// Unmodifiable list of resource keys the user can access.
   List<String> get resourceKeys => List.unmodifiable(_resourceKeys);
 
+  final Map<String, String> _resourceRoles = {};
+
+  /// Unmodifiable map of `resourceKey → roleName` giving the principal's role
+  /// on each individual resource (per-principal-per-resource roles, C-5).
+  ///
+  /// Unlike [roles] — which are global to the principal — an entry here scopes a
+  /// role to a single resource: Alice may be `owner` of project X and `viewer`
+  /// of project Y simultaneously. A resource *absent* from the map has **no**
+  /// role for this principal; the resolution ([TomResourceRoleAdapter]) then
+  /// yields [TomAuthState.none] (no fallback to the global roles).
+  Map<String, String> get resourceRoles => Map.unmodifiable(_resourceRoles);
+
   /// Creates access control information.
   ///
-  /// All lists are optional and default to empty.
+  /// All collections are optional and default to empty.
   TomAccessControlInformation({
     List<String> roles = const [],
     List<String> entitlements = const [],
     List<String> resourceKeys = const [],
     List<String> groups = const [],
+    Map<String, String> resourceRoles = const {},
   }) {
     if (roles.isNotEmpty) _roles.addAll(roles);
     if (entitlements.isNotEmpty) _entitlements.addAll(entitlements);
     if (resourceKeys.isNotEmpty) _resourceKeys.addAll(resourceKeys);
     if (groups.isNotEmpty) _groups.addAll(groups);
+    if (resourceRoles.isNotEmpty) _resourceRoles.addAll(resourceRoles);
   }
 
   @override
   String toString() =>
-      "ACI ${roles.length} roles, ${entitlements.length} entitlements, ${resourceKeys.length} resource key, ${groups.length} groups.";
+      "ACI ${roles.length} roles, ${entitlements.length} entitlements, ${resourceKeys.length} resource key, ${groups.length} groups, ${resourceRoles.length} resource roles.";
 }
 
 // =============================================================================

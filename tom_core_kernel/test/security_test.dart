@@ -16,6 +16,7 @@ TomPrincipal createTestPrincipal({
   List<String> groups = const [],
   List<String> entitlements = const [],
   List<String> resourceKeys = const [],
+  Map<String, String> resourceRoles = const {},
   bool requires2FA = false,
   String? twoFactorType,
   String organization = 'testOrg',
@@ -36,6 +37,7 @@ TomPrincipal createTestPrincipal({
       groups: groups,
       entitlements: entitlements,
       resourceKeys: resourceKeys,
+      resourceRoles: resourceRoles,
     ),
     requires2FA: requires2FA,
     twoFactorType: twoFactorType,
@@ -2022,6 +2024,38 @@ void main() {
         expect(restored.aci.groups, contains('engineering'));
         expect(restored.aci.entitlements, contains('reports.view'));
         expect(restored.aci.resourceKeys, contains('user.email'));
+      });
+
+      test(
+          'C-5: carries per-resource roles through the token so re-login applies '
+          'them', () {
+        // A principal whose role differs per resource (Alice: owner of X,
+        // viewer of Y). The authorization token must carry that map so a fresh
+        // login (re-parse of the token) sees the current grants — G-AUTHZ-5.
+        final alice = createTestPrincipal(
+          username: 'alice',
+          resourceRoles: {'project.X': 'owner', 'project.Y': 'viewer'},
+        );
+
+        final (publicInfo, privateInfo) =
+            TomBearerAuthentication.convertPrincipalToTokenPayload(
+          alice,
+          null,
+          'US',
+          'en',
+        );
+
+        // The per-resource roles ride in the encrypted (private) payload.
+        expect(privateInfo['resourceRoles'],
+            equals({'project.X': 'owner', 'project.Y': 'viewer'}));
+
+        final token =
+            _FakeClientJwtToken(payload: publicInfo, secretData: privateInfo);
+        final restored =
+            TomBearerAuthentication.convertTokenPayloadToPrincipal(token);
+
+        expect(restored.aci.resourceRoles,
+            equals({'project.X': 'owner', 'project.Y': 'viewer'}));
       });
 
       test('a guest username round-trips as not authenticated', () {
