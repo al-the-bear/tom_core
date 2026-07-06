@@ -226,25 +226,27 @@ class AppApiClient implements AppApiService {
       );
 
   @override
-  Future<TodoItem> updateItem(String id, TodoItem item) async => parseItem(
-        (await _send('PUT', '/items/$id', body: jsonEncode(item.toJson())))
+  Future<TodoItem> updateItem(TodoItem item) async => parseItem(
+        (await _send('PUT', '/items/${item.id.get()}',
+                body: jsonEncode(item.toJson())))
             .jsonObject,
       );
 
   @override
-  Future<void> deleteItem(String id) async => _send('DELETE', '/items/$id');
+  Future<void> deleteItem(EntityIdRequest request) async =>
+      _send('DELETE', '/items/${request.id}');
 
   @override
-  Future<TodoComment> addComment(String itemId, TodoComment comment) async =>
-      parseComment(
-        (await _send('POST', '/items/$itemId/comments',
+  Future<TodoComment> addComment(TodoComment comment) async => parseComment(
+        (await _send('POST', '/items/${comment.itemId.get()}/comments',
                 body: jsonEncode(comment.toJson())))
             .jsonObject,
       );
 
   @override
-  Future<List<GradedFieldDto>> itemFieldStates(String itemId) async =>
-      parseFieldStates((await _get('/items/$itemId/field-states')).jsonArray);
+  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) async =>
+      parseFieldStates(
+          (await _get('/items/${request.id}/field-states')).jsonArray);
 
   @override
   Future<void> share(ShareRequest request) async =>

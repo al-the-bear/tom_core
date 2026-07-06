@@ -232,7 +232,7 @@ void main() {
       });
       final client = clientOver(transport);
 
-      await client.deleteUser('55');
+      await client.deleteUser(EntityIdRequest(id: '55'));
 
       expect(transport.callsTo('/admin/users/55').single.method, 'DELETE');
     });
@@ -271,8 +271,8 @@ void main() {
       });
       final client = clientOver(transport);
 
-      final role = await client.updateRole(
-          'editor', RoleDto(key: 'editor', name: 'Editor (renamed)'));
+      final role = await client
+          .updateRole(RoleDto(key: 'editor', name: 'Editor (renamed)'));
 
       expect(role.name, 'Editor (renamed)');
       expect(transport.callsTo('/admin/roles/editor').single.method, 'PUT');

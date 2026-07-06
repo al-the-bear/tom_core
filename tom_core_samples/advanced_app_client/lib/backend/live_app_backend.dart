@@ -83,23 +83,29 @@ class LiveAppBackend implements AppBackend {
 
   @override
   Future<TodoItem> saveItem(TodoItem item) => _guard(() {
-        // An empty id means "create"; the server assigns the primary key.
+        // An empty id means "create"; the server assigns the primary key. On
+        // update the addressed item is carried on `item.id` (the `{id}` path
+        // capture binds back onto it server-side).
         return item.id.get().isEmpty
             ? _api.createItem(item)
-            : _api.updateItem(item.id.get(), item);
+            : _api.updateItem(item);
       });
 
   @override
-  Future<void> deleteItem(String id) => _guard(() => _api.deleteItem(id));
+  Future<void> deleteItem(String id) =>
+      _guard(() => _api.deleteItem(EntityIdRequest(id: id)));
 
   @override
   Future<TodoComment> addComment(String itemId, TodoComment comment) =>
-      _guard(() => _api.addComment(itemId, comment));
+      // The addressed item travels on the comment's `itemId` field, which the
+      // `{id}` → `itemId` mapping binds server-side.
+      _guard(() => _api.addComment(comment..itemId.set(itemId)));
 
   @override
   Future<Map<String, TomAuthState>> itemFieldStates(String itemId) =>
       _guard(() async {
-        final graded = await _api.itemFieldStates(itemId);
+        final graded =
+            await _api.itemFieldStates(EntityIdRequest(id: itemId));
         // Fold the bare grade list into a closed-safe per-key map: every
         // gradable key is present, an unsent one defaulting to none.
         final byKey = {for (final g in graded) g.resourceKey: g.accessState};

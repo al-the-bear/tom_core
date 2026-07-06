@@ -662,12 +662,12 @@ class AdvancedAdminApiService implements AdminApiService {
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateUser')
   @override
-  Future<UserDto> updateUser(String id, UserDto user) =>
-      _admin.updateUser(id, user);
+  Future<UserDto> updateUser(UserDto user) => _admin.updateUser(user.id, user);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteUser')
   @override
-  Future<void> deleteUser(String id) => _admin.deleteUser(id);
+  Future<void> deleteUser(EntityIdRequest request) =>
+      _admin.deleteUser(request.id);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminListRoles')
   @override
@@ -679,12 +679,12 @@ class AdvancedAdminApiService implements AdminApiService {
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateRole')
   @override
-  Future<RoleDto> updateRole(String key, RoleDto role) =>
-      _admin.updateRole(key, role);
+  Future<RoleDto> updateRole(RoleDto role) => _admin.updateRole(role.key, role);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteRole')
   @override
-  Future<void> deleteRole(String key) => _admin.deleteRole(key);
+  Future<void> deleteRole(EntityIdRequest request) =>
+      _admin.deleteRole(request.id);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminListGroups')
   @override
@@ -696,12 +696,13 @@ class AdvancedAdminApiService implements AdminApiService {
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminUpdateGroup')
   @override
-  Future<GroupDto> updateGroup(String id, GroupDto group) =>
-      _admin.updateGroup(id, group);
+  Future<GroupDto> updateGroup(GroupDto group) =>
+      _admin.updateGroup(group.id, group);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminDeleteGroup')
   @override
-  Future<void> deleteGroup(String id) => _admin.deleteGroup(id);
+  Future<void> deleteGroup(EntityIdRequest request) =>
+      _admin.deleteGroup(request.id);
 
   @TomApiEndpointImplementation(apiId: 'admin', endpointId: 'adminGetGrants')
   @override

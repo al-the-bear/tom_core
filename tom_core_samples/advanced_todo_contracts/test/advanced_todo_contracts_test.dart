@@ -313,5 +313,16 @@ void main() {
       expect(restored.groupId, 'g1');
       expect(assignment.toString(), contains('admin'));
     });
+
+    test('EntityIdRequest round-trips (the by-id path-param DTO)', () {
+      // The server pipeline folds a `{id}` (or mapped `{key}`) path capture onto
+      // `EntityIdRequest.id` and instantiates it via this reflection round-trip
+      // before a by-id handler (delete / read-one) runs — so the DTO must
+      // reflect losslessly from a bare `{id: ...}` map.
+      final request = EntityIdRequest(id: '55');
+      final restored = dtoFromJson<EntityIdRequest>(_wire(request));
+      expect(restored.id, '55');
+      expect(request.toString(), contains('55'));
+    });
   });
 }

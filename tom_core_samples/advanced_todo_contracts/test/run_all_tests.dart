@@ -17,6 +17,7 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 
 void main() {
   CreateUserRequest();
+  EntityIdRequest();
   RoleDto();
   GroupDto();
   AssignmentRequest();

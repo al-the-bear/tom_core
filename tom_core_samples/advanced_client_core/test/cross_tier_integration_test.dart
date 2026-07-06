@@ -164,7 +164,7 @@ void main() {
 /// carol's resolved grade for the `title` field on item [_carolItemId], read
 /// from the app server's field-state endpoint.
 Future<TomAuthState> _carolTitleState(AppApiClient app) async {
-  final states = await app.itemFieldStates(_carolItemId);
+  final states = await app.itemFieldStates(EntityIdRequest(id: _carolItemId));
   return states.firstWhere((g) => g.resourceKey == _titleKey).accessState;
 }
 

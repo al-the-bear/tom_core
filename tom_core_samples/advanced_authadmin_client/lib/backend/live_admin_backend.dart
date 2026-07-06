@@ -58,10 +58,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<UserDto> updateUser(String id, UserDto user) =>
-      _guard(() => _api.updateUser(id, user));
+      _guard(() => _api.updateUser(user..id = id));
 
   @override
-  Future<void> deleteUser(String id) => _guard(() => _api.deleteUser(id));
+  Future<void> deleteUser(String id) =>
+      _guard(() => _api.deleteUser(EntityIdRequest(id: id)));
 
   @override
   Future<List<RoleDto>> listRoles() => _guard(() => _api.listRoles());
@@ -72,10 +73,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<RoleDto> updateRole(String key, RoleDto role) =>
-      _guard(() => _api.updateRole(key, role));
+      _guard(() => _api.updateRole(role..key = key));
 
   @override
-  Future<void> deleteRole(String key) => _guard(() => _api.deleteRole(key));
+  Future<void> deleteRole(String key) =>
+      _guard(() => _api.deleteRole(EntityIdRequest(id: key)));
 
   @override
   Future<List<GroupDto>> listGroups() => _guard(() => _api.listGroups());
@@ -86,10 +88,11 @@ class LiveAdminBackend implements AdminBackend {
 
   @override
   Future<GroupDto> updateGroup(String id, GroupDto group) =>
-      _guard(() => _api.updateGroup(id, group));
+      _guard(() => _api.updateGroup(group..id = id));
 
   @override
-  Future<void> deleteGroup(String id) => _guard(() => _api.deleteGroup(id));
+  Future<void> deleteGroup(String id) =>
+      _guard(() => _api.deleteGroup(EntityIdRequest(id: id)));
 
   @override
   Future<GrantMatrixDto> getGrants() => _guard(() => _api.getGrants());

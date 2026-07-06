@@ -1020,8 +1020,8 @@ class AdvancedAppApiService implements AppApiService {
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appItemFieldStates')
   @override
-  Future<List<GradedFieldDto>> itemFieldStates(String id) =>
-      _reads.itemFieldStates(_principalId, int.tryParse(id) ?? -1);
+  Future<List<GradedFieldDto>> itemFieldStates(EntityIdRequest request) =>
+      _reads.itemFieldStates(_principalId, int.tryParse(request.id) ?? -1);
 
   // ----- Write endpoints (step 20) -----------------------------------------
 
@@ -1037,18 +1037,18 @@ class AdvancedAppApiService implements AppApiService {
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appUpdateItem')
   @override
-  Future<TodoItem> updateItem(String id, TodoItem item) =>
-      _writes.updateItem(_principalId, int.tryParse(id) ?? -1, item);
+  Future<TodoItem> updateItem(TodoItem item) => _writes.updateItem(
+      _principalId, int.tryParse(item.id.get()) ?? -1, item);
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appDeleteItem')
   @override
-  Future<void> deleteItem(String id) =>
-      _writes.deleteItem(_principalId, int.tryParse(id) ?? -1);
+  Future<void> deleteItem(EntityIdRequest request) =>
+      _writes.deleteItem(_principalId, int.tryParse(request.id) ?? -1);
 
   @TomApiEndpointImplementation(apiId: 'app', endpointId: 'appAddComment')
   @override
-  Future<TodoComment> addComment(String id, TodoComment comment) =>
-      _writes.addComment(_principalId, int.tryParse(id) ?? -1, comment);
+  Future<TodoComment> addComment(TodoComment comment) => _writes.addComment(
+      _principalId, int.tryParse(comment.itemId.get()) ?? -1, comment);
 
   // ----- Share endpoints (step 21) -----------------------------------------
 

@@ -20,6 +20,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'admin_dtos.dart';
+import 'entity_id_request.dart';
 import 'graded_field_dto.dart';
 import 'grant_matrix_dto.dart';
 import 'login_dtos.dart';
@@ -113,13 +114,16 @@ final TomApi adminApi = TomApi(
       id: 'adminUpdateUser',
       uri: '/users/{id}',
       method: TomHttpMethod.put,
+      // `{id}` → `UserDto.id` (identity): the addressed account.
+      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<Object?, EntityIdRequest>(
       id: 'adminDeleteUser',
       uri: '/users/{id}',
       method: TomHttpMethod.delete,
-      requestTypes: const [],
+      // `{id}` → `EntityIdRequest.id` (identity).
+      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
     TomApiEndpoint<List<RoleDto>, Object?>(
@@ -139,13 +143,16 @@ final TomApi adminApi = TomApi(
       id: 'adminUpdateRole',
       uri: '/roles/{key}',
       method: TomHttpMethod.put,
+      // `{key}` → `RoleDto.key` (identity): the addressed role.
+      urlParameterMapping: const {'key': 'key'},
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<Object?, EntityIdRequest>(
       id: 'adminDeleteRole',
       uri: '/roles/{key}',
       method: TomHttpMethod.delete,
-      requestTypes: const [],
+      // `{key}` → `EntityIdRequest.id` (non-identity rename).
+      urlParameterMapping: const {'key': 'id'},
       access: adminAccess,
     ),
     TomApiEndpoint<List<GroupDto>, Object?>(
@@ -165,13 +172,16 @@ final TomApi adminApi = TomApi(
       id: 'adminUpdateGroup',
       uri: '/groups/{id}',
       method: TomHttpMethod.put,
+      // `{id}` → `GroupDto.id` (identity): the addressed group.
+      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<Object?, EntityIdRequest>(
       id: 'adminDeleteGroup',
       uri: '/groups/{id}',
       method: TomHttpMethod.delete,
-      requestTypes: const [],
+      // `{id}` → `EntityIdRequest.id` (identity).
+      urlParameterMapping: const {'id': 'id'},
       access: adminAccess,
     ),
     TomApiEndpoint<GrantMatrixDto, Object?>(
@@ -269,26 +279,33 @@ final TomApi appApi = TomApi(
       id: 'appUpdateItem',
       uri: '/items/{id}',
       method: TomHttpMethod.put,
+      // `{id}` → `TodoItem.id` (identity): the addressed item.
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<Object?, Object?>(
+    TomApiEndpoint<Object?, EntityIdRequest>(
       id: 'appDeleteItem',
       uri: '/items/{id}',
       method: TomHttpMethod.delete,
-      requestTypes: const [],
+      // `{id}` → `EntityIdRequest.id` (identity).
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<TodoComment, TodoComment>(
       id: 'appAddComment',
       uri: '/items/{id}/comments',
       method: TomHttpMethod.post,
+      // The demonstrative non-identity mapping: the item id lives on the
+      // comment's `itemId` field, so `{id}` → `TodoComment.itemId`.
+      urlParameterMapping: const {'id': 'itemId'},
       access: TomAuthenticatedAccess(),
     ),
-    TomApiEndpoint<List<GradedFieldDto>, Object?>(
+    TomApiEndpoint<List<GradedFieldDto>, EntityIdRequest>(
       id: 'appItemFieldStates',
       uri: '/items/{id}/field-states',
       method: TomHttpMethod.get,
-      requestTypes: const [],
+      // `{id}` → `EntityIdRequest.id` (identity).
+      urlParameterMapping: const {'id': 'id'},
       access: TomAuthenticatedAccess(),
     ),
     TomApiEndpoint<Object?, ShareRequest>(
@@ -297,6 +314,10 @@ final TomApi appApi = TomApi(
       method: TomHttpMethod.post,
       access: TomAuthenticatedAccess(),
     ),
+    // The one retained bare-`String` path-parameter example (G-API-2): no typed
+    // request DTO and no `urlParameterMapping`, so the `{id}` capture reaches the
+    // handler through the framework's primitive path-parameter coercion. Every
+    // other by-id endpoint above binds `{id}` onto a typed request DTO instead.
     TomApiEndpoint<Object?, Object?>(
       id: 'appRevokeShare',
       uri: '/share/{id}',

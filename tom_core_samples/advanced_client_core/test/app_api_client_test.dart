@@ -19,6 +19,7 @@ import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
 import 'package:advanced_client_core/reflection_seed.dart';
+import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
@@ -231,7 +232,7 @@ void main() {
       final client = clientOver(transport);
 
       await expectLater(
-        client.deleteItem('55'),
+        client.deleteItem(EntityIdRequest(id: '55')),
         throwsA(isA<AppApiException>()
             .having((e) => e.key, 'key', 'app.item.not_found')
             .having((e) => e.statusCode, 'statusCode', 404)),
@@ -253,7 +254,7 @@ void main() {
       });
       final client = clientOver(transport);
 
-      final states = await client.itemFieldStates('11');
+      final states = await client.itemFieldStates(EntityIdRequest(id: '11'));
 
       expect(states.map((s) => s.resourceKey),
           ['todo.item.title', 'todo.item.priority']);

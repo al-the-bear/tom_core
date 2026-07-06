@@ -17,6 +17,7 @@ library;
 
 export 'admin_dtos.dart';
 export 'dto_reflection.dart';
+export 'entity_id_request.dart';
 export 'graded_field_dto.dart';
 export 'grant_matrix_dto.dart';
 export 'login_dtos.dart';

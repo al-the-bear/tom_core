@@ -119,15 +119,15 @@ class AdminApiClient implements AdminApiService {
       );
 
   @override
-  Future<UserDto> updateUser(String id, UserDto user) async => parseUser(
-        (await _send('PUT', '/admin/users/$id',
+  Future<UserDto> updateUser(UserDto user) async => parseUser(
+        (await _send('PUT', '/admin/users/${user.id}',
                 body: dtoToJsonString(user)))
             .jsonObject,
       );
 
   @override
-  Future<void> deleteUser(String id) async =>
-      _send('DELETE', '/admin/users/$id');
+  Future<void> deleteUser(EntityIdRequest request) async =>
+      _send('DELETE', '/admin/users/${request.id}');
 
   // ----- Roles -------------------------------------------------------------
 
@@ -142,15 +142,15 @@ class AdminApiClient implements AdminApiService {
       );
 
   @override
-  Future<RoleDto> updateRole(String key, RoleDto role) async => parseRole(
-        (await _send('PUT', '/admin/roles/$key',
+  Future<RoleDto> updateRole(RoleDto role) async => parseRole(
+        (await _send('PUT', '/admin/roles/${role.key}',
                 body: dtoToJsonString(role)))
             .jsonObject,
       );
 
   @override
-  Future<void> deleteRole(String key) async =>
-      _send('DELETE', '/admin/roles/$key');
+  Future<void> deleteRole(EntityIdRequest request) async =>
+      _send('DELETE', '/admin/roles/${request.id}');
 
   // ----- Groups ------------------------------------------------------------
 
@@ -166,15 +166,15 @@ class AdminApiClient implements AdminApiService {
       );
 
   @override
-  Future<GroupDto> updateGroup(String id, GroupDto group) async => parseGroup(
-        (await _send('PUT', '/admin/groups/$id',
+  Future<GroupDto> updateGroup(GroupDto group) async => parseGroup(
+        (await _send('PUT', '/admin/groups/${group.id}',
                 body: dtoToJsonString(group)))
             .jsonObject,
       );
 
   @override
-  Future<void> deleteGroup(String id) async =>
-      _send('DELETE', '/admin/groups/$id');
+  Future<void> deleteGroup(EntityIdRequest request) async =>
+      _send('DELETE', '/admin/groups/${request.id}');
 
   // ----- Grants + assignments ----------------------------------------------
 
