@@ -62,10 +62,17 @@ The user submits credentials; `AuthClient.login` POSTs them to the **public**
 
 ```dart
 final response = await _transport.send(
-  method: 'POST', uri: _uri('/auth/login'), body: jsonEncode(request.toJson()));
+  method: 'POST', uri: _uri('/auth/login'), body: dtoToJsonString(request));
 final result = _requireLogin(response, 'auth.login.failed');
 _store(result);   // → TomBearerAuthentication.setTokens(authToken, authzToken, …)
 ```
+
+The request body is serialized by `dtoToJsonString` — the reflection-first DTO
+helper ([Part 04](README_advanced_04_wire_contracts_dtos.md)) that runs
+`LoginRequest` through the same kernel reflection path as every other DTO — not a
+hand-written `LoginRequest.toJson()`, which does not exist. Symmetrically,
+`_requireLogin` decodes the response with `dtoFromJson<LoginResult>`
+(`auth_client.dart:139`).
 
 On the server, `login` is one of the endpoints whose contract declares
 `TomPublicAccess()` (`TomApiEndpoint.access`) —
@@ -225,12 +232,17 @@ re-reads it with the pure `parseFieldStates` parser
 
 ```dart
 List<GradedFieldDto> parseFieldStates(List<Object?> body) =>
-    [for (final e in body) GradedFieldDto.fromJson(_asObjectMap(e))];
+    [for (final e in body) dtoFromJson<GradedFieldDto>(_asObjectMap(e))];
 ```
 
-The wire codec carries the **same closed-safe default** the server resolver and
-the client adapter use: an unrecognised `access` token decodes to
-`TomAuthState.none` via `GradedFieldDto.fromJson` (`app_api_client.dart:142-146`).
+Each map is decoded by `dtoFromJson<GradedFieldDto>` — the reflection-first DTO
+helper ([Part 04](README_advanced_04_wire_contracts_dtos.md)), not a hand-written
+`GradedFieldDto.fromJson` (there is none). The `access` **token** rides as a
+plain `String`; the closed-safe conversion happens *at read time* on the typed
+`GradedFieldDto.accessState` accessor. So the wire codec carries the **same
+closed-safe default** the server resolver and the client adapter use: an
+unrecognised `access` token resolves to `TomAuthState.none` via
+`accessState` (`app_api_client.dart:141-146`).
 So a corrupt or unknown grade fails *hidden*, not *open* — the third independent
 `none`-defaulting point [A1](README_advanced_A1_authorization_state_machine.md)
 enumerates.

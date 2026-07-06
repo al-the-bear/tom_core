@@ -7,8 +7,9 @@ definition of the over-the-wire surface** — defined once, *implemented* by bot
 servers and *called* by the shared client core, so a server can never drift from
 a client. This part covers the package's three pillars (DTOs, the typed service
 interfaces, the wire registry), the specialised grading/grant/resource/login
-DTOs, and the **domain↔wire boundary**: which payloads cross the wire as reflected
-domain entities and which cross as hand-mapped plain DTOs.
+DTOs, and the **domain↔wire boundary**: which payloads cross the wire as the
+reflected domain entities themselves and which cross as reflection-first
+wire-projection DTOs — both serialized by the **same** kernel reflection path.
 
 ## The contracts package at a glance
 
@@ -18,34 +19,56 @@ files, which are the three pillars:
 
 | Pillar | File | What it is |
 | --- | --- | --- |
-| **DTOs** | `src/dtos.dart` (+ the specialised DTO files) | Plain value records with hand-written JSON mapping. |
+| **DTOs** | `src/dtos.dart` (+ the specialised DTO files) | Reflection-first `@tomReflector` classes — plain non-`final` fields, no hand-written serializer. |
 | **Service interfaces** | `src/api_services.dart` | `AuthApiService` / `AdminApiService` / `AppApiService` — the implementation seam servers implement and the client core calls. |
 | **Wire registry** | `src/api_registry.dart` | Each endpoint's URI, HTTP method, request/response types, and per-endpoint access policy; `registerAdvancedTodoApis()`. |
 
 Importing the barrel gives both tiers the same, single definition of the wire
 surface.
 
-## `TomJsonSerializable` DTOs
+## Reflection-first DTOs
 
-The DTOs are **plain value records, not reflected entities** (the contracts
-reflection seed is a deliberate stub — nothing here is `@tomReflector`). Each DTO
-carries:
+Every wire DTO is **reflection-first** (G-DTO-1): a `@tomReflector` class with
+**plain non-`final` fields** (G-DTO-2) and **no hand-written `toJson`/`fromJson`**
+(G-DTO-3). The framework serializes them through the **kernel reflection path**
+— `TomReflectionInfo.getValues` on the way out, `createInstanceFromJson` on the
+way in — *exactly the same* mechanism that serializes, persists and binds the
+reflected `advanced_todo_domain` entities (part
+[03](README_advanced_03_domain_reflection.md)). The only hand-written member a
+DTO carries is a **log-safe `toString`** that never renders a password or bearer
+token.
 
-- hand-written `toJson` / `fromJson`,
-- structural `==` / `hashCode`,
-- a log-safe `toString`.
+The reflection path is driven from two sides:
 
-The endpoints exchange plain JSON maps, mirroring `core_server_sample`'s
-`Map<String, Object>` surface, and the client core maps them with **pure
-functions**. Decoders are **closed-safe**: an absent or unrecognised value
-degrades to a safe default rather than throwing (e.g. `GradedFieldDto.fromJson`
-degrades an unknown access token to `TomAuthState.none` — hidden/denied).
+- **On a server**, the endpoint pipeline drives reflection directly — a handler
+  returns a DTO (or a `List<DTO>`) and the pipeline serializes it, and decodes an
+  incoming request DTO the same way.
+- **Off a server** — the Flutter-free client core and the contract round-trip
+  tests — consumers go through three one-line helpers in `dto_reflection.dart`
+  that centralise the `ClassMirror` wiring: `dtoFromJson<T>(map)`,
+  `dtoToMap(dto)`, `dtoToJsonString(dto)`. All require the DTO reflection seed to
+  have been installed (`initializeReflection()`).
 
-Two DTOs additionally **implement `TomJsonSerializable`** — `GrantMatrixDto` and
-`ResourceBundleDto`. They do so because the server endpoint pipeline would
-otherwise serialize a single-object result through the *reflection* serializer,
-which drops their `final` field; implementing `TomJsonSerializable` routes the
-result through the DTO's own `toJson` instead.
+**Enum-valued fields travel as their `.name` token** in a plain `String` (or a
+nested `Map`), because a Dart enum cannot cross the wire natively. Each such DTO
+exposes a **typed accessor** beside the token field, and the accessor is
+**closed-safe** — an absent or unrecognised token resolves to the
+least-privileged value rather than throwing: `GradedFieldDto.access` (the
+four-state grade) resolves via `accessState` to `TomAuthState.none`
+(hidden/denied); `ShareRequest.projectRole` resolves via `projectRoleValue` to
+`ProjectRole.viewer`; `UserDto.status` resolves via `statusValue`. The grade key
+and the field's `basePath` agree by the one scope/form/field convention (part
+[08](README_advanced_08_resources_texts.md)), so no key-translation layer exists.
+
+Two DTOs carry a **single nested-map field** rather than scalar fields —
+`GrantMatrixDto.matrix` (`{role: {resourceKey: token}}`) and
+`ResourceBundleDto.texts` (`{basePath.suffix: value}`), both typed
+`Map<String, Object?>`. Reflection round-trips each as a plain nested/flat map
+(`{matrix: {…}}`, `{texts: {…}}`); the typed helpers
+(`accessFor`/`withAccess`/`fromGrades`, `flattenResourceTree`) convert tokens ↔
+enums around it. There is **no `TomJsonSerializable` implementation anywhere** —
+because the fields are non-`final`, the reflection serializer round-trips them
+directly, so no manual escape hatch is needed (G-DTO-4).
 
 ## The typed service interfaces
 
@@ -100,40 +123,42 @@ grant matrix — plus resources and login:
 | DTO | Endpoint | Purpose |
 | --- | --- | --- |
 | `GradedFieldDto` | `GET /items/{id}/field-states` | One `resourceKey` + its resolved `TomAuthState`. The app server projects a principal's per-field grade into a list of these; both clients render `access` onto field visibility/interactivity. Carries only the kernel `TomAuthState`, so the contract stays dependency-clean — the resolver itself never crosses the wire. |
-| `GrantMatrixDto` | `GET/PUT /admin/grants` | The full `(role, resourceKey) → TomAuthState` grid the authadmin editor reads and writes. Held as a deep-unmodifiable copy; edits produce a new instance via `withAccess`; `accessFor` is closed-safe. The auth server materialises a PUT into `TomResourceGrant` rows. |
+| `GrantMatrixDto` | `GET/PUT /admin/grants` | The full `(role, resourceKey) → TomAuthState` grid the authadmin editor reads and writes. Held in one reflected `matrix` field as `{role: {resourceKey: token}}`; edits produce a new instance via `withAccess`; `accessFor` is closed-safe. The auth server materialises a PUT into `TomResourceGrant` rows. |
 | `ResourceBundleDto` | the `resources` / `loginResources` endpoints | A bundle of server-delivered UI texts keyed by `<basePath>.<suffix>` (`todo.item.title.label`, `login.username.hint`, …) — exactly the shape `TomTextResourceProvider.from` accepts. The keys agree with the form fields' `basePath`s because both follow the one domain scope/form/field convention. Part [08](README_advanced_08_resources_texts.md). |
 | `LoginRequest` / `LoginResult` / `UserDto` | `POST /auth/login`, `refresh`, `me` | `LoginResult` carries the `UserDto`, the `authToken` + `authzToken`, and `expiresAt`. The bearer story is part [06](README_advanced_06_authentication.md). |
 | `RoleDto` / `GroupDto` / `CreateUserRequest` / `AssignmentRequest` | `/admin/*` | The admin CRUD payloads. |
 
 ## The domain↔wire boundary
 
-The boundary is drawn by a single question — **is the payload a reflected domain
-entity, or not?**
+Both sides of the boundary serialize through the **same** kernel reflection path,
+so the boundary is **not** about *how* a payload is serialized. It is about *what
+a shape represents* — **a persisted domain entity, or a wire-only projection?**
 
 - **Domain entities cross the wire directly.** `AppApiService` returns and
   accepts the reflected `advanced_todo_domain` entities themselves —
-  `List<TodoItem>`, `Project`, `Workspace`, `TodoList`, `TodoComment`. These
-  serialize through the kernel **reflection** serializer (the same reflection
-  that persists and binds them, part [03](README_advanced_03_domain_reflection.md)),
-  so the model is defined once and reused as the wire payload.
-- **Everything else is a hand-mapped DTO.** Authentication, administration,
-  grading, the grant matrix, and resource bundles are *not* domain entities, so
-  they are plain value records in this package with hand-written `toJson` /
-  `fromJson`. They deliberately do **not** reflect — keeping the contracts
+  `List<TodoItem>`, `Project`, `Workspace`, `TodoList`, `TodoComment`. The model
+  is defined once (part [03](README_advanced_03_domain_reflection.md)) and reused
+  verbatim as the wire payload; the same reflection that persists and binds it
+  serializes it.
+- **Wire-only projections are DTOs — equally reflection-first.** Authentication,
+  administration, grading, the grant matrix, and resource bundles are *not*
+  domain entities: they exist only on the wire, so they live as their own
+  `@tomReflector` DTOs in this package (a password-free `UserDto` view, a
+  `GradedFieldDto` grade, the `GrantMatrixDto` grid, …). They serialize through
+  the identical reflection path as the entities — no hand-mapping, no
+  `TomJsonSerializable`. Carrying only kernel/token types keeps the contracts
   package dependency-clean and the client core Flutter-free.
 
-> **Boundary note (deviation from the skeleton).** This part's skeleton
-> anticipated a "drafts are client-local plain records folded by hand" section.
-> The implemented sample has **no draft DTO**: edit-in-progress state is not a
-> wire concept — the clients bind a `TomForm` directly to a domain entity and
-> `save` writes it back (part [09](README_advanced_09_forms_ui.md)). The real
-> boundary is the reflected-entity-vs-hand-mapped-DTO split above, which is what
-> this section documents. Recorded as decision D-RC7-c.
+> **No draft DTO.** Edit-in-progress state is **not a wire concept** in this
+> sample: a client binds a `TomForm` directly to a domain entity and `save`
+> writes it back (part [09](README_advanced_09_forms_ui.md)), so there is no
+> client-local "draft" payload to serialize. The only boundary is the
+> entity-vs-wire-projection split above. Recorded as decision D-RC7-c.
 
 ## Primary sources
 
 - [`advanced_todo_contracts/README.md`](advanced_todo_contracts/README.md) — the endpoint model, the service surface, and the authorization model.
-- `advanced_todo_contracts/lib/src/` — `api_services.dart`, `api_registry.dart`, `dtos.dart`, `graded_field_dto.dart`, `grant_matrix_dto.dart`, `resource_bundle_dto.dart`, `login_dtos.dart`, `admin_dtos.dart`, `share_request.dart`.
+- `advanced_todo_contracts/lib/src/` — `api_services.dart`, `api_registry.dart`, `dtos.dart`, `dto_reflection.dart` (`dtoFromJson`/`dtoToMap`/`dtoToJsonString`), `graded_field_dto.dart`, `grant_matrix_dto.dart`, `resource_bundle_dto.dart`, `login_dtos.dart`, `admin_dtos.dart`, `entity_id_request.dart`, `share_request.dart`.
 
 ---
 
