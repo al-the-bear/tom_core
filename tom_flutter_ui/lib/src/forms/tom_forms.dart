@@ -4,6 +4,7 @@ export 'tom_form_child_container.dart';
 export 'validation/validation_result.dart';
 export 'validation/form_validation_error.dart';
 export 'validation/validators.dart';
+export 'validation/validator_registry.dart';
 export 'selection/tom_selectable_source.dart';
 export 'selection/static_selectable_source.dart';
 export 'events/tom_form_event.dart';
