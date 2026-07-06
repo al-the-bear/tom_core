@@ -9,6 +9,7 @@ import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
 import 'annotation_analyzer.dart';
+import 'column_authorization.dart';
 import 'data_scope.dart';
 
 /// Result holder for a `COUNT(*)` query: a single [count] field populated by
@@ -212,6 +213,23 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     );
   }
 
+  /// The entity's column-level access-controlled columns (C-4), or empty when it
+  /// declares none — in which case every C-4 read/write path is a no-op.
+  List<TomColumnInformation> get _authColumns =>
+      TomAnnotationAnalyzer.findAuthColumns(queryTypes[0]);
+
+  /// Masks every row of [rows] in place — nulling the columns the current
+  /// principal may not see (C-4) — and returns the list. A no-op when the entity
+  /// declares no column access rights.
+  List<T> _maskRows(List<T> rows) {
+    final authColumns = _authColumns;
+    if (authColumns.isEmpty) return rows;
+    for (final row in rows) {
+      TomColumnAuthorization.applyReadMask(row, authColumns);
+    }
+    return rows;
+  }
+
   TomPreparedStatement<T>? _deleteQuery;
 
   @override
@@ -294,13 +312,15 @@ SELECT * FROM ${dbTable.table}
       ''',
         ),
       );
-      return await _findAllQuery!.execute({});
+      return _maskRows(await _findAllQuery!.execute({}));
     }
     // Scoped: the WHERE is the scope predicate alone; a generated SELECT emits
     // the persistent columns and binds the principal's allowed values.
-    return await _runPrepared<T>(
-      TomSelect(queryTypes, query: scope.predicate),
-      {...scope.parameters},
+    return _maskRows(
+      await _runPrepared<T>(
+        TomSelect(queryTypes, query: scope.predicate),
+        {...scope.parameters},
+      ),
     );
   }
 
@@ -320,7 +340,7 @@ find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
       ''')
             as TomSelect,
       );
-      return await _findAllByIdQuery!.execute({"ids": ids});
+      return _maskRows(await _findAllByIdQuery!.execute({"ids": ids}));
     }
     final base =
         _qsc.compileQuerySentence('''
@@ -328,12 +348,29 @@ find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
       ''')
             as TomSelect;
     final params = <String, Object?>{"ids": ids, ...scope.parameters};
-    return await _runPrepared<T>(_scopedSelect(base, scope), params);
+    return _maskRows(await _runPrepared<T>(_scopedSelect(base, scope), params));
   }
 
   TomPreparedStatement<T>? _findByIdQuery;
   @override
   Future<T?> findById(K id) async {
+    final row = await _selectById(id);
+    // C-4: mask the columns the current principal may not see before the row
+    // leaves the server. `save` reads its update baseline through the unmasked
+    // `_selectById` instead, so a masked-null never reaches the diff.
+    if (row == null) return null;
+    final authColumns = _authColumns;
+    if (authColumns.isEmpty) return row;
+    return TomColumnAuthorization.applyReadMask<T>(row, authColumns);
+  }
+
+  /// Loads the row with primary key [id] **without** C-4 column masking, ANDing
+  /// the current principal's row scope (C-3) when the entity declares one, or
+  /// `null` when no such row is visible.
+  ///
+  /// This is the raw read [findById] masks and [save] diffs its update against —
+  /// a write must be measured against the true stored value, not a masked null.
+  Future<T?> _selectById(K id) async {
     final scope = _resolveScope();
     List<T> result;
     if (scope == null) {
@@ -484,13 +521,48 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       for (final col in persistentColumns)
         if (!(col.column?.isReadOnly ?? false)) col,
     ];
-    Object? dbValue(TomColumnInformation col) {
-      final raw = col.getVariableValue(toSave);
+    Object? dbConvert(TomColumnInformation col, Object? raw) {
       final convert = col.column?.toDbConverter;
       return convert != null ? convert(raw) : raw;
     }
 
-    if (isUnsavedKey(primaryKey)) {
+    final insert = isUnsavedKey(primaryKey);
+
+    // C-4 column-level write enforcement. For an entity that declares
+    // `@TomDbColumn(authKey: …)` columns, a change to one the principal is not
+    // `full` on is rejected when the column is *visible* (`read`), and preserved
+    // from the baseline when it is *masked* (`none`/`disabled`) — so a
+    // round-tripped masked-null cannot clobber the stored value. `overrides`
+    // holds the baseline (db-converted) value to bind for each preserved column.
+    final authColumns = TomAnnotationAnalyzer.findAuthColumns(T);
+    final overrides = <String, Object?>{};
+    if (authColumns.isNotEmpty) {
+      // Baseline: the true stored row (unmasked) for an update, all-null for an
+      // insert (a fresh row starts empty, so any populated column is a change).
+      final baseline = insert ? null : await _selectById(primaryKey as K);
+      Object? baselineOf(TomColumnInformation col) =>
+          baseline == null ? null : col.getVariableValue(baseline);
+      final decision = TomColumnAuthorization.decideWrites<TomColumnInformation>(
+        columns: authColumns,
+        gradeOf: (col) => col.column?.authKey,
+        changed: (col) => col.getVariableValue(toSave) != baselineOf(col),
+        onForbidden: (col, key, grade) => throw TomColumnAuthorizationException(
+          'column_authorization.write.field_forbidden',
+          'Column "${col.declaredName}" (resource "$key") is not writable at '
+          'your access level (${grade.name}).',
+        ),
+      );
+      for (final col in decision.preserved) {
+        overrides[col.declaredName] = dbConvert(col, baselineOf(col));
+      }
+    }
+
+    Object? dbValue(TomColumnInformation col) =>
+        overrides.containsKey(col.declaredName)
+            ? overrides[col.declaredName]
+            : dbConvert(col, col.getVariableValue(toSave));
+
+    if (insert) {
       // INSERT
       final (sql, paramNames) = buildInsertStatement(dbTable.table, writable);
       _saveInsertQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
@@ -606,11 +678,14 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
     final scope = _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
-    return await _runPrepared<T>(
+    final rows = await _runPrepared<T>(
       _scopedSelect(select, scope),
       effective,
       resultType,
     );
+    // C-4: mask only when the rows are the primary entity type; a caller-chosen
+    // [resultType] is a projection/aggregate whose columns aren't the entity's.
+    return (resultType == null || resultType == T) ? _maskRows(rows) : rows;
   }
 
   @override
@@ -651,7 +726,9 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
   ) async {
     final scope = _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
-    return await _runPrepared<T>(_scopedSelect(query, scope), effective);
+    return _maskRows(
+      await _runPrepared<T>(_scopedSelect(query, scope), effective),
+    );
   }
 
   @override
@@ -696,7 +773,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
       query: dbQuery,
       parameters: _extractPlaceholderNames(dbQuery),
     );
-    return await _runPrepared<T>(query, params);
+    return _maskRows(await _runPrepared<T>(query, params));
   }
 }
 

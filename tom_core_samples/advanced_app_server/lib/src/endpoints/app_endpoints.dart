@@ -654,31 +654,38 @@ class AppWriteService {
   ///
   /// [baseline] is the row the write is measured against (the stored row for an
   /// update, a fresh server-owned row for a create); [incoming] is the caller's
-  /// payload as a record; [grades] is the caller's per-field grade. Every
-  /// gradable field whose [incoming] value differs from [baseline] must be
-  /// graded `full`; the first violation throws `app.item.field_forbidden`. The
-  /// returned row is a copy of [baseline] with the `full`-graded fields overlaid
-  /// from [incoming], so non-`full` and server-owned columns keep their baseline
-  /// value.
+  /// payload as a record; [grades] is the caller's per-field grade. The check is
+  /// delegated to the framework's first-class C-4 decision core
+  /// [TomColumnAuthorization.decideWrites] over the [_gradableItemFields] tokens:
+  /// a field the caller is not `full` on but *changed* while it is visible
+  /// (`read`) throws `app.item.field_forbidden`; every non-`full` field is
+  /// preserved from [baseline], and only the `full`-graded (writable) fields are
+  /// overlaid from [incoming] — so non-`full` and server-owned columns keep their
+  /// baseline value.
+  ///
+  /// The service resolves grades per **role** (via [FieldGradeResolver]), not
+  /// through the process-wide `TomAuthorization` the repository's default C-4
+  /// resolver consults; the pure decision core is reflection-free precisely so a
+  /// DTO/closure path like this can drive it with its own resolver and its own
+  /// [TomEndpointHandlerException].
   ItemRecord _enforceFieldWrites(
     ItemRecord baseline,
     ItemRecord incoming,
     Map<String, TomAuthState> grades,
   ) {
-    for (final field in _gradableItemFields) {
-      final changed = field.read(incoming) != field.read(baseline);
-      if (changed && grades[field.resourceKey] != TomAuthState.full) {
-        throw TomEndpointHandlerException(
-          'app.item.field_forbidden',
-          'Field "${field.resourceKey}" is not writable at your access level.',
-        );
-      }
-    }
+    final decision = TomColumnAuthorization.decideWrites<_GradableItemField>(
+      columns: _gradableItemFields,
+      gradeOf: (field) => field.resourceKey,
+      changed: (field) => field.read(incoming) != field.read(baseline),
+      onForbidden: (field, key, grade) => throw TomEndpointHandlerException(
+        'app.item.field_forbidden',
+        'Field "$key" is not writable at your access level.',
+      ),
+      resolver: (key) => grades[key] ?? TomAuthState.none,
+    );
     final merged = _cloneItem(baseline);
-    for (final field in _gradableItemFields) {
-      if (grades[field.resourceKey] == TomAuthState.full) {
-        field.copy(merged, incoming);
-      }
+    for (final field in decision.writable) {
+      field.copy(merged, incoming);
     }
     return merged;
   }

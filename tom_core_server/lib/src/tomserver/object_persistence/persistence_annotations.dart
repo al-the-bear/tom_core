@@ -51,6 +51,14 @@ class TomDbTable {
 /// translate between them when reading and writing. [isReadOnly] columns are
 /// skipped on insert/update, [noLoad] columns are not selected, and [isJson]
 /// marks a column whose value is JSON-encoded.
+///
+/// [authKey] opts the column into **column-level access rights** (C-4): when
+/// set, the repository resolves the current principal's [TomAuthState] for that
+/// resource key (through `TomColumnAuthorization`, consulting `TomAuthorization`)
+/// and enforces it server-authoritatively — masking the column's value on read
+/// when the principal cannot see it, and rejecting a write that changes it when
+/// the principal is not `full`. A column with no [authKey] is unrestricted, so
+/// existing entities keep their behaviour unchanged.
 class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
   /// The column name; defaults to the field name when `null`.
   final String? columnName;
@@ -63,6 +71,13 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
 
   /// Whether the column holds JSON-encoded data.
   final bool isJson;
+
+  /// The resource key that gates this column's read/write access (C-4).
+  ///
+  /// When non-null, the repository resolves the current principal's
+  /// [TomAuthState] for this key and masks the value on read / rejects an
+  /// unauthorized write. `null` (the default) leaves the column unrestricted.
+  final String? authKey;
 
   /// The Dart type, when it cannot be inferred from [DART_TYPE].
   final Type? dartType;
@@ -82,6 +97,7 @@ class TomDbColumn<DART_TYPE, COL_TYPE extends TomDbType> {
     this.isReadOnly = false,
     this.noLoad = false,
     this.isJson = false,
+    this.authKey,
     this.dartType,
     this.fromDbConverter,
     this.toDbConverter,
