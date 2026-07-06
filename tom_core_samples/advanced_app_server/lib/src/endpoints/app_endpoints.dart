@@ -177,7 +177,7 @@ class AppReadService {
   factory AppReadService.production() => AppReadService(
         const RepositoryAppReadStore(),
         const ResourceAccessResolver(RepositoryAppResourceStore()),
-        const FieldGradeResolver(RepositoryGrantStore()),
+        FieldGradeResolver(const RepositoryGrantStore()),
       );
 
   /// Workspaces the principal [userId] owns or is shared into.
@@ -418,10 +418,23 @@ class InMemoryAppWriteStore implements AppWriteStore {
   }
 }
 
-/// One gradable [ItemRecord] field: its resource key plus how to read and copy
-/// the underlying column. Backs both halves of the write check — detecting that
-/// the caller changed a field (so its grade must be `full`) and overlaying the
-/// permitted fields onto the row that is persisted.
+/// How one gradable [ItemRecord] column is read and copied. Backs both halves of
+/// the write check — detecting that the caller changed a field (so its grade
+/// must be `full`) and overlaying the permitted fields onto the persisted row.
+/// Inherently code (per-column closures), keyed by the field's `todo.item.*` key
+/// so the graded *set and order* come from the server resource bundle rather
+/// than a second hand-maintained list.
+class _GradableItemBinding {
+  /// Reads the field's value from a record (for the changed/unchanged diff).
+  final Object? Function(ItemRecord) read;
+
+  /// Copies the field's value from [source] onto [target] (the permitted merge).
+  final void Function(ItemRecord target, ItemRecord source) copy;
+
+  const _GradableItemBinding(this.read, this.copy);
+}
+
+/// One gradable [ItemRecord] field: its resource key plus its read/copy binding.
 class _GradableItemField {
   /// The `todo.item.*` resource key the four-state grade is declared against.
   final String resourceKey;
@@ -435,27 +448,45 @@ class _GradableItemField {
   const _GradableItemField(this.resourceKey, this.read, this.copy);
 }
 
-/// The seven field-graded [ItemRecord] columns, in display order — the same set
-/// the field-grade resolver answers and the matrix the auth server seeds. The
-/// remaining columns (`label`, `tags`) are not part of the field-grade demo;
-/// `updateItem` preserves them from the stored row, `createItem` takes them from
-/// the creator's payload.
+/// The read/copy binding for every gradable `todo.item.*` field, keyed by its
+/// full resource key. Only the closures live here; the *set and order* of graded
+/// fields is the server resource bundle's [AppResourceBundles.gradableItemKeys]
+/// (step 21), so a bundle key without a binding fails loudly when
+/// [_gradableItemFields] is built. The non-gradable columns (`label`, `tags`)
+/// are absent by design — `updateItem` preserves them from the stored row,
+/// `createItem` takes them from the creator's payload.
+final Map<String, _GradableItemBinding> _gradableItemBindings = {
+  'todo.item.title':
+      _GradableItemBinding((r) => r.title, (t, s) => t.title = s.title),
+  'todo.item.status':
+      _GradableItemBinding((r) => r.status, (t, s) => t.status = s.status),
+  'todo.item.priority':
+      _GradableItemBinding((r) => r.priority, (t, s) => t.priority = s.priority),
+  'todo.item.assigneeId': _GradableItemBinding(
+      (r) => r.assigneeId, (t, s) => t.assigneeId = s.assigneeId),
+  'todo.item.dueDate':
+      _GradableItemBinding((r) => r.dueDate, (t, s) => t.dueDate = s.dueDate),
+  'todo.item.estimate': _GradableItemBinding(
+      (r) => r.estimateHours, (t, s) => t.estimateHours = s.estimateHours),
+  'todo.item.description': _GradableItemBinding(
+      (r) => r.description, (t, s) => t.description = s.description),
+};
+
+/// The field-graded [ItemRecord] columns, in the display order the server
+/// resource bundle labels them — the same set the field-grade resolver answers
+/// and the matrix the auth server seeds (step 21). The order and membership come
+/// from [AppResourceBundles.gradableItemKeys]; [_gradableItemBindings] supplies
+/// each key's read/copy closures. A gradable key with no binding throws here.
 final List<_GradableItemField> _gradableItemFields = [
-  _GradableItemField(
-      'todo.item.title', (r) => r.title, (t, s) => t.title = s.title),
-  _GradableItemField('todo.item.status', (r) => r.status,
-      (t, s) => t.status = s.status),
-  _GradableItemField('todo.item.priority', (r) => r.priority,
-      (t, s) => t.priority = s.priority),
-  _GradableItemField('todo.item.assigneeId', (r) => r.assigneeId,
-      (t, s) => t.assigneeId = s.assigneeId),
-  _GradableItemField('todo.item.dueDate', (r) => r.dueDate,
-      (t, s) => t.dueDate = s.dueDate),
-  _GradableItemField('todo.item.estimate', (r) => r.estimateHours,
-      (t, s) => t.estimateHours = s.estimateHours),
-  _GradableItemField('todo.item.description', (r) => r.description,
-      (t, s) => t.description = s.description),
+  for (final key in AppResourceBundles.gradableItemKeys())
+    _GradableItemField(
+        key, _gradableItemBindings[key]!.read, _gradableItemBindings[key]!.copy),
 ];
+
+/// The gradable `todo.item.*` field keys the write path enforces, in order —
+/// exposed so a drift guard can assert it against the server resource bundle.
+List<String> get gradableItemFieldKeys =>
+    [for (final field in _gradableItemFields) field.resourceKey];
 
 /// Pure write logic over an [AppWriteStore], gated by the same two authorization
 /// layers the reads use.
@@ -497,7 +528,7 @@ class AppWriteService {
   factory AppWriteService.production() => AppWriteService(
         const RepositoryAppWriteStore(),
         const ResourceAccessResolver(RepositoryAppResourceStore()),
-        const FieldGradeResolver(RepositoryGrantStore()),
+        FieldGradeResolver(const RepositoryGrantStore()),
       );
 
   /// Creates [project] in its workspace; the principal must own or edit that

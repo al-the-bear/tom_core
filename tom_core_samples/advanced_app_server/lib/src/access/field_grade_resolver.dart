@@ -27,21 +27,7 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-/// The gradable [TodoItem] field keys, in display order.
-///
-/// Addressed by scope + `tomId` (`todo.item.<field>`), resolved at use rather
-/// than pulled from a key-catalogue class (G-RES-6). Step 21 replaces this
-/// inline set with keys derived from the reflected entity + the server resource
-/// bundle; it is the interim server-side source.
-const _gradableItemKeys = <String>[
-  'todo.item.title',
-  'todo.item.status',
-  'todo.item.priority',
-  'todo.item.assigneeId',
-  'todo.item.dueDate',
-  'todo.item.estimate',
-  'todo.item.description',
-];
+import '../resources/app_resource_bundles.dart';
 
 /// Repository for the framework's [TomResourceGrant] table (`tom_resource_grant`).
 ///
@@ -70,9 +56,19 @@ class FieldGradeResolver {
   /// The store the resolver loads grant rows through.
   final GrantStore store;
 
+  /// The gradable `todo.item.<field>` keys the resolver reports a [TomAuthState]
+  /// for, in display order. Defaults to the server resource bundle's gradable
+  /// set ([AppResourceBundles.gradableItemKeys], step 21) so the server derives
+  /// the graded set from the texts it serves rather than a hand-maintained list;
+  /// tests may inject an explicit set.
+  final List<String> gradableItemKeys;
+
   /// Builds the resolver over [store] (the live repository at boot, a seeded
-  /// store under test).
-  const FieldGradeResolver(this.store);
+  /// store under test). [gradableItemKeys] defaults to the server resource
+  /// bundle's gradable set.
+  FieldGradeResolver(this.store, {List<String>? gradableItemKeys})
+      : gradableItemKeys =
+            gradableItemKeys ?? AppResourceBundles.gradableItemKeys();
 
   /// Loads [role]'s grants and folds them into a graded view. Several rows for
   /// the same key widen to the most permissive grade (the framework default).
@@ -82,7 +78,7 @@ class FieldGradeResolver {
   }
 
   /// Resolves the per-field [TomAuthState] for every gradable [TodoItem] field
-  /// ([_gradableItemKeys]) under [role], in display order.
+  /// ([gradableItemKeys]) under [role], in display order.
   ///
   /// A field with no grant row degrades to [TomAuthState.none] (hidden) — the
   /// closed/safe default the framework codec falls back to.
@@ -91,7 +87,7 @@ class FieldGradeResolver {
   ) async {
     final graded = await gradesForRole(role);
     return {
-      for (final key in _gradableItemKeys) key: graded.resolveState(key),
+      for (final key in gradableItemKeys) key: graded.resolveState(key),
     };
   }
 }

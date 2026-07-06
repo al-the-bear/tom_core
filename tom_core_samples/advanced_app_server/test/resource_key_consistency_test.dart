@@ -9,9 +9,11 @@
 /// `todo.item.*` are exactly the gradable field tokens — no field missing a
 /// label, and no stray label for a field the domain does not grade.
 ///
-/// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class;
-/// steps 21/24/26 derive the gradable set from reflection/the resource bundle.
-/// Until then the expected set is the inline literals below.)
+/// (G-RES-6: addressing is by scope + `tomId`, so there is no catalogue class.
+/// Step 21 derives the *server's* gradable set from the resource bundle
+/// ([AppResourceBundles.gradableItemKeys], asserted below); steps 24/26 derive
+/// the *client's* set from the form. The inline literals here are the drift
+/// anchor the derivation is checked against.)
 ///
 /// The existing `resource_bundle_endpoint_test.dart` already asserts the *first*
 /// direction (every gradable field has a label key). This test adds the *reverse*
@@ -28,8 +30,8 @@ import 'package:advanced_app_server/advanced_app_server.dart';
 import 'package:test/test.dart';
 
 /// The gradable item field tokens (plain field names) and their full wire keys.
-/// Steps 21/24/26 derive these from reflection/the resource bundle; here they
-/// are the inline expectation this drift guard checks against.
+/// Step 21 derives the server set from the resource bundle; here they are the
+/// inline expectation this drift guard checks the derivation against.
 const _gradableItemFields = <String>[
   'title',
   'status',
@@ -92,6 +94,23 @@ void main() {
           reason: 'labelled field "$field" has no matching gradable item key',
         );
       }
+    });
+
+    test('the bundle derives the gradable key set in display order (step 21)',
+        () {
+      // Step 21: the server no longer holds a hand-maintained gradable-key
+      // list — the resolver and the write path both address
+      // AppResourceBundles.gradableItemKeys(). Pin that derivation (set + order)
+      // to the expected literals so a reordered or renamed label is caught.
+      expect(AppResourceBundles.gradableItemKeys(), orderedEquals(_gradableItemKeys));
+    });
+
+    test('the write path enforces exactly the bundle-derived keys (step 21)',
+        () {
+      // The write path's field-binding table is built from the same bundle keys,
+      // so a bundle field without a read/copy binding (or a stray binding) would
+      // surface here as a mismatch.
+      expect(gradableItemFieldKeys, orderedEquals(_gradableItemKeys));
     });
   });
 }

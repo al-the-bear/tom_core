@@ -126,5 +126,14 @@ void main() {
       final states = await resolver.resolveItemFieldStates(ProjectRole.owner);
       expect(states.keys, orderedEquals(a4Matrix[ProjectRole.owner]!.keys));
     });
+
+    test('the gradable key set is derived from the server bundle (step 21)',
+        () {
+      // Step 21: the resolver no longer carries an inline key list — its default
+      // set is the server resource bundle's gradable keys, so the graded set
+      // tracks the texts the server serves.
+      expect(resolver.gradableItemKeys,
+          orderedEquals(AppResourceBundles.gradableItemKeys()));
+    });
   });
 }
