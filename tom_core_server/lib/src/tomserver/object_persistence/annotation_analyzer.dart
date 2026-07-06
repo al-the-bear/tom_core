@@ -49,6 +49,10 @@ mixin TomAnnotationAnalyzer {
   /// Cache of resolved column metadata lists per entity type.
   static final columnInfoCache = <Type, List<TomColumnInformation>?>{};
 
+  /// Cache of resolved `@TomDbScope` annotations per entity type
+  /// (`null` = the entity declares no row scope).
+  static final dataScopeCache = <Type, TomDbScope?>{};
+
   /// Resolves the full persistence metadata (table + columns) for entity [T].
   ///
   /// Throws [TomAnnotationAnalyzerException] if the type is not reflectable,
@@ -110,6 +114,23 @@ mixin TomAnnotationAnalyzer {
       }
     }
     tableCache[dbType] = null;
+    return null;
+  }
+
+  /// Returns the `@TomDbScope` annotation on [dbType], or `null` when the
+  /// entity declares no row-level data scope (it is then unscoped).
+  static TomDbScope? findDataScope(Type dbType) {
+    if (dataScopeCache.containsKey(dbType)) return dataScopeCache[dbType];
+    ClassMirror? mirror = findMirror(dbType);
+    if (mirror != null) {
+      for (var md in mirror.metadata) {
+        if (md is TomDbScope) {
+          dataScopeCache[dbType] = md;
+          return md;
+        }
+      }
+    }
+    dataScopeCache[dbType] = null;
     return null;
   }
 

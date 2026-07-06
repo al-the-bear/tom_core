@@ -102,6 +102,33 @@ class TomEntityId {
   const TomEntityId();
 }
 
+/// Annotation declaring the **row-level data scope** of an entity (C-3).
+///
+/// Applied to a `@tomReflector` entity, it restricts which rows the repository
+/// returns to those the current principal is allowed to see. [field] names the
+/// entity field/column that carries the scope value (e.g. `ownerId`), and
+/// [scope] names the scope *kind* — a key into `TomDataScopeRegistry` whose
+/// resolver maps the current `TomPrincipal` to the set of [field] values the
+/// principal may see (the default `'owner'` resolves to the principal's own id).
+///
+/// At query time the repository resolves the principal's allowed values and
+/// binds them into an additional prepared `WHERE <field> IN (?, …)` clause; no
+/// value is ever concatenated into the SQL text (C-7). An entity *without* this
+/// annotation is unscoped — every row is visible.
+class TomDbScope {
+  /// The entity field whose value is matched against the principal's allowed
+  /// scope values.
+  final String field;
+
+  /// The scope kind — a key into `TomDataScopeRegistry` selecting the resolver
+  /// that turns the principal into its set of allowed [field] values.
+  final String scope;
+
+  /// Declares that the annotated entity's rows are scoped by [field] under the
+  /// named [scope] resolver (default `'owner'`).
+  const TomDbScope({required this.field, this.scope = 'owner'});
+}
+
 /// Annotation describing a many-to-many join table between two entities.
 ///
 /// Note: declared for future use — the persistence layer does not yet detect or
