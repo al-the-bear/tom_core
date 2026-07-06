@@ -185,7 +185,7 @@ contract pins.
 - `tom_flutter_ui/lib/src/widget_base/tom_construction_helpers.dart` (`TomCtr._key`/`textOrNull`)
 - `advanced_app_client/lib/forms/todo_item_form.dart:38`,`:85`; `advanced_app_client/lib/screens/item_detail_screen.dart:88`
 - `advanced_todo_contracts/lib/src/resource_bundle_dto.dart:110` (`flattenResourceTree`); `advanced_app_server/assets/resources_app.json`
-- `advanced_examples_alignment_plan.md` — Key anatomy, D-A1, D-A2; companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
+- Companions [08](README_advanced_08_resources_texts.md) / [09](README_advanced_09_forms_ui.md)
 
 ---
 

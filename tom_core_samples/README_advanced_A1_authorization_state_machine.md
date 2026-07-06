@@ -211,7 +211,6 @@ commenter still has its write rejected.
 - `tom_flutter_ui/lib/src/forms/tom_form.dart:614-617` (basePath), `:807` (`resolveEffectiveAuth` five layers)
 - `advanced_app_client/lib/app/field_state_authorization_adapter.dart:78-99` (the four-step resolution)
 - `advanced_app_server/lib/src/access/{field_grade_resolver,resource_access_resolver}.dart`; `advanced_todo_contracts/lib/src/graded_field_dto.dart`
-- `advanced_examples_alignment_plan.md` — D-A1…D-A8; `advanced_example_completion.md` — After Todos 2, 5, 11
 - Companion: [07 · Authorization](README_advanced_07_authorization.md)
 
 ---

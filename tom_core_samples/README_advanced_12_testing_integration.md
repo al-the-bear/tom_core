@@ -154,13 +154,11 @@ A change is done only when all three hold together:
 3. **The cross-tier runner exits 0** with "All tests passed!" against a freshly
    booted stack.
 
-This gate is what `advanced_example_completion.md` records as passing — most
-recently a live re-run on 2026-06-29. Reaching it the first time also surfaced
-and fixed five real `tom_core_server` bugs (zone principal resolution, nullable
-surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string parameter
-binding, and pipeline error logging) — recorded in
-`advanced_example_specification_plan.md` §37 (Phase 7). The suites are not
-decoration; they were the instrument that found framework defects.
+This gate was last re-run live on 2026-06-29. Reaching it the first time also
+surfaced and fixed five real `tom_core_server` bugs (zone principal resolution,
+nullable surrogate-key read, the MariaDB `bool`→`1`/`0` bind, query-string
+parameter binding, and pipeline error logging). The suites are not decoration;
+they were the instrument that found framework defects.
 
 ## Test counts
 
@@ -185,13 +183,10 @@ Current green-gate counts (runtime, the authoritative figure):
 
 ## Primary sources
 
-- `advanced_example_specification_plan.md` — A.13 Testing strategy, Phase 7
-- `advanced_example_completion.md` — After Todos 11 & 15; the global green gate
 - `advanced_app_client/test/{form_label_resolution_test.dart, item_detail_screen_test.dart}`,
   `advanced_authadmin_client/test/{admin_login_form_test.dart, form_label_resolution_test.dart}`
 - `advanced_client_core/test/cross_tier_integration_test.dart`,
   `advanced_client_core/tool/run_cross_tier_integration.sh`
-- `advanced_example_specification_plan.md` — §37 (the five `tom_core_server` fixes the gate found)
 
 ---
 

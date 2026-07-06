@@ -192,7 +192,6 @@ socket-free widget tests inject (part
 
 ## Primary sources
 
-- `advanced_example_specification_plan.md` — A.2 Components, Phase 1 (shared foundations), Plan-completion notes.
 - The seven `pubspec.yaml` files; each package's `build.yaml`, `reflection_generation.sh`, and reflection entry/seed.
 - [`README_advanced_sample.md`](README_advanced_sample.md) — the Repository-layout tree and the [Run the whole thing](README_advanced_sample.md#run-the-whole-thing) quickstart.
 

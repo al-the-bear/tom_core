@@ -15,9 +15,7 @@ field authorization and cross-user sharing.
 > **Reading this map.** This document links the seven packages, draws the
 > architecture, and gives the one quickstart that stands the whole system up.
 > Every package ships its own article-grade `README.md` with the depth — nothing
-> about a package's internals is re-documented here. The build narrative lives in
-> the quest plan
-> [`advanced_example_specification_plan.md`](../../../_ai/quests/tom_core/advanced_example_specification_plan.md).
+> about a package's internals is re-documented here.
 
 ---
 
@@ -210,7 +208,6 @@ live-stack pass — the runner converts a server-unreachable skip into a failure
 | Topic | Document |
 | --- | --- |
 | Basic samples map (the predecessor series) | [`README.md`](README.md) |
-| Quest build narrative | [`advanced_example_specification_plan.md`](../../../_ai/quests/tom_core/advanced_example_specification_plan.md) |
 | Server stack | [`../tom_core_server/README.md`](../tom_core_server/README.md) |
 | Kernel (foundation) | [`../tom_core_kernel/README.md`](../tom_core_kernel/README.md) |
 | Flutter integration | [`../tom_core_flutter/README.md`](../tom_core_flutter/README.md) |

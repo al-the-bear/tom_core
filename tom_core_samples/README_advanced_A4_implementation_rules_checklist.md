@@ -84,7 +84,7 @@ is already "doing it the tom_core way":
 - [ ] **Test each layer against the seam directly below it**, never a live socket — inject an in-memory backend (`AppBackend` / `AdminBackend`) mirroring the server's ownership + four-state model. → [12](README_advanced_12_testing_integration.md); sample `in_memory_app_backend.dart`.
 - [ ] **Assert texts with the `[srv]` sentinel and grades with the four-role matrix** (TC-30-01…04). Same widget, four principals, four renderings purely from the installed matrix. → [12](README_advanced_12_testing_integration.md); sample `item_detail_screen_test.dart`.
 - [ ] **Exercise the real stack once, end-to-end**, with a scripted runner that boots both DBs + servers and skips-as-failure when unreachable. → [12](README_advanced_12_testing_integration.md); sample `run_cross_tier_integration.sh`, `cross_tier_integration_test.dart` (TC-37-01).
-- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green (serial) + the cross-tier runner exits `0`. → `advanced_example_completion.md`.
+- [ ] **The green gate is all three together:** `dart analyze` clean + every suite green (serial) + the cross-tier runner exits `0`.
 
 ## Using the checklist
 
@@ -96,10 +96,8 @@ resources → authorization → forms → tests.
 
 ## Primary sources
 
-- `readme_creation_plan.md` §1 (the two rules the realignment made literal); `advanced_examples_alignment_plan.md` (D-A1…D-A9)
 - All spine docs [00](README_advanced_00_introduction.md)–[12](README_advanced_12_testing_integration.md); appendices [A1](README_advanced_A1_authorization_state_machine.md)/[A2](README_advanced_A2_resource_scope_conventions.md)/[A3](README_advanced_A3_request_lifecycle.md)
 - Framework anchors: `tom_flutter_ui` `tom_form.dart:807`/`:855`; `tom_core_server` endpoint pipeline + `@TomRoleAccess`
-- `advanced_example_completion.md` — the green gate
 
 ---
 

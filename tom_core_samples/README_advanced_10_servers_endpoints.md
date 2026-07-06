@@ -243,7 +243,6 @@ The full step-by-step trace with the exact frames is in
 - `advanced_app_server/lib/src/endpoints/app_endpoints.dart`; `advanced_auth_server/lib/src/endpoints/{auth,admin}_endpoints.dart`
 - `advanced_todo_contracts/lib/src/api_registry.dart`
 - `advanced_*_server/bin/*_server_start.dart`
-- `advanced_example_specification_plan.md` — A.6, A.7, Phase 3
 - `tom_core_server/doc/endpoints.md`; appendix [A3](README_advanced_A3_request_lifecycle.md)
 
 ---

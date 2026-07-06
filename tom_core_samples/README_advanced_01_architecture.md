@@ -156,7 +156,6 @@ and the shared signing key closing the loop underneath:
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — Architecture section + diagram, the suite map, and the quickstart.
-- `advanced_example_specification_plan.md` — A.2 Components (the per-package build narrative behind this layering).
 - The seven package READMEs, for per-node detail.
 
 ---

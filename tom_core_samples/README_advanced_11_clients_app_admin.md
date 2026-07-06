@@ -150,7 +150,7 @@ by an explicit `--dart-define=TEST_MODE=true`; it is what the widget tests injec
 directly and how the offline walk-through runs. In-memory is never a default
 reached by forgetting a flag.
 
-**Login-then-full resource staging.** The login bundle installed at step 4 is the
+**Login-then-full resource staging.** The login bundle installed at startup is the
 *pre-login* chrome. On a successful `login`, the session pulls the
 **authenticated** full bundle and installs it merged over the current provider
 (full-bundle keys win), so every post-login screen resolves server texts while the
@@ -188,8 +188,6 @@ half of the four-state model: the app client *renders* grades, the admin console
 - [`advanced_app_client/README.md`](advanced_app_client/README.md), [`advanced_authadmin_client/README.md`](advanced_authadmin_client/README.md)
 - `advanced_app_client/lib/{main.dart, app/app_session.dart, app/app_root.dart, backend/}`
 - `advanced_authadmin_client/lib/{main.dart, app/admin_session.dart, app/admin_root.dart, screens/, backend/}`
-- `advanced_example_specification_plan.md` — A.8, A.9, Phases 5 & 6
-- `advanced_example_completion.md` — After Todos 3, 8, 9, 13
 
 ---
 

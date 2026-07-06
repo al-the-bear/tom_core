@@ -151,7 +151,7 @@ Each database's schema and demo data live as SQL migrations under
 `[<version>]-<desc>[@<env>[,<env>…]].sql`. `TomDbMigrations.migrateDatabases(dir)`
 (called at server boot) walks the tree and applies files in **ascending numeric
 version order**, **skipping any migration tagged for an environment other than
-the active one** (the `@<env>` tag, G-MIG-3 / step 12 — untagged migrations apply
+the active one** (the `@<env>` tag, G-MIG-3 — untagged migrations apply
 everywhere); the same tree is also mounted into MariaDB's
 `docker-entrypoint-initdb.d` for the dev-harness first-boot bootstrap, where the
 stock hook runs *every* `.sql` alphabetically (the environment filter is the
@@ -203,7 +203,6 @@ format (part [06](README_advanced_06_authentication.md)).
 - [`advanced_app_server/README.md`](advanced_app_server/README.md), [`advanced_auth_server/README.md`](advanced_auth_server/README.md)
 - `advanced_app_server/lib/src/persistence/app_persistence_model.dart`, `advanced_auth_server/lib/src/persistence/auth_persistence_model.dart`, and the `*_mapping.dart` converters
 - `*/assets/datasources_default.yaml`, `*/database_migrations/<datasource>/<schema>/`
-- `advanced_example_specification_plan.md` — A.10 Persistence & databases, Phase 3
 
 ---
 

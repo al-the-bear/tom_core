@@ -205,7 +205,6 @@ Two request shapes coexist, divided by whether a bearer is present:
 - [`advanced_auth_server/README.md`](advanced_auth_server/README.md), [`advanced_client_core/README.md`](advanced_client_core/README.md)
 - `advanced_auth_server/lib/src/auth/authentication_service.dart`, `.../auth/password_hashing.dart`, `.../endpoints/auth_endpoints.dart`; both servers' `bin/*_start.dart` `initializeJwtSigning()`
 - `advanced_client_core/lib/src/auth/auth_client.dart`, `.../http/authorized_http.dart`
-- `advanced_example_specification_plan.md` — A.5 Authentication & session flow, A.7, A.11, Phases 2 & 4
 
 ---
 

@@ -239,7 +239,7 @@ The sample's reactivity has two layers, both pull-based:
 - `advanced_app_client/lib/screens/item_detail_screen.dart:88` (`TomScope.withScope`), `:181-188` (`field.widget` / `isEditable` gate)
 - `tom_flutter_ui/.../tom_form.dart:24` (`TomForm`), `:146` (form `basePath`), `:592`/`:614-617` (`TomField` / field `basePath`), `:196` (`bind`), `:315`/`:335` (`save`), `:838` (`isEditable`), `:1163` (`field.widget`)
 - `advanced_todo_domain/lib/src/resource_keys.dart` (`scope`/`formId` constants)
-- `advanced_example_specification_plan.md` — A.8, A.9, Phases 5 & 6; appendix [A2](README_advanced_A2_resource_scope_conventions.md)
+- Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---
 

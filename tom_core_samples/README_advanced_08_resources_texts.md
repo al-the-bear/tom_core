@@ -194,9 +194,9 @@ If the field were rendering a hard-coded `'Username'`, the `[srv]` text would be
 absent and the test would fail. Because the assertion passes, the label is
 provably resolved through `resolvedLabel` → `TomCtr.textOrNull(basePath, 'label')`
 → the installed bundle. The same pattern guards the admin console's
-`user.*`/`role.*`/`group.*` form labels in `advanced_authadmin_client`. These
-are the tests RC-24 had to keep green: the bundles now come from JSON assets, but
-the served keys (and therefore the sentinels) are byte-identical.
+`user.*`/`role.*`/`group.*` form labels in `advanced_authadmin_client`. The
+bundles come from JSON assets, but the served keys (and therefore the sentinels)
+are byte-identical.
 
 ## Primary sources
 
@@ -205,7 +205,7 @@ the served keys (and therefore the sentinels) are byte-identical.
 - `advanced_app_client/lib/app/app_session.dart` (`loadLoginResources` / `_installFullResources`, D-A9)
 - `tom_flutter_ui/.../tom_form.dart:855` (`resolvedLabel`); `tom_construction_helpers.dart:61-70` (`TomCtr.text`/`textOrNull`)
 - `advanced_app_client/test/form_label_resolution_test.dart` (the `[srv]` sentinel proof)
-- `advanced_examples_alignment_plan.md` — gaps 2–3, Key anatomy, D-A1, D-A9; appendix [A2](README_advanced_A2_resource_scope_conventions.md)
+- Appendix [A2](README_advanced_A2_resource_scope_conventions.md)
 
 ---
 

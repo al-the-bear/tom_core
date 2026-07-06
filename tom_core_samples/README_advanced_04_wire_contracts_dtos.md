@@ -134,7 +134,6 @@ entity, or not?**
 
 - [`advanced_todo_contracts/README.md`](advanced_todo_contracts/README.md) — the endpoint model, the service surface, and the authorization model.
 - `advanced_todo_contracts/lib/src/` — `api_services.dart`, `api_registry.dart`, `dtos.dart`, `graded_field_dto.dart`, `grant_matrix_dto.dart`, `resource_bundle_dto.dart`, `login_dtos.dart`, `admin_dtos.dart`, `share_request.dart`.
-- `advanced_example_specification_plan.md` — A.6 (services), Phase 1.
 
 ---
 

@@ -142,8 +142,6 @@ back into the relevant parts.
 ## Primary sources
 
 - [`README_advanced_sample.md`](README_advanced_sample.md) — suite map, architecture diagram, quickstart, seeded accounts.
-- `advanced_example_specification_plan.md` — Preamble, A.1 Goals/non-goals, A.2 Components (the build narrative behind this guide).
-- The quest overview `overview.tom_core.md`.
 
 ---
 

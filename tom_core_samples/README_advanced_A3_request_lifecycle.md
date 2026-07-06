@@ -325,8 +325,7 @@ live proof that this appendix's six steps hold against sockets, not just on pape
   `advanced_app_server/lib/src/access/field_grade_resolver.dart:65`,`:73`
 - `advanced_client_core/lib/src/api/app_api_client.dart:145`,`:229`,`:246`;
   `advanced_app_client/lib/app/app_session.dart:149`,`:160`; `advanced_app_client/lib/main.dart:42`
-- `advanced_example_specification_plan.md` — A.5, A.6, Phase 7;
-  `run_cross_tier_integration.sh` (the same loop, executed live)
+- `run_cross_tier_integration.sh` (the same loop, executed live)
 - Companions: [06](README_advanced_06_authentication.md) ·
   [07](README_advanced_07_authorization.md) ·
   [10](README_advanced_10_servers_endpoints.md) ·

@@ -171,7 +171,6 @@ resource bundles keyed on `<basePath>.<suffix>`.
 
 - [`advanced_todo_domain/README.md`](advanced_todo_domain/README.md) — per-entity detail.
 - `advanced_todo_domain/lib/src/` — the entities and `enums.dart`; the test-only reflection seed is `advanced_todo_domain/test/run_all_tests.dart`.
-- `advanced_example_specification_plan.md` — A.3 Extended domain model, Phase 1 steps 1–4.
 
 ---
 

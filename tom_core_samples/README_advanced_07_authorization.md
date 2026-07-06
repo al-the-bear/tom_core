@@ -188,11 +188,9 @@ The endpoint pipeline and annotations are part
 
 ## Primary sources
 
-- `advanced_examples_alignment_plan.md` — Why / Key anatomy / D-A1…D-A8
-- `advanced_example_specification_plan.md` — A.4 Authorization model, A.12 Security
-- `advanced_app_client/lib/app/field_state_authorization_adapter.dart`; `advanced_app_server/lib/src/access/{resource_access_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
+- `advanced_app_server/lib/src/access/{resource_access_resolver,field_grade_resolver}.dart`; `tom_flutter_ui/.../tom_form.dart:807`
 - `advanced_auth_server/database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
-- `advanced_example_completion.md` — After Todos 2, 3, 5; appendix [A1](README_advanced_A1_authorization_state_machine.md)
+- Appendix [A1](README_advanced_A1_authorization_state_machine.md)
 
 ---
 
