@@ -9,19 +9,26 @@
 /// | `GET /todos`            | a real persistence round-trip (reads `todo_items`) |
 /// | `GET /todos/field-states` | four-state authorization resolved from DB grants |
 ///
-/// Each endpoint returns a JSON-friendly `Map` (the endpoint pipeline
-/// `jsonEncode`s `Map`/`List` results directly), so the records are projected
-/// to plain maps rather than returned raw. The service is split into a
-/// `@tomService` interface and a `@tomComponent` implementation — the codebase
-/// convention the endpoint router resolves: the router finds the component bean
-/// implementing the annotated interface, which is why `initializeBeanContext()`
-/// must run before the server starts.
+/// The two data endpoints return **reflection-first wire DTOs** (G-DTO):
+/// `/todos` a `List<TodoItemDto>` and `/todos/field-states` a
+/// `TodoFieldMatrixDto`. The endpoint pipeline serializes the returned DTO(s)
+/// through the kernel reflection path — no hand-written `toJson` and no ad-hoc
+/// `Map` projection. `/health` stays a plain status `Map` (a liveness probe, not
+/// a data shape). The service is split into a `@tomService` interface and a
+/// `@tomComponent` implementation — the codebase convention the endpoint router
+/// resolves: the router finds the component bean implementing the annotated
+/// interface, which is why `initializeBeanContext()` must run before the server
+/// starts.
 library;
 
 // tom_core_server re-exports tom_core_kernel, so the endpoint annotations, the
 // access controls, `TomResourceGrant`, and the repository base all resolve
 // through this single barrel.
 import 'package:tom_core_server/tom_core_server.dart';
+// The reflection-first wire DTOs and the shared todo enums live in the domain
+// package; reflecting them for this server is what lets the pipeline serialize
+// the endpoint results.
+import 'package:todo_domain/todo_domain.dart';
 
 import '../auth/todo_authorization.dart';
 import '../persistence/todo_records.dart';
@@ -52,7 +59,8 @@ abstract class TodoApiService {
   )
   Future<Map<String, Object>> health();
 
-  /// Every persisted todo item, projected to JSON.
+  /// Every persisted todo item as a reflection-first [TodoItemDto]; the pipeline
+  /// serializes the list to a JSON array.
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],
@@ -60,10 +68,11 @@ abstract class TodoApiService {
     produces: TomMimeType.json,
     logRequests: true,
   )
-  Future<Map<String, Object>> listTodos();
+  Future<List<TodoItemDto>> listTodos();
 
   /// The four-state field-authorization matrix, resolved from the seeded
-  /// `tom_resource_grant` rows — one row per `(role, field)` state per role.
+  /// `tom_resource_grant` rows — one row per `(role, field)` state per role —
+  /// as a reflection-first [TodoFieldMatrixDto].
   @TomPublicAccess()
   @TomEndpoint(
     methods: [TomHttpMethod.get],
@@ -71,7 +80,7 @@ abstract class TodoApiService {
     produces: TomMimeType.json,
     logRequests: true,
   )
-  Future<Map<String, Object>> fieldStates();
+  Future<TodoFieldMatrixDto> fieldStates();
 }
 
 /// Live implementation of [TodoApiService] backed by the sample repositories.
@@ -85,15 +94,13 @@ class TodoApiServer implements TodoApiService {
       };
 
   @override
-  Future<Map<String, Object>> listTodos() async {
+  Future<List<TodoItemDto>> listTodos() async {
     final items = await todoItemRepository.findAll();
-    return <String, Object>{
-      'items': [for (final record in items) _itemToJson(record)],
-    };
+    return [for (final record in items) _recordToDto(record)];
   }
 
   @override
-  Future<Map<String, Object>> fieldStates() async {
+  Future<TodoFieldMatrixDto> fieldStates() async {
     final grants = await todoGrantRepository.findAll();
 
     // Group the flat grant rows by role, then resolve each role's per-field
@@ -103,28 +110,26 @@ class TodoApiServer implements TodoApiService {
       grantsByRole.putIfAbsent(grant.roleName, () => []).add(grant);
     }
 
-    final result = <String, Object>{};
+    final matrix = <String, Map<String, TomAuthState>>{};
     for (final entry in grantsByRole.entries) {
-      final authorizer = TodoFieldAuthorizer.fromGrants(entry.value);
-      result[entry.key] = {
-        for (final state in authorizer.fieldStates.entries)
-          state.key: state.value.name,
-      };
+      matrix[entry.key] = TodoFieldAuthorizer.fromGrants(entry.value).fieldStates;
     }
-    return result;
+    return TodoFieldMatrixDto(matrix);
   }
 }
 
-/// Projects a [TodoItemRecord] to a plain JSON map (the pipeline `jsonEncode`s
-/// the enclosing `Map`/`List`, so values must be JSON primitives).
-Map<String, Object?> _itemToJson(TodoItemRecord record) => {
-      'id': record.id,
-      'title': record.title,
-      'description': record.description,
-      'done': record.done,
-      'priority': record.priority,
-      'label': record.label,
-      'assigneeId': record.assigneeId,
-      'dueDate': record.dueDate?.toIso8601String(),
-      'listId': record.listId,
-    };
+/// Projects a persistence [TodoItemRecord] into the reflection-first
+/// [TodoItemDto] wire shape: the surrogate/foreign keys become strings, the
+/// enums travel as their stored `.name` token, and the due date as an ISO-8601
+/// string (empty when unset).
+TodoItemDto _recordToDto(TodoItemRecord record) => TodoItemDto(
+      id: record.id?.toString() ?? '',
+      title: record.title ?? '',
+      description: record.description ?? '',
+      done: record.done ?? false,
+      priority: record.priority ?? TodoPriority.medium.name,
+      label: record.label ?? TodoLabel.feature.name,
+      assigneeId: record.assigneeId?.toString() ?? '',
+      dueDate: record.dueDate?.toIso8601String() ?? '',
+      listId: record.listId?.toString() ?? '',
+    );
