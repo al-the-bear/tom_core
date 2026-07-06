@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Regenerate lib/src/reflection_entry.reflection.dart.
-# Uses build.yaml config (targets lib/src/reflection_entry.dart).
+# Regenerate test/run_all_tests.reflection.dart.
+# Uses build.yaml config (targets test/run_all_tests.dart).
 #
 # Runs flag-free: the generator scans the current project only (the framework
 # default is scan '.', non-recursive), so no --nested and no workspace registry

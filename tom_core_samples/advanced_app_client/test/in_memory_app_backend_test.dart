@@ -4,13 +4,15 @@
 /// per-principal four-state field matrix, and cross-user sharing.
 ///
 /// These are socket-free: the fake constructs the reflected domain entities
-/// in-process, so `initializeReflection()` (from `advanced_todo_domain`) runs
-/// once in [setUpAll]. The same scenarios are the contract any [AppBackend] must
-/// honour, so when the live backend is wired against a running stack it must
-/// behave identically.
+/// in-process, so the app's combined `initializeReflection()` (from its own
+/// `reflection_seed.dart`) runs once in [setUpAll]. The same scenarios are the
+/// contract any [AppBackend] must honour, so when the live backend is wired
+/// against a running stack it must behave identically.
 library;
 
 import 'package:advanced_app_client/backend/backend.dart';
+import 'package:advanced_app_client/reflection_seed.dart'
+    show initializeReflection;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';

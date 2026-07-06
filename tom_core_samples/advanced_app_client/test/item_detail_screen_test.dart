@@ -25,8 +25,8 @@ import 'package:advanced_app_client/backend/backend.dart';
 import 'package:advanced_app_client/reflection_seed.dart';
 import 'package:advanced_app_client/screens/item_detail_screen.dart';
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-// The app seed owns the authoritative `initializeReflection`; the domain library
-// carries its own (for use on its own), hidden here to avoid the collision.
+// The app seed owns the authoritative `initializeReflection`; the domain is a
+// library and ships no seed, so this import only pulls the enum it needs.
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
     show ProjectRole;
 import 'package:flutter/material.dart';

@@ -81,9 +81,13 @@ unknown role to `ProjectRole.viewer`.
   endpoints (authenticated; resource- and field-level checks are enforced inside
   the handlers, not by these blanket levels).
 
-The reflection seed (`lib/src/reflection_entry.dart`) stays a stub: nothing in
-the contracts package is `@tomReflector` (the DTOs are plain value records and
-the service interfaces are plain abstract classes).
+The wire DTOs are reflection-first (`@tomReflector`, no hand-written
+`toJson`/`fromJson` — the kernel reflection path serializes them). Reflection is
+needed only to run this package's own round-trip tests, so the single seed is
+**test-only**: `test/run_all_tests.dart` → `test/run_all_tests.reflection.dart`
+(regenerate with `./reflection_generation.sh`). The package ships no runtime seed
+(G-REFL-1/2); the servers and clients reflect these DTOs through their own
+combined seed.
 
 ## Authorization model
 

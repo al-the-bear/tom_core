@@ -84,18 +84,22 @@ prevents an accidental `dart pub publish`.
 ## Reflection generation
 
 Five of the seven packages reflect types; each has **exactly one reflection entry
-point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`:
+point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`. Only
+real entry-points (the servers' `bin/` and the clients' `lib/`) ship a **runtime**
+seed; the two **libraries** carry a seed only for their own tests, rooted under
+`test/` (G-REFL-1/2):
 
-| Package | Entry point | Generated output |
-| --- | --- | --- |
-| `advanced_todo_domain` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
-| `advanced_todo_contracts` | `lib/src/reflection_entry.dart` | `lib/src/reflection_entry.reflection.dart` |
-| `advanced_auth_server` | `bin/auth_server_start.dart` | `bin/auth_server_start.reflection.dart` |
-| `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` |
-| `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
-| `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` |
+| Package | Entry point | Generated output | Kind |
+| --- | --- | --- | --- |
+| `advanced_todo_domain` | `test/run_all_tests.dart` | `test/run_all_tests.reflection.dart` | test-only |
+| `advanced_todo_contracts` | `test/run_all_tests.dart` | `test/run_all_tests.reflection.dart` | test-only |
+| `advanced_auth_server` | `bin/auth_server_start.dart` | `bin/auth_server_start.reflection.dart` | runtime |
+| `advanced_app_server` | `bin/app_server_start.dart` | `bin/app_server_start.reflection.dart` | runtime |
+| `advanced_app_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
+| `advanced_authadmin_client` | `lib/reflection_seed.dart` | `lib/reflection_seed.reflection.dart` | runtime |
 
-(`advanced_client_core` reflects nothing — it has no `build.yaml`.)
+(`advanced_client_core` reflects nothing of its own — it consumes the combined
+client seed.)
 
 **The single-seed rule.** The generated `initializeReflection()` *assigns* the
 reflection data (last writer wins), so **exactly one seed's `initializeReflection()`
@@ -106,8 +110,12 @@ example, import the shared `advanced_todo_domain` entities *and* the client-loca
 forms, because a `TomForm` is itself a reflected `TomClass` and `bind`/`save`
 walk a form's fields through kernel reflection — so both the bound entities and
 the forms themselves must be in the reflected graph. (The client seed imports
-`advanced_todo_domain` for generator discovery but does **not** re-export it,
-since that library carries its own `initializeReflection` that would collide.)
+`advanced_todo_domain` for generator discovery but does **not** re-export it: the
+domain is a library and ships no runtime seed, so the one authoritative
+`initializeReflection()` a client runs is its own combined seed. The server tests
+follow the same rule from the other direction — they bootstrap through the
+server's own `bin/` seed, not a library seed, since the domain no longer exports
+one.)
 
 **Regenerate only on signature changes.** Each package ships a
 `reflection_generation.sh` that runs the generator in single-project mode:

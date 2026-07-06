@@ -1,12 +1,12 @@
-# Reflection generator config. The reflected entity graph is seeded from one
-# entry point (lib/src/reflection_entry.dart); the entities + their reflection
-# seed are populated in step 2 of the implementation plan. Emits
-# lib/src/reflection_entry.reflection.dart.
+# Reflection generator config. The domain is a library and ships no runtime
+# reflection seed; reflection is needed only for this package's tests, so the
+# single seed is rooted at test/run_all_tests.dart (G-REFL-2) and emitted next
+# to it as test/run_all_tests.reflection.dart.
 targets:
   $default:
     builders:
       tom_reflection_generator:reflection_generator:
         generate_for:
-          - lib/src/reflection_entry.dart
+          - test/run_all_tests.dart
         options:
           formatted: true

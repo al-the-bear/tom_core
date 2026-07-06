@@ -21,6 +21,10 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
+// The server's single reflection seed is its boot root (G-REFL-1); its tests
+// bootstrap reflection from that same seed rather than a library seed.
+import '../bin/app_server_start.reflection.dart' show initializeReflection;
+
 // Auth user ids, mirroring the auth seed.
 const int alice = 2; // workspace owner
 const int bob = 3; // editor, shared on project 1

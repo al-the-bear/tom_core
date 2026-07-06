@@ -11,6 +11,10 @@ import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 
+// The server's single reflection seed is its boot root (G-REFL-1); its tests
+// bootstrap reflection from that same seed rather than a library seed.
+import '../bin/auth_server_start.reflection.dart' show initializeReflection;
+
 void main() {
   // The domain `User` is an observable TomClass: constructing one self-observes
   // through reflection, so the registry must be live before any mapping runs.

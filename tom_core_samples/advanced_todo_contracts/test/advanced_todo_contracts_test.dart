@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
-import 'package:advanced_todo_contracts/src/reflection_entry.reflection.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart'
     show ProjectRole, UserStatus;
 import 'package:tom_core_kernel/tom_core_kernel.dart' show TomAuthState;
 import 'package:test/test.dart';
+
+// The single test-only reflection seed for this package (G-REFL-2).
+import 'run_all_tests.reflection.dart';
 
 /// Serializes [dto] to a JSON string and back into a map, exercising the exact
 /// wire path a server/client uses (including `DateTime` → ISO string encoding).

@@ -6,8 +6,9 @@ The domain is the **one source of truth the whole stack agrees on**: the app
 server persists these entities, the clients edit them, the wire contract carries
 them, and the authorization layer grades their fields. This part covers the
 reflected `TomClass` entities and how `@tomReflector` makes them observable and
-persistable; the **single reflection seed** that wires them into a running
-program; the enums and their stored-name contract, whose display text resolves
+persistable; the **test-only reflection seed** that reflects them for the domain's
+own suite (runtime consumers build their own combined seed); the enums and their
+stored-name contract, whose display text resolves
 through `global.*` resource keys (G-RES-5); and the **scope + `tomId`
 addressing** (G-RES-6, no key catalogue) that the authorization (part
 [07](README_advanced_07_authorization.md)) and resource (part
@@ -68,13 +69,15 @@ without any per-entity boilerplate. Forms in particular lean on it: a `TomForm`
 is itself a reflected `TomClass`, and `bind`/`save` enumerate a form's fields
 through kernel reflection (part [09](README_advanced_09_forms_ui.md)).
 
-## The single reflection seed
+## The reflection seed (test-only for the domain)
 
 The generator only processes files that expose a `main()` and follows the import
-graph from there. The domain's seed is `lib/src/reflection_entry.dart` — a file
-that exists **solely to root the generator**, never run in production. Its
-`main()` simply *touches* each reflected type so the imports are retained and the
-generator can reach every entity:
+graph from there. The domain is a **library** — it has no runtime `main()`, so it
+ships **no reflection seed in `lib/`** (G-REFL-1/2). Reflection is needed only to
+run the domain's own tests, so its single seed lives under `test/`:
+`test/run_all_tests.dart` — a file that exists **solely to root the generator**,
+never run as a program. Its `main()` simply *touches* each reflected type so the
+imports are retained and the generator can reach every entity:
 
 ```dart
 void main() {
@@ -85,18 +88,21 @@ void main() {
 }
 ```
 
-The generator emits `reflection_entry.reflection.dart`, and the barrel
-(`advanced_todo_domain.dart`) re-exports its `initializeReflection`. Consumers
-call `initializeReflection()` **once at startup, before constructing any
-reflected entity**.
+The generator emits `test/run_all_tests.reflection.dart`, and every domain test
+imports that one seed and calls `initializeReflection()` in `setUpAll`. The
+**runtime** consumers — the servers and clients — do not depend on this seed:
+each builds its own combined `initializeReflection()` (domain entities **plus**
+its local DTOs/forms) and calls it once at startup.
 
 > **Last-writer-wins — one seed per program.** The generated
 > `initializeReflection()` *assigns* the reflection data, so exactly one seed may
-> run per program. The domain library carries its own; the clients carry their
-> own seed that covers the domain entities **plus** the client-local forms (which
-> is why those seeds import the domain but do not re-export it — that would
-> collide with the form seed's `initializeReflection`). This build-time
-> constraint is laid out in part [02](README_advanced_02_project_layout_build.md#reflection-generation).
+> run per program. The domain library carries **none**; each runnable carries the
+> one that covers every type it touches — the clients' seed covers the domain
+> entities **plus** the client-local forms (a `TomForm` is itself a reflected
+> `TomClass`), which is why those seeds import the domain but do not re-export it.
+> The servers' single seed is their `bin/` boot root, and the server tests
+> bootstrap through that same seed. This build-time constraint is laid out in part
+> [02](README_advanced_02_project_layout_build.md#reflection-generation).
 
 ## Enums: stored name vs display-text contract
 
@@ -164,7 +170,7 @@ resource bundles keyed on `<basePath>.<suffix>`.
 ## Primary sources
 
 - [`advanced_todo_domain/README.md`](advanced_todo_domain/README.md) — per-entity detail.
-- `advanced_todo_domain/lib/src/` — the entities, `enums.dart`, and the `reflection_entry.dart` seed.
+- `advanced_todo_domain/lib/src/` — the entities and `enums.dart`; the test-only reflection seed is `advanced_todo_domain/test/run_all_tests.dart`.
 - `advanced_example_specification_plan.md` — A.3 Extended domain model, Phase 1 steps 1–4.
 
 ---

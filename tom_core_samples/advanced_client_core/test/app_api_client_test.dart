@@ -19,8 +19,7 @@ import 'dart:convert';
 
 import 'package:advanced_client_core/advanced_client_core.dart';
 import 'package:advanced_client_core/reflection_seed.dart';
-import 'package:advanced_todo_domain/advanced_todo_domain.dart'
-    hide initializeReflection;
+import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:test/test.dart';
 

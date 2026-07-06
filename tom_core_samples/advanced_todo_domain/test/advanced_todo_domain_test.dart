@@ -2,6 +2,9 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart' show TomString;
 import 'package:test/test.dart';
 
+// The single test-only reflection seed for this package (G-REFL-2).
+import 'run_all_tests.reflection.dart';
+
 void main() {
   setUpAll(initializeReflection);
 
