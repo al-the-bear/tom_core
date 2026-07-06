@@ -24,6 +24,7 @@ library;
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
@@ -147,7 +148,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _commentController.clear();
       setState(() => _postingComment = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Comment added')),
+        TomSnackBar(content: TomText(text: 'Comment added')),
       );
     } on AppBackendException catch (e) {
       if (!mounted) return;
@@ -160,21 +161,22 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return TomScaffold(
       key: const Key('item-detail-screen'),
-      appBar: AppBar(title: Text(_item.title.get())),
+      appBar: TomAppBar(title: TomText(text: _item.title.get())),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     final form = _form;
     if (form == null) {
       return Center(
-        child: Text(_error ?? 'Could not load item.',
+        child: TomText(
+            text: _error ?? 'Could not load item.',
             key: const Key('item-detail-error')),
       );
     }
@@ -187,24 +189,25 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           const SizedBox(height: 12),
         ],
         if (_error != null) ...[
-          Text(_error!,
+          TomText(
+              text: _error!,
               key: const Key('item-detail-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error)),
           const SizedBox(height: 12),
         ],
         if (canSave)
-          FilledButton(
+          TomFilledButton(
             key: const Key('item-save-button'),
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : TomText(text: 'Save'),
           ),
-        const Divider(height: 32),
+        TomDivider(height: 32),
         _buildCommentComposer(),
       ],
     );
@@ -214,38 +217,41 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Add a comment',
+        TomText(
+            text: 'Add a comment',
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
-        TextField(
+        TomTextField(
           key: const Key('comment-input'),
           controller: _commentController,
           minLines: 1,
           maxLines: 3,
+          label: '',
+          hint: 'Write a comment…',
           decoration: const InputDecoration(
-            hintText: 'Write a comment…',
             border: OutlineInputBorder(),
           ),
         ),
         if (_commentError != null) ...[
           const SizedBox(height: 8),
-          Text(_commentError!,
+          TomText(
+              text: _commentError!,
               key: const Key('comment-error'),
               style: TextStyle(color: Theme.of(context).colorScheme.error)),
         ],
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: OutlinedButton(
+          child: TomOutlinedButton(
             key: const Key('comment-submit-button'),
             onPressed: _postingComment ? null : _addComment,
             child: _postingComment
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Post comment'),
+                : TomText(text: 'Post comment'),
           ),
         ),
       ],

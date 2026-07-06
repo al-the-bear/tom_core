@@ -17,7 +17,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -99,7 +99,7 @@ class _GrantsScreenState extends State<GrantsScreen> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        TomSnackBar(content: TomText(text: e.message)),
       );
     }
   }
@@ -125,27 +125,27 @@ class _GrantsScreenState extends State<GrantsScreen> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  _dirty ? 'Unsaved changes' : 'Grant matrix',
+                child: TomText(
+                  text: _dirty ? 'Unsaved changes' : 'Grant matrix',
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              FilledButton.icon(
+              TomFilledButton(
                 key: const Key('grants-save'),
                 onPressed: (_dirty && !_saving) ? _save : null,
                 icon: _saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: TomCircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined),
-                label: const Text('Save'),
+                child: TomText(text: 'Save'),
               ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        TomDivider(height: 1),
         Expanded(child: _buildBody()),
       ],
     );
@@ -153,12 +153,12 @@ class _GrantsScreenState extends State<GrantsScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
       return Center(
-        child: Text(
-          _error!,
+        child: TomText(
+          text: _error!,
           key: const Key('grants-error'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
@@ -167,8 +167,8 @@ class _GrantsScreenState extends State<GrantsScreen> {
     final roles = _working.roles.toList();
     final keys = _resourceKeys;
     if (roles.isEmpty || keys.isEmpty) {
-      return const Center(
-        child: Text('No grants to edit.', key: Key('grants-empty')),
+      return Center(
+        child: TomText(text: 'No grants to edit.', key: Key('grants-empty')),
       );
     }
     return SingleChildScrollView(
@@ -176,19 +176,20 @@ class _GrantsScreenState extends State<GrantsScreen> {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.all(12),
-        child: DataTable(
+        child: TomDataTable(
           columnSpacing: 16,
           horizontalMargin: 12,
           columns: [
-            const DataColumn(label: Text('Role')),
-            for (final key in keys) DataColumn(label: Text(_shortKey(key))),
+            DataColumn(label: TomText(text: 'Role')),
+            for (final key in keys)
+              DataColumn(label: TomText(text: _shortKey(key))),
           ],
           rows: [
             for (final role in roles)
               DataRow(
                 key: ValueKey('grants-row-$role'),
                 cells: [
-                  DataCell(Text(role)),
+                  DataCell(TomText(text: role)),
                   for (final key in keys)
                     DataCell(_GrantCell(
                       role: role,
@@ -231,11 +232,11 @@ class _GrantCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = _color(scheme);
-    return InkWell(
+    return TomInkWell(
       key: Key('grant-cell-$role-$resourceKey'),
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
-      child: Tooltip(
+      child: TomTooltip(
         message: resourceKey,
         child: Container(
           width: 84,
@@ -246,8 +247,8 @@ class _GrantCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(6),
             border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
-          child: Text(
-            _label(access),
+          child: TomText(
+            text: _label(access),
             style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ),

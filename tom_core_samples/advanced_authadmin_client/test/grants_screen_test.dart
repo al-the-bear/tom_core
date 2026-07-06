@@ -70,8 +70,14 @@ void main() {
     await pumpSignedInConsole(tester, InMemoryAdminBackend());
     await openDestination(tester, 'Grants');
 
-    FilledButton saveButton() =>
-        tester.widget<FilledButton>(find.byKey(const Key('grants-save')));
+    // The grants-save key is on the TomFilledButton wrapper; the enabled/disabled
+    // state lives on the FilledButton it renders, so reach through to it.
+    FilledButton saveButton() => tester.widget<FilledButton>(
+          find.descendant(
+            of: find.byKey(const Key('grants-save')),
+            matching: find.byType(FilledButton),
+          ),
+        );
     expect(saveButton().onPressed, isNull); // pristine
 
     await tester.tap(find.byKey(ownerTitle));
@@ -115,7 +121,12 @@ void main() {
     // After save, Save reverts to disabled (the grid is clean again) and the
     // cell shows the re-read state.
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('grants-save'))).onPressed,
+      tester
+          .widget<FilledButton>(find.descendant(
+            of: find.byKey(const Key('grants-save')),
+            matching: find.byType(FilledButton),
+          ))
+          .onPressed,
       isNull,
     );
     expect(labelOf(tester, ownerTitle), 'Disabled');

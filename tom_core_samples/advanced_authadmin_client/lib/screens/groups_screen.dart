@@ -10,6 +10,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -124,7 +125,7 @@ class GroupsScreen extends StatelessWidget {
     } on AdminBackendException catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
+          TomSnackBar(content: TomText(text: e.message)),
         );
       }
       return null;
@@ -156,18 +157,18 @@ class _MembershipChecklistState extends State<_MembershipChecklist> {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('Members', style: Theme.of(context).textTheme.labelLarge),
+          child: TomText(
+              text: 'Members', style: Theme.of(context).textTheme.labelLarge),
         ),
         for (final user in widget.users)
-          CheckboxListTile(
+          TomCheckboxListTile(
             key: Key('group-member-${user.id}'),
             dense: true,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             value: widget.selected.contains(user.id),
-            title: Text(
-              user.displayName.isEmpty ? user.username : user.displayName,
-            ),
+            titleText:
+                user.displayName.isEmpty ? user.username : user.displayName,
             onChanged: (checked) => setState(() {
               if (checked ?? false) {
                 widget.selected.add(user.id);

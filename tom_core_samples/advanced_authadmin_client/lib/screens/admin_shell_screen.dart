@@ -10,6 +10,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import 'assignments_screen.dart';
@@ -58,12 +59,12 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
     // [AdminSession.login]); `adminConsole.title` has no grade counterpart and
     // no form override, so it renders the server text straight through.
     final texts = TomTextResourceProvider.getAppResources();
-    return Scaffold(
+    return TomScaffold(
       key: const Key('admin-shell-screen'),
-      appBar: AppBar(
-        title: Text(texts.getText('adminConsole.title')),
+      appBar: TomAppBar(
+        title: TomText(text: texts.getText('adminConsole.title')),
         actions: [
-          IconButton(
+          TomIconButton(
             key: const Key('admin-sign-out'),
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),
@@ -73,13 +74,13 @@ class _AdminShellScreenState extends State<AdminShellScreen> {
       ),
       body: Row(
         children: [
-          NavigationRail(
+          TomNavigationRail(
             selectedIndex: _index,
             labelType: NavigationRailLabelType.all,
             onDestinationSelected: (index) => setState(() => _index = index),
             destinations: destinations,
           ),
-          const VerticalDivider(width: 1),
+          TomVerticalDivider(width: 1),
           Expanded(
             child: IndexedStack(index: _index, children: bodies),
           ),

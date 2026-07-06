@@ -17,6 +17,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -115,7 +116,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     );
     if (saved && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Assigned to $name.')),
+        TomSnackBar(content: TomText(text: 'Assigned to $name.')),
       );
       await _load();
     }
@@ -129,7 +130,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     } on AdminBackendException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message)),
+          TomSnackBar(content: TomText(text: e.message)),
         );
       }
       return null;
@@ -144,12 +145,12 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Text(
-            'Assign roles and groups',
+          child: TomText(
+            text: 'Assign roles and groups',
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
-        const Divider(height: 1),
+        TomDivider(height: 1),
         Expanded(child: _buildBody()),
       ],
     );
@@ -157,20 +158,20 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
       return Center(
-        child: Text(
-          _error!,
+        child: TomText(
+          text: _error!,
           key: const Key('assignments-error'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
       );
     }
     if (_users.isEmpty) {
-      return const Center(
-        child: Text('No users yet.', key: Key('assignments-empty')),
+      return Center(
+        child: TomText(text: 'No users yet.', key: Key('assignments-empty')),
       );
     }
     return ListView.builder(
@@ -179,19 +180,18 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
       itemBuilder: (context, index) {
         final user = _users[index];
         final groups = _groupsOf(user);
-        return ListTile(
+        return TomListTile(
           key: Key('assignments-tile-${user.id}'),
-          title: Text(
-            user.displayName.isEmpty ? user.username : user.displayName,
+          titleText:
+              user.displayName.isEmpty ? user.username : user.displayName,
+          subtitle: TomText(
+            text: groups.isEmpty ? 'No groups' : 'Groups: ${groups.join(', ')}',
           ),
-          subtitle: Text(
-            groups.isEmpty ? 'No groups' : 'Groups: ${groups.join(', ')}',
-          ),
-          trailing: OutlinedButton.icon(
+          trailing: TomOutlinedButton(
             key: Key('assignments-assign-${user.id}'),
             onPressed: () => _assign(user),
             icon: const Icon(Icons.person_add_alt_1),
-            label: const Text('Assign'),
+            child: TomText(text: 'Assign'),
           ),
         );
       },
@@ -231,37 +231,45 @@ class _AssignmentPicker extends StatefulWidget {
 class _AssignmentPickerState extends State<_AssignmentPicker> {
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final roleColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Role', style: Theme.of(context).textTheme.labelLarge),
-        DropdownButtonFormField<String?>(
+        TomDropdownButton<String?>(
           key: const Key('assignment-role-dropdown'),
-          initialValue: widget.choice.roleKey,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
+          value: widget.choice.roleKey,
+          isExpanded: true,
           items: [
-            const DropdownMenuItem(value: null, child: Text('— No role —')),
+            DropdownMenuItem(value: null, child: TomText(text: '— No role —')),
             for (final role in widget.roles)
-              DropdownMenuItem(value: role.key, child: Text(role.name)),
+              DropdownMenuItem(value: role.key, child: TomText(text: role.name)),
           ],
-          onChanged: (value) =>
-              setState(() => widget.choice.roleKey = value),
-        ),
-        const SizedBox(height: 12),
-        Text('Group', style: Theme.of(context).textTheme.labelLarge),
-        DropdownButtonFormField<String?>(
-          key: const Key('assignment-group-dropdown'),
-          initialValue: widget.choice.groupId,
-          decoration: const InputDecoration(border: OutlineInputBorder()),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('— No group —')),
-            for (final group in widget.groups)
-              DropdownMenuItem(value: group.id, child: Text(group.name)),
-          ],
-          onChanged: (value) =>
-              setState(() => widget.choice.groupId = value),
+          onChanged: (value) => setState(() => widget.choice.roleKey = value),
         ),
       ],
     );
+    final groupColumn = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Group', style: Theme.of(context).textTheme.labelLarge),
+        TomDropdownButton<String?>(
+          key: const Key('assignment-group-dropdown'),
+          value: widget.choice.groupId,
+          isExpanded: true,
+          items: [
+            DropdownMenuItem(value: null, child: TomText(text: '— No group —')),
+            for (final group in widget.groups)
+              DropdownMenuItem(value: group.id, child: TomText(text: group.name)),
+          ],
+          onChanged: (value) => setState(() => widget.choice.groupId = value),
+        ),
+      ],
+    );
+    return AclBuilder()
+        .setAclDefaultHideUnauthorized(true)
+        .append(roleColumn, dist: 0)
+        .append(groupColumn, dist: 12)
+        .addRowBreakpoint(atWidth: 480)
+        .build();
   }
 }

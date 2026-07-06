@@ -13,6 +13,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Shows [AdminEditorDialog] and resolves to `true` when a save succeeded.
 Future<bool> showAdminEditor(
@@ -77,9 +78,9 @@ class _AdminEditorDialogState extends State<AdminEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return TomAlertDialog(
       key: const Key('admin-editor-dialog'),
-      title: Text(widget.title),
+      title: TomText(text: widget.title),
       content: SizedBox(
         width: 360,
         child: SingleChildScrollView(
@@ -91,8 +92,8 @@ class _AdminEditorDialogState extends State<AdminEditorDialog> {
                 const SizedBox(height: 12),
               ],
               if (_error != null)
-                Text(
-                  _error!,
+                TomText(
+                  text: _error!,
                   key: const Key('admin-editor-error'),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
@@ -101,20 +102,20 @@ class _AdminEditorDialogState extends State<AdminEditorDialog> {
         ),
       ),
       actions: [
-        TextButton(
+        TomTextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancel'),
+          child: TomText(text: 'Cancel'),
         ),
-        FilledButton(
+        TomFilledButton(
           key: const Key('admin-editor-save'),
           onPressed: _busy ? null : _save,
           child: _busy
-              ? const SizedBox(
+              ? SizedBox(
                   height: 18,
                   width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: TomCircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : TomText(text: 'Save'),
         ),
       ],
     );

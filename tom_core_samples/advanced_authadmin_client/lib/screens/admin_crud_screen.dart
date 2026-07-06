@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -130,7 +131,7 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     } on AdminBackendException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        TomSnackBar(content: TomText(text: e.message)),
       );
     }
   }
@@ -138,19 +139,19 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
   Future<bool> _confirmDelete(T item) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (_) => TomAlertDialog(
         key: const Key('admin-delete-confirm'),
-        title: const Text('Delete'),
-        content: Text('Delete "${widget.titleOf(item)}"?'),
+        title: TomText(text: 'Delete'),
+        content: TomText(text: 'Delete "${widget.titleOf(item)}"?'),
         actions: [
-          TextButton(
+          TomTextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: TomText(text: 'Cancel'),
           ),
-          FilledButton(
+          TomFilledButton(
             key: const Key('admin-delete-confirm-ok'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: TomText(text: 'Delete'),
           ),
         ],
       ),
@@ -167,15 +168,15 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
           padding: const EdgeInsets.all(12),
           child: Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+            child: TomFilledButton(
               key: Key('${widget.tilePrefix}-create'),
               onPressed: _create,
               icon: const Icon(Icons.add),
-              label: Text(widget.createLabel),
+              child: TomText(text: widget.createLabel),
             ),
           ),
         ),
-        const Divider(height: 1),
+        TomDivider(height: 1),
         Expanded(child: _buildBody()),
       ],
     );
@@ -183,12 +184,12 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(child: TomCircularProgressIndicator());
     }
     if (_error != null) {
       return Center(
-        child: Text(
-          _error!,
+        child: TomText(
+          text: _error!,
           key: Key('${widget.tilePrefix}-error'),
           style: TextStyle(color: Theme.of(context).colorScheme.error),
         ),
@@ -196,7 +197,8 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
     }
     if (_items.isEmpty) {
       return Center(
-        child: Text(widget.emptyText, key: Key('${widget.tilePrefix}-empty')),
+        child: TomText(
+            text: widget.emptyText, key: Key('${widget.tilePrefix}-empty')),
       );
     }
     return ListView.builder(
@@ -204,12 +206,12 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
       itemCount: _items.length,
       itemBuilder: (context, index) {
         final item = _items[index];
-        return ListTile(
+        return TomListTile(
           key: Key('${widget.tilePrefix}-tile-${widget.idOf(item)}'),
-          title: Text(widget.titleOf(item)),
-          subtitle: Text(widget.subtitleOf(item)),
+          titleText: widget.titleOf(item),
+          subtitle: TomText(text: widget.subtitleOf(item)),
           onTap: () => _edit(item),
-          trailing: IconButton(
+          trailing: TomIconButton(
             key: Key('${widget.tilePrefix}-delete-${widget.idOf(item)}'),
             tooltip: 'Delete',
             icon: const Icon(Icons.delete_outline),

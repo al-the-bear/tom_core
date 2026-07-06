@@ -17,6 +17,7 @@ library;
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
@@ -88,57 +89,64 @@ class _ShareDialogState extends State<_ShareDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
+    return TomAlertDialog(
       key: const Key('share-dialog'),
-      title: const Text('Share project'),
+      title: TomText(text: 'Share project'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          TomTextField(
             key: const Key('share-grantee-input'),
             controller: _granteeController,
-            decoration: const InputDecoration(
-              labelText: 'Grantee user id',
-              hintText: 'u-carol',
-            ),
+            label: 'Grantee user id',
+            hint: 'u-carol',
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<ProjectRole>(
-            key: const Key('share-role-picker'),
-            initialValue: _role,
-            decoration: const InputDecoration(labelText: 'Role'),
-            items: [
-              for (final role in ProjectRole.values)
-                DropdownMenuItem(value: role, child: Text(enumText(role))),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TomText(text: 'Role'),
+              TomDropdownButton<ProjectRole>(
+                key: const Key('share-role-picker'),
+                value: _role,
+                isExpanded: true,
+                items: [
+                  for (final role in ProjectRole.values)
+                    DropdownMenuItem(
+                        value: role, child: Text(enumText(role))),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (role) =>
+                        setState(() => _role = role ?? ProjectRole.viewer),
+              ),
             ],
-            onChanged: _busy
-                ? null
-                : (role) => setState(() => _role = role ?? ProjectRole.viewer),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!,
+            TomText(
+                text: _error!,
                 key: const Key('share-error'),
                 style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
         ],
       ),
       actions: [
-        TextButton(
+        TomTextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: TomText(text: 'Cancel'),
         ),
-        FilledButton(
+        TomFilledButton(
           key: const Key('share-submit-button'),
           onPressed: _busy ? null : _submit,
           child: _busy
-              ? const SizedBox(
+              ? SizedBox(
                   height: 18,
                   width: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: TomCircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Share'),
+              : TomText(text: 'Share'),
         ),
       ],
     );
