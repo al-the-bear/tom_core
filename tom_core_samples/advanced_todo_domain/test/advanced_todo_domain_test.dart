@@ -246,12 +246,14 @@ void main() {
       }
     });
 
-    test('labels render human-facing text', () {
-      expect(TodoStatus.inProgress.label, 'In progress');
-      expect(TodoPriority.critical.label, 'Critical');
-      expect(TodoLabel.docs.label, 'Docs');
-      expect(UserStatus.suspended.label, 'Suspended');
-      expect(ProjectRole.commenter.label, 'Commenter');
+    test('enum display text resolves as a global.<enumtype>.<value> key '
+        '(G-RES-5), carrying no hardcoded string', () {
+      // The enum names the concept; the text lives in the resource bundle.
+      expect(TodoStatus.inReview.resourceKey, 'global.todostatus.inreview');
+      expect(TodoPriority.critical.resourceKey, 'global.todopriority.critical');
+      expect(TodoLabel.docs.resourceKey, 'global.todolabel.docs');
+      expect(UserStatus.suspended.resourceKey, 'global.userstatus.suspended');
+      expect(ProjectRole.commenter.resourceKey, 'global.projectrole.commenter');
     });
   });
 }

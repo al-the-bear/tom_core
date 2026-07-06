@@ -81,6 +81,29 @@ class InMemoryAppBackend implements AppBackend {
     'board.item.delete': 'Delete',
     'board.item.comment.add': 'Add comment',
     'board.share': 'Share',
+    // Enum display text (G-RES-5), keyed `global.<enumtype>.<value>`. Mirrors the
+    // server's `assets/resources_app.json` `global.*` tree; the domain enums
+    // carry no hardcoded strings, so the board columns, item dropdowns and the
+    // share role picker resolve their text from here.
+    'global.todostatus.backlog': 'Backlog',
+    'global.todostatus.todo': 'To do',
+    'global.todostatus.inprogress': 'In progress',
+    'global.todostatus.inreview': 'In review',
+    'global.todostatus.done': 'Done',
+    'global.todostatus.cancelled': 'Cancelled',
+    'global.todopriority.low': 'Low',
+    'global.todopriority.medium': 'Medium',
+    'global.todopriority.high': 'High',
+    'global.todopriority.critical': 'Critical',
+    'global.todolabel.feature': 'Feature',
+    'global.todolabel.bug': 'Bug',
+    'global.todolabel.chore': 'Chore',
+    'global.todolabel.docs': 'Docs',
+    'global.todolabel.research': 'Research',
+    'global.projectrole.owner': 'Owner',
+    'global.projectrole.editor': 'Editor',
+    'global.projectrole.commenter': 'Commenter',
+    'global.projectrole.viewer': 'Viewer',
   };
 
   /// The demo accounts, by username → user id. The password is not verified

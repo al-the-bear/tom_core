@@ -96,13 +96,17 @@ hierarchy, so a text file *mirrors the screen it describes*:
 ```jsonc
 // advanced_app_server/assets/resources_app.json
 {
-  "todo":  { "item": { "title": { "label": "Title" }, "status": { "label": "Status" }, … } },
-  "board": { "title": "My Board", "empty": "No items yet", "item": { "save": "Save" }, … }
+  "todo":   { "item": { "title": { "label": "Title" }, "status": { "label": "Status" }, … } },
+  "board":  { "title": "My Board", "empty": "No items yet", "item": { "save": "Save" }, … },
+  "global": { "todostatus": { "inreview": "In review", … }, "projectrole": { "editor": "Editor", … }, … }
 }
 ```
 
 That tree carries exactly the information of the flat wire bundle — the path
-`todo.item.title.label` is the nesting `todo → item → title → label`. The server
+`todo.item.title.label` is the nesting `todo → item → title → label`, and enum
+display text (G-RES-5) lives under `global.<enumtype>.<value>` (e.g.
+`global.todostatus.inreview`) so the domain enums hold no hardcoded strings. The
+server
 loads the asset once and **flattens** it to the flat `<basePath>.<suffix>` map
 the bundle carries, so the wire contract is byte-equivalent to the old
 in-code bundle and every resource-endpoint test is unchanged:

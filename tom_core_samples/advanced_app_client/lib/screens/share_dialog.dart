@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
+import '../domain/enum_text.dart';
 
 /// Opens the share dialog for [projectId] over [session].
 ///
@@ -109,7 +110,7 @@ class _ShareDialogState extends State<_ShareDialog> {
             decoration: const InputDecoration(labelText: 'Role'),
             items: [
               for (final role in ProjectRole.values)
-                DropdownMenuItem(value: role, child: Text(role.label)),
+                DropdownMenuItem(value: role, child: Text(enumText(role))),
             ],
             onChanged: _busy
                 ? null

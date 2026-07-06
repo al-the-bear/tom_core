@@ -7,9 +7,10 @@ server persists these entities, the clients edit them, the wire contract carries
 them, and the authorization layer grades their fields. This part covers the
 reflected `TomClass` entities and how `@tomReflector` makes them observable and
 persistable; the **single reflection seed** that wires them into a running
-program; the enums and their stored-name/label contract; and
-`resource_keys.dart` — the **scope/form/field source of truth** that the
-authorization (part [07](README_advanced_07_authorization.md)) and resource (part
+program; the enums and their stored-name contract, whose display text resolves
+through `global.*` resource keys (G-RES-5); and the **scope + `tomId`
+addressing** (G-RES-6, no key catalogue) that the authorization (part
+[07](README_advanced_07_authorization.md)) and resource (part
 [08](README_advanced_08_resources_texts.md)) stories both build on.
 
 ## The reflected entities
@@ -97,7 +98,7 @@ reflected entity**.
 > collide with the form seed's `initializeReflection`). This build-time
 > constraint is laid out in part [02](README_advanced_02_project_layout_build.md#reflection-generation).
 
-## Enums: stored-name vs label contract
+## Enums: stored name vs display-text contract
 
 Five closed-set enums live in `enums.dart`: `TodoStatus`, `TodoPriority`,
 `TodoLabel`, `UserStatus`, and `ProjectRole`. Each follows the same two-part
@@ -108,10 +109,14 @@ contract:
   so it round-trips to SQL and JSON **without a custom codec**. Typed accessors
   (`statusValue`, `priorityValue`, `labelValue`, …) convert the stored name back
   to the enum and fall back to a sensible default for an unknown stored value.
-- **Labelled by an extension.** A `…Text` extension gives each value a
-  human-facing `label` (`TodoStatus.inReview.label == 'In review'`). These are
-  the in-code display strings; the *server-delivered* UI texts are a separate,
-  externalized concern (part [08](README_advanced_08_resources_texts.md)).
+- **Display text is a resource key (G-RES-5).** The enums carry **no** hardcoded
+  display strings. A value's user-facing text is addressed by a
+  `global.<enumtype>.<value>` key (`TodoStatus.inReview.resourceKey ==
+  'global.todostatus.inreview'`), resolved through the server-delivered resource
+  bundle at the point of display — the same externalized-text discipline the
+  forms use (part [08](README_advanced_08_resources_texts.md)). The single
+  `EnumResourceKey` extension only *derives the key*; the text itself lives in the
+  bundle's `global.*` namespace.
 
 `ProjectRole { owner, editor, commenter, viewer }` is special: the effective role
 (from ownership or a `Share`) is exactly what the auth server's grant matrix keys

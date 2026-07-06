@@ -53,7 +53,7 @@ The one deliberate exception is the estimate field (D-A2): its grade key is
 `todo.item.estimate`, so the form gives it an explicit `tomId: 'estimate'` for
 addressing while keeping the reflected member name `estimateHours` for the
 save round-trip — `TomField.tomId` and the Dart member name are independent.
-See [03 · Domain model](README_advanced_03_domain_reflection.md#enums-stored-name-vs-label-contract)
+See [03 · Domain model](README_advanced_03_domain_reflection.md#enums-stored-name-vs-display-text-contract)
 and `advanced_todo_domain/lib/src/resource_keys.dart`.
 
 ## The grant matrix

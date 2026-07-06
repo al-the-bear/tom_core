@@ -19,5 +19,34 @@
       "comment": { "add": "Add comment" }
     },
     "share": "Share"
+  },
+  "global": {
+    "todostatus": {
+      "backlog": "Backlog",
+      "todo": "To do",
+      "inprogress": "In progress",
+      "inreview": "In review",
+      "done": "Done",
+      "cancelled": "Cancelled"
+    },
+    "todopriority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "todolabel": {
+      "feature": "Feature",
+      "bug": "Bug",
+      "chore": "Chore",
+      "docs": "Docs",
+      "research": "Research"
+    },
+    "projectrole": {
+      "owner": "Owner",
+      "editor": "Editor",
+      "commenter": "Commenter",
+      "viewer": "Viewer"
+    }
   }
 }

@@ -26,6 +26,8 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart' show tomReflector;
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../domain/enum_text.dart';
+
 /// A bound editor for a single [TodoItem]; authorization is resolved implicitly
 /// through the installed adapter, not held on the form.
 @tomReflector
@@ -49,7 +51,7 @@ class TodoItemForm extends TomForm<TodoItem> {
     'status',
     TodoStatus.backlog.name,
     form: this,
-    source: _statusSource,
+    source: _enumSource(TodoStatus.values),
   );
 
   /// Priority — a dropdown over the [TodoPriority] names.
@@ -57,7 +59,7 @@ class TodoItemForm extends TomForm<TodoItem> {
     'priority',
     TodoPriority.medium.name,
     form: this,
-    source: _prioritySource,
+    source: _enumSource(TodoPriority.values),
   );
 
   /// Assignee id — free text (gated; an editor sees this read-only).
@@ -104,20 +106,15 @@ class TodoItemForm extends TomForm<TodoItem> {
   void createFormElements() {}
 }
 
-/// The status options, labelled from [TodoStatus.label] and valued by the enum
-/// name the entity stores.
-final TomSelectableSource<String> _statusSource = StaticSelectableSource(
-  [
-    for (final s in TodoStatus.values)
-      SelectableItem<String>(value: s.name, label: s.label),
-  ],
-);
-
-/// The priority options, labelled from [TodoPriority.label] and valued by the
-/// enum name the entity stores.
-final TomSelectableSource<String> _prioritySource = StaticSelectableSource(
-  [
-    for (final p in TodoPriority.values)
-      SelectableItem<String>(value: p.name, label: p.label),
-  ],
-);
+/// Builds a dropdown source over [values]: each option is valued by the enum
+/// [Enum.name] the entity stores and labelled from the resource bundle via
+/// [enumText] (G-RES-5). The source is built when the form's field is
+/// constructed — i.e. after the session installs the server-sent bundle — so the
+/// options render server-delivered text rather than any hardcoded string.
+TomSelectableSource<String> _enumSource(List<Enum> values) =>
+    StaticSelectableSource(
+      [
+        for (final v in values)
+          SelectableItem<String>(value: v.name, label: enumText(v)),
+      ],
+    );

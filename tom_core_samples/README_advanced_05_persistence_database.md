@@ -53,7 +53,7 @@ field carries `@TomEntityId()` + `isReadOnly: true` — the database assigns it
 (`AUTO_INCREMENT`), so the record never writes it and reads it back after an
 insert. Enum-typed domain fields are stored as their `Enum.name` token in a
 `VARCHAR` (`status` / `priority` / `label` / `project_role` / `status`), matching
-the domain's [stored-name convention](README_advanced_03_domain_reflection.md#enums-stored-name-vs-label-contract);
+the domain's [stored-name convention](README_advanced_03_domain_reflection.md#enums-stored-name-vs-display-text-contract);
 collections that have no child table (e.g. an item's `tags`) are serialized to a
 single text column by the mapping layer. Translating between the observable
 domain entities and these flat records is the job of the `*_mapping.dart` pure

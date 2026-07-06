@@ -15,6 +15,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../app/app_session.dart';
 import '../backend/backend.dart';
+import '../domain/enum_text.dart';
 import 'item_detail_screen.dart';
 import 'share_dialog.dart';
 
@@ -291,7 +292,7 @@ class _BoardScreenState extends State<BoardScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              '${status.label} (${items.length})',
+              '${enumText(status)} (${items.length})',
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
@@ -307,7 +308,7 @@ class _BoardScreenState extends State<BoardScreen> {
       child: ListTile(
         title: Text(item.title.get()),
         subtitle: Text(
-          '${item.priorityValue.label} · ${item.labelValue.label}',
+          '${enumText(item.priorityValue)} · ${enumText(item.labelValue)}',
         ),
         onTap: () => _openItem(item),
       ),

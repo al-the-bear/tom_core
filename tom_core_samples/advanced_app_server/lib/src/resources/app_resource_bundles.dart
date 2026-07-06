@@ -17,7 +17,10 @@
 /// field's grade key: the field at `todo.item.title` is graded on
 /// `todo.item.title` and labelled from `todo.item.title.label`. Board texts use
 /// the `board.*` namespace, which has no grade counterpart (the board is not a
-/// gradable form).
+/// gradable form). Enum display text (G-RES-5) lives under `global.*` —
+/// `global.todostatus.inreview`, `global.projectrole.editor`, … — so the domain
+/// enums carry no hardcoded strings and the client resolves each value's text
+/// from this bundle.
 library;
 
 import 'dart:convert';
