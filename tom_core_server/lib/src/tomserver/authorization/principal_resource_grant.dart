@@ -131,17 +131,34 @@ class TomPrincipalResourceRoleResolver {
   TomPrincipalResourceRoleResolver(
     this.store, {
     String Function(String a, String b)? strongerRole,
-  }) : strongerRole = strongerRole ?? _registryStrength;
+  }) : strongerRole = strongerRole ?? registryStrength;
 
   /// Loads [principalId]'s grants and folds them into a `resourceKey → roleName`
   /// map. Duplicate resources collapse to the [strongerRole].
   Future<Map<String, String>> resolveResourceRoles(String principalId) async {
     final grants = await store.grantsForPrincipal(principalId);
+    return foldRoles(
+      [for (final grant in grants) MapEntry(grant.resourceKey, grant.role)],
+      strongerRole,
+    );
+  }
+
+  /// Folds `resourceKey → roleName` [entries] into a map, collapsing duplicate
+  /// resources to the [stronger] of the competing roles.
+  ///
+  /// Shared with C-6 delegation resolution, which merges delegated role entries
+  /// alongside a principal's direct grants under the *same* strength ordering, so
+  /// a direct and a delegated role on one resource resolve identically wherever
+  /// the fold is applied.
+  static Map<String, String> foldRoles(
+    Iterable<MapEntry<String, String>> entries,
+    String Function(String a, String b) stronger,
+  ) {
     final result = <String, String>{};
-    for (final grant in grants) {
-      final existing = result[grant.resourceKey];
-      result[grant.resourceKey] =
-          existing == null ? grant.role : strongerRole(existing, grant.role);
+    for (final entry in entries) {
+      final existing = result[entry.key];
+      result[entry.key] =
+          existing == null ? entry.value : stronger(existing, entry.value);
     }
     return result;
   }
@@ -155,7 +172,10 @@ class TomPrincipalResourceRoleResolver {
   /// Default strength ordering: the role with the wider registered
   /// [TomAuthState] wins; an unregistered role is treated as [TomAuthState.none]
   /// (the weakest), so a known role always beats an unknown one.
-  static String _registryStrength(String a, String b) {
+  ///
+  /// Exposed so C-6 delegation resolution folds delegated roles under the exact
+  /// same ordering a caller left at its default here.
+  static String registryStrength(String a, String b) {
     final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.none;
     final sb = TomResourceRoleRegistry.stateFor(b) ?? TomAuthState.none;
     return sa.index >= sb.index ? a : b;

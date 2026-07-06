@@ -6,6 +6,7 @@ library;
 export 'src/tomserver/authentication/authentication_server.dart';
 export 'src/tomserver/authorization/authorization_cache.dart';
 export 'src/tomserver/authorization/graded_authorization.dart';
+export 'src/tomserver/authorization/principal_delegation.dart';
 export 'src/tomserver/authorization/principal_resource_grant.dart';
 export 'src/tomserver/cmdline/args.dart';
 export 'src/tomserver/cmdline/env_file.dart';
