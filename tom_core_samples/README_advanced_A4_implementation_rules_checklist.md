@@ -65,8 +65,8 @@ is already "doing it the tom_core way":
 
 ## Persistence & migrations
 
-- [ ] **Split schema-creation from sample-data migrations.** DDL in the `[0NN]` band, demo seeds in a separate `[1NN]` file, so sample data is applied/skippable independently and every table exists before it is seeded. → RC-23, [05](README_advanced_05_persistence_database.md); sample `app_db/app_schema/[000]-app_core_schema.sql` + `[100]-app_sample_data.sql` (auth: `[000]`+`[001]`+`[100]`).
-- [ ] **Keep every seed `INSERT` idempotent** (`ON DUPLICATE KEY UPDATE`) so a re-applied migration is a no-op. → [05](README_advanced_05_persistence_database.md); sample `[100]-*_sample_data.sql`.
+- [ ] **Number migrations consecutively (`000,001,002,…`) and split schema / admin / demo.** DDL untagged, the production admin bootstrap untagged, and demo seeds in a separate `@dev,test`-tagged file (G-MIG-1/2/3) — so a production apply seeds the admin account but omits demo users, and every table exists before it is seeded. → RC-23, [05](README_advanced_05_persistence_database.md); sample `app_db/app_schema/[000]-app_core_schema.sql` + `[001]-app_demo_seed@dev,test.sql` (auth: `[000]`+`[001]` schema, `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`).
+- [ ] **Keep every seed `INSERT` idempotent** (`ON DUPLICATE KEY UPDATE`) so a re-applied migration is a no-op. → [05](README_advanced_05_persistence_database.md); sample `[002]-auth_admin_seed.sql`, `[003]-auth_demo_seed@dev,test.sql`, `[001]-app_demo_seed@dev,test.sql`.
 - [ ] **Map columns with `@TomDbColumn`** on the persistence record; the empty-bodied `TomSqlDatasourceRepository` singletons are the CRUD seam. → [05](README_advanced_05_persistence_database.md); sample `app_persistence_model.dart`.
 - [ ] **One datasource per logical DB**, configured in YAML (map-key = folder, literal-int port). Cross-DB references are *logical* (no cross-DB FK); the app server binds the framework `main` datasource to `auth_db` to read the shared grant table. → [05](README_advanced_05_persistence_database.md); sample `assets/datasources_*.yaml`, `field_grade_resolver.dart:30-39`.
 

@@ -147,28 +147,37 @@ server seeded.
 ## Migrations: schema-creation vs sample-data
 
 Each database's schema and demo data live as SQL migrations under
-`database_migrations/<datasource>/<schema>/`, named `[<version>]-<desc>.sql`.
-`TomDbMigrations.migrateDatabases(dir)` (called at server boot) walks the tree and
-applies files in **ascending numeric version order**; the same tree is also
-mounted into MariaDB's `docker-entrypoint-initdb.d` for first-boot bootstrap,
-where it runs in alphabetical order — which agrees with the numeric order for
-these zero-padded names. The version is digits-only and the description is
+`database_migrations/<datasource>/<schema>/`, named
+`[<version>]-<desc>[@<env>[,<env>…]].sql`. `TomDbMigrations.migrateDatabases(dir)`
+(called at server boot) walks the tree and applies files in **ascending numeric
+version order**, **skipping any migration tagged for an environment other than
+the active one** (the `@<env>` tag, G-MIG-3 / step 12 — untagged migrations apply
+everywhere); the same tree is also mounted into MariaDB's
+`docker-entrypoint-initdb.d` for the dev-harness first-boot bootstrap, where the
+stock hook runs *every* `.sql` alphabetically (the environment filter is the
+runner's, not MariaDB's) — the numeric order agrees with alphabetical for these
+zero-padded names. The version is digits-only and the description is
 letters/underscores-only, both enforced by the runner's filename pattern.
 
-**This sample separates DDL from demo content** — schema-creation and sample-data
-are distinct migrations, so a deployment that wants an empty database can apply
-the schema set alone and skip the seed:
+**This sample separates DDL, the production admin bootstrap, and demo content**
+into consecutively-numbered migrations, so a production apply seeds the
+administrator account while omitting every demo user. The migrations are numbered
+`000, 001, 002, …` with no gaps; the demo seeds carry the `@dev,test` tag so the
+runner skips them outside `dev`/`test`:
 
-| Database | Schema migrations (DDL only) | Sample-data migration (idempotent seed) |
-| --- | --- | --- |
-| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) | `[100]-app_sample_data.sql` |
-| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) | `[100]-auth_sample_data.sql` |
+| Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seed (`@dev,test` — dev/test only) |
+| --- | --- | --- | --- |
+| `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
+| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` |
 
-The `[1NN]` sample-data files sort after every `[0NN]` schema file, so every table
-exists before it is seeded — for `auth_db` this matters because the grant rows in
-`[100]` populate the `tom_resource_grant` table created back in `[001]`. The seed
-data is the demo cast: in `auth_db`, one admin plus three end-users (`alice`,
-`bob`, `carol`), five roles, a group, and the **28-row grant matrix** (7 gradable
+Each seed sorts after every schema file, so every table exists before it is
+seeded — for `auth_db` this matters because the grant rows in `[003]` populate the
+`tom_resource_grant` table created back in `[001]`. The **admin seed** (`auth_db`
+`[002]`, untagged) is the one seed a production apply keeps: just the
+administrator account, the `admin` role, and the assignment the `/admin/*` gate
+resolves against. The **demo seeds** (`@dev,test`) are the sample cast, skipped in
+production: in `auth_db`, three end-users (`alice`, `bob`, `carol`), the four
+project roles, a group, and the **28-row grant matrix** (7 gradable
 `todo.item.*` fields × 4 project roles); in `app_db`, a starter workspace owned by
 alice with one project, two lists, three items, a comment, two subtasks, and two
 shares (alice shares the project with bob as `editor` and carol as `viewer`), so
@@ -181,11 +190,13 @@ seeded in SQL: `password_hash` is left `NULL` and filled at boot by the
 kernel-crypto helper, because the auth server (not the migration) owns the hash
 format (part [06](README_advanced_06_authentication.md)).
 
-> **Verified.** Booting both databases from a fresh volume applies the split
-> migrations in order and lands every seed row (app: 1 workspace / 1 project / 2
-> lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 4 users / 5 roles / 1
-> user-role / 1 group / 2 members / 28 grants), and the cross-tier scenario stays
-> green — the split is behaviour-preserving.
+> **Verified.** Booting both databases from a fresh volume under `dev`/`test`
+> applies every migration in order and lands every seed row (app: 1 workspace / 1
+> project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 4 users /
+> 5 roles / 1 user-role / 1 group / 2 members / 28 grants), and the cross-tier
+> scenario stays green. A **production** apply runs only the untagged migrations —
+> the schema plus `auth_db` `[002]` — so it lands **1 admin user / 1 role / 1
+> user-role** and **no demo users, no grants, no app rows**.
 
 ## Primary sources
 

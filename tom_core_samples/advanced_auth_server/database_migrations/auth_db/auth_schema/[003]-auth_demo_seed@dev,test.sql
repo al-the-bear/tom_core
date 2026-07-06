@@ -1,42 +1,34 @@
--- auth_db sample data: the seed principals and the §A.4 grant matrix that let the
--- admin API, a first login, and per-field grading all return non-empty without a
--- write. Separated from the schema migrations ([000] identity tables, [001] the
--- grant table) so DDL and demo content are distinct concerns; a deployment that
--- provisions its own users can apply the schema migrations alone and skip this.
+-- auth_db demo seed: the sample principals, project roles, demo group and the
+-- §A.4 grant matrix that let a first login, the admin lists, and per-field
+-- grading all return non-empty out of the box. This is **demo** content — the
+-- filename carries the `@dev,test` environment tag (G-MIG-2/3, step 12), so a
+-- production apply (any environment other than `dev`/`test`) **skips** it and is
+-- seeded only with the admin account from [002]-auth_admin_seed.
 --
--- This migration runs after both [000] and [001], so every table it seeds already
--- exists. All inserts use `ON DUPLICATE KEY UPDATE` so a re-applied migration is
--- idempotent.
+-- Runs after [000] (identity tables), [001] (grant table) and [002] (admin
+-- account); it references no [002] row, so the two seeds are independent. Every
+-- insert uses `ON DUPLICATE KEY UPDATE`, so a re-applied migration is idempotent.
 --
--- password_hash is left NULL on the seed users: hashing is the step-9
--- kernel-crypto helper's job, applied at boot/seed time, never in raw SQL (the
--- auth server, not the migration, owns the hash format).
+-- password_hash is left NULL on the demo users: hashing is the auth server's
+-- boot-time job (seedDemoPasswords), never raw SQL.
 
--- Seed: one admin + three end-users. The admin gets the global `admin` role for
--- the /admin/* gating; the end-users carry no global role row — their per-project
--- access is granted at runtime through Share records in the app server, not here.
+-- Demo end-users. They carry no global role row — their per-project access is
+-- granted at runtime through Share records in the app server, not here.
 INSERT INTO auth_users (id, username, display_name, email, status) VALUES
-  (1, 'admin', 'System Administrator', 'admin@example.com',  'active'),
-  (2, 'alice', 'Alice Lovelace',       'alice@example.com',  'active'),
-  (3, 'bob',   'Bob Turing',           'bob@example.com',    'active'),
-  (4, 'carol', 'Carol Hopper',         'carol@example.com',  'active')
+  (2, 'alice', 'Alice Lovelace', 'alice@example.com', 'active'),
+  (3, 'bob',   'Bob Turing',     'bob@example.com',   'active'),
+  (4, 'carol', 'Carol Hopper',   'carol@example.com', 'active')
 ON DUPLICATE KEY UPDATE display_name = VALUES(display_name);
 
--- Roles: the global `admin` axis plus the four projectRoles the grant matrix
--- keys on. The projectRoles exist as rows so the authadmin client can
--- list/manage them; they are *assigned* per-resource via Share, not globally.
+-- The four projectRoles the grant matrix keys on. They exist as rows so the
+-- authadmin client can list/manage them; they are *assigned* per-resource via
+-- Share, not globally. (The global `admin` role lives in [002].)
 INSERT INTO auth_roles (id, role_key, name) VALUES
-  (1, 'admin',     'Administrator'),
   (2, 'owner',     'Owner'),
   (3, 'editor',    'Editor'),
   (4, 'commenter', 'Commenter'),
   (5, 'viewer',    'Viewer')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
-
--- Only the admin user holds a global role assignment (the admin axis).
-INSERT INTO auth_user_roles (id, user_id, role_id) VALUES
-  (1, 1, 1)
-ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
 
 -- One demo group with two members, so the group admin API returns a non-empty
 -- list out of the box.

@@ -1,11 +1,13 @@
--- app_db sample data: the starter rows that make the app non-empty on first run.
--- Separated from the schema migration ([000]-app_core_schema.sql) so the DDL and
--- the demo content are distinct concerns — a deployment that wants an empty app
--- can apply the schema migration alone and skip this one.
+-- app_db demo seed: the starter rows that make the app non-empty on first run.
+-- This is **demo** content — the filename carries the `@dev,test` environment tag
+-- (G-MIG-2/3, step 12), so a production apply (any environment other than
+-- `dev`/`test`) **skips** it and the app comes up empty. The DDL is the untagged
+-- [000]-app_core_schema migration, applied in every environment.
 --
 -- All inserts use `ON DUPLICATE KEY UPDATE` so a re-applied migration is
 -- idempotent. The user-id values mirror the auth seed (1=admin, 2=alice, 3=bob,
--- 4=carol) in auth_db — a logical, cross-database reference.
+-- 4=carol) in auth_db — a logical, cross-database reference. Those demo users
+-- exist only when auth_db's [003]-auth_demo_seed (also `@dev,test`) was applied.
 --
 -- Seed: a starter workspace owned by alice (auth user 2), one project with two
 -- lists and three items, a comment from bob, two subtasks, and two shares.

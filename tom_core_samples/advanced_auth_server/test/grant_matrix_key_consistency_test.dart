@@ -5,7 +5,7 @@
 /// item key set (`todo.item.<field>`, the wire contract each side addresses),
 /// the app server's `resources_app.json` text tree, and **this** server's
 /// grant-matrix seed
-/// (`database_migrations/auth_db/auth_schema/[100]-auth_sample_data.sql`).
+/// (`database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql`).
 /// This test pins the auth server's half: the distinct `resource_key`s the seed
 /// grants are exactly the gradable item key set, and the matrix is fully
 /// populated — one row per ([ProjectRole], gradable key) pair.
@@ -42,7 +42,7 @@ const _gradableItemKeys = <String>[
 /// directory under `dart test`, the same convention the asset/migration loaders
 /// use at boot).
 const String _grantSeedPath =
-    'database_migrations/auth_db/auth_schema/[100]-auth_sample_data.sql';
+    'database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql';
 
 /// One seeded grant row: `(role_name, resource_key, access_level)`.
 typedef _GrantRow = ({String role, String key, String access});
