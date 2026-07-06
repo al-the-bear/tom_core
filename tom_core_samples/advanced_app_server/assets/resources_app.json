@@ -13,12 +13,33 @@
   "board": {
     "title": "My Board",
     "empty": "No items yet",
+    "signedInAs": "Signed in as {name}",
+    "workspace": "Workspace",
+    "project": "Project",
+    "emptyProject": "No items in this project yet.",
+    "shared": "Project shared",
+    "shareTooltip": "Share project",
+    "signOut": "Sign out",
     "item": {
       "save": "Save",
       "delete": "Delete",
-      "comment": { "add": "Add comment" }
+      "loadError": "Could not load item.",
+      "comment": {
+        "add": "Add comment",
+        "title": "Add a comment",
+        "hint": "Write a comment…",
+        "submit": "Post comment",
+        "added": "Comment added"
+      }
     },
     "share": "Share"
+  },
+  "share": {
+    "title": "Share project",
+    "granteeRequired": "Enter a grantee user id (e.g. u-carol).",
+    "grantee": { "label": "Grantee user id", "hint": "u-carol" },
+    "role": "Role",
+    "cancel": "Cancel"
   },
   "global": {
     "todostatus": {

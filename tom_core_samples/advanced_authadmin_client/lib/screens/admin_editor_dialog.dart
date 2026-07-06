@@ -104,7 +104,7 @@ class _AdminEditorDialogState extends State<AdminEditorDialog> {
       actions: [
         TomTextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: TomText(text: 'Cancel'),
+          child: TomText(text: TomCtr.text('admin.cancel')),
         ),
         TomFilledButton(
           key: const Key('admin-editor-save'),
@@ -115,7 +115,7 @@ class _AdminEditorDialogState extends State<AdminEditorDialog> {
                   width: 18,
                   child: TomCircularProgressIndicator(strokeWidth: 2),
                 )
-              : TomText(text: 'Save'),
+              : TomText(text: TomCtr.text('admin.save')),
         ),
       ],
     );

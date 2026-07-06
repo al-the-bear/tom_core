@@ -148,7 +148,8 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _commentController.clear();
       setState(() => _postingComment = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        TomSnackBar(content: TomText(text: 'Comment added')),
+        TomSnackBar(
+            content: TomText(text: TomCtr.text('board.item.comment.added'))),
       );
     } on AppBackendException catch (e) {
       if (!mounted) return;
@@ -176,7 +177,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     if (form == null) {
       return Center(
         child: TomText(
-            text: _error ?? 'Could not load item.',
+            text: _error ?? TomCtr.text('board.item.loadError'),
             key: const Key('item-detail-error')),
       );
     }
@@ -205,7 +206,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     width: 18,
                     child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : TomText(text: 'Save'),
+                : TomText(text: TomCtr.text('board.item.save')),
           ),
         TomDivider(height: 32),
         _buildCommentComposer(),
@@ -218,7 +219,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TomText(
-            text: 'Add a comment',
+            text: TomCtr.text('board.item.comment.title'),
             style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: 8),
         TomTextField(
@@ -227,7 +228,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           minLines: 1,
           maxLines: 3,
           label: '',
-          hint: 'Write a comment…',
+          hint: TomCtr.text('board.item.comment.hint'),
           decoration: const InputDecoration(
             border: OutlineInputBorder(),
           ),
@@ -251,7 +252,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     width: 18,
                     child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : TomText(text: 'Post comment'),
+                : TomText(text: TomCtr.text('board.item.comment.submit')),
           ),
         ),
       ],

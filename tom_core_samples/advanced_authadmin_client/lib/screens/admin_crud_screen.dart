@@ -141,17 +141,19 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
       context: context,
       builder: (_) => TomAlertDialog(
         key: const Key('admin-delete-confirm'),
-        title: TomText(text: 'Delete'),
-        content: TomText(text: 'Delete "${widget.titleOf(item)}"?'),
+        title: TomText(text: TomCtr.text('admin.delete.label')),
+        content: TomText(
+            text: TomCtr.text('admin.delete.confirm')
+                .replaceAll('{name}', widget.titleOf(item))),
         actions: [
           TomTextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: TomText(text: 'Cancel'),
+            child: TomText(text: TomCtr.text('admin.cancel')),
           ),
           TomFilledButton(
             key: const Key('admin-delete-confirm-ok'),
             onPressed: () => Navigator.of(context).pop(true),
-            child: TomText(text: 'Delete'),
+            child: TomText(text: TomCtr.text('admin.delete.label')),
           ),
         ],
       ),
@@ -213,7 +215,7 @@ class _AdminCrudScreenState<T> extends State<AdminCrudScreen<T>> {
           onTap: () => _edit(item),
           trailing: TomIconButton(
             key: Key('${widget.tilePrefix}-delete-${widget.idOf(item)}'),
-            tooltip: 'Delete',
+            tooltip: TomCtr.text('admin.delete.label'),
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _delete(item),
           ),

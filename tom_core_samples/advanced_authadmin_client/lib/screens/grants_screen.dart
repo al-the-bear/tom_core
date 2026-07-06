@@ -126,7 +126,9 @@ class _GrantsScreenState extends State<GrantsScreen> {
             children: [
               Expanded(
                 child: TomText(
-                  text: _dirty ? 'Unsaved changes' : 'Grant matrix',
+                  text: _dirty
+                      ? TomCtr.text('grants.unsaved')
+                      : TomCtr.text('grants.title'),
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -140,7 +142,7 @@ class _GrantsScreenState extends State<GrantsScreen> {
                         child: TomCircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_outlined),
-                child: TomText(text: 'Save'),
+                child: TomText(text: TomCtr.text('admin.save')),
               ),
             ],
           ),
@@ -168,7 +170,8 @@ class _GrantsScreenState extends State<GrantsScreen> {
     final keys = _resourceKeys;
     if (roles.isEmpty || keys.isEmpty) {
       return Center(
-        child: TomText(text: 'No grants to edit.', key: Key('grants-empty')),
+        child: TomText(
+            text: TomCtr.text('grants.empty'), key: Key('grants-empty')),
       );
     }
     return SingleChildScrollView(
@@ -180,7 +183,7 @@ class _GrantsScreenState extends State<GrantsScreen> {
           columnSpacing: 16,
           horizontalMargin: 12,
           columns: [
-            DataColumn(label: TomText(text: 'Role')),
+            DataColumn(label: TomText(text: TomCtr.text('grants.roleColumn'))),
             for (final key in keys)
               DataColumn(label: TomText(text: _shortKey(key))),
           ],
@@ -248,7 +251,7 @@ class _GrantCell extends StatelessWidget {
             border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
           child: TomText(
-            text: _label(access),
+            text: TomCtr.text('global.tomauthstate.${access.name}'),
             style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ),
@@ -266,21 +269,6 @@ class _GrantCell extends StatelessWidget {
         return scheme.tertiary;
       case TomAuthState.full:
         return scheme.primary;
-    }
-  }
-
-  /// The human label shown in the cell — distinct per state so a reader (and a
-  /// widget test) can tell the four states apart at a glance.
-  static String _label(TomAuthState access) {
-    switch (access) {
-      case TomAuthState.none:
-        return 'Hidden';
-      case TomAuthState.disabled:
-        return 'Disabled';
-      case TomAuthState.read:
-        return 'Read';
-      case TomAuthState.full:
-        return 'Full';
     }
   }
 }

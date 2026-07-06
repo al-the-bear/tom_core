@@ -32,14 +32,18 @@ class GroupsScreen extends StatelessWidget {
     return AdminCrudScreen<GroupDto>(
       session: session,
       tilePrefix: 'groups',
-      createLabel: 'New group',
-      emptyText: 'No groups yet.',
+      createLabel: TomCtr.text('admin.groups.create'),
+      emptyText: TomCtr.text('admin.groups.empty'),
       load: (backend) => backend.listGroups(),
       idOf: (group) => group.id,
       titleOf: (group) => group.name,
-      subtitleOf: (group) =>
-          '${group.memberUserIds.length} member'
-          '${group.memberUserIds.length == 1 ? '' : 's'}',
+      subtitleOf: (group) {
+        final count = group.memberUserIds.length;
+        final template = count == 1
+            ? TomCtr.text('admin.groups.memberCount')
+            : TomCtr.text('admin.groups.memberCountPlural');
+        return template.replaceAll('{count}', '$count');
+      },
       onCreate: _create,
       onEdit: _edit,
       onDelete: (backend, group) => backend.deleteGroup(group.id),
@@ -57,7 +61,7 @@ class GroupsScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'New group',
+        title: TomCtr.text('admin.groups.create'),
         children: [
           for (final field in form.editableFields) field.widget,
           _MembershipChecklist(users: users, selected: selected),
@@ -92,7 +96,7 @@ class GroupsScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'Edit group',
+        title: TomCtr.text('admin.groups.edit'),
         children: [
           for (final field in form.editableFields) field.widget,
           _MembershipChecklist(users: users, selected: selected),
@@ -158,7 +162,8 @@ class _MembershipChecklistState extends State<_MembershipChecklist> {
         Align(
           alignment: Alignment.centerLeft,
           child: TomText(
-              text: 'Members', style: Theme.of(context).textTheme.labelLarge),
+              text: TomCtr.text('admin.groups.members'),
+              style: Theme.of(context).textTheme.labelLarge),
         ),
         for (final user in widget.users)
           TomCheckboxListTile(

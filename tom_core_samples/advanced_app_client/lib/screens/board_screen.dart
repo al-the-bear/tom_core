@@ -11,7 +11,6 @@ library;
 
 import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/app_session.dart';
@@ -163,7 +162,7 @@ class _BoardScreenState extends State<BoardScreen> {
     final shared = await showShareDialog(context, _session, projectId);
     if (shared == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        TomSnackBar(content: TomText(text: 'Project shared')),
+        TomSnackBar(content: TomText(text: TomCtr.text('board.shared'))),
       );
     }
   }
@@ -174,23 +173,22 @@ class _BoardScreenState extends State<BoardScreen> {
         _session.user?.displayName ?? _session.user?.username ?? '';
     // Board chrome comes from the post-login full bundle (installed by
     // [AppSession.login]); `board.*` has no grade counterpart and no form
-    // override, so it renders the server text straight through.
-    final texts = TomTextResourceProvider.getAppResources();
+    // override, so it renders the server text straight through [TomCtr].
     return TomScaffold(
       key: const Key('board-screen'),
       appBar: TomAppBar(
-        title: TomText(text: texts.getText('board.title')),
+        title: TomText(text: TomCtr.text('board.title')),
         actions: [
           TomIconButton(
             key: const Key('share-button'),
             icon: const Icon(Icons.person_add_alt),
-            tooltip: 'Share project',
+            tooltip: TomCtr.text('board.shareTooltip'),
             onPressed: _projectId == null ? null : _openShare,
           ),
           TomIconButton(
             key: const Key('logout-button'),
             icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
+            tooltip: TomCtr.text('board.signOut'),
             onPressed: _session.logout,
           ),
         ],
@@ -211,7 +209,7 @@ class _BoardScreenState extends State<BoardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TomText(text: 'Signed in as $name'),
+          TomText(text: TomCtr.text('board.signedInAs').replaceAll('{name}', name)),
           const SizedBox(height: 8),
           AclBuilder()
               .setAclDefaultHideUnauthorized(true)
@@ -219,7 +217,7 @@ class _BoardScreenState extends State<BoardScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TomText(text: 'Workspace'),
+                    TomText(text: TomCtr.text('board.workspace')),
                     TomDropdownButton<String>(
                       key: const Key('workspace-picker'),
                       value: _workspaceId,
@@ -240,7 +238,7 @@ class _BoardScreenState extends State<BoardScreen> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TomText(text: 'Project'),
+                    TomText(text: TomCtr.text('board.project')),
                     TomDropdownButton<String>(
                       key: const Key('project-picker'),
                       value: _projectId,
@@ -272,7 +270,7 @@ class _BoardScreenState extends State<BoardScreen> {
       return Center(child: TomText(text: _error!, key: const Key('board-error')));
     }
     if (_items.isEmpty) {
-      return Center(child: TomText(text: 'No items in this project yet.'));
+      return Center(child: TomText(text: TomCtr.text('board.emptyProject')));
     }
     return _buildBoard();
   }

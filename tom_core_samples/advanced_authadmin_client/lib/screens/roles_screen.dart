@@ -9,6 +9,7 @@ library;
 
 import 'package:advanced_todo_contracts/advanced_todo_contracts.dart';
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../app/admin_session.dart';
 import '../backend/backend.dart';
@@ -30,8 +31,8 @@ class RolesScreen extends StatelessWidget {
     return AdminCrudScreen<RoleDto>(
       session: session,
       tilePrefix: 'roles',
-      createLabel: 'New role',
-      emptyText: 'No roles yet.',
+      createLabel: TomCtr.text('admin.roles.create'),
+      emptyText: TomCtr.text('admin.roles.empty'),
       load: (backend) => backend.listRoles(),
       idOf: (role) => role.key,
       titleOf: (role) => role.name.isEmpty ? role.key : role.name,
@@ -50,7 +51,7 @@ class RolesScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'New role',
+        title: TomCtr.text('admin.roles.create'),
         children: [for (final field in form.editableFields) field.widget],
         submit: () async {
           if (!await form.save()) return '';
@@ -78,7 +79,7 @@ class RolesScreen extends StatelessWidget {
     try {
       return await showAdminEditor(
         context,
-        title: 'Edit role',
+        title: TomCtr.text('admin.roles.edit'),
         children: [for (final field in form.editableFields) field.widget],
         submit: () async {
           if (!await form.save()) return '';

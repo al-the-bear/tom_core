@@ -94,13 +94,14 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     final name = user.displayName.isEmpty ? user.username : user.displayName;
     final saved = await showAdminEditor(
       context,
-      title: 'Assign to $name',
+      title: TomCtr.text('admin.assignments.assignTo')
+          .replaceAll('{name}', name),
       children: [
         _AssignmentPicker(roles: roles, groups: groups, choice: choice),
       ],
       submit: () async {
         if (choice.roleKey == null && choice.groupId == null) {
-          return 'Choose a role or a group to assign.';
+          return TomCtr.text('admin.assignments.chooseError');
         }
         try {
           await _session.guard((b) => b.assign(AssignmentRequest(
@@ -116,7 +117,10 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     );
     if (saved && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        TomSnackBar(content: TomText(text: 'Assigned to $name.')),
+        TomSnackBar(
+            content: TomText(
+                text: TomCtr.text('admin.assignments.assigned')
+                    .replaceAll('{name}', name))),
       );
       await _load();
     }
@@ -146,7 +150,7 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
         Padding(
           padding: const EdgeInsets.all(12),
           child: TomText(
-            text: 'Assign roles and groups',
+            text: TomCtr.text('admin.assignments.title'),
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
@@ -171,7 +175,9 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
     }
     if (_users.isEmpty) {
       return Center(
-        child: TomText(text: 'No users yet.', key: Key('assignments-empty')),
+        child: TomText(
+            text: TomCtr.text('admin.users.empty'),
+            key: Key('assignments-empty')),
       );
     }
     return ListView.builder(
@@ -185,13 +191,16 @@ class _AssignmentsScreenState extends State<AssignmentsScreen> {
           titleText:
               user.displayName.isEmpty ? user.username : user.displayName,
           subtitle: TomText(
-            text: groups.isEmpty ? 'No groups' : 'Groups: ${groups.join(', ')}',
+            text: groups.isEmpty
+                ? TomCtr.text('admin.assignments.noGroups')
+                : TomCtr.text('admin.assignments.groups')
+                    .replaceAll('{groups}', groups.join(', ')),
           ),
           trailing: TomOutlinedButton(
             key: Key('assignments-assign-${user.id}'),
             onPressed: () => _assign(user),
             icon: const Icon(Icons.person_add_alt_1),
-            child: TomText(text: 'Assign'),
+            child: TomText(text: TomCtr.text('admin.assignments.assign')),
           ),
         );
       },
@@ -234,13 +243,17 @@ class _AssignmentPickerState extends State<_AssignmentPicker> {
     final roleColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Role', style: Theme.of(context).textTheme.labelLarge),
+        TomText(
+            text: TomCtr.text('admin.assignments.roleLabel'),
+            style: Theme.of(context).textTheme.labelLarge),
         TomDropdownButton<String?>(
           key: const Key('assignment-role-dropdown'),
           value: widget.choice.roleKey,
           isExpanded: true,
           items: [
-            DropdownMenuItem(value: null, child: TomText(text: '— No role —')),
+            DropdownMenuItem(
+                value: null,
+                child: TomText(text: TomCtr.text('admin.assignments.noRole'))),
             for (final role in widget.roles)
               DropdownMenuItem(value: role.key, child: TomText(text: role.name)),
           ],
@@ -251,13 +264,17 @@ class _AssignmentPickerState extends State<_AssignmentPicker> {
     final groupColumn = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Group', style: Theme.of(context).textTheme.labelLarge),
+        TomText(
+            text: TomCtr.text('admin.assignments.groupLabel'),
+            style: Theme.of(context).textTheme.labelLarge),
         TomDropdownButton<String?>(
           key: const Key('assignment-group-dropdown'),
           value: widget.choice.groupId,
           isExpanded: true,
           items: [
-            DropdownMenuItem(value: null, child: TomText(text: '— No group —')),
+            DropdownMenuItem(
+                value: null,
+                child: TomText(text: TomCtr.text('admin.assignments.noGroup'))),
             for (final group in widget.groups)
               DropdownMenuItem(value: group.id, child: TomText(text: group.name)),
           ],

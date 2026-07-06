@@ -63,7 +63,7 @@ class _ShareDialogState extends State<_ShareDialog> {
   Future<void> _submit() async {
     final grantee = _granteeController.text.trim();
     if (grantee.isEmpty) {
-      setState(() => _error = 'Enter a grantee user id (e.g. u-carol).');
+      setState(() => _error = TomCtr.text('share.granteeRequired'));
       return;
     }
     setState(() {
@@ -91,7 +91,7 @@ class _ShareDialogState extends State<_ShareDialog> {
   Widget build(BuildContext context) {
     return TomAlertDialog(
       key: const Key('share-dialog'),
-      title: TomText(text: 'Share project'),
+      title: TomText(text: TomCtr.text('share.title')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,14 +99,14 @@ class _ShareDialogState extends State<_ShareDialog> {
           TomTextField(
             key: const Key('share-grantee-input'),
             controller: _granteeController,
-            label: 'Grantee user id',
-            hint: 'u-carol',
+            label: TomCtr.text('share.grantee.label'),
+            hint: TomCtr.text('share.grantee.hint'),
           ),
           const SizedBox(height: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TomText(text: 'Role'),
+              TomText(text: TomCtr.text('share.role')),
               TomDropdownButton<ProjectRole>(
                 key: const Key('share-role-picker'),
                 value: _role,
@@ -135,7 +135,7 @@ class _ShareDialogState extends State<_ShareDialog> {
       actions: [
         TomTextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          child: TomText(text: 'Cancel'),
+          child: TomText(text: TomCtr.text('share.cancel')),
         ),
         TomFilledButton(
           key: const Key('share-submit-button'),
@@ -146,7 +146,7 @@ class _ShareDialogState extends State<_ShareDialog> {
                   width: 18,
                   child: TomCircularProgressIndicator(strokeWidth: 2),
                 )
-              : TomText(text: 'Share'),
+              : TomText(text: TomCtr.text('board.share')),
         ),
       ],
     );
