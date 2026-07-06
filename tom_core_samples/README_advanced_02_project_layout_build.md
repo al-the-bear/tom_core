@@ -118,17 +118,21 @@ server's own `bin/` seed, not a library seed, since the domain no longer exports
 one.)
 
 **Regenerate only on signature changes.** Each package ships a
-`reflection_generation.sh` that runs the generator in single-project mode:
+`reflection_generation.sh` that runs the generator flag-free:
 
 ```sh
 # from the package root, e.g. advanced_todo_domain/
 ./reflection_generation.sh
-# → dart run tom_reflection_generator --nested
+# → dart run tom_reflection_generator
 ```
 
-`--nested` runs the generator standalone (it does not consult the workspace
-registry, so it works even before the sample is registered in
-`tom_master.yaml`). A regen is required **only when a reflected type's signature
+The invocation is **flag-free**: the generator's framework default scans the
+current project only (scan `.`, non-recursive), so it needs no workspace registry
+and no scan flag — it works standalone from the package root. The two Flutter
+clients are the one exception: their scripts pass `--no-cache`
+(`dart run tom_reflection_generator --no-cache`) because the analyzer
+summary-cache resolver crashes on the Flutter closure; `--no-cache` forces a
+full live analysis. A regen is required **only when a reflected type's signature
 changes** — a field/method/annotation added, removed, or retyped on a
 `@tomReflector`/`@tomService` type, or a new reflected type added to a seed.
 Editing *bodies* or non-reflected code needs no regen. The
@@ -149,7 +153,8 @@ dart run build_runner build --delete-conflicting-outputs
 
 Either path produces the same `<entry>.reflection.dart`. Use
 `reflection_generation.sh` unless you have a reason to drive `build_runner`
-yourself — it encodes the correct `--nested` invocation and target.
+yourself — it encodes the correct flag-free invocation and target (and the
+`--no-cache` flag the Flutter clients need).
 
 ## Local run: env, Docker compose, flutter run
 

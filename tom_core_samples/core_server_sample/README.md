@@ -440,7 +440,7 @@ Regenerate the reflection code after changing any reflected shape (a record's
 fields, the config class, an endpoint signature):
 
 ```sh
-./reflection_generation.sh   # dart run tom_reflection_generator --nested
+./reflection_generation.sh   # dart run tom_reflection_generator (flag-free)
 ```
 
 The generated `bin/server_start.reflection.dart` is committed and imported by

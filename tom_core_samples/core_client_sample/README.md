@@ -361,8 +361,9 @@ renamed, or a bound entity's shape changes):
 ./reflection_generation.sh
 ```
 
-The script runs `dart run tom_reflection_generator --nested` over
-`lib/reflection_seed.dart` (configured in `build.yaml`). The generated file is
+The script runs `dart run tom_reflection_generator` flag-free over
+`lib/reflection_seed.dart` (configured in `build.yaml`); the generator scans the
+current project only (framework default scan `.`, non-recursive). The generated file is
 large because reflecting a form necessarily reflects its field types — the same
 trade-off the verified `tom_flutter_form_test` accepts.
 
