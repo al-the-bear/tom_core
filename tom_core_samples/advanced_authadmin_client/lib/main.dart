@@ -12,10 +12,12 @@
 /// server-delivered chrome rather than any hardcoded string. The console then
 /// runs over an [AdminSession] wrapping the chosen [AdminBackend].
 ///
-/// The console runs against the seeded [InMemoryAdminBackend] by default. Pass
-/// both `--dart-define=AUTH_SERVER_URL=http://localhost:8081` and
-/// `--dart-define=ADMIN_SERVER_URL=http://localhost:8081` to drive the live auth
-/// server's `/admin/*` API through a [LiveAdminBackend].
+/// The **default** run mode is the live stack: started with no dart-defines the
+/// console drives the local auth server's `/admin/*` API through a
+/// [LiveAdminBackend], reading its URLs from the [AdvancedClientConfig] config
+/// bean (G-ENV-2). The seeded [InMemoryAdminBackend] is a testing convenience,
+/// opt-in only via `--dart-define=TEST_MODE=true` (G-ENV-3) — never a default
+/// reached by forgetting a flag.
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
@@ -29,6 +31,7 @@ import 'reflection_seed.dart';
 Future<void> main() async {
   initializeReflection();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
+  AdvancedClientConfig.registerDefault();
 
   final session = AdminSession(_buildBackend());
 
@@ -38,19 +41,22 @@ Future<void> main() async {
   runApp(AdminConsoleApp(session: session));
 }
 
-/// Builds the backend the console drives: the seeded in-memory fake by default,
-/// or a [LiveAdminBackend] over the auth server when both URLs are supplied.
+/// Builds the backend the console drives: a [LiveAdminBackend] over the auth
+/// server by default, or the seeded [InMemoryAdminBackend] under `TEST_MODE`.
 ///
-/// The live wiring shares a single [IoJsonTransport] between the [AuthClient]
-/// (login/token storage) and the [AuthorizedHttp] the [AdminApiClient] sends on,
-/// so the bearer the login stores is the one every `/admin/*` call presents.
+/// The live wiring reads the server URLs from the [AdvancedClientConfig] config
+/// bean (never `String.fromEnvironment`) and shares a single [IoJsonTransport]
+/// between the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
+/// [AdminApiClient] sends on, so the bearer the login stores is the one every
+/// `/admin/*` call presents.
 AdminBackend _buildBackend() {
-  const authUrl = String.fromEnvironment('AUTH_SERVER_URL');
-  const adminUrl = String.fromEnvironment('ADMIN_SERVER_URL');
-  if (authUrl.isEmpty || adminUrl.isEmpty) return InMemoryAdminBackend();
+  const testMode = bool.fromEnvironment('TEST_MODE');
+  if (testMode) return InMemoryAdminBackend();
 
+  final config = AdvancedClientConfig.resolve();
   final transport = IoJsonTransport();
-  final auth = AuthClient(Uri.parse(authUrl), transport: transport);
-  final api = AdminApiClient(Uri.parse(adminUrl), AuthorizedHttp(transport, auth));
+  final auth = AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+  final api = AdminApiClient(
+      Uri.parse(config.adminServerUrl), AuthorizedHttp(transport, auth));
   return LiveAdminBackend(auth, api);
 }

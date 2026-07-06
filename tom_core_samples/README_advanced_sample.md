@@ -163,18 +163,16 @@ dart run bin/app_server_start.dart       # HTTP :8080  (GET /health → 200)
 
 ```sh
 # End-user app — from advanced_app_client/
-flutter run \
-  --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
-  --dart-define=APP_SERVER_URL=http://localhost:8080
+flutter run
 
 # Admin console — from advanced_authadmin_client/
-flutter run \
-  --dart-define=AUTH_SERVER_URL=http://localhost:8081
+flutter run
 ```
 
-Both clients boot on a **seeded in-memory backend** when launched *without* the
-`--dart-define`s — that is how the socket-free widget tests run. The defines
-point them at the live servers above.
+With **no dart-defines** both clients target the local servers above by default,
+reading their URLs from the `AdvancedClientConfig` config bean. Launch with
+`--dart-define=TEST_MODE=true` to boot on a **seeded in-memory backend** instead
+— the opt-in offline mode, and the same fake the socket-free widget tests inject.
 
 **Seeded live accounts** (sample only — never ship them):
 

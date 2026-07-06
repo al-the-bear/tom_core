@@ -52,9 +52,10 @@ final states = await backend.itemFieldStates('i-1'); // resourceKey → TomAuthS
 
 `lib/main.dart` performs the four bootstrap steps — reflection → platform →
 resource provider → `runApp` — and injects an `AppSession` over the chosen
-backend (the seeded `InMemoryAppBackend` by default; pass
-`--dart-define=AUTH_SERVER_URL=… --dart-define=APP_SERVER_URL=…` to drive the
-live stack through `LiveAppBackend`).
+backend. By default (no dart-defines) that is the live stack: `LiveAppBackend`
+over the local servers, reading their URLs from the `AdvancedClientConfig` config
+bean. Pass `--dart-define=TEST_MODE=true` to boot on the seeded
+`InMemoryAppBackend` instead.
 
 `AppSession` (`lib/app/app_session.dart`) is a `ChangeNotifier` holding the
 signed-in principal, the token pair, and the four-state matrix for the item in
@@ -143,18 +144,18 @@ dart run bin/auth_server_start.dart      # binds http://localhost:8081
 docker compose up -d app-db              # MariaDB on host port 3308
 dart run bin/app_server_start.dart       # binds http://localhost:8080
 
-# 3. This client, pointed at both — from advanced_app_client/
-flutter run \
-  --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
-  --dart-define=APP_SERVER_URL=http://localhost:8080
+# 3. This client — from advanced_app_client/; no dart-defines, it targets
+#    the local servers above (URLs from the AdvancedClientConfig config bean)
+flutter run
 ```
 
-Without the `--dart-define`s the client boots on the in-memory backend. Sign in
-with a demo account (`alice` / `bob` / `carol`, password `pw`): `alice` owns the
-seeded project and can share it; `bob` is a seeded editor; `carol` starts with no
-access until `alice` shares the project. Each principal's board, item-detail
-field grades, and share rights follow the same ownership + four-state model the
-in-memory fake mirrors.
+The client boots against those local servers with no flags. Sign in with a demo
+account (`alice` / `bob` / `carol`, password `pw`): `alice` owns the seeded
+project and can share it; `bob` is a seeded editor; `carol` starts with no access
+until `alice` shares the project. To explore offline instead, run with
+`--dart-define=TEST_MODE=true` — the client then boots on the seeded in-memory
+fake, whose board, item-detail field grades, and share rights follow the same
+ownership + four-state model the live servers enforce.
 
 ## Tests
 

@@ -172,21 +172,21 @@ The end-to-end run is four moves (full commands in the hub's
 3. **App server next** — `dart run bin/app_server_start.dart` (HTTP `:8080`,
    `GET /health → 200`); it verifies those tokens and reads grants. Each server
    runs from its own package root so relative migration/asset paths resolve.
-4. **Clients** — `flutter run` each client, pointing it at the live servers with
-   `--dart-define`s:
+4. **Clients** — `flutter run` each client. With no dart-defines they target the
+   local servers by default, reading their URLs from the `AdvancedClientConfig`
+   config bean:
 
    ```sh
    # end-user app — from advanced_app_client/
-   flutter run \
-     --dart-define=AUTH_SERVER_URL=http://localhost:8081 \
-     --dart-define=APP_SERVER_URL=http://localhost:8080
+   flutter run
 
    # admin console — from advanced_authadmin_client/
-   flutter run --dart-define=AUTH_SERVER_URL=http://localhost:8081
+   flutter run
    ```
 
-Launched **without** the `--dart-define`s, both clients boot on a **seeded
-in-memory backend** — which is exactly how the socket-free widget tests run (part
+Launched with `--dart-define=TEST_MODE=true`, either client boots on a **seeded
+in-memory backend** instead — the opt-in offline mode, and exactly the fake the
+socket-free widget tests inject (part
 [12](README_advanced_12_testing_integration.md)). The seeded live accounts
 (`admin` / `alice` / `bob` / `carol`) are listed in the hub.
 

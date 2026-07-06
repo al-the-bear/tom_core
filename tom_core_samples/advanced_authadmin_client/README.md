@@ -26,8 +26,9 @@ first three share, the `GrantsScreen` matrix editor, and the `AssignmentsScreen`
 role/group assigner. `lib/forms/` binds reflected drafts
 (`UserForm`/`RoleForm`/`GroupForm`); `lib/main.dart` calls
 `initializeReflection()` (from `lib/reflection_seed.dart`) before bootstrapping
-the console over the in-memory fake by default or the live stack when both server
-URLs are supplied.
+the console over the live stack by default (no dart-defines — URLs from the
+`AdvancedClientConfig` config bean), or over the seeded in-memory fake under
+`--dart-define=TEST_MODE=true`.
 
 ## Admin login + shell
 

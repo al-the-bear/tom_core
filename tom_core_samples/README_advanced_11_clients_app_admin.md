@@ -141,11 +141,14 @@ frame (`advanced_app_client/lib/main.dart`,
    chrome rather than a hardcoded string ([Part 08](README_advanced_08_resources_texts.md)).
 5. **`runApp(...)`** over the session wrapping the chosen backend.
 
-**Backend selection** is one place: `_buildBackend()` returns the in-memory fake
-unless both `--dart-define=AUTH_SERVER_URL=…` and the app/admin server URL are
-supplied, in which case it builds the live stack over a shared transport. Without
-the defines the apps boot fully usable on the seeded fake — which is how the tests
-and the offline walk-through run.
+**Backend selection** is one place: `_buildBackend()` builds the **live stack**
+over a shared transport by default — this is the normal run mode, so an app
+started with **no dart-defines** targets the local servers, reading their URLs
+from the `AdvancedClientConfig` config bean (never `String.fromEnvironment` reads
+in `main()`). The seeded in-memory fake is a testing convenience, selected only
+by an explicit `--dart-define=TEST_MODE=true`; it is what the widget tests inject
+directly and how the offline walk-through runs. In-memory is never a default
+reached by forgetting a flag.
 
 **Login-then-full resource staging.** The login bundle installed at step 4 is the
 *pre-login* chrome. On a successful `login`, the session pulls the
