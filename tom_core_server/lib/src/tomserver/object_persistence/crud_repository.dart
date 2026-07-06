@@ -180,16 +180,16 @@ delete by ${primaryKeyColumnInfo.getQueryFieldName()} = \$id
     return;
   }
 
+  TomPreparedStatement<T>? _deleteAllByIdQuery;
   @override
   Future<void> deleteAllById(Iterable<K> ids) async {
-    TomQuery deleteAllByIdQuery = _qsc.compileQuerySentence('''
+    _deleteAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
+      _qsc.compileQuerySentence('''
 delete by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
-      ''');
-    Map<String, Object?> params = {"ids": ids};
-    await datasourceInfo.datasource.executeCommand(
-      deleteAllByIdQuery.generateQuery(sqlDialect),
-      params,
+      ''')
+          as TomDelete,
     );
+    await _deleteAllByIdQuery!.execute({"ids": ids});
     return;
   }
 
@@ -237,20 +237,21 @@ SELECT * FROM ${dbTable.table}
     return await _findAllQuery!.execute(params);
   }
 
+  TomPreparedStatement<T>? _findAllByIdQuery;
   @override
   Future<List<T>> findAllById(Iterable<K> ids) async {
-    var query = TomLiteralSelect(
-      [T],
-      query:
-          '''
-SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} IS IN ( :ids )
-      ''',
+    // Compile through the query-sentence compiler (like `existsById`) so the
+    // `IS IN` list renders as a bound `IN (?)` placeholder rather than an
+    // inline literal — no value is concatenated into the SQL. (The prior
+    // hand-written SQL also embedded the invalid `IS IN` keyword, which the
+    // compiler translates to a proper `IN (...)`.)
+    _findAllByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
+      _qsc.compileQuerySentence('''
+find by ${primaryKeyColumnInfo.getQueryFieldName()} IS IN ( :ids )
+      ''')
+          as TomSelect,
     );
-    Map<String, Object?> params = {"ids": ids};
-    return await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
-    );
+    return await _findAllByIdQuery!.execute({"ids": ids});
   }
 
   TomPreparedStatement<T>? _findByIdQuery;
@@ -461,6 +462,39 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     return result;
   }
 
+  /// Prepares [query], runs it once with [params], releases the server-side
+  /// statement, and returns the mapped rows (optionally typed by [resultType]).
+  ///
+  /// Every dynamic (non-cached) query path routes through here so its bind
+  /// values ride the prepared-statement protocol as positional parameters —
+  /// no value is ever concatenated into the SQL text, closing the injection
+  /// surface `executeQuery`/`executeCommand` left open.
+  Future<List<R>> _runPrepared<R extends Object>(
+    TomQuery query,
+    Map<String, Object?> params, [
+    Type? resultType,
+  ]) async {
+    final stmt = await datasourceInfo.datasource.prepareStatement<R>(
+      query,
+      resultType,
+    );
+    try {
+      return await stmt.execute(params);
+    } finally {
+      await stmt.deallocate();
+    }
+  }
+
+  /// Extracts `:name` placeholder names from [sql] in textual order (repeats
+  /// included), so a raw statement can be prepared and its values bound
+  /// positionally in the order the `?` slots appear.
+  static List<String> _extractPlaceholderNames(String sql) {
+    return [
+      for (final m in RegExp(r':([A-Za-z_][A-Za-z0-9_]*)').allMatches(sql))
+        m.group(1)!,
+    ];
+  }
+
   @override
   Future<Iterable<T>> findByQuerySentence(
     String querySentence,
@@ -468,11 +502,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Type? resultType,
   ]) async {
     TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
-    return await datasourceInfo.datasource.executeQuery<T>(
-      select.generateQuery(sqlDialect),
-      params,
-      resultType,
-    );
+    return await _runPrepared<T>(select, params, resultType);
   }
 
   @override
@@ -481,10 +511,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     Map<String, Object?> params,
   ) async {
     TomDelete select = _qsc.compileQuerySentence(querySentence) as TomDelete;
-    await datasourceInfo.datasource.executeQuery<T>(
-      select.generateQuery(sqlDialect),
-      params,
-    );
+    await _runPrepared<T>(select, params);
     return 0;
   }
 
@@ -493,9 +520,12 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String querySentence,
     Map<String, Object?> params,
   ) async {
-    TomSelect select = _qsc.compileQuerySentence(querySentence) as TomSelect;
-    List<TomCountResult> result = await datasourceInfo.datasource
-        .executeQuery<TomCountResult>(select.generateQuery(sqlDialect), params);
+    TomCount select = _qsc.compileQuerySentence(querySentence) as TomCount;
+    List<TomCountResult> result = await _runPrepared<TomCountResult>(
+      select,
+      params,
+      TomCountResult,
+    );
     if (result.length != 1) {
       throw Exception(
         "Illegal count result. Must have exactly one result row, but had ${result.length}",
@@ -509,10 +539,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomSelect query,
     Map<String, Object?> params,
   ) async {
-    return await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
-    );
+    return await _runPrepared<T>(query, params);
   }
 
   @override
@@ -520,10 +547,7 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomDelete query,
     Map<String, Object?> params,
   ) async {
-    await datasourceInfo.datasource.executeQuery<T>(
-      query.generateQuery(sqlDialect),
-      params,
-    );
+    await _runPrepared<T>(query, params);
     return 0;
   }
 
@@ -532,8 +556,11 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     TomCount query,
     Map<String, Object?> params,
   ) async {
-    List<TomCountResult> result = await datasourceInfo.datasource
-        .executeQuery<TomCountResult>(query.generateQuery(sqlDialect), params);
+    List<TomCountResult> result = await _runPrepared<TomCountResult>(
+      query,
+      params,
+      TomCountResult,
+    );
     if (result.length != 1) {
       throw Exception(
         "Illegal count result. Must have exactly one result row, but had ${result.length}",
@@ -547,7 +574,15 @@ SELECT * FROM ${dbTable.table} WHERE ${primaryKeyColumnInfo.field} = :id
     String dbQuery,
     Map<String, Object?> params,
   ) async {
-    return datasourceInfo.datasource.executeQuery<T>(dbQuery, params);
+    // Wrap the raw SQL as a literal query whose parameters are its `:name`
+    // placeholders in textual order, so it prepares and binds positionally
+    // instead of string-substituting values into the command.
+    final query = TomLiteralSelect(
+      [T],
+      query: dbQuery,
+      parameters: _extractPlaceholderNames(dbQuery),
+    );
+    return await _runPrepared<T>(query, params);
   }
 }
 

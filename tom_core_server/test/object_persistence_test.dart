@@ -306,6 +306,45 @@ void main() {
       expect(TomAnnotationAnalyzer.getPersistentColumns(_NotAnEntity), isNull);
     });
   });
+
+  // C-7 (G-DB-2): every repository operation binds its values through a
+  // prepared statement, so no untrusted value is ever concatenated into the
+  // SQL text. Two lines of defence are exercised here connection-free:
+  //   1. a bound `Parameter` renders a `:name` placeholder — the value never
+  //      appears in the generated SQL (it rides the bind protocol at execute);
+  //   2. the literal renderer `text()` (the one path that *does* embed a value)
+  //      escapes quotes and backslashes, so an embedded quote cannot terminate
+  //      the literal and inject trailing SQL.
+  group('injection neutralisation (C-7)', () {
+    test('a bound parameter keeps the value out of the SQL', () {
+      final col = _column('users', 'name');
+      // The predicate compares a column to a *parameter*, not a literal — so
+      // even a hostile bind value can never reach the SQL string.
+      final pred = b.eq(b.textF('name', col), b.p<TomDbString>('name'));
+      final sql = pred.generate(dialect);
+      expect(sql, "users.name = :name");
+      // The bind name is present; no value (and thus no injectable payload) is.
+      expect(sql, isNot(contains("'")));
+    });
+
+    test('text() escapes a single quote by doubling it', () {
+      // O'Brien must not close the literal after the O.
+      expect(b.text("O'Brien").generate(dialect), "'O''Brien'");
+    });
+
+    test('text() escapes a backslash by doubling it', () {
+      // A single backslash in the value becomes a doubled backslash.
+      expect(b.text('a\\b').generate(dialect), r"'a\\b'");
+    });
+
+    test('a quote/semicolon payload stays inert inside the escaped literal', () {
+      // Classic break-out attempt: a leading quote then a statement separator.
+      // The leading quote is doubled, so the payload can never escape the
+      // surrounding single quotes — it is one inert string literal.
+      const payload = "'; DROP TABLE users; --";
+      expect(b.text(payload).generate(dialect), "'''; DROP TABLE users; --'");
+    });
+  });
 }
 
 /// A plain type with no persistence reflection, used to drive the analyzer's
