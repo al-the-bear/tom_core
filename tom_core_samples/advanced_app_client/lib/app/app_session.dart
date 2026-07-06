@@ -19,31 +19,14 @@ import 'package:flutter/foundation.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../backend/backend.dart';
-import 'field_state_authorization_adapter.dart';
 
 /// Holds the authenticated principal and drives login/logout for the app shell.
 class AppSession extends ChangeNotifier {
   /// Creates a session over [backend] (the seam every screen calls).
-  ///
-  /// [authorizationAdapter] is the implicit-authorization adapter the session
-  /// feeds the item grade matrix into; the bootstrap ([main]) installs this same
-  /// instance on the [TomAuthorization] singleton so the forms resolve grades
-  /// through it. Defaults to a fresh adapter when a caller (e.g. a unit test)
-  /// does not supply one.
-  AppSession(this.backend, {FieldStateAuthorizationAdapter? authorizationAdapter})
-      : authorizationAdapter =
-            authorizationAdapter ?? FieldStateAuthorizationAdapter();
+  AppSession(this.backend);
 
   /// The backend the screens reach through [guard]; the only injected seam.
   final AppBackend backend;
-
-  /// The implicit-authorization adapter fed the current item's grade matrix.
-  ///
-  /// The session repoints its [FieldStateAuthorizationAdapter.states] on every
-  /// [loadFieldStates] and clears it on logout; because the bootstrap installs
-  /// this same instance on the [TomAuthorization] singleton, the live forms see
-  /// the matrix change without any reinstall.
-  final FieldStateAuthorizationAdapter authorizationAdapter;
 
   UserDto? _user;
   String _authToken = '';
@@ -144,8 +127,9 @@ class AppSession extends ChangeNotifier {
   }
 
   /// Loads the four-state matrix for [itemId] and stores it as the current
-  /// matrix (the detail screen binds against it). Runs through [guard], so a
-  /// dead session routes back to login instead of surfacing a raw failure.
+  /// matrix, returning it so the detail screen can apply it per field. Runs
+  /// through [guard], so a dead session routes back to login instead of
+  /// surfacing a raw failure.
   Future<Map<String, TomAuthState>> loadFieldStates(String itemId) async {
     final states = await guard((backend) => backend.itemFieldStates(itemId));
     _setFieldStates(states);
@@ -153,13 +137,12 @@ class AppSession extends ChangeNotifier {
     return states;
   }
 
-  /// Stores [states] as the current matrix and pushes it into the installed
-  /// [authorizationAdapter] so the forms resolve grades against the item now in
-  /// view. The two stay in lock-step — the session never holds a matrix the
-  /// adapter has not seen.
+  /// Stores [states] as the current matrix (the DB-resolved grades for the item
+  /// now in view). The detail screen reads the returned matrix and stamps each
+  /// gradable field with its grade; the session holds no authorization
+  /// indirection of its own.
   void _setFieldStates(Map<String, TomAuthState> states) {
     _currentFieldStates = states;
-    authorizationAdapter.states = states;
   }
 
   /// Runs [op] against the backend, logging out automatically when the failure

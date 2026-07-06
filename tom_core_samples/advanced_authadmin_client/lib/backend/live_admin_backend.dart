@@ -35,6 +35,26 @@ class LiveAdminBackend implements AdminBackend {
   /// other.
   LiveAdminBackend(this._auth, this._api);
 
+  /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
+  /// resolves the auth + admin server URLs, shares one [IoJsonTransport] between
+  /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
+  /// [AdminApiClient] sends on, so the bearer the login stores is the one every
+  /// `/admin/*` call presents.
+  ///
+  /// This is the factory the admin bootstrap registers as the `prod`-environment
+  /// backend; it reads its URLs from the config bean, never from
+  /// `String.fromEnvironment` (G-ENV-2). Call
+  /// [AdvancedClientConfig.registerDefault] before this.
+  factory LiveAdminBackend.fromConfig() {
+    final config = AdvancedClientConfig.resolve();
+    final transport = IoJsonTransport();
+    final auth =
+        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+    final api = AdminApiClient(
+        Uri.parse(config.adminServerUrl), AuthorizedHttp(transport, auth));
+    return LiveAdminBackend(auth, api);
+  }
+
   @override
   Future<LoginResult> login(LoginRequest request) =>
       _guard(() => _auth.login(request));

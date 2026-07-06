@@ -7,13 +7,13 @@
 ///
 /// - **Action-level authorization.** Each action carries a [canonicalPath]
 ///   (`<controllerId>.<actionId>`, e.g. `todo.item.save`), and its
-///   [TomAction.authorizer] resolves that path through the installed
-///   authorization adapter. The screen hands the button that same authorizer, so
+///   [TomAction.authorizer] resolves that path through the global
+///   [TomAuthorization]. The screen hands the button that same authorizer, so
 ///   the control's enablement is driven by the action's grant, not by ad-hoc
-///   screen logic. The app installs the permissive
-///   [FieldStateAuthorizationAdapter], so these action paths resolve `full`
-///   unless a future adapter grades them — field-level presence gating (which
-///   the item screen already does) still owns visibility.
+///   screen logic. No authorization adapter is installed, so these action paths
+///   resolve to the framework's permissive default (`full`) — field-level
+///   presence gating (which the item screen drives via per-field grades) owns
+///   visibility.
 /// - **A single async bridge.** [TomAction.execute] is synchronous, but the
 ///   backend seam is `Future`-based. Each action launches its guarded async op
 ///   inside the synchronous [TomSimpleAction.executeSimple] and completes the

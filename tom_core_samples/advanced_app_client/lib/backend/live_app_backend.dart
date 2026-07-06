@@ -51,6 +51,26 @@ class LiveAppBackend implements AppBackend {
   /// single [JsonTransport] so the stored bearer flows from one to the other.
   LiveAppBackend(this._auth, this._api);
 
+  /// Self-wires the live backend from the [AdvancedClientConfig] config bean:
+  /// resolves the auth + app server URLs, shares one [IoJsonTransport] between
+  /// the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
+  /// [AppApiClient] sends on, so the bearer the login stores is the one every
+  /// board call presents.
+  ///
+  /// This is the factory the app bootstrap registers as the `prod`-environment
+  /// backend; it reads its URLs from the config bean, never from
+  /// `String.fromEnvironment` (G-ENV-2). Call [AdvancedClientConfig.registerDefault]
+  /// before this.
+  factory LiveAppBackend.fromConfig() {
+    final config = AdvancedClientConfig.resolve();
+    final transport = IoJsonTransport();
+    final auth =
+        AuthClient(Uri.parse(config.authServerUrl), transport: transport);
+    final api = AppApiClient(
+        Uri.parse(config.appServerUrl), AuthorizedHttp(transport, auth));
+    return LiveAppBackend(auth, api);
+  }
+
   @override
   Future<LoginResult> login(LoginRequest request) =>
       _guard(() => _auth.login(request));

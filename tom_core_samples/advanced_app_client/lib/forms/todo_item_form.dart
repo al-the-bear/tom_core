@@ -1,19 +1,18 @@
 /// The item editor — a `TomForm` bound to a [TodoItem] (step 30), carrying **no**
 /// authorization knowledge of its own.
 ///
-/// This is where the four-state authorization model meets a real editing form,
-/// but the gating is now entirely *implicit*: the form runs under scope `'todo'`
-/// with `formId: 'item'`, and each field declares its `tomId` directly as a
-/// plain `String` (G-RES-6 / G-UI-6 — there is no resource-key constants class),
-/// so every field's `basePath` equals its wire resource key (`todo.item.title`,
-/// …). The installed [FieldStateAuthorizationAdapter] (todo 3) — fed the
-/// signed-in role's matrix by the session — then resolves each field's grade
-/// through layer-1 `TomAuthorization.resolveAuth(basePath)`. So the *same* form
-/// renders four ways (owner edits everything; editor cannot change the assignee
-/// or estimate; commenter cannot see priority or estimate; viewer toggles
-/// nothing and the status control renders disabled) without the form holding any
-/// per-field authorizer or grade map — a field's `tomId` and its wire key are
-/// the one origin, resolved at use from scope + formId + tomId.
+/// This is where the four-state authorization model meets a real editing form.
+/// The form runs under scope `'todo'` with `formId: 'item'`, and each field
+/// declares its `tomId` directly as a plain `String` (G-RES-6 / G-UI-6 — there
+/// is no resource-key constants class), so every field's `basePath` equals its
+/// wire resource key (`todo.item.title`, …). The screen that builds this form
+/// ([ItemDetailScreen]) stamps each gradable field with its DB-resolved grade
+/// via a per-field fixed authorizer, keyed by that same `basePath`. So the
+/// *same* form renders four ways (owner edits everything; editor cannot change
+/// the assignee or estimate; commenter cannot see priority or estimate; viewer
+/// toggles nothing and the status control renders disabled) without the form
+/// holding any grade map of its own — a field's `tomId` and its wire key are the
+/// one origin, resolved at use from scope + formId + tomId.
 ///
 /// Reflected *member* names still match the entity's field names so the
 /// reflection round-trip `bind`/`save` writes straight into the bound [TodoItem]
@@ -28,13 +27,13 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import '../domain/enum_text.dart';
 
-/// A bound editor for a single [TodoItem]; authorization is resolved implicitly
-/// through the installed adapter, not held on the form.
+/// A bound editor for a single [TodoItem]; authorization grades are stamped onto
+/// its fields by the screen, not held on the form.
 @tomReflector
 class TodoItemForm extends TomForm<TodoItem> {
   /// Creates the form. It carries no grade matrix: each field self-addresses as
-  /// its resource key and the installed [FieldStateAuthorizationAdapter] grades
-  /// it through layer-1 implicit authorization.
+  /// its resource key, and the screen stamps that field with its DB-resolved
+  /// grade via a per-field fixed authorizer keyed by `basePath`.
   TodoItemForm() : super(formId: 'item');
 
   /// Title — required free text. Label resolves from `todo.item.title.label` in

@@ -3,12 +3,12 @@
 /// After the realignment the form runs under scope `'todo'` with `formId`
 /// `'item'` and each field's `tomId` is the plain field name, so every gradable
 /// field's `basePath` equals its wire resource key (`todo.item.<field>`). That
-/// is the precondition for the installed [FieldStateAuthorizationAdapter] (todo
-/// 3) to grade each field implicitly through layer-1
-/// `TomAuthorization.resolveAuth(basePath)`. The estimate field is the special
-/// case: its `tomId` is `estimate` while its reflected member stays
-/// `estimateHours` (D-A2), so its `basePath` is `todo.item.estimate` but
-/// `bind`/`save` still round-trips into the entity by member name.
+/// is the precondition for the detail screen to stamp each field with its
+/// DB-resolved grade via a per-field fixed authorizer keyed by that `basePath`.
+/// The estimate field is the special case: its `tomId` is `estimate` while its
+/// reflected member stays `estimateHours` (D-A2), so its `basePath` is
+/// `todo.item.estimate` but `bind`/`save` still round-trips into the entity by
+/// member name.
 library;
 
 import 'package:advanced_app_client/forms/todo_item_form.dart';

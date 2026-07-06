@@ -42,12 +42,11 @@ void main() {
     );
   });
 
-  // The role matrix is now driven *purely* through the implicit chain: each
-  // test installs its session's adapter on the [TomAuthorization] singleton (the
-  // same wiring `main` performs) and clears it afterwards, so the four-role
-  // render matrix is reproduced without the form holding any authorization
-  // state. This is the regression guard for the per-field-authorizer removal
-  // (todo 5).
+  // The role matrix is driven purely by the screen stamping each gradable field
+  // with its DB-resolved grade (a per-field fixed authorizer keyed by basePath).
+  // No authorization adapter is installed, so the four-role render matrix is
+  // reproduced without any global singleton state; the reset keeps the singleton
+  // clean between tests regardless.
   tearDown(TomAuthorization.reset);
 
   /// A tall viewport so the detail form's fields and Save button all fit
@@ -82,10 +81,9 @@ void main() {
 
     final backend = InMemoryAppBackend();
     final session = AppSession(backend);
-    // Install the session's adapter on the singleton, exactly as `main` does, so
-    // each field resolves its grade implicitly through layer-1 once
-    // `loadFieldStates` feeds the matrix in. Cleared in [tearDown].
-    TomAuthorization.adapter = session.authorizationAdapter;
+    // No adapter is installed: the detail screen stamps each gradable field with
+    // its DB-resolved grade from the matrix `loadFieldStates` returns, exactly as
+    // `main` wires it. The four-role render matrix is reproduced purely from that.
 
     if (shareCarolAs != null) {
       await session.login(login('alice'));

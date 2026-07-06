@@ -12,13 +12,10 @@
 ///  2. The Flutter client platform is registered via
 ///     `TomPlatformUtils.setCurrentPlatform(clientPlatformUtils)` so kernel code
 ///     that probes the runtime gets the Flutter implementation.
-///  3. The session's [FieldStateAuthorizationAdapter] is installed once on the
-///     [TomAuthorization] singleton, so every gradable item field resolves its
-///     authorization implicitly through the matrix the session feeds it.
-///  4. The public login resource bundle is fetched through the backend seam and
+///  3. The public login resource bundle is fetched through the backend seam and
 ///     installed as the singleton [TomTextResourceProvider], so the sign-in
 ///     screen renders server-delivered chrome rather than any hardcoded string.
-///  5. The app runs over that [AppSession] wrapping the chosen [AppBackend].
+///  4. The app runs over that [AppSession] wrapping the DI-selected [AppBackend].
 ///
 /// The **default** run mode is the live stack: started with no dart-defines the
 /// app targets the local `advanced_auth_server` + `advanced_app_server` through
@@ -26,6 +23,12 @@
 /// bean (G-ENV-2). The seeded [InMemoryAppBackend] is a testing convenience,
 /// opt-in only via `--dart-define=TEST_MODE=true` (G-ENV-3) — never a default
 /// reached by forgetting a flag.
+///
+/// The two backends are not chosen by an inline `if`: the launch flag selects an
+/// environment *name* ([_clientEnvironment]) and the kernel bean locator installs
+/// the one backend registered for that environment (G-DI-3/G-DI-5). There is no
+/// per-field authorization adapter installed — the item detail screen stamps each
+/// gradable field with its DB-resolved grade directly (G-AUTHZ-1).
 library;
 
 import 'package:advanced_client_core/advanced_client_core.dart';
@@ -36,13 +39,19 @@ import 'app/app.dart';
 import 'backend/backend.dart';
 import 'reflection_seed.dart';
 
+/// The active client environment, chosen by the one launch flag: `prod` (the
+/// default live stack) unless `--dart-define=TEST_MODE=true` selects the seeded
+/// in-memory `test` environment (G-ENV-2/G-ENV-3). This is the environment
+/// *selector*; the locator picks the backend from the name.
+const String _clientEnvironment =
+    bool.fromEnvironment('TEST_MODE') ? 'test' : 'prod';
+
 Future<void> main() async {
   initializeReflection();
   TomPlatformUtils.setCurrentPlatform(clientPlatformUtils);
   AdvancedClientConfig.registerDefault();
 
-  final session = AppSession(_buildBackend());
-  TomAuthorization.adapter = session.authorizationAdapter;
+  final session = AppSession(_installBackend());
 
   // Fetch + install the server-delivered login chrome before the first frame.
   await session.loadLoginResources();
@@ -50,22 +59,15 @@ Future<void> main() async {
   runApp(AdvancedTodoApp(session: session));
 }
 
-/// Builds the backend the app drives: a [LiveAppBackend] over the auth + app
-/// servers by default, or the seeded [InMemoryAppBackend] under `TEST_MODE`.
-///
-/// The live wiring reads the server URLs from the [AdvancedClientConfig] config
-/// bean (never `String.fromEnvironment`) and shares a single [IoJsonTransport]
-/// between the [AuthClient] (login/token storage) and the [AuthorizedHttp] the
-/// [AppApiClient] sends on, so the bearer the login stores is the one every
-/// board call presents.
-AppBackend _buildBackend() {
-  const testMode = bool.fromEnvironment('TEST_MODE');
-  if (testMode) return InMemoryAppBackend();
-
-  final config = AdvancedClientConfig.resolve();
-  final transport = IoJsonTransport();
-  final auth = AuthClient(Uri.parse(config.authServerUrl), transport: transport);
-  final api =
-      AppApiClient(Uri.parse(config.appServerUrl), AuthorizedHttp(transport, auth));
-  return LiveAppBackend(auth, api);
-}
+/// Selects and installs the [AppBackend] by environment (G-DI-3/G-DI-5): the
+/// `prod` environment self-wires a [LiveAppBackend] from the
+/// [AdvancedClientConfig] config bean; the `test` environment installs the seeded
+/// [InMemoryAppBackend]. Exactly one backend is built and registered — there is
+/// no runtime dispatcher.
+AppBackend _installBackend() => TomBean.installByEnvironment<AppBackend>(
+      {
+        'prod': LiveAppBackend.fromConfig,
+        'test': InMemoryAppBackend.new,
+      },
+      environment: _clientEnvironment,
+    ).get();

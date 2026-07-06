@@ -79,19 +79,27 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       _error = null;
     });
     try {
-      // Load the item's grade matrix; this pushes it into the session's
-      // installed [FieldStateAuthorizationAdapter], so the form's fields resolve
-      // their grades implicitly (the form itself holds no authorization state).
-      await _session.loadFieldStates(_item.id.get());
+      // Load the item's DB-resolved grade matrix (keyed by wire resource key,
+      // `todo.item.<field>`). The screen stamps it onto the form's fields; there
+      // is no installed authorization adapter to route the grades implicitly.
+      final states = await _session.loadFieldStates(_item.id.get());
       if (!mounted) return;
       // Run the form under the gradable scope so each field's basePath equals
-      // its wire resource key (`todo.item.<field>`) and the installed adapter
-      // (todo 3) resolves its grade implicitly via layer-1.
+      // its wire resource key (`todo.item.<field>`).
       final form = TomScope.withScope(
         'todo',
         TodoItemForm.new,
       );
       form.bind(_item);
+      // Stamp each gradable field with its DB-resolved grade via a per-field
+      // fixed authorizer (layer 4). An unsent gradable key is closed-safe
+      // ([TomAuthState.none], D-A4): the field collapses rather than leaking an
+      // editable control. Non-gradable chrome (login, board) keeps the
+      // framework's permissive default — this screen installs no global adapter.
+      for (final field in form.gradableFields) {
+        field.authorizer =
+            TomAuthorizer.fixed(states[field.basePath] ?? TomAuthState.none);
+      }
       setState(() {
         _form = form;
         _loading = false;
