@@ -1,7 +1,7 @@
 # tom_core_kernel
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Generated D4rt bridge for **[`tom_core_kernel`](../../../../tom_core_kernel/README.md)**.
 Registering `tom_core_d4rt` exposes the kernel to sandboxed DartScript, so REPL

@@ -1,7 +1,7 @@
 # timezoned
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Timezone-aware date/time types built on the `timezone` database. `TomTimezoned`
 extends `DateTime` with an attached `TomTimezone`; `TomZonedDate`,

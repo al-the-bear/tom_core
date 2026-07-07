@@ -35,7 +35,7 @@ Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
    (short, pre-publish), and `LICENSE` exist at the project root. `LICENSE` is
-   **missing** — create it using the proprietary wording from a sibling project
+   **missing** — create it using the BSD 3-Clause wording from a sibling project
    (e.g. `tom_core_kernel/LICENSE`). *Done when all three exist and the README
    describes the package accurately.*
 2. **Per-module pass — `isolate_streaming/`.** Run the Per-Module Workflow below.

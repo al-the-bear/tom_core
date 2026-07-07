@@ -44,5 +44,5 @@
   codegen step and no asset bundle — resources are registered in Dart by
   `initializeDemoResources()`), the locale-bootstrap flow, the test layout, and
   the project structure.
-- Added this `CHANGELOG.md` and a `LICENSE` (the workspace proprietary license,
+- Added this `CHANGELOG.md` and a `LICENSE` (the workspace BSD 3-Clause license,
   matching the sibling `tom_flutter_ui` / `tom_core_*` packages).

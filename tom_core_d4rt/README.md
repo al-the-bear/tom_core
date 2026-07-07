@@ -1,7 +1,7 @@
 # tom_core_d4rt
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The **D4rt scripting tool with full Tom Framework bridge support** — an
 interactive REPL and headless script runner that exposes the core Tom packages
@@ -218,4 +218,4 @@ DartScript. See the [repository map](../README.md) for the full picture.
 - **Version:** 1.0.0
 - **Tests:** 33 test cases across 3 suites (replay + dcli-compat; run with
   `dart test` or the `bin/d4rtrun.b.dart` replay runner).
-- **License:** proprietary — see [LICENSE](LICENSE).
+- **License:** BSD-3-Clause — see [LICENSE](LICENSE).

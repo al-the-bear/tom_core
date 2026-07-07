@@ -73,4 +73,4 @@ initializes reflection before `runApp`.
 
 ## License
 
-Proprietary and confidential — see [`LICENSE`](LICENSE).
+BSD 3-Clause licensed — see [`LICENSE`](LICENSE).

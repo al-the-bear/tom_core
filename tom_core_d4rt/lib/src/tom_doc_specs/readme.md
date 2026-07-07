@@ -1,7 +1,7 @@
 # tom_doc_specs
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Generated D4rt bridge for **[`tom_doc_specs`](../../../../../ai_build/tom_doc_specs/)**.
 Registering `tom_core_d4rt` exposes the document-schema specification toolkit to

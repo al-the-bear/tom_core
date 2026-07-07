@@ -1,7 +1,7 @@
 # endpoints
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The endpoint annotation + request pipeline. Methods on a `TomService` /
 `TomApiImplementation` are marked with the `@TomEndpoint` annotation (HTTP

@@ -1,7 +1,7 @@
 # little_things
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Small client-side cross-cutting helpers. Today this is the client exception
 family: thin semantic subtypes of the kernel `TomException` that let client code

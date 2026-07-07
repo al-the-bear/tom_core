@@ -1,7 +1,7 @@
 # observing
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The bridge from the kernel observation model to Flutter. These adaptors let a
 kernel `TomObservable` drive a Flutter rebuild — either directly as a widget

@@ -1,7 +1,7 @@
 # cmdline
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Command-line and environment ingestion. `TomArgs` parses `key=value` argv into a
 typed map (or straight onto a reflected config object); `TomEnvFile` reads the

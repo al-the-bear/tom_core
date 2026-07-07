@@ -1,7 +1,7 @@
 # reflection
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 >
 > The reflection layer derives from the **`reflectable`** package; see the
 > [`tom_reflection`](../../../../../../reflection/tom_reflection/README.md)

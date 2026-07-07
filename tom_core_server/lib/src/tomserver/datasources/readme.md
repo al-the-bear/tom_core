@@ -1,7 +1,7 @@
 # datasources
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The SQL datasource layer: a database-neutral `TomDataSource` contract plus the
 MariaDB/MySQL driver, a typed SQL-dialect renderer, and typed query objects.

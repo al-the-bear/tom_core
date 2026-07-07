@@ -1,3 +1,13 @@
+## Unreleased — 2026-07-07
+
+### Changed
+
+- **Relicensed to BSD 3-Clause.** The whole `tom_core` package set — this
+  package and its `tom_core_*` / `tom_flutter_*` siblings — now ships under the
+  BSD 3-Clause license, replacing the previous proprietary license. This
+  supersedes the 2026-06-24 note below, which had switched this package from its
+  originally scaffolded BSD 3-Clause license to the proprietary one.
+
 ## Unreleased — 2026-06-24
 
 ### Fixed

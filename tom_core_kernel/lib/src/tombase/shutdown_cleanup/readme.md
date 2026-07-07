@@ -1,7 +1,7 @@
 # shutdown_cleanup
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Orderly teardown. `TomShutdownCleanup` collects disposables, closables, and OS
 signal handlers and runs them when the process shuts down, so resources

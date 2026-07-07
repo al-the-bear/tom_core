@@ -1,7 +1,7 @@
 # Tom Core Samples — one app, taught across the whole layer
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These sample projects are proprietary and internal (`publish_to: none`).
+> These sample projects are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 `tom_core_samples` is the **code companion to the Tom Core articles**. Instead of
 a scattering of unrelated snippets, every sample here contributes to **one
@@ -170,6 +170,6 @@ tom_core_samples/
 
 ## License
 
-Proprietary and confidential. Each sample carries the same proprietary
+BSD 3-Clause licensed. Each sample carries the same
 [`LICENSE`](../tom_core_kernel/LICENSE) as the rest of Tom Core; see any package
 folder for the full text.

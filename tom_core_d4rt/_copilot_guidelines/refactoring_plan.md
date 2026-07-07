@@ -47,7 +47,7 @@ with the folder):
 Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview, incl. CLI usage),
-   `CHANGELOG.md` (short, pre-publish), and `LICENSE` (proprietary) exist at the
+   `CHANGELOG.md` (short, pre-publish), and `LICENSE` (BSD 3-Clause) exist at the
    project root. All three are present — verify they are current. *Done when all
    three are present and accurate.*
 2. **Per-module pass — `tom_basics/`.** Run the Per-Module Workflow below.

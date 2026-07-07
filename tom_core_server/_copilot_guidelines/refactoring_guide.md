@@ -55,7 +55,7 @@ Consult these to understand intended usage before refactoring a module:
 Iterate in order. Each step states its **done** condition.
 
 1. **Meta files.** Ensure `README.md` (summary + overview), `CHANGELOG.md`
-   (short, pre-publish), and `LICENSE` (proprietary — match the existing
+   (short, pre-publish), and `LICENSE` (BSD 3-Clause — match the existing
    `LICENSE` wording) exist at the project root. Create any missing; customize
    the template `README.md`. *Done when all three exist and the README
    describes the package accurately.*

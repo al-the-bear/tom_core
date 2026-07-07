@@ -1,7 +1,7 @@
 # `todo_domain` — the shared model every sample reuses
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> This sample is proprietary and internal (`publish_to: none`).
+> This sample is BSD-3-Clause licensed and internal (`publish_to: none`).
 
 `todo_domain` is the **single source of truth** for the Tom Core samples. It is a
 tiny, pure-Dart package — no Flutter, no server, no UI — that defines the
@@ -203,5 +203,5 @@ Continue with the [samples map](../README.md) and the
 
 ## License
 
-Proprietary and confidential. This sample carries the same proprietary
+BSD 3-Clause licensed. This sample carries the same
 [`LICENSE`](../../tom_core_kernel/LICENSE) as the rest of Tom Core.

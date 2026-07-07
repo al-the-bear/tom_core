@@ -1,7 +1,7 @@
 # http_connection
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Platform-neutral HTTP client primitives used by the remote-call layer: typed
 methods, headers, MIME types, endpoint/API descriptors, and the server-call

@@ -1,7 +1,7 @@
 # tom_flutter_ui
 
-> Part of the Tom Framework. © Peter Nicolai Alexis Kyaw — proprietary and
-> confidential.
+> Part of the Tom Framework. © Peter Nicolai Alexis Kyaw — BSD 3-Clause
+> licensed.
 
 The Flutter widget library of the Tom Framework: authorization-aware,
 resource-bound, observable widgets, a declarative form system, the Tom Action

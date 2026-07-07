@@ -1,7 +1,7 @@
 # resources
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 Typed, eagerly-resolved configuration values. A `TomProperty<T>` reads its value
 from the kernel `TomConfigResourceProvider` **once at construction** and caches

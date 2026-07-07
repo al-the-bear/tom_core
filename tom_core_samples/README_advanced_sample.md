@@ -1,7 +1,7 @@
 # Advanced Tom Core Full-Stack Sample — the whole secured system
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These sample projects are proprietary and internal (`publish_to: none`).
+> These sample projects are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 This is the **secured, full-stack successor** to the basic
 [`core_server_sample`](core_server_sample/README.md) /
@@ -238,6 +238,6 @@ tom_core_samples/
 
 ## License
 
-Proprietary and confidential. Each package carries the same proprietary
+BSD 3-Clause licensed. Each package carries the same
 [`LICENSE`](../tom_core_kernel/LICENSE) as the rest of Tom Core; see any package
 folder for the full text.

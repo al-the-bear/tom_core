@@ -102,4 +102,4 @@ table for failed launches — see [`doc/operations.md`](doc/operations.md).
 
 ## License
 
-Proprietary and confidential — see [`LICENSE`](LICENSE).
+BSD 3-Clause licensed — see [`LICENSE`](LICENSE).

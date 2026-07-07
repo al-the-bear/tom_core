@@ -1,7 +1,7 @@
 # advanced_container_layout
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are proprietary and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
 The ACL engine: a fluent, row-based layout builder modelled on the Java Swing
 `StdAdvancedContainer` / `AdvancedContainerLike` API, with first-class
