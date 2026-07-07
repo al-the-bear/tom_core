@@ -66,8 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(TomCtr.text('login.appbar.title'))),
+    return TomScaffold(
+      appBar: TomAppBar(title: TomText(text: TomCtr.text('login.appbar.title'))),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -75,8 +75,8 @@ class _LoginScreenState extends State<LoginScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.all(24),
             children: [
-              Text(
-                TomCtr.text('login.intro'),
+              TomText(
+                text: TomCtr.text('login.intro'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 16),
@@ -85,21 +85,21 @@ class _LoginScreenState extends State<LoginScreen> {
               _form.password.widget,
               const SizedBox(height: 16),
               if (_error != null) ...[
-                Text(
-                  _error!,
+                TomText(
+                  text: _error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
                 const SizedBox(height: 12),
               ],
-              FilledButton(
+              TomFilledButton(
                 onPressed: _busy ? null : _submit,
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 18,
                         width: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: TomCircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(TomCtr.text('login.submit')),
+                    : TomText(text: TomCtr.text('login.submit')),
               ),
             ],
           ),

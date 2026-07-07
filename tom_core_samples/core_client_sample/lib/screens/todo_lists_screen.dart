@@ -80,7 +80,7 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
 
   void _snack(String message) {
     ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(TomSnackBar(content: TomText(text: message)));
   }
 
   Future<void> _openDetail(TodoItem? item) async {
@@ -94,37 +94,38 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(TomCtr.text('todos.appbar.title')),
+    return TomScaffold(
+      appBar: TomAppBar(
+        title: TomText(text: TomCtr.text('todos.appbar.title')),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Center(
-              child: Text(
-                TomCtr.text('todos.role').replaceAll('{role}', _session.role),
+              child: TomText(
+                text:
+                    TomCtr.text('todos.role').replaceAll('{role}', _session.role),
               ),
             ),
           ),
           if (widget.liveClient != null)
-            IconButton(
+            TomIconButton(
               tooltip: TomCtr.text('todos.action.refreshLive'),
               icon: const Icon(Icons.cloud_download_outlined),
               onPressed: _loadLive,
             ),
-          IconButton(
+          TomIconButton(
             tooltip: TomCtr.text('todos.action.refresh'),
             icon: const Icon(Icons.refresh),
             onPressed: _loadLocal,
           ),
-          IconButton(
+          TomIconButton(
             tooltip: TomCtr.text('todos.action.logout'),
             icon: const Icon(Icons.logout),
             onPressed: _session.logout,
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: TomFloatingActionButton(
         onPressed: () => _openDetail(null),
         tooltip: TomCtr.text('todos.action.new'),
         child: const Icon(Icons.add),
@@ -132,35 +133,35 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
       body: Column(
         children: [
           if (_showingLive)
-            MaterialBanner(
-              content: Text(TomCtr.text('todos.live.banner')),
+            TomMaterialBanner(
+              content: TomText(text: TomCtr.text('todos.live.banner')),
               leading: const Icon(Icons.cloud_done_outlined),
               actions: [
-                TextButton(
+                TomTextButton(
                   onPressed: _loadLocal,
-                  child: Text(TomCtr.text('todos.live.back')),
+                  child: TomText(text: TomCtr.text('todos.live.back')),
                 ),
               ],
             ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? Center(child: TomCircularProgressIndicator())
                 : _items.isEmpty
-                    ? Center(child: Text(TomCtr.text('todos.empty')))
+                    ? Center(child: TomText(text: TomCtr.text('todos.empty')))
                     : ListView.builder(
                         itemCount: _items.length,
                         itemBuilder: (context, index) {
                           final item = _items[index];
-                          return ListTile(
+                          return TomListTile(
                             leading: Icon(
                               item.done.get()
                                   ? Icons.check_circle
                                   : Icons.radio_button_unchecked,
                             ),
-                            title: Text(item.title.get()),
-                            subtitle: Text(
-                              '${enumText(item.priorityValue)} · '
-                              '${enumText(item.labelValue)}',
+                            titleText: item.title.get(),
+                            subtitle: TomText(
+                              text: '${enumText(item.priorityValue)} · '
+                                  '${enumText(item.labelValue)}',
                             ),
                             onTap: _showingLive ? null : () => _openDetail(item),
                           );

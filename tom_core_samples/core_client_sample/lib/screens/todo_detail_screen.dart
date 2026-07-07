@@ -76,13 +76,14 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(TomCtr.text(
-            _isNew ? 'todoDetail.title.new' : 'todoDetail.title.edit')),
+    return TomScaffold(
+      appBar: TomAppBar(
+        title: TomText(
+            text: TomCtr.text(
+                _isNew ? 'todoDetail.title.new' : 'todoDetail.title.edit')),
         actions: [
           if (!_isNew)
-            IconButton(
+            TomIconButton(
               tooltip: TomCtr.text('todoDetail.action.delete'),
               icon: const Icon(Icons.delete_outline),
               onPressed: _busy ? null : _delete,
@@ -102,15 +103,15 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
           const SizedBox(height: 12),
           _form.done.widget,
           const SizedBox(height: 24),
-          FilledButton(
+          TomFilledButton(
             onPressed: _busy ? null : _save,
             child: _busy
-                ? const SizedBox(
+                ? SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: TomCircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(TomCtr.text('todoDetail.action.save')),
+                : TomText(text: TomCtr.text('todoDetail.action.save')),
           ),
         ],
       ),
