@@ -2,19 +2,32 @@
 // matrix. These run with no widgets and no socket — the backend is the seam
 // the whole app is written against, so its contract is pinned here.
 
-import 'package:core_client_sample/api/field_keys.dart';
 import 'package:core_client_sample/api/in_memory_todo_api.dart';
 import 'package:core_client_sample/api/todo_api.dart';
 import 'package:core_client_sample/reflection_seed.dart';
+import 'package:core_client_sample/resources/app_texts.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart' hide initializeReflection;
+
+/// The gradable field keys, in display order (mirrors the backend enumeration).
+const _gradableItemKeys = [
+  'todo.item.title',
+  'todo.item.done',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+];
 
 void main() {
   setUpAll(initializeReflection);
 
   late InMemoryTodoApi api;
-  setUp(() => api = InMemoryTodoApi());
+  setUp(() {
+    TomTextResourceProvider.setAppResourceProvider(
+      TomTextResourceProvider.from(appTexts),
+    );
+    api = InMemoryTodoApi();
+  });
 
   group('login', () {
     test('CCS-API-01: accepts a known account with any non-empty password',
@@ -86,30 +99,30 @@ void main() {
   group('field states (four-state matrix)', () {
     test('CCS-API-10: owner is fully editable across the board', () async {
       final states = await api.fieldStates('owner');
-      expect(states[TodoFieldKeys.title], TomAuthState.full);
-      expect(states[TodoFieldKeys.done], TomAuthState.full);
-      expect(states[TodoFieldKeys.priority], TomAuthState.full);
-      expect(states[TodoFieldKeys.assigneeId], TomAuthState.full);
+      expect(states['todo.item.title'], TomAuthState.full);
+      expect(states['todo.item.done'], TomAuthState.full);
+      expect(states['todo.item.priority'], TomAuthState.full);
+      expect(states['todo.item.assigneeId'], TomAuthState.full);
     });
 
     test('CCS-API-11: member cannot see priority and cannot reassign',
         () async {
       final states = await api.fieldStates('member');
-      expect(states[TodoFieldKeys.priority], TomAuthState.none);
-      expect(states[TodoFieldKeys.assigneeId], TomAuthState.read);
+      expect(states['todo.item.priority'], TomAuthState.none);
+      expect(states['todo.item.assigneeId'], TomAuthState.read);
     });
 
     test('CCS-API-12: viewer toggles nothing — done is disabled, rest read',
         () async {
       final states = await api.fieldStates('viewer');
-      expect(states[TodoFieldKeys.done], TomAuthState.disabled);
-      expect(states[TodoFieldKeys.title], TomAuthState.read);
-      expect(states[TodoFieldKeys.priority], TomAuthState.read);
+      expect(states['todo.item.done'], TomAuthState.disabled);
+      expect(states['todo.item.title'], TomAuthState.read);
+      expect(states['todo.item.priority'], TomAuthState.read);
     });
 
     test('CCS-API-13: an unknown role degrades every field to none', () async {
       final states = await api.fieldStates('ghost');
-      for (final key in TodoFieldKeys.all) {
+      for (final key in _gradableItemKeys) {
         expect(states[key], TomAuthState.none);
       }
     });

@@ -44,9 +44,11 @@ void main() {
       expect(project.lists[0].items[0].title.get(), 'Ship todo_domain');
     });
 
-    test('enum labels render human-facing text', () {
-      expect(TodoPriority.critical.label, 'Critical');
-      expect(TodoLabel.docs.label, 'Docs');
+    test('enum values expose a global.<enumtype>.<value> resource key', () {
+      // G-RES-5: enums carry no hardcoded display text — only a resource key
+      // resolved through the installed bundle at the point of display.
+      expect(TodoPriority.critical.resourceKey, 'global.todopriority.critical');
+      expect(TodoLabel.docs.resourceKey, 'global.todolabel.docs');
     });
   });
 

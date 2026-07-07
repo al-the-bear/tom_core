@@ -11,7 +11,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:tom_core_kernel/tom_core_kernel.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
 import '../app/app_session.dart';
@@ -43,10 +43,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   void initState() {
     super.initState();
     _item = widget.item ?? TodoItem();
-    _form = TomScope.withScope(
-      'todoDetail',
-      () => TodoItemForm(widget.session.fieldStates),
-    );
+    _form = TodoItemForm(widget.session.fieldStates);
     _form.bind(_item);
   }
 
@@ -81,11 +78,12 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isNew ? 'New todo' : 'Edit todo'),
+        title: Text(TomCtr.text(
+            _isNew ? 'todoDetail.title.new' : 'todoDetail.title.edit')),
         actions: [
           if (!_isNew)
             IconButton(
-              tooltip: 'Delete',
+              tooltip: TomCtr.text('todoDetail.action.delete'),
               icon: const Icon(Icons.delete_outline),
               onPressed: _busy ? null : _delete,
             ),
@@ -112,7 +110,7 @@ class _TodoDetailScreenState extends State<TodoDetailScreen> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : Text(TomCtr.text('todoDetail.action.save')),
           ),
         ],
       ),

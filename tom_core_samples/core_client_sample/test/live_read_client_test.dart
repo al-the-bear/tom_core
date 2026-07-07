@@ -2,7 +2,6 @@
 // is deliberately not exercised here — the parsing is split into free functions
 // precisely so it can be pinned against captured server responses.
 
-import 'package:core_client_sample/api/field_keys.dart';
 import 'package:core_client_sample/api/live_todo_read_client.dart';
 import 'package:core_client_sample/reflection_seed.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -71,10 +70,10 @@ void main() {
           },
         },
       });
-      expect(matrix['owner']![TodoFieldKeys.title], TomAuthState.full);
-      expect(matrix['viewer']![TodoFieldKeys.done], TomAuthState.disabled);
+      expect(matrix['owner']!['todo.item.title'], TomAuthState.full);
+      expect(matrix['viewer']!['todo.item.done'], TomAuthState.disabled);
       // Fields absent from the role's block degrade to none.
-      expect(matrix['viewer']![TodoFieldKeys.priority], TomAuthState.none);
+      expect(matrix['viewer']!['todo.item.priority'], TomAuthState.none);
     });
   });
 }

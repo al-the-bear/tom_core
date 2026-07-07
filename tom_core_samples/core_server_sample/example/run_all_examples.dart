@@ -124,29 +124,29 @@ void _demoAuthorization() {
   // in-memory here so the demo needs no database.
   final grantsByRole = <String, List<TomResourceGrant>>{
     'owner': _grants('owner', {
-      TodoItemResourceKeys.title: TomAuthState.full,
-      TodoItemResourceKeys.done: TomAuthState.full,
-      TodoItemResourceKeys.priority: TomAuthState.full,
-      TodoItemResourceKeys.assigneeId: TomAuthState.full,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.done': TomAuthState.full,
+      'todo.item.priority': TomAuthState.full,
+      'todo.item.assigneeId': TomAuthState.full,
     }),
     'member': _grants('member', {
-      TodoItemResourceKeys.title: TomAuthState.full,
-      TodoItemResourceKeys.done: TomAuthState.full,
-      TodoItemResourceKeys.priority: TomAuthState.none,
-      TodoItemResourceKeys.assigneeId: TomAuthState.read,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.done': TomAuthState.full,
+      'todo.item.priority': TomAuthState.none,
+      'todo.item.assigneeId': TomAuthState.read,
     }),
     'viewer': _grants('viewer', {
-      TodoItemResourceKeys.title: TomAuthState.read,
-      TodoItemResourceKeys.done: TomAuthState.disabled,
-      TodoItemResourceKeys.priority: TomAuthState.read,
-      TodoItemResourceKeys.assigneeId: TomAuthState.read,
+      'todo.item.title': TomAuthState.read,
+      'todo.item.done': TomAuthState.disabled,
+      'todo.item.priority': TomAuthState.read,
+      'todo.item.assigneeId': TomAuthState.read,
     }),
   };
 
   for (final entry in grantsByRole.entries) {
     final authorizer = TodoFieldAuthorizer.fromGrants(entry.value);
     print('Role "${entry.key}":');
-    for (final key in TodoItemResourceKeys.all) {
+    for (final key in gradableTodoItemKeys) {
       print('  $key -> ${authorizer.stateOf(key).name} '
           '(${_rendering(authorizer.stateOf(key))})');
     }
@@ -154,13 +154,13 @@ void _demoAuthorization() {
   // expected output (excerpt): viewer's done -> disabled (greyed-out),
   //   member's priority -> none (hidden), owner's title -> full (editable)
   final viewer = TodoFieldAuthorizer.fromGrants(grantsByRole['viewer']!);
-  _expect(viewer.stateOf(TodoItemResourceKeys.done) == TomAuthState.disabled,
+  _expect(viewer.stateOf('todo.item.done') == TomAuthState.disabled,
       'viewer sees a disabled (greyed-out) done toggle');
   final member = TodoFieldAuthorizer.fromGrants(grantsByRole['member']!);
-  _expect(member.stateOf(TodoItemResourceKeys.priority) == TomAuthState.none,
+  _expect(member.stateOf('todo.item.priority') == TomAuthState.none,
       'member has no (hidden) priority field');
   final owner = TodoFieldAuthorizer.fromGrants(grantsByRole['owner']!);
-  _expect(owner.stateOf(TodoItemResourceKeys.title) == TomAuthState.full,
+  _expect(owner.stateOf('todo.item.title') == TomAuthState.full,
       'owner edits (full) the title field');
 }
 

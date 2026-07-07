@@ -10,10 +10,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 import 'package:todo_domain/todo_domain.dart';
 
 import '../api/live_todo_read_client.dart';
 import '../app/app_session.dart';
+import '../domain/enum_text.dart';
 import 'todo_detail_screen.dart';
 
 /// Lists the session's todo items with create / open / refresh actions.
@@ -67,11 +69,12 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
         _loading = false;
         _showingLive = true;
       });
-      _snack('Loaded ${items.length} item(s) from the live server.');
+      _snack(TomCtr.text('todos.live.loaded')
+          .replaceAll('{count}', '${items.length}'));
     } catch (e) {
       if (!mounted) return;
       setState(() => _loading = false);
-      _snack('Live server unreachable: $e');
+      _snack(TomCtr.text('todos.live.unreachable').replaceAll('{error}', '$e'));
     }
   }
 
@@ -93,25 +96,29 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Todos'),
+        title: Text(TomCtr.text('todos.appbar.title')),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(child: Text('role: ${_session.role}')),
+            child: Center(
+              child: Text(
+                TomCtr.text('todos.role').replaceAll('{role}', _session.role),
+              ),
+            ),
           ),
           if (widget.liveClient != null)
             IconButton(
-              tooltip: 'Refresh from live server',
+              tooltip: TomCtr.text('todos.action.refreshLive'),
               icon: const Icon(Icons.cloud_download_outlined),
               onPressed: _loadLive,
             ),
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: TomCtr.text('todos.action.refresh'),
             icon: const Icon(Icons.refresh),
             onPressed: _loadLocal,
           ),
           IconButton(
-            tooltip: 'Log out',
+            tooltip: TomCtr.text('todos.action.logout'),
             icon: const Icon(Icons.logout),
             onPressed: _session.logout,
           ),
@@ -119,19 +126,19 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openDetail(null),
-        tooltip: 'New todo',
+        tooltip: TomCtr.text('todos.action.new'),
         child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
           if (_showingLive)
             MaterialBanner(
-              content: const Text('Showing live server data (read-only).'),
+              content: Text(TomCtr.text('todos.live.banner')),
               leading: const Icon(Icons.cloud_done_outlined),
               actions: [
                 TextButton(
                   onPressed: _loadLocal,
-                  child: const Text('Back to my list'),
+                  child: Text(TomCtr.text('todos.live.back')),
                 ),
               ],
             ),
@@ -139,7 +146,7 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _items.isEmpty
-                    ? const Center(child: Text('No todos yet.'))
+                    ? Center(child: Text(TomCtr.text('todos.empty')))
                     : ListView.builder(
                         itemCount: _items.length,
                         itemBuilder: (context, index) {
@@ -152,8 +159,8 @@ class _TodoListsScreenState extends State<TodoListsScreen> {
                             ),
                             title: Text(item.title.get()),
                             subtitle: Text(
-                              '${item.priorityValue.label} · '
-                              '${item.labelValue.label}',
+                              '${enumText(item.priorityValue)} · '
+                              '${enumText(item.labelValue)}',
                             ),
                             onTap: _showingLive ? null : () => _openDetail(item),
                           );

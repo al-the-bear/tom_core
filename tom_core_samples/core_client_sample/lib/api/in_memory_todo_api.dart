@@ -11,8 +11,19 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:todo_domain/todo_domain.dart';
 
-import 'field_keys.dart';
 import 'todo_api.dart';
+
+/// The gradable todo-item field resource keys, in display order (G-RES-6).
+///
+/// A bare list, not a `*ResourceKeys` catalogue class: it only *enumerates* the
+/// keys the field-state fold walks. They are the same wire keys the server seeds
+/// into `tom_resource_grant`.
+const List<String> _gradableItemKeys = [
+  'todo.item.title',
+  'todo.item.done',
+  'todo.item.priority',
+  'todo.item.assigneeId',
+];
 
 /// An in-memory implementation of [TodoApi], seeded with demo data.
 class InMemoryTodoApi implements TodoApi {
@@ -43,22 +54,22 @@ class InMemoryTodoApi implements TodoApi {
   /// while the rest are read-only.
   static const Map<String, Map<String, TomAuthState>> _grantMatrix = {
     'owner': {
-      TodoFieldKeys.title: TomAuthState.full,
-      TodoFieldKeys.done: TomAuthState.full,
-      TodoFieldKeys.priority: TomAuthState.full,
-      TodoFieldKeys.assigneeId: TomAuthState.full,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.done': TomAuthState.full,
+      'todo.item.priority': TomAuthState.full,
+      'todo.item.assigneeId': TomAuthState.full,
     },
     'member': {
-      TodoFieldKeys.title: TomAuthState.full,
-      TodoFieldKeys.done: TomAuthState.full,
-      TodoFieldKeys.priority: TomAuthState.none,
-      TodoFieldKeys.assigneeId: TomAuthState.read,
+      'todo.item.title': TomAuthState.full,
+      'todo.item.done': TomAuthState.full,
+      'todo.item.priority': TomAuthState.none,
+      'todo.item.assigneeId': TomAuthState.read,
     },
     'viewer': {
-      TodoFieldKeys.title: TomAuthState.read,
-      TodoFieldKeys.done: TomAuthState.disabled,
-      TodoFieldKeys.priority: TomAuthState.read,
-      TodoFieldKeys.assigneeId: TomAuthState.read,
+      'todo.item.title': TomAuthState.read,
+      'todo.item.done': TomAuthState.disabled,
+      'todo.item.priority': TomAuthState.read,
+      'todo.item.assigneeId': TomAuthState.read,
     },
   };
 
@@ -110,11 +121,12 @@ class InMemoryTodoApi implements TodoApi {
   Future<LoginResult> login(String username, String password) async {
     final key = username.trim().toLowerCase();
     final role = demoAccounts[key];
+    final texts = TomTextResourceProvider.getAppResources();
     if (role == null) {
-      throw const TodoApiException('Unknown account. Try alice, bob or val.');
+      throw TodoApiException(texts.getText('login.error.unknownAccount'));
     }
     if (password.isEmpty) {
-      throw const TodoApiException('Password must not be empty.');
+      throw TodoApiException(texts.getText('login.error.emptyPassword'));
     }
     final user = _users.firstWhere((u) => u.role.get() == role);
     return LoginResult(user: _copyUser(user), token: 'demo-token-$key');
@@ -149,7 +161,7 @@ class InMemoryTodoApi implements TodoApi {
   Future<Map<String, TomAuthState>> fieldStates(String role) async {
     final granted = _grantMatrix[role] ?? const {};
     return {
-      for (final key in TodoFieldKeys.all)
+      for (final key in _gradableItemKeys)
         key: granted[key] ?? TomAuthState.none,
     };
   }

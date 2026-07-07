@@ -60,8 +60,8 @@ abstract class TodoApi {
 
   /// The effective [TomAuthState] for each gradable field, for [role].
   ///
-  /// Keyed by the [TodoFieldKeys] resource keys; an ungranted field resolves to
-  /// [TomAuthState.none] (hidden — the closed-safe default), matching the
-  /// server's resolver.
+  /// Keyed by the gradable-field resource keys (`todo.item.title`, …); an
+  /// ungranted field resolves to [TomAuthState.none] (hidden — the closed-safe
+  /// default), matching the server's resolver.
   Future<Map<String, TomAuthState>> fieldStates(String role);
 }
