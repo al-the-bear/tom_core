@@ -18,7 +18,7 @@ Widget _box(String label, Color color) => Container(
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(label),
+      child: TomText(text: label),
     );
 
 /// The ACL component group.

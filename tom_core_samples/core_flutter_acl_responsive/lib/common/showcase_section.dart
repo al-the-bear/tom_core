@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'showcase_cell.dart';
 
@@ -46,15 +47,15 @@ class GroupScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
+    return TomScaffold(
+      appBar: TomAppBar(
         backgroundColor: theme.colorScheme.inversePrimary,
-        title: Text(group.title),
+        title: TomText(text: group.title),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(group.summary, style: theme.textTheme.bodyLarge),
+          TomText(text: group.summary, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 16),
           ...group.cells(context),
         ],

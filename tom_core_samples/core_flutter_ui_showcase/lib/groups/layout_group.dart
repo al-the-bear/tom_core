@@ -10,7 +10,7 @@ import '../common/showcase_section.dart';
 Widget _box(String label, Color color) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       color: color,
-      child: Text(label),
+      child: TomText(text: label),
     );
 
 /// The Layout component group.

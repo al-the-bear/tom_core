@@ -8,6 +8,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Builds a labelled box tinted with [color]. Const-friendly so cells can keep
 /// their snippets and their live children byte-for-byte aligned.
@@ -19,5 +20,5 @@ Widget demoBox(String label, Color color) => Container(
         border: Border.all(color: color),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(label),
+      child: TomText(text: label),
     );

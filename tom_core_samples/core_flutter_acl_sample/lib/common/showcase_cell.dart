@@ -5,10 +5,13 @@
 /// that produced it; the showcase's teaching value is precisely that
 /// `code | rendered` pairing. The cell is responsive — side-by-side on wide
 /// viewports, stacked on narrow ones — so it reads well both in the running
-/// app and in the screenshots a published article is built from.
+/// app and in the screenshots a published article is built from. Fittingly for
+/// a `tom_flutter_ui` sample, the reflow is driven by an [AclBuilder] row
+/// breakpoint (G-UI-4), not a hand-rolled `MediaQuery` width compare.
 library;
 
 import 'package:flutter/material.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 import 'code_block.dart';
 
@@ -41,46 +44,39 @@ class ShowcaseCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final wide = MediaQuery.sizeOf(context).width >= 720;
 
     final codeView = CodeBlock(code);
     final preview = _PreviewSurface(child: child);
 
-    return Card(
+    return TomCard(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            TomText(text: title, style: theme.textTheme.titleMedium),
             if (note != null) ...[
               const SizedBox(height: 4),
-              Text(
-                note!,
+              TomText(
+                text: note!,
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.secondary),
               ),
             ],
             const SizedBox(height: 12),
-            if (wide)
-              // Top-aligned rather than stretched: some previews (e.g. the ACL
-              // engine) build a LayoutBuilder internally, which cannot be
-              // measured by IntrinsicHeight. Letting each column size itself
-              // keeps the cell robust for every widget family.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: codeView),
-                  const SizedBox(width: 16),
-                  Expanded(child: preview),
-                ],
-              )
-            else ...[
-              codeView,
-              const SizedBox(height: 12),
-              preview,
-            ],
+            // G-UI-4: the `code | preview` split reflows through an AclBuilder
+            // row breakpoint rather than a hand-rolled MediaQuery compare — the
+            // two columns share one row while the cell is at least 720px wide
+            // and stack below it. The ACL default top cross-alignment (and its
+            // intrinsic-free measurement) keeps previews that build an internal
+            // LayoutBuilder — e.g. the ACL engine itself — robust.
+            AclBuilder()
+                .setAclExpandXDefault(true)
+                .append(codeView)
+                .addRowBreakpoint(atWidth: 720, splitRowDist: 12)
+                .append(preview, dist: 16)
+                .build(),
           ],
         ),
       ),

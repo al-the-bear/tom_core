@@ -2,12 +2,15 @@
 ///
 /// This is the "code" half of a [ShowcaseCell]: it presents the verbatim
 /// instantiation snippet for a widget so a reader can copy it straight into
-/// their own project. Kept deliberately framework-neutral (plain Material) so
-/// the chrome never competes with the `tom_flutter_ui` widget on display.
+/// their own project. The chrome is styled to stay visually neutral — a
+/// monospace [TomSelectableText] inside a bordered panel with a [TomIconButton]
+/// copy affordance — so it never competes with the `tom_flutter_ui` widget on
+/// display (G-UI-1: the sample's own UI is built from Tom* components too).
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 /// Renders a Dart snippet in a bordered monospace panel with a copy button.
 class CodeBlock extends StatelessWidget {
@@ -30,8 +33,8 @@ class CodeBlock extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 40, 12),
-            child: SelectableText(
-              trimmed,
+            child: TomSelectableText(
+              text: trimmed,
               style: const TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 12.5,
@@ -42,7 +45,7 @@ class CodeBlock extends StatelessWidget {
           Positioned(
             top: 2,
             right: 2,
-            child: IconButton(
+            child: TomIconButton(
               icon: const Icon(Icons.copy, size: 16),
               tooltip: 'Copy snippet',
               onPressed: () =>

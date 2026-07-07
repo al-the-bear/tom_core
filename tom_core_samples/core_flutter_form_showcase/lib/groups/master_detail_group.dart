@@ -74,16 +74,17 @@ class _MasterPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
+    return TomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.all(8),
-            child: Text('Items (${listForm.length})',
+            child: TomText(
+                text: 'Items (${listForm.length})',
                 style: theme.textTheme.titleSmall),
           ),
-          const Divider(height: 1),
+          TomDivider(height: 1),
           Expanded(
             child: ListView.builder(
               itemCount: listForm.length,
@@ -94,23 +95,23 @@ class _MasterPane extends StatelessWidget {
                   observables: item == null
                       ? const <TomObservable>[]
                       : [item.productName, item.quantity],
-                  builder: (context) => ListTile(
-                    dense: true,
-                    selected: selected,
-                    title: Text(
-                      item == null || item.productName.get().isEmpty
-                          ? '(new item)'
-                          : item.productName.get(),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text('Qty ${item?.quantity.get() ?? ''}'),
-                    onTap: () => selectIndex(index),
-                  ),
+                  builder: (context) {
+                    final name = item == null || item.productName.get().isEmpty
+                        ? '(new item)'
+                        : item.productName.get();
+                    return TomListTile(
+                      dense: true,
+                      selected: selected,
+                      titleText: name,
+                      subtitle: TomText(text: 'Qty ${item?.quantity.get() ?? ''}'),
+                      onTap: () => selectIndex(index),
+                    );
+                  },
                 );
               },
             ),
           ),
-          const Divider(height: 1),
+          TomDivider(height: 1),
           Padding(
             padding: const EdgeInsets.all(4),
             child: TomListFormToolbar<OrderItem, OrderItemForm>(
@@ -132,7 +133,7 @@ class _DetailPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return TomCard(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: ListenableBuilder(
@@ -144,12 +145,13 @@ class _DetailPane extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text('Item detail',
+                      child: TomText(
+                          text: 'Item detail',
                           style: Theme.of(context).textTheme.titleSmall),
                     ),
                     if (form.isDirty)
-                      const Chip(
-                        label: Text('Dirty'),
+                      TomChip(
+                        labelText: 'Dirty',
                         visualDensity: VisualDensity.compact,
                       ),
                   ],
@@ -168,14 +170,14 @@ class _DetailPane extends StatelessWidget {
                 Wrap(
                   spacing: 8,
                   children: [
-                    FilledButton.icon(
+                    TomFilledButton(
                       icon: const Icon(Icons.save, size: 16),
-                      label: const Text('Save'),
+                      label: 'Save',
                       onPressed: () => form.save(),
                     ),
-                    OutlinedButton.icon(
+                    TomOutlinedButton(
                       icon: const Icon(Icons.undo, size: 16),
-                      label: const Text('Discard'),
+                      label: 'Discard',
                       onPressed: () => form.discard(),
                     ),
                   ],
